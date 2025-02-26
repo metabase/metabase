@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,19 +29,22 @@
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :timezone      "UTC"
     :settings      {}}
-   (select-keys (mt/db) [:id :timezone :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
+   (select-keys (mt/db) [:id :entity_id :timezone :initial_sync_status :cache_field_values_schedule
+                         :metadata_sync_schedule])))
 
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults :model/Field)
                 (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
-                                :database_position :database_required :database_is_auto_increment]
+                                :database_position :database_required :database_is_auto_increment :entity_id]
                                :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
+                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id
+                                                    :initial_sync_status :view_count]
+                                                   :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -194,7 +197,7 @@
   (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"
       (testing "Refingerprints field when updated"
-        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)

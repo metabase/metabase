@@ -155,3 +155,19 @@ if (isCI) {
   // Ensure that after plugin installation is after the afterEach handling the integration.
   require("cypress-terminal-report/src/installLogsCollector")(options);
 }
+
+beforeEach(function () {
+  const isCurrentTesOss =
+    this.currentTest._testConfig.unverifiedTestConfig.tags === "@OSS";
+  const isBuildOss = Cypress.env("MB_EDITION") === "oss";
+  const testName = this.currentTest.title;
+  if (Cypress.config("isInteractive") && isCurrentTesOss && !isBuildOss) {
+    console.log(
+      "%cSkipping test because it is tagged with @OSS:",
+      "color: red;",
+    );
+    console.log(`test name: ${testName}\n\n"this test should be ran against OSS jar. Make sure you have MB_EDITION=oss set and go to e2e/support/cypress.js and temporarily remove the skipOn(true) to run the test"
+    `);
+    cy.skipOn(true);
+  }
+});

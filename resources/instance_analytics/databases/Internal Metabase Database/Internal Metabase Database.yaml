@@ -7,3 +7,4 @@ serdes/meta:
   id: Internal Metabase Database
 initial_sync_status: complete
 is_audit: true
+entity_id: audit__rP75CiURKZ-0pq

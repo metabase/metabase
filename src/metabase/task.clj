@@ -23,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
+               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +87,9 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (log/warnf "Deleting job %s due to class not found (%s)"
+                       (.getName ^JobKey job-key)
+                       (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- init-scheduler!
@@ -303,3 +306,14 @@
   []
   {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
    :jobs      (jobs-info)})
+
+(defmacro rerun-on-error
+  "Retry the current Job if an exception is thrown by the enclosed code."
+  {:style/indent 1}
+  [^JobExecutionContext ctx & body]
+  `(let [msg# (str (.getName (.getKey (.getJobDetail ~ctx))) " failed, but we will try it again.")]
+     (try
+       ~@body
+       (catch Exception e#
+         (log/error e# msg#)
+         (throw (JobExecutionException. msg# e# true))))))

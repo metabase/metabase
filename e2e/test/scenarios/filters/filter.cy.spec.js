@@ -510,7 +510,7 @@ describe("scenarios > question > filter", () => {
       .findByText("Created At is in the previous 30 days")
       .click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.button("Back").click();
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
@@ -866,16 +866,16 @@ describe("scenarios > question > filter", () => {
       H.openOrdersTable({ mode: "notebook" });
 
       H.filter({ mode: "notebook" });
-      H.popover().findByText("Total").click();
+      H.clauseStepPopover().findByText("Total").click();
       H.selectFilterOperator("Equal to");
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("123");
         cy.button("Add filter").click();
       });
 
       H.getNotebookStep("filter").icon("add").click();
 
-      H.popover().within(() => {
+      H.clauseStepPopover().within(() => {
         cy.findByText("Custom Expression").click();
         cy.get(".ace_text-input").type("[Total] < [Product → Price]").blur();
         cy.button("Done").click();
@@ -884,7 +884,7 @@ describe("scenarios > question > filter", () => {
       // cy.findByText(/^Total/);
       // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("add").last().click();
-      H.popover().findByText(/^ID$/i).click();
+      H.clauseStepPopover().findByText(/^ID$/i).click();
       cy.findByPlaceholderText("Enter an ID").type("1");
       cy.button("Add filter").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

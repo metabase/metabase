@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]

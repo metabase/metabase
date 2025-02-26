@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
-   [metabase.models.action :as action]
+   [metabase.actions.models :as action]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]))
 

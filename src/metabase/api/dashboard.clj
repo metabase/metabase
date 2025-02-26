@@ -6,7 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -19,25 +19,24 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision :as revision]
-   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.permissions.core :as perms]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -45,6 +44,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -80,7 +80,7 @@
    {:keys [f]} :- [:map
                    [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
   (let [dashboards (dashboards-list f)
-        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
+        edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
     (into []
           (map (fn [{:keys [id] :as dashboard}]
                  (if-let [edit-info (get edit-infos id)]
@@ -142,13 +142,13 @@
                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dash)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dash)})
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -348,7 +348,8 @@
                          (cond
                            (or
                             (not (readable? parent-card))
-                            (not (readable? card)))
+                            (not (readable? card))
+                            (:archived card))
                            :discard
 
                            (or (:dashboard_id card)
@@ -460,6 +461,11 @@
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
+  (api/check-400 (not (and (= is_deep_copy false)
+                           (t2/exists? :model/Card
+                                       :dashboard_id from-dashboard-id
+                                       :archived false)))
+                 (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
@@ -491,9 +497,9 @@
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dashboard)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
@@ -510,7 +516,7 @@
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
     (let [dashboard (get-dashboard id)]
-      (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
+      (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :get "/:id/items"
@@ -731,23 +737,23 @@
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
-      (snowplow/track-event! ::snowplow/dashboard
-                             {:event        :question-added-to-dashboard
-                              :dashboard-id dashboard-id
-                              :question-id  card_id})))
+      (analytics/track-event! :snowplow/dashboard
+                              {:event        :question-added-to-dashboard
+                               :dashboard-id dashboard-id
+                               :question-id  card_id})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-deleted
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs}))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-deleted
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count deleted-tab-ids)
+                             :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-created
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-created
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count created-tab-ids)
+                             :total-num-tabs total-num-tabs})))
 
 ;;;;;;;;;;;; Bad pulse check & repair
 
@@ -829,7 +835,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (models.pulse/update-pulse! {:id pulse-id :archived true})
+    (pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
@@ -930,7 +936,7 @@
         (track-dashcard-and-tab-events! dashboard @changes-stats)
         (-> dashboard
             hydrate-dashboard-details
-            (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))))
+            (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))))
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates."
@@ -988,34 +994,13 @@
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
 
-(api.macros/defendpoint :get "/:id/revisions"
-  "Fetch `Revisions` for Dashboard with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Dashboard id)
-  (revision/revisions+details :model/Dashboard id))
-
-(api.macros/defendpoint :post "/:id/revert"
-  "Revert a Dashboard to a prior `Revision`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   {:keys [revision_id]} :- [:map
-                             [:revision_id ms/PositiveInt]]]
-  (api/write-check :model/Dashboard id)
-  (revision/revert!
-   {:entity      :model/Dashboard
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id}))
-
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+    (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
         (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
 
@@ -1088,10 +1073,11 @@
   [_route-params
    _query-params
    dashboard]
-  (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (xrays/get-or-create-root-container-collection))
-                               (t2/select-one-fn :id 'Collection
-                                                 :personal_owner_id api/*current-user-id*))
+  (let [parent-collection-id (:id (xrays/get-or-create-container-collection
+                                   (if api/*is-superuser?*
+                                     "/"
+                                     (collection/children-location
+                                      (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
@@ -1117,29 +1103,62 @@
 
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
-  (for [{:keys [target] {:keys [card]} :dashcard} mappings
-        :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                  (mbql.u/check-clause :dimension))]
-        :when dimension
-        :let  [ttag      (get-template-tag dimension card)
-               dimension (condp mbql.u/is-clause? dimension
-                           :field        dimension
-                           :expression   dimension
-                           :template-tag (:dimension ttag)
-                           (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (or
-                          ;; Get the field id from the field-clause if it contains it. This is the common case
-                          ;; for mbql queries.
-                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
-                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                          ;; This is the common case for native queries in which mappings from original columns
-                          ;; have been performed using model metadata.
-                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
-        :when field-id]
-    {:field-id field-id
-     :op       (param-type->op (:type param))
-     :options  (merge (:options ttag)
-                      (:options param))}))
+  (let [cards (into {}
+                    (map (fn [mapping]
+                           (let [card (get-in mapping [:dashcard :card])]
+                             [(:id card) card])))
+                    mappings)
+        metadata-providers (->>
+                            cards
+                            vals
+                            (map :database_id)
+                            distinct
+                            (into {}
+                                  (map (fn [database-id]
+                                         [database-id
+                                          (lib.metadata.jvm/application-database-metadata-provider database-id)]))))
+
+        filterable-columns (into {}
+                                 (map (fn [[card-id card]]
+                                        (let [dataset-query (:dataset_query card)]
+                                          [card-id
+                                           (if (seq dataset-query)
+                                             (->> dataset-query
+                                                  (lib/query (metadata-providers (:database_id card)))
+                                                  lib/filterable-columns)
+                                             [])])))
+                                 cards)]
+    (for [{:keys [target] {:keys [card]} :dashcard} mappings
+          :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                    (mbql.u/check-clause :dimension))]
+          :when dimension
+          :let  [ttag      (get-template-tag dimension card)
+                 dimension (condp mbql.u/is-clause? dimension
+                             :field        dimension
+                             :expression   dimension
+                             :template-tag (:dimension ttag)
+                             (log/error "cannot handle this dimension" {:dimension dimension}))
+                 field-id  (or
+                            ;; Get the field id from the field-clause if it contains it. This is the common case
+                            ;; for mbql queries.
+                            (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
+                            ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                            ;; This is the common case for native queries in which mappings from original columns
+                            ;; have been performed using model metadata.
+                            (:id (qp.util/field->field-info dimension (:result_metadata card)))
+                            ;; Look through the card's filterable columns and see if any of them match. This is common
+                            ;; when the query has an aggregation and you want to filter on something pre-aggregation.
+                            (lib.util.match/match-one dimension [:field (field-name :guard string?) _]
+                              (->> card
+                                   :id
+                                   filterable-columns
+                                   (lib/find-matching-column (lib/->pMBQL dimension))
+                                   :id)))]
+          :when field-id]
+      {:field-id field-id
+       :op       (param-type->op (:type param))
+       :options  (merge (:options ttag)
+                        (:options param))})))
 
 (mu/defn- chain-filter-constraints :- chain-filter/Constraints
   [dashboard                   :- :map
@@ -1300,8 +1319,8 @@
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
    {:keys [filtered filtering]} :- [:map
-                                    [:filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+                                    [:filtered  (ms/QueryVectorOf ms/PositiveInt)]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
@@ -1331,7 +1350,7 @@
                             [:parameters {:optional true} ms/JSONString]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
-   (api/check-404 (action/dashcard->action dashcard-id))
+   (api/check-404 (actions/dashcard->action dashcard-id))
    (json/decode parameters)))
 
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/execute"

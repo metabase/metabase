@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
@@ -26,6 +30,8 @@ interface SetupOpts {
   availableUnits?: DatePickerUnit[];
   submitButtonLabel?: string;
 }
+
+mockScrollIntoView();
 
 function setup({
   value,
@@ -145,7 +151,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
         });
 
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         await userEvent.click(screen.getByText("years"));
 
         expect(onChange).toHaveBeenCalledWith({
@@ -160,7 +166,7 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
           availableUnits: ["day", "month"],
         });
-        await userEvent.click(screen.getByLabelText("Unit"));
+        await userEvent.click(screen.getByRole("textbox", { name: "Unit" }));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("months")).toBeInTheDocument();
         expect(screen.queryByText("years")).not.toBeInTheDocument();

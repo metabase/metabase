@@ -41,6 +41,7 @@ export const SearchResults = <
                 <ChunkyList>{children}</ChunkyList>
               </Box>
             )}
+            estimatedItemSize={66}
           >
             {searchResults?.map((item, index) => (
               <ResultItem

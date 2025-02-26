@@ -8,14 +8,30 @@
 
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
-  (:require [metabase.analytics.prometheus :as prometheus]
-            [metabase.util.log :as log]
-            [metabase.util.malli :as mu]))
+  (:require
+   [metabase.analytics.prometheus :as prometheus]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
+
+(defmacro with-version! "Used to track information about the metabase embedding client version."
+  [[value] & body]
+  `(binding [*version* ~value]
+     ~@body))
+
+(defn get-version "Returns [[*version*]]." [] *version*)
+
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
-(mu/defn include-analytics :- :map
+(defmacro with-client! "Used to track information about the metabase embedding client client."
+  [[value] & body]
+  `(binding [*client* ~value]
+     ~@body))
+
+(defn get-client "Returns [[*client*]] dynamic var" [] *client*)
+
+(mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
    into the `view_log` or `query_execution` table. Falls back to the original value."
   [m :- :map]

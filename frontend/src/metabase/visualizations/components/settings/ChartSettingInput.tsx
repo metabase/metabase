@@ -1,5 +1,4 @@
-import { useState } from "react";
-import _ from "underscore";
+import { useEffect, useState } from "react";
 
 import { TextInput } from "metabase/ui";
 
@@ -17,6 +16,10 @@ export const ChartSettingInput = ({
   id,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
 
   return (
     <TextInput

@@ -19,6 +19,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
+  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -59,6 +60,8 @@ interface Options {
   dashboard?: Partial<Dashboard>;
 }
 
+mockScrollIntoView();
+
 async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
@@ -85,7 +88,6 @@ async function setup({ dashboard }: Options = {}) {
   setupBookmarksEndpoints([]);
   setupActionsEndpoints([]);
 
-  window.HTMLElement.prototype.scrollIntoView = () => null;
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const DashboardAppContainer = (props: any) => {
@@ -194,7 +196,9 @@ describe("DashboardApp", () => {
         history.goBack();
       });
 
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("leave-confirmation"),
+      ).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {

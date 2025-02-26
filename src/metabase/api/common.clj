@@ -120,7 +120,7 @@
 
 ;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
-  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
+  "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."
   (atom #{}))
 
@@ -229,14 +229,12 @@
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
-;; #### GENERIC 400 RESPONSE HELPERS
-(def ^:private generic-400
-  [400 (deferred-tru "Invalid Request.")])
-
 (defn check-400
   "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-400))
+  ([arg]
+   (check-400 arg (deferred-tru "Invalid Request.")))
+  ([arg msg]
+   (check arg [400 msg])))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
@@ -352,11 +350,11 @@
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0"}
-  [entity m]
+  [model entity]
   (try
-    (check-403 (mi/can-create? entity m))
+    (check-403 (mi/can-create? model entity))
     (catch clojure.lang.ExceptionInfo e
-      (events/publish-event! :event/create-permission-failure {:model entity
+      (events/publish-event! :event/create-permission-failure {:model   model
                                                                :user-id *current-user-id*})
       (throw e))))
 

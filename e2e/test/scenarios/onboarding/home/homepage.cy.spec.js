@@ -171,7 +171,7 @@ describe("scenarios > home > homepage", () => {
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
-    H.describeEE("EE", () => {
+    describe("EE", () => {
       it("should display popular items for a new user", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.

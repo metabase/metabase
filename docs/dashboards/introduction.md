@@ -171,11 +171,9 @@ If you don't want to build a dashboard from scratch, or want to experiment by ma
 
 To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
 
-By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard (including the dashboard's tabs), and save everything to the collection you specify.
+By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard (including the dashboard's tabs). Metabase will save the duplicated questions either to the target collection, or to the duplicated dashboard, depending on where the original questions were saved.
 
-If you don't wish to copy the dashboard's underlying questions, check the box that says **Only duplicate the dashboard**. Metabase will copy the dashboard and refer to the original questions.
-
-In both cases, duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
+Duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
 
 ## Arranging dashboard cards
 

@@ -1,0 +1,14 @@
+name: Create Backend Dep Bump PRs
+
+inputs:
+  github-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Open PRs to Bump Backend Deps
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      shell: bash
+      run: bash ${{ github.action_path }}/upgrade-deps.sh

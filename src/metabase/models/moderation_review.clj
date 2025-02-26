@@ -4,7 +4,6 @@
   (:require
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,7 +34,7 @@
 (doto :model/ModerationReview
   (derive :metabase/model)
   ;;; TODO: this is wrong, but what should it be?
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/search-index))
 

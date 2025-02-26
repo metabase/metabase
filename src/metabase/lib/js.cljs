@@ -1904,10 +1904,8 @@
   Returns the updated query.
 
   > **Code health:** Healthy"
-  ([a-query database-id metadata]
-   (with-different-database a-query database-id metadata nil))
-  ([a-query database-id metadata native-extras]
-   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+  [a-query database-id metadata]
+  (lib.core/with-different-database a-query (metadataProvider database-id metadata)))
 
 (defn ^:export with-native-extras
   "Updates the values of the extras required for the DB to run `a-query`. The first stage must be a native type.
@@ -2213,16 +2211,15 @@
   [column-extract-drill]
   (to-array (lib.core/extractions-for-drill column-extract-drill)))
 
-(defn ^:export pivot-types
-  "Returns a JS array of pivot types that are available in `a-drill-thru`, which must be a `pivot` drill-thru.
-
-  The list contains a subset of the strings `\"category\"`, `\"location\"` and `\"time\"`.
+(defn ^:export pivot-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `pivot` drills.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-drill-thru]
-  (->> (lib.core/pivot-types a-drill-thru)
-       (map name)
-       to-array))
+  [{:keys [stage-number] :as a-drill-thru}]
+  #js {"stageIndex" stage-number
+       "pivotTypes" (->> (lib.core/pivot-types a-drill-thru)
+                         (map name)
+                         to-array)})
 
 (defn ^:export pivot-columns-for-type
   "Returns a JS array of pivotable columns for `a-drill-thru`, given the selected `pivot-type`.
@@ -2405,6 +2402,10 @@
   map. **Removes** any existing filters for either column.
 
   `bounds` is a JS object `{north: number, south: number, west: number, east: number}` giving the bounding rectangle.
+
+  This function expects that longitudes (west and east bounds) have been canonicalized into the range [-180, 180]. If
+  west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
+  ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and

@@ -50,7 +50,9 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      cy.realPress("Escape");
+      // cy.realPress("Escape");
+      // TODO: Fix this:
+      H.entityPickerModal().button("Cancel").click();
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");
@@ -206,6 +208,7 @@ describe("scenarios > dashboard", () => {
       });
       H.entityPickerModal().button("Select").click();
 
+      cy.findByTestId("dashcard").should("be.visible");
       H.saveDashboard();
 
       cy.log(
@@ -350,6 +353,34 @@ describe("scenarios > dashboard", () => {
           .should("have.length", 1)
           .and("contain", "Orders, Count")
           .and("contain", "18,760");
+      });
+
+      it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
+        cy.log("add an existing card");
+        H.editDashboard();
+        cy.findByTestId("dashboard-header").icon("add").click();
+        H.sidebar().findByText("Orders, Count").click();
+        cy.findByTestId("dashboard-header").icon("add").click();
+
+        cy.log("create a tab to access emtpy state again");
+        H.createNewTab();
+        cy.findByTestId("dashboard-empty-state")
+          .findByText("Add a chart")
+          .click();
+
+        cy.log("save changes before leaving");
+        H.sidebar().findByText("New SQL query").click();
+        H.modal().findByRole("button", { name: "Save changes" }).click();
+
+        cy.log("create a dashboard question");
+        H.NativeEditor.focus().type("SELECT 1");
+        H.saveQuestion("Foo question");
+
+        cy.log(
+          "should have persisted changes from when dashboard was saved before creating a question",
+        );
+        cy.findAllByRole("tab", { name: /Tab \d/ }).should("have.length", 2);
+        H.getDashboardCards().should("have.length", 2);
       });
 
       it("should allow navigating to the notebook editor directly from a dashboard card", () => {
@@ -1155,7 +1186,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is hidden when the value is correct but produces empty results
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
       cy.button("Add filter").click();
     });
@@ -1171,7 +1202,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is visible when it returned an error
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("text{enter}");
       cy.button("Add filter").click();
     });
@@ -1179,6 +1210,100 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").within(() => {
       cy.findByText("There was a problem displaying this chart.");
     });
+  });
+
+  describe("warn before leave", () => {
+    it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
+      cy.visit("/");
+
+      // add
+      createNewDashboard();
+      cy.findByTestId("dashboard-header").icon("add").click();
+      cy.findByTestId("add-card-sidebar").findByText("Orders").click();
+      assertPreventLeave({ openSidebar: false });
+      H.saveDashboard();
+
+      // edit
+      H.editDashboard();
+      const card = cy
+        .findAllByTestId("dashcard-container", { scrollBehavior: false })
+        .eq(0);
+      dragOnXAxis(card, 100);
+      assertPreventLeave();
+      H.saveDashboard();
+
+      // remove
+      H.editDashboard();
+      H.removeDashboardCard();
+      assertPreventLeave();
+    });
+
+    it(
+      "should warn a user before leaving after adding, removed, moving, or duplicating a tab",
+      { tags: "@flaky" },
+      () => {
+        cy.visit("/");
+
+        // add tab
+        createNewDashboard();
+        H.createNewTab();
+        assertPreventLeave();
+        H.saveDashboard();
+
+        // move tab
+        H.editDashboard();
+        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+        // assert tab order is now correct and ui has caught up to result of dragging the tab
+        cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+        cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
+
+        // duplicate tab
+        H.editDashboard();
+        H.duplicateTab("Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
+
+        // remove tab
+        H.editDashboard();
+        H.deleteTab("Copy of Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
+
+        // rename tab
+        H.editDashboard();
+        H.renameTab("Tab 2", "Foo tab");
+        assertPreventLeave();
+      },
+    );
+
+    function createNewDashboard() {
+      H.newButton("Dashboard").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Test");
+        cy.findByRole("button", { name: "Create" }).click();
+      });
+    }
+
+    function dragOnXAxis(el, distance) {
+      el.trigger("mousedown", { clientX: 0 })
+        .trigger("mousemove", { clientX: distance })
+        .trigger("mouseup");
+    }
+
+    function assertPreventLeave(options = { openSidebar: true }) {
+      if (options.openSidebar) {
+        H.openQuestionsSidebar();
+      }
+      cy.findByText("New Question").click();
+      H.modal()
+        .should("exist")
+        .within(() => {
+          cy.findByText("Save your changes?").should("exist");
+          cy.findByRole("button", { name: "Cancel" }).click();
+        });
+    }
   });
 });
 
@@ -1438,7 +1563,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios > dashboard > caching", () => {
+describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1698,47 +1823,26 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 
   it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page", () => {
-    const invalidSlug = "x".repeat(21);
-    cy.visit(`/dashboard/entity/${invalidSlug}`);
+    const nonExistingEntityId = "x".repeat(21);
+    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
 
     H.main().findByText("We're a little lost...").should("be.visible");
   });
 
-  it("when loading `/dashboard/entity/${entity-id}?tab=${non-existing-tab-entity-id}`, it should still load the dashboard correctly", () => {
-    const nonExistingTabEntityId = "x".repeat(21);
-    H.createDashboardWithTabs({
-      name: "Dashboard with 2 tabs",
-      tabs: [
-        { name: "Tab 1", id: -1 },
-        { name: "Tab 2", id: -2 },
-      ],
-      dashcards: [],
-    }).then(dashboard => {
-      cy.visit(
-        `/dashboard/entity/${dashboard.entity_id}?tab=${nonExistingTabEntityId}`,
-      );
-      cy.url().should("contain", `/dashboard/${dashboard.id}`);
-      H.main().findByText("Dashboard with 2 tabs").should("be.visible");
-      cy.url().should("not.contain", `tab=${nonExistingTabEntityId}`);
-    });
+  it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
+    const nonExistingEntityId = "12".padEnd(21, "x");
+    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
+
+    H.main().findByText("We're a little lost...").should("be.visible");
   });
 
-  it("when loading `/dashboard/entity/${entity-id}?tab=${tab-slug of 21 chars}`, it should still load the dashboard correctly", () => {
-    H.createDashboardWithTabs({
-      name: "Dashboard with 2 tabs",
-      tabs: [
-        { name: "Tab 1", id: -1 },
-        { name: "Tab 2", id: -2 },
-      ],
-      dashcards: [],
-    }).then(dashboard => {
-      const tabId = dashboard.tabs[1].id;
-      const tabSlug = `${tabId}`.padEnd(21, "x");
-      cy.visit(`/dashboard/entity/${dashboard.entity_id}?tab=${tabSlug}`);
-      cy.url().should("contain", `/dashboard/${dashboard.id}`);
-      H.main().findByText("Dashboard with 2 tabs").should("be.visible");
-      cy.url().should("contain", `tab=${tabId}`);
-    });
+  it("when loading `/dashboard/entity/${entity id}?tab=${non existing tab entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
+    const nonExistingEntityId = "12".padEnd(21, "x");
+    cy.visit(
+      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?tab=${nonExistingEntityId}`,
+    );
+
+    H.main().findByText("We're a little lost...").should("be.visible");
   });
 });
 

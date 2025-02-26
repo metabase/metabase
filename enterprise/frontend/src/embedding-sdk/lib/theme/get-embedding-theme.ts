@@ -1,4 +1,5 @@
 import { merge } from "icepick";
+import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import type {
@@ -19,6 +20,12 @@ import { colorTuple } from "./color-tuple";
 
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
+// Strip any key that has the value of "undefined"
+const stripUndefinedKeys = <T>(x: T): unknown =>
+  _.isObject(x)
+    ? _.pick(_.mapObject(x, stripUndefinedKeys), v => !_.isUndefined(v))
+    : x;
+
 /**
  * Transforms a public-facing Metabase theme configuration
  * into a Mantine theme override for internal use.
@@ -29,7 +36,7 @@ export function getEmbeddingThemeOverride(
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
-    theme.components,
+    stripUndefinedKeys(theme.components),
   );
 
   const override: MantineThemeOverride = {

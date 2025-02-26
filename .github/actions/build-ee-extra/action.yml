@@ -30,7 +30,7 @@ runs:
       shell: bash
     - uses: actions/setup-node@v4
       with:
-        node-version: lts/Hydrogen # 18.x.x
+        node-version: lts/Jod # 22.x.x
     - run: rm package.json && npm install yaml
       shell: bash
     - name: parse drivers registry

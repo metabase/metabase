@@ -9,6 +9,7 @@ import {
   createMockClipboardData,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
@@ -463,7 +464,7 @@ describe("StringFilterValuePicker", () => {
         }),
       });
 
-      const input = screen.getByLabelText("Filter value");
+      const input = screen.getByRole("combobox", { name: "Filter value" });
       expect(input).toBeInTheDocument();
       expect(
         screen.queryByPlaceholderText("Search the list"),
@@ -603,7 +604,10 @@ describe("StringFilterValuePicker", () => {
       });
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "a",
+      );
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith([
@@ -640,9 +644,14 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "a",
+      );
       await userEvent.click(await screen.findByText("a@metabase.test"));
-      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith(["b", "a"]),
+      );
     });
 
     it("should handle type/FK -> column field values remapping", async () => {
@@ -679,9 +688,14 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "a");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "a",
+      );
       await userEvent.click(await screen.findByText("a@metabase.test"));
-      expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+      await waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(["b", "a"]);
+      });
     });
 
     it("should handle custom field values", async () => {
@@ -701,8 +715,9 @@ describe("StringFilterValuePicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       await userEvent.click(await screen.findByText("a@metabase.test"));
-
+      // await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
+      // );
     });
 
     it("should allow free-form input without waiting for search results", async () => {
@@ -742,7 +757,7 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      const input = screen.getByLabelText("Filter value");
+      const input = screen.getByRole("combobox", { name: "Filter value" });
       await userEvent.type(input, "a@b.com");
       input.blur();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
@@ -763,7 +778,10 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "a@b");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "a@b",
+      );
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
     });
 
@@ -778,7 +796,9 @@ describe("StringFilterValuePicker", () => {
       const clipboardData = createMockClipboardData({
         getData: () => " abc\r\ndef",
       });
-      await userEvent.click(screen.getByLabelText("Filter value"));
+      await userEvent.click(
+        screen.getByRole("combobox", { name: "Filter value" }),
+      );
       await userEvent.paste(clipboardData);
       expect(onChange).toHaveBeenLastCalledWith(["abc", "def"]);
     });
@@ -814,7 +834,10 @@ describe("StringFilterValuePicker", () => {
         values: ["abc"],
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "bce");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "bce",
+      );
       await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
@@ -866,7 +889,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByLabelText("Filter value"),
+        screen.getByRole("combobox", { name: "Filter value" }),
         "{backspace}",
       );
 
@@ -882,7 +905,7 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(
-        screen.getByLabelText("Filter value"),
+        screen.getByRole("combobox", { name: "Filter value" }),
         "{backspace}",
       );
 
@@ -897,11 +920,16 @@ describe("StringFilterValuePicker", () => {
         values: ["a"],
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "ab,abc");
+      await userEvent.type(
+        screen.getByRole("combobox", { name: "Filter value" }),
+        "ab,abc",
+      );
       await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
-      expect(onChange).toHaveBeenLastCalledWith(["a", "ab", "abc"]);
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith(["a", "ab", "abc"]),
+      );
       expect(onBlur).toHaveBeenCalled();
     });
   });

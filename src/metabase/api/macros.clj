@@ -834,18 +834,18 @@
 
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (comment
-  (metabase.api.macros/ns-routes 'metabase.api.timeline)
-  (metabase.api.macros/ns-routes 'metabase.api.timeline :get)
-  (metabase.api.macros/ns-routes 'metabase.api.timeline :get "/:id")
+  (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline)
+  (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline :get)
+  (metabase.api.macros/ns-routes 'metabase.timeline.api.timeline :get "/:id")
 
-  (reset-ns-routes! 'metabase.api.timeline)
+  (reset-ns-routes! 'metabase.timeline.api.timeline)
 
-  (metabase.api.open-api/open-api-spec (metabase.api.macros/ns-handler 'metabase.api.timeline) "/api/timeline/")
-  (metabase.api.open-api/open-api-spec (the-ns 'metabase.api.timeline) "/api/timeline/")
+  (metabase.api.open-api/open-api-spec (metabase.api.macros/ns-handler 'metabase.timeline.api.timeline) "/api/timeline/")
+  (metabase.api.open-api/open-api-spec (the-ns 'metabase.timeline.api.timeline) "/api/timeline/")
 
-  (find-route 'metabase.api.timeline :get "/")
-  (find-route 'metabase.api.timeline :get "/:id")
-  (find-route-fn 'metabase.api.timeline :get "/:id"))
+  (find-route 'metabase.timeline.api.timeline :get "/")
+  (find-route 'metabase.timeline.api.timeline :get "/:id")
+  (find-route-fn 'metabase.timeline.api.timeline :get "/:id"))
 
 ;;; PLEASE DON'T ADD ANY MORE CODE AFTER THE EXAMPLE USAGES ABOVE, GO ADD IT SOMEWHERE ELSE. PLEASE DON'T ADD ANYTHING
 ;;; UNRELATED TO DEFENDPOINT, THIS NAMESPACE IS ALREADY HUGE AND IF WE START PUTTING OTHER STUFF IN IT IT WILL BE

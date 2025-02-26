@@ -20,8 +20,6 @@ describe("scenarios > admin > troubleshooting > help", () => {
 
 describe("scenarios > admin > troubleshooting > help", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
-
     H.restore();
     cy.signInAsAdmin();
   });
@@ -42,7 +40,7 @@ describe("scenarios > admin > troubleshooting > help", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
+describe("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -228,8 +226,6 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
   describe.skip("when feature enabled", () => {
     beforeEach(() => {
-      H.onlyOnEE();
-
       H.restore();
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
@@ -313,28 +309,49 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
       });
     });
   });
+});
 
-  describe("when feature disabled", () => {
-    beforeEach(() => {
-      H.onlyOnEE();
+describe("admin > tools", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+  });
 
-      H.restore();
-      cy.signInAsAdmin();
-    });
+  it("should show either the erroring questions or the upsell (based on the `audit_app` feature flag)", () => {
+    cy.log(
+      "Enable model persistence in order to have multiple tabs/routes in tools",
+    );
+    cy.request("POST", "/api/persist/enable");
 
-    it("should not show tools -> errors", () => {
-      cy.visit("/admin");
+    cy.log(
+      "Visiting tools should redirect to the erroring questions as the index route",
+    );
+    cy.visit("/admin/tools");
 
-      H.appBar().findByText("Tools").should("not.exist");
+    cy.location("pathname").should("eq", "/admin/tools/errors");
+    cy.findByRole("heading", {
+      name: "Questions that errored when last run",
+    }).should("be.visible");
 
-      cy.visit("/admin/tools/errors");
+    cy.log("We should be able to switch to the model caching page");
+    cy.findByLabelText("Model Caching Log").should("not.be.checked");
+    cy.findByRole("radiogroup").contains("Model Caching Log").click();
+    cy.location("pathname").should("eq", "/admin/tools/model-caching");
 
-      H.main().within(() => {
-        cy.findByText("Questions that errored when last run").should(
-          "not.exist",
-        );
-        cy.findByText("We're a little lost...");
-      });
-    });
+    cy.log(
+      "Once the audit_app feature flag is gone, tools should display an upsell",
+    );
+    H.deleteToken();
+    cy.visit("/admin/tools");
+
+    cy.log("Redirects to the erroring questions again");
+    cy.findByRole("heading", {
+      name: "Troubleshoot faster",
+    }).should("be.visible");
+    cy.findByRole("link", { name: "Try for free" })
+      .should("have.attr", "href")
+      .and("include", "https://www.metabase.com/upgrade")
+      .and("include", "utm_");
   });
 });

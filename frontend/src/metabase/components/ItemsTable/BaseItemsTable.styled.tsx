@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
@@ -153,6 +155,7 @@ SortingControlContainer.defaultProps = { isSortable: true };
 export const RowActionsContainer = styled.div`
   display: flex;
   gap: 0.5rem;
+  justify-content: flex-end;
 
   span {
     display: flex;

@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_UNITS,
@@ -18,6 +22,8 @@ interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerUnit[];
 }
+
+mockScrollIntoView();
 
 function setup({
   value,

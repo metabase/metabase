@@ -10,7 +10,6 @@
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -24,21 +23,15 @@
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline]
-   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
-   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -162,7 +155,7 @@
       :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
       :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
-        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+        last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
                  (if-let [edit-info (get last-edit-info id)]
@@ -170,7 +163,7 @@
                    card)))
           cards)))
 
-(defn hydrate-card-details
+(defn- hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
@@ -199,10 +192,10 @@
                                         ;; can_manage_db determines whether we should enable model persistence settings
                                         :can_manage_db)))))
 
-(defn get-card
+(defn- get-card
   "Get `Card` with ID."
   [id]
-  (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
+  (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
         raw-card (t2/select-one :model/Card :id id)]
     (-> raw-card
         api/read-check
@@ -245,9 +238,12 @@
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-  [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
-    (lib/query metadata-provider pMBQL-query)))
+  ([dataset-query]
+   (some-> (:database dataset-query)
+           lib.metadata.jvm/application-database-metadata-provider
+           (dataset-query->query dataset-query)))
+  ([metadata-provider dataset-query]
+   (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
 
 (defn- card-columns-from-names
   [card names]
@@ -434,45 +430,6 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
-(api.macros/defendpoint :get "/:id/timelines"
-  "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include start end]} :- [:map
-                                   [:include {:optional true} [:maybe [:= "events"]]]
-                                   [:start   {:optional true} [:maybe ms/TemporalString]]
-                                   [:end     {:optional true} [:maybe ms/TemporalString]]]]
-  (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
-    ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
-    ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
-    ;; the read-checks are particularly fast on multiple items
-    (timeline/timelines-for-collection collection_id
-                                       {:timeline/events? (= include "events")
-                                        :events/start     (when start (u.date/parse start))
-                                        :events/end       (when end (u.date/parse end))})))
-
-;;; -------------------------------------------------- Saving Cards --------------------------------------------------
-
-(defn check-permissions-for-query
-  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!"
-  [query]
-  {:pre [(map? query)]}
-  (when-not (query-perms/can-run-query? query)
-    (let [required-perms (try
-                           (query-perms/required-perms-for-query query :throw-exceptions? true)
-                           (catch Throwable e
-                             e))]
-      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
-                       :query          query
-                       :required-perms (if (instance? Throwable required-perms)
-                                         :error
-                                         required-perms)
-                       :actual-perms   @api/*current-user-permissions-set*}
-                      (when (instance? Throwable required-perms)
-                        required-perms))))))
-
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
@@ -481,18 +438,43 @@
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
   (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                                                  dataset-query) card-type)
+    (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
                       {:type        card-type
                        :status-code 400})))))
+
+(defn- actual-collection-id
+  "Given a body from the `POST` endpoint to create a card, returns the `collection_id` that the card will be placed in.
+  Because creating a Dashboard Question does not require specifying a `collection_id` (it's inferred from the
+  `dashboard_id`), this may be different from the `collection_id`. Normally if you don't specify a `collection_id`
+  that means we put it in the root collection (`nil` id), but if you specify a `dashboard_id` we'll need to look it
+  up."
+  [body]
+  (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
+        ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
+        dashboard-id (:dashboard_id body)
+        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
+    (cond
+      ;; you specified both - they must match
+      (and specified-collection-id? dashboard-id)
+      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
+        (api/check-400 (= collection-id dashboard-collection-id)
+                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                            dashboard-collection-id
+                            collection-id))
+        collection-id)
+
+      specified-collection-id? collection-id
+
+      dashboard-id (dashboard-id->collection-id dashboard-id)
+
+      :else nil)))
 
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
-   {collection-id :collection_id
-    query         :dataset_query
+   {query         :dataset_query
     card-type     :type
     :as           body} :- [:map
                             [:name                   ms/NonBlankString]
@@ -509,17 +491,20 @@
                             [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (check-permissions-for-query query)
-  ;; check that we have permissions for the collection we're trying to save this card to, if applicable
-  (collection/check-write-perms-for-collection collection-id)
+  (card/check-run-permissions-for-query query)
+  ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
+  ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
+  (collection/check-write-perms-for-collection
+   (actual-collection-id body))
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
     (-> (card/create-card! body @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -530,7 +515,7 @@
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
-        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -539,7 +524,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (check-permissions-for-query (:dataset_query card-updates)))))
+      (card/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -572,7 +557,21 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+
+(defn- maybe-populate-collection-id
+  "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
+  If either one is set, let's validate that they match using `actual-collection-id` and make sure that the
+  `card-updates` contains the updated `collection_id`."
+  [card-before-update card-updates]
+  (let [collection-id (when (or (contains? card-updates :collection_id)
+                                (contains? card-updates :dashboard_id))
+                        (actual-collection-id card-updates))]
+    (cond-> card-updates
+      (or (api/column-will-change? :dashboard_id card-before-update card-updates)
+          (api/column-will-change? :collection_id card-before-update card-updates))
+      (assoc :collection_id collection-id))))
 
 (mu/defn update-card!
   "Updates a card - impl"
@@ -582,9 +581,16 @@
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (check-if-card-can-be-saved dataset_query type)
+  (when-some [query (dataset-query->query dataset_query)]
+    (try
+      (lib/check-overwrite id query)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/updates-with-archived-directly card-before-update card-updates)
+        card-updates           (maybe-populate-collection-id
+                                card-before-update
+                                (api/updates-with-archived-directly card-before-update card-updates))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -620,7 +626,7 @@
                                                                      :actor                 @api/*current-user*
                                                                      :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
-                                                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+                                                 (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
       ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
       ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
       ;; reflected synchronously.
@@ -867,55 +873,6 @@
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
-
-(api.macros/defendpoint :post "/:card-id/persist"
-  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
-  query in place of the model's query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
-    (let [database (t2/select-one :model/Database :id database_id)]
-      (api/write-check database)
-      (when-not (driver.u/supports? (:engine database) :persist-models database)
-        (throw (ex-info (tru "Database does not support persisting")
-                        {:status-code 400
-                         :database    (:name database)})))
-      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
-        (throw (ex-info (tru "Persisting models not enabled for database")
-                        {:status-code 400
-                         :database    (:name database)})))
-      (when-not (card/model? card)
-        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
-        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
-      api/generic-204-no-content)))
-
-(api.macros/defendpoint :post "/:card-id/refresh"
-  "Refresh the persisted model caching `card-id`."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (api/let-404 [card           (t2/select-one :model/Card :id card-id)
-                persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-    (when (not (card/model? card))
-      (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
-    (when (:archived card)
-      (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
-    (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
-    api/generic-204-no-content))
-
-(api.macros/defendpoint :post "/:card-id/unpersist"
-  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
-  query rather than the saved version of the query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
-  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
-    (api/let-404 [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-      (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
-      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
-      api/generic-204-no-content)))
 
 (defn mapping->field-values
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have

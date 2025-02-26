@@ -21,3 +21,4 @@ serdes/meta:
 - id: CATEGORIES
   model: Table
 database_require_filter: null
+entity_id: fROOTcxZ8KNzW6frWxyBn

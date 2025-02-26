@@ -29,8 +29,9 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
+   #?(:clj [metabase.util.performance :as perf]
+      :cljs [clojure.walk :as walk])
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -374,14 +375,24 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
+(defn- update-existing! [transient-map k f]
+  (if-some [v (get transient-map k)]
+    (assoc! transient-map k (f v))
+    transient-map))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
-  {:pre [(map? metadata)]}
-  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-      (m/update-existing :field_ref normalize-field-ref)
-      (m/update-existing :fingerprint walk/keywordize-keys)
-      (m/update-existing-in [:binning_info :binning_strategy] keyword)))
+  {:pre [(map? metadata)
+         #?(:clj  (instance? clojure.lang.IEditableCollection metadata)
+            :cljs (implements? cljs.core.IEditableCollection metadata))]}
+  (let [m (transient metadata)]
+    (-> (reduce #(update-existing! %1 %2 keyword) m
+                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+        (update-existing! :field_ref normalize-field-ref)
+        (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
+        (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
+        persistent!)))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."

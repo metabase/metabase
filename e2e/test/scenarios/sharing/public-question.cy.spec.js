@@ -128,7 +128,7 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    H.startNewNativeQuestion({ display: "table" });
 
     // Create a snippet
     cy.icon("snippet").click();
@@ -142,7 +142,7 @@ describe("scenarios > public > question", () => {
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type("{moveToStart}select ");
+    H.NativeEditor.type("{moveToStart}select ");
 
     H.saveQuestion(
       "test question",
@@ -171,7 +171,7 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
+      H.startNewNativeQuestion({ display: "table" });
 
       H.NativeEditor.type(`select * from {{#${id}`);
 
@@ -238,7 +238,7 @@ describe("scenarios > question > public link with extension", () => {
   );
 });
 
-H.describeEE("scenarios [EE] > public > question", () => {
+describe("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 

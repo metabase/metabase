@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { has24HourModeSetting } from "metabase/lib/time";
 
 import { getHours } from "./constants";

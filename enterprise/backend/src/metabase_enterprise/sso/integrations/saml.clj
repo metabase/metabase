@@ -39,11 +39,11 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
-   [metabase.integrations.common :as integrations.common]
-   [metabase.models.session :as session]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -78,9 +78,9 @@
   [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
-      (integrations.common/sync-group-memberships! user
-                                                   (group-names->ids group-names)
-                                                   (all-mapped-group-ids)))))
+      (sso/sync-group-memberships! user
+                                   (group-names->ids group-names)
+                                   (all-mapped-group-ids)))))
 
 (mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."

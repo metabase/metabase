@@ -1,11 +1,11 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
   "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
   appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (GTAPs). See dox
-  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
+  for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [clojure.core.memoize :as memoize]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
@@ -16,9 +16,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -66,7 +66,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
+    (let [enforced-sandboxes (sandbox.api.util/enforced-sandboxes-for-tables table-ids)]
       (when (seq enforced-sandboxes)
         (assert-one-gtap-per-table enforced-sandboxes)
         enforced-sandboxes))))

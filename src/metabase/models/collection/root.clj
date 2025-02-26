@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

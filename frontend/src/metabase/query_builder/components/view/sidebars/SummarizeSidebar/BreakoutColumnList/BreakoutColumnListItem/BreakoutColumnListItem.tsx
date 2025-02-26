@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
+import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -34,7 +35,7 @@ const Root = ({
   children,
   isSelected,
   ...props
-}: BoxProps & { isSelected?: boolean }) => {
+}: BoxProps & { isSelected?: boolean; children: React.ReactNode }) => {
   return (
     <Box
       component="li"

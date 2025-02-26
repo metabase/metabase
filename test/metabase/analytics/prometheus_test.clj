@@ -4,15 +4,15 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [iapetos.operations :as ops]
    [iapetos.registry :as registry]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.search.core :as search]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (io.prometheus.client Collector GaugeMetricFamily)
-   (org.eclipse.jetty.server Server)))
+   (io.prometheus.client Collector GaugeMetricFamily)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,42 +97,29 @@
        str/split-lines
        (remove #(str/starts-with? % "#"))))
 
-(defmacro with-prometheus-system!
-  "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
-  be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
-  registry and web-server."
-  [[port system] & body]
-  `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
-         (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
-         server#  ^Server (.web-server ~system)
-         ~port   (.. server# getURI getPort)]
-     (with-redefs [prometheus/system ~system]
-       (try ~@body
-            (finally (prometheus/stop-web-server ~system))))))
-
 (deftest web-server-test
   (testing "Can get metrics from the web-server"
-    (with-prometheus-system! [port _]
+    (mt/with-prometheus-system! [port _]
       (let [metrics-in-registry (metric-tags port)]
         (is (seq (set/intersection common-metrics metrics-in-registry))
             "Did not get metrics from the port"))))
   (testing "Throws helpful message if cannot start server"
     ;; start another system on the same port
-    (with-prometheus-system! [port _]
+    (mt/with-prometheus-system! [port _]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Failed to initialize Prometheus on port"
                             (#'prometheus/make-prometheus-system port "test-failure"))))))
 
 (deftest c3p0-collector-test
   (testing "Registry has c3p0 registered"
-    (with-prometheus-system! [_ system]
+    (mt/with-prometheus-system! [_ system]
       (let [registry       (.registry system)
             c3p0-collector (registry/get registry {:name      "c3p0-stats"
                                                    :namespace "metabase_database"}
                                          nil)]
         (is c3p0-collector "c3p0 stats not found"))))
   (testing "Registry has an entry for each database in [[prometheus/connection-pool-info]]"
-    (with-prometheus-system! [_ system]
+    (mt/with-prometheus-system! [_ system]
       (let [registry       (.registry system)
             c3p0-collector (registry/get registry {:name      "c3p0_stats"
                                                    :namespace "metabase_database"}
@@ -145,7 +132,7 @@
                (count (.samples ^GaugeMetricFamily (first measurements))))
             "Expected one entry per database for each measurement"))))
   (testing "Registry includes c3p0 stats"
-    (with-prometheus-system! [port _]
+    (mt/with-prometheus-system! [port _]
       (let [[db-name values] (first (prometheus/connection-pool-info))
             tag-name         (comp :label #'prometheus/label-translation)
             expected-lines   (set (for [[tag value] values]
@@ -158,7 +145,7 @@
 
 (deftest email-collector-test
   (testing "Registry has email metrics registered"
-    (with-prometheus-system! [port _]
+    (mt/with-prometheus-system! [port _]
       (is (= #{"metabase_email_messages_total" "metabase_email_messages_created" "metabase_email_message_errors_total" "metabase_email_message_errors_created"}
              (->> (metric-lines port)
                   (map #(str/split % #"\s+"))
@@ -166,12 +153,7 @@
                   (filter #(str/starts-with? % "metabase_email_"))
                   set))))))
 
-(defn- metric-value
-  "Return the value of `metric` in `system`'s registry."
-  [system metric]
-  (-> system :registry metric ops/read-value))
-
-(defn- approx=
+(defn approx=
   "Check that `actual` is within `epsilon` of `expected`.
 
   Useful for checking near-equality of floating-point values."
@@ -183,17 +165,65 @@
 (deftest inc!-test
   (testing "inc starts a system if it wasn't started"
     (with-redefs [prometheus/system nil]
-      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-      (is (approx= 1 (metric-value @#'prometheus/system :metabase-email/messages)))))
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
+
   (testing "inc throws when called with an unknown metric"
-    (with-prometheus-system! [_ _system]
+    (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
-                            (prometheus/inc! :metabase-email/unknown-metric)))))
+                            (analytics/inc! :metabase-email/unknown-metric)))))
   (testing "inc is recorded for known metrics"
-    (with-prometheus-system! [_ system]
+    (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
-      (is (approx= 1 (metric-value system :metabase-email/messages))))))
+      (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
+
+  (testing "inc with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
+      (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
+
+(deftest dec!-test
+  (testing "dec starts a system if it wasn't started"
+    (mt/with-temporary-setting-values [prometheus-server-port 0]
+      (with-redefs [prometheus/system nil]
+        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
+        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
+
+  (testing "dec throws when called with an unknown metric"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/dec! :metabase-email/unknown-metric)))))
+
+  (testing "dec is recorded for known metrics"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/dec! :metabase-search/queue-size)
+      (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
+
+  (testing "dec with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
+      (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
+
+(deftest observe!-test
+  (testing "observe! starts a system if it wasn't started"
+    (with-redefs [prometheus/system nil]
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
+        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
+
+  (testing "observe! with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type :notification/card} 2)
+      (is (approx= 2 (:sum (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type :notification/card}))))))
+
+  (testing "observe! throws when called with an unknown metric"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/observe! :metabase-email/unknown-metric 1))))))
 
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)

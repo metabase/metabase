@@ -23,6 +23,8 @@ And a lot of the time, you'll then **group** that metric by:
 - Place
 - Category
 
+## Summary metrics
+
 Adding a summarize step lets you choose how to aggregate the data from the previous step. You can pick one or more metrics, and optionally group those metrics by one or more dimensions (columns). When picking your metrics you can choose from basic functions like `sum`, `average`, and `count`; or you can pick a common metric defined by an admin; or you can create a [custom expression](./expressions.md) by writing a formula.
 
 Common metrics include:

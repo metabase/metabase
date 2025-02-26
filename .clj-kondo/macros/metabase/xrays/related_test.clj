@@ -1,13 +1,20 @@
-(ns macros.metabase.xrays.related-test
-  (:require [macros.common]))
+(ns macros.metabase.xrays.related-test)
 
 (defmacro with-world [& body]
-  `(let [~(macros.common/ignore-unused 'collection-id) nil
-         ~(macros.common/ignore-unused 'metric-id-a) nil
-         ~(macros.common/ignore-unused 'metric-id-b) nil
-         ~(macros.common/ignore-unused 'segment-id-a) nil
-         ~(macros.common/ignore-unused 'segment-id-b) nil
-         ~(macros.common/ignore-unused 'card-id-a) nil
-         ~(macros.common/ignore-unused 'card-id-b) nil
-         ~(macros.common/ignore-unused 'card-id-c) nil]
+  `(let [~'collection-id nil
+         ~'metric-id-a nil
+         ~'metric-id-b nil
+         ~'segment-id-a nil
+         ~'segment-id-b nil
+         ~'card-id-a nil
+         ~'card-id-b nil
+         ~'card-id-c nil]
+     ~'collection-id
+     ~'metric-id-a
+     ~'metric-id-b
+     ~'segment-id-a
+     ~'segment-id-b
+     ~'card-id-a
+     ~'card-id-b
+     ~'card-id-c
      ~@body))

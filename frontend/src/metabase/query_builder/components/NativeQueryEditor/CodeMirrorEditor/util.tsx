@@ -1,11 +1,13 @@
-import type { EditorState } from "@codemirror/state";
+import type { EditorState, SelectionRange } from "@codemirror/state";
+import { createSelector } from "@reduxjs/toolkit";
+import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
-import type { Location } from "../types";
+import type { Location, SelectionRange as Range } from "../types";
 
 export function convertIndexToPosition(value: string, index: number): Location {
   let row = 0;
@@ -24,6 +26,16 @@ export function convertIndexToPosition(value: string, index: number): Location {
   return {
     row,
     column,
+  };
+}
+
+export function convertSelectionToRange(
+  value: string,
+  selection: SelectionRange,
+): Range {
+  return {
+    start: convertIndexToPosition(value, selection.from),
+    end: convertIndexToPosition(value, selection.to),
   };
 }
 
@@ -225,9 +237,17 @@ export function matchCardIdAtCursor(
   return parsedId;
 }
 
-export function referencedQuestionIds(query: Lib.Query): CardId[] {
-  return Object.values(Lib.templateTags(query) ?? {})
-    .filter(tag => tag.type === "card")
-    .map(tag => tag["card-id"])
-    .filter(isNotNull);
-}
+export const getReferencedCardIds = createSelector(
+  (query: Lib.Query) => Lib.templateTags(query),
+  tags =>
+    Object.values(tags)
+      .filter(tag => tag.type === "card")
+      .map(tag => tag["card-id"])
+      .filter(isNotNull),
+  {
+    argsMemoizeOptions: { resultEqualityCheck: shallowEqual },
+    memoizeOptions: {
+      resultEqualityCheck: shallowEqual,
+    },
+  },
+);

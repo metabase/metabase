@@ -16,4 +16,5 @@
       ;; just make a simple attempt to set the `:last_login` for the given user to now
       (t2/update! :model/User user-id {:last_login :%now})
       (catch Throwable e
+        ;; TODO -- huh? Terrible log message.
         (log/warnf e "Failed to process sync-database event. %s" topic)))))

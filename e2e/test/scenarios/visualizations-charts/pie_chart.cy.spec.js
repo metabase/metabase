@@ -107,7 +107,16 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    // flakiness prevention
+    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("view-footer")
+      .findByText("Showing 4 rows")
+      .should("be.visible");
+
+    cy.findByTestId("chart-legend")
+      .findByText("Doohickey")
+      .trigger("mouseover");
+
     [
       ["Doohickey", "true"],
       ["Gadget", "false"],

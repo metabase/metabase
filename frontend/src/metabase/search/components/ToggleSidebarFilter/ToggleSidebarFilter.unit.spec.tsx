@@ -74,7 +74,7 @@ describe("ToggleSidebarFilter", () => {
       onChange: onChangeMock,
     });
 
-    const switchElement = screen.getByRole("checkbox");
+    const switchElement = screen.getByRole("switch");
     await userEvent.click(switchElement);
 
     expect(onChangeMock).toHaveBeenCalledTimes(1);
@@ -89,14 +89,14 @@ describe("ToggleSidebarFilter", () => {
       onChange: jest.fn(),
     });
 
-    const switchElement = screen.getByRole("checkbox");
+    const switchElement = screen.getByRole("switch");
     expect(switchElement).toHaveAttribute("data-is-checked", "true");
   });
 
   it("should have the switch unchecked when value is false", () => {
     setup();
 
-    const switchElement = screen.getByRole("checkbox");
+    const switchElement = screen.getByRole("switch");
     expect(switchElement).toHaveAttribute("data-is-checked", "false");
   });
 });

@@ -428,10 +428,10 @@ describe("ModelActions", () => {
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
         await userEvent.click(await screen.findByText("Archive"));
 
-        const modal = screen.getByRole("dialog");
-        await userEvent.click(
-          within(modal).getByRole("button", { name: "Archive" }),
-        );
+        expect(
+          screen.getByRole("heading", { name: /Archive/ }),
+        ).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),

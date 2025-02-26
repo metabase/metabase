@@ -84,26 +84,6 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
-(defmulti bad-connection-details
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(doseq [driver [:redshift :snowflake :vertica]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:db (mt/random-name)}))
-
-(doseq [driver [:oracle]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:service-name (mt/random-name)}))
-
-(doseq [driver [:presto-jdbc]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:catalog (mt/random-name)}))
-
 (doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
   (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
     [_driver _feature _database]
@@ -127,7 +107,7 @@
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
                     details (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
-                              (merge details (bad-connection-details driver/*driver*))
+                              (merge details (tx/bad-connection-details driver/*driver*))
                               ;; otherwise destroy the db and use the original details
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
@@ -171,7 +151,7 @@
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (merge details (bad-connection-details driver/*driver*))]
+                    new-details (merge details (tx/bad-connection-details driver/*driver*))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))

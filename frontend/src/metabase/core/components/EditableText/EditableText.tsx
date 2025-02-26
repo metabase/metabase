@@ -164,6 +164,8 @@ const EditableText = forwardRef(function EditableText(
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          // This is used to stop sidesheets from closing when escape is pressed
+          data-mantine-stop-propagation
         />
       )}
     </Box>

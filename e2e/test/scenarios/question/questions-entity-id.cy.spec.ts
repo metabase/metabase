@@ -41,6 +41,9 @@ describe("scenarios > questions > entity id support", () => {
     // await the entity id request to make sure the "wrong" request had its time to get fired
     cy.wait("@entityIdRequest");
 
+    // it should render a 404 page as that entity id doesn't exist
+    H.main().findByText("We're a little lost...").should("be.visible");
+
     cy.get("@wrongCardRequest.all").should("have.length", 0);
   });
 });

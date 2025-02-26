@@ -14,7 +14,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import { parseNumberValue } from "metabase/lib/number";
+import { parseNumber } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -442,10 +442,12 @@ export const FieldValuesWidgetInner = forwardRef<
     options,
   });
 
-  const parseFreeformValue = (value: string | number) => {
-    return isNumeric(fields[0], parameter)
-      ? parseNumberValue(value)
-      : parseStringValue(value);
+  const parseFreeformValue = (value: string | undefined) => {
+    if (isNumeric(fields[0], parameter)) {
+      const number = typeof value === "string" ? parseNumber(value) : null;
+      return typeof number === "bigint" ? String(number) : number;
+    }
+    return parseStringValue(value);
   };
 
   return (
@@ -535,7 +537,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={32} />
+    <LoadingSpinner size={16} />
   </div>
 );
 

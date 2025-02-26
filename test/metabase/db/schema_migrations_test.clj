@@ -32,8 +32,9 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -314,57 +315,58 @@
 (deftest ^:mb/old-migrations-test migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [migrate!]
-      (let [[pg-db-id
-             mysql-db-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                                    [{:name "PG Database"
-                                                      :engine "postgres"
-                                                      :created_at :%now
-                                                      :updated_at :%now
-                                                      :details "{}"}
-                                                     {:name "MySQL Database"
-                                                      :engine "mysql"
-                                                      :created_at :%now
-                                                      :updated_at :%now
-                                                      :details "{}"}])
-            [pg-table-id
-             mysql-table-id] (t2/insert-returning-pks! (t2/table-name :model/Table)
-                                                       [{:db_id pg-db-id
-                                                         :name "PG Table"
-                                                         :created_at :%now
-                                                         :updated_at :%now
-                                                         :active true}
-                                                        {:db_id mysql-db-id
-                                                         :name "MySQL Table"
-                                                         :created_at :%now
-                                                         :updated_at :%now
-                                                         :active true}])
-            [pg-field-1-id
-             pg-field-2-id
-             pg-field-3-id
-             mysql-field-1-id
-             mysql-field-2-id] (t2/insert-returning-pks! :model/Field [{:name "PG Field 1"    :table_id pg-table-id    :database_type "json"    :base_type :type/Structured}
-                                                                       {:name "PG Field 2"    :table_id pg-table-id    :database_type "JSONB"   :base_type :type/Structured}
-                                                                       {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
-                                                                       {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
-                                                                       {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
-            _ (migrate!)
-            new-base-types (t2/select-pk->fn :base_type :model/Field)]
-        (are [field-id expected] (= expected (get new-base-types field-id))
-          pg-field-1-id :type/JSON
-          pg-field-2-id :type/JSON
-          pg-field-3-id :type/Text
-          mysql-field-1-id :type/JSON
-          mysql-field-2-id :type/Text)
-        ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
-        #_(testing "Rollback restores the original state"
-            (migrate! :down 46)
-            (let [new-base-types (t2/select-pk->fn :base_type Field)]
-              (are [field-id expected] (= expected (get new-base-types field-id))
-                pg-field-1-id :type/Structured
-                pg-field-2-id :type/Structured
-                pg-field-3-id :type/Text
-                mysql-field-1-id :type/SerializedJSON
-                mysql-field-2-id :type/Text)))))))
+      (with-redefs [mi/add-entity-id identity]
+        (let [[pg-db-id
+               mysql-db-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                      [{:name "PG Database"
+                                                        :engine "postgres"
+                                                        :created_at :%now
+                                                        :updated_at :%now
+                                                        :details "{}"}
+                                                       {:name "MySQL Database"
+                                                        :engine "mysql"
+                                                        :created_at :%now
+                                                        :updated_at :%now
+                                                        :details "{}"}])
+              [pg-table-id
+               mysql-table-id] (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                         [{:db_id pg-db-id
+                                                           :name "PG Table"
+                                                           :created_at :%now
+                                                           :updated_at :%now
+                                                           :active true}
+                                                          {:db_id mysql-db-id
+                                                           :name "MySQL Table"
+                                                           :created_at :%now
+                                                           :updated_at :%now
+                                                           :active true}])
+              [pg-field-1-id
+               pg-field-2-id
+               pg-field-3-id
+               mysql-field-1-id
+               mysql-field-2-id] (t2/insert-returning-pks! :model/Field [{:name "PG Field 1"    :table_id pg-table-id    :database_type "json"    :base_type :type/Structured}
+                                                                         {:name "PG Field 2"    :table_id pg-table-id    :database_type "JSONB"   :base_type :type/Structured}
+                                                                         {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
+                                                                         {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
+                                                                         {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
+              _ (migrate!)
+              new-base-types (t2/select-pk->fn :base_type :model/Field)]
+          (are [field-id expected] (= expected (get new-base-types field-id))
+            pg-field-1-id :type/JSON
+            pg-field-2-id :type/JSON
+            pg-field-3-id :type/Text
+            mysql-field-1-id :type/JSON
+            mysql-field-2-id :type/Text)
+          ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+          #_(testing "Rollback restores the original state"
+              (migrate! :down 46)
+              (let [new-base-types (t2/select-pk->fn :base_type Field)]
+                (are [field-id expected] (= expected (get new-base-types field-id))
+                  pg-field-1-id :type/Structured
+                  pg-field-2-id :type/Structured
+                  pg-field-3-id :type/Text
+                  mysql-field-1-id :type/SerializedJSON
+                  mysql-field-2-id :type/Text))))))))
 
 (deftest ^:mb/old-migrations-test migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"

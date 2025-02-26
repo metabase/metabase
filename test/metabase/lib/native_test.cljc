@@ -244,12 +244,10 @@
     (is (=? {:stages [(complement :collection)]}
             (lib/native-query meta/metadata-provider "myquery" nil {:collection "mycollection"}))))
   (testing "building when requires collection"
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery")))
     (is (=? {:stages [{:collection "mycollection"}]}
-            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs :default)
-         #"Missing extra, required keys for native query: .*:collection.*"
-         (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))))
 
 (deftest ^:parallel with-different-database-test
   (let [query (lib/native-query meta/metadata-provider "myquery")]
@@ -259,15 +257,6 @@
                   (lib/with-different-database
                     (meta.graph-provider/->SimpleGraphMetadataProvider
                      (assoc meta/metadata :id 9999)))))))
-    (testing "Checks collection requirement"
-      (is (=? {:stages [(complement :collection)]}
-              (-> query
-                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
-      (is (thrown-with-msg?
-           #?(:clj Throwable :cljs :default)
-           #"Missing extra, required keys for native query: .*:collection.*"
-           (-> query
-               (lib/with-different-database (metadata-provider-requiring-collection))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"

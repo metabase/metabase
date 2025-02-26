@@ -32,6 +32,8 @@ The database port (e.g, 8082).
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
 
+## Advanced options
+
 ### Allow unfolding of JSON columns
 
 > Only available for the Druid JDBC connection.
@@ -39,6 +41,12 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 This enables unfolding of JSON columns into their component fields.
 
 See [JSON unfolding](../../data-modeling/json-unfolding.md).
+
+### Authentication
+
+> Only available for the Druid JDBC connection.
+
+Toggle on to enable basic authentication with a username and password.
 
 ### Re-run queries for simple explorations
 

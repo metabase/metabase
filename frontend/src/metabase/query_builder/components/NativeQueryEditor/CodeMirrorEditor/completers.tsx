@@ -213,13 +213,13 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
 }
 
 type ReferencedCardCompletionOptions = {
-  referencedQuestionIds: CardId[];
+  referencedCardIds: CardId[];
 };
 
 // Completes column names of cards referenced in the query through a
 // card tag (eg. `{{ #42-named-card-tag }}`)
 export function useReferencedCardCompletion({
-  referencedQuestionIds,
+  referencedCardIds,
 }: ReferencedCardCompletionOptions) {
   const [getCard] = useLazyGetCardQuery();
 
@@ -228,7 +228,7 @@ export function useReferencedCardCompletion({
   > => {
     const shouldCache = true;
     const data = await Promise.all(
-      referencedQuestionIds.map(id => getCard({ id }, shouldCache)),
+      referencedCardIds.map(id => getCard({ id }, shouldCache)),
     );
 
     return data
@@ -240,7 +240,7 @@ export function useReferencedCardCompletion({
           field,
         })),
       );
-  }, [referencedQuestionIds, getCard]);
+  }, [referencedCardIds, getCard]);
 
   return useCallback(
     async function completeReferencedCardIdentifiers(

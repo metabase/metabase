@@ -278,7 +278,7 @@ describe("issue 13736", () => {
   });
 });
 
-describe("issue 16559", { tags: "@flaky" }, () => {
+describe("issue 16559", () => {
   const dashboardDetails = {
     name: "16559 Dashboard",
   };
@@ -294,11 +294,14 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
+      "loadDashboard",
+    );
   });
 
   it("should always show the most recent revision (metabase#16559)", () => {
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
@@ -315,11 +318,10 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
     cy.button("Save").click();
-    cy.wait("@saveDashboard");
+    cy.wait(["@saveDashboard", "@loadDashboard"]);
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
         .eq(0)
@@ -332,9 +334,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.findByTestId("dashboard-name-heading").click().type(" modified").blur();
     cy.wait("@saveDashboard");
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -353,7 +354,7 @@ describe("issue 16559", { tags: "@flaky" }, () => {
         .blur();
       cy.wait("@saveDashboard");
 
-      cy.findByRole("tab", { name: "History" }).click();
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -370,9 +371,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
@@ -391,9 +391,8 @@ describe("issue 16559", { tags: "@flaky" }, () => {
       cy.wait(["@saveDashboard", "@getCollections"]);
     });
 
-    H.openDashboardInfoSidebar();
-    H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
+    H.openDashboardInfoSidebar().within(() => {
+      cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
         .findAllByRole("listitem")
         .eq(0)
@@ -642,7 +641,7 @@ describe("issue 28756", () => {
   });
 });
 
-H.describeEE("issue 29076", () => {
+describe("issue 29076", () => {
   beforeEach(() => {
     H.restore();
 
@@ -758,7 +757,7 @@ describe("issue 31274", () => {
     );
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").parent("a").click({ position: "bottom" });
+      cy.icon("close").closest("a").click({ position: "bottom" });
     });
 
     cy.findByTestId("dashcard").should("not.exist");

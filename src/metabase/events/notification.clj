@@ -13,7 +13,7 @@
 (derive :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
-                                  :event/alert-create
+                                  :event/notification-create
                                   :event/slack-token-invalid})
 
 (def ^:private hydrate-transformer
@@ -28,8 +28,8 @@
                                     (fn [x]
                                       (if (map? x)
                                         (reduce-kv
-                                         (fn [_acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc x key (t2/select-one model (get x k))))
+                                         (fn [acc k {:keys [key model] :as _hydrate-prop}]
+                                           (assoc acc key (t2/select-one model (get x k))))
                                          x
                                          hydrates)
                                         x)))))}}}))
@@ -51,8 +51,8 @@
   "Hydrate event-info if the topic has a schema."
   [topic event-info]
   (cond->> event-info
-    (some? (events/topic->schema topic))
-    (hydrate! (events/topic->schema topic))))
+    (some? (events/event-schema topic))
+    (hydrate! (events/event-schema topic))))
 
 (defn- notifications-for-topic
   "Returns notifications for a given topic if it is supported and has notifications."
@@ -74,7 +74,7 @@
                                        :task_details {:trigger_type     :notification-subscription/system-event
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}
-        (log/infof "Found %d notifications for event: %s" (count notifications) topic)
+        (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
           (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
                                                                          :event_topic topic})))))))

@@ -291,7 +291,7 @@ describe("version-helpers", () => {
 
     it("should use the latest build requirements for a version that has not been released", () => {
       expect(getBuildRequirements("v0.99.0")).toEqual({
-        node: 18,
+        node: 22,
         java: 21,
       });
     });

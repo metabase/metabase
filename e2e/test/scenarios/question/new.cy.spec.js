@@ -708,7 +708,6 @@ describe(
   { tags: ["@OSS", "@smoke"] },
   () => {
     beforeEach(() => {
-      H.onlyOnOSS();
       H.restore("without-models");
       cy.signInAsAdmin();
     });

@@ -71,6 +71,10 @@ export const CopyQuestionForm = ({
       validationSchema={QUESTION_SCHEMA}
       onSubmit={handleDuplicate}
       enableReinitialize
+      // shows validation errors if the name is too long for being saved
+      initialTouched={{
+        name: true,
+      }}
     >
       <Form>
         <FormTextInput

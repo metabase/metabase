@@ -2,15 +2,16 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNumber } from "metabase/lib/types";
+import { isNotNull } from "metabase/lib/types";
 import {
-  type NumberValue,
+  type NumberOrEmptyValue,
   useCoordinateFilter,
 } from "metabase/querying/filters/hooks/use-coordinate-filter";
-import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -116,10 +117,10 @@ interface CoordinateValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  values: NumberValue[];
+  values: NumberOrEmptyValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
-  onChange: (values: NumberValue[]) => void;
+  onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
 function CoordinateValueInput({
@@ -138,7 +139,7 @@ function CoordinateValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          values={values.filter(isNumber)}
+          values={values.filter(isNotNull)}
           autoFocus
           onChange={onChange}
         />
@@ -149,13 +150,13 @@ function CoordinateValueInput({
   if (valueCount === 1) {
     return (
       <Flex p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Enter a number`}
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={(newValue: number) => onChange([newValue])}
+          onChange={newValue => onChange([newValue])}
         />
       </Flex>
     );
@@ -164,17 +165,17 @@ function CoordinateValueInput({
   if (valueCount === 2) {
     return (
       <Flex align="center" justify="center" p="md">
-        <NumberInput
+        <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={newValue => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
-        <NumberInput
+        <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={newValue => onChange([values[0], newValue])}
         />
       </Flex>
     );
@@ -182,39 +183,39 @@ function CoordinateValueInput({
 
   if (valueCount === 4) {
     return (
-      <Stack align="center" justify="center" spacing="sm" p="md">
-        <NumberInput
+      <Stack align="center" justify="center" gap="sm" p="md">
+        <NumberFilterInput
           label={t`Upper latitude`}
           value={values[0]}
           placeholder="90"
           autoFocus
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([newValue, values[1], values[2], values[3]])
           }
         />
         <Flex align="center" justify="center" gap="sm">
-          <NumberInput
+          <NumberFilterInput
             label={t`Left longitude`}
             value={values[1]}
             placeholder="-180"
-            onChange={(newValue: number) =>
+            onChange={newValue =>
               onChange([values[0], newValue, values[2], values[3]])
             }
           />
-          <NumberInput
+          <NumberFilterInput
             label={t`Right longitude`}
             value={values[3]}
             placeholder="180"
-            onChange={(newValue: number) =>
+            onChange={newValue =>
               onChange([values[0], values[1], values[2], newValue])
             }
           />
         </Flex>
-        <NumberInput
+        <NumberFilterInput
           label={t`Lower latitude`}
           value={values[2]}
           placeholder="-90"
-          onChange={(newValue: number) =>
+          onChange={newValue =>
             onChange([values[0], values[1], newValue, values[3]])
           }
         />

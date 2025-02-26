@@ -1,201 +1,104 @@
 ---
-title: Embedded analytics SDK - quickstart with sample app
+title: Embedded analytics SDK - quickstart
+description: "This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase."
 ---
 
-# Embedded analytics SDK - quickstart with sample app
+# Embedded analytics SDK - quickstart
 
-{% include beta-blockquote.html %}
+This guide walks you through how to set up the Embedded analytics SDK in your application with your Metabase using API keys.
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+This setup:
 
-This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
+- Is only for evaluation and local development (so you can see how the SDK works).
+- Works on both the Enterprise and Open Source editions of Metabase, but it only works on localhost. If you want to use the SDK in production, you'll need to also [set up JWT SSO authentication](./authentication.md), which is only available in the Enterprise Edition.
 
 ## Prerequisites
 
-- [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
-- [Metabase version v1.51 or higher](https://www.metabase.com/docs/latest/releases).
+- [Metabase](https://www.metabase.com/docs/latest/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
+- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample))
 
-## Overview of the quickstart
+If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
-We're going to do some setup in Metabase, and in the sample application.
+If you _do_ have a Metabase, but _don't_ want to use your own code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
 
-### Set up Metabase for embedding
+## Overview
 
-1. [Install Metabase Enterprise Edition](#install-metabase-enterprise-edition) (if you haven't already)
-2. [Activate your license](#activate-your-license)
-3. [Enable embedding](#enable-embedding-in-metabase)
-4. [Enable SSO with JWT](#enable-sso-with-jwt)
+To embed a dashboard in your app using the SDK, you'll need to:
 
-### Start up the sample application
+1. [Enable the SDK in Metabase](#1-enable-the-sdk-in-metabase)
+2. [Create an API key in Metabase](#2-create-an-api-key-in-metabase)
+3. [Install the SDK in your app](#3-install-the-sdk-in-your-app)
+4. [Embed SDK components in your app](#4-embed-sdk-components-in-your-app)
+5. [View your embedded Metabase dashboard](#5-view-your-embedded-metabase-dashboard)
 
-5. [Get the sample application](#set-up-the-sample-application).
-6. [Set up the application environment](#set-up-the-application-environment).
-7. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and server the embedded Metabase components.
-8. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
+## 1. Enable the SDK in Metabase
 
-And then fiddle around with styling.
+In Metabase, click on the gear icon in the upper right and navigate to **Admin Settings > Settings > Embedding** and enable the Embedded analytics SDK.
 
-Let's go.
+## 2. Create an API key in Metabase
 
-## Install Metabase Enterprise Edition
+Still in the Admin's Settings tab, navigate to the **Authentication** section in the sidebar and click on the **API keys** tab. [Create a new API key](../../people-and-groups/api-keys.md).
 
-You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
+- Key name: "Embedded analytics SDK" (just to make the key easy to identify).
+- Group: select “Admin” (since this is only for local testing).
 
-Or run it locally. Here's a docker one-liner:
+## 3. Install the SDK in your app
 
-```sh
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
+When installing the NPM package, it's critical to use the npm dist-tag that corresponds to the major version of your Metabase. For example, if your Metabase is version 1.53.x, you'd run `53-stable`. See [SDK versioning](./version.md).
+
+Via NPM:
+
+```
+npm install @metabase/embedding-sdk-react@53-stable
 ```
 
-You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
+Via Yarn:
 
-```sh
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+```
+yarn add @metabase/embedding-sdk-react@53-stable
 ```
 
-By default, Metabase will run at `http://localhost:3000`.
+## 4. Embed SDK components in your app
 
-If you get stuck, check out our [installation docs](../../installation-and-operation/installing-metabase.md).
+In your app, import the SDK components, like so:
 
-## Activate your license
 
-To enable SSO with JWT when self-hosting, you'll need to [activate your license](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition). Metabase Pro plans on Cloud take care of this for you.
+```jsx
+import {
+  MetabaseProvider,
+  defineMetabaseAuthConfig,
+  InteractiveDashboard,
+} from "@metabase/embedding-sdk-react";
 
-## Enable embedding in Metabase
+/**
+ * This creates an auth config to pass to the `MetabaseProvider` component.
+ * You'll need to replace the `metabaseInstanceUrl` and the `apiKey` values.
+ */
+const authConfig = defineMetabaseAuthConfig({
+  metabaseInstanceUrl: "https://metabase.example.com",
+  apiKey: "YOUR_API_KEY",
+});
 
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Embedding**.
-
-Turn on:
-
-- Embedded analytics SDK
-- Static embedding
-
-Otherwise, this whole thing is hopeless.
-
-## Enable SSO with JWT
-
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Authentication**.
-
-On the card that says **JWT**, click the **Setup** button.
-
-### JWT Identity provider URI
-
-In **JWT IDENTITY PROVIDER URI** field, paste
-
-```txt
-localhost:9090/sso/metabase
+/**
+ * Now embed your first dashboard. In this case, we're embedding the dashboard with ID 1.
+ * On new Metabases, ID 1 will be the example dashboard, but feel free to use a different dashboard ID.
+ */
+export default function App() {
+  return (
+    <MetabaseProvider authConfig={authConfig}>
+      <InteractiveDashboard dashboardId={1} />
+    </MetabaseProvider>
+  );
+}
 ```
 
-Or substitute your Cloud URL for `/localhost`.
+## 5. View your embedded Metabase dashboard
 
-### String used by the JWT signing key
+Run your app and visit the page with the embedded dashboard.
 
-Click the **Generate key** button.
+![Embedded example dashboard](../images/embedded-example-dashboard.png)
 
-Copy the key and paste it in your `.env` file into the env var `METABASE_JWT_SHARED_SECRET`.
+## Next steps
 
-The application server will use this key to sign tokens so Metabase knows the application's requests for content are authorized.
-
-## Save and enable JWT
-
-Be sure to hit the **Save and enable** button, or all is void.
-
-## Set up the sample application
-
-Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample).
-
-```sh
-git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
-```
-
-## Set up the application environment
-
-In the sample app's main directory, copy the `.env.example` template to `.env`.
-
-```sh
-cp .env.example .env
-```
-
-In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
-
-Your `.env` will look something like:
-
-```txt
-# FRONTEND
-PORT=3100
-REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
-REACT_APP_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
-
-# BACKEND
-BACKEND_PORT=9090
-METABASE_INSTANCE_URL="http://localhost:3000"
-METABASE_JWT_SHARED_SECRET="TODO"
-```
-
-## Set up the application server
-
-Change into the `server` directory:
-
-```sh
-cd server
-```
-
-Install packages:
-
-```sh
-npm install
-```
-
-Start the server:
-
-```sh
-npm start
-```
-
-## Set up the client application
-
-Change into the `client` directory.
-
-Install packages:
-
-```sh
-npm install
-```
-
-This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
-
-## Start the client
-
-In a different terminal, change into the `client` directory:
-
-```sh
-cd client
-```
-
-Install dependencies:
-
-```sh
-npm install
-```
-
-Start the client app:
-
-```sh
-npm start
-```
-
-Your browser should automatically open the app. By default, the app runs on [http://localhost:3100](localhost:3100).
-
-## At this point, you should be up and running
-
-In your app, you'll see an embedded `InteractiveQuestion` component.
-
-```javascript
-<MetabaseProvider authConfig={authConfig} theme={theme}>
-  <InteractiveQuestion questionId={questionId} />
-</MetabaseProvider>
-```
-
-![Embedded Metabase components](../images/embedded-components.png)
-
-Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.
+- Explore [theming to change the look and feel](./appearance.md).
+- Continue by [setting up JWT SSO in Metabase and your app](./authentication.md) in order to sign people in, manage permissions, and deploy your app in production.

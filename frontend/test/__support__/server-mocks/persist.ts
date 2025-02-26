@@ -18,7 +18,7 @@ export function setupModelPersistenceEndpoints(
       persistedModel,
     );
     fetchMock.post(
-      `path:/api/card/${persistedModel.card_id}/refresh`,
+      `path:/api/persist/card/${persistedModel.card_id}/refresh`,
       persistedModel,
     );
   }

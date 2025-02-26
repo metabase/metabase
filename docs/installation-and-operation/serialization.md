@@ -258,9 +258,15 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique entity ID to every Metabase item (a dashboard, question, model, collection, etc.). Entity IDs use the [NanoID format](https://github.com/ai/nanoid).
+Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
 
-You can see the entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
+To get an item's Entity ID in Metabase:
+
+1. Visit the item in Metabase.
+2. Click on the info button.
+3. In the overview tab, copy the Entity ID.
+
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
 ```yaml
 entity_id: r6vC_vLmo9zG6_r9sAuYG
@@ -273,7 +279,7 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
 ```
 
-To disambiguate entities that share the same name, Metabase includes entity IDs in the file and directory names for exported entities.
+To disambiguate entities that share the same name, Metabase includes Entity IDs in the file and directory names for exported entities.
 
 ```
 r6vC_vLmo9zG6_r9sAuYG_products_by_week.yaml
@@ -289,13 +295,25 @@ collection_id: onou5H28Wvy3kWnjxxdKQ
 
 This ID refers to the collection where the question was saved. In a real export, you'd be able to find a YAML file for this collection whose name starts with its ID: `onou5H28Wvy3kWnjxxdKQ`.
 
+### Entity IDs work with embedding
+
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded Analytics SDK](../embedding/sdk/introduction.md).
+
+A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
+
+1. Create a dashboard in a Metabase running locally on your machine.
+2. Embed the dashboard in your app locally using the Entity ID in your application code.
+3. Export your Metabase changes to YAML files via serialization.
+4. Import your Metabase changes (the exported YAML files) to your production Metabase.
+5. Since the Entity ID remains the same in the production Metabase, you can just push the code in your app to production, and the code will refer to the right dashboard.
+
 ### Databases, schemas, tables, and fields are identified by name
 
 By default, Metabase exports some database and data model settings. Exports exclude database connection strings by default. You can [explicitly include database connection strings](#customize-what-gets-exported). You can also choose to exclude the data model entirely.
 
 Metabase serializes databases and tables in the `databases` directory. It will include YAML files for every database, table, field, segment, and metric.
 
-Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
+Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)).
 
 For example, in the [Example of a serialized question](#example-of-a-serialized-question), there are several YAML keys that reference Sample Database:
 
@@ -675,23 +693,23 @@ Before starting this perilous journey, review [how export works](#how-export-wor
 
 You'll need to keep in mind:
 
-- Importing an item with an entity ID that already exists will overwrite the existing item. To use an existing YAML file to create a new item, you'll need to either a) create a new entity ID or b) clear the Entity ID.
-- Two items cannot have the same entity IDs.
+- Importing an item with an Entity ID that already exists will overwrite the existing item. To use an existing YAML file to create a new item, you'll need to either a) create a new Entity ID or b) clear the Entity ID.
+- Two items cannot have the same Entity IDs.
 - `entity_id` and `serdes/meta → id` fields in the YAML file should match.
 - If the `entity_id` and `serdes/meta → id` fields in a YAML file for an item are blank, Metabase will create a new item with a new Entity ID.
 - All items and data sources referenced by an item should either already exist in target Metabase or be included in the import.
 
   For example, a collection can contain a dashboard that contains a question that is built on a model that references a data source. All of those dependencies must be either included in the import or already exist in the target instance.
 
-  This means that you might need a multi-stage export/import: create some of the items you need (like collections) in Metabase first, export them to get their entity IDs, then export the stuff that you want to duplicate and use those IDs in items that reference them.
+  This means that you might need a multi-stage export/import: create some of the items you need (like collections) in Metabase first, export them to get their Entity IDs, then export the stuff that you want to duplicate and use those IDs in items that reference them.
 
 For example, to duplicate a collection that contains _only_ questions that are built directly on raw data (not on models or other saved questions), without changing the data source for the questions, you can use a process like this:
 
 1. In Metabase, create a "template" collection and add the items you'd like to duplicate.
 2. In Metabase, create a new collection which will serve as the target for duplicated items.
 3. Export the template collection and the target collection (you can use [export parameters](#customize-what-gets-exported) to export only a few collections).
-   The YAML files for template questions in the export will have their own Entity IDs and reference the entity ID of the template collection.
-4. Get the entity ID of the target collection from its export.
+   The YAML files for template questions in the export will have their own Entity IDs and reference the Entity ID of the template collection.
+4. Get the Entity ID of the target collection from its export.
 5. In the YAML files for questions in the template collection export:
 
    - Clear the values for the fields `entity_id` and `serdes/meta → id` for questions. This will ensure that the template questions don't get overwritten, and instead Metabase will create new questions.
@@ -701,7 +719,7 @@ For example, to duplicate a collection that contains _only_ questions that are b
 
 This process assumes that your duplicated questions will all use the same data source. You can combine this with [switching the data source](#using-serialization-to-swap-the-data-source-for-questions-within-one-instance) to use a different data source for every duplicated collection.
 
-If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template entity IDs and any references to them with your created entity IDs.
+If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
 
 If your collections contains dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
@@ -743,8 +761,8 @@ If you're upgrading from Metabase version 46.X or older, here's what you need to
 A few other changes to call out:
 
 - The exported YAML files have a slightly different structure:
-  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids) before exporting.
+  - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids) before exporting.
   - The file tree is slightly different.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
