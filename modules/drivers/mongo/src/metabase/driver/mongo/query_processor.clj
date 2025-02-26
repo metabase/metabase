@@ -418,9 +418,12 @@
     (ObjectId. (str value))
 
     (isa? base-type :type/UUID)
-    (-> (str value)
-        java.util.UUID/fromString
-        uuid->bsonbinary)
+    (try
+      (-> (str value)
+          java.util.UUID/fromString
+          uuid->bsonbinary)
+      (catch Exception _
+        value))
 
     :else value))
 
@@ -740,7 +743,9 @@
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (->rvalue field)
+      {$regexMatch {"input" (if (= :type/UUID (get-in field [2 :base-type]))
+                              {"$toString" (->rvalue field)}
+                              (->rvalue field))
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
