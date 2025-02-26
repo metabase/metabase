@@ -116,7 +116,7 @@ export function Editor<S extends StartRule = "expression">(
 
       <Shortcuts
         shortcuts={shortcuts}
-        hide={isFormatting || source.trim() !== ""}
+        hide={isFormatting || source.trim() !== "" || error != null}
       />
 
       <Box className={S.toolbar} p="xs">
