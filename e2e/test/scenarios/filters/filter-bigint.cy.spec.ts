@@ -14,6 +14,8 @@ import type {
 const { H } = cy;
 
 describe("scenarios > filters > bigint (metabase#5816)", () => {
+  const bigIntPkTableName = "bigint_pk_table";
+  const decimalPkTableName = "decimal_pk_table";
   const minBigIntValue = "-9223372036854775808";
   const maxBigIntValue = "9223372036854775807";
   const negativeDecimalValue = "-9223372036854775809";
@@ -47,10 +49,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
   beforeEach(() => {
     H.restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
-  it("mbql query + query builder", () => {
+  it("query builder + mbql query", () => {
     function setupQuestion({
       sourceQuestionDetails,
     }: {
@@ -110,7 +112,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .click();
     }
 
-    function testFilterSet({
+    function testFilters({
       sourceQuestionDetails,
       minValue,
       maxValue,
@@ -205,59 +207,27 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     }
 
     cy.log("BIGINT");
-    testFilterSet({
+    testFilters({
       sourceQuestionDetails: bigIntQuestionDetails,
       minValue: minBigIntValue,
       maxValue: maxBigIntValue,
     });
 
     cy.log("DECIMAL");
-    testFilterSet({
+    testFilters({
       sourceQuestionDetails: decimalQuestionDetails,
       minValue: negativeDecimalValue,
       maxValue: positiveDecimalValue,
     });
   });
 
-  it("mbql query + dashboards + id parameters", { tags: "external" }, () => {
-    const bigIntPkTableName = "bigint_pk_table";
-    const decimalPkTableName = "decimal_pk_table";
-
-    function setupDatabase() {
+  it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
+    function setupTables() {
       const dialect = "postgres";
       H.restore("postgres-writable");
       H.resetTestTable({ type: dialect, table: bigIntPkTableName });
       H.resetTestTable({ type: dialect, table: decimalPkTableName });
-      cy.signInAsAdmin();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    }
-
-    function getTableId(tableName: string) {
-      return cy
-        .request("GET", "/api/table")
-        .then(({ body: tables }: { body: Table[] }) => {
-          const table = tables.find(table => table.name === tableName);
-          if (!table) {
-            throw new TypeError(`Table with name ${tableName} cannot be found`);
-          }
-          return table.id;
-        });
-    }
-
-    function getFieldId(tableId: TableId, fieldName: string) {
-      return cy
-        .request("GET", `/api/table/${tableId}/query_metadata`)
-        .then(({ body: table }: { body: Table }) => {
-          const fields = table.fields ?? [];
-          const field = fields.find(field => field.name === fieldName);
-          if (!field) {
-            throw new TypeError(`Field with name ${fieldName} cannot be found`);
-          }
-          if (typeof field.id !== "number") {
-            throw new TypeError("Unexpected non-integer field id.");
-          }
-          return field.id;
-        });
     }
 
     function setupDashboard({
@@ -278,6 +248,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       const dashboardDetails: DashboardDetails = {
         name: "Dashboard",
         parameters: [parameterDetails],
+        enable_embedding: true,
+        embedding_params: {
+          [parameterDetails.slug]: "enabled",
+        },
       };
 
       const getTargetQuestionDetails = (
@@ -316,6 +290,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
                       ],
                     },
                   });
+                  cy.wrap(dashboard.id).as("dashboardId");
                   H.visitDashboard(dashboard.id);
                 },
               );
@@ -325,7 +300,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testFilter({ value }: { value: string }) {
+    function testFilter({
+      value,
+      withDrillThru,
+    }: {
+      value: string;
+      withDrillThru?: boolean;
+    }) {
       cy.log("add a filter");
       H.getDashboardCard()
         .findByTestId("scalar-value")
@@ -339,39 +320,62 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .findByTestId("scalar-value")
         .should("have.text", "1");
 
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL").click();
-      H.queryBuilderFiltersPanel().findByText(`ID is ${value}`);
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", "1");
+      if (withDrillThru) {
+        cy.log("drill-thru");
+        H.getDashboardCard().findByText("MBQL").click();
+        H.queryBuilderFiltersPanel().findByText(`ID is ${value}`);
+        H.queryBuilderMain()
+          .findByTestId("scalar-value")
+          .should("have.text", "1");
+        H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      }
 
-      cy.log("cleanup");
-      H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       H.filterWidget().icon("close").click();
     }
 
+    function testBigIntFilters({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilter({ value: minBigIntValue, withDrillThru });
+      testFilter({ value: maxBigIntValue, withDrillThru });
+    }
+
+    function testDecimalFilters({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilter({ value: negativeDecimalValue, withDrillThru });
+      testFilter({ value: positiveDecimalValue, withDrillThru });
+    }
+
     cy.log("create tables");
-    setupDatabase();
+    setupTables();
 
     cy.log("BIGINT");
+    cy.signInAsAdmin();
     setupDashboard({
       tableName: bigIntPkTableName,
       baseType: "type/BigInteger",
     });
-    testFilter({ value: minBigIntValue });
-    testFilter({ value: maxBigIntValue });
+    testBigIntFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testBigIntFilters();
+    visitEmbeddedDashboard();
+    testBigIntFilters();
 
     cy.log("DECIMAL");
+    cy.signInAsAdmin();
     setupDashboard({
       tableName: decimalPkTableName,
       baseType: "type/Decimal",
     });
-    testFilter({ value: negativeDecimalValue });
-    testFilter({ value: positiveDecimalValue });
+    testDecimalFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testDecimalFilters();
+    visitEmbeddedDashboard();
+    testDecimalFilters();
   });
 
-  it("mbql query + dashboards + number parameters", () => {
+  it("dashboards + mbql query + number parameters", () => {
     function setupDashboard({
       sourceQuestionDetails,
       baseType,
@@ -420,6 +424,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       const dashboardDetails: DashboardDetails = {
         name: "Dashboard",
         parameters,
+        enable_embedding: true,
+        embedding_params: Object.fromEntries(
+          parameters.map(parameter => [parameter.slug, "enabled"]),
+        ),
       };
 
       const getTargetQuestionDetails = (
@@ -442,6 +450,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
       });
 
+      cy.signInAsAdmin();
       H.createNativeQuestion(sourceQuestionDetails).then(
         ({ body: sourceCard }) => {
           H.createQuestion(getTargetQuestionDetails(sourceCard.id)).then(
@@ -457,7 +466,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
                       ),
                     },
                   });
-                  H.visitDashboard(dashboard.id);
+                  cy.wrap(dashboard.id).as("dashboardId");
                 },
               );
             },
@@ -476,12 +485,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       filterDisplayName,
       filterArgsDisplayName,
       filteredRowCount,
+      withDrillThru,
     }: {
       parameterName: string;
       setParameterValue: () => void;
       filterDisplayName: string;
       filterArgsDisplayName: string;
       filteredRowCount: number;
+      withDrillThru?: boolean;
     }) {
       cy.log("add a filter");
       H.getDashboardCard()
@@ -499,32 +510,28 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .findByTestId("scalar-value")
         .should("have.text", String(filteredRowCount));
 
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("MBQL").click();
-      H.queryBuilderFiltersPanel().findByText(filterDisplayName);
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", String(filteredRowCount));
+      if (withDrillThru) {
+        cy.log("drill-thru");
+        H.getDashboardCard().findByText("MBQL").click();
+        H.queryBuilderFiltersPanel().findByText(filterDisplayName);
+        H.queryBuilderMain()
+          .findByTestId("scalar-value")
+          .should("have.text", String(filteredRowCount));
+        H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      }
 
-      cy.log("cleanup");
-      H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
       findFilterWidget(parameterName).icon("close").click();
     }
 
-    function testFilterSet({
-      sourceQuestionDetails,
-      baseType,
+    function testFilters({
       minValue,
       maxValue,
+      withDrillThru,
     }: {
-      sourceQuestionDetails: NativeQuestionDetails;
-      baseType: string;
       minValue: string;
       maxValue: string;
+      withDrillThru?: boolean;
     }) {
-      cy.log("setup");
-      setupDashboard({ sourceQuestionDetails, baseType });
-
       cy.log("number/= parameter");
       testFilter({
         parameterName: "Equal to",
@@ -533,6 +540,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 1,
+        withDrillThru,
       });
 
       cy.log("number/!= parameter");
@@ -543,6 +551,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is not equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/>= parameter");
@@ -553,6 +562,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
         filterArgsDisplayName: minValue,
         filteredRowCount: 3,
+        withDrillThru,
       });
 
       cy.log("number/<= parameter");
@@ -563,6 +573,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
         filterArgsDisplayName: maxValue,
         filteredRowCount: 3,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - min value");
@@ -575,6 +586,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is between ${minValue} and 0`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - max value");
@@ -587,6 +599,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 2,
+        withDrillThru,
       });
 
       cy.log("number/between parameter - min and max values");
@@ -599,25 +612,60 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is ${minValue} – ${maxValue}`,
         filterArgsDisplayName: "2 selections",
         filteredRowCount: 3,
+        withDrillThru,
       });
     }
 
-    testFilterSet({
+    function testBigIntFilters({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilters({
+        minValue: minBigIntValue,
+        maxValue: maxBigIntValue,
+        withDrillThru,
+      });
+    }
+
+    function testDecimalFilters({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilters({
+        minValue: negativeDecimalValue,
+        maxValue: positiveDecimalValue,
+        withDrillThru,
+      });
+    }
+
+    cy.log("BIGINT");
+    cy.signInAsAdmin();
+    setupDashboard({
       sourceQuestionDetails: bigIntQuestionDetails,
       baseType: "type/BigInteger",
-      minValue: minBigIntValue,
-      maxValue: maxBigIntValue,
     });
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+    testBigIntFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testBigIntFilters();
+    visitEmbeddedDashboard();
+    testBigIntFilters();
 
-    testFilterSet({
+    cy.log("DECIMAL");
+    cy.signInAsAdmin();
+    setupDashboard({
       sourceQuestionDetails: decimalQuestionDetails,
       baseType: "type/Decimal",
-      minValue: negativeDecimalValue,
-      maxValue: positiveDecimalValue,
     });
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+    testDecimalFilters({ withDrillThru: true });
+    visitPublicDashboard();
+    testDecimalFilters();
+    visitEmbeddedDashboard();
+    testDecimalFilters();
   });
 
-  it("native query + variable + query builder", () => {
+  it("query builder + native query + variables", () => {
     function setupQuestion({
       sourceQuestionDetails,
     }: {
@@ -629,8 +677,17 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         const cardTagName = `#${cardId}-sql-number`;
         const cardTagDisplayName = `#${cardId} Sql Number`;
 
+        const parameterDetails: Parameter = {
+          id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+          type: "number/=",
+          target: ["variable", ["template-tag", "number"]],
+          name: "Number",
+          slug: "number",
+        };
+
         return {
           name: "SQL",
+          display: "scalar",
           native: {
             query: `SELECT COUNT(*) FROM {{#${cardId}-sql-number}} [[WHERE NUMBER = {{number}}]]`,
             "template-tags": {
@@ -649,40 +706,74 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
               },
             },
           },
-          display: "scalar",
+          parameters: [parameterDetails],
+          enable_embedding: true,
+          embedding_params: {
+            [parameterDetails.slug]: "enabled",
+          },
         };
       };
 
       H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
         H.createNativeQuestion(getTargetQuestionDetails(card.id), {
-          visitQuestion: true,
+          wrapId: true,
         });
       });
     }
 
-    function testFilter({ value }: { value: string }) {
+    function testFilter({
+      value,
+      withRunButton,
+    }: {
+      value: string;
+      withRunButton?: boolean;
+    }) {
       cy.log("add a filter");
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", "3");
-      H.filterWidget().findByRole("textbox").type(value);
+      cy.findByTestId("scalar-value").should("have.text", "3");
+      H.filterWidget().findByRole("textbox").type(value).blur();
+      if (withRunButton) {
+        cy.findAllByTestId("run-button").first().click();
+      }
       H.filterWidget().findByRole("textbox").should("have.value", value);
-      H.queryBuilderMain().findAllByTestId("run-button").eq(1).click();
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", "1");
+      cy.findByTestId("scalar-value").should("have.text", "1");
+    }
+
+    function testBitIntFilter({
+      withRunButton,
+    }: { withRunButton?: boolean } = {}) {
+      testFilter({ value: maxBigIntValue, withRunButton });
+    }
+
+    function testDecimalFilter({
+      withRunButton,
+    }: { withRunButton?: boolean } = {}) {
+      testFilter({ value: negativeDecimalValue, withRunButton });
     }
 
     cy.log("BIGINT");
+    cy.signInAsAdmin();
     setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testFilter({ value: maxBigIntValue });
+    cy.signInAsNormalUser();
+    H.visitQuestion("@questionId");
+    testBitIntFilter({ withRunButton: true });
+    visitPublicQuestion();
+    testBitIntFilter();
+    visitEmbeddedQuestion();
+    testBitIntFilter();
 
     cy.log("DECIMAL");
+    cy.signInAsAdmin();
     setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testFilter({ value: negativeDecimalValue });
+    cy.signInAsNormalUser();
+    H.visitQuestion("@questionId");
+    testDecimalFilter({ withRunButton: true });
+    visitPublicQuestion();
+    testDecimalFilter();
+    visitEmbeddedQuestion();
+    testDecimalFilter();
   });
 
-  it("native query + variable + dashboards", () => {
+  it("dashboards + native query + variables", () => {
     function setupDashboard({
       sourceQuestionDetails,
     }: {
@@ -697,7 +788,12 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       };
 
       const dashboardDetails: DashboardDetails = {
+        name: "Dashboard",
         parameters: [parameterDetails],
+        enable_embedding: true,
+        embedding_params: {
+          [parameterDetails.slug]: "enabled",
+        },
       };
 
       const getTargetQuestionDetails = (
@@ -750,12 +846,18 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
               parameter_mappings: [getParameterMapping(questionId)],
             },
           });
-          H.visitDashboard(dashcard.dashboard_id);
+          cy.wrap(dashcard.dashboard_id).as("dashboardId");
         });
       });
     }
 
-    function testFilter({ value }: { value: string }) {
+    function testFilter({
+      value,
+      withDrillThru,
+    }: {
+      value: string;
+      withDrillThru?: boolean;
+    }) {
       cy.log("add a filter");
       H.getDashboardCard()
         .findByTestId("scalar-value")
@@ -766,20 +868,233 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         .findByTestId("scalar-value")
         .should("have.text", "1");
 
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("SQL").click();
-      H.queryBuilderMain()
-        .findByTestId("scalar-value")
-        .should("have.text", "1");
-      H.filterWidget().findByRole("textbox").should("have.value", value);
+      if (withDrillThru) {
+        cy.log("drill-thru");
+        H.getDashboardCard().findByText("SQL").click();
+        H.queryBuilderMain()
+          .findByTestId("scalar-value")
+          .should("have.text", "1");
+        H.filterWidget().findByRole("textbox").should("have.value", value);
+        H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+      }
+
+      H.filterWidget().icon("close").click();
+    }
+
+    function testBigIntFilter({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilter({ value: maxBigIntValue, withDrillThru });
+    }
+
+    function testDecimalFilter({
+      withDrillThru,
+    }: { withDrillThru?: boolean } = {}) {
+      testFilter({ value: positiveDecimalValue, withDrillThru });
     }
 
     cy.log("BIGINT");
+    cy.signInAsAdmin();
     setupDashboard({ sourceQuestionDetails: bigIntQuestionDetails });
-    testFilter({ value: maxBigIntValue });
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+    testBigIntFilter({ withDrillThru: true });
+    visitPublicDashboard();
+    testBigIntFilter();
+    visitEmbeddedDashboard();
+    testBigIntFilter();
 
     cy.log("DECIMAL");
+    cy.signInAsAdmin();
     setupDashboard({ sourceQuestionDetails: decimalQuestionDetails });
-    testFilter({ value: positiveDecimalValue });
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+    testDecimalFilter({ withDrillThru: true });
+    visitPublicDashboard();
+    testDecimalFilter();
+    visitEmbeddedDashboard();
+    testDecimalFilter();
   });
+
+  it(
+    "query builder + native query + field filters",
+    { tags: "@external" },
+    () => {
+      function setupTables() {
+        const dialect = "postgres";
+        H.restore("postgres-writable");
+        H.resetTestTable({ type: dialect, table: bigIntPkTableName });
+        H.resetTestTable({ type: dialect, table: decimalPkTableName });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      }
+
+      function setupQuestion({
+        tableName,
+        baseType,
+      }: {
+        tableName: string;
+        baseType: string;
+      }) {
+        getTableId(tableName).then(tableId => {
+          getFieldId(tableId, "id").then(fieldId => {
+            const parameterDetails: Parameter = {
+              id: "0dcd2f82-2e7d-4989-9362-5c94744a6585",
+              name: "ID",
+              slug: "id",
+              type: "id",
+              target: ["dimension", ["template-tag", "id"]],
+            };
+
+            const questionDetails: NativeQuestionDetails = {
+              name: "SQL",
+              display: "scalar",
+              database: WRITABLE_DB_ID,
+              native: {
+                query: `SELECT COUNT(*) FROM ${tableName} WHERE {{id}}`,
+                "template-tags": {
+                  id: {
+                    id: parameterDetails.id,
+                    name: "id",
+                    "display-name": "ID",
+                    type: "dimension",
+                    dimension: ["field", fieldId, { "base-type": baseType }],
+                    "widget-type": "id",
+                  },
+                },
+              },
+              parameters: [parameterDetails],
+              enable_embedding: true,
+              embedding_params: {
+                [parameterDetails.slug]: "enabled",
+              },
+            };
+            H.createNativeQuestion(questionDetails, { wrapId: true });
+          });
+        });
+      }
+
+      function testFilter({
+        value,
+        withRunButton,
+      }: {
+        value: string;
+        withRunButton?: boolean;
+      }) {
+        cy.log("add a filter");
+        cy.findByTestId("scalar-value").should("have.text", "3");
+        H.filterWidget().click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter an ID").type(value);
+          cy.button("Add filter").click();
+        });
+        if (withRunButton) {
+          cy.findAllByTestId("run-button").first().click();
+        }
+        cy.findByTestId("scalar-value").should("have.text", "1");
+      }
+
+      function testBitIntFilter({
+        withRunButton,
+      }: { withRunButton?: boolean } = {}) {
+        testFilter({ value: maxBigIntValue, withRunButton });
+      }
+
+      function testDecimalFilter({
+        withRunButton,
+      }: { withRunButton?: boolean } = {}) {
+        testFilter({ value: negativeDecimalValue, withRunButton });
+      }
+
+      cy.log("create tables");
+      setupTables();
+
+      cy.log("BIGINT");
+      cy.signInAsAdmin();
+      setupQuestion({
+        tableName: bigIntPkTableName,
+        baseType: "type/BigInteger",
+      });
+      H.visitQuestion("@questionId");
+      testBitIntFilter({ withRunButton: true });
+      visitPublicQuestion();
+      testBitIntFilter();
+      visitEmbeddedQuestion();
+      testBitIntFilter();
+
+      cy.log("DECIMAL");
+      cy.signInAsAdmin();
+      setupQuestion({
+        tableName: decimalPkTableName,
+        baseType: "type/Decimal",
+      });
+      H.visitQuestion("@questionId");
+      testDecimalFilter({ withRunButton: true });
+      visitPublicQuestion();
+      testDecimalFilter();
+      visitEmbeddedQuestion();
+      testDecimalFilter();
+    },
+  );
 });
+
+function getTableId(tableName: string) {
+  return cy
+    .request("GET", "/api/table")
+    .then(({ body: tables }: { body: Table[] }) => {
+      const table = tables.find(table => table.name === tableName);
+      if (!table) {
+        throw new TypeError(`Table with name ${tableName} cannot be found`);
+      }
+      return table.id;
+    });
+}
+
+function getFieldId(tableId: TableId, fieldName: string) {
+  return cy
+    .request("GET", `/api/table/${tableId}/query_metadata`)
+    .then(({ body: table }: { body: Table }) => {
+      const fields = table.fields ?? [];
+      const field = fields.find(field => field.name === fieldName);
+      if (!field) {
+        throw new TypeError(`Field with name ${fieldName} cannot be found`);
+      }
+      if (typeof field.id !== "number") {
+        throw new TypeError("Unexpected non-integer field id.");
+      }
+      return field.id;
+    });
+}
+
+function visitPublicQuestion() {
+  cy.signInAsAdmin();
+  cy.get("@questionId").then(questionId => {
+    H.visitPublicQuestion(Number(questionId));
+  });
+}
+
+function visitEmbeddedQuestion() {
+  cy.get("@questionId").then(questionId => {
+    const payload = {
+      resource: { question: Number(questionId) },
+      params: {},
+    };
+    H.visitEmbeddedPage(payload);
+  });
+}
+
+function visitPublicDashboard() {
+  cy.signInAsAdmin();
+  cy.get("@dashboardId").then(dashboardId => {
+    H.visitPublicDashboard(Number(dashboardId));
+  });
+}
+
+function visitEmbeddedDashboard() {
+  cy.get("@dashboardId").then(dashboardId => {
+    const payload = {
+      resource: { dashboard: Number(dashboardId) },
+      params: {},
+    };
+    H.visitEmbeddedPage(payload);
+  });
+}

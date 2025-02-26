@@ -12,7 +12,7 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 
-import { SidebarContent } from "./ClickBehaviorSidebar.styled";
+import { SidebarContent } from "./ClickBehaviorSidebarComponents";
 import { ClickBehaviorSidebarMainView } from "./ClickBehaviorSidebarMainView/ClickBehaviorSidebarMainView";
 import { TableClickBehaviorView } from "./TableClickBehaviorView/TableClickBehaviorView";
 import { TypeSelector } from "./TypeSelector/TypeSelector";

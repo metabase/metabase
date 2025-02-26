@@ -160,14 +160,14 @@
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content
                                         "diagnostic-info.json"
-                                        files-channel)]
-      (let [blocks (create-slack-message-blocks diagnostic-info file-info)]
-        (slack/post-chat-message!
-         bug-report-channel
-         nil
-         {:blocks blocks})
-        {:success true
-         :file-url (get file-info :permalink_public)}))
+                                        files-channel)
+          blocks (create-slack-message-blocks diagnostic-info file-info)]
+      (slack/post-chat-message!
+       bug-report-channel
+       nil
+       {:blocks blocks})
+      {:success true
+       :file-url (get file-info :permalink_public)})
     (catch Exception e
       {:success false
        :error (.getMessage e)})))

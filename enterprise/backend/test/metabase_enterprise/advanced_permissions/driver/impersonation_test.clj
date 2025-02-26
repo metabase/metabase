@@ -226,20 +226,19 @@
                                                       :card_id (:id model))
                         query          (mt/mbql-query nil
                                          {:aggregation  [:count]
-                                          :source-table (str "card__" (:id model))})]
-                    (let [impersonated-result (mt/with-test-user :rasta (qp/process-query query))
-                          ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
-                          admin-result        (mt/as-admin (qp/process-query query))]
-                      (testing "Impersonated user (rasta) does not hit the model cache"
-                        (is (not (str/includes? (-> impersonated-result :data :native_form :query)
-                                                (:table_name persisted-info)))
-                            "Erroneously used the persisted model cache"))
+                                          :source-table (str "card__" (:id model))})
+                        impersonated-result (mt/with-test-user :rasta (qp/process-query query))
+                        ;; Make sure we run admin query second to reset the DB role on the connection for other tests!
+                        admin-result        (mt/as-admin (qp/process-query query))]
+                    (testing "Impersonated user (rasta) does not hit the model cache"
+                      (is (not (str/includes? (-> impersonated-result :data :native_form :query)
+                                              (:table_name persisted-info)))
+                          "Erroneously used the persisted model cache"))
 
-                      (testing "Query from admin hits the model cache"
-                        (is (str/includes? (-> admin-result :data :native_form :query)
-                                           (:table_name persisted-info))
-                            "Did not use the persisted model cache"))))
-
+                    (testing "Query from admin hits the model cache"
+                      (is (str/includes? (-> admin-result :data :native_form :query)
+                                         (:table_name persisted-info))
+                          "Did not use the persisted model cache")))
                   (finally
                     (doseq [statement ["REVOKE ALL PRIVILEGES ON TABLE \"products\" FROM \"impersonation_role\";"
                                        "DROP ROLE IF EXISTS \"impersonation_role\";"]]

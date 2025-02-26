@@ -11,7 +11,7 @@ import { DatePicker } from "./DatePicker";
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
-  title: "Parameters/DatePicker",
+  title: "Components/Parameters/DatePicker",
   component: DatePicker,
 } as Meta<typeof DatePicker>;
 

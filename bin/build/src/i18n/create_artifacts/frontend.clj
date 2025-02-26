@@ -15,8 +15,7 @@
 (defn- frontend-message?
   "Whether this i18n `message` comes from a frontend source file."
   [{:keys [source-references]}]
-  (some #(str/includes? % "frontend")
-        source-references))
+  (some #(re-find #"frontend|cljs|cljc" %) source-references))
 
 (defn- ->ttag-reference
   "Replace an xgettext `{0}` style reference with a ttag `${ 0 }` style reference."

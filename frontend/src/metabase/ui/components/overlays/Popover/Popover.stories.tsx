@@ -62,7 +62,7 @@ const DefaultTemplate = ({
 );
 
 export default {
-  title: "Overlays/Popover",
+  title: "Components/Overlays/Popover",
   component: Popover,
   args,
   argTypes,

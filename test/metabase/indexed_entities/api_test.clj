@@ -86,13 +86,13 @@
                 (is (=? {:cause "Field is not of :effective_type `:type/Text`"
                          :data  {:expected-type "type/Text"}}
                         response))))
-            (let [not-in-query (mt/$ids $people.email)]
-              (let [response (mt/user-http-request :rasta :post 400 "/model-index"
-                                                   {:model_id  (:id model)
-                                                    :pk_ref    (by-name "id")
-                                                    :value_ref not-in-query})]
-                (is (=? {:cause #"Could not identify field by ref.*"}
-                        response))))))))))
+            (let [not-in-query (mt/$ids $people.email)
+                  response (mt/user-http-request :rasta :post 400 "/model-index"
+                                                 {:model_id  (:id model)
+                                                  :pk_ref    (by-name "id")
+                                                  :value_ref not-in-query})]
+              (is (=? {:cause #"Could not identify field by ref.*"}
+                      response)))))))))
 
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"

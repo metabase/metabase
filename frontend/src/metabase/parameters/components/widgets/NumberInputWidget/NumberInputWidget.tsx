@@ -8,12 +8,6 @@ import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  Footer,
-  TokenFieldWrapper,
-  WidgetLabel,
-  WidgetRoot,
-} from "metabase/parameters/components/widgets/Widget.styled";
-import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
@@ -23,6 +17,8 @@ import type {
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
+
+import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
