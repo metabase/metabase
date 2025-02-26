@@ -12,6 +12,11 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept(
+      "PUT",
+      "/api/setting/notebook-native-preview-shown",
+      cy.spy().as("updatePreviewStateSpy"),
+    );
   });
 
   it("should show empty sidebar when no data source is selected", () => {
@@ -101,6 +106,10 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.log("Opening a preview sidebar should completely cover the notebook");
       cy.findByLabelText("View SQL").click();
       cy.location("pathname").should("eq", "/question/notebook");
+
+      cy.log("setting should not be updated on small screens");
+      cy.get("@updatePreviewStateSpy").should("not.have.been.called");
+
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",
       );
