@@ -110,14 +110,50 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
-export type ColumnFormattingSetting = {
-  columns: string[]; // column names
-  color?: string;
-  type?: string;
-  operator?: string;
-  value?: string | number;
-  highlight_row?: boolean;
+export type ConditionalFormattingCommonOperator = "is-null" | "not-null";
+export type ConditionalFormattingComparisonOperator =
+  | "="
+  | "!="
+  | "<"
+  | ">"
+  | "<="
+  | ">=";
+export type ConditionalFormattingStringOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with";
+export type ConditionalFormattingBooleanOperator = "is-true" | "is-false";
+
+export type ColumnFormattingOperator =
+  | ConditionalFormattingCommonOperator
+  | ConditionalFormattingComparisonOperator
+  | ConditionalFormattingStringOperator
+  | ConditionalFormattingBooleanOperator;
+
+export type ColumnSingleFormattingSetting = {
+  columns: string[];
+  type: "single";
+  operator: ColumnFormattingOperator;
+  color: string;
+  highlight_row: boolean;
+  value: string | number;
 };
+export type ColumnRangeFormattingSetting = {
+  columns: string[];
+  type: "range";
+  colors: string[];
+  min_type: "custom" | "all" | null;
+  max_type: "custom" | "all" | null;
+  min_value?: number;
+  max_value?: number;
+};
+
+export type ColumnFormattingSetting =
+  | ColumnSingleFormattingSetting
+  | ColumnRangeFormattingSetting;
 
 export type ColumnNameColumnSplitSetting = {
   rows: string[];
