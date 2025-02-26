@@ -421,11 +421,11 @@
   (testing "classify correctly"
     (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]
+            :to-create [{:name "c5"} {:id -1 :name "-c1"}]
             :to-skip   [{:id 4 :name "c4"}]}
            (u/row-diff
             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"} {:name "c5"}])))
     (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
             :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
             :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]

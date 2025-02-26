@@ -309,7 +309,7 @@
   The default timeout is 1000ms and the default interval is 100ms.
 
     (u/poll {:thunk       (fn [] (upload!))
-             :done        (fn [response] (get-in response [:status :done]))
+             :done?       (fn [response] (get-in response [:status :done]))
              :timeout-ms  1000
              :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]

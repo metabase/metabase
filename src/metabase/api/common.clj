@@ -350,11 +350,11 @@
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0"}
-  [entity m]
+  [model entity]
   (try
-    (check-403 (mi/can-create? entity m))
+    (check-403 (mi/can-create? model entity))
     (catch clojure.lang.ExceptionInfo e
-      (events/publish-event! :event/create-permission-failure {:model entity
+      (events/publish-event! :event/create-permission-failure {:model   model
                                                                :user-id *current-user-id*})
       (throw e))))
 

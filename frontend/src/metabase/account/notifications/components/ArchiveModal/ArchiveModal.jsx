@@ -6,7 +6,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import { formatChannelRecipients } from "metabase/lib/notifications";
+import { formatChannelRecipients } from "metabase/lib/pulse";
 import Settings from "metabase/lib/settings";
 
 import { ModalMessage } from "./ArchiveModal.styled";
