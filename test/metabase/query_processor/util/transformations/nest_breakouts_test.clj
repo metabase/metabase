@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -77,72 +79,73 @@
                        :limit       3}]}
             (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query)))))
 
-(deftest ^:parallel escape-identifiers-correctly-test
-  (testing (str "Refs in the second stage need to get escaped using [[metabase.driver/escape-alias]] (indirectly via"
-                " [[metabase.lib.database.methods/escape-alias]]). Simulate Oracle behavior here, which truncates all"
-                " identifiers to 30 characters. Make sure `mock-escape-alias` gets used everywhere, including for"
-                " generating join aliases.")
-    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                             meta/metadata-provider
-                             {:database {}
-                              ;; mock the Oracle names for things since I want to verify that this behaves correctly
-                              ;; specifically for Oracle.
-                              :tables   [{:id     (meta/id :orders)
-                                          :schema "mb_test"
-                                          :name   "test_data_orders"}
-                                         {:id     (meta/id :products)
-                                          :schema "mb_test"
-                                          :name   "test_data_products"}]
-                              :fields   [{:id (meta/id :orders :created-at), :name "created_at"}
-                                         {:id (meta/id :orders :id),         :name "id"}
-                                         {:id (meta/id :orders :product-id), :name "product_id"}
-                                         {:id (meta/id :products :id),       :name "id"}
-                                         {:id (meta/id :products :category), :name "category"}]})
-          orders            (lib.metadata/table metadata-provider (meta/id :orders))
-          orders-created-at (lib.metadata/field metadata-provider (meta/id :orders :created-at))
-          orders-id         (lib.metadata/field metadata-provider (meta/id :orders :id))
-          products-category (m/find-first (fn [col]
-                                            (= (:id col) (meta/id :products :category)))
-                                          (lib/visible-columns (lib/query metadata-provider orders)))
-          _                 (assert (some? products-category))
-          query             (-> (lib/query metadata-provider orders)
-                                (lib/filter (lib/> orders-id 5000))
-                                (lib/aggregate (lib/count))
-                                (lib/aggregate (lib/cum-count))
-                                (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
-                                (lib/breakout products-category))
-          preprocessed     (lib.query/query metadata-provider (qp.preprocess/preprocess query))]
-      (is (=? {:stages [{;; join alias is escaped:
-                         ;;
-                         ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
-                         ;;    =>
-                         ;;    "test_data_products__v_af2712b9"
-                         :joins [{:alias "test_data_products__v_af2712b9"
-                                  :conditions [[:=
-                                                {}
-                                                [:field {} pos-int?]
-                                                [:field
-                                                 {:join-alias "test_data_products__v_af2712b9"}
-                                                 pos-int?]]]
-                                  :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]}]
-                         :fields [[:field {} pos-int?]
-                                  [:field {:join-alias "test_data_products__v_af2712b9"} pos-int?]]
-                         :filters [[:>
-                                    {}
-                                    [:field {} pos-int?]
-                                    [:value {} 5000]]]}
-                        ;; new second stage. Source column names are escaped:
-                        ;;
-                        ;;    (metabase.driver/escape-alias :oracle "test_data_products__v_af2712b9__category")
-                        ;;    =>
-                        ;;    "test_data_products__v_f48e965c"
-                        {:breakout [[:field {} "created_at"]
-                                    [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
-                                             :source-field (symbol "nil #_\"key is not present.\"")}
-                                     "test_data_products__v_f48e965c"]]
-                         :aggregation [[:count {:name "count"}]
-                                       [:cum-count {:name "count_2"}]]}]
-               ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
-               ;; string
-               :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}
-              (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed))))))
+(deftest escape-identifiers-correctly-test
+  (testing (str "Refs in the second stage need to get escaped using [[metabase.driver/escape-alias]]."
+                " Simulate Oracle behavior here, which truncates all identifiers to 30 characters.")
+    (with-redefs [driver/escape-alias (fn [_ s] (driver.impl/truncate-alias s 30))]
+      (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                               meta/metadata-provider
+                               {:database {}
+                                 ;; mock the Oracle names for things since I want to verify that this behaves correctly
+                                 ;; specifically for Oracle.
+                                :tables   [{:id     (meta/id :orders)
+                                            :schema "mb_test"
+                                            :name   "test_data_orders"}
+                                           {:id     (meta/id :products)
+                                            :schema "mb_test"
+                                            :name   "test_data_products"}]
+                                :fields   [{:id (meta/id :orders :created-at), :name "created_at"}
+                                           {:id (meta/id :orders :id),         :name "id"}
+                                           {:id (meta/id :orders :product-id), :name "product_id"}
+                                           {:id (meta/id :products :id),       :name "id"}
+                                           {:id (meta/id :products :category), :name "category"}]})
+            orders            (lib.metadata/table metadata-provider (meta/id :orders))
+            orders-created-at (lib.metadata/field metadata-provider (meta/id :orders :created-at))
+            orders-id         (lib.metadata/field metadata-provider (meta/id :orders :id))
+            products-category (m/find-first (fn [col]
+                                              (= (:id col) (meta/id :products :category)))
+                                            (lib/visible-columns (lib/query metadata-provider orders)))
+            _                 (assert (some? products-category))
+            query             (-> (lib/query metadata-provider orders)
+                                  (lib/filter (lib/> orders-id 5000))
+                                  (lib/aggregate (lib/count))
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/breakout products-category))
+            preprocessed     (lib.query/query metadata-provider (qp.preprocess/preprocess query))
+            actual (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed)]
+        (is (=? {:stages [{;; join alias is escaped:
+                           ;;
+                           ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
+                           ;;    =>
+                           ;;    "test_data_products__v_af2712b9"
+                           :joins [{:alias "test_data_products__v_af2712b9"
+                                    :conditions [[:=
+                                                  {}
+                                                  [:field {} pos-int?]
+                                                  [:field
+                                                   {:join-alias "test_data_products__v_af2712b9"}
+                                                   pos-int?]]]
+                                    :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]}]
+                           :fields [[:field {} pos-int?]
+                                    [:field {:join-alias "test_data_products__v_af2712b9"} pos-int?]]
+                           :filters [[:>
+                                      {}
+                                      [:field {} pos-int?]
+                                      [:value {} 5000]]]}
+                          ;; new second stage. Source column names are escaped:
+                          ;;
+                          ;;    (metabase.driver/escape-alias :oracle "test_data_products__v_af2712b9__category")
+                          ;;    =>
+                          ;;    "test_data_products__v_f48e965c"
+                          {}
+                          #_{:breakout [[:field {} "created_at"]
+                                        [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
+                                                 :source-field (symbol "nil #_\"key is not present.\"")}
+                                         "test_data_products__v_f48e965c"]]
+                             :aggregation [[:count {:name "count"}]
+                                           [:cum-count {:name "count_2"}]]}]
+                 ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
+                 ;; string
+                 :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}
+                actual))))))
