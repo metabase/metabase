@@ -28,7 +28,7 @@ export function VisualizerButton({ series, dashcard }: VisualizerButtonProps) {
         };
       } else {
         return {
-          state: getInitialStateForCardDataSource(series[0].card, series[0]),
+          state: getInitialStateForCardDataSource(series[0]),
         };
       }
     }

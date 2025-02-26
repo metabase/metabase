@@ -471,7 +471,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource(card, dataset);
+    return getInitialStateForCardDataSource({ card, ...dataset });
   }
 
   if (
