@@ -995,16 +995,12 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("should allow a user to copy a question into a tab", () => {
-      const DASHBOARD_QUESTION_NAME = "A tab two kind of question";
-      const TABS_DASH_NAME = "Dashboard with tabs";
       const TAB_ONE_NAME = "First tab";
-      const TAB_TWO_NAME = "Second tab";
-
       H.createDashboardWithTabs({
-        name: TABS_DASH_NAME,
+        name: "Dashboard with tabs",
         tabs: [
           { id: -1, name: TAB_ONE_NAME },
-          { id: -2, name: TAB_TWO_NAME },
+          { id: -2, name: "Second tab" },
         ],
         dashcards: [],
       });
@@ -1024,6 +1020,8 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.findByText("Select this dashboard").click();
       });
 
+      H.entityPickerModal().should("not.exist"); // avoid test flaking from two modals being open at once
+
       H.modal().within(() => {
         cy.findByLabelText(/Which tab should this go on/)
           .should("exist")
@@ -1037,7 +1035,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.location("search").should("contain", "tab"); // url should have tab param configured
       H.assertTabSelected(TAB_ONE_NAME);
       H.dashboardCards().within(() => {
-        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
+        cy.findByText("Orders, Count - Duplicate").should("exist");
       });
     });
   });

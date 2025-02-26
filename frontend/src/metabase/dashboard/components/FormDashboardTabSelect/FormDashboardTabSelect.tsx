@@ -16,7 +16,7 @@ export const FormDashboardTabSelect = ({
   const dashboardTabField = useField(props.name);
   const dashboardTabHelpers = dashboardTabField[2];
 
-  const { currentData, isFetching, error } = useGetDashboardQuery(
+  const { currentData } = useGetDashboardQuery(
     dashboardId ? { id: dashboardId } : skipToken,
   );
 
@@ -39,7 +39,7 @@ export const FormDashboardTabSelect = ({
     );
   }, [currentData]);
 
-  const showTabSelect = (isFetching || options.length > 1) && !error;
+  const showTabSelect = options.length > 1;
 
   if (!showTabSelect) {
     return null;

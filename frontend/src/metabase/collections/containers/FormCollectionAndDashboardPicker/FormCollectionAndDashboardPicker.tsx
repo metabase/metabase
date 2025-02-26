@@ -180,10 +180,10 @@ export function FormCollectionAndDashboardPicker({
           const defaultTabId = dashboard?.tabs?.length
             ? String(dashboard.tabs[0].id)
             : undefined;
-          setFieldValue(dashboardIdFieldName, defaultTabId);
+          setFieldValue(dashboardTabIdFieldName, defaultTabId);
         } catch (err) {
           console.error(err);
-          setFieldValue(dashboardIdFieldName, undefined);
+          setFieldValue(dashboardTabIdFieldName, undefined);
         }
       }
 
@@ -194,7 +194,6 @@ export function FormCollectionAndDashboardPicker({
       dashboardIdHelpers,
       dashboardTabIdFieldName,
       setFieldValue,
-      dashboardIdFieldName,
       fetchDashboard,
     ],
   );
