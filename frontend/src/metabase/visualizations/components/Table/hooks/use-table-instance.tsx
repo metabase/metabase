@@ -20,7 +20,7 @@ import {
 } from "../constants";
 import type { ExpandedColumnsState, TableOptions } from "../types";
 
-import { useTableCellsMeasure } from "./use-cell-measure";
+import { useBodyCellMeasure } from "./use-body-cell-measure";
 import { useColumnResizeObserver } from "./use-column-resize-observer";
 import { useColumnsReordering } from "./use-columns-reordering";
 import { useMeasureColumnWidths } from "./use-measure-column-widths";
@@ -71,7 +71,7 @@ export const useTableInstance = <TData, TValue>({
     },
   );
 
-  const { measureBodyCellDimensions, measureRoot } = useTableCellsMeasure();
+  const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure();
 
   useUpdateEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder, hasRowIdColumn));

@@ -23,7 +23,6 @@ export const BodyCell = memo(function BodyCell<TValue>({
   canExpand = false,
   columnId,
   rowIndex,
-  onClick,
   onExpand,
   className,
 }: BodyCellProps<TValue>) {
@@ -45,12 +44,9 @@ export const BodyCell = memo(function BodyCell<TValue>({
     <BaseCell
       align={align}
       className={cx(S.root, className, {
-        [S.clickable]: !!onClick,
         [S.pill]: variant === "pill",
       })}
       backgroundColor={backgroundColor}
-      role="gridcell"
-      onClick={onClick}
     >
       {formattedValue != null ? (
         <div

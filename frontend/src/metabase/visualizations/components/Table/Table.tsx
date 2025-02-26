@@ -161,6 +161,7 @@ export const Table = forwardRef(function Table<TData>(
                     const cell = row.getVisibleCells()[virtualColumn.index];
                     return (
                       <div
+                        role="gridcell"
                         key={cell.id}
                         className={S.bodyCell}
                         onClick={e =>

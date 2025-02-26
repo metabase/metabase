@@ -3,7 +3,6 @@ import { useCallback, useMemo, useRef } from "react";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import { BodyCell } from "metabase/visualizations/components/Table/cell/BodyCell";
-import { HeaderCell } from "metabase/visualizations/components/Table/cell/HeaderCell";
 
 export type CellMeasurer = (content: string, width?: number) => CellSize;
 
@@ -64,7 +63,7 @@ export const useCellMeasure = (
   };
 };
 
-export const useTableCellsMeasure = () => {
+export const useBodyCellMeasure = () => {
   const bodyCellToMeasure = useMemo(
     () => <BodyCell rowIndex={0} columnId="measure" wrap={true} value="" />,
     [],
@@ -74,27 +73,17 @@ export const useTableCellsMeasure = () => {
     measureRoot: measureBodyCellRoot,
   } = useCellMeasure(bodyCellToMeasure, "[data-grid-cell-content]");
 
-  const headerCellToMeasure = useMemo(() => <HeaderCell name="" />, []);
-  const {
-    measureDimensions: measureHeaderCellDimensions,
-    measureRoot: measureHeaderCellRoot,
-  } = useCellMeasure(headerCellToMeasure, "[data-grid-header-cell-content]");
-
   const measureRoot = useMemo(
     () => (
       <EmotionCacheProvider>
-        <ThemeProvider>
-          {measureBodyCellRoot}
-          {measureHeaderCellRoot}
-        </ThemeProvider>
+        <ThemeProvider>{measureBodyCellRoot}</ThemeProvider>
       </EmotionCacheProvider>
     ),
-    [measureBodyCellRoot, measureHeaderCellRoot],
+    [measureBodyCellRoot],
   );
 
   return {
     measureBodyCellDimensions,
-    measureHeaderCellDimensions,
     measureRoot,
   };
 };

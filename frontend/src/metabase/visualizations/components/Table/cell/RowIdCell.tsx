@@ -27,6 +27,7 @@ export const RowIdCell = memo(function RowIdCell({
         className={cx(S.root)}
         backgroundColor={backgroundColor}
         align="right"
+        data-testid="detail-shortcut"
       >
         {hasValue ? (
           <span className={cx(S.rowNumber, TableS.rowHoverHidden)}>
@@ -35,7 +36,6 @@ export const RowIdCell = memo(function RowIdCell({
         ) : null}
 
         <Icon
-          data-testid="detail-shortcut"
           className={cx(TableS.rowHoverVisible, {})}
           name="expand"
           size={14}
