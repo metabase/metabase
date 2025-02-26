@@ -1,0 +1,18 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  background-color: var(--mb-color-bg-white);
+  width: 36px;
+  height: 36px;
+  box-sizing: content-box;
+}
+
+.sticky {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-left: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border);
+}
