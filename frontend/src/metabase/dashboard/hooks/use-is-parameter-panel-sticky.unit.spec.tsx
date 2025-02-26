@@ -2,11 +2,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { useIsParameterPanelSticky } from "./use-is-parameter-panel-sticky";
 
-type IOCallback = (
-  entries: IntersectionObserverEntry[],
-  observer: IntersectionObserver,
-) => void;
-
 const setup = () => {
   const parameterPanelRef: React.RefObject<HTMLDivElement> = {
     current: document.createElement("div"),
@@ -26,7 +21,7 @@ describe("useIsParameterPanelSticky", () => {
   let originalIntersectionObserver: typeof IntersectionObserver;
   let mockObserve: jest.Mock;
   let mockDisconnect: jest.Mock;
-  let intersectionCallback: IOCallback | null = null;
+  let intersectionCallback: IntersectionObserverCallback | null = null;
 
   const invokeIntersection = (ratio: number) => {
     act(() => {
@@ -114,9 +109,7 @@ describe("useIsParameterPanelSticky", () => {
 
     invokeIntersection(0.7);
 
-    await waitFor(() => {
-      expect(result.current.isStickyStateChanging).toBe(true);
-    });
+    expect(result.current.isStickyStateChanging).toBe(true);
 
     expect(result.current.isSticky).toBe(true);
 
