@@ -167,9 +167,6 @@ export const InteractiveEmbeddingDemo = () => {
                     value={themeColors.brand}
                     onChange={handleColorChange("brand")}
                   />
-                  <Text size="xs" c="text-secondary" mt="xs">
-                    Used for buttons, links, and interactive elements
-                  </Text>
                 </Box>
 
                 <Box mb="md">
