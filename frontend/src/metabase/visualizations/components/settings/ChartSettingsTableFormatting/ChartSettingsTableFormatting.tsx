@@ -10,17 +10,19 @@ import { RuleEditor } from "./RuleEditor";
 import { RuleListing } from "./RuleListing";
 import { DEFAULTS_BY_TYPE } from "./constants";
 
+export interface ChartSettingsTableFormattingProps {
+  value: ColumnFormattingSetting[];
+  onChange: (rules: ColumnFormattingSetting[]) => void;
+  cols: DatasetColumn[];
+  canHighlightRow?: boolean;
+}
+
 export const ChartSettingsTableFormatting = ({
   value,
   onChange,
   cols,
   canHighlightRow,
-}: {
-  value: ColumnFormattingSetting[];
-  onChange: (rules: ColumnFormattingSetting[]) => void;
-  cols: DatasetColumn[];
-  canHighlightRow?: boolean;
-}) => {
+}: ChartSettingsTableFormattingProps) => {
   const [editingRule, setEditingRule] = useState<number | null>(null);
   const [editingRuleIsNew, setEditingRuleIsNew] = useState<boolean | null>(
     null,

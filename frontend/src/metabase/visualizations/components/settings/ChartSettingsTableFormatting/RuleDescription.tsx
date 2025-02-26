@@ -6,7 +6,7 @@ import type {
   ColumnSingleFormattingSetting,
 } from "metabase-types/api";
 
-import { ALL_OPERATOR_NAMES } from "./constants";
+import { ALL_OPERATOR_NAMES } from "./get-operators-for-columns";
 
 export const getValueForDescription = (rule: ColumnSingleFormattingSetting) =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;

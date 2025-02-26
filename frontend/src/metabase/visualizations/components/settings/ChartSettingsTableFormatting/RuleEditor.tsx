@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -11,28 +12,16 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import {
-  isBoolean,
-  isNumeric,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
+import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
-  ColumnFormattingOperator,
   ColumnFormattingSetting,
   ConditionalFormattingBooleanOperator,
   ConditionalFormattingComparisonOperator,
   DatasetColumn,
 } from "metabase-types/api";
 
-import {
-  BOOLEAN_OPERATIOR_NAMES,
-  COLORS,
-  COLOR_RANGES,
-  COMMON_OPERATOR_NAMES,
-  DEFAULTS_BY_TYPE,
-  NUMBER_OPERATOR_NAMES,
-  STRING_OPERATOR_NAMES,
-} from "./constants";
+import { COLORS, COLOR_RANGES, DEFAULTS_BY_TYPE } from "./constants";
+import { getOperatorsForColumns } from "./get-operators-for-columns";
 
 interface RuleEditorProps {
   rule: ColumnFormattingSetting;
@@ -59,20 +48,14 @@ export const RuleEditor = ({
   onRemove,
   canHighlightRow = true,
 }: RuleEditorProps) => {
-  const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
-  const hasBooleanRule =
-    selectedColumns.length > 0 && selectedColumns.some(isBoolean);
-  const isBooleanRule =
-    selectedColumns.length > 0 && selectedColumns.every(isBoolean);
-  const isStringRule =
-    !hasBooleanRule &&
-    selectedColumns.length > 0 &&
-    selectedColumns.every(isString);
-  const isNumericRule =
-    !hasBooleanRule &&
-    selectedColumns.length > 0 &&
-    selectedColumns.every(isNumeric);
-
+  const selectedColumns = useMemo(
+    () => rule.columns.map(name => _.findWhere(cols, { name })),
+    [rule.columns, cols],
+  );
+  const { operators, isNumericRule, isKeyRule, isFieldDisabled } = useMemo(
+    () => getOperatorsForColumns(selectedColumns),
+    [selectedColumns],
+  );
   const hasOperand =
     rule.type === "single" &&
     rule.operator !== "is-null" &&
@@ -100,9 +83,7 @@ export const RuleEditor = ({
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
-        onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
-          handleColumnChange(e.target.value)
-        }
+        onChange={e => handleColumnChange(e.target.value)}
         isInitiallyOpen={rule.columns.length === 0}
         placeholder={t`Choose a column`}
         multiple
@@ -111,17 +92,13 @@ export const RuleEditor = ({
           <Option
             key={col.name}
             value={col.name}
-            disabled={
-              (isStringRule && (!isString(col) || isBoolean(col))) ||
-              (isNumericRule && !isNumeric(col)) ||
-              (isBooleanRule && !isBoolean(col))
-            }
+            disabled={isFieldDisabled(col)}
           >
             {col.display_name}
           </Option>
         ))}
       </Select>
-      {isNumericRule && (
+      {isNumericRule && !isKeyRule && (
         <div>
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
           <Radio
@@ -131,10 +108,7 @@ export const RuleEditor = ({
               { name: t`Color range`, value: "range" },
             ]}
             onChange={type =>
-              onChange({
-                ...DEFAULTS_BY_TYPE[type],
-                columns: rule.columns,
-              })
+              onChange({ ...DEFAULTS_BY_TYPE[type], ...rule, type })
             }
             vertical
           />
@@ -151,37 +125,24 @@ export const RuleEditor = ({
           </h3>
           <Select
             value={rule.operator}
-            onChange={(e: { target: { value: ColumnFormattingOperator } }) =>
-              onChange({ ...rule, operator: e.target.value })
-            }
+            onChange={e => onChange({ ...rule, operator: e.target.value })}
             buttonProps={{
               "data-testid": "conditional-formatting-value-operator-button",
             }}
           >
-            {Object.entries({
-              ...COMMON_OPERATOR_NAMES,
-              ...(isBooleanRule
-                ? BOOLEAN_OPERATIOR_NAMES
-                : isNumericRule
-                  ? NUMBER_OPERATOR_NAMES
-                  : isStringRule
-                    ? STRING_OPERATOR_NAMES
-                    : {}),
-            }).map(([operator, operatorName]) => (
+            {Object.entries(operators).map(([operator, operatorName]) => (
               <Option key={operatorName} value={operator}>
                 {operatorName}
               </Option>
             ))}
           </Select>
-          {hasOperand && isNumericRule ? (
+          {hasOperand && isNumericRule && !isKeyRule ? (
             <NumericInput
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
-              onChange={(value: string | number) =>
-                onChange({ ...rule, value })
-              }
+              onChange={value => onChange({ ...rule, value })}
               placeholder="0"
             />
           ) : hasOperand ? (

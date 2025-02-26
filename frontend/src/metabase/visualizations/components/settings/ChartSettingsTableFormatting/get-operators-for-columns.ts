@@ -7,7 +7,10 @@ import {
   isPK,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type {
+  ColumnFormattingOperator,
+  DatasetColumn,
+} from "metabase-types/api";
 
 const COMMON_OPERATOR_NAMES = {
   "is-null": t`is null`,
@@ -47,7 +50,7 @@ const or =
   (field: DatasetColumn) =>
     fns.some(fn => fn(field));
 
-export const ALL_OPERATOR_NAMES = {
+export const ALL_OPERATOR_NAMES: Record<ColumnFormattingOperator, string> = {
   ...NUMBER_OPERATOR_NAMES,
   ...STRING_OPERATOR_NAMES,
   ...BOOLEAN_OPERATOR_NAMES,
