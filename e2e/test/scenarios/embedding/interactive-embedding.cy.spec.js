@@ -898,6 +898,36 @@ describe("scenarios > embedding > full app", () => {
             tableName: "Orders",
             databaseName: "QA Postgres12",
           });
+
+          cy.log(
+            "assert that even after selecting a data source from one database, the data picker still shows the other data sources database",
+          );
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByRole("heading", { name: "Sample Database" }).should(
+              "be.visible",
+            );
+            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+              "be.visible",
+            );
+          });
+
+          cy.log("close the data picker popover");
+          cy.findByTestId("data-step-cell").click();
+
+          cy.log(
+            "assert that the data sources should be filtered by the selected database from the starting data source.",
+          );
+          H.getNotebookStep("data").button("Join data").click();
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByRole("heading", { name: "Sample Database" }).should(
+              "not.exist",
+            );
+            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+              "be.visible",
+            );
+          });
         },
       );
 
