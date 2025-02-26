@@ -32,6 +32,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
@@ -445,7 +446,7 @@ class Visualization extends PureComponent {
 
     const CardVisualization = visualization;
 
-    const isVisualizerViz = !!dashcard?.visualization_settings?.visualization;
+    const isVisualizerViz = dashcard && isVisualizerDashboardCard(dashcard);
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
