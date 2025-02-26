@@ -30,6 +30,7 @@ const DEFAULT_THEME_COLORS = {
   background: "#fff",
   "text-primary": "#4c5773",
   "text-secondary": "#696e7b",
+  primary: "#509ee3",
 };
 
 export const InteractiveEmbeddingDemo = () => {
@@ -159,6 +160,17 @@ export const InteractiveEmbeddingDemo = () => {
                 <Text size="lg" fw="bold" mb="md">
                   Theme Colors
                 </Text>
+
+                <Box mb="md">
+                  <Text mb="xs">Primary Color</Text>
+                  <ColorPicker
+                    value={themeColors.primary}
+                    onChange={handleColorChange("primary")}
+                  />
+                  <Text size="xs" c="text-secondary" mt="xs">
+                    Used for buttons, links, and interactive elements
+                  </Text>
+                </Box>
 
                 <Box mb="md">
                   <Text mb="xs">Background Color</Text>
