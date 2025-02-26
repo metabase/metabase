@@ -9,6 +9,7 @@ e2e @filiphric
 
 .github @metabase/devexp
 .clj-kondo @metabase/devexp
+deps.edn @metabase/backend-developers
 
 #
 # Backend modules <=> teams that own them
@@ -189,6 +190,9 @@ test/metabase/premium_features @metabase/core-backend-admin-webapp
 
 src/metabase/public_settings @metabase/core-backend-admin-webapp
 test/metabase/public_settings @metabase/core-backend-admin-webapp
+
+src/metabase/public_sharing @metabase/core-backend-admin-webapp
+test/metabase/public_sharing @metabase/core-backend-admin-webapp
 
 src/metabase/pulse @metabase/core-workflows
 test/metabase/pulse @metabase/core-workflows

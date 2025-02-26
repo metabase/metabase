@@ -701,7 +701,7 @@ describe("issue 17211", () => {
   it("should not falsely alert that no matching dashboard filter has been found (metabase#17211)", () => {
     H.filterWidget().click();
 
-    cy.findByPlaceholderText("Search by City").type("abb");
+    cy.findByPlaceholderText("Search the list").type("abb");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Abbeville").click();
 
@@ -1479,7 +1479,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure the search filter works");
     H.filterWidget().contains("Search").click();
     H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.findByPlaceholderText("Search the list").type("Lora Cronin");
       cy.button("Add filter").click();
     });
 
@@ -1524,7 +1524,7 @@ describe("issues 15279 and 24500", () => {
 
     H.filterWidget().contains("Search").click();
     H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.findByPlaceholderText("Search the list").type("Lora Cronin");
       cy.button("Add filter").click();
     });
 
@@ -4246,6 +4246,34 @@ describe("issue 52918", () => {
     cy.log("check that there is no overflow in the popover");
     H.popover().should(([element]) => {
       expect(element.offsetWidth).to.gte(element.scrollWidth);
+    });
+  });
+});
+
+describe("issue 54236", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.clock(new Date("2025-02-26"));
+  });
+
+  it("should show correct date range in the date picker (metabase#54236)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.setFilter("Date picker", "All Options");
+    H.sidebar().findByLabelText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Next").click();
+      cy.findByDisplayValue("30").clear().type("1");
+      cy.findAllByDisplayValue("day").filter(":visible").click();
+    });
+    H.popover().should("have.length", 2).last().findByText("quarter").click();
+    H.popover().within(() => {
+      cy.icon("arrow_left_to_line").click();
+      cy.findByDisplayValue("4").clear().type("1");
+      cy.findByText("Jul 1 – Sep 30, 2025").should("be.visible");
+      cy.findByText("Apr 1 – Jun 30, 2025").should("not.exist");
     });
   });
 });

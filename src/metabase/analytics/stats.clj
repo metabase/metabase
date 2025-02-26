@@ -811,7 +811,7 @@
    {:name      :public-sharing
     :available true
     :enabled   (and
-                (public-settings/enable-public-sharing)
+                (setting/get :enable-public-sharing)
                 (or
                  (t2/exists? :model/Dashboard :public_uuid [:not= nil])
                  (t2/exists? :model/Card :public_uuid [:not= nil])))}

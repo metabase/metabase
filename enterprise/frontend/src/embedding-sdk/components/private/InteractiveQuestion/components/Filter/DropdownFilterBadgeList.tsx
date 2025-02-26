@@ -1,5 +1,6 @@
-import { Group, Popover } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+
+import { Group, Popover } from "metabase/ui";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
 

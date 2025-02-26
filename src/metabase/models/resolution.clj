@@ -49,6 +49,7 @@
     :model/ModerationReview                  metabase.models.moderation-review
     :model/NativeQuerySnippet                metabase.models.native-query-snippet
     :model/Notification                      metabase.models.notification
+    :model/NotificationCard                  metabase.models.notification
     :model/NotificationHandler               metabase.models.notification
     :model/NotificationRecipient             metabase.models.notification
     :model/NotificationSubscription          metabase.models.notification

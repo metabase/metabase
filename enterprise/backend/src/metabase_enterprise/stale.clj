@@ -2,8 +2,7 @@
   (:require
    [malli.experimental.time]
    [metabase.embed.settings :as embed.settings]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -53,7 +52,7 @@
            [:= :collection.type nil]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_card.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (setting/get :enable-public-sharing)
              [:= :report_card.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)
@@ -85,7 +84,7 @@
            [:= :collection.type nil]
            (when (embed.settings/some-embedding-enabled?)
              [:= :report_dashboard.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (setting/get :enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)

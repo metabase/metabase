@@ -190,30 +190,26 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .and("contain", "koss-ella@hotmail.com");
   });
 
-  it(
-    "handles browsing records by FKs (metabase#21756)",
-    { tags: "@flaky" },
-    () => {
-      H.openOrdersTable();
+  it("handles browsing records by FKs (metabase#21756)", () => {
+    H.openOrdersTable();
 
-      drillFK({ id: 1 });
+    drillFK({ id: 1 });
 
-      assertUserDetailView({ id: 1, name: "Hudson Borer" });
-      getPreviousObjectDetailButton().should("not.exist");
-      getNextObjectDetailButton().should("not.exist");
+    assertUserDetailView({ id: 1, name: "Hudson Borer" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
 
-      cy.go("back");
-      cy.go("back");
-      cy.wait("@dataset");
+    cy.go("back");
+    cy.go("back");
+    cy.wait("@dataset");
 
-      changeSorting("User ID", "desc");
-      drillFK({ id: 2500 });
+    changeSorting("User ID", "desc");
+    drillFK({ id: 2500 });
 
-      assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
-      getPreviousObjectDetailButton().should("not.exist");
-      getNextObjectDetailButton().should("not.exist");
-    },
-  );
+    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
+  });
 
   it("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -374,6 +370,22 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
+  });
+
+  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
+
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Orders" }).click();
+    cy.wait("@dataset");
+    cy.findAllByTestId("cell-data").eq(11).click();
+    H.popover().findByText("View details").click();
+    cy.wait(["@dataset", "@dataset", "@dataset"]); // object detail + Orders relationship + Reviews relationship
+
+    cy.get("@getActions").should("have.callCount", 0);
   });
 });
 

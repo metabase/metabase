@@ -37,7 +37,7 @@
   {:definition mi/transform-legacy-metric-segment-definition})
 
 (t2/define-before-update :model/LegacyMetric
-  [{:keys [creator_id id], :as metric}]
+  [{:keys [id], :as metric}]
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)

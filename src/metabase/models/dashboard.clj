@@ -18,7 +18,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -131,7 +131,7 @@
   [dashboard]
   (-> dashboard
       migrate-parameters-list
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
   [_dashboard]

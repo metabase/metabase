@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { type SerializedStyles, css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import { match } from "ts-pattern";
 

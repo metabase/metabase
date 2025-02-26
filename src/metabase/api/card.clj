@@ -443,12 +443,38 @@
                       {:type        card-type
                        :status-code 400})))))
 
+(defn- actual-collection-id
+  "Given a body from the `POST` endpoint to create a card, returns the `collection_id` that the card will be placed in.
+  Because creating a Dashboard Question does not require specifying a `collection_id` (it's inferred from the
+  `dashboard_id`), this may be different from the `collection_id`. Normally if you don't specify a `collection_id`
+  that means we put it in the root collection (`nil` id), but if you specify a `dashboard_id` we'll need to look it
+  up."
+  [body]
+  (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
+        ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
+        dashboard-id (:dashboard_id body)
+        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
+    (cond
+      ;; you specified both - they must match
+      (and specified-collection-id? dashboard-id)
+      (let [dashboard-collection-id (dashboard-id->collection-id dashboard-id)]
+        (api/check-400 (= collection-id dashboard-collection-id)
+                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                            dashboard-collection-id
+                            collection-id))
+        collection-id)
+
+      specified-collection-id? collection-id
+
+      dashboard-id (dashboard-id->collection-id dashboard-id)
+
+      :else nil)))
+
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
-   {collection-id :collection_id
-    query         :dataset_query
+   {query         :dataset_query
     card-type     :type
     :as           body} :- [:map
                             [:name                   ms/NonBlankString]
@@ -465,12 +491,15 @@
                             [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
+                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (card/check-run-permissions-for-query query)
-  ;; check that we have permissions for the collection we're trying to save this card to, if applicable
-  (collection/check-write-perms-for-collection collection-id)
+  ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
+  ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
+  (collection/check-write-perms-for-collection
+   (actual-collection-id body))
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
     (-> (card/create-card! body @api/*current-user*)
@@ -528,7 +557,21 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+
+(defn- maybe-populate-collection-id
+  "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
+  If either one is set, let's validate that they match using `actual-collection-id` and make sure that the
+  `card-updates` contains the updated `collection_id`."
+  [card-before-update card-updates]
+  (let [collection-id (when (or (contains? card-updates :collection_id)
+                                (contains? card-updates :dashboard_id))
+                        (actual-collection-id card-updates))]
+    (cond-> card-updates
+      (or (api/column-will-change? :dashboard_id card-before-update card-updates)
+          (api/column-will-change? :collection_id card-before-update card-updates))
+      (assoc :collection_id collection-id))))
 
 (mu/defn update-card!
   "Updates a card - impl"
@@ -545,7 +588,9 @@
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/updates-with-archived-directly card-before-update card-updates)
+        card-updates           (maybe-populate-collection-id
+                                card-before-update
+                                (api/updates-with-archived-directly card-before-update card-updates))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]

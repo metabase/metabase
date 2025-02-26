@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import EditableText, { type EditableTextProps } from "./EditableText";
 
 export default {
-  title: "Core/EditableText",
+  title: "Components/Text/EditableText",
   component: EditableText,
 };
 

@@ -42,7 +42,9 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
@@ -347,13 +349,6 @@ x.com")
   :type       :boolean
   :default    true
   :export?    true
-  :visibility :authenticated
-  :audit      :getter)
-
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type       :boolean
-  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -690,7 +685,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
-  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  (deferred-tru "Whether or not to display Metabase links outside admin settings.")
   :type       :boolean
   :default    true
   :visibility :public
@@ -796,15 +791,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :default    false
   :export?    false)
-
-(defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
-  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
-  [object]
-  (if (and (:public_uuid object)
-           (not (enable-public-sharing)))
-    (assoc object :public_uuid nil)
-    object))
 
 (defsetting available-fonts
   "Available fonts"
@@ -1031,12 +1017,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    false
   :type       :boolean)
-
-(defsetting download-row-limit
-  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
-  :visibility :internal
-  :export?    true
-  :type       :integer)
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.

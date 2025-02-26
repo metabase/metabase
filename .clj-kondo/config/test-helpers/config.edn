@@ -49,7 +49,6 @@
      metabase.actions.models/insert!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
-     metabase.api.public-test/add-card-to-dashboard!
      metabase.channel.email-test/reset-inbox!
      metabase.channel.email/send-email!
      metabase.cmd.dump-to-h2/dump-to-h2!
@@ -91,6 +90,7 @@
      metabase.permissions.models.permissions/update-data-perms-graph!
      metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
+     metabase.public-sharing.api-test/add-card-to-dashboard!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.streaming.interface/begin!

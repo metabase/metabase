@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -520,6 +521,9 @@
               (testing "all fields are fingerprinted"
                 (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
               (testing "Field values are correctly synced"
+                ;; Manually activate Field values since they are not created during sync (#53387)
+                (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+                  (field-values/get-or-create-full-field-values! field))
                 (is (= {"customer_id"   #{1 2 3}
                         "vip_customer"  #{42}
                         "name"          #{"Khuat" "Quang" "Ngoc"}

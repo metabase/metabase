@@ -1,12 +1,10 @@
 import { memo } from "react";
 
 import CheckBox from "metabase/core/components/CheckBox";
+import { Box } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
-import {
-  CheckboxContainer,
-  QuestionListItemRoot,
-} from "./QuestionListItem.styled";
+import S from "./QuestionListItem.module.css";
 
 interface QuestionListItemProps {
   card: Card;
@@ -20,15 +18,15 @@ export const QuestionListItem = memo(function QuestionListItem({
   isEnabled,
 }: QuestionListItemProps) {
   return (
-    <QuestionListItemRoot>
-      <CheckboxContainer>
+    <Box component="li" className={S.QuestionListItemRoot}>
+      <Box className={S.CheckboxContainer}>
         <CheckBox
           label={card.name}
           labelEllipsis
           checked={isEnabled}
           onChange={e => onChange(e.currentTarget.checked)}
         />
-      </CheckboxContainer>
-    </QuestionListItemRoot>
+      </Box>
+    </Box>
   );
 });

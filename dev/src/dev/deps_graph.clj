@@ -134,10 +134,15 @@
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
   [file]
-  (let [node     (r.parser/parse-file-all file)
-        zloc     (z/of-node node)
-        requires (find-requires zloc)]
-    (into #{} (mapcat find-required-namespaces) requires)))
+  (try
+    (let [node     (r.parser/parse-file-all file)
+          zloc     (z/of-node node)
+          requires (find-requires zloc)]
+      (into #{} (mapcat find-required-namespaces) requires))
+    (catch Throwable e
+      (throw (ex-info (format "Error in file %s: %s" (str file) (ex-message e))
+                      {:file file}
+                      e)))))
 
 (comment
   ;; uses require

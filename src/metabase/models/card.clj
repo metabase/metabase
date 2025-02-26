@@ -26,6 +26,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
@@ -34,7 +35,7 @@
    [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.query-analysis.core :as query-analysis]
@@ -470,7 +471,11 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (not (or *updating-dashboard*
+                 ;; if the `dashboard_id` is changing, allow specifying a `collection_id`. Note that if it's different
+                 ;; than the actual `collection_id` of the new dashboard we're moving to, it will be ignored.
+                 dq-will-change?
+                 (not (api/column-will-change? :collection_id card changes))))
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
@@ -750,7 +755,7 @@
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ensure-clause-idents))
 
@@ -822,13 +827,15 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
-(defn- autoplace-dashcard-for-card! [dashboard-id card]
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
+        tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
     (when-not already-on-dashboard?
       (let [first-tab (first tabs)
-            cards-on-first-tab (or (:cards first-tab)
+            cards-on-first-tab (or (when first-tab
+                                     (:cards first-tab))
                                    dashcards)
             new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab (:display card))]
         (t2/insert! :model/DashboardCard (assoc new-spot
@@ -864,6 +871,7 @@
     old-dashboard-id :dashboard_id}
    {:as card-updates
     dashboard-id-update :dashboard_id
+    dashboard-tab-id :dashboard_tab_id
     archived-update :archived}
    delete-old-dashcards?]
   (let [dashboard-changes? (api/column-will-change? :dashboard_id card-before-update card-updates)
@@ -877,9 +885,14 @@
                        old-archived
                        archived-update)
         archived-after? (boolean new-archived)]
+
+    ;; you can't specify the dashboard_tab_id if not on a dashboard
+    (api/check-400
+     (not (and dashboard-tab-id
+               (not new-dashboard-id))))
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id card-before-update))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update))
 
     (when (and
            ;; we start out as a DQ, and
@@ -922,13 +935,16 @@
   created."
   ([card creator] (create-card! card creator false))
   ([card creator delay-event?] (create-card! card creator delay-event? true))
-  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event? autoplace-dashboard-questions?]
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as input-card-data} creator delay-event? autoplace-dashboard-questions?]
+   ;; you can't specify the dashboard_tab_id and not a dashboard_id
+   (api/check-400 (not (and (:dashboard_tab_id input-card-data)
+                            (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id]
-         position-info                      {:collection_id (:collection_id card-data)
-                                             :collection_position (:collection_position card-data)}
-         card-data                          (-> (select-keys card-data data-keys)
+         position-info                      {:collection_id (:collection_id input-card-data)
+                                             :collection_position (:collection_position input-card-data)}
+         card-data                          (-> (select-keys input-card-data data-keys)
                                                 (assoc
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
@@ -945,8 +961,9 @@
                                               (t2/insert-returning-instance! :model/Card (cond-> card-data
                                                                                            metadata
                                                                                            (assoc :result_metadata metadata))))]
-     (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id card))]
-       (autoplace-dashcard-for-card! dashboard-id card))
+     (let [{:keys [dashboard_id]} card]
+       (when (and dashboard_id autoplace-dashboard-questions?)
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -957,6 +974,15 @@
      card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
+
+(defn delete-alert-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent

@@ -41,17 +41,14 @@
    :uses #{api config db events models util}}
 
   analytics
-  {:api  #{metabase.analytics.prometheus
-           metabase.analytics.sdk
-           metabase.analytics.snowplow
-           metabase.analytics.stats}
+  {:api  #{metabase.analytics.core
+           metabase.analytics.prometheus
+           metabase.analytics.snowplow}
    :uses #{api
-           channel
            config
            db
            driver
            eid-translation
-           embed
            integrations
            models
            premium-features
@@ -65,10 +62,13 @@
   api
   {:api #{metabase.api.auth
           metabase.api.cache
+          metabase.api.card
           metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
+          metabase.api.dashboard
           metabase.api.dataset
+          metabase.api.field
           metabase.api.macros
           metabase.api.open-api
           metabase.api.query-metadata
@@ -96,6 +96,7 @@
            metabase.channel.email
            metabase.channel.email.messages
            metabase.channel.init
+           metabase.channel.models.channel
            metabase.channel.render.core
            metabase.channel.template.core}
    :uses #{analytics
@@ -187,6 +188,7 @@
            pulse
            query-processor
            sync
+           task
            upload
            util}}
 
@@ -200,7 +202,7 @@
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
-   :uses #{api driver models notification premium-features util}}
+   :uses #{api channel driver models notification premium-features util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -341,6 +343,7 @@
            plugins
            premium-features
            public-settings
+           public-sharing
            pulse
            query-analysis
            query-processor
@@ -363,7 +366,7 @@
            metabase.notification.init
            metabase.notification.payload.core
            metabase.notification.payload.execute}
-   :uses #{analytics api channel events models permissions premium-features public-settings query-processor request util}}
+   :uses #{analytics api channel config events models permissions premium-features public-settings query-processor request util}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -386,6 +389,12 @@
   public-settings
   {:api  #{metabase.public-settings}
    :uses #{api config models premium-features util}}
+
+  public-sharing
+  {:api  #{metabase.public-sharing.api
+           metabase.public-sharing.core
+           metabase.public-sharing.init}
+   :uses #{actions analytics api db events lib models query-processor request util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -488,8 +497,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver embed models premium-features public-settings request util
-           enterprise/sso}}
+   :uses #{analytics api config core db driver models premium-features public-settings request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
@@ -521,7 +529,6 @@
 
   sync
   {:api #{metabase.sync.api
-          metabase.sync.concurrent
           metabase.sync.core
           metabase.sync.init
           metabase.sync.schedules
@@ -590,7 +597,7 @@
            metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util}}
+   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}

@@ -253,7 +253,38 @@
                 (mt/client :post 400 "session/forgot_password" {}))))
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
-               (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
+               (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"}))))
+      (testing "Google SSO user cannot reset password when Google SSO is enabled"
+        (mt/with-temp [:model/User g-user {:first_name "g"
+                                           :last_name "user"
+                                           :email "g-user@gmail.com"
+                                           :sso_source :google}]
+          (let [my-url "abcdefghij"]
+            (mt/with-temporary-setting-values [site-url my-url
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                               google-auth-enabled true]
+              (mt/with-fake-inbox
+                (mt/user-http-request g-user :post 204 "session/forgot_password"
+                                      {:email (:email g-user)})
+                (is (mt/received-email-body?
+                     (:email g-user)
+                     (re-pattern "You're using Google to log in to"))))))))
+      (testing "Google SSO user can reset password when Google SSO is disabled"
+        (mt/with-temp [:model/User g-user {:first_name "g"
+                                           :last_name "user"
+                                           :email "g-user@gmail.com"
+                                           :sso_source :google}]
+          (let [my-url "abcdefghij"]
+            (mt/with-temporary-setting-values [site-url my-url
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                               google-auth-enabled false]
+
+              (mt/with-fake-inbox
+                (mt/user-http-request g-user :post 204 "session/forgot_password"
+                                      {:email (:email g-user)})
+                (is (mt/received-email-body?
+                     (:email g-user)
+                     (re-pattern "Click the button below to reset the password")))))))))))
 
 (deftest forgot-password-event-test
   (reset-throttlers!)
@@ -502,8 +533,13 @@
                                                  "\"first_name\":\"test\","
                                                  "\"last_name\":\"user\","
                                                  "\"email\":\"test@metabase.com\"}")})]
-            (is (malli= SessionResponse
-                        (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
+            (testing "with throttling enabled"
+              (is (malli= SessionResponse
+                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))
+            (testing "with throttling disabled"
+              (with-redefs [api.session/throttling-disabled? true]
+                (is (malli= SessionResponse
+                            (mt/client :post 200 "session/google_auth" {:token "foo"}))))))))
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
