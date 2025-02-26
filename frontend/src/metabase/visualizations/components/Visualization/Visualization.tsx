@@ -151,7 +151,10 @@ type VisualizationOwnProps = {
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onChangeLocation?: (location: Location) => void;
+  onDeselectTimelineEvents?: () => void;
+  onOpenTimelines?: () => void;
   onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onTogglePreviewing?: () => void;
   onUpdateQuestion?: () => void;
   onUpdateVisualizationSettings?: (
@@ -553,8 +556,11 @@ class Visualization extends PureComponent<
       showAllLegendItems,
       showTitle,
       timelineEvents,
+      onDeselectTimelineEvents,
       onOpenChartSettings,
+      onOpenTimelines,
       onRemoveSeries,
+      onSelectTimelineEvents,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
     } = this.props;
@@ -774,10 +780,13 @@ class Visualization extends PureComponent<
                       ? this.handleOnChangeCardAndRun
                       : null
                   }
+                  onDeselectTimelineEvents={onDeselectTimelineEvents}
                   onHoverChange={this.handleHoverChange}
+                  onOpenTimelines={onOpenTimelines}
                   onRender={this.onRender}
                   onRenderError={this.onRenderError}
                   onRemoveSeries={onRemoveSeries}
+                  onSelectTimelineEvents={onSelectTimelineEvents}
                   onUpdateVisualizationSettings={onUpdateVisualizationSettings}
                   onUpdateWarnings={onUpdateWarnings}
                   onVisualizationClick={this.handleVisualizationClick}
