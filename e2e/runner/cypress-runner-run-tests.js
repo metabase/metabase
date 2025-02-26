@@ -3,8 +3,8 @@ const cypress = require("cypress");
 const { parseArguments, args } = require("./cypress-runner-utils");
 
 const DEFAULT_PORT = 4000;
-const getHost = () =>
-  `http://localhost:${process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+const getHost = ({ port } = { port: null }) =>
+  `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
 // This is a map of all possible Cypress configurations we can run.
 const configs = {
@@ -14,6 +14,80 @@ const configs = {
       configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost(),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  "metabase-nodejs-react-sdk-embedding-sample-e2e": async () => {
+    const clientPort = 3100;
+
+    const defaultConfig = {
+      browser: "chrome",
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost({ port: clientPort }),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  "metabase-nextjs-sdk-embedding-sample-app-router-e2e": async () => {
+    const sampleAppName = "metabase-nextjs-sdk-embedding-sample";
+    const clientPort = 4401;
+
+    const defaultConfig = {
+      browser: "chrome",
+      project: `e2e/tmp/${sampleAppName}/next-sample-app-router/e2e`,
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost({ port: clientPort }),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  "metabase-nextjs-sdk-embedding-sample-pages-router-e2e": async () => {
+    const sampleAppName = "metabase-nextjs-sdk-embedding-sample";
+    const clientPort = 4401;
+
+    const defaultConfig = {
+      browser: "chrome",
+      project: `e2e/tmp/${sampleAppName}/next-sample-pages-router/e2e`,
+      configFile: "support/cypress.config.js",
+      config: {
+        baseUrl: getHost({ port: clientPort }),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  "shoppy-e2e": async () => {
+    const sampleAppName = "shoppy";
+    const clientPort = 4403;
+
+    const defaultConfig = {
+      browser: "chrome",
+      project: `e2e/tmp/${sampleAppName}/e2e`,
+      configFile: "support/cypress.config.js",
+      config: {
+        baseUrl: getHost({ port: clientPort }),
       },
       testingType: "e2e",
       openMode: args["--open"] || process.env.OPEN_UI === "true",

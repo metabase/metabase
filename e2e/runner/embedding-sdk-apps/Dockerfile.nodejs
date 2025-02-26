@@ -1,0 +1,29 @@
+FROM node:22-bullseye AS runner
+
+WORKDIR /app
+
+ARG APP="metabase-nodejs-react-sdk-embedding-sample"
+ARG BRANCH="simple-test-setup"
+ARG URL="https://codeload.github.com/metabase/$APP/tar.gz/$BRANCH"
+
+ARG HOST_SDK_PATH="resources/embedding-sdk/"
+
+# pull the code from the remote
+RUN curl -L $URL | tar xz
+
+# install the dependencies for frontend and backend
+RUN cd $APP-$BRANCH && ./test-setup.sh
+
+# copy the local sdk to the sdk folder in the container
+COPY $HOST_SDK_PATH ./sdk
+
+# install the local sdk - this doesn't work due to different sdk versions?
+# RUN cd $APP-$BRANCH/client && npm install file:../../sdk/ --install-links --force
+
+# we could maybe keep make this a single command at the sample app level
+ENV backendCommand="npm run start --prefix $APP-$BRANCH/server"
+ENV frontendCommand="npm run start --prefix $APP-$BRANCH/client -- --host"
+
+CMD $backendCommand & $frontendCommand
+
+EXPOSE 9091 3100

@@ -109,6 +109,29 @@ const init = async () => {
     );
   }
 
+  let sampleAppProfile = "";
+  switch (options.TEST_SUITE) {
+    case "metabase-nodejs-react-sdk-embedding-sample-e2e":
+      sampleAppProfile = "node-sample-app";
+      break;
+
+    case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
+      sampleAppProfile = ""; // TODO: add profile
+      break;
+
+    case "shoppy-e2e":
+      sampleAppProfile = ""; // TODO: add profile
+      break;
+  }
+
+  if (sampleAppProfile) {
+    printBold(`⏳ Starting ${sampleAppProfile} containers`);
+    shell(
+      `docker compose -f e2e/runner/embedding-sdk-apps/docker-compose.yml --profile ${sampleAppProfile} up -d --force-recreate`,
+    );
+  }
+
   printBold("⏳ Starting Cypress");
   await runCypress(options.TEST_SUITE, cleanup);
 };
@@ -122,6 +145,9 @@ const cleanup = async (exitCode: string | number = 0) => {
   if (options.STOP_CONTAINERS) {
     printBold("⏳ Stopping containers");
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
+    shell(
+      "docker compose -f ./e2e/runner/embedding-sdk-apps/docker-compose.yml down",
+    );
   }
 
   typeof exitCode === "number" ? process.exit(exitCode) : process.exit(0);
