@@ -1,4 +1,3 @@
-const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const CypressBackend = require("./cypress-runner-backend");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
@@ -9,7 +8,7 @@ const availableModes = ["start", "snapshot", "e2e", "component"];
 
 if (!availableModes.includes(mode)) {
   console.error(`Invalid mode: ${mode}`);
-  process.exit(FAILURE_EXIT_CODE);
+  process.exit(1);
 }
 
 const startServer = async () => {

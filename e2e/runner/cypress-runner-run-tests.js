@@ -1,13 +1,9 @@
 const cypress = require("cypress");
 
-const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const { parseArguments, args } = require("./cypress-runner-utils");
-const {
-  SAMPLE_APP_SETUP_CONFIGS,
-} = require("./sample-apps-shared/constants/sample-app-setup-configs");
 
 const DEFAULT_PORT = 4000;
-const getHost = ({ port }) =>
+const getHost = ({ port } = { port: null }) =>
   `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
 // This is a map of all possible Cypress configurations we can run.
@@ -28,12 +24,10 @@ const configs = {
     return finalConfig;
   },
   "metabase-nodejs-react-sdk-embedding-sample-e2e": async () => {
-    const sampleAppName = "metabase-nodejs-react-sdk-embedding-sample";
-    const clientPort = SAMPLE_APP_SETUP_CONFIGS[sampleAppName].env.CLIENT_PORT;
+    const clientPort = 3100;
 
     const defaultConfig = {
       browser: "chrome",
-      project: `e2e/tmp/${sampleAppName}/e2e`,
       configFile: "support/cypress.config.js",
       config: {
         baseUrl: getHost({ port: clientPort }),
@@ -48,8 +42,7 @@ const configs = {
   },
   "metabase-nextjs-sdk-embedding-sample-app-router-e2e": async () => {
     const sampleAppName = "metabase-nextjs-sdk-embedding-sample";
-    const clientPort =
-      SAMPLE_APP_SETUP_CONFIGS[sampleAppName].env.CLIENT_PORT_APP_ROUTER;
+    const clientPort = 4401;
 
     const defaultConfig = {
       browser: "chrome",
@@ -68,8 +61,7 @@ const configs = {
   },
   "metabase-nextjs-sdk-embedding-sample-pages-router-e2e": async () => {
     const sampleAppName = "metabase-nextjs-sdk-embedding-sample";
-    const clientPort =
-      SAMPLE_APP_SETUP_CONFIGS[sampleAppName].env.CLIENT_PORT_PAGES_ROUTER;
+    const clientPort = 4401;
 
     const defaultConfig = {
       browser: "chrome",
@@ -88,7 +80,7 @@ const configs = {
   },
   "shoppy-e2e": async () => {
     const sampleAppName = "shoppy";
-    const clientPort = SAMPLE_APP_SETUP_CONFIGS[sampleAppName].env.CLIENT_PORT;
+    const clientPort = 4403;
 
     const defaultConfig = {
       browser: "chrome",
@@ -149,7 +141,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     console.error(
       `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
     );
-    await exitFunction(FAILURE_EXIT_CODE);
+    await exitFunction(1);
   }
 
   const config = await configs[suite]();
@@ -161,7 +153,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
 
     // At least one test failed
     if (totalFailed > 0) {
-      await exitFunction(FAILURE_EXIT_CODE);
+      await exitFunction(1);
     }
 
     // Something went wrong and Cypress failed to even run tests
@@ -173,7 +165,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
   } catch (e) {
     console.error("Failed to run Cypress!\n", e);
 
-    await exitFunction(FAILURE_EXIT_CODE);
+    await exitFunction(1);
   }
 };
 

@@ -1,0 +1,27 @@
+name: e2e-sdk-sample-apps
+
+services:
+  node-sample-app:
+    profiles:
+      - node-sample-app
+    image: node-sample-app:latest
+    build:
+      context: ../../../.
+      dockerfile: e2e/runner/embedding-sdk-sample-apps/Dockerfile.nodejs
+    # this lets the containerized app talk to the host machine
+    extra_hosts:
+      - "host-metabase:host-gateway"
+    ports:
+      - 3100:3100
+      - 9091:9091
+
+    environment:
+      MB_PREMIUM_EMBEDDING_TOKEN: ${MB_PREMIUM_EMBEDDING_TOKEN}
+      VITE_METABASE_INSTANCE_URL: http://localhost:3000
+      VITE_AUTH_PROVIDER_URI: http://localhost:9091/sso/metabase
+      BACKEND_PORT: 9091
+      METABASE_INSTANCE_URL: http://host-metabase:3000
+      METABASE_JWT_SHARED_SECRET: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+
+  # other sample apps are just other services with distinct tags
+  # apps that need multiple containers can just use the same profile

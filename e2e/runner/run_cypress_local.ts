@@ -1,4 +1,3 @@
-import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import CypressBackend from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
 import {
@@ -7,7 +6,6 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-import { run as runSampleAppForEmbeddingSdk } from "./run-sample-app-for-embedding-sdk/run";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -45,7 +43,7 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
   printBold(
     "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
   );
-  process.exit(FAILURE_EXIT_CODE);
+  process.exit(1);
 }
 
 printBold(`Running Cypress with options:
@@ -82,7 +80,7 @@ const init = async () => {
           "⚠️ Your backend is already running, you may want to kill pid " +
             isBackendRunning,
         );
-        process.exit(FAILURE_EXIT_CODE);
+        process.exit(1);
       }
 
       printBold("⏳ Starting backend");
@@ -112,28 +110,34 @@ const init = async () => {
     );
   }
 
+  let profile = "";
   switch (options.TEST_SUITE) {
     case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-      await runSampleAppForEmbeddingSdk(
-        "metabase-nodejs-react-sdk-embedding-sample",
-      );
+      profile = "node-sample-app";
       break;
 
     case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
     case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
-      await runSampleAppForEmbeddingSdk("metabase-nextjs-sdk-embedding-sample");
+      profile = ""; // TODO: add profile
       break;
 
     case "shoppy-e2e":
-      await runSampleAppForEmbeddingSdk("shoppy");
+      profile = ""; // TODO: add profile
       break;
+  }
+
+  if (profile) {
+    printBold(`⏳ Starting ${profile} containers`);
+    shell(
+      `docker compose -f e2e/runner/embedding-sdk-apps/docker-compose.yml --profile ${profile} up -d --force-recreate`,
+    );
   }
 
   printBold("⏳ Starting Cypress");
   await runCypress(options.TEST_SUITE, cleanup);
 };
 
-const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
+const cleanup = async (exitCode: string | number = 0) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
@@ -142,18 +146,19 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.STOP_CONTAINERS) {
     printBold("⏳ Stopping containers");
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
+    shell(
+      "docker compose -f ./e2e/runner/embedding-sdk-apps/docker-compose.yml down",
+    );
   }
 
-  typeof exitCode === "number"
-    ? process.exit(exitCode)
-    : process.exit(SUCCESS_EXIT_CODE);
+  typeof exitCode === "number" ? process.exit(exitCode) : process.exit(0);
 };
 
 init()
-  .then(() => cleanup(SUCCESS_EXIT_CODE))
+  .then(() => cleanup(1))
   .catch(e => {
     console.error(e);
-    cleanup(FAILURE_EXIT_CODE);
+    cleanup(1);
   });
 
 process.on("exit", cleanup);
