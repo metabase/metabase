@@ -180,7 +180,7 @@
   }
 
   &[data-selected]:hover,
-  &:hover {
+  &:hover:not(:disabled) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
   }
@@ -198,7 +198,7 @@
   }
 
   &[data-selected]:hover,
-  &:hover {
+  &:hover:not(:disabled) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
   }
