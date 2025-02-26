@@ -45,19 +45,22 @@
 
 (deftest ^:parallel different-row-types-test
   (testing "Middleware should work regardless of the type of each row (#13475)"
-    (let [cols [{:base_type :type/Integer}]]
-      (doseq [rows [[[1]
-                     [max-long-plus-1]]
-                    [[(list 1)
-                      [max-long-plus-1]]]
-                    [[(cons 1 nil)
-                      (cons max-long-plus-1 nil)]]
-                    [[(lazy-seq [1])
-                      (lazy-seq [max-long-plus-1])]]]]
-        (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
-          (is (= [[1]
-                  [(str max-long-plus-1)]]
-                 (convert-large-int-to-string cols rows))))))))
+    (let [cols [{:base_type :type/Integer}]
+          rows  [[1]
+                 [max-long-plus-1]
+                 (list 1)
+                 (cons 1 nil)
+                 (cons max-long-plus-1 nil)
+                 (lazy-seq [1])
+                 (lazy-seq [max-long-plus-1])]]
+      (is (= [[1]
+              [(str max-long-plus-1)]
+              [1]
+              [1]
+              [(str max-long-plus-1)]
+              [1]
+              [(str max-long-plus-1)]]
+             (convert-large-int-to-string cols rows))))))
 
 (deftest ^:parallel null-ids-as-strings
   (testing "Middleware should convert NULL IDs to nil (#13957)"
