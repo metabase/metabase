@@ -37,7 +37,7 @@
 
 (defn- large-bigdecimal?
   "Checks if `n` is a `bigdecimal` value outside the JS number range and without the fractional part. For performance
-  reasons, we do not check if `n` has a fractional part. If we wanted to do that, we should call `.stripTrainingZeroes`,
+  reasons, we do not check if `n` has a fractional part. If we wanted to do that, we should call `.stripTrailingZeroes`,
   followed by `.scale`, and check that it's <= 0."
   [^BigDecimal n]
   (or (> 0 (.compareTo n min-bigdecimal)) (< 0 (.compareTo n max-bigdecimal))))
