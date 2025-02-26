@@ -26,7 +26,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.upload :as upload]
@@ -1253,10 +1252,8 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (not-empty (pulse/retrieve-alerts-for-cards
-                                  {:card-ids (t2/select-pks-set :model/Card :collection_id (u/the-id collection-before-update))}))]
-      (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
-      (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))
+    (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
+      (card/delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do

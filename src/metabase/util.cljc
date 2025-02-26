@@ -437,17 +437,17 @@
   ^String [^String s]
   (when (seq s)
     #?(:clj  (str/replace
-               ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with
-               ;; 'LATIN CAPITAL LETTER A' + 'COMBINING ACUTE ACCENT'
-               ;; See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
+              ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with
+              ;; 'LATIN CAPITAL LETTER A' + 'COMBINING ACUTE ACCENT'
+              ;; See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
               (Normalizer/normalize s Normalizer$Form/NFD)
-               ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
-               ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
-               ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
+              ;; next, remove the combining diacritical marks -- this SO answer explains what's going on here best:
+              ;; http://stackoverflow.com/a/5697575/1198455 The closest thing to a relevant JavaDoc I could find was
+              ;; http://docs.oracle.com/javase/7/docs/api/java/lang/Character.UnicodeBlock.html#COMBINING_DIACRITICAL_MARKS
               #"\p{Block=CombiningDiacriticalMarks}+"
               "")
        :cljs (-> s
-                 (.normalize "NFKD")  ;; Renders accented characters as base + accent.
+                 (.normalize "NFKD") ;; Renders accented characters as base + accent.
                  (.replace (js/RegExp. "[\u0300-\u036f]" "gu") ""))))) ;; Drops all the accents.
 
 (def ^:private slugify-valid-chars
@@ -885,11 +885,11 @@
        ret))))
 
 (defn row-diff
-  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
-  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
+  "Given 2 lists of seq maps of changes, where each map in current-rows has an `id` key,
+  return a map of 4 keys: `:to-create`, `:to-update`, `:to-delete`, `:to-skip`.
 
   Where:
-  - `:to-create` is a list of maps that has ids only in `new-rows`
+  - `:to-create` is a list of maps that either lack ids or have ids only in `new-rows`
   - `:to-delete` is a list of maps that has ids only in `current-rows`
   - `:to-skip`   is a list of identical maps that has ids in both lists
   - `:to-update` is a list of different maps that has ids in both lists
@@ -900,19 +900,25 @@
   [current-rows new-rows & {:keys [id-fn to-compare]
                             :or   {id-fn      :id
                                    to-compare identity}}]
-  (let [[delete-ids
+  (let [new-rows-with-ids    (filter id-fn new-rows)
+        new-rows-without-ids (remove id-fn new-rows)
+        [delete-ids
          create-ids
-         update-ids]     (diff (set (map id-fn current-rows))
-                               (set (map id-fn new-rows)))
-        known-map        (m/index-by id-fn current-rows)
+         update-ids]         (diff (set (map id-fn current-rows))
+                                   (set (map id-fn new-rows-with-ids)))
+        known-map            (m/index-by id-fn current-rows)
         {to-update false
-         to-skip   true} (when (seq update-ids)
-                           (clojure.core/group-by (fn [x]
-                                                    (let [y (get known-map (id-fn x))]
-                                                      (= (to-compare x) (to-compare y))))
-                                                  (filter #(update-ids (id-fn %)) new-rows)))]
-    {:to-create (when (seq create-ids) (filter #(create-ids (id-fn %)) new-rows))
-     :to-delete (when (seq delete-ids) (filter #(delete-ids (id-fn %)) current-rows))
+         to-skip   true}     (when (seq update-ids)
+                               (clojure.core/group-by (fn [x]
+                                                        (let [y (get known-map (id-fn x))]
+                                                          (= (to-compare x) (to-compare y))))
+                                                      (filter #(update-ids (id-fn %)) new-rows-with-ids)))]
+    {:to-create (concat
+                 new-rows-without-ids
+                 (when (seq create-ids)
+                   (filter #(create-ids (id-fn %)) new-rows-with-ids)))
+     :to-delete (when (seq delete-ids)
+                  (filter #(delete-ids (id-fn %)) current-rows))
      :to-update to-update
      :to-skip   to-skip}))
 

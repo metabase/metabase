@@ -45,6 +45,10 @@
   font-size: 1em;
 }
 
+.textShortLineHeight {
+  line-height: 1em;
+}
+
 .textParagraph {
   font-size: 1.143em;
   line-height: 1.5em;

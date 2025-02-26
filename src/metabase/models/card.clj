@@ -26,6 +26,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
@@ -973,6 +974,15 @@
      card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
+
+(defn delete-alert-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
