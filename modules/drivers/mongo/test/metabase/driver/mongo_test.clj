@@ -15,6 +15,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -275,17 +276,23 @@
 
 (tx/defdataset nested-bindata-coll
   (let [not-uuid (Binary. (byte 0) (byte-array 1))
-        some-uuid #uuid "11111111-1111-1111-1111-111111111111"]
+        some-uuid #uuid "11111111-1111-1111-1111-111111111111"
+        some-date #inst "2025-01-01T12:00:00.00Z"]
     [["nested-bindata"
-      [{:field-name "mixed_uuid", :base-type :type/*}
+      [{:field-name "_id", :base-type :type/MongoBSONID}
+       {:field-name "int", :base-type :type/Integer}
+       {:field-name "float", :base-type :type/Float}
+       {:field-name "text", :base-type :type/Text}
+       {:field-name "date", :base-type :type/Instant}
+       {:field-name "mixed_uuid", :base-type :type/*}
        {:field-name "mixed_not_uuid", :base-type :type/*}
-       {:field-name "nested_mixed_uuid", :base-type :type/*}
-       {:field-name "nested_mixed_not_uuid", :base-type :type/*}]
-      [[some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
-       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
-       [some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
-       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]
-       [not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]]]]))
+       {:field-name "nested_mixed_uuid", :base-type :type/Dictionary}
+       {:field-name "nested_mixed_not_uuid", :base-type :type/Dictionary}]
+      [[(ObjectId.) 1 1.1 "1" some-date some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [(ObjectId.) 2 2.2 "2" some-date some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [(ObjectId.) 3 3.3 "3" some-date some-uuid not-uuid {"nested_data" some-uuid} {"nested_data_2" not-uuid}]
+       [(ObjectId.) 4 4.4 "4" some-date not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]
+       [(ObjectId.) 5 5.5 "5" some-date not-uuid some-uuid {"nested_data" not-uuid} {"nested_data_2" some-uuid}]]]]))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
@@ -330,13 +337,17 @@
     (mt/dataset nested-bindata-coll
       (testing "nested fields with mixed binData subtypes are correctly identified as type/UUID"
         (is (= {:schema nil, :name "nested-bindata",
-                :fields #{{:name "_id", :database-type "long", :base-type :type/Integer, :pk? true, :database-position 0}
-                          {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 5,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/*, :database-position 6}}}
-                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/*, :database-position 2}
-                          {:name "mixed_uuid", :database-type "binData", :base-type :type/UUID, :database-position 1}
-                          {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 3,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/UUID, :database-position 4}}}}}
+                :fields #{{:name "_id", :database-type "objectId", :base-type :type/MongoBSONID, :pk? true, :database-position 0}
+                          {:name "int", :database-type "long", :base-type :type/Integer, :database-position 3}
+                          {:name "float", :database-type "double", :base-type :type/Float, :database-position 5}
+                          {:name "text", :database-type "string", :base-type :type/Text, :database-position 10}
+                          {:name "date", :database-type "date", :base-type :type/Instant, :database-position 1}
+                          {:name "mixed_uuid", :database-type "binData", :base-type :type/UUID, :database-position 2}
+                          {:name "mixed_not_uuid", :database-type "binData", :base-type :type/*, :database-position 4}
+                          {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 6,
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/UUID, :database-position 7}}}
+                          {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/*, :database-position 9}}}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 (deftest sync-indexes-info-test
@@ -931,10 +942,29 @@
                     (mt/run-mbql-query dogs)
                     mt/rows)))))))
 
-(deftest ^:parallel encode-mongo-test
-  (is (= "[\n  {\n    \"$match\": {\n      \"_id\": ObjectId(\"67bb6394fb517f3d8397fd09\"),\n      \"uuid\": UUID(\"11111111-1111-1111-1111-111111111111\")\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": \"$_id\",\n      \"uuid\": \"$uuid\",\n      \"nested\": \"$nested\"\n    }\n  },\n  {\n    \"$limit\": 1048575\n  }\n]"
-         (#'mongo/encode-mongo
-          [{"$match" {"_id" (ObjectId. "67bb6394fb517f3d8397fd09")
-                      "uuid" (#'mongo.qp/uuid->bsonbinary #uuid "11111111-1111-1111-1111-111111111111")}}
-           {"$project" #ordered/map (["_id" "$_id"] ["uuid" "$uuid"] ["nested" "$nested"])}
-           {"$limit" 1048575}]))))
+(deftest encode-mongo-test
+  (mt/test-driver :mongo
+    (mt/dataset nested-bindata-coll
+      (testing "a mongo query with filters on different types is properly encoded"
+        (is (= "[\n  {\n    \"$match\": {\n      \"$and\": [\n        {\n          \"_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")\n        },\n        {\n          \"mixed_uuid\": UUID(\"11111111-1111-1111-1111-111111111111\")\n        },\n        {\n          \"$expr\": {\n            \"$eq\": [\n              \"$date\",\n              {\n                \"$dateFromString\": {\n                  \"dateString\": \"2025-01-01T12:00Z\"\n                }\n              }\n            ]\n          }\n        },\n        {\n          \"$expr\": {\n            \"$regexMatch\": {\n              \"input\": \"$text\",\n              \"regex\": \"^a\",\n              \"options\": \"i\"\n            }\n          }\n        },\n        {\n          \"int\": {\n            \"$gte\": 1\n          }\n        },\n        {\n          \"float\": {\n            \"$lt\": 5.5\n          }\n        }\n      ]\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": \"$_id\",\n      \"date\": \"$date\",\n      \"mixed_uuid\": \"$mixed_uuid\",\n      \"int\": \"$int\",\n      \"mixed_not_uuid\": \"$mixed_not_uuid\",\n      \"float\": \"$float\",\n      \"nested_mixed_uuid\": \"$nested_mixed_uuid\",\n      \"nested_mixed_not_uuid\": \"$nested_mixed_not_uuid\",\n      \"text\": \"$text\"\n    }\n  },\n  {\n    \"$limit\": 1048575\n  }\n]"
+               (->> {:filter [:and
+                              [:=
+                               [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
+                               "abcdefabcdefabcdefabcdef"]
+                              [:=
+                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/UUID}]
+                               "11111111-1111-1111-1111-111111111111"]
+                              [:=
+                               [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]
+                               "2025-01-01T12:00:00.00Z"]
+                              [:starts-with
+                               [:field (mt/id :nested-bindata :text) {:base-type :type/Text}]
+                               "a"
+                               {:case-sensitive false}]
+                              [:>= [:field (mt/id :nested-bindata :int) {:base-type :type/Integer}] 1]
+                              [:< [:field (mt/id :nested-bindata :float) {:base-type :type/Float}] 5.5]]
+                     :source-table (mt/id :nested-bindata)}
+                    (mt/mbql-query nested-bindata)
+                    (qp.compile/compile-with-inline-parameters)
+                    :query
+                    (driver/prettify-native-form driver/*driver*))))))))
