@@ -448,7 +448,25 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         { name: t`Full`, value: "full" },
       ],
     },
-    default: getDefaultDataLabelsFormatting(),
+    getDefault: (series, vizSettings) => {
+      const columnSettings = vizSettings["column_settings"];
+      if (columnSettings) {
+        const hasNonDefaultCurrencyStyle = Object.values(columnSettings)
+          .filter(Boolean)
+          .some(value => {
+            return (
+              value["number_style"] === "currency" &&
+              value["currency_style"] !== "symbol"
+            );
+          });
+
+        if (hasNonDefaultCurrencyStyle) {
+          return "full";
+        }
+      }
+
+      return "auto";
+    },
   },
   "graph.max_categories_enabled": {
     hidden: true,
