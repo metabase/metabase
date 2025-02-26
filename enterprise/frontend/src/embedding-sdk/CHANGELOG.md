@@ -1,3 +1,12 @@
+## [0.52.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.13...embedding-sdk-0.52.14) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([#54331](https://github.com/metabase/metabase/issues/54331)) ([835926e](https://github.com/metabase/metabase/commit/835926e61ffb82a63a5a663aedd4f79668b73c32))
+
+
+
 ## [0.52.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.12...embedding-sdk-0.52.13) (2025-02-26)
 
 
