@@ -133,8 +133,7 @@ describe(
       });
     });
 
-    // TODO: restore
-    it.skip("filter values are sandboxed", () => {
+    it("filter values are sandboxed", () => {
       cy.signInAsAdmin();
 
       const filter = {
@@ -188,15 +187,16 @@ describe(
           { id: USER_GROUPS.COLLECTION_GROUP, is_group_manager: false },
         ];
 
+        // TODO: remove random numbers once data retention bug is fixed
         const users: Record<string, any> = {
           California: {
-            email: "can-see-california-data@example.com",
+            email: `can-see-california-data-${Math.floor(Math.random() * 99999)}@example.com`,
             password: "--------",
             user_group_memberships: userGroupMemberships,
             login_attributes: { state: "CA" },
           },
           Washington: {
-            email: "can-see-washington-data@example.com",
+            email: `can-see-washington-data-${Math.floor(Math.random() * 99999)}@example.com`,
             password: "--------",
             user_group_memberships: userGroupMemberships,
             login_attributes: { state: "WA" },
@@ -213,11 +213,6 @@ describe(
         cy.findByRole("menuitem", { name: /People/ }).click();
         cy.log("Modify the sandboxing policy for the 'data' group");
         H.modifyPermission("data", 0, "Sandboxed");
-
-        H.modal().within(() => {
-          cy.findByText(/Change access to this database to .*Sandboxed.*?/);
-          cy.button("Change").click();
-        });
 
         H.modal().findByText(/Restrict access to this table/);
         cy.findByRole("radio", {
