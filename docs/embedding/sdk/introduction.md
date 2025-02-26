@@ -71,6 +71,7 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 ## Changelog
 
 View the SDK's changelog:
+
 * [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 * [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 * [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
@@ -88,7 +89,7 @@ The SDK doesn't support:
 - Subscriptions
 - Alerts
 - Server-side rendering (SSR)
-- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards
+- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
 - React 19
 
 ## Issues, feature requests and support
@@ -97,8 +98,9 @@ The SDK doesn't support:
 
 You can upvote an existing feature request by leaving a thumbs up emoji reaction on the issue. Feel free to leave comments with context that could be useful. [Read more](https://www.metabase.com/docs/latest/troubleshooting-guide/requesting-new-features).
 
-Before creating new issues, please verify if the issue doesn't exist already.
+Before creating new issues, please make sure an issue for your problem or feature request doesn't already exist.
  
-To seek help,
-* paid customers can contact our success team through the usual channels 
-* users of the open source version can post on our [discussion forums](https://discourse.metabase.com/)
+To seek help:
+
+- Paid customers can contact our success team through the usual channels.
+- People using the open-source edition can post on our [discussion forums](https://discourse.metabase.com/).
