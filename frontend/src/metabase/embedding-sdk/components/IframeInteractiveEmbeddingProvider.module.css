@@ -1,3 +1,4 @@
 .InteractivePortalContainer {
   position: fixed;
+  z-index: var(--mb-overlay-z-index);
 }
