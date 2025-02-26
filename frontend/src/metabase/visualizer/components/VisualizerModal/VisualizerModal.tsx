@@ -62,7 +62,7 @@ export function VisualizerModal({
 
     askConfirmation({
       title: t`Are you sure you want to leave?`,
-      message: t`Any unsaved changes in this dialog will be lost.`,
+      message: t`Any unsaved changes will be lost.`,
       confirmButtonText: t`Close`,
       onConfirm: onClose,
     });
