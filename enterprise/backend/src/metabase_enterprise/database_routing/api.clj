@@ -5,7 +5,6 @@
    [metabase.api.database :as api.database]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.events :as events]
    [metabase.util :as u]

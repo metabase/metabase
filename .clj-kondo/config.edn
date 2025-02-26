@@ -342,6 +342,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.sandbox.api.util                          sandbox.api.util
+    metabase-enterprise.database-routing.core                     database-routing
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats

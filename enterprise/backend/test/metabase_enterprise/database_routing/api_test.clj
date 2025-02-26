@@ -1,9 +1,10 @@
 (ns metabase-enterprise.database-routing.api-test
-  (:require [clojure.test :refer [deftest testing is use-fixtures]]
-            [metabase.driver :as driver]
-            [metabase.driver.h2]
-            [metabase.test :as mt]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer [deftest testing is use-fixtures]]
+   [metabase.driver :as driver]
+   [metabase.driver.h2]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn with-h2-fixture [f]
   (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
