@@ -1,10 +1,10 @@
 ---
-title: Interactive embedding quick start
+title: "Interactive embedding quickstart"
 redirect_from:
   - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
-# Interactive embedding quick start
+# Interactive embedding quickstart
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
