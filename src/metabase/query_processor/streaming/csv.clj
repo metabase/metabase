@@ -28,16 +28,6 @@
                                                               (streaming.common/export-filename-timestamp))}
     :write-keepalive-newlines? false}))
 
-;; As a first step towards hollistically solving this issue: https://github.com/metabase/metabase/issues/44556
-;; (which is basically that very large pivot tables can crash the export process),
-;; The post processing is disabled completely.
-;; This should remain `false` until it's fixed
-;; TODO: rework this post-processing once there's a clear way in app to enable/disable it, or to select alternate download options
-(def ^:dynamic *pivot-export-post-processing-enabled*
-  "Flag to enable/disable export post-processing of pivot tables.
-  Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
-  false)
-
 (defn- write-csv
   "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and no support for
   options (we don't use them)."
@@ -101,21 +91,13 @@
                                        (qp.pivot.postprocess/add-totals-settings viz-settings)
                                        qp.pivot.postprocess/add-pivot-measures))
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
-
-          ;; initialize the pivot-data
-          ;; If exporting pivoted, init the pivot data structure
-          ;; Otherwise, just store the pivot-grouping key index
           (when (and pivot? pivot-export-options)
             (reset! pivot-data
-                    (assoc
-                     (qp.pivot.postprocess/init-pivot opts)
-                     :settings viz-settings
-                     :data2 {:cols ordered-cols
-                             :rows []}
+                    {:settings viz-settings
+                     :data {:cols ordered-cols
+                            :rows []}
                      :timezone results_timezone
-                     :format-rows? format-rows?)))
-          (when pivot-grouping-key
-            (swap! pivot-data assoc :pivot-grouping pivot-grouping-key))
+                     :format-rows? format-rows?}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
@@ -134,15 +116,8 @@
               {:keys [pivot-grouping]} (or (:config @pivot-data) @pivot-data)
               group                    (get ordered-row pivot-grouping)]
           (if (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
-            (do
-              ;; NEW PATH
-              (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data2 :rows] conj ordered-row)))
+            (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
 
-              ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
-              ;; so that we can post process the data in finish!
-              (if (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
-                (swap! pivot-data (fn [pivot-data] (qp.pivot.postprocess/add-row pivot-data ordered-row)))
-                (swap! pivot-data (fn [pivot-data] (update pivot-data :rows conj ordered-row)))))
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
@@ -160,7 +135,7 @@
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when (and (contains? @pivot-data :config) (public-settings/enable-pivoted-exports))
-          (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
+          (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data)]
             (write-csv writer [xf-row])))
         (.flush writer)
         (.flush os)

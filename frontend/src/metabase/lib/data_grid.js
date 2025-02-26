@@ -87,13 +87,10 @@ export function multiLevelPivot(data, settings) {
   const {
     columnIndex,
     rowIndex,
-    formattedRowTree,
-    formattedColumnTree,
+    leftHeaderItems,
+    topHeaderItems,
     getRowSection,
   } = formatResults;
-
-  const leftHeaderItems = treeToArray(formattedRowTree.flat());
-  const topHeaderItems = treeToArray(formattedColumnTree.flat());
 
   return {
     leftHeaderItems,
@@ -106,49 +103,6 @@ export function multiLevelPivot(data, settings) {
     columnIndexes: columnColumnIndexes,
     valueIndexes: valueColumnIndexes,
   };
-}
-
-// Take a tree and produce a flat list used to layout the top/left headers.
-// We track the depth, offset, etc to know how to line items up in the headers.
-function treeToArray(nodes) {
-  const a = [];
-  function dfs(nodes, depth, offset, path = []) {
-    if (nodes.length === 0) {
-      return { span: 1, maxDepth: 0 };
-    }
-    let totalSpan = 0;
-    let maxDepth = 0;
-    for (const {
-      children,
-      rawValue,
-      isGrandTotal,
-      isValueColumn,
-      ...rest
-    } of nodes) {
-      const pathWithValue =
-        isValueColumn || isGrandTotal ? null : [...path, rawValue];
-      const item = {
-        ...rest,
-        rawValue,
-        isGrandTotal,
-        depth,
-        offset,
-        hasChildren: children.length > 0,
-        path: pathWithValue,
-      };
-      a.push(item);
-      const result = dfs(children, depth + 1, offset, pathWithValue);
-      item.span = result.span;
-      item.maxDepthBelow = result.maxDepth;
-      offset += result.span;
-      totalSpan += result.span;
-      maxDepth = Math.max(maxDepth, result.maxDepth);
-    }
-    return { span: totalSpan, maxDepth: maxDepth + 1 };
-  }
-
-  dfs(nodes, 0, 0);
-  return a;
 }
 
 // This is the pivot function used in the normal table visualization.
