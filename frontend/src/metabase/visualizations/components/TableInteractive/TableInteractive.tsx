@@ -25,6 +25,7 @@ import {
   getQueryBuilderMode,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import type { MantineTheme } from "metabase/ui";
 import {
   Table,
   useTableInstance,
@@ -47,7 +48,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
-import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RowValue,
@@ -58,11 +59,10 @@ import type {
 import S from "./TableInteractive.module.css";
 import {
   HeaderCellWithColumnInfo,
-  HeaderCellWithColumnInfoProps,
+  type HeaderCellWithColumnInfoProps,
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
-import { MantineTheme } from "metabase/ui";
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -366,6 +366,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
+        getCellClassName: value =>
+          cx({
+            "test-Table-ID": value != null && isID(col),
+            "test-Table-FK": value != null && isFK(col),
+          }),
         header: () => {
           return (
             <HeaderCellWithColumnInfo
@@ -418,6 +423,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       return options;
     });
   }, [
+    theme,
     hasMetadataPopovers,
     data,
     question,
@@ -475,6 +481,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
   });
+  const { measureColumnWidths } = tableProps;
 
   useEffect(() => {
     const currentColNames = new Set(
@@ -488,9 +495,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
     if (!isSame) {
       prevColNamesRef.current = currentColNames;
-      tableProps.measureColumnWidths();
+      measureColumnWidths();
     }
-  }, [cols, tableProps.measureColumnWidths, prevColNamesRef]);
+  }, [cols, measureColumnWidths, prevColNamesRef, getColumnTitle]);
 
   useEffect(() => {
     if (scrollToLastColumn && width && height) {

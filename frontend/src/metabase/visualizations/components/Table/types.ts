@@ -1,5 +1,4 @@
-import "@tanstack/react-table";
-import {
+import type {
   CellContext,
   ColumnDefTemplate,
   ColumnSizingState,
@@ -7,9 +6,11 @@ import {
   RowData,
   Table,
 } from "@tanstack/react-table";
-import { VirtualGrid } from "./hooks/use-virtual-grid";
-import React, { MouseEventHandler, RefObject } from "react";
-import { ColumnsReordering } from "./hooks/use-columns-reordering";
+import type React from "react";
+import type { MouseEventHandler, RefObject } from "react";
+
+import type { ColumnsReordering } from "./hooks/use-columns-reordering";
+import type { VirtualGrid } from "./hooks/use-virtual-grid";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -35,6 +36,7 @@ export type BodyCellBaseProps<TValue> = {
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
+  className?: string;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
 };
@@ -46,6 +48,7 @@ export interface ColumnOptions<TRow extends RowData, TValue> {
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
   cellVariant?: BodyCellVariant;
+  getCellClassName?: (value: TValue, rowIndex: number) => string;
   headerVariant?: HeaderCellVariant;
   headerClickTargetSelector?: string;
   align?: CellAlign;

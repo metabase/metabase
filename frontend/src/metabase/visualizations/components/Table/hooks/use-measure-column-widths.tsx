@@ -5,15 +5,14 @@ import {
 } from "@tanstack/react-table";
 import { useCallback, useEffect, useRef } from "react";
 import type { Root } from "react-dom/client";
-import _ from "underscore";
 
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
+import type { ColumnOptions } from "../types";
 import { pickRowsToMeasure } from "../utils/measure";
-import { ColumnOptions } from "../types";
 
 const EXTRA_COLUMN_SPACING = 14;
 
@@ -77,6 +76,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
               ? getTruncatedColumnSizing(columnSizing, truncateLongCellWidth)
               : columnSizing,
           );
+        }
+
+        // Unmount the entire React tree after measurement is complete
+        if (measureRootTree.current) {
+          measureRootTree.current.unmount();
+          measureRootTree.current = undefined;
         }
       };
 
@@ -163,6 +168,19 @@ export const useMeasureColumnWidths = <TData, TValue>(
       !columnSizing || Object.values(columnSizing).length === 0;
 
     measureColumnWidths(shouldUpdateCurrentWidths);
+
+    // Cleanup function
+    return () => {
+      if (measureRootTree.current) {
+        measureRootTree.current.unmount();
+        measureRootTree.current = undefined;
+      }
+
+      if (measureRootRef.current) {
+        document.body.removeChild(measureRootRef.current);
+        measureRootRef.current = undefined;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

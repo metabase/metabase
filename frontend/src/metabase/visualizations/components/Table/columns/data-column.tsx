@@ -2,16 +2,15 @@ import type {
   CellContext,
   ColumnDef,
   ColumnSizingState,
-  HeaderContext,
 } from "@tanstack/react-table";
 import type React from "react";
+import { memo } from "react";
 
 import { BodyCell } from "metabase/visualizations/components/Table/cell/BodyCell";
 import { HeaderCell } from "metabase/visualizations/components/Table/cell/HeaderCell";
 
 import { MIN_COLUMN_WIDTH } from "../constants";
 import type { ColumnOptions, ExpandedColumnsState } from "../types";
-import { memo } from "react";
 
 const getDefaultCellTemplate = <TRow, TValue>(
   {
@@ -21,7 +20,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
     formatter,
     cellVariant,
     wrap,
-    headerClickTargetSelector,
+    getCellClassName,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
@@ -42,6 +41,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
         onExpand={onExpand}
         variant={cellVariant}
         wrap={wrap}
+        className={getCellClassName?.(value, row.index)}
       />
     );
   };

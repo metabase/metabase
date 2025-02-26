@@ -110,7 +110,7 @@ describe("InteractiveQuestion - multiple interactive questions", () => {
       screen.queryAllByTestId("loading-indicator"),
     );
 
-    const tables = screen.getAllByTestId("TableInteractive-root");
+    const tables = screen.getAllByTestId("table-root");
     const gridcells = screen.getAllByRole("gridcell");
 
     expect(tables).toHaveLength(rows.length);
