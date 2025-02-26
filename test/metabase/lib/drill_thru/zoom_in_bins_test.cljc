@@ -6,7 +6,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.drill-thru.zoom-in-bins :as zoom-in]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.store :as qp.store]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -324,3 +326,83 @@
        (fn [base-case]
          {:custom-query (add-zoom-in-filters (lib.drill-thru.tu/append-filter-stage base-query "count"))
           :expected-query (variant-expected-query-with-count-filter-stage (:expected-query base-case))})))))
+
+(deftest ^:parallel join-order-doesnt-matter-for-zooming-53956
+  (qp.store/with-metadata-provider meta/metadata-provider
+    (let [orders-people-query
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+              (lib/join (lib/join-clause (meta/table-metadata :people)
+                                         [(lib/= (meta/field-metadata :orders :user-id)
+                                                 (meta/field-metadata :people :id))]
+                                         :left-join))
+              (lib/aggregate (lib/count)))
+
+          orders-people-column
+          (-> orders-people-query
+              lib/breakoutable-columns
+              (->> (m/find-first (comp #{"Total"} :display-name)))
+              (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20}))
+
+          orders-people-query-breakout
+          (lib/breakout orders-people-query orders-people-column)
+
+          orders-people-ref
+          (first (lib/breakouts orders-people-query-breakout))
+
+          orders-people-clicked-column
+          (-> (meta/field-metadata :orders :total)
+              (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20}))
+
+          orders-people-zoom
+          (zoom-in/zoom-in-binning-drill orders-people-query-breakout
+                                         -1
+                                         {:column orders-people-clicked-column
+                                          :column-ref orders-people-ref
+                                          :value 80})
+
+          people-orders-query
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+              (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                         [(lib/= (meta/field-metadata :people :id)
+                                                 (meta/field-metadata :orders :user-id))]
+                                         :left-join))
+              (lib/aggregate (lib/count)))
+
+          people-orders-column
+          (-> people-orders-query
+              lib/breakoutable-columns
+              (->> (m/find-first (comp #{"Total"} :display-name)))
+              (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20}))
+
+          people-orders-query-breakout
+          (lib/breakout people-orders-query people-orders-column)
+
+          people-orders-clicked-column
+          (-> (meta/field-metadata :orders :total)
+              (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20})
+              ;; I have to construct this weird column because I cannot find a way to reproduce
+              ;; the columns that lib/existing-breakouts is being passed
+              (assoc :source-alias "Orders"))
+
+          people-orders-ref
+          (first (lib/breakouts people-orders-query-breakout))
+
+          people-orders-zoom
+          (zoom-in/zoom-in-binning-drill people-orders-query-breakout
+                                         -1
+                                         {:column people-orders-clicked-column
+                                          :column-ref people-orders-ref
+                                          :value 80})]
+    ;; make sure we're testing the right thing
+      (assert (get-in people-orders-ref [1 :join-alias]))
+      (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
+    ;; somehow the column (as printed out in console.log) has :source-alias but not :metabase.lib.join/join-alias
+      (assert (:source-alias people-orders-clicked-column))
+
+      (assert (nil? (get-in orders-people-ref [1 :join-alias])))
+      (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
+      (assert (nil? (:source-alias orders-people-clicked-column)))
+
+      (testing "zoom-in binning should not depend on join order"
+        (is (= orders-people-zoom
+               (update people-orders-zoom :column dissoc :source-alias)))))))
