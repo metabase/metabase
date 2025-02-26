@@ -2,15 +2,18 @@ import type { SyntheticEvent, TransitionEventHandler } from "react";
 import { forwardRef, useEffect, useState } from "react";
 import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
-import { useWindowSize } from "react-use";
+import { useLatest, useWindowSize } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import { useNotebookNativePreview } from "metabase/query_builder/hooks/use-notebook-native-preview";
-import { getUiControls } from "metabase/query_builder/selectors";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import {
+  getIsNotebookNativePreviewShown,
+  getUiControls,
+} from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
@@ -73,17 +76,31 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
-  const { disabled, isSmallScreen } = useNotebookNativePreview();
+  const { isSmallScreen, isLargeScreen } = useNotebookScreenSize();
+  const isNotebookNativePreviewShown = useSelector(
+    getIsNotebookNativePreviewShown,
+  );
+  const isNotebookNativePreviewShownRef = useLatest(
+    isNotebookNativePreviewShown,
+  );
+
   useEffect(() => {
-    /**
-     * This effect is meant to run only when:
-     * - component is mounted and the viewport is small (i.e. less than 1280px wide)
-     * - viewport is resized to a small one
-     */
-    if (isSmallScreen && !disabled) {
+    if (isSmallScreen) {
       dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
     }
-  }, [dispatch, isSmallScreen, disabled]);
+  }, [dispatch, isSmallScreen]);
+
+  useEffect(() => {
+    if (isLargeScreen) {
+      const currentSettingValue = isNotebookNativePreviewShownRef.current;
+
+      dispatch(
+        setUIControls({
+          isShowingNotebookNativePreview: currentSettingValue,
+        }),
+      );
+    }
+  }, [dispatch, isLargeScreen, isNotebookNativePreviewShownRef]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -153,7 +170,7 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && !disabled && (
+      {isShowingNotebookNativePreview && typeof isSmallScreen === "boolean" && (
         <>
           {isSmallScreen && (
             <Box pos="absolute" inset={0}>

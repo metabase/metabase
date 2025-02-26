@@ -8,6 +8,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,6 +26,8 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
+  const { isLargeScreen } = useNotebookScreenSize();
+
   const engineType = getEngineNativeType(question.database()?.engine);
   const buttonText = getButtonText({
     isShowingNotebookNativePreview,
@@ -38,7 +41,10 @@ export const ToggleNativeQueryPreview = ({
       }),
     );
 
-    dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    if (isLargeScreen) {
+      // the setting is intentionally remembered only for large screens
+      dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
+    }
 
     trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
   };
