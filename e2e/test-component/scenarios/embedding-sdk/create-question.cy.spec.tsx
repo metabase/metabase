@@ -1,6 +1,6 @@
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
-import { modal, popover } from "e2e/support/helpers";
+import { describeEE, modal, popover } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -9,7 +9,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
+describeEE("scenarios > embedding-sdk > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
