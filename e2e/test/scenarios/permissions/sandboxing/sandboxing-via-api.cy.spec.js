@@ -82,21 +82,11 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       // Orders join Products
       createJoinedQuestion(QUESTION_NAME);
 
-      const userAttribute = "state";
-
       cy.sandboxTable({
         table_id: ORDERS_ID,
         group_id: DATA_GROUP,
         attribute_remappings: {
-          [userAttribute]: [
-            "dimension",
-            [
-              "field",
-              PEOPLE.STATE,
-              { "base-type": "type/Text" },
-              { "stage-number": 0 },
-            ],
-          ],
+          [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
       });
 
