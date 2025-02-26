@@ -103,6 +103,8 @@ describe("useIsParameterPanelSticky", () => {
   it("sets isStickyStateChanging to true and false before and after isSticky is changed", async () => {
     const { result } = setup();
 
+    const unmockRaf = mockRaf();
+
     await waitFor(() => {
       expect(mockObserve).toHaveBeenCalledTimes(1);
     });
@@ -116,6 +118,8 @@ describe("useIsParameterPanelSticky", () => {
     await waitFor(() => {
       expect(result.current.isStickyStateChanging).toBe(false);
     });
+
+    unmockRaf();
   });
 
   it("disconnects the observer on unmount", () => {
@@ -125,3 +129,15 @@ describe("useIsParameterPanelSticky", () => {
     expect(mockDisconnect).toHaveBeenCalledTimes(1);
   });
 });
+
+// JSDOM uses its own implementation of requestAnimationFrame, which appears to
+// be flaky in our tests. This mock is attempt to make results more consistent.
+function mockRaf() {
+  const originalRaf = global.requestAnimationFrame;
+
+  global.requestAnimationFrame = callback => setTimeout(callback, 0);
+
+  return function unmockRaf() {
+    global.requestAnimationFrame = originalRaf;
+  };
+}
