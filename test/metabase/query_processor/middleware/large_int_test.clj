@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.large-int-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))

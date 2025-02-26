@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.large-int
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
   (:require
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :as perf]))
+
+(set! *warn-on-reflection* true)
 
 ;; Min and max integers that can be used in JS without precision loss as in JS they are stored as `double`.
 ;; There is a value for each type to avoid runtime memory allocation.
@@ -53,8 +53,9 @@
       (large-biginteger? n)
       (large-bigdecimal? n)))
 
-(defn maybe-large-int->string [x]
+(defn maybe-large-int->string
   "Converts large integer values to strings and leaves other values unchanged."
+  [x]
   (if (large-integer? x)
     (str x)
     x))
