@@ -13,11 +13,8 @@ import { UploadManagementTable } from "./UploadManagementTable";
 if (hasPremiumFeature("upload_management")) {
   PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
 }
-const FIXME_TEST_BOOLEAN = true;
-if (
-  (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) ||
-  FIXME_TEST_BOOLEAN
-) {
+
+if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
   PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectionModal = GsheetConnectionModal;
   PLUGIN_UPLOAD_MANAGEMENT.GsheetMenuItem = GsheetMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GsheetsSyncStatus = GsheetsSyncStatus;
