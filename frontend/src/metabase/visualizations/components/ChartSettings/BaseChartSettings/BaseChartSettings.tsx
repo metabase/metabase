@@ -208,7 +208,10 @@ export const BaseChartSettings = ({
             />
           </SectionContainer>
         )}
-        <ChartSettingsListContainer className={CS.scrollShow}>
+        <ChartSettingsListContainer
+          data-testid="chartsettings-list-container"
+          className={CS.scrollShow}
+        >
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}

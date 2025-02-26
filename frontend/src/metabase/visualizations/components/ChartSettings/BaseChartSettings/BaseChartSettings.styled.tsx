@@ -29,4 +29,5 @@ export const SectionContainer = styled.div`
 export const ChartSettingsListContainer = styled.div`
   position: relative;
   padding: 1.5rem 0;
+  overflow: scroll;
 `;
