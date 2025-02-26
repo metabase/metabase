@@ -217,7 +217,16 @@ export const CustomExpressionEditor = {
     return CustomExpressionEditor.get().get("[role='textbox']");
   },
   value() {
-    return CustomExpressionEditor.textbox().invoke("text");
+    // Get the multiline text content of the editor
+    return CustomExpressionEditor.textbox()
+      .get(".cm-line")
+      .then(lines => {
+        const text: string[] = [];
+        lines.each((_, line) => {
+          text.push(line.textContent ?? "");
+        });
+        return text.join("\n");
+      });
   },
   completions() {
     return cy.findByTestId("custom-expression-editor-suggestions");
