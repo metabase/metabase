@@ -3,17 +3,15 @@ import {
   type Table as ReactTable,
   flexRender,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { Root } from "react-dom/client";
-import React from "react";
 
+import type { ColumnOptions } from "metabase/data-grid/types";
+import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
-
-import type { ColumnOptions } from "metabase/data-grid/types";
-import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
 
 const EXTRA_COLUMN_SPACING = 14;
 

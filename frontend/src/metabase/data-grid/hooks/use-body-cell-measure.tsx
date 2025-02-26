@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
 
+import { BodyCell } from "metabase/data-grid/components/BodyCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
-import { BodyCell } from "metabase/data-grid/components/BodyCell";
 
 export type CellMeasurer = (content: string, width?: number) => CellSize;
 

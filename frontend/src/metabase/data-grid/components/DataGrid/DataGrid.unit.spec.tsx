@@ -1,14 +1,19 @@
-import { useDataGridInstance } from "../../hooks/use-data-grid-instance";
-import type { ColumnOptions, RowIdColumnOptions } from "../../types";
-import { DataGrid } from "./DataGrid";
+import { type MouseEvent, useMemo } from "react";
+
 import {
-  renderWithProviders,
-  fireEvent,
-  screen,
   act,
+  fireEvent,
+  renderWithProviders,
+  screen,
   within,
 } from "__support__/ui";
-import { useMemo, MouseEvent } from "react";
+import {
+  type ColumnOptions,
+  type RowIdColumnOptions,
+  useDataGridInstance,
+} from "metabase/data-grid";
+
+import { DataGrid } from "./DataGrid";
 
 const sampleData = [
   { id: 1, name: "Item 1", category: "Electronics", price: 99.9 },
@@ -296,7 +301,7 @@ describe("DataGrid", () => {
 
     rows.forEach((row, index) => {
       const cells = within(row).getAllByRole("gridcell");
-      expect(cells[0].textContent).toBe(String(index + 2));
+      expect(cells[0]).toHaveTextContent(String(index + 2));
     });
 
     const firstRow = rows[0];

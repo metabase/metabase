@@ -2,7 +2,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { RowIdCell } from "metabase/data-grid/components/RowIdCell";
 import { RowIdHeaderCell } from "metabase/data-grid/components/RowIdHeaderCell";
-
 import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import type {
   RowIdColumnOptions,

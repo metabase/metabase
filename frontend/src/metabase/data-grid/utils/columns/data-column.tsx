@@ -8,7 +8,6 @@ import { memo } from "react";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell";
 import { HeaderCell } from "metabase/data-grid/components/HeaderCell";
-
 import { MIN_COLUMN_WIDTH } from "metabase/data-grid/constants";
 import type {
   ColumnOptions,

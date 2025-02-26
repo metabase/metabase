@@ -1,5 +1,5 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import { HeaderCell, HeaderCellPill, HeaderCellWrapper } from "./HeaderCell";
 
 describe("HeaderCell", () => {

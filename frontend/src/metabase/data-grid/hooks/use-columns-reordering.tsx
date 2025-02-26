@@ -42,7 +42,9 @@ export const useColumnsReordering = <TData,>(
 
   useEffect(
     function preserveScrollWhenDragging() {
-      if (!isDragging || !gridRef.current) return;
+      if (!isDragging || !gridRef.current) {
+        return;
+      }
 
       const gridElement = gridRef.current;
       previousScrollTop.current = gridElement.scrollTop;

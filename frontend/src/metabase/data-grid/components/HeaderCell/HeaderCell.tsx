@@ -2,14 +2,13 @@ import cx from "classnames";
 import { type ReactNode, forwardRef, memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { Icon } from "metabase/ui";
-
+import { BaseCell } from "metabase/data-grid/components/BaseCell";
 import type {
   HeaderCellBaseProps,
   HeaderCellVariant,
 } from "metabase/data-grid/types";
+import { Icon } from "metabase/ui";
 
-import { BaseCell } from "metabase/data-grid/components/BaseCell";
 import S from "./HeaderCell.module.css";
 
 export interface HeaderCellProps extends HeaderCellBaseProps {

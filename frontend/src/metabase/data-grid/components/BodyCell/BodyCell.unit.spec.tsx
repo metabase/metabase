@@ -1,6 +1,8 @@
-import { screen, fireEvent } from "@testing-library/react";
-import { BodyCell } from "./BodyCell";
+import { fireEvent, screen } from "@testing-library/react";
+
 import { renderWithProviders } from "__support__/ui";
+
+import { BodyCell } from "./BodyCell";
 
 describe("BodyCell", () => {
   it("renders the value correctly", () => {

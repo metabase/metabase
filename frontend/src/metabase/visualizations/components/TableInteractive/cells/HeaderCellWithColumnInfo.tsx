@@ -2,17 +2,16 @@ import type React from "react";
 import { memo } from "react";
 
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
+import {
+  HeaderCellPill,
+  type HeaderCellProps,
+  HeaderCellWrapper,
+} from "metabase/data-grid";
 import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
 import type { MantineTheme } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
-
-import {
-  HeaderCellPill,
-  HeaderCellProps,
-  HeaderCellWrapper,
-} from "metabase/data-grid";
 
 import S from "./HeaderCellWithColumnInfo.module.css";
 
