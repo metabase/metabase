@@ -34,6 +34,7 @@ export function Shortcuts({
           size="xs"
           onClick={shortcut.action}
           leftSection={<Icon name={shortcut.icon} />}
+          tabIndex={hide ? -1 : undefined}
         >
           {shortcut.name}
         </Button>
