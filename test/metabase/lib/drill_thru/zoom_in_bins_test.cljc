@@ -405,4 +405,5 @@
 
       (testing "zoom-in binning should not depend on join order"
         (is (= orders-people-zoom
-               (update people-orders-zoom :column dissoc :source-alias)))))))
+               (some-> people-orders-zoom
+                       (update :column dissoc :source-alias))))))))
