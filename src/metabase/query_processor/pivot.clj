@@ -8,7 +8,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]

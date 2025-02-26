@@ -78,11 +78,6 @@
                        :limit       3}]}
             (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query)))))
 
-(defn- mock-escape-alias
-  "This is based on Oracle's implementation of [[metabase.driver/escape-alias]]."
-  [s]
-  (lib.util/truncate-alias s 30))
-
 (deftest ^:parallel escape-identifiers-correctly-test
   (testing (str "Refs in the second stage need to get escaped using [[metabase.driver/escape-alias]] (indirectly via"
                 " [[metabase.lib.database.methods/escape-alias]]). Simulate Oracle behavior here, which truncates all"

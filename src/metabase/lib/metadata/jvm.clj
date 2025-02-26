@@ -3,8 +3,6 @@
   (:require
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]

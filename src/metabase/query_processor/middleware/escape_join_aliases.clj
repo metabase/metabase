@@ -10,11 +10,9 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -162,28 +160,34 @@
                            (assoc :join-alias (::join-alias options))
                            (dissoc ::join-alias))]))
 
-(defn- update-renamed-field-refs
+(deftype ^:private HiddenQuery [query])
+
+(defn save-original-query
+  "Saves the query at this point for [[update-renamed-field-refs]] after [[escape-join-aliases]] is called.
+   Use HiddenQuery otherwise normalization will try to change it."
+  [query]
+  (assoc query ::original-query (HiddenQuery. query)))
+
+(defn update-renamed-field-refs
   "Look at each stage in the query, and compare visible-columns to the original-query stage.
    Differences are a result of renamed aliases."
-  [query original-query]
+  [query]
+  (log/tracef "Replacing field refs based on escaped aliases\n%s" (u/pprint-to-str query))
   (mu/disable-enforcement
-    (let [original-pmbql-query (lib.query/query (qp.store/metadata-provider) original-query)
-          pmbql-query (lib.query/query (qp.store/metadata-provider) query)
-          result
-          (-> pmbql-query
-              (lib.walk/walk-stages
-               (fn [_q path stage]
-                 (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
-                       aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path pmbql-query path))))
-                       renames (->> (zipmap
-                                     orginal-aliases
-                                     aliases)
-                                    (m/filter-kv not=))]
-                   (lib.util.match/replace
-                     stage
-                     [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)]))))
-              (lib.query/->legacy-MBQL))]
-      (assoc query :query (:query result)))))
+    (let [original-pmbql-query (.-query ^HiddenQuery (::original-query query))
+          result (-> query
+                     (lib.walk/walk-stages
+                      (fn [_q path stage]
+                        (let [orginal-aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path original-pmbql-query path))))
+                              aliases (map :lib/desired-column-alias (lib/visible-columns (:query (lib.walk/query-for-path query path))))
+                              renames (->> (zipmap
+                                            orginal-aliases
+                                            aliases)
+                                           (m/filter-kv not=))]
+                          (lib.util.match/replace
+                            stage
+                            [:field opts (field-name :guard (every-pred string? renames))] [:field opts (driver/escape-alias driver/*driver* field-name)])))))]
+      (dissoc result ::original-query))))
 
 (defn escape-join-aliases
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
@@ -209,10 +213,7 @@
             (add-escaped->original-info query))
           (replace-original-aliases-with-escaped-aliases* [query]
             (log/tracef "Replacing original aliases with escaped aliases\n%s" (u/pprint-to-str query))
-            (replace-original-aliases-with-escaped-aliases query))
-          (update-renamed-field-refs* [query original-query]
-            (log/tracef "Replacing field refs based on escaped aliases\n%s" (u/pprint-to-str query))
-            (update-renamed-field-refs query original-query))]
+            (replace-original-aliases-with-escaped-aliases query))]
     (let [result (if-not (:query query)
                    ;; nothing to do if this is a native query rather than MBQL.
                    query
@@ -224,8 +225,7 @@
                                             merge-original->escaped-maps*
                                             add-escaped-join-aliases-to-fields*)))
                        add-escaped->original-info*
-                       (update :query replace-original-aliases-with-escaped-aliases*)
-                       (update-renamed-field-refs* query)))]
+                       (update :query replace-original-aliases-with-escaped-aliases*)))]
       (log/debugf "=>\n%s" (u/pprint-to-str result))
       result)))
 

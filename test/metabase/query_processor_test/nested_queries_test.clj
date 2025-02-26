@@ -1659,12 +1659,12 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           results (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
                                         (lib/limit 1)))]
-      (mt/with-temp [:model/Card {card-id :id :as card} {:type :question
-                                                         :dataset_query {:native {:query (get-in results [:data :native_form :query])}
-                                                                         :database (mt/id)
-                                                                         :type :native}
-                                                         :result_metadata (get-in results [:data :results_metadata :columns])
-                                                         :name "Spaces in Name"}]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question
+                                                :dataset_query {:native {:query (get-in results [:data :native_form :query])}
+                                                                :database (mt/id)
+                                                                :type :native}
+                                                :result_metadata (get-in results [:data :results_metadata :columns])
+                                                :name "Spaces in Name"}]
         (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
                       (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
 

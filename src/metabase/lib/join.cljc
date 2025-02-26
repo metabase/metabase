@@ -470,7 +470,7 @@
           ;; we leave alone the condition otherwise
           :else &match)))))
 
-(defn- generate-unique-name [metadata-providerable base-name taken-names]
+(defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
@@ -486,7 +486,7 @@
          cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name query s (keep :alias (:joins stage)))))))
+       (generate-unique-name s (keep :alias (:joins stage)))))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
