@@ -116,6 +116,7 @@ export const ArchivedBulkActions = ({
           the bar when any other modals are displayed */}
       {hasSelectedItems && selectedAction === "delete" && (
         <BulkDeleteConfirmModal
+          opened
           selectedItemCount={selectedItemCount}
           onCloseModal={handleCloseModal}
           onBulkDeletePermanently={handleBulkDeletePermanently}

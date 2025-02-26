@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
@@ -8,12 +8,13 @@ import {
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
-import ConfirmContent from "metabase/components/ConfirmContent";
+import { ConfirmationModal } from "metabase/components/ConfirmationModal";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Button from "metabase/core/components/Button";
+import OldButton from "metabase/core/components/Button";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { Button } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
@@ -48,7 +49,6 @@ const DatabaseEditAppSidebar = ({
   isAdmin,
   isModelPersistenceEnabled,
 }: DatabaseEditAppSidebarProps) => {
-  const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
   const isEditingDatabase = !!database.id;
   const isSynced = isSyncCompleted(database);
@@ -87,13 +87,13 @@ const DatabaseEditAppSidebar = ({
     [database.id, deleteDatabase],
   );
 
-  const handleSavedFieldsModalClose = useCallback(() => {
-    discardSavedFieldValuesModal.current.close();
-  }, []);
-
   const handleDeleteDatabaseModalClose = useCallback(() => {
     deleteDatabaseModal.current.close();
   }, []);
+
+  const [discardModalIsOpen, setDiscardModalIsOpen] = useState(false);
+  const handleOpenDiscardModal = () => setDiscardModalIsOpen(true);
+  const handleCloseDiscardModal = () => setDiscardModalIsOpen(false);
 
   return (
     <SidebarRoot>
@@ -102,7 +102,10 @@ const DatabaseEditAppSidebar = ({
           <SidebarGroup.List>
             {!isSynced && (
               <SidebarGroup.ListItem hasMarginTop={false}>
-                <Button disabled borderless>{t`Syncing database…`}</Button>
+                <OldButton
+                  disabled
+                  borderless
+                >{t`Syncing database…`}</OldButton>
               </SidebarGroup.ListItem>
             )}
             <SidebarGroup.ListItem hasMarginTop={false}>
@@ -146,25 +149,29 @@ const DatabaseEditAppSidebar = ({
           <SidebarGroup.List>
             {isSyncCompleted(database) && (
               <SidebarGroup.ListItem hasMarginTop={false}>
-                <ModalWithTrigger
-                  triggerElement={
-                    <Button danger>{t`Discard saved field values`}</Button>
-                  }
-                  ref={discardSavedFieldValuesModal}
+                <Button
+                  variant="filled"
+                  color="danger"
+                  onClick={handleOpenDiscardModal}
                 >
-                  <ConfirmContent
-                    title={t`Discard saved field values`}
-                    onClose={handleSavedFieldsModalClose}
-                    onAction={() => discardDatabaseFieldValues(database.id)}
-                  />
-                </ModalWithTrigger>
+                  {t`Discard saved field values`}
+                </Button>
+                <ConfirmationModal
+                  opened={discardModalIsOpen}
+                  title={t`Discard saved field values`}
+                  onClose={handleCloseDiscardModal}
+                  onConfirm={() => {
+                    discardDatabaseFieldValues(database.id);
+                    handleCloseDiscardModal();
+                  }}
+                />
               </SidebarGroup.ListItem>
             )}
             {isAdmin && (
               <SidebarGroup.ListItem>
                 <ModalWithTrigger
                   triggerElement={
-                    <Button danger>{t`Remove this database`}</Button>
+                    <OldButton danger>{t`Remove this database`}</OldButton>
                   }
                   ref={deleteDatabaseModal}
                 >

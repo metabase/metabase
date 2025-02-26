@@ -12,7 +12,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { GenericError } from "metabase/components/ErrorPages";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
@@ -201,7 +201,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
         )}
       </DatabaseEditMain>
 
-      <LeaveConfirmationModal
+      <LeaveRouteConfirmationModal
         isEnabled={isDirty && !isCallbackScheduled}
         route={route}
       />
