@@ -355,5 +355,5 @@ function abs(a: number | bigint) {
 }
 
 function multiply(a: number | bigint, b: number) {
-  return typeof a === "number" ? a * b : a * BigInt(b);
+  return typeof a === "bigint" ? a * BigInt(b) : a * b;
 }
