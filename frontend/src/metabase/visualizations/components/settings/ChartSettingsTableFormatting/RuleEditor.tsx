@@ -84,7 +84,9 @@ export const RuleEditor = ({
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
-        onChange={handleColumnChange}
+        onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
+          handleColumnChange(e.target.value)
+        }
         isInitiallyOpen={rule.columns.length === 0}
         placeholder={t`Choose a column`}
         multiple
