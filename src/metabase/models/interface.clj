@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -60,6 +61,11 @@
   deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
   on a future deserialization."
   false)
+
+(def ^{:arglists '([x & _args])} dispatch-on-model
+  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -500,6 +506,15 @@
 
 ;; --- predefined hooks
 
+(defmulti non-timestamped-fields
+  "Return a set of fields that should not affect the timestamp of a model."
+  {:arglists '([instance])}
+  dispatch-on-model)
+
+(defmethod non-timestamped-fields :default
+  [_]
+  #{})
+
 (defn now
   "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
@@ -515,11 +530,13 @@
 
 (defn- add-updated-at-timestamp [obj]
   ;; don't stomp on `:updated_at` if it's already explicitly specified.
-  (let [changes-already-include-updated-at? (if (t2/instance? obj)
-                                              (:updated_at (t2/changes obj))
-                                              (:updated_at obj))]
+  (let [changed-fields (keys (if (t2/instance obj)
+                               (t2/changes obj)
+                               obj))
+        changes-already-include-updated-at? (some #{:updated_at} changed-fields)
+        includes-non-ignored-fields? (not-empty (set/difference (set changed-fields) (non-timestamped-fields obj)))]
     (cond-> obj
-      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
+      (and includes-non-ignored-fields? (not changes-already-include-updated-at?)) (assoc :updated_at (now)))))
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
@@ -588,11 +605,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; TODO -- consider moving all this stuff into the `permissions` module
-
-(def ^{:arglists '([x & _args])} dispatch-on-model
-  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
-  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
   "Return a set of permissions object paths that a user must have access to in order to access this object. This should
