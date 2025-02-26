@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import type { MetabaseTheme } from "embedding-sdk"; // eslint-disable-line no-restricted-imports -- to fix after POC
+
 import type { EmbedResource, EmbedResourceType } from "../lib/types";
 
 export type InteractiveV2Settings = {
@@ -7,6 +9,7 @@ export type InteractiveV2Settings = {
   embedResourceId: EmbedResource["id"];
 
   apiKey: string;
+  theme?: MetabaseTheme;
 };
 
 export function useInteractiveV2Settings(

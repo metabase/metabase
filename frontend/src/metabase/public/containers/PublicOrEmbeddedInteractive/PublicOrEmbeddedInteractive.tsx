@@ -19,6 +19,7 @@ export const PublicOrEmbeddedInteractive = ({
   params: { settings: string };
 }) => {
   const settings = useInteractiveV2Settings(settingsKey);
+  const { theme } = settings ?? {};
 
   const authConfig = useMemo(() => {
     return defineMetabaseAuthConfig({
@@ -32,7 +33,7 @@ export const PublicOrEmbeddedInteractive = ({
   }
 
   return (
-    <IframeInteractiveEmbeddingProvider authConfig={authConfig}>
+    <IframeInteractiveEmbeddingProvider authConfig={authConfig} theme={theme}>
       <PublicOrEmbeddedInteractiveInner settings={settings} />
     </IframeInteractiveEmbeddingProvider>
   );

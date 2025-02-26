@@ -20,6 +20,9 @@ import S from "./InteractiveEmbeddingDemo.module.css";
 // or at least create the most restricted API key possible for public usage.
 const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
 
+const DEFAULT_DASHBOARD_ID = 1;
+const DEFAULT_QUESTION_ID = 5;
+
 export const InteractiveEmbeddingDemo = () => {
   const [resourceType, setResourceType] = useState<"dashboard" | "question">(
     "dashboard",
@@ -30,14 +33,26 @@ export const InteractiveEmbeddingDemo = () => {
     if (isBaseEntityID(input)) {
       return input;
     }
+
     const numericId = parseInt(input);
-    return numericId || (resourceType === "dashboard" ? 1 : 5);
+
+    const defaultResourceId =
+      resourceType === "dashboard" ? DEFAULT_DASHBOARD_ID : DEFAULT_QUESTION_ID;
+
+    return numericId || defaultResourceId;
   };
 
   const config: InteractiveV2Settings = {
     apiKey: DEMO_API_KEY,
     embedResourceType: resourceType,
     embedResourceId: getResourceId(resourceId),
+    theme: {
+      colors: {
+        background: "#2d2d30",
+        "text-primary": "#fff",
+        "text-secondary": "#999",
+      },
+    },
   };
 
   const encodedConfig = btoa(JSON.stringify(config));
