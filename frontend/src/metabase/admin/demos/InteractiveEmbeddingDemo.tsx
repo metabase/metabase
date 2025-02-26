@@ -1,5 +1,17 @@
+import { useState } from "react";
+
 import type { InteractiveV2Settings } from "metabase/public/hooks/use-interactive-v2-settings";
-import { Box, Code, Grid, Text } from "metabase/ui";
+import {
+  Box,
+  Center,
+  Code,
+  Grid,
+  Group,
+  Radio,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import S from "./InteractiveEmbeddingDemo.module.css";
 
@@ -9,10 +21,23 @@ import S from "./InteractiveEmbeddingDemo.module.css";
 const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
 
 export const InteractiveEmbeddingDemo = () => {
+  const [resourceType, setResourceType] = useState<"dashboard" | "question">(
+    "dashboard",
+  );
+  const [resourceId, setResourceId] = useState<string>("1");
+
+  const getResourceId = (input: string) => {
+    if (isBaseEntityID(input)) {
+      return input;
+    }
+    const numericId = parseInt(input);
+    return numericId || (resourceType === "dashboard" ? 1 : 5);
+  };
+
   const config: InteractiveV2Settings = {
     apiKey: DEMO_API_KEY,
-    embedResourceType: "dashboard",
-    embedResourceId: 1,
+    embedResourceType: resourceType,
+    embedResourceId: getResourceId(resourceId),
   };
 
   const encodedConfig = btoa(JSON.stringify(config));
@@ -21,36 +46,74 @@ export const InteractiveEmbeddingDemo = () => {
     <iframe src="${window.location.origin}${iframePreviewUrl}"></iframe>
   `;
 
+  const resourceName = resourceType === "dashboard" ? "Dashboard" : "Question";
+
   return (
-    <Box p="lg">
-      <Text size="xl" fw="bold">
-        Simple Interactive Embedding Prototype
-      </Text>
+    <Center>
+      <Box p="lg" w="100%" maw="1200px">
+        <Text size="xl" fw="bold">
+          Simple Interactive Embedding Prototype
+        </Text>
 
-      <Text mb="md" c="text-secondary">
-        This is a prototype of a simplified version of interactive embedding. It
-        is not ready for production usage.
-      </Text>
+        <Text mb="md" c="text-secondary">
+          This is a prototype of a simplified version of interactive embedding.
+          It is not ready for production usage.
+        </Text>
 
-      <Grid>
-        <Grid.Col span={8}>
-          <iframe src={iframePreviewUrl} className={S.PreviewIframe} />
+        <Grid>
+          <Grid.Col span={7}>
+            <iframe src={iframePreviewUrl} className={S.PreviewIframe} />
 
-          <Box p="md">
-            <Text mb="sm">
-              Copy the following code snippet to your website:
-            </Text>
+            <Box p="md">
+              <Text mb="sm">
+                Copy the following code snippet to your website:
+              </Text>
 
-            <Box maw="400px">
-              <Code style={{ wordBreak: "break-all" }} bg="transparent">
-                {iframeExampleSnippet}
-              </Code>
+              <Box maw="400px">
+                <Code style={{ wordBreak: "break-all" }} bg="transparent">
+                  {iframeExampleSnippet}
+                </Code>
+              </Box>
             </Box>
-          </Box>
-        </Grid.Col>
+          </Grid.Col>
 
-        <Grid.Col span={4}></Grid.Col>
-      </Grid>
-    </Box>
+          <Grid.Col span={5}>
+            <Box p="md">
+              <Text size="lg" fw="bold" mb="md">
+                Setup
+              </Text>
+
+              <Box mb="lg">
+                <Text mb="xs">What to embed?</Text>
+
+                <Radio.Group
+                  value={resourceType}
+                  onChange={value =>
+                    setResourceType(value as "dashboard" | "question")
+                  }
+                >
+                  <Group>
+                    <Radio value="dashboard" label="Dashboard" />
+                    <Radio value="question" label="Question" />
+                  </Group>
+                </Radio.Group>
+              </Box>
+
+              <Box>
+                <Text mb="xs">{resourceName} ID</Text>
+                <TextInput
+                  value={resourceId}
+                  onChange={e => setResourceId(e.target.value)}
+                  placeholder={`Enter ${resourceType} ID or Entity ID`}
+                />
+                <Text size="xs" c="text-secondary" mt="xs">
+                  Can be a number or an Entity ID (21-character string)
+                </Text>
+              </Box>
+            </Box>
+          </Grid.Col>
+        </Grid>
+      </Box>
+    </Center>
   );
 };
