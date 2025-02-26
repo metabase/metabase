@@ -891,6 +891,10 @@ describe("scenarios > embedding > full app", () => {
         () => {
           H.restore("postgres-12");
           cy.signInAsAdmin();
+          H.createModelFromTableName({
+            tableName: "orders",
+            modelName: "Orders Model (Postgres)",
+          });
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
           selectTable({ tableName: "Orders", databaseName: "QA Postgres12" });
           clickOnDataSource("Orders");
@@ -910,13 +914,18 @@ describe("scenarios > embedding > full app", () => {
             cy.findByRole("heading", { name: "QA Postgres12" }).should(
               "be.visible",
             );
+
+            cy.icon("chevronleft").click();
+            cy.findByText("Models").click();
+            cy.findByText("Orders Model").should("be.visible");
+            cy.findByText("Orders Model (Postgres)").should("be.visible");
           });
 
           cy.log("close the data picker popover");
           cy.findByTestId("data-step-cell").click();
 
           cy.log(
-            "assert that the data sources should be filtered by the selected database from the starting data source.",
+            "assert that the tables should be filtered by the selected database from the starting data source.",
           );
           H.getNotebookStep("data").button("Join data").click();
           H.popover().within(() => {
@@ -927,6 +936,16 @@ describe("scenarios > embedding > full app", () => {
             cy.findByRole("heading", { name: "QA Postgres12" }).should(
               "be.visible",
             );
+          });
+
+          cy.log(
+            "assert that the models should be filtered by the selected database from the starting data source.",
+          );
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByText("Models").click();
+            cy.findByText("Orders Model").should("not.exist");
+            cy.findByText("Orders Model (Postgres)").should("be.visible");
           });
         },
       );
