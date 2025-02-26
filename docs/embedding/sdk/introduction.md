@@ -19,6 +19,7 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 ## Embedded analytics SDK prerequisites
 
 - React application using React 17 or React 18.
+- Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
 ## Quickstarts
