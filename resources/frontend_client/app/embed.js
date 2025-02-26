@@ -1,8 +1,5 @@
-console.log("--- [Metabase Embed] embed.js active ---");
-
-const error = message => {
-  console.error(`[Metabase Embed] ${message}`);
-};
+const error = message => console.error(`[Metabase Embed] ${message}`);
+const log = message => console.log(`[Metabase Embed] ${message}`);
 
 class MetabaseEmbed {
   constructor(options) {
@@ -30,26 +27,7 @@ class MetabaseEmbed {
       this.iframe.classList.add(this.iframeClassName);
     }
 
-    this.iframe.addEventListener(
-      "message",
-      event => {
-        console.log("[Embed] embed.js received message", event.data);
-
-        if (!event.data) {
-          return;
-        }
-
-        if (event.data.type === "metabase.embed.waitingForAuth") {
-          const payload = {
-            type: "metabase.embed.authenticate",
-            payload: { apiKey: this.apiKey },
-          };
-
-          this.iframe.contentWindow.postMessage(payload, "*");
-        }
-      },
-      false,
-    );
+    window.addEventListener("message", this._onMessage);
 
     let parentContainer = null;
 
@@ -72,9 +50,25 @@ class MetabaseEmbed {
 
   destroy() {
     if (this.iframe) {
+      window.removeEventListener("message", this._onMessage);
       this.iframe.remove();
     }
   }
+
+  _onMessage = event => {
+    if (!event.data) {
+      return;
+    }
+
+    if (event.data.type === "metabase.embed.waitingForAuth") {
+      const payload = {
+        type: "metabase.embed.authenticate",
+        payload: { apiKey: this.apiKey },
+      };
+
+      this.iframe.contentWindow.postMessage(payload, "*");
+    }
+  };
 }
 
 window["metabase.embed"] = {

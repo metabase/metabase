@@ -16,7 +16,7 @@ import {
 } from "metabase/public/hooks/use-interactive-v2-settings";
 import { Box, Center, Loader } from "metabase/ui";
 
-type SimpleInteractivePostMessagePayload = {
+type SimpleInteractivePostMessageAction = {
   type: "metabase.embed.authenticate";
   payload: { apiKey: string };
 };
@@ -60,22 +60,22 @@ export const PublicOrEmbeddedInteractive = ({
       // Send a message to the parent to indicate that the embed is waiting for authentication
       window.parent.postMessage({ type: "metabase.embed.waitingForAuth" }, "*");
 
+      // TODO: verify the sender's origin for security
       const receiveMessage = (event: MessageEvent) => {
-        // TODO: verify the sender's origin for security
+        const action: SimpleInteractivePostMessageAction | null = event.data;
 
-        const payload: SimpleInteractivePostMessagePayload = event.data;
-
-        if (!payload) {
+        if (!action) {
           return;
         }
 
-        if (payload.type === "metabase.embed.authenticate") {
-          const { apiKey } = payload.payload;
-          setApiKey(apiKey);
+        // If the message is an authentication request, set the API key.
+        // TODO: use a more secure method of authentication than API keys.
+        if (action.type === "metabase.embed.authenticate") {
+          setApiKey(action.payload.apiKey);
         }
       };
 
-      window.addEventListener("message", receiveMessage, false);
+      window.addEventListener("message", receiveMessage);
 
       return () => {
         window.removeEventListener("message", receiveMessage);
