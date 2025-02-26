@@ -131,7 +131,7 @@ function _CartesianChart(props: VisualizationProps) {
     setChartSize({ width, height });
   }, []);
 
-  // We can't navigate a user to a particual card from a visualizer viz,
+  // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
   const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
 

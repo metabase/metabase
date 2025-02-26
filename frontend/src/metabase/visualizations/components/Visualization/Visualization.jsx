@@ -457,7 +457,7 @@ class Visualization extends PureComponent {
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
-    // We can't navigate a user to a particual card from a visualizer viz,
+    // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
       this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
