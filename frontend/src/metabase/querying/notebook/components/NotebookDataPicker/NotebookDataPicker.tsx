@@ -33,7 +33,7 @@ interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
-  databases: Database[];
+  databases?: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder?: string;
   canChangeDatabase: boolean;
@@ -196,7 +196,7 @@ function ModernDataPicker({
 type LegacyDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
-  databases: Database[];
+  databases?: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
   canChangeDatabase: boolean;
