@@ -168,17 +168,19 @@ export const InteractiveEmbeddingDemo = () => {
                 </Radio.Group>
               </Box>
 
-              <Box mb="lg">
-                <Text mb="xs">{resourceName} ID</Text>
-                <TextInput
-                  value={resourceId}
-                  onChange={e => setResourceId(e.target.value)}
-                  placeholder={`Enter ${embedMode} ID or Entity ID`}
-                />
-                <Text size="xs" c="text-secondary" mt="xs">
-                  Can be a number or an Entity ID (21-character string)
-                </Text>
-              </Box>
+              {embedMode !== "exploration" && (
+                <Box mb="lg">
+                  <Text mb="xs">{resourceName} ID</Text>
+                  <TextInput
+                    value={resourceId}
+                    onChange={e => setResourceId(e.target.value)}
+                    placeholder={`Enter ${embedMode} ID or Entity ID`}
+                  />
+                  <Text size="xs" c="text-secondary" mt="xs">
+                    Can be a number or an Entity ID (21-character string)
+                  </Text>
+                </Box>
+              )}
 
               <Box>
                 <Text size="lg" fw="bold" mb="md">
