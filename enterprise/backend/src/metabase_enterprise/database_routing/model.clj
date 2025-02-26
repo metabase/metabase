@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.model
-  (:require [toucan2.core :as t2]
-            [methodical.core :as methodical]))
+  (:require
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
 

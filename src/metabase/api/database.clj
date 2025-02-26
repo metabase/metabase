@@ -356,11 +356,9 @@
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
-            include
             include-mirror-databases?]}
     :- [:map
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
