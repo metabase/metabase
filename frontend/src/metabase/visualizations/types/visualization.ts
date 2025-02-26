@@ -107,6 +107,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isVisualizerViz: boolean;
   isEditing: boolean;
   isNightMode: boolean;
   isSettings: boolean;

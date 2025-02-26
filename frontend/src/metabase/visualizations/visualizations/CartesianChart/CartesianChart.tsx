@@ -50,6 +50,7 @@ function _CartesianChart(props: VisualizationProps) {
     headerIcon,
     actionButtons,
     isQueryBuilder,
+    isVisualizerViz,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -130,7 +131,10 @@ function _CartesianChart(props: VisualizationProps) {
     setChartSize({ width, height });
   }, []);
 
-  const canSelectTitle = !!onChangeCardAndRun;
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
     settings,

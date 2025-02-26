@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
 import { getColumnVizSettings } from "metabase/visualizations";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -16,6 +18,10 @@ import {
   extractReferencedColumns,
 } from "./column";
 import { createDataSource } from "./data-source";
+
+export function getDefaultVisualizationName() {
+  return t`My new visualization`;
+}
 
 const areaBarLine = ["area", "bar", "line"];
 

@@ -32,6 +32,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
@@ -467,6 +468,8 @@ class Visualization extends PureComponent {
 
     const CardVisualization = visualization;
 
+    const isVisualizerViz = dashcard && isVisualizerDashboardCard(dashcard);
+
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
@@ -476,6 +479,11 @@ class Visualization extends PureComponent {
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
+
+    // We can't navigate a user to a particular card from a visualizer viz,
+    // so title selection is disabled in this case
+    const canSelectTitle =
+      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
     return (
       <ErrorBoundary
@@ -498,9 +506,7 @@ class Visualization extends PureComponent {
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
+                  canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
             </VisualizationHeader>
@@ -535,6 +541,7 @@ class Visualization extends PureComponent {
                 )}
                 isPlaceholder={isPlaceholder}
                 isMobile={isMobile}
+                isVisualizerViz={isVisualizerViz}
                 series={series}
                 settings={settings}
                 card={series[0].card} // convenience for single-series visualizations

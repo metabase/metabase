@@ -134,7 +134,9 @@ export function DashCardVisualization({
   downloadsEnabled,
   editDashboard,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
+  const datasets = useSelector(
+    state => getDashcardData(state, dashcard.id) ?? {},
+  );
   const [isVisualizerModalOpen, setIsVisualizerModalOpen] = useState(false);
 
   const dispatch = useDispatch();
@@ -178,7 +180,6 @@ export function DashCardVisualization({
       !!dashcard?.visualization_settings?.visualization;
 
     if (
-      !datasets ||
       !dashcard ||
       !_series ||
       _series.length === 0 ||
@@ -206,6 +207,7 @@ export function DashCardVisualization({
       {
         card: {
           display,
+          name: settings["card.title"],
           visualization_settings: settings,
         },
 
