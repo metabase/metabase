@@ -11,8 +11,13 @@
 (defn files
   "Formats or checks a list of files."
   [check? file-paths]
+  (prn ["check?" check?])
   (let [mode (->mode check?)]
-    (printf (c/green "%sing %s...\n") mode (str/join ", " file-paths)) (flush)
+    (when-not (seq file-paths)
+      (println (str "No files to " mode "."))
+      (System/exit 0))
+    (printf (c/green "%sing %s...\n") mode (str/join ", " file-paths))
+    (flush)
     (let [cmd (str "clojure -T:cljfmt " mode " '" (pr-str {:paths file-paths}) "'")
           format-result (try (u/sh cmd)
                              (catch Exception e {:out (str "Error in cljfmt: " (.getMessage e))}))]

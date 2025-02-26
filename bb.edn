@@ -13,8 +13,8 @@
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-staged" "Format staged files"]
               ["./bin/mage cljfmt-staged -c" "Check staged files"]]
-   :options [{:id :check :short "-c" :long "--force-check" :default false}]
-   :task     (format/staged (cli/menu! (current-task)))}
+   :options [{:id :check? :short "-c" :long "--force-check" :default false}]
+   :task     (format/staged (:check? (cli/menu! (current-task))))}
 
   cljfmt-file
   {:doc      "Runs cljfmt on the given files/directories"
@@ -22,9 +22,9 @@
    :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
               ["./bin/mage format-file src" "Format all files in src"]
               ["./bin/mage format-file -c src" "Check all files in src"]]
-   :options [{:id :check :short "-c" :long "--force-check" :default false}]
-   :task (let [{:keys [args check]} (cli/menu! (current-task))]
-           (format/files {:check check} args))}
+   :options [{:id :check? :short "-c" :long "--force-check" :default false}]
+   :task (let [{:keys [args check?]} (cli/menu! (current-task))]
+           (format/files check? args))}
 
   cljfmt-all
   {:doc      "Runs cljfmt on all (clojure) files"
@@ -64,14 +64,15 @@
                                     *command-line-args*))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl server for bb tasks development"
+  {:doc      "Starts the babashka nrepl: helpful for for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
-   :task     (do (spit ".nrepl-port" 1667)
-                 (println (c/green "Started nrepl server!"))
-                 (nrepl.server/start-server!)
-                 (deref (promise)))}
+   :task     (do
+               (cli/menu! (current-task))
+               (spit ".nrepl-port" 1667)
+               (nrepl.server/start-server!)
+               (deref (promise)))}
 
   jar-download
   {:doc      "Given a version, downloads a metabase jar"

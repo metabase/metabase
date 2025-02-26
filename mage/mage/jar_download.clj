@@ -4,7 +4,11 @@
    [clojure.java.io :as io]
    [clojure.repl :refer [pst]]
    [clojure.string :as str]
-   [mage.util :as u]))
+   [mage.color :as c]
+   [mage.util :as u])
+  (:import [java.io File]))
+
+(set! *warn-on-reflection* true)
 
 (defn- url [version]
   (str "https://downloads.metabase.com"
@@ -12,14 +16,22 @@
        "/v"
        version "/metabase.jar"))
 
+(defn- dir->file ^File [version dir]
+  (io/file (str dir "/metabase_" version ".jar")))
+
 (defn- download [version dir]
   (io/copy
    (:body (curl/get (url version) {:as :stream}))
-   (io/file (str dir "/metabase_" version ".jar"))))
+   (dir->file version dir)))
 
 (defn- download-jar! [version dir]
+  (when (.exists (dir->file version dir))
+    (println (c/blue "Found existing jar at " (dir->file version dir) " deleting it now."))
+    (io/delete-file (dir->file version dir))
+    (println (c/green "Deleted.\n")))
   (try
-    (println (str "Downloading from " (url version) " ..."))
+    (println (str "Downloading from: " (url version)
+                  "\n              to: " (dir->file version dir) " ..."))
     (download version dir)
     (println (str "Downloaded " version ".jar to " dir))
     (catch Exception e
