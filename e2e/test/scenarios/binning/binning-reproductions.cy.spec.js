@@ -110,6 +110,7 @@ describe("binning related reproductions", () => {
     H.popover()
       .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
+      .realHover()
       .click();
     H.popover().last().findByText("Quarter").click();
 
@@ -187,6 +188,7 @@ describe("binning related reproductions", () => {
       cy.findAllByRole("listitem", { name: "Created At" })
         .eq(0)
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
     });
 
