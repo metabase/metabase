@@ -179,7 +179,7 @@ export function FormCollectionAndDashboardPicker({
             ? await fetchDashboard({ id: dashboardId }).then(res => res.data)
             : undefined;
           const defaultTabId = dashboard?.tabs?.length
-            ? "" + dashboard.tabs[0].id
+            ? String(dashboard.tabs[0].id)
             : undefined;
           dashboardTabHelpers.setValue(defaultTabId);
         } catch (err) {

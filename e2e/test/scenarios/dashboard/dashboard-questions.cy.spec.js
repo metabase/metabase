@@ -916,6 +916,130 @@ describe("Dashboard > Dashboard Questions", () => {
         "Average Quantity by Month Question",
       );
     });
+
+    it("should be able to save a question to a specific tab", () => {
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+
+      const NO_TABS_DASH_NAME = "Orders in a dashboard";
+      const TABS_DASH_NAME = "Dashboard with tabs";
+      const TAB_ONE_NAME = "First tab";
+      const TAB_TWO_NAME = "Second tab";
+      const DASHBOARD_QUESTION_NAME = "A tab two kind of question";
+
+      H.createDashboardWithTabs({
+        name: TABS_DASH_NAME,
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: TAB_TWO_NAME },
+        ],
+        dashcards: [],
+      });
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+
+      H.newButton("SQL query").click();
+      H.NativeEditor.type("SELECT 123;");
+
+      H.queryBuilderHeader().button("Save").click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          NO_TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME)
+          .click();
+      });
+
+      H.popover().findByText(TAB_TWO_NAME).click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should(
+          "have.value",
+          TAB_TWO_NAME,
+        );
+
+        cy.findByLabelText(/Name/).type(DASHBOARD_QUESTION_NAME);
+
+        cy.findByText("Save").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_TWO_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
+      });
+    });
+
+    it("should allow a user to copy a question into a tab", () => {
+      const DASHBOARD_QUESTION_NAME = "A tab two kind of question";
+      const TABS_DASH_NAME = "Dashboard with tabs";
+      const TAB_ONE_NAME = "First tab";
+      const TAB_TWO_NAME = "Second tab";
+
+      H.createDashboardWithTabs({
+        name: TABS_DASH_NAME,
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: TAB_TWO_NAME },
+        ],
+        dashcards: [],
+      });
+
+      H.visitQuestion(S.ORDERS_COUNT_QUESTION_ID);
+      H.openQuestionActions();
+      H.popover().findByText("Duplicate").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME);
+        cy.findByText("Duplicate").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_ONE_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
+      });
+    });
   });
 
   describe("limited users", () => {

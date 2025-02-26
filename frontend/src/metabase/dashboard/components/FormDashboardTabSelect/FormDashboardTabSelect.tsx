@@ -23,7 +23,7 @@ export const FormDashboardTabSelect = ({
   useEffect(
     function updateDefaultTabOnDashboardChange() {
       const firstTabId = currentData?.tabs?.length
-        ? "" + currentData.tabs[0].id
+        ? String(currentData.tabs[0].id)
         : undefined;
       dashboardTabHelpers.setValue(firstTabId);
     },

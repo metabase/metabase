@@ -94,7 +94,7 @@ describe("FormDashboardTabSelect", () => {
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
-      { dashboard_tab_id: "" + FOO_TAB_1.id },
+      { dashboard_tab_id: String(FOO_TAB_1.id) },
       expect.anything(),
     );
   });
@@ -114,7 +114,7 @@ describe("FormDashboardTabSelect", () => {
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
-      { dashboard_tab_id: "" + FOO_TAB_2.id },
+      { dashboard_tab_id: String(FOO_TAB_2.id) },
       expect.anything(),
     );
   });
@@ -138,7 +138,7 @@ describe("FormDashboardTabSelect", () => {
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
-      { dashboard_tab_id: "" + FOO_TAB_1.id },
+      { dashboard_tab_id: String(FOO_TAB_1.id) },
       expect.anything(),
     );
   });
@@ -176,7 +176,7 @@ describe("FormDashboardTabSelect", () => {
 
     await userEvent.click(screen.getByText("Submit"));
     expect(onSubmit).toHaveBeenCalledWith(
-      { dashboard_tab_id: "" + BAZ_TAB_1.id },
+      { dashboard_tab_id: String(BAZ_TAB_1.id) },
       expect.anything(),
     );
   });
