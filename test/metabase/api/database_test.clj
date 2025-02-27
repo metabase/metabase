@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -752,7 +753,9 @@
                      "Total"
                      "User ID"}
                    (into #{} (map :display_name) (:cols (:data response)))))
-            (is (seq (:rows (:data response))))))
+            (is (seq (:rows (:data response))))
+            (is (empty? (set/intersection #{:json_query :context :cached :average_execution_time} (set (keys response)))))
+            (is (=  (mt/id :orders) (:table_id response)))))
 
         (testing "resolves case-insensitive table references"
           (mt/user-http-request :rasta :get 200 (format "database/%d/table/PUBLIC.ORDERS" db-id))
