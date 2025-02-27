@@ -34,7 +34,6 @@ export function Shortcuts({
           size="xs"
           onClick={shortcut.action}
           leftSection={<Icon name={shortcut.icon} />}
-          autoFocus={false}
           tabIndex={hide ? -1 : undefined}
         >
           {shortcut.name}
