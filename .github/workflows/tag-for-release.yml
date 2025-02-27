@@ -135,6 +135,9 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
     - name: Get correct version number
       run: | # bash
         if [ '${{matrix.edition}}' == 'ee' ]; then

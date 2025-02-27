@@ -35,6 +35,9 @@ jobs:
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
       - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
         uses: ./.github/actions/fetch-artifact
         with:

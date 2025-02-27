@@ -141,6 +141,9 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
       with:
