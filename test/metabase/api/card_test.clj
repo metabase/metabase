@@ -3585,7 +3585,14 @@
            {:fields api.test-util/all-have-entity-ids?
             :tables api.test-util/all-have-entity-ids?
             :databases api.test-util/all-have-entity-ids?}
-           (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))))
+           (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
+    (testing "Parameterized native query"
+      (is (=?
+           {:fields api.test-util/all-have-entity-ids?
+            :tables api.test-util/all-have-entity-ids?
+            :databases api.test-util/all-have-entity-ids?}
+           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
