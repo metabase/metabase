@@ -671,19 +671,27 @@ export const cardsShouldThrowErrors = ({
       nestedQuestionInDashboardPath,
     );
     cardShouldThrowError("Model", "/api/dataset", modelPayload);
-    // TODO: Change to adhocQuestionShouldThrowError
-    // TODO: Change to adhocQuestionShouldThrowError
-    // TODO: Change to adhocQuestionShouldThrowError
-    // TODO: Change to adhocQuestionShouldThrowError
-    // TODO: Change to adhocQuestionShouldThrowError
-    // TODO: Change to adhocQuestionShouldThrowError
-    adhocQuestionShouldBeFiltered(customColumnType);
+    adhocQuestionShouldThrowError(customColumnType);
   });
 };
 
 const adhocQuestionShouldBeFiltered = (customColumnType?: CustomColumnType) => {
   createAdhocQuestion({ customColumnType });
   renderedResultsShouldBeFiltered();
+};
+
+const adhocQuestionShouldThrowError = (customColumnType?: CustomColumnType) => {
+  createAdhocQuestion({ customColumnType });
+  cy.findAllByText("Gizmos").should("not.exist");
+  cy.findAllByText("Widgets").should("not.exist");
+  cy.findByText(/There was a problem with your question/i).should("be.visible");
+  cy.intercept("POST", "/api/dataset").as("dataset");
+  cy.wait("@dataset").then(({ response }) => {
+    expect(response?.statusCode).to.equal(202);
+    expect(response?.body.via[0].status).to.equal("failed");
+    expect(response?.body.data.rows).to.have.length(0);
+    expect(response?.body.data.cols).to.have.length(0);
+  });
 };
 
 const adhocQuestionShouldBeUnfiltered = (
