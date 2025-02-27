@@ -55,8 +55,9 @@ export const InteractiveEmbeddingDemo = () => {
       return;
     }
 
+    // Setting questionId to "new" will embed a query builder.
     if (embedMode === "exploration") {
-      return;
+      return "new";
     }
 
     if (isBaseEntityID(input)) {
