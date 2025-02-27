@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -127,7 +128,7 @@
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (m/find-first #(= (:name %) "NAME") (lib.filter/filterable-columns query))]
+        column (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
                               {:operator :is-empty, :column column}
@@ -184,11 +185,21 @@
         (lib.filter/= "A" column)
         (lib.filter/is-null column)
         (lib.expression/concat column "A")
-        (lib.filter/and (lib.filter/= column "A") true)))))
+        (lib.filter/and (lib.filter/= column "A") true)))
+    (testing "should correctly propagate `:field-id` when destructuring a filter clause in a nested query"
+      (let [query         (lib.tu/venues-query)
+            query         (-> query
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (m/find-first #(= (:name %) "NAME") (lib/breakoutable-columns query)))
+                              (lib/append-stage))
+            filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
+            filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
+        (is (=? {:field-id (meta/id :venues :name)}
+                (lib.field/field-values-search-info query (:column filter-parts))))))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
-        column        (m/find-first #(= (:name %) "PRICE") (lib.filter/filterable-columns query))
+        column        (m/find-first #(= (:name %) "PRICE") (lib/filterable-columns query))
         bigint-string "9007199254740993"
         bigint-value  (u.number/parse-bigint bigint-string)]
     (testing "clause to parts roundtrip"
@@ -224,8 +235,8 @@
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column    (m/find-first #(= (:name %) "LATITUDE") (lib.filter/filterable-columns query))
-        lon-column    (m/find-first #(= (:name %) "LONGITUDE") (lib.filter/filterable-columns query))
+        lat-column    (m/find-first #(= (:name %) "LATITUDE") (lib/filterable-columns query))
+        lon-column    (m/find-first #(= (:name %) "LONGITUDE") (lib/filterable-columns query))
         bigint-string "9007199254740993"
         bigint-value  (u.number/parse-bigint bigint-string)]
     (testing "clause to parts roundtrip"
@@ -299,7 +310,7 @@
   (let [query  (-> (lib.tu/venues-query)
                    (lib.expression/expression "Boolean"
                                               (lib.filter/is-empty (meta/field-metadata :venues :name))))
-        column (m/find-first #(= (:name %) "Boolean") (lib.filter/filterable-columns query))]
+        column (m/find-first #(= (:name %) "Boolean") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)  {:operator :is-null, :column column}
                               (lib.filter/not-null column) {:operator :not-null, :column column}
@@ -390,7 +401,7 @@
 
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :products))
-        column (m/find-first #(= (:name %) "CREATED_AT") (lib.filter/filterable-columns query))]
+        column (m/find-first #(= (:name %) "CREATED_AT") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
                               {:column column
@@ -442,7 +453,7 @@
 
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib/query meta/metadata-provider (meta/table-metadata :products))
-        column (m/find-first #(= (:name %) "CREATED_AT") (lib.filter/filterable-columns query))]
+        column (m/find-first #(= (:name %) "CREATED_AT") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
                               {:operator :is-null
@@ -539,7 +550,7 @@
                            (lib.tu/mock-metadata-provider {:fields [time-field]})
                            meta/metadata-provider)
         query             (lib/query metadata-provider (meta/table-metadata :products))
-        column            (m/find-first #(= (:name %) "TIME") (lib.filter/filterable-columns query))]
+        column            (m/find-first #(= (:name %) "TIME") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
                               {:operator :is-null, :column column}
@@ -584,7 +595,7 @@
 
 (deftest ^:parallel default-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (m/find-first #(= (:name %) "PRICE") (lib.filter/filterable-columns query))]
+        column (m/find-first #(= (:name %) "PRICE") (lib/filterable-columns query))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}}]
