@@ -75,3 +75,14 @@ export const EditorOnly = {
     saveToCollection: undefined,
   },
 };
+
+export const CreateQuestion = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args} />
+      </Box>
+    );
+  },
+  args: { questionId: "new" },
+};

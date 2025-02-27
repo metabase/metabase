@@ -12,6 +12,10 @@ If you're developing locally, you can also set up authentication with [API keys]
 
 ## Setting up JWT SSO
 
+Prerequisites:
+
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
+
 To set up JWT SSO with Metabase and your app, you'll need to:
 
 1. [Enable JWT SSO in your Metabase](#1-enable-jwt-sso-in-your-metabase)
