@@ -76,7 +76,7 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
-  const { isSmallScreen, isLargeScreen } = useNotebookScreenSize();
+  const { isSmallScreen } = useNotebookScreenSize();
   const isNotebookNativePreviewShown = useSelector(
     getIsNotebookNativePreviewShown,
   );
@@ -84,11 +84,7 @@ export const NotebookContainer = ({
   useEffect(() => {
     if (isSmallScreen) {
       dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
-    }
-  }, [dispatch, isSmallScreen]);
-
-  useEffect(() => {
-    if (isLargeScreen) {
+    } else {
       const currentSettingValue = isNotebookNativePreviewShown;
 
       dispatch(
@@ -97,7 +93,7 @@ export const NotebookContainer = ({
         }),
       );
     }
-  }, [dispatch, isLargeScreen, isNotebookNativePreviewShown]);
+  }, [dispatch, isSmallScreen, isNotebookNativePreviewShown]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
