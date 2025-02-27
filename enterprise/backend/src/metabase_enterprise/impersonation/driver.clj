@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.driver.impersonation
+(ns metabase-enterprise.impersonation.driver
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -38,7 +38,7 @@
     ;; about block permissions here because it would have been enforced earlier in the QP middleware stack.
     (not (contains? perm-values :unrestricted))))
 
-(defn- impersonation-enabled-for-db?
+(defn impersonation-enabled-for-db?
   "Is impersonation enabled for the given database, for any groups?"
   [db-or-id]
   (boolean
@@ -61,7 +61,7 @@
                (enforce-impersonations? db-or-id conn-impersonations group-ids))
       conn-impersonations)))
 
-(defn- connection-impersonation-role
+(defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found, or the role is not a single string."
@@ -70,7 +70,7 @@
     (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
           role-attributes      (set (map :attribute conn-impersonations))
           conflicting-sandbox? (when api/*current-user-id* (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id)))]
-      (when conflicting-sandbox?
+      (when (and (seq conn-impersonations) conflicting-sandbox?)
         (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                         {:user-id api/*current-user-id*
                          :database-id (u/id database-or-id)})))

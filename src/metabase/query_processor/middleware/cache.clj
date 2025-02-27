@@ -220,9 +220,6 @@
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy] :as query}]
   (and (public-settings/enable-query-caching)
        (some? cache-strategy)
-       ;; sometimes, e.g. on scheduled cache refresh, we don't have a user here
-       (or (nil? api/*current-user-id*)
-           (not (perms/impersonation-enforced-for-db? (:database query))))
        (not= (:type cache-strategy) :nocache)))
 
 (defn maybe-return-cached-results
