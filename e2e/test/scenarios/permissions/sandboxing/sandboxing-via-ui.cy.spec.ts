@@ -3,13 +3,14 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
   type SandboxPolicy,
-  testCardsOnlyIncludeGizmos as cardsShouldOnlyShowGizmos,
-  cardsHaveRowsWithGizmosAndWidgets as cardsShouldShowGizmosAndWidgets,
+  cardsShouldOnlyShowGizmos,
+  cardsShouldShowGizmosAndWidgets,
   configureSandboxPolicy,
   configureUser,
-  createTestCards as createCardsShowingGizmosAndWidgets,
+  createCardsShowingGizmosAndWidgets,
   signInAsSandboxedUser,
   sandboxingUser as user,
+  cardsShouldThrow,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -64,64 +65,6 @@ describe(
         const policy: SandboxPolicy = {
           filterTableBy: "column",
           columnType: "regular",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
-      });
-
-      // This behavior might be genuinely broken?
-      // The test fails at the end because the question errors with:
-      // Invalid query: {:stages [["Invalid :expression reference: no expression named {:base-type :type/Boolean}"]]}
-      it.skip("to a table filtered by a custom boolean column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "boolean",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
-      });
-
-      // This might also be broken? The query errors with: Invalid output:
-      // {:stages [["Invalid :expression reference: no expression named
-      // {:base-type :type/Text}, got: {:lib/type :mbql.stage/mbql, :source-table
-      // 8, :expressions [[:concat {:lib/uuid
-      // \"ea22b763-c949-4594-8c74-9f035f2ab082\", :lib/expression-name \"Custom
-      // category\", :ident \"wVGz1eygzUKw_KsNuclmb\"} \"Category is \" [:field
-      // {:base-type :type/Text, :lib/uuid
-      // \"0b940027-7008-4cbf-8bf7-accb66167ed2\", :effective-type :type/Text}
-      // 58]]], :parameters [{:type :category, :target [:dimension [:expression
-      it.skip("to a table filtered by a custom string column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "string",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
-      });
-
-      // Also fails with a similar error
-      it.skip("to a table filtered by a custom number column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "number",
         };
         createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
@@ -279,6 +222,53 @@ describe(
             .find("li")
             .should("have.length", 2);
         });
+      });
+    });
+
+    describe("we expect an error - and no data to be shown - when applying a sandbox policy", () => {
+      it("to a table filtered by a custom boolean column", () => {
+        const policy: SandboxPolicy = {
+          filterTableBy: "column",
+          columnType: "custom",
+          customColumnType: "boolean",
+        };
+        createCardsShowingGizmosAndWidgets(policy);
+        signInAsSandboxedUser();
+        cardsShouldShowGizmosAndWidgets(policy);
+        const { attributeKey } = configureUser(policy);
+        configureSandboxPolicy({ ...policy, attributeKey });
+        signInAsSandboxedUser();
+        cardsShouldThrow(policy);
+      });
+
+      it("to a table filtered by a custom string column", () => {
+        const policy: SandboxPolicy = {
+          filterTableBy: "column",
+          columnType: "custom",
+          customColumnType: "string",
+        };
+        createCardsShowingGizmosAndWidgets(policy);
+        signInAsSandboxedUser();
+        cardsShouldShowGizmosAndWidgets(policy);
+        const { attributeKey } = configureUser(policy);
+        configureSandboxPolicy({ ...policy, attributeKey });
+        signInAsSandboxedUser();
+        cardsShouldThrow(policy);
+      });
+
+      it("to a table filtered by a custom number column", () => {
+        const policy: SandboxPolicy = {
+          filterTableBy: "column",
+          columnType: "custom",
+          customColumnType: "number",
+        };
+        createCardsShowingGizmosAndWidgets(policy);
+        signInAsSandboxedUser();
+        cardsShouldShowGizmosAndWidgets(policy);
+        const { attributeKey } = configureUser(policy);
+        configureSandboxPolicy({ ...policy, attributeKey });
+        signInAsSandboxedUser();
+        cardsShouldThrow(policy);
       });
     });
   },
