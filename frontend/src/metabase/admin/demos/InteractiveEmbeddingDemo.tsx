@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { CopyButton } from "metabase/components/CopyButton";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import type { InteractiveV2Settings } from "metabase/public/hooks/use-interactive-v2-settings";
@@ -109,9 +110,8 @@ export const InteractiveEmbeddingDemo = () => {
   const embed = new MetabaseEmbed({
     target: "#metabase-embed-container",
 
-    // IMPORTANT: You must create a least privileged and
-    // sandboxed API key for public usage. Otherwise,
-    // you risk exposing Metabase to unwanted access.
+    // IMPORTANT: You must create a least privileged and sandboxed API key for
+    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
     apiKey: "<INSERT_API_KEY_HERE>"
 
     url: "${origin}${iframePreviewUrl}",
@@ -181,18 +181,23 @@ export const InteractiveEmbeddingDemo = () => {
               className={S.PreviewIframeContainer}
             ></Box>
 
-            <Box p="md">
+            <Box mt="md">
               <Text mb="sm">
                 Copy the following code snippet to your website:
               </Text>
 
-              <Box maw="400px">
+              <Box p="md" className={S.CodeContainer}>
                 <Code
                   style={{ wordBreak: "break-all", whiteSpace: "pre-wrap" }}
                   bg="transparent"
                 >
                   {iframeExampleSnippet}
                 </Code>
+
+                <CopyButton
+                  value={iframeExampleSnippet}
+                  className={S.CopyButton}
+                />
               </Box>
             </Box>
           </Grid.Col>

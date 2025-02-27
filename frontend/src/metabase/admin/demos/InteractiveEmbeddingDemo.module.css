@@ -8,3 +8,15 @@
   width: 100%;
   height: 100%;
 }
+
+.CodeContainer {
+  position: relative;
+  border: 1px solid var(--mb-color-border-alpha-30);
+}
+
+.CopyButton {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+  cursor: pointer;
+}
