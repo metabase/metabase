@@ -236,6 +236,7 @@ export function PublicOrEmbeddedDashboardView({
                 downloadsEnabled={downloadsEnabled}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
+                handleSetEditing={_.noop}
               />
             </DashboardContainer>
           );
