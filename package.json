@@ -370,7 +370,7 @@
     "path-to-regexp": "^0.1.12"
   },
   "scripts": {
-    "build": "yarn build:cljs && yarn build:js",
+    "build": "yarn build:cljs && yarn build:js && yarn build:javascript-sdk",
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-embedding-sdk:pure --watch",
@@ -381,7 +381,7 @@
     "build-hot:cljs": "yarn && shadow-cljs watch app",
     "build-hot:js": "yarn && yarn clean-dev:js && NODE_OPTIONS=--max-old-space-size=8196 WEBPACK_BUNDLE=hot rspack serve",
     "build-hot:js-wait": "yarn wait:cljs; yarn build-hot:js",
-    "build-javascript-sdk": "(cd frontend/src/scripting/core-api; yarn)",
+    "build:javascript-sdk": "(cd frontend/src/scripting/core-api; yarn)",
     "build-pure:cljs": "yarn clean-dev:cljs && shadow-cljs compile app",
     "build-release": "yarn build-release:cljs && yarn build-release:js",
     "build-release:cljs": "yarn clean-release:cljs && shadow-cljs release app",
