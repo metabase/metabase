@@ -467,7 +467,7 @@ const createCustomView = (customViewType: CustomViewType) => {
 
 /** Create a variety of cards to test a sandboxing policy: a question, model,
  * saved question, etc. */
-export const createTestCards = ({
+export const createCardsShowingGizmosAndWidgets = ({
   filterTableBy,
   columnType,
   customColumnType,
@@ -495,8 +495,8 @@ export const createTestCards = ({
 };
 
 /** The endpoint should include results containing Gizmos and Widgets */
-export const shouldBeUnfiltered = (
-  entityDescription: string,
+export const rowsShouldIncludeGizmosAndWidgets = (
+  cardDescription: string,
   endpoint: string,
   payload?: any,
 ) => {
@@ -505,7 +505,7 @@ export const shouldBeUnfiltered = (
     ignore_cache: false,
     parameters: [],
   };
-  cy.log(`Check that ${entityDescription} is unfiltered`);
+  cy.log(`Check that ${cardDescription} is unfiltered`);
   cy.request("POST", endpoint, payload).then(({ body }) => {
     const { data } = body;
     expect(data.is_sandboxed).to.equal(false);
@@ -521,8 +521,8 @@ export const shouldBeUnfiltered = (
   });
 };
 
-export const shouldRowsBeFiltered = (
-  entityDescription: string,
+export const rowsShouldOnlyIncludeGizmos = (
+  cardDescription: string,
   endpoint: string,
   payload?: any,
 ) => {
@@ -532,7 +532,7 @@ export const shouldRowsBeFiltered = (
     parameters: [],
   };
   cy.log(
-    `Check that rows in ${entityDescription} are filtered, with some hidden according to the sandboxing policy`,
+    `Check that rows in ${cardDescription} are filtered, with some hidden according to the sandboxing policy`,
   );
   cy.request("POST", endpoint, payload).then(({ body }) => {
     const { data } = body;
@@ -572,7 +572,7 @@ const getEntityPaths = (aliases: Record<string, number | string>) => {
   };
 };
 
-export const testCardsIncludeGizmosAndWidgets = ({
+export const cardsShouldShowGizmosAndWidgets = ({
   customColumnType,
 }: Pick<SandboxPolicy, "customColumnType">) => {
   cy.then(function () {
@@ -587,22 +587,22 @@ export const testCardsIncludeGizmosAndWidgets = ({
     cy.log(
       "Ensure that the entities we will be testing are at first unfiltered, so that we can see how the sandboxing policy affects them",
     );
-    shouldBeUnfiltered("Saved question", savedQuestionPath);
-    shouldBeUnfiltered("Nested question", nestedQuestionPath);
-    shouldBeUnfiltered(
+    rowsShouldIncludeGizmosAndWidgets("Saved question", savedQuestionPath);
+    rowsShouldIncludeGizmosAndWidgets("Nested question", nestedQuestionPath);
+    rowsShouldIncludeGizmosAndWidgets(
       "Saved question in dashboard",
       savedQuestionInDashboardPath,
     );
-    shouldBeUnfiltered(
+    rowsShouldIncludeGizmosAndWidgets(
       "Nested question in dashboard",
       nestedQuestionInDashboardPath,
     );
-    shouldBeUnfiltered("Model", "/api/dataset", modelPayload);
+    rowsShouldIncludeGizmosAndWidgets("Model", "/api/dataset", modelPayload);
     adhocQuestionShouldBeUnfiltered(customColumnType);
   });
 };
 
-export const testCardsOnlyIncludeGizmos = ({
+export const cardsShouldOnlyShowGizmos = ({
   customColumnType,
 }: Pick<SandboxPolicy, "customColumnType">) => {
   cy.then(function () {
@@ -613,17 +613,61 @@ export const testCardsOnlyIncludeGizmos = ({
       nestedQuestionInDashboardPath,
       modelPayload,
     } = getEntityPaths(this);
-    shouldRowsBeFiltered("Saved question", savedQuestionPath);
-    shouldRowsBeFiltered("Nested question", nestedQuestionPath);
-    shouldRowsBeFiltered(
+    rowsShouldOnlyIncludeGizmos("Saved question", savedQuestionPath);
+    rowsShouldOnlyIncludeGizmos("Nested question", nestedQuestionPath);
+    rowsShouldOnlyIncludeGizmos(
       "Saved question in dashboard",
       savedQuestionInDashboardPath,
     );
-    shouldRowsBeFiltered(
+    rowsShouldOnlyIncludeGizmos(
       "Nested question in dashboard",
       nestedQuestionInDashboardPath,
     );
-    shouldRowsBeFiltered("Model", "/api/dataset", modelPayload);
+    rowsShouldOnlyIncludeGizmos("Model", "/api/dataset", modelPayload);
+    adhocQuestionShouldBeFiltered(customColumnType);
+  });
+};
+
+const cardShouldThrow = (
+  cardDescription: string,
+  endpoint: string,
+  payload?: any,
+) => {
+  payload ??= {
+    collection_preview: false,
+    ignore_cache: false,
+    parameters: [],
+  };
+  cy.log(`Check that ${cardDescription} fails closed, revealing no data`);
+  cy.request("POST", endpoint, payload).then(response => {
+    expect(response.status).to.equal(403);
+    expect(response.body).not.to.have.property("data");
+  });
+};
+
+/** Assert that the cards we're testing all fail and do not show any data */
+export const cardsShouldThrowAnError = ({
+  customColumnType,
+}: Pick<SandboxPolicy, "customColumnType">) => {
+  cy.then(function () {
+    const {
+      savedQuestionPath,
+      nestedQuestionPath,
+      savedQuestionInDashboardPath,
+      nestedQuestionInDashboardPath,
+      modelPayload,
+    } = getEntityPaths(this);
+    cardShouldThrow("Saved question", savedQuestionPath);
+    cardShouldThrow("Nested question", nestedQuestionPath);
+    cardShouldThrow(
+      "Saved question in dashboard",
+      savedQuestionInDashboardPath,
+    );
+    cardShouldThrow(
+      "Nested question in dashboard",
+      nestedQuestionInDashboardPath,
+    );
+    cardShouldThrow("Model", "/api/dataset", modelPayload);
     adhocQuestionShouldBeFiltered(customColumnType);
   });
 };
