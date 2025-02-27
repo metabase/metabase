@@ -32,7 +32,7 @@ import { withPublicComponentWrapper } from "embedding-sdk/components/private/Pub
 import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["cardId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<
