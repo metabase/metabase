@@ -4,11 +4,9 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
