@@ -1,8 +1,8 @@
 import type { MouseEvent, ReactNode } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import {
   MenuExternalLink,
@@ -95,7 +95,7 @@ const ActionMenuItem = ({
   disabled,
   children,
 }: ActionMenuItemProps) => (
-  <Tooltip tooltip={tooltip} placement="right">
+  <Tooltip label={tooltip} disabled={tooltip == null} position="right">
     <div onClick={disabled ? undefined : action}>{children}</div>
   </Tooltip>
 );
@@ -117,7 +117,7 @@ const LinkMenuItem = ({
   children,
   onClose,
 }: LinkMenuItemProps): JSX.Element => (
-  <Tooltip tooltip={tooltip} placement="right">
+  <Tooltip label={tooltip} position="right">
     {externalLink ? (
       <MenuExternalLink
         href={link}
