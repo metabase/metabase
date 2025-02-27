@@ -37,7 +37,6 @@ describeEE("scenarios > embedding-sdk > creating a question", () => {
     });
 
     getSdkRoot().within(() => {
-      // Should be able to visualize the question again
       cy.findByRole("button", { name: "Visualize" }).click();
 
       // Should not show a loading indicator again as the question has not changed (metabase#47564)

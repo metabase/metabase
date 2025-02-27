@@ -1,3 +1,29 @@
+## [0.52.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.13...embedding-sdk-0.52.14) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([#54331](https://github.com/metabase/metabase/issues/54331)) ([835926e](https://github.com/metabase/metabase/commit/835926e61ffb82a63a5a663aedd4f79668b73c32))
+
+
+
+## [0.52.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.12...embedding-sdk-0.52.13) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** add forwardRef to remove 'Function components cannot be given ([#54280](https://github.com/metabase/metabase/issues/54280)) ([#54291](https://github.com/metabase/metabase/issues/54291)) ([4b9d687](https://github.com/metabase/metabase/commit/4b9d6877be4ce18ad2c9ce88918ea24bbd8b20cd))
+* **sdk:** Add missing support of mapQuestionClickActions plugin for InteractiveDashboard ([#54240](https://github.com/metabase/metabase/issues/54240)) ([508f441](https://github.com/metabase/metabase/commit/508f44192f055a5e35195c648ced1940f35bb105))
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([#53863](https://github.com/metabase/metabase/issues/53863)) ([406e969](https://github.com/metabase/metabase/commit/406e969c66084f740629cc4f6053adef9fc097bc))
+
+
+### Features
+
+* **sdk:** cli should ask to remove the instance early if one exists ([#53545](https://github.com/metabase/metabase/issues/53545)) ([#54322](https://github.com/metabase/metabase/issues/54322)) ([5d7acae](https://github.com/metabase/metabase/commit/5d7acae7694dcc8880953db755671956bd7e04a8))
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([#54246](https://github.com/metabase/metabase/issues/54246)) ([eaf44ed](https://github.com/metabase/metabase/commit/eaf44eddb7278a16284b73989aa8009023e759ae))
+
+
+
 ## [0.52.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.11...embedding-sdk-0.52.12) (2025-02-25)
 
 

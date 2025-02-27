@@ -53,7 +53,7 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollectionId,
+  saveToCollection,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
   const {
@@ -123,7 +123,13 @@ export const InteractiveQuestionProvider = ({
   }, [globalPlugins, componentPlugins]);
 
   const mode = useMemo(() => {
-    return question && getEmbeddingMode(question, combinedPlugins ?? undefined);
+    return (
+      question &&
+      getEmbeddingMode({
+        question,
+        plugins: combinedPlugins ?? undefined,
+      })
+    );
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
@@ -146,7 +152,7 @@ export const InteractiveQuestionProvider = ({
     onCreate: handleCreate,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
     isCardIdError,
   };
 

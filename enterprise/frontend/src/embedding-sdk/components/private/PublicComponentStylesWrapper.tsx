@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type React from "react";
+import { forwardRef } from "react";
 
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
@@ -37,17 +38,20 @@ const PublicComponentStylesWrapperInner = styled.div`
   ${saveDomImageStyles}
 `;
 
-export const PublicComponentStylesWrapper = (
-  props: React.ComponentProps<"div">,
-) => {
+export const PublicComponentStylesWrapper = forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(function PublicComponentStylesWrapper(props, ref) {
   return (
     <PublicComponentStylesWrapperInner
       {...props}
+      ref={ref}
       // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
       className={`mb-wrapper ${props.className}`}
     />
   );
-};
+});
+
 /**
  * We can't apply a global css reset as it would leak into the host app but we
  * can't also apply our entire css reset scoped to this container, as it would
