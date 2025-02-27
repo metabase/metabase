@@ -54,7 +54,7 @@ export const InteractiveQuestionResult = ({
     onCreate,
     onSave,
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
     isCardIdError,
   } = useInteractiveQuestionContext();
 
@@ -174,7 +174,7 @@ export const InteractiveQuestionResult = ({
             await onSave(question);
             closeSaveModal();
           }}
-          saveToCollectionId={saveToCollectionId}
+          saveToCollection={saveToCollection}
         />
       )}
     </FlexibleSizeComponent>

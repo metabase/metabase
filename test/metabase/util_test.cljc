@@ -575,3 +575,8 @@
     (let [acc (volatile! [])]
       (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
       (is (= [1 2 3] @acc)))))
+
+(deftest ^:parallel safe-min-test
+  (testing "safe min behaves like clojure.core/min"
+    (is (= nil (u/safe-min nil)))
+    (is (= 2 (u/safe-min nil 2 nil 3)))))

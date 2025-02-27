@@ -12,16 +12,15 @@ With the Embedded analytics SDK, you can embed individual Metabase components wi
 
 To give you an idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between different shop websites. Check them out and poke around their products and analytics sections, as well as the New Question and New Dashboard options.
 
-![Pug and play example app built with embedding SDK](../images/pug-and-play.png)
+![Pug and play example app built with embedded analytics SDK](../images/pug-and-play.png)
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ## Embedded analytics SDK prerequisites
 
-- React application. The SDK is tested to work with React 18 or higher, though it may work with earlier versions.
-- [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
-- Metabase version 1.53 or higher.
-- [Node.js 18.x LTS](https://nodejs.org/en) or higher.
+- React application using React 17 or React 18.
+- Nodejs 20.x or higher.
+- Metabase version 1.52 or higher.
 
 ## Quickstarts
 
@@ -39,16 +38,16 @@ Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embe
 
 ### Install the SDK in your React application
 
-You can install the Embedded analytics SDK for React via npm:
+You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 53-stable for Metabase 53:
 
 ```bash
-npm install @metabase/embedding-sdk-react@51-stable
+npm install @metabase/embedding-sdk-react@53-stable
 ```
 
 or with yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@51-stable
+yarn add @metabase/embedding-sdk-react@53-stable
 ```
 
 ## Developing with the Embedded analytics SDK
@@ -65,13 +64,17 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
-## Embedding SDK source code
+## Embedded analytics SDK source code
 
-You can find the [embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Embedded analytics SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
 ## Changelog
 
-View the [SDK's changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md).
+View the SDK's changelog:
+
+* [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+* [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+* [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Embedded analytics SDK on NPM
 
@@ -85,10 +88,19 @@ The SDK doesn't support:
 - Official collections
 - Subscriptions
 - Alerts
-- Server-side rendering (SSR).
+- Server-side rendering (SSR)
 - Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- React 19
 
-## Feedback
+## Issues, feature requests and support
 
-- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com).
-- Message the team on Slack. If you don't have a Slack channel set up, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com).
+[Bugs](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AType%3ABug%20label%3AEmbedding%2FSDK) and [feature requests](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AEmbedding%2FSDK%20label%3A%22Type%3ANew%20Feature%22) are tracked on GitHub. 
+
+You can upvote an existing feature request by leaving a thumbs up emoji reaction on the issue. Feel free to leave comments with context that could be useful. [Read more](https://www.metabase.com/docs/latest/troubleshooting-guide/requesting-new-features).
+
+Before creating new issues, please make sure an issue for your problem or feature request doesn't already exist.
+ 
+To seek help:
+
+- Paid customers can contact our success team through the usual channels.
+- People using the open-source edition can post on our [discussion forums](https://discourse.metabase.com/).
