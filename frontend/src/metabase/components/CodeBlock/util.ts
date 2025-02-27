@@ -84,11 +84,11 @@ export function useHighlightText(
       return;
     }
 
-    const r = ranges.map(range =>
+    const highlightedRanges = ranges.map(range =>
       highlightTextDecoration.range(range.start, range.end),
     );
 
-    view.dispatch({ effects: highlightTextEffect.of(r) });
+    view.dispatch({ effects: highlightTextEffect.of(highlightedRanges) });
   }, [editorRef, ranges]);
 }
 
