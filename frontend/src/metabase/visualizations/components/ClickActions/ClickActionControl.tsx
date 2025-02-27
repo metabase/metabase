@@ -1,7 +1,6 @@
-import Tooltip from "metabase/core/components/Tooltip";
 import { useDispatch } from "metabase/lib/redux";
 import type { IconName } from "metabase/ui";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import {
   type ClickAction,
   type CustomClickAction,
@@ -85,7 +84,7 @@ export const ClickActionControl = ({
 
     case "sort":
       return (
-        <Tooltip tooltip={action.tooltip}>
+        <Tooltip label={action.tooltip}>
           <SortControl
             onlyIcon
             onClick={handleClick}
@@ -100,7 +99,7 @@ export const ClickActionControl = ({
 
     case "formatting":
       return (
-        <Tooltip tooltip={action.tooltip}>
+        <Tooltip label={action.tooltip}>
           <FormattingControl onlyIcon onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon as unknown as IconName} />

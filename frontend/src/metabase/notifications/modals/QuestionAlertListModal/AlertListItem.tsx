@@ -92,7 +92,7 @@ export const AlertListItem = ({
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
         {formatTitle(alert.payload.send_condition)}
       </Text>
-      <Group gap="0.25rem" align="center" c="text-medium">
+      <Group gap="xs" align="center" c="text-secondary">
         {subscription && (
           <Text size="sm" c="inherit">
             {formatNotificationSchedule(subscription)}
@@ -112,25 +112,25 @@ export const AlertListItem = ({
 
       <Stack className={S.handlersContainer} gap="0.5rem" mt="1rem">
         {emailHandler && (
-          <Group gap="0.5rem" wrap="nowrap">
-            <FixedSizeIcon name="mail" size={16} c="text-medium" />
-            <Text lineClamp={1} c="inherit">
+          <Group gap="sm" wrap="nowrap">
+            <FixedSizeIcon name="mail" size={16} c="text-secondary" />
+            <Text size="sm" lineClamp={1} c="inherit">
               {formatEmailHandlerInfo(emailHandler, users)}
             </Text>
           </Group>
         )}
         {slackHandler && (
-          <Group gap="0.5rem" wrap="nowrap">
-            <FixedSizeIcon name="slack" size={16} c="text-medium" />
-            <Text lineClamp={1} c="inherit">
+          <Group gap="sm" wrap="nowrap">
+            <FixedSizeIcon name="slack" size={16} c="text-secondary" />
+            <Text size="sm" lineClamp={1} c="inherit">
               {formatSlackHandlerInfo(slackHandler)}
             </Text>
           </Group>
         )}
         {hookHandlers && (
-          <Group gap="0.5rem" wrap="nowrap">
-            <FixedSizeIcon name="webhook" size={16} c="text-medium" />
-            <Text lineClamp={1} c="inherit">
+          <Group gap="sm" wrap="nowrap">
+            <FixedSizeIcon name="webhook" size={16} c="text-secondary" />
+            <Text size="sm" lineClamp={1} c="inherit">
               {formatHttpHandlersInfo(hookHandlers, httpChannelsConfig)}
             </Text>
           </Group>
