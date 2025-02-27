@@ -41,7 +41,7 @@ type EmbedMode = EmbedResourceType | "exploration";
 // Hard-coded API key for demonstration purposes only.
 // In the real implementation, we might not use API key at all,
 // or at least create the most restricted API key possible for public usage.
-const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
+const DEMO_API_KEY = "mb_6FlhSYBpxcDJJp4nXl41asr1di5IwQ7cFuuaXsBbNYY=";
 
 export const InteractiveEmbeddingDemo = ({
   withApiKeyInput = true,
