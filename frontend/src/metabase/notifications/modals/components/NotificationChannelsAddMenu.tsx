@@ -26,6 +26,7 @@ type NotificationChannelsAddMenuProps = {
   channelsSpec: ChannelApiResponse["channels"];
   httpChannelsConfig: NotificationChannel[];
   isAdmin: boolean;
+  userCanAccessSettings: boolean;
   onAddChannel: (channel: ChannelToAddOption) => void;
 };
 
@@ -34,13 +35,14 @@ export const NotificationChannelsAddMenu = ({
   channelsSpec,
   httpChannelsConfig,
   isAdmin,
+  userCanAccessSettings,
   onAddChannel,
 }: NotificationChannelsAddMenuProps) => {
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(notificationHandlers);
 
   const notAddedHookChannels = useMemo(() => {
-    if (!channelsSpec.http?.configured || !isAdmin) {
+    if (!channelsSpec.http?.configured || !userCanAccessSettings) {
       return [];
     }
 
@@ -56,7 +58,7 @@ export const NotificationChannelsAddMenu = ({
   }, [
     channelsSpec.http?.configured,
     hookHandlers,
-    isAdmin,
+    userCanAccessSettings,
     httpChannelsConfig,
   ]);
 
@@ -68,12 +70,12 @@ export const NotificationChannelsAddMenu = ({
     canAddEmail || canAddSlack || notAddedHookChannels.length > 0;
   const hasAddedNoChannels = !notificationHandlers.length;
 
-  if (!isAdmin && !hasChannelsToAdd) {
+  if (!userCanAccessSettings && !hasChannelsToAdd) {
     return null;
   }
 
-  if (isAdmin && !hasChannelsToAdd) {
-    return <ManageDestinationsButton />;
+  if (!hasChannelsToAdd) {
+    return isAdmin ? <ManageDestinationsButton /> : null;
   }
 
   return (

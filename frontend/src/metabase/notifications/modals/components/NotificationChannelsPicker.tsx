@@ -168,6 +168,7 @@ export const NotificationChannelsPicker = ({
         httpChannelsConfig={httpChannelsConfig}
         onAddChannel={addChannel}
         isAdmin={isAdmin}
+        userCanAccessSettings={userCanAccessSettings}
       />
     </Stack>
   );
