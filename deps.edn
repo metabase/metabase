@@ -109,7 +109,7 @@
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
-  net.sf.cssbox/cssbox                      {:mvn/version "5.0.1"               ; HTML / CSS rendering
+  net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20240207"} ; Java implementation of the JQ json query language
