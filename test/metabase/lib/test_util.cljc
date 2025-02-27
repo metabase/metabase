@@ -96,10 +96,13 @@
    :stages       [{:lib/type    :mbql.stage/mbql
                    :source-card 1}]})
 
-(defn query-with-source-model
+(def query-with-source-model
   "Like [[query-with-source-card]], but where the card's type is :model"
-  []
-  (lib/query metadata-provider-with-model (lib.metadata/card metadata-provider-with-model 1)))
+  {:lib/type     :mbql/query
+   :lib/metadata metadata-provider-with-model
+   :database     (meta/id)
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (def ^:private metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
