@@ -13,7 +13,7 @@ import {
   highlightText,
   nonce,
   useHighlightText,
-} from "./util";
+} from "./utils";
 
 export type CodeBlockProps = {
   code: string;
