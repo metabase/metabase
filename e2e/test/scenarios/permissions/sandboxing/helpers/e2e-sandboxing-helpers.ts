@@ -344,30 +344,24 @@ export const configureSandboxPolicy = (
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
     entityPickerModal()
-      .findAllByText(
-        filterTableBy === "column"
-          ? "Products question with custom column"
-          : "Products question custom view",
-      )
+      .findAllByText(/Products.*custom/)
       .first()
       .click();
   } else {
     throw new Error("Unexpected columnType");
   }
 
-  if (filterTableBy === "column") {
-    expect(attributeKey).to.be.a("string");
-    modal()
-      .findByRole("button", { name: /Pick a column|parameter/ })
-      .click();
-    const columnName =
-      columnType === "regular" ? "Category" : "Custom category column";
-    cy.findByRole("option", { name: columnName }).click();
-    modal()
-      .findByRole("button", { name: /Pick a user attribute/ })
-      .click();
-    cy.findByRole("option", { name: attributeKey }).click();
-  }
+  expect(attributeKey).to.be.a("string");
+  modal()
+    .findByRole("button", { name: /Pick a column|parameter/ })
+    .click();
+  const columnName =
+    columnType === "regular" ? "Category" : "Custom category column";
+  cy.findByRole("option", { name: columnName }).click();
+  modal()
+    .findByRole("button", { name: /Pick a user attribute/ })
+    .click();
+  cy.findByRole("option", { name: attributeKey }).click();
 
   cy.log("Wait for the whole summary to render");
   cy.findByLabelText(/Summary/).contains("data");
@@ -377,26 +371,19 @@ export const configureSandboxPolicy = (
     .invoke("text")
     .should(summary => {
       expect(summary).to.contain("Users in data can view");
-      if (columnType === "regular") {
-        if (filterTableBy === "column") {
+      match(columnType)
+        .with("regular", () => {
           expect(summary).to.contain("rows in the PRODUCTS table");
           expect(summary).to.contain(
             `where Category field equals ${attributeKey}`,
           );
-        } else {
+        })
+        .with("custom", () => {
           expect(summary).to.contain(
-            "rows in the Products question custom view question",
+            `where Custom category column field equals ${attributeKey}`,
           );
-        }
-      }
-      if (columnType === "custom") {
-        expect(summary).to.contain(
-          "rows in the Products question with custom column question",
-        );
-        expect(summary).to.contain(
-          `where Custom category column field equals ${attributeKey}`,
-        );
-      }
+        })
+        .exhaustive();
     });
 
   cy.log("Save the sandboxing modal");
@@ -413,26 +400,15 @@ type RegularColumnBasedSandboxPolicy = {
   customColumnType?: never;
 };
 
-type CustomColumnBasedSandboxPolicy = {
-  filterTableBy: "column";
-  columnType: "custom";
-  customColumnType: CustomColumnType;
-};
-
-type ColumnBasedSandboxPolicy = {
-  filterTableBy: "column";
-  customViewType?: never;
-} & (RegularColumnBasedSandboxPolicy | CustomColumnBasedSandboxPolicy);
-
 type CustomViewBasedSandboxPolicy = {
   filterTableBy: "custom_view";
+  columnType: "custom";
   customViewType: CustomViewType;
-  customColumnType?: never;
-  columnType?: never;
+  customColumnType?: CustomColumnType;
 };
 
 export type SandboxPolicy =
-  | ColumnBasedSandboxPolicy
+  | RegularColumnBasedSandboxPolicy
   | CustomViewBasedSandboxPolicy;
 
 const createCustomView = (customViewType: CustomViewType) => {
@@ -681,11 +657,11 @@ const adhocQuestionShouldBeFiltered = (customColumnType?: CustomColumnType) => {
 };
 
 const adhocQuestionShouldThrowError = (customColumnType?: CustomColumnType) => {
+  cy.intercept("POST", "/api/dataset").as("dataset");
   createAdhocQuestion({ customColumnType });
   cy.findAllByText("Gizmos").should("not.exist");
   cy.findAllByText("Widgets").should("not.exist");
   cy.findByText(/There was a problem with your question/i).should("be.visible");
-  cy.intercept("POST", "/api/dataset").as("dataset");
   cy.wait("@dataset").then(({ response }) => {
     expect(response?.statusCode).to.equal(202);
     expect(response?.body.via[0].status).to.equal("failed");
