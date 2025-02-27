@@ -12,6 +12,7 @@ import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,
   ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
   ConditionalFormattingBooleanOperator,
   ConditionalFormattingComparisonOperator,
   DatasetColumn,
@@ -129,24 +130,13 @@ export const RuleEditor = ({
             }))}
             data-testid="conditional-formatting-value-operator-button"
           />
-          {hasOperand && isNumericRule && !isKeyRule ? (
-            <TextInputBlurChange
-              data-testid="conditional-formatting-value-input"
-              className={INPUT_CLASSNAME}
-              type="number"
-              value={rule.value}
-              onBlurChange={e => onChange({ ...rule, value: e.target.value })}
-              placeholder="0"
-            />
-          ) : hasOperand ? (
-            <TextInputBlurChange
-              data-testid="conditional-formatting-value-input"
-              className={INPUT_CLASSNAME}
-              value={rule.value}
-              onBlurChange={e => onChange({ ...rule, value: e.target.value })}
-              placeholder={t`Column value`}
-            />
-          ) : null}
+          <RuleEditorValueInput
+            hasOperand={hasOperand}
+            isNumericRule={isNumericRule}
+            isKeyRule={isKeyRule}
+            rule={rule}
+            onChange={onChange}
+          />
           <h3
             className={cx(CS.mt3, CS.mb1)}
           >{t`…turn its background this color:`}</h3>
@@ -257,5 +247,38 @@ export const RuleEditor = ({
         )}
       </div>
     </div>
+  );
+};
+
+const RuleEditorValueInput = ({
+  hasOperand,
+  isNumericRule,
+  isKeyRule,
+  rule,
+  onChange,
+}: {
+  hasOperand: boolean;
+  isNumericRule: boolean;
+  isKeyRule: boolean;
+  rule: ColumnSingleFormattingSetting;
+  onChange: (rule: ColumnFormattingSetting) => void;
+}) => {
+  if (!hasOperand) {
+    return null;
+  }
+
+  const inputProps =
+    isNumericRule && !isKeyRule
+      ? { type: "number", placeholder: "0" }
+      : { placeholder: t`Column value` };
+
+  return (
+    <TextInputBlurChange
+      data-testid="conditional-formatting-value-input"
+      className={INPUT_CLASSNAME}
+      value={rule.value}
+      onBlurChange={e => onChange({ ...rule, value: e.target.value })}
+      {...inputProps}
+    />
   );
 };

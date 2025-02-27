@@ -931,7 +931,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("Add a rule").click();
     cy.findByTestId("conditional-formatting-value-input").type("70");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("is equal to").click();
+    cy.findByText("is equal to").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is less than or equal to").click();
 
