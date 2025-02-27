@@ -3346,8 +3346,8 @@
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
                                   (lib/limit 2))]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-          (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
-                                 ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+          (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)))))))))
 
 (deftest ^:parallel validate-template-tags-test
