@@ -151,7 +151,7 @@ export function EmbeddingSdkSettings({
           size="large"
           crumbs={[
             [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Embedding SDK for React`],
+            [t`Embedded analytics SDK for React`],
           ]}
         />
         <SwitchWithSetByEnvVar
@@ -202,7 +202,7 @@ export function EmbeddingSdkSettings({
             variant="outline"
             component={ExternalLink}
             href={quickStartUrl}
-          >{t`Check out the Quick Start`}</Button>
+          >{t`Check out the Quickstart`}</Button>
         </Box>
         <Box>
           <SettingHeader

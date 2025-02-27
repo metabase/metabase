@@ -237,7 +237,7 @@ H.describeWithSnowplow("extract action", () => {
         column: "Created At",
         option: "Tag der Woche",
         value: "Dienstag",
-        extraction: "Extract day, month…",
+        extraction: "Auszug Tag, Monat...",
       });
     });
   });

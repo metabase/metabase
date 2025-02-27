@@ -287,6 +287,8 @@
          (sync/sync-database! db)
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
+               ;; Manually activate Field values since they are not created during sync (#53387)
+               _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
            (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))

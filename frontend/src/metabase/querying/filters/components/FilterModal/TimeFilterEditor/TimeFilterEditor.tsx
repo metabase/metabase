@@ -67,7 +67,7 @@ export function TimeFilterEditor({
 
   return (
     <HoverParent data-testid="time-filter-editor">
-      <Grid grow>
+      <Grid grow align="center">
         <Grid.Col span="auto">
           <FilterTitle
             stageIndex={stageIndex}

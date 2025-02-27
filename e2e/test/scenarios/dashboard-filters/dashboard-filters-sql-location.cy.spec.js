@@ -1,6 +1,10 @@
 const { H } = cy;
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import {
+  addWidgetStringFilter,
+  applyFilterByType,
+  selectFilterValueFromList,
+} from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
@@ -41,7 +45,7 @@ describe("scenarios > dashboard > filters > location", () => {
       ([filter, { value, representativeResult }], index) => {
         // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value, { search: true });
 
         cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
@@ -63,7 +67,7 @@ describe("scenarios > dashboard > filters > location", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
-    addWidgetStringFilter("Rye");
+    selectFilterValueFromList("Rye", { search: true });
 
     H.saveDashboard();
 

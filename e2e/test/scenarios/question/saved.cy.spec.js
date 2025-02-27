@@ -578,6 +578,7 @@ describe(
       H.resetWebhookTester();
       H.restore();
       cy.signInAsAdmin();
+      H.setupSMTP();
 
       cy.request("POST", "/api/channel", {
         name: firstWebhookName,
@@ -605,39 +606,36 @@ describe(
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
-      H.modal().within(() => {
-        H.toggleAlertChannel("Email");
-        H.toggleAlertChannel(secondWebhookName);
-        cy.button("Done").click();
-      });
-      cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Edit alerts").click();
-      H.popover().within(() => {
-        cy.findByText("You set up an alert").should("exist");
-        cy.findByText("Edit").click();
-      });
+      H.popover().findByText("Create an alert").click();
 
-      H.modal().within(() => {
-        H.getAlertChannel(secondWebhookName).scrollIntoView();
-        H.getAlertChannel(secondWebhookName)
-          .findByRole("switch")
-          .should("be.checked");
+      H.modal().findByText("New alert").should("be.visible");
+      H.removeNotificationHandlerChannel("Email");
+      H.addNotificationHandlerChannel(secondWebhookName, {
+        hasNoChannelsAdded: true,
       });
+      H.modal().button("Done").click();
+
+      H.openSharingMenu("Edit alerts");
+      H.modal()
+        .findByText(/Created by you/)
+        .should("be.exist")
+        .click();
+
+      H.modal().findByText(secondWebhookName).should("be.visible");
     });
 
-    it("should allow you to test a webhook", () => {
+    // There is no api to test individual hooks for new Question Alerts
+    it.skip("should allow you to test a webhook", () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
+      H.popover().findByText("Create an alert").click();
+
       H.modal().within(() => {
         H.getAlertChannel(firstWebhookName).scrollIntoView();
 
         H.getAlertChannel(firstWebhookName)
-          .findByRole("switch")
+          .findByRole("checkbox")
           .click({ force: true });
 
         H.getAlertChannel(firstWebhookName).button("Send a test").click();

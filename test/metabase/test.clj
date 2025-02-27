@@ -183,9 +183,9 @@
   with-dynamic-fn-redefs]
 
  [premium-features.test-util
+  assert-has-premium-feature-error
   with-premium-features
   with-additional-premium-features
-  assert-has-premium-feature-error
   when-ee-evailable]
 
  [perms.test-util
@@ -267,6 +267,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  transitive
   repeat-concurrently
   with-all-users-permission
   with-column-remappings

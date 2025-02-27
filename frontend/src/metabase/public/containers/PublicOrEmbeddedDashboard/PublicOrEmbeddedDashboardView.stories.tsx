@@ -6,6 +6,7 @@ import { type ComponentProps, useEffect, useMemo } from "react";
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import LegacyTooltip from "metabase/core/components/Tooltip";
@@ -44,7 +45,7 @@ registerVisualization(Table);
 registerVisualization(BarChart);
 
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView",
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
@@ -132,7 +133,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState);
+const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;

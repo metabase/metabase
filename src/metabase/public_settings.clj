@@ -685,7 +685,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
-  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  (deferred-tru "Whether or not to display Metabase links outside admin settings.")
   :type       :boolean
   :default    true
   :visibility :public
@@ -1017,12 +1017,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    false
   :type       :boolean)
-
-(defsetting download-row-limit
-  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
-  :visibility :internal
-  :export?    true
-  :type       :integer)
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.

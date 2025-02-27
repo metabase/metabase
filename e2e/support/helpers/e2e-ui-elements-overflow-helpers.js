@@ -34,12 +34,16 @@ export const assertDescendantNotOverflowsContainer = (
     return;
   }
 
-  expect(descendantRect.bottom, `${message} bottom`).to.be.lte(
+  const getMessage = suffix => {
+    return [message, suffix].filter(Boolean).join(" ");
+  };
+
+  expect(descendantRect.bottom, getMessage("bottom")).to.be.lte(
     containerRect.bottom,
   );
-  expect(descendantRect.top, `${message} top`).to.be.gte(containerRect.top);
-  expect(descendantRect.left, `${message} left`).to.be.gte(containerRect.left);
-  expect(descendantRect.right, `${message} right`).to.be.lte(
+  expect(descendantRect.top, getMessage("top")).to.be.gte(containerRect.top);
+  expect(descendantRect.left, getMessage("left")).to.be.gte(containerRect.left);
+  expect(descendantRect.right, getMessage("right")).to.be.lte(
     containerRect.right,
   );
 };

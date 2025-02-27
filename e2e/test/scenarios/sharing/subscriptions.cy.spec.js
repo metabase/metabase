@@ -522,8 +522,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
 
         H.popover().within(() => {
-          H.removeFieldValuesValue(0);
-          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Corbin Mertz").click();
+          cy.findByPlaceholderText("Search the list").type(
+            "Sallie Flatley{enter}",
+          );
           cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
@@ -638,9 +640,11 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Corbin Mertz")
           .click();
 
-        H.removeFieldValuesValue(0, ":eq(1)");
         H.popover().within(() => {
-          H.fieldValuesInput().type("Sallie");
+          cy.findByText("Corbin Mertz").click();
+          cy.findByPlaceholderText("Search the list").type(
+            "Sallie Flatley{enter}",
+          );
           cy.findByText("Sallie Flatley").click();
         });
         H.popover().button("Update filter").click();
@@ -775,7 +779,7 @@ function addParametersToDashboard() {
   // add default value to the above filter
   cy.findByText("No default").click();
   H.popover().within(() => {
-    H.fieldValuesInput().type("Corbin");
+    cy.findByPlaceholderText("Search the list").type("Corbin");
   });
 
   H.popover().findByText("Corbin Mertz").click();

@@ -11,7 +11,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution JobExecutionException)))
+   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,10 +71,10 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn- update-index! []
+(defn- update-index! [^JobExecutionContext ctx]
   (when (search/supports-index?)
     (log/info "Starting Realtime Search Index Update worker")
-    (try
+    (task/rerun-on-error ctx
       (while true
         (try
           (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)
@@ -87,10 +87,7 @@
               (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report))))
           (catch Exception e
             (analytics/inc! :metabase-search/index-error)
-            (throw e))))
-      (catch Exception e
-        (log/error e "Updating search index failed")
-        (throw (JobExecutionException. "Updating search index failed" e true))))))
+            (throw e)))))))
 
 (jobs/defjob ^{:doc "Ensure a Search Index exists"}
   SearchIndexInit [_ctx]
@@ -102,8 +99,8 @@
   (reindex!))
 
 (jobs/defjob ^{:doc                        "Keep Search Index updated"}
-  SearchIndexUpdate [_ctx]
-  (update-index!))
+  SearchIndexUpdate [ctx]
+  (update-index! ctx))
 
 (defmethod task/init! ::SearchIndexInit [_]
   (let [job (jobs/build
