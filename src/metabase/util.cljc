@@ -1225,6 +1225,7 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+
 (defn safe-min
   "nil safe clojure.core/min"
   [& args]
