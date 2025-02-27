@@ -526,53 +526,61 @@
   [parts]
   (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
 
-(comment
-  (deftest ^:parallel time-filter-parts-test
-    (let [query  (lib.tu/venues-query)
-          column (assoc (meta/field-metadata :checkins :date)
-                        :base-type      :type/Time
-                        :effective-type :type/Time)]
-      (testing "clause to parts roundtrip"
-        (doseq [[clause parts] {(lib.filter/is-null column)
-                                {:operator :is-null, :column column}
+(def ^:private time-field
+  (assoc (meta/field-metadata :products :created-at)
+         :id             9999001
+         :name           "TIME"
+         :display-name   "Time"
+         :base-type      :type/Time
+         :effective-type :type/Time))
 
-                                (lib.filter/not-null column)
-                                {:operator :not-null, :column column}
+(deftest ^:parallel time-filter-parts-test
+  (let [metadata-provider (lib/composed-metadata-provider
+                           (lib.tu/mock-metadata-provider {:fields [time-field]})
+                           meta/metadata-provider)
+        query             (lib/query metadata-provider (meta/table-metadata :products))
+        column            (m/find-first #(= (:name %) "TIME") (lib.filter/filterable-columns query))]
+    (testing "clause to parts roundtrip"
+      (doseq [[clause parts] {(lib.filter/is-null column)
+                              {:operator :is-null, :column column}
 
-                                (lib.filter/> column "10:20")
-                                {:operator :>, :column column, :values [(u.time/local-time 10 20)]}
+                              (lib.filter/not-null column)
+                              {:operator :not-null, :column column}
 
-                                (lib.filter/> column "10:20:30")
-                                {:operator :>, :column column, :values [(u.time/local-time 10 20 30)]}
+                              (lib.filter/> column "10:20")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20)]}
 
-                                (lib.filter/> column "10:20:30.123")
-                                {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+                              (lib.filter/> column "10:20:30")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30)]}
+
+                              (lib.filter/> column "10:20:30.123")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
 
                               ;; timezone should be ignored
-                                (lib.filter/> column "10:20:30.123Z")
-                                {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
+                              (lib.filter/> column "10:20:30.123Z")
+                              {:operator :>, :column column, :values [(u.time/local-time 10 20 30 123)]}
 
-                                (lib.filter/< column "15:40")
-                                {:operator :<, :column column, :values [(u.time/local-time 15 40)]}
+                              (lib.filter/< column "15:40")
+                              {:operator :<, :column column, :values [(u.time/local-time 15 40)]}
 
-                                (lib.filter/between column "10:20" "15:40")
-                                {:operator :between
-                                 :column column
-                                 :values [(u.time/local-time 10 20) (u.time/local-time 15 40)]}}]
-          (let [{:keys [operator column values]} parts]
-            (is (=? (format-time-filter-parts parts)
-                    (format-time-filter-parts (lib.fe-util/time-filter-parts query -1 clause))))
-            (is (=? (format-time-filter-parts parts)
-                    (format-time-filter-parts (lib.fe-util/time-filter-parts query -1
-                                                                             (lib.fe-util/time-filter-clause operator
-                                                                                                             column
-                                                                                                             values))))))))
-      (testing "unsupported clauses"
-        (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
-          (lib.filter/= column "10:20")
-          (lib.filter/> "10:20" column)
-          (lib.filter/is-null (meta/field-metadata :venues :name))
-          (lib.filter/and (lib.filter/> column "10:20") true))))))
+                              (lib.filter/between column "10:20" "15:40")
+                              {:operator :between
+                               :column column
+                               :values [(u.time/local-time 10 20) (u.time/local-time 15 40)]}}]
+        (let [{:keys [operator column values]} parts]
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1 clause))))
+          (is (=? (format-time-filter-parts parts)
+                  (format-time-filter-parts (lib.fe-util/time-filter-parts query -1
+                                                                           (lib.fe-util/time-filter-clause operator
+                                                                                                           column
+                                                                                                           values))))))))
+    (testing "unsupported clauses"
+      (are [clause] (nil? (lib.fe-util/time-filter-parts query -1 clause))
+        (lib.filter/= column "10:20")
+        (lib.filter/> "10:20" column)
+        (lib.filter/is-null (meta/field-metadata :venues :name))
+        (lib.filter/and (lib.filter/> column "10:20") true)))))
 
 (deftest ^:parallel default-filter-parts-test
   (let [query  (lib.tu/venues-query)
