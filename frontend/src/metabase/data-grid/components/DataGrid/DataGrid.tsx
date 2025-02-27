@@ -5,7 +5,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
-import { type Ref, forwardRef, useCallback, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
@@ -21,20 +21,17 @@ import S from "./DataGrid.module.css";
 
 export type DataGridProps<TData> = DataGridInstance<TData>;
 
-export const DataGrid = forwardRef(function DataGrid<TData>(
-  {
-    table,
-    gridRef,
-    virtualGrid,
-    measureRoot,
-    columnsReordering,
-    onBodyCellClick,
-    onHeaderCellClick,
-    onAddColumnClick,
-    onScroll,
-  }: DataGridProps<TData>,
-  ref: Ref<HTMLDivElement>,
-) {
+export const DataGrid = function DataGrid<TData>({
+  table,
+  gridRef,
+  virtualGrid,
+  measureRoot,
+  columnsReordering,
+  onBodyCellClick,
+  onHeaderCellClick,
+  onAddColumnClick,
+  onScroll,
+}: DataGridProps<TData>) {
   const {
     virtualColumns,
     virtualRows,
@@ -213,4 +210,4 @@ export const DataGrid = forwardRef(function DataGrid<TData>(
       {measureRoot}
     </DndContext>
   );
-});
+};
