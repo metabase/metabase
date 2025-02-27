@@ -21,7 +21,7 @@ import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Divider, Flex } from "metabase/ui";
+import { Box, Button, Divider, Flex, Text } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -30,6 +30,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { DatabaseInfoSection } from "../components/DatabaseInfoSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
   deleteDatabase,
@@ -162,6 +163,23 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           <Divider mb="3.25rem" />
         </>
       )}
+
+      <DatabaseInfoSection
+        name={t`Connection and sync`}
+        description={t`Manage details about the database connection and when Metabase ingests new data.`}
+      >
+        <Flex align="center" justify="space-between">
+          <Flex align="center" gap="xs">
+            <Box
+              w=".75rem"
+              h=".75rem"
+              style={{ borderRadius: "50%", background: "green" }}
+            />
+            <Text c="black">{(database?.details?.host as any) ?? ""}</Text>
+          </Flex>
+          <Button>{t`Edit`}</Button>
+        </Flex>
+      </DatabaseInfoSection>
 
       <Flex mb="md">
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
