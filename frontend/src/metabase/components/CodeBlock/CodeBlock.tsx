@@ -8,7 +8,12 @@ import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 
 import S from "./CodeBlock.module.css";
 import type { CodeLanguage } from "./types";
-import { getLanguageExtension, highlightText, useHighlightText } from "./util";
+import {
+  getLanguageExtension,
+  highlightText,
+  nonce,
+  useHighlightText,
+} from "./util";
 
 export type CodeBlockProps = {
   code: string;
@@ -27,6 +32,7 @@ export function CodeBlock({
   const extensions = useMemo(
     () =>
       [
+        nonce(),
         syntaxHighlighting(metabaseSyntaxHighlighting),
         getLanguageExtension(language),
         highlightText(),
