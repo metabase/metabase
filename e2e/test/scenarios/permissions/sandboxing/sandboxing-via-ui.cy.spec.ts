@@ -38,6 +38,7 @@ describe(
       it("to a table filtered using a question as a custom view", () => {
         const policy: SandboxPolicy = {
           filterTableBy: "custom_view",
+          columnType: "regular",
           customViewType: "question",
         };
         createCardsShowingGizmosAndWidgets(policy);
@@ -51,6 +52,7 @@ describe(
       it("to a table filtered using a model as a custom view", () => {
         const policy: SandboxPolicy = {
           filterTableBy: "custom_view",
+          columnType: "regular",
           customViewType: "model",
         };
         createCardsShowingGizmosAndWidgets(policy);
