@@ -32,7 +32,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "saveToCollectionId">;
+} & Pick<SaveQuestionProps, "saveToCollection">;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
@@ -59,7 +59,7 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollectionId"
+    "onNavigateBack" | "isSaveEnabled" | "saveToCollection"
   > &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
