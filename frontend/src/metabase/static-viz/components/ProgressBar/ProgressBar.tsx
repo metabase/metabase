@@ -105,6 +105,7 @@ const ProgressBar = ({
           <>
             <CheckMarkIcon
               size={layout.iconSize}
+              // eslint-disable-next-line no-color-literals
               color="#ffffff"
               x={10}
               y={(layout.barHeight - layout.iconSize) / 2}
@@ -116,6 +117,7 @@ const ProgressBar = ({
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
               verticalAnchor="middle"
+              // eslint-disable-next-line no-color-literals
               fill="#ffffff"
             >
               {barText}
