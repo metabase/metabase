@@ -108,6 +108,8 @@ export const InteractiveEmbeddingDemo = () => {
 <div id="metabase-embed-container"></div>
 
 <script>
+  const { MetabaseEmbed } = window["metabase.embed"];
+
   const embed = new MetabaseEmbed({
     target: "#metabase-embed-container",
 
