@@ -238,7 +238,7 @@ describe(
           ["model", "number"],
         ] as const
       ).forEach(([customViewType, customColumnType]) => {
-        it(`...to a table filtered by a custom boolean ${customColumnType} column in a ${customViewType}`, () => {
+        it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
           const policy: SandboxPolicy = {
             filterTableBy: "custom_view",
             columnType: "custom",
