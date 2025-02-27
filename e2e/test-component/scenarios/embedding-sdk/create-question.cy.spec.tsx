@@ -24,7 +24,7 @@ describeEE("scenarios > embedding-sdk > creating a question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 

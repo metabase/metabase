@@ -62,7 +62,9 @@ export const InteractiveQuestionProvider = ({
     isError: isCardIdError,
   } = useValidatedEntityId({
     type: "card",
-    id: initialQuestionId,
+
+    // If the question is new, we won't have a question id yet.
+    id: initialQuestionId === "new" ? undefined : initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
