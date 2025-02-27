@@ -116,11 +116,11 @@ export function Editor<S extends StartRule = "expression">(
         width="100%"
         indentWithTab={false}
       />
-      <Errors error={source !== "" ? error : null} />
+      <Errors error={error} />
 
       <Shortcuts
         shortcuts={shortcuts}
-        hide={isFormatting || source.trim() !== "" || error != null}
+        hide={source.trim() !== "" || isFormatting || error != null}
       />
 
       <Box className={S.toolbar} p="xs">
@@ -131,7 +131,7 @@ export function Editor<S extends StartRule = "expression">(
           variant="subtle"
           leftSection={<Icon name="snippet" />}
           size="xs"
-          disabled={Boolean(source.trim() === "" || isFormatting || error)}
+          disabled={isFormatting || error != null}
         />
       </Box>
 
@@ -189,6 +189,12 @@ function useExpression<S extends StartRule = "expression">({
   const handleUpdate = useCallback(
     (source: string, immediate: boolean = false) => {
       setSource(source);
+
+      if (source.trim() === "") {
+        onChange(null, null);
+        return;
+      }
+
       const { clause, error } = diagnoseAndCompileExpression(source, {
         startRule,
         query,
