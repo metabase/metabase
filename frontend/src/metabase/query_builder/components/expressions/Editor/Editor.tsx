@@ -16,13 +16,15 @@ import {
   usePreventClosePopover,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type {
+  ClauseType,
+  ErrorWithMessage,
+  StartRule,
+} from "metabase-lib/v1/expressions";
 import { format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-import type { ClauseType, StartRule } from "../types";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
