@@ -1,0 +1,5 @@
+language: node_js
+cache: npm
+node_js:
+  - "6"
+  - "6.1"

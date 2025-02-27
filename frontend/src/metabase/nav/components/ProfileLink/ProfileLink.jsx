@@ -53,6 +53,7 @@ function ProfileLink({
   onLogout,
   showOnboardingLink,
   openDiagnostics,
+  setShowScriptWizard,
 }) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
@@ -108,6 +109,13 @@ function ProfileLink({
           openDiagnostics();
         },
         event: `Navbar;Profile Dropdown;Report Bug`,
+      },
+      {
+        title: t`Scripts`,
+        icon: null,
+        action: () => {
+          setShowScriptWizard(v => !v);
+        },
       },
       {
         title: t`About ${applicationName}`,
@@ -212,4 +220,5 @@ ProfileLink.propTypes = {
   onLogout: PropTypes.func.isRequired,
   showOnboardingLink: PropTypes.bool,
   openDiagnostics: PropTypes.func.isRequired,
+  setShowScriptWizard: PropTypes.any,
 };
