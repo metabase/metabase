@@ -17,9 +17,9 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
-  DashboardId,
   Dashboard,
   DashboardCard,
+  DashboardId,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -174,8 +174,9 @@ export interface VisualizationProps {
 export type CardDerivedSettingsData = {
   transformedSeries?: TransformedSeries;
   dashboardId?: DashboardId;
+};
 
-  export type VisualizationPassThroughProps = {
+export type VisualizationPassThroughProps = {
   // frontend/src/metabase/query_builder/components/VisualizationResult.jsx
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
