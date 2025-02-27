@@ -1,3 +1,4 @@
+import type { StackProps } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
@@ -11,4 +12,5 @@ export type BaseChartSettingsProps = {
   question?: Question;
   widgets: Widget[];
 } & CommonChartSettingsProps &
-  Pick<UseChartSettingsStateReturned, "chartSettings" | "transformedSeries">;
+  Pick<UseChartSettingsStateReturned, "chartSettings" | "transformedSeries"> &
+  StackProps;

@@ -1,3 +1,20 @@
+## [0.53.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.7...embedding-sdk-0.53.8) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** add forwardRef to remove 'Function components cannot be given ([#54280](https://github.com/metabase/metabase/issues/54280)) ([#54290](https://github.com/metabase/metabase/issues/54290)) ([8f652a1](https://github.com/metabase/metabase/commit/8f652a145bfd543ecf5245e14332ffe7ce8d6d1e))
+* **sdk:** improve example component import paths in cli ([#53473](https://github.com/metabase/metabase/issues/53473)) ([#54213](https://github.com/metabase/metabase/issues/54213)) ([40a0b9d](https://github.com/metabase/metabase/commit/40a0b9df6dfb1b66f1c32974e4030b9b1450c301))
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([#54330](https://github.com/metabase/metabase/issues/54330)) ([e4a074b](https://github.com/metabase/metabase/commit/e4a074b4ca36cf4234dc3f7259252ba98fb218c6))
+* **sdk:** Rename saveToCollectionId => saveToCollection ([#54263](https://github.com/metabase/metabase/issues/54263)) ([3fa14f4](https://github.com/metabase/metabase/commit/3fa14f46062fbbf0568aae2c9886400e16b401ff)), closes [#54225](https://github.com/metabase/metabase/issues/54225)
+
+
+### Features
+
+* **sdk:** cli should ask to remove the instance early if one exists ([#53545](https://github.com/metabase/metabase/issues/53545)) ([#54321](https://github.com/metabase/metabase/issues/54321)) ([cf5480e](https://github.com/metabase/metabase/commit/cf5480e41acac454d90cca2bd52b866404f126db))
+
+
+
 ## [0.53.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.6...embedding-sdk-0.53.7) (2025-02-25)
 
 
