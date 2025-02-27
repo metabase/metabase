@@ -197,7 +197,7 @@
 
   embed
   {:api  #{metabase.embed.settings}
-   :uses #{analytics models premium-features util}}
+   :uses #{analytics models premium-features tiles util}}
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
@@ -392,7 +392,7 @@
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
            metabase.public-sharing.init}
-   :uses #{actions analytics api db events lib models query-processor request util}}
+   :uses #{actions analytics api db events lib models query-processor request tiles util}}
 
   pulse
   {:api  #{metabase.pulse.api
