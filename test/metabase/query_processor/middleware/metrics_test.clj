@@ -191,19 +191,19 @@
                        (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id) (lib/filterable-columns $q)) "Gadget"))
                        (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)])))))))
       (testing "With an implicit product join in consumer query"
-          (is (=?
-               {:stages [{:source-table (meta/id :orders)
-                          :joins [{:stages [{:source-table (meta/id :products)}]}]
+        (is (=?
+             {:stages [{:source-table (meta/id :orders)
+                        :joins [{:stages [{:source-table (meta/id :products)}]}]
                           ;; TODO: Search this file for `Duplicate value filter` for explanation of why filters are duplicated.
-                          :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
-                                    [:= {} [:field {} (meta/id :products :category)] "Gadget"]
-                                    [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
-                          :aggregation [[:count {}]]}]}
-               (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
-                         (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
-                                               "foobar"))
-                         (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id) (lib/filterable-columns $q)) "Gadget"))
-                         (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)]))))))))))
+                        :filters [[:= {} [:field {} (meta/id :products :title)] "foobar"]
+                                  [:= {} [:field {} (meta/id :products :category)] "Gadget"]
+                                  [:= {} [:field {} (meta/id :products :category)] [:value {} "Gadget"]]]
+                        :aggregation [[:count {}]]}]}
+             (adjust (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                       (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :title)} :id) (lib/filterable-columns $q))
+                                             "foobar"))
+                       (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id) (lib/filterable-columns $q)) "Gadget"))
+                       (lib/aggregate $q (lib.options/ensure-uuid [:metric {} (:id source-metric)]))))))))))
 
 (deftest ^:parallel multiple-source-metrics-with-implicit-join-test
   (let [[first-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
@@ -242,7 +242,7 @@
               adjusted)))))
 
 (deftest ^:parallel adjust-join-test
-  (let [[source-metric mp] (mock-metric (-> meta/metadata-provider 
+  (let [[source-metric mp] (mock-metric (-> meta/metadata-provider
                                             (lib/query (meta/table-metadata :orders))
                                             (lib/aggregate (lib/avg (meta/field-metadata :orders :total)))))
         query (-> (lib/query mp source-metric)
@@ -963,12 +963,12 @@
              {:type :metric
               :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                                (lib/join $ (lib/with-join-conditions
-                                             (lib/join-clause joined-metadata)
-                                             [(lib/=
-                                               (m/find-first (comp #{"Product ID"} :display-name)
-                                                             (lib/visible-columns $))
-                                               (m/find-first (comp #{"ID"} :display-name)
-                                                             (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                            (lib/join-clause joined-metadata)
+                                            [(lib/=
+                                              (m/find-first (comp #{"Product ID"} :display-name)
+                                                            (lib/visible-columns $))
+                                              (m/find-first (comp #{"ID"} :display-name)
+                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
                                (lib/aggregate $ (lib/count))
                                (lib.convert/->legacy-MBQL $))}]
             (testing (format "Referencing stage with fk join with different target provokes an exception (joining %s)"
@@ -982,12 +982,12 @@
                            (qp/process-query
                             (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                               (lib/join $ (lib/with-join-conditions
-                                            (lib/join-clause joined-metadata)
-                                            [(lib/=
-                                              (m/find-first (comp #{"Product ID"} :display-name)
-                                                            (lib/visible-columns $))
-                                              (m/find-first (comp #{"ID"} :display-name)
-                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                           (lib/join-clause joined-metadata)
+                                           [(lib/=
+                                             (m/find-first (comp #{"Product ID"} :display-name)
+                                                           (lib/visible-columns $))
+                                             (m/find-first (comp #{"ID"} :display-name)
+                                                           (lib/returned-columns (lib/query mp joined-metadata))))]))
                               (lib/aggregate $ (lib.metadata/metric mp no-join-id)))))))))))))
 
 (deftest join-operator-is-:=-test
@@ -1297,12 +1297,12 @@
             (testing (str "Processing of query with stage with less specific filter referencing metrics with "
                           "compatible filters throws (based on" query-base-type ")")
               (is (thrown-with-msg? Throwable #"Stage filter is not compatible with metric \d+ filter"
-                      (qp/process-query (as-> (lib/query mp query-base) $
-                                          (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
-                                                                             (lib/filterable-columns $))
-                                                               10))
-                                          (lib/aggregate $ (lib.metadata/metric mp mid-cnt))
-                                          (lib/aggregate $ (lib.metadata/metric mp mid-sum)))))))))))))
+                                    (qp/process-query (as-> (lib/query mp query-base) $
+                                                        (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                                                           (lib/filterable-columns $))
+                                                                             10))
+                                                        (lib/aggregate $ (lib.metadata/metric mp mid-cnt))
+                                                        (lib/aggregate $ (lib.metadata/metric mp mid-sum)))))))))))))
 
 (deftest one-metric-has-incompatible-filters-with-stage-other-doesnt-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
@@ -1393,19 +1393,19 @@
 
 (deftest equal-filter?-test
   (testing "Basic positive"
-    (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
+    (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 1]
-                    [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
+                    [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 1]))))
-  
+
   (testing "Different operator"
-    (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
-                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2] 
+    (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
                       1]
                      [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                       [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
                       1]))))
-  
+
   (testing "Nested clauses positive"
     (is (true? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                      [:+ {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
@@ -1421,7 +1421,7 @@
                        [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
                        [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
                      1]))))
-  
+
   (testing "Nested clause has a different operator"
     (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                       [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
@@ -1437,7 +1437,7 @@
                         [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 2]
                         [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 300]]]
                       1]))))
-  
+
   (testing "Nested clause has different arg"
     (is (false? (efs [:< {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                       [:= {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
@@ -1455,9 +1455,9 @@
                       1]))))
 
   (testing "Literal value and value clause work as expected"
-   (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
-                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10]
-                    100]
-                   [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 
-                    [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10] 
-                    [:value {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]])))))
+    (is (true? (efs [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10]
+                     100]
+                    [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
+                     [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10]
+                     [:value {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]])))))
