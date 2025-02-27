@@ -4,7 +4,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import {
+  ActionIcon,
+  Divider,
+  Group,
+  Icon,
+  Paper,
+  type PaperProps,
+  Text,
+} from "metabase/ui";
 import type {
   ColumnFormattingSetting,
   DatasetColumn,
@@ -18,52 +26,42 @@ export const RulePreview = ({
   cols,
   onClick,
   onRemove,
+  ...paperProps
 }: {
   rule: ColumnFormattingSetting;
   cols: DatasetColumn[];
   onClick: MouseEventHandler<HTMLDivElement>;
   onRemove: () => void;
-}) => (
-  <div
-    className={cx(
-      CS.my2,
-      CS.bordered,
-      CS.rounded,
-      CS.shadowed,
-      CS.cursorPointer,
-      CS.bgWhite,
-    )}
+} & PaperProps) => (
+  <Paper
+    withBorder
+    className={CS.overflowHidden}
     onClick={onClick}
-    data-testid="formatting-rule-preview"
+    {...paperProps}
   >
-    <div className={cx(CS.p1, CS.borderBottom, CS.relative, CS.bgLight)}>
-      <div className={cx(CS.px1, CS.flex, CS.alignCenter, CS.relative)}>
-        <span className={cx(CS.h4, CS.flexAuto, CS.textDark, CS.textWrap)}>
-          {rule.columns.length > 0 ? (
-            rule.columns
-              .map(
-                name =>
-                  (_.findWhere(cols, { name }) || {}).display_name || name,
-              )
-              .join(", ")
-          ) : (
-            <span
-              style={{ fontStyle: "oblique" }}
-            >{t`No columns selected`}</span>
-          )}
-        </span>
-        <Icon
-          name="close"
-          className={cx(CS.cursorPointer, CS.textLight, CS.textMediumHover)}
-          style={{ minWidth: 16 }}
-          onClick={e => {
-            e.stopPropagation();
-            onRemove();
-          }}
-        />
-      </div>
-    </div>
-    <div className={cx(CS.p2, CS.flex, CS.alignCenter)}>
+    <Group wrap="nowrap" px="md" bg="bg-light">
+      <Text flex="1" fw="bold" fz="md">
+        {rule.columns.length > 0 ? (
+          rule.columns
+            .map(
+              name => (_.findWhere(cols, { name }) || {}).display_name || name,
+            )
+            .join(", ")
+        ) : (
+          <Text fs="oblique">{t`No columns selected`}</Text>
+        )}
+      </Text>
+      <ActionIcon
+        onClick={e => {
+          e.stopPropagation();
+          onRemove();
+        }}
+      >
+        <Icon name="close" />{" "}
+      </ActionIcon>
+    </Group>
+    <Divider></Divider>
+    <Group wrap="nowrap" p="md" gap="xs">
       <RuleBackground
         rule={rule}
         className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
@@ -72,6 +70,6 @@ export const RulePreview = ({
         style={{ width: 40, height: 40 }}
       />
       <RuleDescription rule={rule} />
-    </div>
-  </div>
+    </Group>
+  </Paper>
 );
