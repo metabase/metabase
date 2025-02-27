@@ -5,8 +5,8 @@ export type CodeLanguage =
   | "jade"
   | "javascript"
   | "json"
-  | "python"
   | "mustache"
   | "pug"
+  | "python"
   | "ruby"
   | "typescript";
