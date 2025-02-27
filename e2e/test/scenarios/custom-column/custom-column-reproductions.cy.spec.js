@@ -1026,7 +1026,10 @@ describe("issue 49342", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not be possible to leave the expression input with the Tab key (metabase#49342)", () => {
+  it("should not be possible to leave the expression input with the Tab key ", () => {
+    // This test used to be a repro for #49342, but the product feature change
+    // so that the expression input can no longer be tabbed out of.
+
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
