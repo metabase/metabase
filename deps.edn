@@ -301,8 +301,7 @@
 
   ;; This is probably the best way to start the app for dev mode.
   ;; 1. Runs (dev) (start!) for you
-  ;; 2. This start the repl too
-  ;; 3. works with hashp
+  ;; 2. This starts the repl too: just like the :nrepl alias below. (see [[user/-main]])
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
   :dev-start {:main-opts ["-m" "user"]}
 
