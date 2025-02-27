@@ -1,3 +1,4 @@
+import { Button, Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ClickBehavior,
@@ -9,6 +10,7 @@ import S from "../ClickBehaviorSidebar.module.css";
 import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";
+import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 import { useClickBehaviorOptionName } from "../hooks";
 import { clickBehaviorOptions } from "../utils";
@@ -79,20 +81,27 @@ export function ClickBehaviorSidebarMainView({
   return (
     <>
       <SidebarContent className={S.SidebarContentBordered}>
-        <SidebarItem.Selectable
-          onClick={handleShowTypeSelector}
-          isSelected
-          padded={false}
-        >
-          <SidebarItem.Icon
-            className={S.SelectedClickBehaviorItemIcon}
-            name={currentOption?.icon || "unknown"}
-          />
-          <SidebarItem.Content>
+        <Button.Group>
+          <Button
+            onClick={handleShowTypeSelector}
+            leftSection={<Icon name={currentOption?.icon || "unknown"} />}
+            size="lg"
+            variant="filled"
+            justify="flex-start"
+            classNames={{
+              root: LinkOptionsS.ButtonRoot,
+            }}
+          >
             <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
-            <SidebarItem.CloseIcon />
-          </SidebarItem.Content>
-        </SidebarItem.Selectable>
+          </Button>
+          <Button
+            onClick={handleShowTypeSelector}
+            miw="3rem"
+            size="lg"
+            variant="filled"
+            rightSection={<Icon name="close" />}
+          />
+        </Button.Group>
       </SidebarContent>
 
       <ClickBehaviorOptions

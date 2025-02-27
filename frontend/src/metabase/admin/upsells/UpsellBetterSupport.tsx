@@ -5,6 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 
 import { UpsellCard } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 export const UpsellBetterSupport = ({ source }: { source: string }) => {
   const plan = useSelector(state =>
@@ -20,7 +21,7 @@ export const UpsellBetterSupport = ({ source }: { source: string }) => {
       title={t`Get expert help`}
       campaign="better-hosting"
       buttonText={t`Try for free`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       source={source}
     >
       <div>{t`Unlimited support from success engineers whenever you need it with any paid plan.`}</div>

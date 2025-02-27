@@ -1258,7 +1258,7 @@ describe("issue 31628", () => {
          */
         cy.findByTestId("scalar-description").realHover();
 
-        H.popover().findByText(SCALAR_QUESTION.description).should("exist");
+        H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });

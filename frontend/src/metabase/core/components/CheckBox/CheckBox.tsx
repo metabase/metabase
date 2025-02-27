@@ -8,7 +8,7 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import {
   CheckBoxContainer,
@@ -133,7 +133,7 @@ function CheckboxTooltip({
   children,
 }: CheckboxTooltipProps): ReactElement {
   return hasTooltip ? (
-    <Tooltip tooltip={tooltipLabel}>{children}</Tooltip>
+    <Tooltip label={tooltipLabel}>{children}</Tooltip>
   ) : (
     <>{children}</>
   );

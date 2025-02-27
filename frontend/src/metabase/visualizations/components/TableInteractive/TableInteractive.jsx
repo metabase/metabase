@@ -12,7 +12,6 @@ import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnI
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
@@ -34,6 +33,7 @@ import {
   DelayGroup,
   Icon,
   ThemeProvider,
+  Tooltip,
   Button as UIButton,
 } from "metabase/ui";
 import {
@@ -1399,7 +1399,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
     }}
     data-testid="detail-shortcut"
   >
-    <Tooltip tooltip={t`View Details`}>
+    <Tooltip label={t`View Details`}>
       <Button
         iconOnly
         iconSize={10}

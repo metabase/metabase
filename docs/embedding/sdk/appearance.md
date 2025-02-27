@@ -4,8 +4,6 @@ title: "Embedded analytics SDK - appearance"
 
 # Embedded analytics SDK - appearance
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can style your embedded Metabase components with a theme.
@@ -227,3 +225,7 @@ import {
   <StaticDashboard dashboardId={1} />
 </MetabaseProvider>
 ```
+
+## Limitations
+
+Colors configured in a question's visualization settings will override theme colors.

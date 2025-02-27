@@ -2,8 +2,8 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
+import { Tooltip } from "metabase/ui";
 
 import S from "./NotebookActionButton.module.css";
 
@@ -55,5 +55,5 @@ export function NotebookActionButton({
     </Button>
   );
 
-  return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
+  return large ? button : <Tooltip label={title}>{button}</Tooltip>;
 }
