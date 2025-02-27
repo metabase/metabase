@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useCreateApiKeyMutation } from "metabase/api";
 import { CopyButton } from "metabase/components/CopyButton";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useSelector } from "metabase/lib/redux";
 import type { InteractiveV2Settings } from "metabase/public/hooks/use-interactive-v2-settings";
 import type { EmbedResourceType } from "metabase/public/lib/types";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
+  ActionIcon,
   Box,
   Center,
   Code,
   Grid,
   Group,
+  Icon,
   Loader,
   Radio,
   Text,
@@ -38,17 +43,44 @@ type EmbedMode = EmbedResourceType | "exploration";
 // or at least create the most restricted API key possible for public usage.
 const DEMO_API_KEY = "mb_Fxoc6Cns8Stk3BxJi33ova6Vmi8GpVDQetZsPWMTEzY=";
 
-export const InteractiveEmbeddingDemo = () => {
+export const InteractiveEmbeddingDemo = ({
+  withApiKeyInput = true,
+  canGenerateApiKey = true,
+}: {
+  withApiKeyInput?: boolean;
+  canGenerateApiKey?: boolean;
+}) => {
   const [isLoadingEmbedJs, setIsLoadingEmbedJs] = useState(true);
   const iframeParentRef = useRef<HTMLDivElement>(null);
 
   const [embedMode, setEmbedMode] = useState<EmbedMode>("dashboard");
   const [resourceId, setResourceId] = useState<string>("1");
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME_COLORS);
+  const [apiKey, setApiKey] = useState(DEMO_API_KEY);
+  const [createApiKey] = useCreateApiKeyMutation();
+
+  const userIsAdmin = useSelector(getUserIsAdmin);
+
+  // Only allow API key generation for admins.
+  const allowGenerateApiKey = userIsAdmin && canGenerateApiKey;
+
   const debouncedThemeColors = useDebouncedValue(
     themeColors,
     THEME_COLOR_DEBOUNCE_DELAY,
   );
+
+  const handleCreateApiKey = async () => {
+    try {
+      const timestamp = new Date().toISOString();
+      const result = await createApiKey({
+        name: `Simple Embedding Demo ${timestamp}`,
+        group_id: 1, // All Users group
+      }).unwrap();
+      setApiKey(result.unmasked_key);
+    } catch (error) {
+      console.error("Failed to create API key:", error);
+    }
+  };
 
   const getResourceId = (input: string) => {
     if (!input) {
@@ -115,7 +147,7 @@ export const InteractiveEmbeddingDemo = () => {
 
     // IMPORTANT: You must create a least privileged and sandboxed API key for
     // public usage. Otherwise, you risk exposing Metabase to unwanted access.
-    apiKey: "<INSERT_API_KEY_HERE>"
+    apiKey: "${apiKey}"
 
     url: "${origin}${iframePreviewUrl}",
   });
@@ -148,14 +180,14 @@ export const InteractiveEmbeddingDemo = () => {
       const embed = new MetabaseEmbed({
         url: iframePreviewUrl,
         target: iframeParentRef.current,
-        apiKey: DEMO_API_KEY,
+        apiKey,
       });
 
       return () => {
         embed.destroy();
       };
     }
-  }, [isLoadingEmbedJs, iframePreviewUrl]);
+  }, [isLoadingEmbedJs, iframePreviewUrl, apiKey]);
 
   if (isLoadingEmbedJs) {
     return (
@@ -253,6 +285,39 @@ export const InteractiveEmbeddingDemo = () => {
                   />
                   <Text size="xs" c="text-secondary" mt="xs">
                     Can be a number or an Entity ID (21-character string)
+                  </Text>
+                </Box>
+              )}
+
+              {withApiKeyInput && (
+                <Box mb="lg">
+                  <Text mb="xs">API Key</Text>
+
+                  <Group gap="xs">
+                    <TextInput
+                      value={apiKey}
+                      onChange={e => setApiKey(e.target.value)}
+                      placeholder="Enter API key"
+                      style={{ flex: 1 }}
+                      rightSection={
+                        allowGenerateApiKey && (
+                          <ActionIcon
+                            variant="outline"
+                            onClick={handleCreateApiKey}
+                            title="Create new API key"
+                          >
+                            <Icon name="key" size={16} c="brand" />
+                          </ActionIcon>
+                        )
+                      }
+                    />
+                  </Group>
+
+                  <Text size="xs" c="text-secondary" mt="xs" lh="md">
+                    Paste an existing API key
+                    {allowGenerateApiKey ? " or generate a new one" : ""}. You
+                    must create a least privileged API key for public usage,
+                    otherwise you risk exposing Metabase to unwanted access.
                   </Text>
                 </Box>
               )}
