@@ -5,6 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 
 import { UpsellCard } from "./components";
+import { UPGRADE_URL } from "./constants";
 
 export const UpsellUploads = ({ source }: { source: string }) => {
   const plan = useSelector(state =>
@@ -22,7 +23,7 @@ export const UpsellUploads = ({ source }: { source: string }) => {
       title={t`Manage your uploads`}
       campaign="manage-uploads"
       buttonText={t`Try for free`}
-      buttonLink="https://www.metabase.com/upgrade"
+      buttonLink={UPGRADE_URL}
       source={source}
     >
       {c("{0} is the string 'Upgrade to Metabase Pro'").jt`${(

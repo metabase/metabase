@@ -15,9 +15,7 @@
 
 (p/import-vars
  [notification.payload
-  notification-payload
-  Notification
-  NotificationPayload]
+  notification-payload]
  [notification.seed
   seed-notification!])
 

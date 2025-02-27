@@ -157,9 +157,9 @@
 
 (defn init-send-pulse-triggers!
   "Update send pulse triggers for all active pulses.
-  Called once when Metabase starts up to create triggers for all existing PulseChannels
-  and whenever the report timezone changes."
+  Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
+  (log/info "Initializing SendPulse triggers")
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
                                               {:select    [:pc.*]
                                                :from      [[:pulse_channel :pc]]
