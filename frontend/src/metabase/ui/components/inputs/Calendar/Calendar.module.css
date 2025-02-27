@@ -233,7 +233,11 @@
   height: 2rem;
   width: 5rem;
 
-  &[data-selected]:hover,
+  &[data-selected] {
+    color: var(--mb-color-text-selected);
+  }
+
+  &:hover:not([data-selected]),
   &:hover:not(:disabled) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);

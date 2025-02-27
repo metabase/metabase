@@ -12,16 +12,14 @@ export const monthPickerOverrides: MantineThemeOverride["components"] = {
       mih: 0, // overwrite Calendar's default value
     },
     classNames: {
-      monthsList: CalendarS.monthsList,
-      yearsList: CalendarS.yearsList,
-      yearsListRow: CalendarS.row,
-      yearsListCell: CalendarS.cell,
       calendarHeader: S.calendarHeader,
+      monthsList: CalendarS.monthsList,
       calendarHeaderLevel: CalendarS.calendarHeaderLevel,
       calendarHeaderControl: CalendarS.calendarHeaderControl,
-      monthsListControl: CalendarS.monthsListControl,
       monthsListCell: CalendarS.cell,
       monthsListRow: CalendarS.row,
+      monthsListControl: CalendarS.monthsListControl,
+      calendarHeaderControlIcon: S.calendarHeaderControlIcon,
     },
   }),
 };
