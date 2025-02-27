@@ -44,16 +44,6 @@ jobs:
       uses: ./.github/actions/fetch-artifact
       with:
         name: ${{ inputs.artifact-name }}
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v3
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
     - name: Get platforms
@@ -62,16 +52,30 @@ jobs:
       with:
         result-encoding: string
         script: | # js
-          const version = "${{ inputs.tag }}";
-          const { getBuildRequirements } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { getBuildRequirements, isValidVersionString} = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = "${{ inputs.tag }}".split('-')[0];
 
+          if (!isValidVersionString(version)) {
+            return "linux/amd64";
+          }
           // versions before 53 need to be handled differently
           const buildInfo = getBuildRequirements(version);
           return buildInfo.platforms;
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Set up QEMU
+      if: contains(steps.platforms.outputs.result, 'arm')
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      if: contains(steps.platforms.outputs.result, 'arm')
+      uses: docker/setup-buildx-action@v3
     - name: Build multi-arch container
-      if: contains(steps.platforms.outputs.result, 'linux/arm64')
+      if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/build-push-action@v6
       with:
         context: bin/docker/.
@@ -81,16 +85,15 @@ jobs:
         no-cache: true
         push: true
 
+    # we need to do this to get the nice fallback behavior of the legacy manifest file
     - name: Build container (x86 only)
-      if: contains(steps.platforms.outputs.result, 'linux/arm64') == false
-      uses: docker/build-push-action@v6
-      with:
-        context: bin/docker/.
-        platforms: linux/amd64
-        network: host
-        tags: ${{ inputs.repo }}:${{ inputs.tag }}
-        no-cache: true
-        push: true
+      if: contains(steps.platforms.outputs.result, 'arm') == false
+      run: | # bash
+        docker build \
+          -t ${{ inputs.repo }}:${{ inputs.tag }} \
+          --network=host \
+          --push \
+          bin/docker/.
 
   verify-docker-pull:
     runs-on: ubuntu-latest
