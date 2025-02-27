@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { Box, Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
@@ -125,15 +125,16 @@ export function Editor<S extends StartRule = "expression">(
       />
 
       <Box className={S.toolbar} p="xs">
-        <Button
-          title={t`Format`}
-          aria-label={t`Format`}
-          onClick={formatExpression}
-          variant="subtle"
-          leftSection={<Icon name="snippet" />}
-          size="xs"
-          disabled={isFormatting || error != null}
-        />
+        <ButtonTooltip label={t`Format`}>
+          <Button
+            aria-label={t`Format`}
+            onClick={formatExpression}
+            variant="subtle"
+            leftSection={<Icon name="snippet" />}
+            size="xs"
+            disabled={isFormatting || error != null}
+          />
+        </ButtonTooltip>
       </Box>
 
       {portal}
