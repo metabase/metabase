@@ -208,7 +208,7 @@ const createAdhocQuestion = ({
   startNewQuestion();
   entityPickerModal().within(() => {
     entityPickerModalTab("Tables").click();
-    cy.findByText("Products").click();
+    cy.findByText("Products", { timeout: 10000 }).click();
   });
   if (customColumnType) {
     addCustomColumnToQuestion(customColumnType);
@@ -351,7 +351,7 @@ export const configureSandboxPolicy = (
     throw new Error("Unexpected columnType");
   }
 
-  if (columnType === "custom") {
+  if (filterTableBy === "column" || columnType === "custom") {
     expect(attributeKey).to.be.a("string");
     modal()
       .findByRole("button", { name: /Pick a column|parameter/ })
@@ -384,7 +384,7 @@ export const configureSandboxPolicy = (
   saveChangesToPermissions();
 
   cy.log("Wait for the sandboxing policy to take effect");
-  cy.wait(1000);
+  cy.wait(3000);
 };
 
 type RegularColumnBasedSandboxPolicy = {
