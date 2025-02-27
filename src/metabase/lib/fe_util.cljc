@@ -459,7 +459,7 @@
        (value :guard #(or (number? %) (= :current %)))
        (unit :guard keyword?)]
       (when-let [col (ref->col col-ref)]
-        {:column       (ref->col col-ref)
+        {:column       col
          :value        value
          :unit         unit
          :options      (select-keys opts [:include-current])})
@@ -472,7 +472,7 @@
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
       (when-let [col (ref->col col-ref)]
-        {:column       (ref->col col-ref)
+        {:column       col
          :value        value
          :unit         unit
          :offset-value offset-value
