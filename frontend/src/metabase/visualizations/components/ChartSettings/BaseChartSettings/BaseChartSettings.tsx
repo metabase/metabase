@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -19,7 +20,6 @@ import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
-  ChartSettingsMenu,
   SectionContainer,
 } from "./BaseChartSettings.styled";
 import { useChartSettingsSections } from "./hooks";
@@ -34,6 +34,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
+  ...stackProps
 }: BaseChartSettingsProps) => {
   const {
     chartSettingCurrentSection,
@@ -187,7 +188,13 @@ export const BaseChartSettings = ({
 
   return (
     <>
-      <ChartSettingsMenu data-testid="chartsettings-sidebar">
+      <Stack
+        data-testid="chartsettings-sidebar"
+        h="100%"
+        spacing={0}
+        className={CS.overflowHidden}
+        {...stackProps}
+      >
         {showSectionPicker && (
           <SectionContainer>
             <Radio
@@ -201,13 +208,16 @@ export const BaseChartSettings = ({
             />
           </SectionContainer>
         )}
-        <ChartSettingsListContainer className={CS.scrollShow}>
+        <ChartSettingsListContainer
+          data-testid="chartsettings-list-container"
+          className={CS.scrollShow}
+        >
           <ChartSettingsWidgetList
             widgets={visibleWidgets}
             extraWidgetProps={extraWidgetProps}
           />
         </ChartSettingsListContainer>
-      </ChartSettingsMenu>
+      </Stack>
       <ChartSettingsWidgetPopover
         anchor={popoverRef as HTMLElement}
         widgets={[styleWidget, formattingWidget].filter(
