@@ -8,6 +8,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -485,7 +486,34 @@
   The value is used in [[metabase.lib.field/resolve-field-metadata]]."
   false)
 
-(mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
+(mu/defn- returned-columns:old-refs :- [:maybe ColumnsWithUniqueAliases]
+  "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
+  join, and include the `:lib/source` of where they came from. This should only include columns that will be present
+  in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
+
+  See [[ReturnedColumnsOptions]] for allowed options and [[default-returned-columns-options]] for default values."
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   x
+   options        :- [:maybe ReturnedColumnsOptions]]
+  (let [options (merge (default-returned-columns-options query) options)]
+    (binding [*propagate-binning-and-bucketing* true]
+      (returned-columns-method query stage-number x options))))
+
+(mu/defn- returned-columns:new-refs :- [:sequential ::lib.metadata.overhaul/column]
+  "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
+  join, and include the `:lib/source` of where they came from. This should only include columns that will be present
+  in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
+
+  See [[ReturnedColumnsOptions]] for allowed options and [[default-returned-columns-options]] for default values."
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   x
+   options        :- [:maybe [:map]]]
+  (let [options (or options {})]
+    (returned-columns-method query stage-number x options)))
+
+(defn returned-columns
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
   in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
@@ -500,13 +528,9 @@
   ([query stage-number x]
    (returned-columns query stage-number x nil))
 
-  ([query          :- ::lib.schema/query
-    stage-number   :- :int
-    x
-    options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options query) options)]
-     (binding [*propagate-binning-and-bucketing* true]
-       (returned-columns-method query stage-number x options)))))
+  ([query stage-number x options]
+   (let [inner-fn (lib.metadata.overhaul/old-new returned-columns:old-refs returned-columns:new-refs)]
+     (inner-fn query stage-number x options))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -557,9 +581,25 @@
   [query _stage-number stage-number options]
   (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
-(mu/defn visible-columns :- ColumnsWithUniqueAliases
+(mu/defn- visible-columns:old-refs :- ColumnsWithUniqueAliases
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   x
+   options        :- [:maybe VisibleColumnsOptions]]
+  (let [options (merge (default-visible-columns-options query) options)]
+    (visible-columns-method query stage-number x options)))
+
+(mu/defn- visible-columns:new-refs :- [:sequential ::lib.metadata.overhaul/column]
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   x
+   options        :- [:maybe VisibleColumnsOptions]]
+  (let [options (merge (default-visible-columns-options query) options)]
+    (visible-columns-method query stage-number x options)))
+
+(defn visible-columns
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
-  join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
+  join query. This includes not just the columns that get returned (ones present in [[metadata]]), but other columns
   that are 'reachable' in this stage of the query. E.g. in a query like
 
     SELECT id, name
@@ -581,17 +621,16 @@
    (if (and (map? x)
             (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
      (lib.cache/side-channel-cache
-      (keyword (str stage-number "__visible-columns-no-opts")) query
+      (keyword (str stage-number "__visible-columns-no-opts__" lib.metadata.overhaul/*overhaul-selector*)) query
       (fn [_] (visible-columns query stage-number x nil)))
      (visible-columns query stage-number x nil)))
 
-  ([query          :- ::lib.schema/query
-    stage-number   :- :int
-    x
-    options        :- [:maybe VisibleColumnsOptions]]
-   (let [options (merge (default-visible-columns-options query) options)]
-     (visible-columns-method query stage-number x options))))
+  ([query stage-number x options]
+   (let [inner-fn (lib.metadata.overhaul/old-new visible-columns:old-refs visible-columns:new-refs)]
+     (inner-fn query stage-number x options))))
 
+;; TODO: This function is ill-defined and should be removed. It should not be taking a query, but rather a source
+;; such as a table or card.
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]

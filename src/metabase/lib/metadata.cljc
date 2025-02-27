@@ -1,12 +1,14 @@
 (ns metabase.lib.metadata
   (:require
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.memoize :as u.memoize]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -41,14 +43,68 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
-(mu/defn fields :- [:sequential ::lib.schema.metadata/column]
+(declare field:new-refs)
+
+(def ^{:private true
+       :arglists '([metadata-providerable field-id])}
+  field-ident
+  (u.memoize/memo (with-meta (fn [metadata-providerable field-id]
+                               (:column/ident (field:new-refs metadata-providerable field-id)))
+                             {:clojure.core.memoize/args-fn rest})))
+
+(mu/defn new-metadata:column :- ::lib.metadata.overhaul/column
+  "Converts an old column metadata into the overhauled format."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   old-column            :- ::lib.schema.metadata/column]
+  (merge
+   ;; NOTE: This set of keys should be minimal - nothing here without need.
+   ;; The Datomic-style namespacing is deliberate - columns which are not Fields do not have `:field/*` keys.
+   {:lib/type            ::lib.metadata.overhaul/column
+    :column/ident        (:ident old-column)
+    ;; Column names are omitted(!) since the new refs don't make any use of them. We only care about aliases in SQL
+    ;; and display names in the UI.
+    ;; :column/name         (or (:name old-column) "")
+    :column/type         (or (:effective-type old-column)
+                             (:base-type old-column))}
+   (when-let [display-name (:display-name old-column)]
+     {:column/display-name display-name})
+   (when-let [semantic-type (:semantic-type old-column)]
+     {:column/semantic-type semantic-type})
+   (when-let [fk-target (:fk-target-field-id old-column)]
+     {:column/fk-target-ident (field-ident metadata-providerable fk-target)})))
+
+(mu/defn new-metadata:field :- ::lib.metadata.overhaul/field
+  "Converts the old-style field metadata into new style. Note that the `:ident` should already be set!"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   fieldd                :- ::lib.schema.metadata/column]
+  (merge (new-metadata:column metadata-providerable fieldd)
+         {:field/id               (:id fieldd)
+          :field/table-id         (:table-id fieldd)
+          :column.source/position (:position fieldd)}))
+
+(mu/defn fields:old-refs :- [:sequential ::lib.schema.metadata/column]
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
+(mu/defn fields:new-refs :- [:sequential ::lib.metadata.overhaul/field]
+  "Get metadata about all the Fields belonging to a specific Table."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (let [mp (->metadata-provider metadata-providerable)]
+    (->> (lib.metadata.protocols/fields mp table-id)
+         (mapv #(new-metadata:field mp %))
+         lib.metadata.overhaul/register-all!)))
+
+(defn fields
+  "Get metadata about all the Fields belonging to a specific Table."
+  [metadata-providerable table-id]
+  ((lib.metadata.overhaul/old-new fields:old-refs fields:new-refs) metadata-providerable table-id))
+
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column
+                                              ::lib.metadata.overhaul/field
                                               ::lib.schema.metadata/metric
                                               ::lib.schema.metadata/segment]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
@@ -73,21 +129,32 @@
 
   Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
   don't want to get hung up on this error."
-  ;; TODO: Fix the metadata APIs to include `:ident` or `:entity_id` so the JS side has proper idents.
-  #?(:clj true :cljs false))
+  true)
 
-(mu/defn field :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- field:old-refs :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
-  (let [fieldd (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id)]
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+
+(mu/defn- field:new-refs :- [:maybe ::lib.metadata.overhaul/field]
+  "Get metadata about a specific Field in the Database we're querying."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   field-id              :- ::lib.schema.id/field]
+  (let [mp     (->metadata-provider metadata-providerable)
+        fieldd (lib.metadata.protocols/field mp field-id)]
     (when (and fieldd
                (not (:ident fieldd))
                *enforce-idents*)
       (throw (ex-info "Returning a field with no :ident" {:metadata-providerable (pr-str metadata-providerable)
                                                           :id                    field-id
                                                           :field                 fieldd})))
-    fieldd))
+    (new-metadata:field mp fieldd)))
+
+(defn field
+  "Get metadata about a specific Field in the Database we're querying."
+  [metadata-providerable field-id]
+  ((lib.metadata.overhaul/old-new field:old-refs field:new-refs) metadata-providerable field-id))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."

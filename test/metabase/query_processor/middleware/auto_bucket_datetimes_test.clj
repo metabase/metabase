@@ -4,6 +4,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -274,7 +275,8 @@
     (is (= {:source-table 1
             :breakout     [[:field Integer/MAX_VALUE nil]]
             :breakout-idents {0 "ZT7n35j6KY0m_NPIEa7Ut"}}
-           (binding [lib.metadata/*enforce-idents* false]
+           (binding [lib.metadata/*enforce-idents* false
+                     lib.metadata.overhaul/*overhaul-selector* :old-only]
              (auto-bucket-mbql
               {:source-table 1
                :breakout     [[:field Integer/MAX_VALUE nil]]

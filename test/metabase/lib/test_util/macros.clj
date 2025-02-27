@@ -1,6 +1,7 @@
 (ns metabase.lib.test-util.macros
   (:require
    [clojure.test :refer [testing]]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.test-util.macros.impl :as lib.tu.macros.impl]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]))
 
@@ -80,3 +81,32 @@
                :let [~(symbol sym) q#]]
          (testing (str query-name# " (" idx# ")")
            ~@body)))))
+
+(defmacro with-refs-overhaul
+  "Runs the test body with both old refs and new refs enabled.
+
+  To make the test expectations or inputs differ between the two, test [[lib.metadata.overhaul/old-refs?]]
+  or [[lib.metadata.overhaul/new-refs?]] or use [[lib.metadata.overhaul/old-new]] to choose between two values.
+
+  If the body is quite different between the two states, prefer separate [[with-new-refs]] and [[with-old-refs]]
+  clauses."
+  [& body]
+  `(doseq [[label# setting#] [["\nwith old refs" :old-only]
+                              ["\nwith new refs" :new-only]]]
+     (testing label#
+       (binding [lib.metadata.overhaul/*overhaul-selector* setting#]
+         ~@body))))
+
+(defmacro with-new-refs
+  "Runs `body` with new refs enabled, regardless of the global setting."
+  [& body]
+  `(testing "\nwith new refs"
+     (binding [lib.metadata.overhaul/*overhaul-selector* :new-only]
+       ~@body)))
+
+(defmacro with-old-refs
+  "Runs `body` with old refs enabled, regardless of the global setting."
+  [& body]
+  `(testing "\nwith old refs"
+     (binding [lib.metadata.overhaul/*overhaul-selector* :old-only]
+       ~@body)))

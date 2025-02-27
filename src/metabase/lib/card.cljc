@@ -5,6 +5,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -56,7 +57,13 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
-(mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn- infer-returned-columns:old-refs :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-query            :- :map]
+  (when (some? card-query)
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
+
+(mu/defn- infer-returned-columns:new-refs :- [:maybe [:sequential ::lib.metadata.overhaul/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-query            :- :map]
   (when (some? card-query)
@@ -74,7 +81,7 @@
   nominal refs so as to not completely destroy the FE. Once we port more stuff over maybe we can fix this."
   false)
 
-(defn- ->card-metadata-column
+(defn- ->card-metadata-column:old-refs
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
   accept both `card-id` and `card`."
   [col
@@ -114,10 +121,10 @@
     ;; metabase.api.table/card-result-metadata->virtual-fields
     (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
-(mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn ->card-metadata-columns:old-refs :- [:sequential ::lib.schema.metadata/column]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
   ([metadata-providerable cols]
-   (->card-metadata-columns metadata-providerable nil cols))
+   (->card-metadata-columns:old-refs metadata-providerable nil cols))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
@@ -128,7 +135,7 @@
          field-ids         (keep :id cols)
          fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
          field-id->field   (m/index-by :id fields)]
-     (mapv #(->card-metadata-column % card-id card (get field-id->field (:id %))) cols))))
+     (mapv #(->card-metadata-column:old-refs % card-id card (get field-id->field (:id %))) cols))))
 
 (def ^:private CardColumnMetadata
   [:merge
@@ -144,7 +151,7 @@
   references between one another."
   #{})
 
-(mu/defn card-metadata-columns :- CardColumns
+(mu/defn- card-metadata-columns:old-refs :- CardColumns
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- Card]
@@ -152,34 +159,95 @@
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (when-let [result-metadata (or (:fields card)
                                      (:result-metadata card)
-                                     (infer-returned-columns metadata-providerable (:dataset-query card)))]
+                                     (infer-returned-columns:old-refs metadata-providerable (:dataset-query card)))]
         ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
         ;; contains` :columns` as well.
         (when-let [cols (not-empty (cond
                                      (map? result-metadata)        (:columns result-metadata)
                                      (sequential? result-metadata) result-metadata))]
-          (->card-metadata-columns metadata-providerable card cols))))))
+          (->card-metadata-columns:old-refs metadata-providerable card cols))))))
 
-(mu/defn saved-question-metadata :- CardColumns
+(mu/defn- card-metadata-columns:new-refs :- [:maybe [:sequential {:min 1} ::lib.metadata.overhaul/column-from-card]]
+  "Get a normalized version of the saved metadata associated with Card metadata."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card                  :- Card]
+  (when-not (contains? *card-metadata-columns-card-ids* (:id card))
+    (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
+      ;; TODO: Clean up all this guesswork - there should be a single consistent picture of what a card is!
+      (when (:fields card)
+        (throw (ex-info "Found a card with `:fields` in its metadata - what's this?" {:card card})))
+      (let [cols (if-let [stored-cols (:result-metadata card)]
+                   (for [col stored-cols]
+                     (case (:lib/type col)
+                       :metadata/column               (lib.metadata/new-metadata:column metadata-providerable col)
+                       ::lib.metadata.overhaul/column col))
+                   (infer-returned-columns:new-refs metadata-providerable (:dataset-query card)))]
+        (into [] (map-indexed (fn [i col]
+                                (assoc col
+                                       :column/card-id         (:id card)
+                                       :column.source/position i)))
+              cols)))))
+
+(defn card-metadata-columns
+  "Get a normalized version of the saved metadata associated with Card metadata."
+  [metadata-providerable card]
+  ((lib.metadata.overhaul/old-new card-metadata-columns:old-refs card-metadata-columns:new-refs)
+   metadata-providerable card))
+
+(mu/defn- saved-question-metadata:old-refs :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+    (card-metadata-columns:old-refs metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as options}]
+(mu/defn- saved-question-metadata:new-refs :- [:maybe [:sequential {:min 1} ::lib.metadata.overhaul/column]]
+  "Metadata associated with a Saved Question with `card-id`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-id               :- ::lib.schema.id/card]
+  ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
+  ;; but handle that case anyway. (#29739)
+  (when-let [card (lib.metadata/card metadata-providerable card-id)]
+    (card-metadata-columns:new-refs metadata-providerable card)))
+
+(defn saved-question-metadata
+  "Metadata associated with a Saved Question with `card-id`."
+  [metadata-providerable card-id]
+  ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
+  ;; but handle that case anyway. (#29739)
+  ((lib.metadata.overhaul/old-new saved-question-metadata:old-refs saved-question-metadata:new-refs)
+   metadata-providerable card-id))
+
+;; This actually works for both new and old refs, since it's just wrapping returned-columns.
+(defn- metric-columns [metadata-providerable card options]
+  (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                         (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+    (not-empty (lib.metadata.calculation/returned-columns
+                (assoc metric-query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
+                -1
+                (lib.util/query-stage metric-query -1)
+                options))))
+
+(defn- returned-columns-for-card:old-refs
+  [query card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
           (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
         (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
-                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (not-empty (lib.metadata.calculation/returned-columns
-                        (assoc metric-query :lib/metadata (:lib/metadata query))
-                        -1
-                        (lib.util/query-stage metric-query -1)
-                        options)))
-          (card-metadata-columns query card))))
+          (metric-columns query card options)
+          (card-metadata-columns:old-refs query card))))
+
+(defn- returned-columns-for-card:new-refs
+  [query card options]
+  (if (= (:type card) :metric)
+    (metric-columns query card options)
+    (card-metadata-columns:new-refs query card)))
+
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
+  [query _stage-number card options]
+  ((lib.metadata.overhaul/old-new returned-columns-for-card:old-refs returned-columns-for-card:new-refs)
+   query card options))
+
+(vreset! lib.query/card-metadata-columns* card-metadata-columns)

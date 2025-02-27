@@ -5,6 +5,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -33,16 +34,27 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
-(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn- breakouts-metadata:old-refs :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Get metadata about the breakouts in a given stage of a `query`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (some->> (breakouts query stage-number)
+           (mapv (fn [field-ref]
+                   (-> (lib.metadata.calculation/metadata query stage-number field-ref)
+                       (assoc :lib/source :source/breakouts))))))
+
+(mu/defn- breakouts-metadata:new-refs :- [:maybe [:sequential ::lib.metadata.overhaul/column]]
+  "Get metadata about the breakouts in a given stage of a `query`."
+  [_query        :- ::lib.schema/query
+   _stage-number :- :int]
+  (throw (ex-info "Implement me: breakouts-metadata:new-refs" {})))
+
+(defn breakouts-metadata
   "Get metadata about the breakouts in a given stage of a `query`."
   ([query]
    (breakouts-metadata query -1))
-  ([query        :- ::lib.schema/query
-    stage-number :- :int]
-   (some->> (breakouts query stage-number)
-            (mapv (fn [field-ref]
-                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts)))))))
+  ([query stage-number]
+   ((lib.metadata.overhaul/old-new breakouts-metadata:old-refs breakouts-metadata:new-refs) query stage-number)))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."

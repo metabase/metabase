@@ -61,7 +61,7 @@
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (columns-of-type :Relation/*))))
-    (testing "experssions"
+    (testing "expressions"
       (is (=? [{:name "ID"
                 :lib/desired-column-alias "ID"
                 :semantic-type :type/PK

@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -30,6 +31,7 @@
   "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
   [:or
    [:ref ::lib.schema.metadata/column]
+   [:ref ::lib.metadata.overhaul/column]
    [:ref :mbql.clause/field]])
 
 (def FieldOrPartialJoin
@@ -90,3 +92,12 @@
                           (implicit-join-name query field-metadata))]
     (joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
+
+(mu/defn join-ident->alias :- :string
+  "Finds the join clause with the given `:ident` and returns its alias."
+  [query      :- ::lib.schema/query
+   join-ident :- :string]
+  (first (for [stage (:stages query)
+               join  (:joins stage)
+               :when (= (:ident join) join-ident)]
+           (:alias join))))

@@ -4,9 +4,11 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
-   [metabase.lib.test-util :as lib.tu])
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros])
   #?@(:clj ((:import
              metabase.lib.test_metadata.graph_provider.SimpleGraphMetadataProvider))))
 
@@ -39,35 +41,37 @@
           Throwable
           #"Invalid output:.*Valid Table metadata"
           (lib.metadata/table-or-card lib.tu/metadata-provider-with-card Integer/MAX_VALUE)))
-     ;; doesn't currently throw an error in Cljs because we don't have Malli validation enabled... probably fine for
-     ;; now.
+     ;; Doesn't currently throw an error in CLJS because we don't have Malli validation enabled.
      :cljs
-     ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
-     (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card js/Number.MAX_SAFE_INT)))))
+     (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card js/Number.MAX_SAFE_INTEGER)))))
 
 (deftest ^:parallel bulk-metadata-preserve-order-test
-  (testing "bulk-metadata should return things in the same order as the IDs passed in"
-    (are [ids expected] (= expected
-                           (map :name (lib.metadata/bulk-metadata meta/metadata-provider :metadata/table (map meta/id ids))))
-      [:venues :orders :people]
-      ["VENUES" "ORDERS" "PEOPLE"]
+  (lib.tu.macros/with-refs-overhaul
+    (testing "bulk-metadata should return things in the same order as the IDs passed in"
+      (are [ids expected] (= expected
+                             (map :name (lib.metadata/bulk-metadata meta/metadata-provider :metadata/table (map meta/id ids))))
+        [:venues :orders :people]
+        ["VENUES" "ORDERS" "PEOPLE"]
 
-      [:people :orders :venues]
-      ["PEOPLE" "ORDERS" "VENUES"])))
+        [:people :orders :venues]
+        ["PEOPLE" "ORDERS" "VENUES"]))))
 
 (deftest ^:parallel editable?-test
+  ;; TODO: This can't be overhauled until we have another approach for `query-with-join`. It calls `with-join-alias`
+  ;; on a field expecting to get back the joined form, but that's not how it works in the new world!
   (let [query          (lib.tu/query-with-join)
         metadata       ^SimpleGraphMetadataProvider (:lib/metadata query)
         metadata-graph (.-metadata-graph metadata)
         restricted-metadata-graph (update metadata-graph :tables #(into [] (remove (comp #{"CATEGORIES"} :name)) %))
         restricted-provider (meta.graph-provider/->SimpleGraphMetadataProvider restricted-metadata-graph)
-        restritcted-query (assoc query :lib/metadata restricted-provider)]
+        restricted-query (assoc query :lib/metadata restricted-provider)]
     (is (lib.metadata/editable? query))
-    (is (not (lib.metadata/editable? restritcted-query)))))
+    (is (not (lib.metadata/editable? restricted-query)))))
 
 (deftest ^:parallel idents-test
-  (doseq [table-key (meta/tables)
-          field-key (meta/fields table-key)]
-    (let [field (meta/field-metadata table-key field-key)]
-      (is (= (:ident field)
-             (:ident (lib.metadata/field meta/metadata-provider (:id field))))))))
+  (lib.tu.macros/with-refs-overhaul
+    (doseq [table-key (meta/tables)
+            field-key (meta/fields table-key)]
+      (is (= (meta/ident table-key field-key)
+             ((lib.metadata.overhaul/old-new :ident :column/ident)
+              (lib.metadata/field meta/metadata-provider (meta/id table-key field-key))))))))

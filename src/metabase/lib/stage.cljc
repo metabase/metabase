@@ -14,6 +14,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -49,7 +50,7 @@
    query
    (range 0 (lib.util/canonical-stage-index query stage-number))))
 
-(mu/defn- existing-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- existing-stage-metadata:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
   native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
   probably wrong; we can recalculate the correct metadata anyway."
@@ -71,7 +72,7 @@
                   col
                   {:lib/source source-type})))))))))
 
-(mu/defn- breakouts-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- breakouts-columns:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
@@ -82,7 +83,7 @@
             :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout))))))
 
-(mu/defn- aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- aggregations-columns:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
@@ -114,7 +115,7 @@
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata)))))))
 
-(mu/defn- summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- summary-columns:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
@@ -122,8 +123,8 @@
    (into []
          (mapcat (fn [f]
                    (f query stage-number unique-name-fn)))
-         [breakouts-columns
-          aggregations-columns])))
+         [breakouts-columns:old-refs
+          aggregations-columns:old-refs])))
 
 (mu/defn- previous-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata for the previous stage, if there is one."
@@ -239,8 +240,10 @@
            ;; 1b: default visible Fields for the source Table
            (when source-table
              (assert (integer? source-table))
-             (let [table-metadata (lib.metadata/table query source-table)]
-               (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+             (let [table-metadata (lib.metadata/table query source-table)
+                   cols (lib.metadata.calculation/visible-columns query stage-number table-metadata options)]
+               cols
+               #_(lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
            ;; 1e. Metadata associated with a Metric
            (when metric-based?
              (metric-metadata query stage-number card options))
@@ -256,7 +259,7 @@
                     ;; that gets added later gets deduplicated from these.
                     :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
-(mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn- existing-visible-columns:old-refs :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
    stage-number :- :int
    {:keys [unique-name-fn include-joined? include-expressions?], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
@@ -270,26 +273,50 @@
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
 
-(defmethod lib.metadata.calculation/visible-columns-method ::stage
-  [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
+(mu/defn- visible-columns-for-stage:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   {:keys [unique-name-fn include-implicitly-joinable?], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
-        existing-columns (existing-visible-columns query stage-number options)]
+        existing-columns (existing-visible-columns:old-refs query stage-number options)]
     (->> (concat
           existing-columns
-           ;; add implicitly joinable columns if desired
+          ;; add implicitly joinable columns if desired
           (when include-implicitly-joinable?
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
-;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
-;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
-;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
-(defmethod lib.metadata.calculation/returned-columns-method ::stage
-  [query stage-number _stage {:keys [unique-name-fn], :as options}]
+(mu/defn- visible-columns-for-stage:new-refs :- [:maybe [:sequential {:min 1} ::lib.metadata.overhaul/column]]
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   {:keys [unique-name-fn include-implicitly-joinable?], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
+  (let [query            (ensure-previous-stages-have-metadata query stage-number)
+        existing-columns (existing-visible-columns:old-refs query stage-number options)]
+    (->> (concat
+          existing-columns
+          ;; add implicitly joinable columns if desired
+          (when include-implicitly-joinable?
+            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
+         vec)))
+
+(defmethod lib.metadata.calculation/visible-columns-method ::stage
+  [query stage-number _stage options]
+  ((lib.metadata.overhaul/old-new visible-columns-for-stage:old-refs visible-columns-for-stage:new-refs)
+   query stage-number options))
+
+(mu/defn- returned-columns-for-stage:old-refs :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  "Return results metadata about the expected columns in an MBQL query stage.
+
+  - If the query has aggregations/breakouts, then return those and the fields columns.
+  - Otherwise if there are `:fields` columns return those and the joined columns.
+  - Otherwise return the defaults based on the source (a table or previous stage) plus any joins."
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/ReturnedColumnsOptions]
   (or
-   (existing-stage-metadata query stage-number)
+   (existing-stage-metadata:old-refs query stage-number)
    (let [query        (ensure-previous-stages-have-metadata query stage-number)
-         summary-cols (summary-columns query stage-number unique-name-fn)
+         summary-cols (summary-columns:old-refs query stage-number unique-name-fn)
          field-cols   (fields-columns query stage-number unique-name-fn)]
      ;; ... then calculate metadata for this stage
      (cond
@@ -313,6 +340,67 @@
                                                                       :unique-name-fn               unique-name-fn})
         (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
         (lib.join/all-joins-expected-columns query stage-number options))))))
+
+(mu/defn- own-columns:new-refs :- [:maybe [:vector {:min 1} ::lib.metadata.overhaul/column]]
+  "Returns either nil or a nonempty vector of column metadata.
+
+  The list contains this stage's *own columns* - those from its source and any expressions, in that order.
+
+  If there is a `:fields` clause, only the columns from the `:fields` clause are returned, and in the order in which
+  they appear in the `:fields` clause."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [stage       (lib.util/query-stage query stage-number)
+        source-cols (some-> stage :lib.columns/source deref)
+        expr-cols   (:lib.columns/expressions stage)]
+    (if-let [fields (:fields stage)]
+      ;; Fields found - return only those columns and in the specified order.
+      (->> (for [[ref-kind _opts ident :as field] fields]
+             (do (when (not= ref-kind :column)
+                   (throw (ex-info "Found old refs in new-refs mode" {:ref field})))
+                 (or (get source-cols ident)
+                     (get expr-cols ident)
+                     (throw (ex-info ":fields clause contains column ident not found in source or expressions"
+                                     {:lib.columns/source      (keys source-cols)
+                                      :lib.columns/expressions (keys expr-cols)
+                                      :target                  field})))))
+           vec
+           not-empty)
+      ;; No fields found - return the source cols and expressions, in that order.
+      (not-empty
+       (into [] cat [(sort-by :column.source/position (vals source-cols))
+                     ;; TODO: Make sure this is properly getting attached for expressions.
+                     (sort-by :column.expression/index (vals expr-cols))])))))
+
+(mu/defn- summary-columns:new-refs :- [:maybe [:vector {:min 1} ::lib.metadata.overhaul/column]]
+  [query          :- ::lib.schema/query
+   stage-number   :- :int]
+  ;; TODO: Use `:lib.columns/aggregation` and `:lib.columns/breakout` for this when they are getting populated #refs
+  (->> [(lib.breakout/breakouts-metadata query stage-number)
+        (lib.aggregation/aggregations-metadata query stage-number)]
+       (into [] (comp cat (map #(lib.metadata/new-metadata:column query %))))
+       lib.metadata.overhaul/register-all!
+       not-empty))
+
+(mu/defn- returned-columns-for-stage:new-refs :- [:sequential ::lib.metadata.overhaul/column]
+  "Return results metadata about the expected columns in an MBQL query stage.
+
+  - If the query has aggregations/breakouts, then return those and the fields columns.
+  - Otherwise if there are `:fields` columns return those and the joined columns.
+  - Otherwise return the defaults based on the source (a table or previous stage) plus any joins."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   options     :- lib.metadata.calculation/ReturnedColumnsOptions]
+  ;; New style is to always have the columns computed in advance! We maintain the metadata as the query evolves.
+  ;; So the returned columns are simply those columns, ordered by their respective positions and indexes.
+  (or (summary-columns:new-refs query stage-number)
+      (into [] cat [(own-columns:new-refs query stage-number)
+                    (lib.join/all-joins-expected-columns query stage-number options)])))
+
+(defmethod lib.metadata.calculation/returned-columns-method ::stage
+  [query stage-number _stage options]
+  ((lib.metadata.overhaul/old-new returned-columns-for-stage:old-refs returned-columns-for-stage:new-refs)
+   query stage-number options))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]

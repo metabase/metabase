@@ -8,6 +8,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -277,20 +278,31 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
-(mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn- aggregations-metadata:old-refs :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Get metadata about the aggregations in a given stage of a query."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
+           (into [] (map (fn [aggregation]
+                           (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                             (-> metadata
+                                 (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+                                 (assoc :lib/source :source/aggregations
+                                        :lib/source-uuid (:lib/uuid (second aggregation))))))))))
+
+(mu/defn- aggregations-metadata:new-refs :- [:maybe [:sequential ::lib.metadata.overhaul/column]]
+  "Get metadata about the aggregations in a given stage of a query."
+  [_query        :- ::lib.schema/query
+   _stage-number :- :int]
+  (throw (ex-info "Implement me: aggregations-metadata:new-refs" {})))
+
+(defn aggregations-metadata
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
    (aggregations-metadata query -1))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int]
-   (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
-            (into [] (map (fn [aggregation]
-                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
-                              (-> metadata
-                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
-                                  (assoc :lib/source :source/aggregations
-                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
+  ([query stage-number]
+   ((lib.metadata.overhaul/old-new aggregations-metadata:old-refs aggregations-metadata:new-refs)
+    query stage-number)))
 
 (def ^:private OperatorWithColumns
   [:merge

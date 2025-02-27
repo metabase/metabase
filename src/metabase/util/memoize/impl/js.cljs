@@ -67,7 +67,8 @@
 (defn- args-fn
   "Returns a function's argument transformer."
   [x]
-  (or (::args-fn (meta x)) identity))
+  (or (:clojure.core.memoize/args-fn (meta x))
+      identity))
 
 (defn- through*
   "The basic hit/miss logic for the cache system based on `cache/through`.
