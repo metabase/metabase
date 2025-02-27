@@ -381,7 +381,7 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:token     string?]]]
+        [:token string?]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
@@ -395,8 +395,8 @@
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y lat-field lon-field]}
    :- [:merge
+       :api.tiles/route-params
        [:map
-        :api.tiles/route-params
         [:token       string?]
         [:dashcard-id ms/PositiveInt]
         [:card-id     ms/PositiveInt]]]

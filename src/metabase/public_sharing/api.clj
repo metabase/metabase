@@ -731,7 +731,7 @@
    :- [:merge
        :api.tiles/route-params
        [:map
-        [:uuid      ms/UUIDString]]]
+        [:uuid ms/UUIDString]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
