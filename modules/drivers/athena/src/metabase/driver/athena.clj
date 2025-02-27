@@ -55,23 +55,17 @@
     (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
-(defn- get-subname
-  [region]
-  (if (or (nil? region) (empty? region))
-    ""
-    (str "//athena." region (endpoint-for-region region) ":443")))
-
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
-        :subname        (get-subname region)
+        :subname        (str "//athena." region (endpoint-for-region region) ":443")
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
         :WorkGroup      workgroup
-        :Region         region}
+        :Region      region}
        (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
        (when-not (str/blank? catalog)

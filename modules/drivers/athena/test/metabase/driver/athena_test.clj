@@ -161,25 +161,6 @@
                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
                   :AwsCredentialsProviderClass)))))))
 
-(deftest ^:parallel handles-nil-and-empty-regions-gracefully
-  (testing "gracefully handle attempting to connect with no region"
-    (is (= {:classname "com.amazon.athena.jdbc.AthenaDriver"
-            :advanced-options false
-            :subprotocol "athena"
-            :OutputLocation "s3://metabase-drivers-athena-results/"
-            :WorkGroup nil
-            :User "access_key"
-            :Region nil
-            :Password "secret_key"
-            :subname ""}
-           (sql-jdbc.conn/connection-details->spec :athena {:region nil
-                                                            :workgroup nil
-                                                            :s3_staging_dir "s3://metabase-drivers-athena-results/"
-                                                            :catalog nil
-                                                            :access_key "access_key"
-                                                            :secret_key "secret_key"
-                                                            :advanced-options false})))))
-
 (deftest ^:parallel page-test
   (testing ":page clause places OFFSET *before* LIMIT"
     (is (= [["SELECT"
