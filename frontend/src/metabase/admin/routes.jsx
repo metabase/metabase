@@ -10,7 +10,6 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { getMetadataRoutes } from "metabase/admin/datamodel/metadata/routes";
-import { InteractiveEmbeddingDemo } from "metabase/admin/demos/InteractiveEmbeddingDemo";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
@@ -182,10 +181,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
-      <Route
-        path="interactive-embedding-demo"
-        component={InteractiveEmbeddingDemo}
-      />
       {/* PLUGINS */}
       <Fragment>
         {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}

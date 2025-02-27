@@ -12,6 +12,7 @@
 .CodeContainer {
   position: relative;
   border: 1px solid var(--mb-color-border-alpha-30);
+  background: var(--mb-color-background);
 }
 
 .CopyButton {

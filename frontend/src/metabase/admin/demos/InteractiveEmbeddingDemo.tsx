@@ -166,7 +166,7 @@ export const InteractiveEmbeddingDemo = () => {
   }
 
   return (
-    <Center>
+    <Center py="md">
       <Box p="lg" w="100%" maw="1200px">
         <Text size="xl" fw="bold">
           Simple Interactive Embedding Prototype
