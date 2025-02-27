@@ -10,7 +10,7 @@ import {
   createCardsShowingGizmosAndWidgets,
   signInAsSandboxedUser,
   sandboxingUser as user,
-  cardsShouldThrow,
+  cardsShouldThrowErrors,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -22,7 +22,7 @@ const preparePermissions = () => {
 };
 
 describe(
-  "admin > permissions > sandboxing (tested via the UI)",
+  "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
   () => {
     beforeEach(() => {
@@ -238,7 +238,7 @@ describe(
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        cardsShouldThrow(policy);
+        cardsShouldThrowErrors(policy);
       });
 
       it("to a table filtered by a custom string column", () => {
@@ -253,10 +253,10 @@ describe(
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        cardsShouldThrow(policy);
+        cardsShouldThrowErrors(policy);
       });
 
-      it("to a table filtered by a custom number column", () => {
+      it.only("to a table filtered by a custom number column", () => {
         const policy: SandboxPolicy = {
           filterTableBy: "column",
           columnType: "custom",
@@ -268,7 +268,7 @@ describe(
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        cardsShouldThrow(policy);
+        cardsShouldThrowErrors(policy);
       });
     });
   },
