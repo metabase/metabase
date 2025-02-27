@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import type { MouseEvent } from "react";
 import { Component } from "react";
 import { t } from "ttag";
 
