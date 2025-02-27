@@ -52,4 +52,5 @@
 
   (after-delete))
 
-(def all-have-entity-ids? (partial every? :entity_id))
+(defn all-have-entity-ids? [metadata-entities]
+  (every? :entity_id metadata-entities))
