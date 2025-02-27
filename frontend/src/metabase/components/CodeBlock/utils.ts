@@ -6,11 +6,11 @@ import { StreamLanguage } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
-import type { Extension } from "@codemirror/state";
+import type { EditorState, Extension } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
-  type Range,
+  RangeSet,
   type ReactCodeMirrorRef,
   StateEffect,
   StateField,
@@ -49,46 +49,57 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
   }
 }
 
-const highlightTextEffect = StateEffect.define<Range<Decoration>[]>();
-const highlightTextDecoration = Decoration.mark({
-  class: S.highlight,
+const highlightTextMark = Decoration.mark({ class: S.highlight });
+const highlightTextEffect =
+  StateEffect.define<{ start: number; end: number }[]>();
+
+const highlightTextField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(value, transaction) {
+    value = value.map(transaction.changes);
+
+    for (const effect of transaction.effects) {
+      if (effect.is(highlightTextEffect)) {
+        value = value
+          // clear values
+          .update({ filter: () => false })
+          // add new values
+          .update({
+            add: effect.value.map(range =>
+              highlightTextMark.range(range.start, range.end),
+            ),
+          });
+      }
+    }
+
+    return value;
+  },
+  provide: field => EditorView.decorations.from(field),
 });
 
-export function highlightText() {
-  return StateField.define({
-    create() {
-      return Decoration.none;
-    },
-    update(value, transaction) {
-      value = value.map(transaction.changes);
-
-      for (const effect of transaction.effects) {
-        if (effect.is(highlightTextEffect)) {
-          value = value.update({ filter: () => false });
-          value = value.update({ add: effect.value });
-        }
-      }
-
-      return value;
-    },
-    provide: field => EditorView.decorations.from(field),
-  });
+export function highlightText(ranges: { start: number; end: number }[] = []) {
+  return highlightTextField.init((state: EditorState) =>
+    RangeSet.of(
+      ranges
+        .filter(
+          range =>
+            range.start < state.doc.length && range.end < state.doc.length,
+        )
+        .map(range => highlightTextMark.range(range.start, range.end)),
+    ),
+  );
 }
+
 export function useHighlightText(
   editorRef: RefObject<ReactCodeMirrorRef>,
   ranges: { start: number; end: number }[] = [],
 ) {
   useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view) {
-      return;
-    }
-
-    const highlightedRanges = ranges.map(range =>
-      highlightTextDecoration.range(range.start, range.end),
-    );
-
-    view.dispatch({ effects: highlightTextEffect.of(highlightedRanges) });
+    editorRef.current?.view?.dispatch({
+      effects: highlightTextEffect.of(ranges),
+    });
   }, [editorRef, ranges]);
 }
 

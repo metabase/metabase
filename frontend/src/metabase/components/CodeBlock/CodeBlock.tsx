@@ -35,9 +35,9 @@ export function CodeBlock({
         nonce(),
         syntaxHighlighting(metabaseSyntaxHighlighting),
         getLanguageExtension(language),
-        highlightText(),
+        highlightText(highlightRanges),
       ].filter(isNotNull),
-    [language],
+    [language, highlightRanges],
   );
 
   useHighlightText(ref, highlightRanges);
