@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
+import { getHighlightedRanges } from "./utils";
 
 interface CodeSampleProps {
   selectedOptionId: CodeSampleOption["id"];
@@ -37,11 +38,7 @@ export const CodeSample = ({
   onCopy,
 }: CodeSampleProps): JSX.Element => {
   const highlightRanges = useMemo(
-    () =>
-      highlightedTexts?.map(text => ({
-        start: source.indexOf(text),
-        end: source.indexOf(text) + text.length,
-      })),
+    () => getHighlightedRanges(source, highlightedTexts),
     [source, highlightedTexts],
   );
 
