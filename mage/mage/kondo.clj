@@ -28,7 +28,9 @@
 
 (defn- saved-deps-edn-hash
   []
-  (str/trim (slurp saved-deps-edn-hash-filename)))
+  (str/trim (try
+              (slurp saved-deps-edn-hash-filename)
+              (catch Exception _ nil))))
 
 (defn- copy-configs-if-needed!
   "Copy Kondo configs for dependencies only if `deps.edn` has changed since last time we did it."
