@@ -20,10 +20,7 @@ import {
   alertIsValid,
   getAlertTriggerOptions,
 } from "metabase/lib/notifications";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailChannel,
-} from "metabase/lib/pulse";
+import { getHasConfiguredAnyChannel } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   DEFAULT_ALERT_SCHEDULE,
@@ -35,7 +32,11 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  canAccessSettings as canAccessSettingsSelector,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
@@ -104,6 +105,7 @@ export const CreateOrEditQuestionAlertModal = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const canAccessSetting = useSelector(canAccessSettingsSelector);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -123,7 +125,7 @@ export const CreateOrEditQuestionAlertModal = ({
     useSendUnsavedNotificationMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
-  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
+  // const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
   const triggerOptions = useMemo(
     () =>
@@ -224,7 +226,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const channelRequirementsMet = isAdmin
     ? hasConfiguredAnyChannel
-    : hasConfiguredEmailChannel;
+    : hasConfiguredAnyChannel && canAccessSetting;
 
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return <ChannelSetupModal isAdmin={isAdmin} onClose={onClose} />;

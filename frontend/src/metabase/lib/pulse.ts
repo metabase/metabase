@@ -360,13 +360,3 @@ export const getHasConfiguredAnyChannel = (
   (formInput?.channels &&
     _.some(Object.values(formInput.channels), c => c.configured)) ||
   false;
-
-export const getHasConfiguredEmailChannel = (
-  formInput: ChannelApiResponse | undefined,
-) =>
-  (formInput?.channels &&
-    _.some(
-      Object.values(formInput.channels),
-      c => c.type === "email" && c.configured,
-    )) ||
-  false;
