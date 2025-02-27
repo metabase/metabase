@@ -12,6 +12,10 @@ function codeBlock() {
   return cy.get(".cm-content");
 }
 
+function highlightedTexts() {
+  return cy.findAllByTestId("highlighted-text");
+}
+
 features.forEach(feature => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
@@ -104,6 +108,13 @@ features.forEach(feature => {
                 downloads: false,
               }),
             );
+
+          highlightedTexts().should("have.length", 1);
+
+          cy.findByRole("tab", { name: "Parameters" }).click();
+          cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+          highlightedTexts().should("have.length", 1);
         }
       });
     });
@@ -162,6 +173,15 @@ features.forEach(feature => {
         .and("contain", "Ruby")
         .and("contain", "Python")
         .and("contain", "Clojure");
+
+      if (feature === "all") {
+        highlightedTexts().should("have.length", 1);
+
+        cy.findByRole("tab", { name: "Parameters" }).click();
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
+
+        highlightedTexts().should("have.length", 1);
+      }
     });
   });
 });

@@ -49,7 +49,12 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
   }
 }
 
-const highlightTextMark = Decoration.mark({ class: S.highlight });
+const highlightTextMark = Decoration.mark({
+  class: S.highlight,
+  attributes: {
+    "data-testid": "highlighted-text",
+  },
+});
 const highlightTextEffect =
   StateEffect.define<{ start: number; end: number }[]>();
 
