@@ -1149,7 +1149,7 @@
                    :source-table (mt/id :dogs)}
                   (mt/run-mbql-query dogs)
                   mt/rows
-                  ;; ignore the extra id added by mongo
+                  ;; ignore the extra _id column added by mongo
                   (map #(take-last 3 %)))))
       (is (= [[#uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
              (->> {:filter [:ends-with
@@ -1159,20 +1159,19 @@
                    :source-table (mt/id :dogs)}
                   (mt/run-mbql-query dogs)
                   mt/rows
-                  ;; ignore the extra id added by mongo
+                  ;; ignore the extra _id column added by mongo
                   (map #(take-last 3 %)))))
-      ;; (mt/id :dogs :id) gets the "_id" field id instead of the "id" field id
-      (def id-field-id (->> (mt/id :dogs)
-                            (t2/select :model/Field :table_id)
-                            (some #(when (= "id" (:name %)) (:id %)))))
       (is (= [[#uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
               [#uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
              (->> {:filter [:contains
-                            [:field id-field-id {:base-type :type/UUID}]
+                            ;; (mt/id :dogs :id) gets the "_id" field id instead of the "id" field id
+                            [:field (->> (mt/id :dogs)
+                                         (t2/select :model/Field :table_id)
+                                         (some #(when (= "id" (:name %)) (:id %)))) {:base-type :type/UUID}]
                             "e"
                             {:case-insensitive false}]
                    :source-table (mt/id :dogs)}
                   (mt/run-mbql-query dogs)
                   mt/rows
-                  ;; ignore the extra _id added by mongo
+                  ;; ignore the extra _id column added by mongo
                   (map #(take-last 3 %))))))))
