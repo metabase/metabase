@@ -270,6 +270,22 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
           },
         }),
       ).toBe("full");
+
+      expect(
+        getDefault([], {
+          column_settings: {
+            foo: {
+              number_style: "currency",
+              currency: "AED",
+              number_separators: ".",
+              decimals: 5,
+              scale: 1.235,
+              prefix: "$",
+              suffix: " units",
+            },
+          },
+        }),
+      ).toBe("auto");
     });
   });
 

@@ -455,6 +455,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
           .some(value => {
             return (
               value["number_style"] === "currency" &&
+              value["currency_style"] != null &&
               value["currency_style"] !== "symbol"
             );
           });
