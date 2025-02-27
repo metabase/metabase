@@ -311,22 +311,6 @@
       (when (needs-refresh?)
         (refresh-channels-and-usernames!)))))
 
-(defn files-channel
-  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
-  [[slack-files-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advises an admin to create it."
-  []
-  (let [channel-name (slack-files-channel)]
-    (if (channel-exists? channel-name)
-      channel-name
-      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                         " "
-                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                         " "
-                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-        (log/error (u/format-color 'red message))
-        (throw (ex-info message {:status-code 400}))))))
-
 (defn bug-report-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
   [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,

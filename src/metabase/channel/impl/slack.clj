@@ -39,7 +39,7 @@
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
 (defn- part->attachment-data
-  [part channel-id]
+  [part]
   (case (:type part)
     :card
     (let [{:keys [card dashcard result]}         part
@@ -49,7 +49,6 @@
        :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
-       :channel-id      channel-id
        :fallback        card-name})
 
     :text
@@ -113,7 +112,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (:card_part payload) (slack/files-channel))]]
+                     (part->attachment-data (:card_part payload))]]
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -153,11 +152,10 @@
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [parts]
-  (let [channel-id (slack/files-channel)]
-    (for [part  parts
-          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
-          :when attachment]
-      attachment)))
+  (for [part  parts
+        :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part))]
+        :when attachment]
+    attachment))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload creator]} _template recipients]
