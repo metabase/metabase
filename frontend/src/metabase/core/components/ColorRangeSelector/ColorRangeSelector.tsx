@@ -39,8 +39,8 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
   return (
     <Popover
       opened={opened}
-      onDismiss={close}
-      onClose={close}
+      onChange={toggle}
+      floatingStrategy="fixed"
       withinPortal={withinPortal}
     >
       <Popover.Target>
