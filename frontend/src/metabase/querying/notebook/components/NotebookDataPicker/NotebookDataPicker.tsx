@@ -260,6 +260,7 @@ function EmbeddingDataPicker({
       selectedCollectionId={card?.collection_id}
       databaseQuery={{ saved: true }}
       canSelectMetric={false}
+      canSelectSavedQuestion={false}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
