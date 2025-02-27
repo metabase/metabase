@@ -227,6 +227,7 @@ describe(
       });
     });
 
+    // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
       (
         [
