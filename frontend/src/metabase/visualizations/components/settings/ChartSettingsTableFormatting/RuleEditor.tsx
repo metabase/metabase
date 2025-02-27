@@ -175,6 +175,7 @@ export const RuleEditor = ({
             }}
             colors={COLORS}
             colorRanges={COLOR_RANGES}
+            withinPortal={false}
           />
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Start the range at`}</h3>
           <ChartSettingRadio

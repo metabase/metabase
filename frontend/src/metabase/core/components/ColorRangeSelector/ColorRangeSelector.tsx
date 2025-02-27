@@ -3,14 +3,15 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
 import ColorRange from "metabase/core/components/ColorRange";
-import { Popover } from "metabase/ui";
+import { Popover, type PopoverProps } from "metabase/ui";
 
 import ColorRangePopover from "./ColorRangePopover";
 
 export type ColorRangeSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
   "onChange" | "onSelect"
->;
+> &
+  Pick<PopoverProps, "withinPortal">;
 
 export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   value: string[];
@@ -29,13 +30,19 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
     colorMapping,
     isQuantile,
     onChange,
+    withinPortal,
     ...props
   }: ColorRangeSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [opened, { close, toggle }] = useDisclosure(false);
   return (
-    <Popover opened={opened} onDismiss={close} onClose={close}>
+    <Popover
+      opened={opened}
+      onDismiss={close}
+      onClose={close}
+      withinPortal={withinPortal}
+    >
       <Popover.Target>
         <ColorRange
           {...props}
