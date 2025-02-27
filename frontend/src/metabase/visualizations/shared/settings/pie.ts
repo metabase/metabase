@@ -51,13 +51,10 @@ export const getDefaultShowLegend = () => true;
 export const getDefaultShowTotal = () => true;
 
 export function getDefaultShowLabels(settings: ComputedVisualizationSettings) {
-  if (getPieDimensions(settings).length <= 1) {
-    return false;
-  }
-  return true;
+  return getPieDimensions(settings).length > 1;
 }
 
-export const getDefaultPercentVisibility = () => "legend";
+export const getDefaultPercentVisibility = () => "legend" as const;
 
 export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 

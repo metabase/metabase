@@ -10,10 +10,7 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationProps } from "../../types";
 
 Object.assign(
   BarChart,
@@ -26,7 +23,7 @@ Object.assign(
     defaultSize: getDefaultSize("bar"),
     settings: {
       ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
+    },
   }),
 );
 

@@ -2,20 +2,15 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Select, Stack, Text } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { OtherCategoryAggregationFn } from "metabase-types/api";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 import type { ChartSettingWidgetProps } from "./types";
 
-type AggregationFunction = Exclude<
-  VisualizationSettings["graph.other_category_aggregation_fn"],
-  undefined
->;
-
 export interface ChartSettingMaxCategoriesProps
   extends ChartSettingWidgetProps<number> {
   isEnabled?: boolean;
-  aggregationFunction: AggregationFunction;
+  aggregationFunction: NonNullable<OtherCategoryAggregationFn>;
 }
 
 export const ChartSettingMaxCategories = ({
@@ -33,10 +28,10 @@ export const ChartSettingMaxCategories = ({
   );
 
   const handleAggregationFunctionChange = useCallback(
-    (value: string | null) => {
+    (value: NonNullable<OtherCategoryAggregationFn>) => {
       if (value) {
         onChangeSettings({
-          "graph.other_category_aggregation_fn": value as AggregationFunction,
+          "graph.other_category_aggregation_fn": value,
         });
       }
     },
@@ -76,7 +71,10 @@ export const ChartSettingMaxCategories = ({
   );
 };
 
-const AGGREGATION_FN_OPTIONS = [
+const AGGREGATION_FN_OPTIONS: {
+  label: string;
+  value: NonNullable<OtherCategoryAggregationFn>;
+}[] = [
   { label: t`Sum`, value: "sum" },
   { label: t`Average`, value: "avg" },
   { label: t`Median`, value: "median" },
