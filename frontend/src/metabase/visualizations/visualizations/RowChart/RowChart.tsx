@@ -343,7 +343,6 @@ RowChartVisualization.noun = t`row chart`;
 RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
 RowChartVisualization.defaultSize = getDefaultSize("row");
-RowChartVisualization.supportsVisualizer = true;
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,

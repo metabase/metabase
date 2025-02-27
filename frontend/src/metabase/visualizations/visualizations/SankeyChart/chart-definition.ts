@@ -125,7 +125,6 @@ export const SANKEY_CHART_DEFINITION = {
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
   defaultSize: getDefaultSize("sankey"),
-  supportsVisualizer: true,
   isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
     const numDimensions = cols.filter(

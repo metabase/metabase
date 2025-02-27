@@ -364,7 +364,6 @@ Object.assign(SmartScalar, {
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
-  supportsVisualizer: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
