@@ -886,7 +886,7 @@ describe("scenarios > embedding > full app", () => {
       });
 
       it(
-        "should select a table when there are multiple databases",
+        "should select a table when there are multiple databases (metabase#54127)",
         { tags: "@external" },
         () => {
           H.restore("postgres-12");

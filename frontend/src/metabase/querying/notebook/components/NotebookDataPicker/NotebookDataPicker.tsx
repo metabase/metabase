@@ -1,4 +1,10 @@
-import { type MouseEvent, type Ref, forwardRef, useState } from "react";
+import {
+  type MouseEvent,
+  type Ref,
+  forwardRef,
+  useMemo,
+  useState,
+} from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -19,7 +25,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Database, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -33,7 +39,6 @@ interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
   stageIndex: number;
-  databases?: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder?: string;
   canChangeDatabase: boolean;
@@ -49,7 +54,6 @@ export function NotebookDataPicker({
   title,
   query,
   stageIndex,
-  databases,
   table,
   placeholder = title,
   canChangeDatabase,
@@ -78,7 +82,6 @@ export function NotebookDataPicker({
       <EmbeddingDataPicker
         query={query}
         stageIndex={stageIndex}
-        databases={databases}
         table={table}
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
@@ -193,10 +196,9 @@ function ModernDataPicker({
   );
 }
 
-type LegacyDataPickerProps = {
+type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
-  databases?: Database[];
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
   canChangeDatabase: boolean;
@@ -208,14 +210,13 @@ type LegacyDataPickerProps = {
 function EmbeddingDataPicker({
   query,
   stageIndex,
-  databases,
   table,
   placeholder,
   canChangeDatabase,
   hasMetrics,
   isDisabled,
   onChange,
-}: LegacyDataPickerProps) {
+}: EmbeddingDataPickerProps) {
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({
       models: ["dataset", "table"],
@@ -231,6 +232,21 @@ function EmbeddingDataPicker({
   );
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
+
+  const metadata = useSelector(getMetadata);
+  const databases = useMemo(() => {
+    // We're joining data
+    if (!canChangeDatabase) {
+      return [metadata.database(databaseId)];
+    }
+
+    /**
+     * When not joining data, we want to use all databases loaded inside `DataSourceSelector`
+     *
+     * @see https://github.com/metabase/metabase/blob/fb25682fe8dbafe2062e37bce832f62440872ab7/frontend/src/metabase/query_builder/components/DataSelector/DataSelector.jsx#L1163-L1168
+     */
+    return undefined;
+  }, [canChangeDatabase, databaseId, metadata]);
 
   if (isDataSourceCountLoading) {
     return null;
