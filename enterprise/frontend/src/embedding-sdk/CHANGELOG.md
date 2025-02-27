@@ -1,3 +1,20 @@
+## [0.53.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.8...embedding-sdk-0.53.9) (2025-02-27)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54313](https://github.com/metabase/metabase/issues/54313)) ([5626964](https://github.com/metabase/metabase/commit/56269648941587ddf2d10e1c69c442845a29698f)), closes [#54023](https://github.com/metabase/metabase/issues/54023)
+* **sdk:** deprecate the CreateQuestion component ([#54212](https://github.com/metabase/metabase/issues/54212)) ([#54287](https://github.com/metabase/metabase/issues/54287)) ([cf0d10c](https://github.com/metabase/metabase/commit/cf0d10c9fddcd944e2f92c89d190b56f96df2705))
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([#54432](https://github.com/metabase/metabase/issues/54432)) ([65ec0d4](https://github.com/metabase/metabase/commit/65ec0d4abc4a27df4a3a60e6be7b3d0a3a5cb15d))
+
+
+### Features
+
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([#54245](https://github.com/metabase/metabase/issues/54245)) ([559e43e](https://github.com/metabase/metabase/commit/559e43eccea521f14cc3c11253655128d3e11cfb))
+* **sdk:** use questionId={new} for creating new questions ([#54403](https://github.com/metabase/metabase/issues/54403)) ([98cdffb](https://github.com/metabase/metabase/commit/98cdffb15d7c7f141f4939ee165bf1ab338e3e99))
+
+
+
 ## [0.53.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.7...embedding-sdk-0.53.8) (2025-02-26)
 
 
