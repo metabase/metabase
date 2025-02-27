@@ -67,11 +67,23 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
+;; TODO - Update this "is this a visualizer dashcard" check to something more robust
+(defn- is-visualizer-dashcard?
+  "true if dashcard has visualizer specific viz settings"
+  [dashcard]
+  (if (and (some? dashcard)
+           (get-in dashcard [:visualization_settings :visualization :columnValuesMapping]))
+    true
+    false))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
-  (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))]
+  (let [col-sample-count  (delay (count (take 3 cols)))
+        row-sample-count  (delay (count (take 2 rows)))
+        display-type      (if (is-visualizer-dashcard? maybe-dashcard)
+                            (keyword (get-in maybe-dashcard [:visualization_settings :visualization :display]))
+                            display-type)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
