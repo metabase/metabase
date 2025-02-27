@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { isEventOverElement } from "metabase/lib/dom";
+import { getEngineNativeType } from "metabase/lib/engine";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
@@ -49,6 +50,12 @@ export const CodeMirrorEditor = forwardRef<
   } = props;
 
   const extensions = useExtensions(query);
+
+  const engine = Lib.engine(query);
+  const engineType = getEngineNativeType(engine ?? undefined);
+  const SQLPlaceholder = "SELECT * FROM TABLE_NAME";
+  const JSONPlaceholder = `[ { "$project": { "_id": "$_id" } } ]`;
+  const placeholder = engineType === "sql" ? SQLPlaceholder : JSONPlaceholder;
 
   useImperativeHandle(ref, () => {
     return {
@@ -129,6 +136,7 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      placeholder={placeholder}
     />
   );
 });
