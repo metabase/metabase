@@ -22,8 +22,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
