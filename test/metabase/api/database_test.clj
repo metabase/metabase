@@ -8,6 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
+   [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -675,6 +676,14 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest ^:parallel database-metadata-has-entity-ids-test
+  (testing "GET /api/database/:id/metadata"
+    (is (=? {:entity_id some?
+             :tables (partial every? (fn [{:keys [entity_id fields]}]
+                                       (and entity_id
+                                            (api.test-util/all-have-entity-ids? fields))))}
+            (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))))))
 
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]

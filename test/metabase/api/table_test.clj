@@ -663,6 +663,11 @@
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
+(deftest ^:parallel table-metadata-has-entity-id-test
+  (testing "GET /api/table/:id/query_metadata returns an entity id"
+    (is (=? {:entity_id some?}
+            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
+
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
