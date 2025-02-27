@@ -112,7 +112,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
           tab: "Browse",
         });
 
-        cy.log("configure and prime the cache");
+        cy.log("configure caching");
         PH.openSidebar("question");
         cy.findByLabelText("When to get new results").click();
         PH.cacheStrategySidesheet().within(() => {
@@ -121,8 +121,19 @@ describe("impersonated permission", { tags: "@external" }, () => {
           PH.durationRadioButton().click();
           cy.findByRole("button", { name: /Save/ }).click();
         });
-        cy.reload();
+
+        cy.log("prime and assert results are cached");
+        cy.intercept("POST", "/api/card/*/query").as("query");
+        cy.reload(); // load once to warm cache
         cy.findAllByTestId("header-cell").contains("reviewer");
+        cy.wait("@query").then(({ response }) => {
+          expect(response.body.cached).to.equal(null);
+        });
+        cy.reload(); // load again to hit cache
+        cy.findAllByTestId("header-cell").contains("reviewer");
+        cy.wait("@query").then(({ response }) => {
+          expect(response.body.cached).to.be.a("string");
+        });
 
         cy.log("switch to impersonated user");
         cy.signOut();
