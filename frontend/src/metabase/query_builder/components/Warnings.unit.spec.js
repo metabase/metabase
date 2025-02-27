@@ -12,7 +12,7 @@ describe("Warnings", () => {
   it("should render a warning message tooltip on hover", async () => {
     render(<Warnings warnings={["test warning message"]} />);
     await userEvent.hover(screen.getByLabelText("warning icon"));
-    expect(screen.getByText("test warning message")).toBeInTheDocument();
+    expect(await screen.findByText("test warning message")).toBeInTheDocument();
   });
 
   it("should render multiple warnings", async () => {
@@ -20,8 +20,8 @@ describe("Warnings", () => {
     render(<Warnings warnings={warningMessages} />);
     await userEvent.hover(screen.getByLabelText("warning icon"));
 
-    warningMessages.forEach(message => {
-      expect(screen.getByText(message)).toBeInTheDocument();
-    });
+    for (const message of warningMessages) {
+      expect(await screen.findByText(message)).toBeInTheDocument();
+    }
   });
 });

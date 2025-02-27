@@ -3,11 +3,10 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useUserListQuery } from "metabase/common/hooks";
-import Tooltip from "metabase/core/components/Tooltip";
 import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
-import { Text } from "metabase/ui";
+import { Text, Tooltip } from "metabase/ui";
 import type { UserListResult } from "metabase-types/api";
 
 import {
@@ -91,7 +90,7 @@ export const InfoTextEditedInfo = ({
     if (isCompact) {
       const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
-        <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
+        <Tooltip label={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
           <Text component="span" size="sm" c="text-medium" truncate>
             {formattedDuration}
           </Text>
