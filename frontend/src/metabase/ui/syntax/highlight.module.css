@@ -68,15 +68,3 @@
 .typeName {
   color: var(--mb-color-saturated-purple);
 }
-
-.propertyNameDefinition {
-  :global(.clojure) & {
-    color: var(--mb-color-saturated-purple);
-  }
-}
-
-.propertyName {
-  :global(.json) & {
-    color: var(--mb-color-brand);
-  }
-}

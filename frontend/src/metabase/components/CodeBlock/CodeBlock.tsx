@@ -54,7 +54,7 @@ export function CodeBlock({
       value={code}
       extensions={extensions}
       readOnly
-      className={cx(S.codeBlock, className, language)}
+      className={cx(S.codeBlock, className)}
     />
   );
 }
