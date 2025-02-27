@@ -39,9 +39,11 @@
   collection-read-path
   collection-readwrite-path
   current-user-has-application-permissions?
+  grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
   perms-objects-set-for-parent-collection
+  revoke-application-permissions!
   revoke-collection-permissions!
   set-has-full-permissions-for-set?
   set-has-full-permissions?]

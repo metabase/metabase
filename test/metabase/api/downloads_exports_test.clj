@@ -22,12 +22,14 @@
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private cell-formatter (DataFormatter.))
 (defn- read-cell-with-formatting
@@ -177,6 +179,7 @@
                                                                :enabled      true}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                    :user_id          (mt/user->id :rasta)}]
+      ;; TODO make sure this works for card notification
       (alert-attachment* pulse))))
 
 (defn- subscription-attachment!
@@ -237,17 +240,22 @@
 
 (defn all-outputs!
   [card-or-dashcard opts]
-  (merge
-   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
-     {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
-      :public-question-download (public-question-download card-or-dashcard opts)
-      :card-download            (card-download card-or-dashcard opts)
-      :alert-attachment         (alert-attachment! card-or-dashcard opts)})
-   {:dashcard-download        (card-download card-or-dashcard opts)
-    :public-dashcard-download (public-dashcard-download card-or-dashcard opts)
-    :subscription-attachment  (subscription-attachment! card-or-dashcard opts)}))
+  (cond-> (merge
+           (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
+             {:unsaved-card-download    (delay (unsaved-card-download card-or-dashcard opts))
+              :public-question-download (delay (public-question-download card-or-dashcard opts))
+              :card-download            (delay (card-download card-or-dashcard opts))
+              :alert-attachment         (delay (alert-attachment! card-or-dashcard opts))})
+           {:dashcard-download        (delay (card-download card-or-dashcard opts))
+            :public-dashcard-download (delay (public-dashcard-download card-or-dashcard opts))
+            :subscription-attachment  (delay (subscription-attachment! card-or-dashcard opts))})
+    (:except opts) (#(apply dissoc % (:except opts)))
 
-(set! *warn-on-reflection* true)
+    ;; format rows and pivot does not support alert, they're all off by default
+    (or (:format-rows opts) (:pivot opts))
+    (dissoc :alert-attachment)
+
+    true (update-vals deref)))
 
 (def ^:private pivot-rows-query
   "SELECT *
@@ -288,7 +296,7 @@
                    ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                    ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
@@ -307,7 +315,7 @@
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
@@ -332,7 +340,7 @@
                    ["Widget" "2018" "$912.20"]
                    ["Widget" "2019" "$195.04"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
@@ -386,7 +394,7 @@
                     "$11,149.28"
                     "56.66"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
+                    :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
@@ -427,7 +435,7 @@
                       ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                       (when col-totals? ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"])])
                     #{:unsaved-card-download :card-download :dashcard-download
-                      :alert-attachment :subscription-attachment
+                      :subscription-attachment
                       :public-question-download :public-dashcard-download}]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
@@ -930,14 +938,14 @@
   (testing "Dashcard visualization settings are respected in subscription attachments."
     (testing "for csv"
       (mt/dataset test-data
-        (mt/with-temp [:model/Card {card-id :id :as card} {:display       :table
-                                                           :dataset_query {:database (mt/id)
-                                                                           :type     :query
-                                                                           :query    {:source-table (mt/id :orders)}}
-                                                           :visualization_settings
-                                                           {:table.cell_column "SUBTOTAL"
-                                                            :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
-                                                                                {:column_title "SUB CASH MONEY"}}}}
+        (mt/with-temp [:model/Card {card-id :id} {:display       :table
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :orders)}}
+                                                  :visualization_settings
+                                                  {:table.cell_column "SUBTOTAL"
+                                                   :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                                                       {:column_title "SUB CASH MONEY"}}}}
                        :model/Dashboard {dashboard-id :id} {}
                        :model/DashboardCard dashcard  {:dashboard_id dashboard-id
                                                        :card_id      card-id
@@ -946,49 +954,43 @@
                                                         :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                             {:column_title "CASH MONEY"}}}}]
           (let [subscription-result (subscription-attachment! dashcard {:export-format :csv :format-rows true})
-                alert-result        (alert-attachment! card {:export-format :csv :format-rows true})
-                alert-header        ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                                     "Total" "Discount ($)" "Created At" "Quantity"]
                 subscription-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                      "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
-            (is (= {:alert-attachment        alert-header
-                    :subscription-attachment subscription-header}
-                   {:alert-attachment        (first alert-result)
-                    :subscription-attachment (first subscription-result)}))))))))
+            (is (= {:subscription-attachment subscription-header}
+                   {:subscription-attachment (first subscription-result)}))))))))
 
 (deftest downloads-row-limit-test
-  (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
+  (testing "Downloads row limit respects minimum (#52019)"
+    (mt/with-temporary-setting-values [limit/download-row-limit 100]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            106
-                  :unsaved-card-download    106
-                  :alert-attachment         106
-                  :dashcard-download        106
-                  :subscription-attachment  106
-                  :public-question-download 106
-                  :public-dashcard-download 106}
-                 (update-vals results count))))))))
-
-(deftest downloads-row-limit-default-test
-  (testing "Downloads row limit default works."
-    (with-redefs [qp.i/absolute-max-results 100]
-      (mt/with-temp [:model/Card card {:display       :table
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            101
-                  :unsaved-card-download    101
-                  :alert-attachment         101
-                  :dashcard-download        101
-                  :subscription-attachment  101
-                  :public-question-download 101
-                  :public-dashcard-download 101}
-                 (update-vals results count))))))))
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
+        (let [results (all-outputs! card {:export-format :csv})]
+          (is (= {:card-download            110
+                  :unsaved-card-download    110
+                  :alert-attachment         110
+                  :dashcard-download        110
+                  :subscription-attachment  110
+                  :public-question-download 110
+                  :public-dashcard-download 110}
+                 (update-vals results count)))))))
+  (testing "Downloads row limit can be raised"
+    (binding [limit/*minimum-download-row-limit* 100]
+      (mt/with-temporary-setting-values [limit/download-row-limit 109]
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
+          (let [results (all-outputs! card {:export-format :csv})]
+            (is (= {:card-download            110
+                    :unsaved-card-download    110
+                    :alert-attachment         110
+                    :dashcard-download        110
+                    :subscription-attachment  110
+                    :public-question-download 110
+                    :public-dashcard-download 110}
+                   (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."

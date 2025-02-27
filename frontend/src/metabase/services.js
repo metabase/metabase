@@ -271,21 +271,6 @@ export const GoogleApi = {
   updateSettings: PUT("/api/google/settings"),
 };
 
-export const TimelineApi = {
-  list: GET("/api/timeline"),
-  listForCollection: GET("/api/timeline/collection/:collectionId"),
-  get: GET("/api/timeline/:id"),
-  create: POST("/api/timeline"),
-  update: PUT("/api/timeline/:id"),
-};
-
-export const TimelineEventApi = {
-  list: GET("/api/timeline-event"),
-  get: GET("/api/timeline-event/:id"),
-  create: POST("/api/timeline-event"),
-  update: PUT("/api/timeline-event/:id"),
-};
-
 export const MetabaseApi = {
   db_autocomplete_suggestions: GET(
     "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
@@ -353,6 +338,12 @@ export const PulseApi = {
 export const PulseUnsubscribeApi = {
   unsubscribe: POST("/api/pulse/unsubscribe"),
   undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
+};
+
+// also unauthenticated
+export const NotificationUnsubscribeApi = {
+  unsubscribe: POST("/api/notification/unsubscribe"),
+  undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
 };
 
 export const SegmentApi = {

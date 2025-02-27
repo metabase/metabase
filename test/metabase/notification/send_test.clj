@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -14,8 +15,8 @@
 (use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test
-  (testing "sending a ntoification will call render on all of its handlers"
-    (notification.tu/with-notification-testing-setup
+  (testing "sending a notification will call render on all of its handlers"
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
@@ -65,7 +66,7 @@
 
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
                nil
@@ -91,7 +92,7 @@
                            {:order-by [[:started_at :asc]]})))))))
 
 (deftest notification-send-retrying-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
@@ -123,7 +124,7 @@
 
 (deftest send-notification-record-prometheus-metrics-test
   (mt/with-prometheus-system! [_ system]
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel ch notification.tu/default-can-connect-channel]
         (let [n (models.notification/create-notification!
                  {:payload_type :notification/testing}
@@ -151,7 +152,7 @@
 
 (deftest send-notification-record-prometheus-error-metrics-test
   (mt/with-prometheus-system! [_ system]
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
         (let [n (models.notification/create-notification!
                  {:payload_type :notification/testing}
@@ -159,8 +160,8 @@
                  [{:channel_type notification.tu/test-channel-type
                    :channel_id   (:id chn)
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& _]
-                                                                    (throw (Exception. "test-exception")))]
+          (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
+                                                                                  (throw (Exception. "test-exception")))]
             (is (thrown? Exception (notification.send/send-notification-sync! n)))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
                                                             {:payload-type "notification/testing"})))))))))
@@ -168,7 +169,7 @@
 (deftest send-notification-record-prometheus-channel-error-metrics-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
     (mt/with-prometheus-system! [_ system]
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
           (let [n (models.notification/create-notification!
                    {:payload_type :notification/testing}

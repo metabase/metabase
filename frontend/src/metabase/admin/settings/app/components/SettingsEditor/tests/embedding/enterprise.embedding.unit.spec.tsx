@@ -122,13 +122,13 @@ describe("[EE, no token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -150,7 +150,7 @@ describe("[EE, no token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
@@ -336,13 +336,13 @@ describe("[EE, no token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).toBeInTheDocument();
         expect(
@@ -362,7 +362,7 @@ describe("[EE, no token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedded analytics SDK",
+              name: "Embedded analytics SDK for React",
             }),
           ).getByRole("button", { name: "Try it out" }),
         );
@@ -488,7 +488,9 @@ describe("[EE, no token] embedding settings", () => {
     });
 
     expect(screen.getByText("Static embedding")).toBeInTheDocument();
-    expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+    expect(
+      screen.getByText("Embedded analytics SDK for React"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
   });
 
@@ -503,7 +505,7 @@ describe("[EE, no token] embedding settings", () => {
       await userEvent.click(
         within(
           screen.getByRole("article", {
-            name: "Embedded analytics SDK",
+            name: "Embedded analytics SDK for React",
           }),
         ).getByRole("button", { name: "Try it out" }),
       );
@@ -613,7 +615,7 @@ describe("[EE, no token] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
 
@@ -658,7 +660,7 @@ describe("[EE, no token] embedding settings", () => {
 
       const withinEmbeddingSdkCard = within(
         screen.getByRole("article", {
-          name: "Embedded analytics SDK",
+          name: "Embedded analytics SDK for React",
         }),
       );
       expect(

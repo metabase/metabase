@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 
 export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
