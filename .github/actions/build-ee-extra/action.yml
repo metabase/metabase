@@ -64,7 +64,6 @@ runs:
           const extraDrivers = {
             starburst: getDriverUrl('starburst'),
             clickhouse: getDriverUrl('clickhouse'),
-            materialize: getDriverUrl('materialize'),
           };
 
           console.log(extraDrivers);
@@ -78,11 +77,6 @@ runs:
     - name: Download Clickhouse driver
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).clickhouse }}
-      shell: bash
-      working-directory: modules
-    - name: Download Materialize driver
-      run: |
-        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).materialize }}
       shell: bash
       working-directory: modules
     - name: Bundle additional drivers into the Uberjar
