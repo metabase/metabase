@@ -32,7 +32,7 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["cardId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<

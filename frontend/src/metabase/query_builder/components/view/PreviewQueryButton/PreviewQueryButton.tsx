@@ -2,10 +2,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Tooltip from "metabase/core/components/Tooltip";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -24,7 +23,7 @@ export const PreviewQueryButton = ({
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={t`Preview the query`}>
+    <Tooltip label={t`Preview the query`}>
       <IconButtonWrapper
         className={PreviewQueryButtonS.PreviewButton}
         aria-label={t`Preview the query`}
