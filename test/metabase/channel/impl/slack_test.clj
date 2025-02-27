@@ -16,14 +16,12 @@
                              :title_link      "a.com"
                              :attachment-name "a.png"
                              :rendered-info   {:attachments nil
-                                               :content     [:div "hi"]}
-                             :channel-id      "FOO"}
+                                               :content     [:div "hi"]}}
                             {:title           "b"
                              :title_link      "b.com"
                              :attachment-name "b.png"
                              :rendered-info   {:attachments nil
-                                               :content     [:div "hi again"]}
-                             :channel-id      "FOO"}]
+                                               :content     [:div "hi again"]}}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
                              (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:blocks [{:type "section"
@@ -44,15 +42,13 @@
                              :title_link      "a.com"
                              :attachment-name "a.png"
                              :rendered-info   {:attachments nil
-                                               :content     [:div "hi"]}
-                             :channel-id      "FOO"}
+                                               :content     [:div "hi"]}}
                             {:title           "b"
                              :title_link      "b.com"
                              :attachment-name "b.png"
                              :rendered-info   {:attachments nil
                                                :content     [:div "hi again"]
-                                               :render/text "hi again"}
-                             :channel-id      "FOO"}]
+                                               :render/text "hi again"}}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
                              (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:blocks [{:type "section"
