@@ -1613,7 +1613,7 @@ The name of the channel where bug reports should be posted.
 - Default: `metabase_files`
 - [Configuration file name](./config-file.md): `slack-files-channel`
 
-The name of the channel to which Metabase files should be initially uploaded.
+The name of the channel to which Metabase files should be initially uploaded. Deprecated (and does nothing) starting with metabase v0.54.0.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
