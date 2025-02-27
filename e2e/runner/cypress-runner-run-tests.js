@@ -7,7 +7,7 @@ const {
 } = require("./sample-apps-shared/constants/sample-app-setup-configs");
 
 const DEFAULT_PORT = 4000;
-const getHost = ({ port }) =>
+const getHost = (port = null) =>
   `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
 const getSampleAppE2eConfig = async suite => {
@@ -19,7 +19,7 @@ const getSampleAppE2eConfig = async suite => {
     project: ["e2e/tmp", appName, subAppName].join("/"),
     configFile: "e2e/support/cypress.config.js",
     config: {
-      baseUrl: getHost({ port: CLIENT_PORT }),
+      baseUrl: getHost(CLIENT_PORT),
     },
     testingType: "e2e",
     openMode: args["--open"] || process.env.OPEN_UI === "true",
