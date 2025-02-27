@@ -122,10 +122,8 @@ describe("scenarios > visualizations > table", () => {
       formula: "concat([Name], [Name])",
       name: ccName,
     });
-    H.expressionEditorWidget()
 
-      .button("Done")
-      .click();
+    H.expressionEditorWidget().button("Done").click();
 
     cy.findByTestId("fields-picker").click();
     H.popover().within(() => {
