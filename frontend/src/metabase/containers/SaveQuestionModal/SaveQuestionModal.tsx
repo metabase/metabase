@@ -21,7 +21,7 @@ export const SaveQuestionModal = ({
   question,
   closeOnSuccess,
   initialCollectionId,
-  saveToCollectionId,
+  saveToCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
   const saveToDashboardId = question.dashboardId();
@@ -48,7 +48,7 @@ export const SaveQuestionModal = ({
       onSave={onSave}
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
-      saveToCollectionId={saveToCollectionId}
+      saveToCollection={saveToCollection}
       initialDashboardTabId={initialDashboardTabId}
     >
       <Modal.Root padding="2.5rem" {...modalProps}>
@@ -65,6 +65,7 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
+              saveToDashboard={saveToDashboard}
               onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
               onCancel={modalProps.onClose}
             />

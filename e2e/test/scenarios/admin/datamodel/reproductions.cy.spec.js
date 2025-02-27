@@ -1,5 +1,9 @@
-import { H } from "e2e/support";
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+const { H } = cy;
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS, REVIEWS_ID, ORDERS, ORDERS_ID } =
@@ -187,6 +191,28 @@ describe("issue 15542", () => {
       cy.findByText("1").should("be.visible");
       cy.findByText("Rustic Paper Wallet").should("not.exist");
     });
+  });
+});
+
+describe("issue 52411", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "multi_schema" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  });
+
+  it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
+    cy.visit("/admin/datamodel/segments");
+    cy.findByTestId("segment-list-table").findByText("Filter by table").click();
+    H.popover().within(() => {
+      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Wild").click();
+      cy.findByText("Birds").click();
+    });
+    cy.findByTestId("segment-list-table")
+      .findByText("Birds")
+      .should("be.visible");
   });
 });
 

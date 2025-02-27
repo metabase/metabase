@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -9,10 +10,13 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (comment
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
+  ;;
+  ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
   search.engines.appdb/keep-me
   search.legacy/keep-me
@@ -33,10 +37,33 @@
   search-context]
 
  [search.ingestion
-  process-next-batch!]
+  bulk-ingest!
+  get-next-batch!]
 
  [search.spec
   define-spec])
+
+(defmethod analytics/known-labels :metabase-search/index
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics/known-labels :metabase-search/engine-default
+  [_]
+  (analytics/known-labels :metabase-search/engine-active))
+
+(defmethod analytics/known-labels :metabase-search/engine-active
+  [_]
+  (for [e (search.engine/known-engines)]
+    {:engine (name e)}))
+
+(defmethod analytics/initial-value :metabase-search/engine-default
+  [_ {:keys [engine]}]
+  (if (= engine (name (search.impl/default-engine))) 1 0))
+
+(defmethod analytics/initial-value :metabase-search/engine-active
+  [_ {:keys [engine]}]
+  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
@@ -56,10 +83,13 @@
   "Populate a new index, and make it active. Simultaneously updates the current index."
   [& {:as opts}]
   ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-  (reduce (partial merge-with max)
-          nil
-          (for [e (search.engine/active-engines)]
-            (search.engine/reindex! e opts))))
+  (try
+    (reduce (partial merge-with max)
+            nil
+            (for [e (search.engine/active-engines)]
+              (search.engine/reindex! e opts)))
+    (catch Throwable e
+      (log/fatal e "Error reindexing search indexes."))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
@@ -76,3 +106,12 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn delete!
+  "Given a model and a list of model's ids, remove corresponding search entries."
+  [model ids]
+  (doseq [e            (search.engine/active-engines)
+          search-model (->> (vals (search.spec/specifications))
+                            (filter (comp #{model} :model))
+                            (map :name))]
+    (search.engine/delete! e search-model ids)))

@@ -1,8 +1,7 @@
 ;; -*- comment-column: 100; -*-
-{:config-paths ["macros" "src"]
+{:config-paths ["macros" "src" "config"]
  :linters
- {
-  ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -56,12 +55,14 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/check-defmulti-arglists                    {:level :warning}
   :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
+  :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/require-shape-checker                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
@@ -84,8 +85,8 @@
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.analytics.snowplow-test/with-fake-snowplow-collector
-     metabase.email-test/with-expected-messages
-     metabase.email-test/with-fake-inbox
+     metabase.channel.email-test/with-expected-messages
+     metabase.channel.email-test/with-fake-inbox
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.data/with-empty-h2-app-db
@@ -176,13 +177,13 @@
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
-   :max-length 180}
+   :max-length 150}
 
   ;; this is not enabled here, it is enabled below only for specific namespaces.
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -212,6 +213,9 @@
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
+  ;; TODO -- all of these entries are HACKS and we should fix them by writing real custom Kondo HOOKS for these
+  ;; macros. Please don't add anything new to this list! Talk to your best bud Cam if you don't know how to write a
+  ;; Kondo hook and he will pair with you on it. Thanks! -- Cam
   :unresolved-symbol
   {:exclude
    [(build.uberjar/with-duration-ms)
@@ -222,7 +226,7 @@
     (clojure.test/is [query= =? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
-    (metabase.async.streaming-response/streaming-response)
+    (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
@@ -259,12 +263,16 @@
    clojure.core/pr                                    {:message "Use metabase.util.log instead of clojure.core/pr"}
    clojure.core/tap>                                  {:message "Don't use tap> is source code"}
    clojure.core/time                                  {:message "Don't use time in source code"}
+   clojure.test.check/quick-check                     {:message "You probably meant to use clojure.test.check.clojure-test/defspec instead -- quick check will run the tests when it is evaluated rather than when we run the test suite."}
    clojure.java.jdbc/get-connection                   {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata                 {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}
+   compojure.core/defroutes                           {:message "Use metabase.api.util.handlers/defroutes instead of compojure.core/routes, it supports OpenAPI spec generation."}
+   compojure.core/routes                              {:message "Use metabase.api.util.handlers/routes instead of compojure.core/routes, it supports OpenAPI spec generation."}
    fipp.edn/pprint                                    {:message "Use metabase.util.log instead of fipp.edn/pprint"}
    honeysql.core/call                                 {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
@@ -277,9 +285,7 @@
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
-   metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
-   toucan2.tools.with-temp/with-temp                  {:message "Use mt/with-temp instead of toucan2.tools.with-temp/with-temp"}}
+   metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -290,216 +296,11 @@
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
+   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
   :unresolved-var
   {:exclude
    [colorize.core]}
-
-  ;; A "module" is any `metabase.x` namespace in `src`.
-  :metabase/ns-module-checker
-  {:level :warning
-
-   ;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
-   ;;
-   ;; 1. Special sentinel value `:any` means means this module does not (yet) have external public-facing API
-   ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
-   ;;    you should go create one.
-   ;;
-   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed to use namespaces from
-   ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
-   ;;    better than `:any`.
-   ;;
-   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace that matches the name of the
-   ;;    module itself, e.g. the module namespace for `metabase.setup` would be `metabase.setup`.
-   ;;
-   ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
-   ;;
-   ;; PRO TIP: Check out the `dev.deps-graph` namespace for helpful tools to see where a module is used externally.
-   :api-namespaces
-   {metabase.actions               #{metabase.actions.core}
-    metabase.analytics             #{metabase.analytics.prometheus
-                                     metabase.analytics.snowplow
-                                     metabase.analytics.stats
-                                     metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
-    metabase.analyze               #{metabase.analyze}
-    metabase.api                   #{metabase.api.common
-                                     metabase.api.dataset
-                                     metabase.api.macros
-                                     metabase.api.permission-graph
-                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
-    metabase.async                 #{metabase.async.streaming-response
-                                     metabase.async.streaming-response.thread-pool
-                                     metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
-    metabase.audit                 #{metabase.audit}
-    metabase.bootstrap             #{metabase.bootstrap}
-    metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
-    metabase.channel               #{metabase.channel.core
-                                     metabase.channel.render.core
-                                     metabase.channel.template.core}
-    metabase.config                #{metabase.config}
-    metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
-    metabase.db                    #{metabase.db
-                                     metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
-                                     metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
-                                     metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
-    metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
-    metabase.email                 #{metabase.email
-                                     metabase.email.messages
-                                     metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
-    metabase.embed                 #{metabase.embed.settings}
-    metabase.events                #{metabase.events}
-    metabase.formatter             #{metabase.formatter}
-    metabase.integrations          #{metabase.integrations.common
-                                     metabase.integrations.google
-                                     metabase.integrations.ldap
-                                     metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
-    metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
-                                     metabase.legacy-mbql.predicates
-                                     metabase.legacy-mbql.schema
-                                     metabase.legacy-mbql.schema.helpers
-                                     metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
-    metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
-    metabase.logger                #{metabase.logger}
-    metabase.metabot               #{metabase.metabot}
-    metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
-    metabase.moderation            #{metabase.moderation}
-    metabase.notification          #{metabase.notification.core
-                                     metabase.notification.payload.core}
-    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
-    metabase.plugins               #{metabase.plugins
-                                     metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
-    metabase.premium-features      #{metabase.premium-features.core}
-    metabase.public-settings       #{metabase.public-settings}
-    metabase.pulse                 #{metabase.pulse.core}
-    metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
-    metabase.query-analysis        #{metabase.query-analysis
-                                     metabase.query-analysis.failure-map}
-    metabase.related               #{metabase.related}
-    metabase.request               #{metabase.request.core}
-    metabase.sample-data           #{metabase.sample-data}
-    metabase.search                #{metabase.search.core
-                                     ;; Need to expose this submodule, to break circular dependencies with models.
-                                     metabase.search.spec}
-    metabase.server                #{metabase.server.core
-                                     ;;
-                                     ;; TODO FIXME -- this is loaded for side effects since it contains the JSON
-                                     ;; encoder logic for stuff like `java.time` classes. As a
-                                     ;; result, [[metabase.models.setting]] (and thus the `metabase.models` module)
-                                     ;; has to depend on the `metabase.server` module...we should create either a new
-                                     ;; `metabase.json` or `metabase.encoders` module for stuff like this to live. Or
-                                     ;; maybe it just belongs in a generic `metabase.config` module.
-                                     metabase.server.middleware.json
-                                     ;;
-                                     ;; TODO -- we can't make this part of [[metabase.server.core]] YET because it
-                                     ;; causes circular dependencies. Maybe in the future once we tease apart more of
-                                     ;; the modules tangle we can.
-                                     metabase.server.protocols}
-    metabase.setup                 #{metabase.setup}
-    metabase.sync                  #{metabase.sync
-                                     metabase.sync.analyze
-                                     metabase.sync.concurrent
-                                     metabase.sync.field-values
-                                     metabase.sync.schedules
-                                     metabase.sync.sync-metadata
-                                     metabase.sync.sync-metadata.fields
-                                     metabase.sync.sync-metadata.tables
-                                     metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
-    metabase.task                  #{metabase.task
-                                     metabase.task.bootstrap
-                                     metabase.task.index-values
-                                     metabase.task.persist-refresh
-                                     ;; We need to expose this to the metabase.search module.
-                                     ;; Ideally, it would just live inside that module.
-                                     metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
-    metabase.troubleshooting       #{metabase.troubleshooting}
-    metabase.types                 #{metabase.types}
-    metabase.upload                #{metabase.upload}
-    metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
-    metabase.xrays                 #{metabase.xrays}}
-
-   ;; Map of module => other modules you're allowed to use there. You have two options here:
-   ;;
-   ;; 1. `:any` means namespaces in this module are allowed to use any other module -- allowed modules are not
-   ;;    enforced for this module. Module API namespaces for modules that have them defined are still enforced. For
-   ;;    ones that are `nil`, please go in and add a list of allowed modules. `:any` is mostly meant a temporary
-   ;;    placeholder until we can fill these all out, so feel free to fix these.
-   ;;
-   ;; 2. A set of module symbols. This is the list of modules that are allowed to be referenced. An empty set means no
-   ;;    other modules are allowed to be referenced; this is the default for any modules that aren't listed here.
-   :allowed-modules
-   {metabase.actions               :any
-    metabase.analytics             :any
-    metabase.analyze               :any
-    metabase.api                   :any
-    metabase.async                 :any
-    metabase.audit                 :any
-    metabase.auth-provider         #{metabase.util
-                                     metabase.premium-features}
-    metabase.bootstrap             #{}
-    metabase.cmd                   :any
-    metabase.compatibility         :any
-    metabase.channel               :any
-    metabase.config                #{metabase.plugins}
-    metabase.core                  :any
-    metabase.db                    :any
-    metabase.driver                :any
-    metabase.email                 :any
-    metabase.embed                 :any
-    metabase.events                :any
-    metabase.formatter             :any
-    metabase.integrations          :any
-    metabase.legacy-mbql           :any
-    metabase.lib                   :any
-    metabase.logger                #{metabase.config
-                                     metabase.plugins}
-    metabase.metabot               :any
-    metabase.models                :any
-    metabase.moderation            :any
-    metabase.notification          :any
-    metabase.permissions           :any
-    metabase.plugins               :any
-    metabase.premium-features      :any
-    metabase.public-settings       :any
-    metabase.pulse                 :any
-    metabase.query-analysis        #{metabase.config
-                                     metabase.driver
-                                     metabase.legacy-mbql
-                                     metabase.lib
-                                     metabase.models
-                                     metabase.public-settings
-                                     metabase.query-processor
-                                     metabase.util}
-    metabase.query-processor       :any
-    metabase.related               :any
-    metabase.request               #{metabase.config
-                                     metabase.models
-                                     metabase.public-settings
-                                     metabase.util}
-    metabase.sample-data           :any
-    metabase.search                :any
-    metabase.server                :any
-    metabase.setup                 :any
-    metabase.sync                  :any
-    metabase.task                  :any
-    metabase.troubleshooting       :any
-    metabase.types                 #{metabase.util}
-    metabase.upload                :any
-    metabase.util                  :any ; TODO -- this should probably be #{}
-    metabase.xrays                 :any}
-
-   ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
-   ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
-   ;;
-   ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
-   ;; together, e.g. `metabase.lib.metadata.jvm`.
-   :ignored-namespace-patterns
-   #{"-test$"                     ; anything ending in `-test`
-     "test[-.]util"               ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                ; anything that contains `test.impl`
-     "^metabase\\.test"           ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -540,6 +341,7 @@
     medley.core                                                   m
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
+    metabase-enterprise.sandbox.api.util                          sandbox.api.util
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
@@ -554,52 +356,10 @@
     metabase.analyze.fingerprint.fingerprinters                   fingerprinters
     metabase.analyze.fingerprint.insights                         insights
     metabase.analyze.fingerprint.schema                           fingerprint.schema
-    metabase.api.activity                                         api.activity
-    metabase.api.alert                                            api.alert
-    metabase.api.automagic-dashboards                             api.magic
-    metabase.api.bookmark                                         api.bookmark
-    metabase.api.card                                             api.card
-    metabase.api.card-test                                        api.card-test
-    metabase.api.collection                                       api.collection
     metabase.api.common                                           api
-    metabase.api.dashboard                                        api.dashboard
-    metabase.api.dashboard-test                                   api.dashboard-test
-    metabase.api.database                                         api.database
-    metabase.api.dataset                                          api.dataset
-    metabase.api.email                                            api.email
-    metabase.api.embed                                            api.embed
-    metabase.api.field                                            api.field
-    metabase.api.geojson                                          api.geojson
-    metabase.api.ldap                                             api.ldap
-    metabase.api.logic-history                                    api.login-history
-    metabase.api.metric                                           api.metric
-    metabase.api.native-query-snippet                             api.native-query-snippet
-    metabase.api.notify                                           api.notify
-    metabase.api.permission-graph                                 api.permission-graph
-    metabase.api.permissions                                      api.permissions
-    metabase.api.permissions-test-util                            perm-test-util
-    metabase.api.pivots                                           api.pivots
-    metabase.api.premium-features                                 api.premium-features
-    metabase.api.preview-embed                                    api.preview-embed
-    metabase.api.public                                           api.public
-    metabase.api.pulse                                            api.pulse
-    metabase.api.revision                                         api.revision
-    metabase.api.search                                           api.search
-    metabase.api.segment                                          api.segment
-    metabase.api.session                                          api.session
-    metabase.api.setting                                          api.setting
-    metabase.api.setup                                            api.setup
-    metabase.api.slack                                            api.slack
-    metabase.api.table                                            api.table
-    metabase.api.task                                             api.task
-    metabase.api.tiles                                            api.tiles
-    metabase.api.timeline                                         api.timeline
-    metabase.api.timeline-event                                   api.timeline-event
-    metabase.api.user                                             api.user
-    metabase.api.util                                             api.util
-    metabase.async.streaming-response.thread-pool                 thread-pool
     metabase.channel.core                                         channel
     metabase.channel.render.core                                  channel.render
+    metabase.cloud-migration.core                                 cloud-migration
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
@@ -640,8 +400,6 @@
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
     metabase.eid-translation                                      eid-translation
-    metabase.email-test                                           et
-    metabase.email.messages                                       messages
     metabase.formatter                                            formatter
     metabase.http-client                                          client
     metabase.legacy-mbql.normalize                                mbql.normalize
@@ -649,38 +407,17 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
-    metabase.models.activity                                      activity
-    metabase.models.application-permissions-revision              a-perm-revision
-    metabase.models.bookmark                                      bookmark
-    metabase.models.collection                                    collection
-    metabase.models.collection.graph                              graph
-    metabase.models.collection-permission-graph-revision          c-perm-revision
-    metabase.models.channel                                       models.channel
-    metabase.models.dashboard-card                                dashboard-card
-    metabase.models.database                                      database
+    metabase.login-history.core                                   login-history
+    metabase.model-persistence.core                               model-persistence
     metabase.models.dependency                                    dependency
-    metabase.models.field-values                                  field-values
     metabase.models.interface                                     mi
-    metabase.models.moderation-review                             moderation-review
-    metabase.models.native-query-snippet                          native-query-snippet
-    metabase.models.notification                                  models.notification
-    metabase.models.params                                        params
-    metabase.models.permissions                                   perms
-    metabase.models.permissions-group                             perms-group
-    metabase.models.permissions-group-membership                  perms-group-membership
-    metabase.models.permissions-revision                          perms-revision
-    metabase.models.permissions.parse                             perms-parse
-    metabase.models.pulse                                         models.pulse
-    metabase.models.pulse-channel                                 pulse-channel
-    metabase.models.pulse-channel-recipient                       pulse-channel-recipient
-    metabase.models.query.permissions                             query-perms
-    metabase.models.setting.cache                                 setting.cache
-    metabase.models.timeline                                      timeline
-    metabase.models.timeline-event                                timeline-event
+    metabase.models.setting                                       setting
     metabase.notification.core                                    notification
     metabase.notification.test-util                               notification.tu
+    metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
+    metabase.public-sharing.core                                  public-sharing
     metabase.premium-features.core                                premium-features
     metabase.pulse.core                                           pulse
     metabase.pulse.render                                         render
@@ -712,8 +449,8 @@
     metabase.query-processor.streaming.xlsx                       qp.xlsx
     metabase.query-processor.timezone                             qp.timezone
     metabase.query-processor.util                                 qp.util
-    metabase.related                                              related
     metabase.request.core                                         request
+    metabase.revisions.core                                       revisions
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
@@ -721,6 +458,7 @@
     metabase.search.in-place.scoring                              scoring
     metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
+    metabase.sso.core                                             sso
     metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
@@ -728,7 +466,6 @@
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
     metabase.sync.util                                            sync-util
     metabase.sync.util-test                                       sync.util-test
-    metabase.task.sync-databases                                  task.sync-databases
     metabase.test                                                 mt
     metabase.test.data.dataset-definitions                        defs
     metabase.test.data.env.impl                                   tx.env.impl
@@ -740,6 +477,7 @@
     metabase.test.redefs                                          test.redefs
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
+    metabase.timeline.core                                        timeline
     metabase.timeseries-query-processor-test.util                 tqpt
     metabase.util.cron                                            u.cron
     metabase.util.currency                                        currency
@@ -764,7 +502,7 @@
     metabase.util.schema                                          su
     metabase.util.ui-logic                                        ui-logic
     metabase.util.urls                                            urls
-    metabase.xrays                                                xrays
+    metabase.xrays.core                                           xrays
     metabuild-common.core                                         u
     metabuild-common.output                                       out
     metabuild-common.shell                                        shell
@@ -782,20 +520,18 @@
   clojure.core.cache/defcache                                                           clojure.core/deftype
   clojure.core.logic/defne                                                              clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
+  clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
-  metabase.api.common/defroutes                                                         clojure.core/def
   metabase.api.common/let-404                                                           clojure.core/let
-  metabase.api.search-test/do-test-users                                                clojure.core/let
-  metabase.async.api-response-test/with-response                                        clojure.core/let
-  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
+  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
-  metabase.db.data-migrations/defmigration                                              clojure.core/def
+  metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
   metabase.db.liquibase/with-liquibase                                                  clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
@@ -804,14 +540,19 @@
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                                clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
-  metabase.integrations.ldap/with-ldap-connection                                       clojure.core/fn
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
-  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
+  metabase.models.util.spec-update/define-spec                                          clojure.core/def
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.notification.test-util/with-card-notification                                clojure.core/let
+  metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
+  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
-  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
+  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
@@ -819,6 +560,8 @@
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
+  metabase.search.api-test/do-test-users                                                clojure.core/let
+  metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
   metabase.test.data.interface/defdataset                                               clojure.core/def
@@ -834,6 +577,7 @@
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload-test/with-upload-table!                                               clojure.core/let
+  metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
@@ -862,7 +606,10 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
-   clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
+   clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
+   clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
+   clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
+   clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -871,17 +618,10 @@
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
-   metabase.analytics.prometheus-test/with-prometheus-system!                                                                hooks.common/with-two-bindings
-   metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
-   metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
-   metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection!                                                    hooks.common/with-two-top-level-bindings
-   metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
@@ -890,17 +630,9 @@
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
-   metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
-   metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
-   metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
-   metabase.api.public-test/with-temp-public-dashboard                                                                       hooks.common/let-one-with-optional-value
-   metabase.api.public-test/with-temp-public-dashboard-and-card                                                              hooks.common/with-three-bindings
-   metabase.api.search-test/with-search-items-in-collection                                                                  hooks.metabase.api.search-test/with-search-items-in-collection
-   metabase.api.search-test/with-search-items-in-root-collection                                                             hooks.common/do*
-   metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
-   metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
-   metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
+   metabase.api.user-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
+   metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
@@ -913,18 +645,30 @@
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
+   metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
+   metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.dashboard-test/with-dash-in-collection!                                                                   hooks.common/with-three-bindings
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
-   metabase.models.pulse-test/with-dashboard-subscription-in-collection!                                                     hooks.common/with-four-bindings
-   metabase.models.pulse-test/with-pulse-in-collection!                                                                      hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
+   metabase.models.setting.multi-setting/define-multi-setting-impl                                                           hooks.metabase.models.setting/define-multi-setting-impl
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
+   metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
+   metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
+   metabase.plugins.classloader/require                                                                                      hooks.clojure.core.require/lint-require
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
+   metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
+   metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
+   metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
+   metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
+   metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
+   metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
+   metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
@@ -933,6 +677,9 @@
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
    metabase.request.core/with-limit-and-offset                                                                               hooks.common/with-used-first-two-args
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
+   metabase.search.api-test/with-search-items-in-collection                                                                  hooks.metabase.search.api-test/with-search-items-in-collection
+   metabase.search.api-test/with-search-items-in-root-collection                                                             hooks.common/do*
+   metabase.server.streaming-response-test/with-start-execution-chan                                                         hooks.common/with-one-binding
    metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test.data.datasets/test-driver                                                                                   hooks.metabase.test.data.datasets/test-driver
    metabase.test.data.datasets/test-drivers                                                                                  hooks.metabase.test.data.datasets/test-drivers
@@ -941,11 +688,13 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
+   metabase.test.gentest/with-gentest                                                                                        hooks.metabase.test.gentest/with-gentest
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
+   metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
@@ -961,9 +710,15 @@
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
+   metabase.test/with-persistence-enabled!                                                                                   hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
+   metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.util.i18n/tru                                                                                                    hooks.metabase.util.i18n/tru
+   metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
+   metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
+   metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/debugf                                                                                                  hooks.metabase.util.log/infof
@@ -979,46 +734,45 @@
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
+   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
 
   :macroexpand
-  {clojurewerkz.quartzite.jobs/build                                             macros.quartz/build-job
-   clojurewerkz.quartzite.schedule.cron/schedule                                 macros.quartz/schedule
-   clojurewerkz.quartzite.schedule.simple/schedule                               macros.quartz/simple-schedule
-   clojurewerkz.quartzite.triggers/build                                         macros.quartz/build-trigger
-   metabase-enterprise.sandbox.test-util/with-gtaps!                             macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.serialization.test-util/with-world                        macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps!                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.test/with-gtaps-for-user!                                 macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!   macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
-   metabase-enterprise.query-reference-validation.api-test/with-test-setup!      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
-   metabase.api.card-test/with-ordered-items                                     macros.metabase.api.card-test/with-ordered-items
-   metabase.api.collection-test/with-collection-hierarchy!                       macros.metabase.api.collection-test/with-collection-hierarchy!
-   metabase.api.collection-test/with-some-children-of-collection!                macros.metabase.api.collection-test/with-some-children-of-collection!
-   metabase.api.common/define-routes                                             macros.metabase.api.common/define-routes
-   metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
-   metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
-   metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!
-   metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing!  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing!
-   metabase.lib.filter/deffilter                                                 macros.metabase.lib.filter/deffilter
-   metabase.lib.common/defop                                                     macros.metabase.lib.common/defop
-   metabase.models.params.chain-filter-test/chain-filter                         macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.params.chain-filter-test/chain-filter-search                  macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-analysis-test/with-test-setup                           macros.metabase.models.query-analysis-test/with-test-setup
-   metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
-   metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
-   metabase.related-test/with-world                                              macros.metabase.related-test/with-world
-   metabase.task.setup.query-analysis-setup/with-test-setup!                     macros.metabase.task.setup.query-analysis-setup/with-test-setup!
-   metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
-   metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.test/with-group-for-user                                             macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-persistence-enabled!                                       macros.metabase.test.persistence/with-persistence-enabled!
-   metabase.test/with-temp-env-var-value!                                        macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.util.namespaces/import-fn                                            macros.metabase.util.namespaces/import-fn
-   metabase.xrays.domain-entities.malli/define-getters-and-setters               macros.metabase.xrays.domain-entities.malli/define-getters-and-setters}}
+  {clojurewerkz.quartzite.jobs/build                                                    macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.cron/schedule                                        macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule                                      macros.quartz/simple-schedule
+   clojurewerkz.quartzite.triggers/build                                                macros.quartz/build-trigger
+   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!          macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup!             macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
+   metabase-enterprise.sandbox.test-util/with-gtaps!                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.serialization.test-util/with-world                               macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps!                                                 macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                        macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase.api.card-test/with-ordered-items                                            macros.metabase.api.card-test/with-ordered-items
+   metabase.api.collection-test/with-collection-hierarchy!                              macros.metabase.api.collection-test/with-collection-hierarchy!
+   metabase.api.collection-test/with-some-children-of-collection!                       macros.metabase.api.collection-test/with-some-children-of-collection!
+   metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!            macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
+   metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!        macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
+   metabase.lib.common/defop                                                            macros.metabase.lib.common/defop
+   metabase.lib.filter/deffilter                                                        macros.metabase.lib.filter/deffilter
+   metabase.models.params.chain-filter-test/chain-filter                                macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.params.chain-filter-test/chain-filter-search                         macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.query-analysis-test/with-test-setup                                  macros.metabase.models.query-analysis-test/with-test-setup
+   metabase.models.user-test/with-groups                                                macros.metabase.models.user-test/with-groups
+   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!     macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
+   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing! macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
+   metabase.query-analysis.task.test-setup/with-test-setup!                             macros.metabase.query-analysis.task.test-setup/with-test-setup!
+   metabase.query-processor.streaming/streaming-response                                macros.metabase.query-processor.streaming/streaming-response
+   metabase.test.data.users/with-group-for-user                                         macros.metabase.test.data.users/with-group-for-user
+   metabase.test.util/with-temp-env-var-value!                                          macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test.util/with-temporary-raw-setting-values                                 macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test/with-group-for-user                                                    macros.metabase.test.data.users/with-group-for-user
+   metabase.test/with-temp-env-var-value!                                               macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test/with-temporary-raw-setting-values                                      macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.util.namespaces/import-fn                                                   macros.metabase.util.namespaces/import-fn
+   metabase.xrays.domain-entities.malli/define-getters-and-setters                      macros.metabase.xrays.domain-entities.malli/define-getters-and-setters
+   metabase.xrays.related-test/with-world                                               macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -1073,13 +827,15 @@
 
    :hooks
    {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
+    {clojure.core/defmacro hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core.defn/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters
-   {:discouraged-var
+   {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
 

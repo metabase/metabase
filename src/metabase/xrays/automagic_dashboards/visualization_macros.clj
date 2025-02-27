@@ -2,6 +2,7 @@
 
 (defmulti expand-visualization
   "Expand visualization macro."
+  {:arglists '([card dimensions metrics])}
   (fn [card _ _]
     (-> card :visualization first)))
 

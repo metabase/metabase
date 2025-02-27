@@ -1,8 +1,8 @@
 (ns metabase.analyze.classify-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analyze :as analyze]
    [metabase.analyze.classifiers.core :as classifiers]
+   [metabase.analyze.core :as analyze]
    [metabase.models.interface :as mi]))
 
 (defn- ->field [field]
@@ -17,13 +17,13 @@
       (is (= :type/State (:semantic_type (classifiers/run-classifiers field nil)))))))
 
 (deftest ^:parallel run-classifiers-test-2
-  (testing "Fields with few values are marked as category and list"
+  (testing "Fields with few values are marked as category"
     (let [field      (->field {:name "state", :base_type :type/Text})
           classified (classifiers/run-classifiers field {:global
                                                          {:distinct-count
                                                           (dec analyze/category-cardinality-threshold)
                                                           :nil% 0.3}})]
-      (is (= {:has_field_values :auto-list, :semantic_type :type/Category}
+      (is (= {:semantic_type :type/Category}
              (select-keys classified [:has_field_values :semantic_type]))))))
 
 (deftest ^:parallel run-classifiers-test-3
@@ -32,7 +32,7 @@
           fingerprint {:global {:distinct-count 4
                                 :nil%           0}}
           classified  (classifiers/run-classifiers field fingerprint)]
-      (is (= {:has_field_values :auto-list, :semantic_type :type/URL}
+      (is (= {:semantic_type :type/URL}
              (select-keys classified [:has_field_values :semantic_type]))))))
 
 (deftest ^:parallel run-classifiers-test-4
@@ -43,7 +43,7 @@
                                   :nil%           0}
                          :type   {:type/Text {:percent-state 0.98}}}
             classified  (classifiers/run-classifiers field fingerprint)]
-        (is (= {:has_field_values :auto-list, :semantic_type :type/State}
+        (is (= {:semantic_type :type/State}
                (select-keys classified [:has_field_values :semantic_type])))))
     (let [field       (->field {:name "order_status" :base_type :type/Text})
           fingerprint {:type {:type/Text {:percent-json 0.99}}}]

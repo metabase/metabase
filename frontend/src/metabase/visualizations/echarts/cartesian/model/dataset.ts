@@ -522,10 +522,6 @@ export function filterNullDimensionValues(
   return filteredDataset;
 }
 
-const Y_AXIS_CROSSING_ERROR = Error(
-  t`Y-axis must not cross 0 when using log scale.`,
-);
-
 export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
@@ -544,18 +540,11 @@ export function replaceZeroesForLogScale(
     const hasPositive = datumNumericValues.some(value => value > 0);
     const hasNegative = datumNumericValues.some(value => value < 0);
 
-    if (hasPositive && hasNegative) {
-      throw Y_AXIS_CROSSING_ERROR;
-    }
-
     if (sign === undefined && hasPositive) {
       sign = 1;
     }
     if (sign === undefined && hasNegative) {
       sign = -1;
-    }
-    if ((sign === 1 && hasNegative) || (sign === -1 && hasPositive)) {
-      throw Y_AXIS_CROSSING_ERROR;
     }
 
     if (!hasZeros) {

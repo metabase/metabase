@@ -40,7 +40,8 @@
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (t2/update! :conn conn :secret
                     {:id id}
-                    {:value (encrypt-bytes-fn value)})))))
+                    {:value (encrypt-bytes-fn value)}))
+      (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db
   "Encrypt the db using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data, and the passed `to-key` to re-encrypt.
@@ -54,6 +55,6 @@
                                              (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
 
 (defn decrypt-db
-  "Decrypts the database usign the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
+  "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
   (do-encryption db-type data-source false (constantly identity)))

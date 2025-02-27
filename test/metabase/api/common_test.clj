@@ -14,8 +14,9 @@
 
 ;;; TESTS FOR CHECK (ETC)
 
-(def ^:private four-oh-four
+(defn- four-oh-four
   "The expected format of a 404 response."
+  []
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
@@ -56,12 +57,12 @@
              (my-mock-api-fn)))))
 
   (testing "check that 404 is returned otherwise"
-    (is (= four-oh-four
+    (is (= (four-oh-four)
            (-> (my-mock-api-fn)
                (update-in [:headers "Last-Modified"] string?)))))
 
   (testing "let-404 should return nil if test fails"
-    (is (= four-oh-four
+    (is (= (four-oh-four)
            (-> (mock-api-fn
                 (fn [_]
                   (api/let-404 [user nil]

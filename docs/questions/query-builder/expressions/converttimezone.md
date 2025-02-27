@@ -15,6 +15,10 @@ Timestamps and time zones are rather nasty to work with (it's easy to make mista
 
 For example, if you're tracking user logins over time, you probably won't run your business differently if some logins get counted on Mondays instead of Tuesdays. However, if you're using Metabase to do something precise, like your taxes, you (and the government) will probably care a lot more about the difference between transactions that occurred on Dec 31 vs. Jan 1.
 
+## Supported time zones
+
+Metabase supports [tz database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+
 ## Parameters
 
 `column` can be any of:

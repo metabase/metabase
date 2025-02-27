@@ -66,6 +66,7 @@ describe("SDK auth and init flow", () => {
         "token-features": createMockTokenFeatures({
           embedding_sdk: true,
         }),
+        "enable-embedding-sdk": true,
       }),
     );
 

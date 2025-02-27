@@ -26,15 +26,15 @@ function recursiveParse(source) {
   const next = () => tokens.shift();
 
   // Throw an error if the next token isn't the expected operator
-  const expectOp = nextOp => {
+  const expectOp = (nextOp, nextOpName) => {
     const token = next();
     if (!token) {
-      throw new Error(t`Unexpected end of input, expecting ${nextOp}`);
+      throw new Error(t`Unexpected end of input, expecting ${nextOpName}`);
     }
     const { type, op, start, end } = token;
     if (type !== TOKEN.Operator || op !== nextOp) {
       const text = source.substring(start, end);
-      throw new Error(t`Expecting ${nextOp} but got ${text} instead`);
+      throw new Error(t`Expecting ${nextOpName} but got ${text} instead`);
     }
   };
 
@@ -46,10 +46,10 @@ function recursiveParse(source) {
 
   // Group ::= "(" Expression ")"
   const parseGroup = () => {
-    expectOp(OP.OpenParenthesis);
+    expectOp(OP.OpenParenthesis, t`opening parenthesis`);
     const expr = parseExpression();
     const terminated = matchOps([OP.CloseParenthesis]);
-    expectOp(OP.CloseParenthesis);
+    expectOp(OP.CloseParenthesis, t`closing parenthesis`);
     if (!terminated) {
       throw new Error(t`Expecting a closing parenthesis`);
     }
@@ -58,17 +58,17 @@ function recursiveParse(source) {
 
   // Parameters ::= "(" * Expression ")"
   const parseParameters = () => {
-    expectOp(OP.OpenParenthesis);
+    expectOp(OP.OpenParenthesis, t`opening parenthesis`);
     const params = [];
     while (!matchOps([OP.Comma, OP.CloseParenthesis])) {
       const expr = parseExpression();
       params.push(expr);
-      if (!matchOps([OP.Comma])) {
+      if (!matchOps([OP.Comma]) && matchOps([OP.CloseParenthesis])) {
         break;
       }
-      expectOp(OP.Comma);
+      expectOp(OP.Comma, t`comma`);
     }
-    expectOp(OP.CloseParenthesis);
+    expectOp(OP.CloseParenthesis, t`closing parenthesis`);
     return params;
   };
 
@@ -270,7 +270,7 @@ export const adjustOptions = tree =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length === clause.args.length + 1 || clause.multiple) {
+          if (operands.length > clause.args.length) {
             // the last one holds the function options
             const options = operands[operands.length - 1];
 

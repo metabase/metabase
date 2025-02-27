@@ -7,11 +7,11 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
-   [metabase.integrations.common :as integrations.common]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])
   (:import
@@ -25,7 +25,7 @@
   (when-not (sso-settings/jwt-enabled)
     (throw
      (IllegalArgumentException.
-      (str (tru "Can't create new JWT user when JWT is not configured")))))
+      (str (tru "Can''t create new JWT user when JWT is not configured")))))
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
@@ -84,9 +84,9 @@
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data groups-attribute)]
-        (integrations.common/sync-group-memberships! user
-                                                     (group-names->ids group-names)
-                                                     (all-mapped-group-ids))))))
+        (sso/sync-group-memberships! user
+                                     (group-names->ids group-names)
+                                     (all-mapped-group-ids))))))
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
@@ -105,7 +105,7 @@
           first-name   (get jwt-data (jwt-attribute-firstname))
           last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (api.session/create-session! :sso user (request/device-info request))]
+          session      (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 

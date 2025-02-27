@@ -1,6 +1,6 @@
 (ns metabase.permissions.util
   "Utilities for working with permissions, particularly the permission paths which are stored in the DB. These should
-  typically not be used outside of permissions-related namespaces such as `metabase.models.permissions`."
+  typically not be used outside of permissions-related namespaces such as `metabase.permissions.models.permissions`."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
@@ -198,7 +198,8 @@
   (into [:enum {:title "Kind"}] (map second rx->kind)))
 
 (mu/defn classify-path :- Kind
-  "Classifies a permission [[metabase.models.permissions/Path]] into a [[metabase.models.permissions/Kind]], or throws."
+  "Classifies a permission [[metabase.permissions.models.permissions/Path]] into
+  a [[metabase.permissions.models.permissions/Kind]], or throws."
   [path :- Path]
   (let [result (keep (fn [[permission-rx kind]]
                        (when (re-matches (u.regex/rx permission-rx) path) kind))
@@ -212,7 +213,8 @@
   [:re (u.regex/rx "^/" v1-data-permissions-rx "$")])
 
 (mu/defn classify-data-path :- DataKind
-  "Classifies data path permissions [[metabase.models.permissions/DataPath]] into a [[metabase.models.permissions/DataKind]]"
+  "Classifies data path permissions [[metabase.permissions.models.permissions/DataPath]] into
+  a [[metabase.permissions.models.permissions/DataKind]]"
   [data-path :- DataPath]
   (let [result (keep (fn [[data-rx kind]]
                        (when (re-matches (u.regex/rx [:and "^/" data-rx]) data-path) kind))

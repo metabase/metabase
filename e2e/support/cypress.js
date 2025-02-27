@@ -114,12 +114,25 @@ Cypress.on("window:load", window => {
   };
 });
 
-// cypress-terminal-report
 if (isCI) {
+  // cypress-terminal-report
   afterEach(() => {
     cy.wait(50, { log: false }).then(() =>
       cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
     );
+  });
+
+  // Fast failure notifications
+  afterEach(() => {
+    const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
+    const isLastRetry = testInfo.currentRetry() === testInfo.retries();
+
+    if (testInfo.state === "failed" && isLastRetry) {
+      cy.task("reportCIFailure", {
+        spec: Cypress.spec,
+        test: Cypress.currentTest,
+      });
+    }
   });
 
   const options = {
@@ -142,3 +155,19 @@ if (isCI) {
   // Ensure that after plugin installation is after the afterEach handling the integration.
   require("cypress-terminal-report/src/installLogsCollector")(options);
 }
+
+beforeEach(function () {
+  const isCurrentTesOss =
+    this.currentTest._testConfig.unverifiedTestConfig.tags === "@OSS";
+  const isBuildOss = Cypress.env("MB_EDITION") === "oss";
+  const testName = this.currentTest.title;
+  if (Cypress.config("isInteractive") && isCurrentTesOss && !isBuildOss) {
+    console.log(
+      "%cSkipping test because it is tagged with @OSS:",
+      "color: red;",
+    );
+    console.log(`test name: ${testName}\n\n"this test should be ran against OSS jar. Make sure you have MB_EDITION=oss set and go to e2e/support/cypress.js and temporarily remove the skipOn(true) to run the test"
+    `);
+    cy.skipOn(true);
+  }
+});

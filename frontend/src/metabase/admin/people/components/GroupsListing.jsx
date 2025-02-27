@@ -8,7 +8,7 @@ import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -82,7 +82,7 @@ function DeleteGroupModal({
 
   return (
     <ModalContent title={modalTitle} onClose={onClose}>
-      <Stack spacing="xl">
+      <Stack gap="xl">
         <Text>
           {hasApiKeys
             ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
@@ -95,7 +95,7 @@ function DeleteGroupModal({
             : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
                 This can't be undone.`}
         </Text>
-        <Group spacing="md" position="right">
+        <Group gap="md" justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"

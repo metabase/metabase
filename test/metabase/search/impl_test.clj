@@ -1,5 +1,5 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.search.api-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
    [clojure.set :as set]
@@ -12,7 +12,6 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
@@ -87,15 +86,16 @@
                                                  :model-ancestors?            false
                                                  :limit-int                   100
                                                  :calculate-available-models? false}))]
-          ;; warm it up, in case the DB call depends on the order of test execution and it needs to
-          ;; do some initialization
+            ;; warm it up, in case the DB call depends on the order of test execution and it needs to
+            ;; do some initialization
+            (search/init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)
-            ;; the call count number here are expected to change if we change the search api
-            ;; we have this test here just to keep tracks this number to remind us to put effort
-            ;; into keep this number as low as we can
-              (is (<= (call-count) 5)))))))))
+              ;; the call count number here are expected to change if we change the search api
+              ;; we have this test here just to keep tracks this number to remind us to put effort
+              ;; into keep this number as low as we can
+              (is (<= (call-count) 6)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"
@@ -275,19 +275,3 @@
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
-
-(deftest ^:parallel serialize-test
-  (testing "It normalizes dataset queries from strings"
-    (let [query  {:type     :query
-                  :query    {:source-query {:source-table 1}}
-                  :database 1}
-          result {:name          "card"
-                  :model         "card"
-                  :dataset_query (json/encode query)
-                  :all-scores {}
-                  :relevant-scores {}}]
-      (is (= query (-> result search.impl/serialize :dataset_query)))))
-  (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
-                  search.impl/serialize
-                  :dataset_query)))))

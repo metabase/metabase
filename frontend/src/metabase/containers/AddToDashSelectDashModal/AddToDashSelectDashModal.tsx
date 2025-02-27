@@ -1,13 +1,17 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { Card, Dashboard } from "metabase-types/api";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import type { Card, Dashboard, RecentItem } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import {
+  filterPersonalRecents,
   filterWritableDashboards,
   filterWritableRecents,
   shouldDisableItem,
@@ -40,6 +44,8 @@ export const AddToDashSelectDashModal = ({
   onClose,
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
+
   const {
     data: mostRecentlyViewedDashboard,
     isLoading,
@@ -59,10 +65,6 @@ export const AddToDashSelectDashModal = ({
     }
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   const questionCollection = card.collection ?? ROOT_COLLECTION;
   const isQuestionInPersonalCollection = !!questionCollection.is_personal;
   const isRecentDashboardInPersonalCollection =
@@ -73,6 +75,23 @@ export const AddToDashSelectDashModal = ({
   const showRecentDashboard =
     mostRecentlyViewedDashboard?.id &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
+
+  const recentsFilter = useCallback(
+    (items: RecentItem[]) => {
+      const writableRecents = filterWritableRecents(items);
+
+      if (isQuestionInPersonalCollection && personalCollectionId) {
+        return filterPersonalRecents(writableRecents, personalCollectionId);
+      } else {
+        return writableRecents;
+      }
+    },
+    [isQuestionInPersonalCollection, personalCollectionId],
+  );
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
     <DashboardPickerModal
@@ -97,7 +116,7 @@ export const AddToDashSelectDashModal = ({
       }}
       shouldDisableItem={shouldDisableItem}
       searchFilter={filterWritableDashboards}
-      recentFilter={filterWritableRecents}
+      recentFilter={recentsFilter}
     />
   );
 };

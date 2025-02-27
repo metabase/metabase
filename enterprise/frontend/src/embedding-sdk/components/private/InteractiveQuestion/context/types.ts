@@ -2,9 +2,9 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
-import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
@@ -32,7 +32,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "saveToCollectionId">;
+} & Pick<SaveQuestionProps, "saveToCollection">;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
@@ -43,18 +43,23 @@ export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
   InteractiveQuestionConfig & QuestionMockLocationParameters
 >;
 
+// eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
+export type InteractiveQuestionId = CardId | "new" | (string & {});
+
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | string }
+    Omit<LoadSdkQuestionParams, "cardId"> & {
+      cardId: InteractiveQuestionId;
+    }
 >;
 
 export type InteractiveQuestionContextType = Omit<
   LoadQuestionHookResult,
-  "loadQuestion"
+  "loadAndQueryQuestion"
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollectionId"
+    "onNavigateBack" | "isSaveEnabled" | "saveToCollection"
   > &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
@@ -63,4 +68,7 @@ export type InteractiveQuestionContextType = Omit<
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
+  } & {
+    isCardIdError: boolean;
+    originalId: InteractiveQuestionId;
   };

@@ -8,46 +8,45 @@ import {
   type SingleDatePickerValue,
 } from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/SingleDatePicker";
 import {
-  deserializeDateFilter,
-  serializeDateFilter,
-} from "metabase/querying/parameters/utils/dates";
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateSingleWidgetProps = {
-  value: string | undefined;
+  value: ParameterValueOrArray | null | undefined;
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
 
 export function DateSingleWidget({
-  value: valueText,
+  value,
   submitButtonLabel = t`Apply`,
   onChange,
 }: DateSingleWidgetProps) {
-  const [value, setValue] = useState(
-    () => getPickerValue(valueText) ?? getPickerDefaultValue(),
+  const [pickerValue, setPickerValue] = useState(
+    () => getPickerValue(value) ?? getPickerDefaultValue(),
   );
 
   const handleSubmit = () => {
-    onChange(getWidgetValue(value));
+    onChange(getWidgetValue(pickerValue));
   };
 
   return (
     <SingleDatePicker
-      value={value}
+      value={pickerValue}
       submitButtonLabel={submitButtonLabel}
       hasTimeToggle
-      onChange={setValue}
+      onChange={setPickerValue}
       onSubmit={handleSubmit}
     />
   );
 }
 
 function getPickerValue(
-  valueText: string | undefined,
+  value: ParameterValueOrArray | null | undefined,
 ): SingleDatePickerValue | undefined {
-  const value =
-    valueText != null ? deserializeDateFilter(valueText) : undefined;
-  return match(value)
+  return match(deserializeDateParameterValue(value))
     .returnType<SingleDatePickerValue | undefined>()
     .with({ type: "specific", operator: "=" }, ({ values, hasTime }) => ({
       date: values[0],
@@ -61,11 +60,11 @@ function getPickerDefaultValue(): SingleDatePickerValue {
   return { date: today, hasTime: false };
 }
 
-function getWidgetValue(value: SingleDatePickerValue) {
-  return serializeDateFilter({
+function getWidgetValue({ date, hasTime }: SingleDatePickerValue) {
+  return serializeDateParameterValue({
     type: "specific",
     operator: "=",
-    values: [value.date],
-    hasTime: value.hasTime,
+    values: [date],
+    hasTime: hasTime,
   });
 }

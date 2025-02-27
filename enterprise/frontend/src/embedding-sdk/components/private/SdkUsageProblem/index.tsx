@@ -1,6 +1,6 @@
-import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useSdkUsageProblem } from "embedding-sdk/hooks/private/use-sdk-usage-problem";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { Box, Portal } from "metabase/ui";
 
 import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";

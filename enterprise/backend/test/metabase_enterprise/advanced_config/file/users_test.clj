@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))

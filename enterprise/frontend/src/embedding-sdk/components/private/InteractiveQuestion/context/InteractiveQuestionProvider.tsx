@@ -43,7 +43,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  cardId: initId,
+  cardId: initialQuestionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -53,12 +53,18 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollectionId,
+  saveToCollection,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
-  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+  const {
+    id: cardId,
+    isLoading: isLoadingValidatedId,
+    isError: isCardIdError,
+  } = useValidatedEntityId({
     type: "card",
-    id: initId,
+
+    // If the question is new, we won't have a question id yet.
+    id: initialQuestionId === "new" ? undefined : initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
@@ -72,7 +78,7 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
       onSave?.(sdkQuestion, saveContext);
-      await loadQuestion();
+      await loadAndQueryQuestion();
     }
   };
 
@@ -103,9 +109,9 @@ export const InteractiveQuestionProvider = ({
     isQuestionLoading,
     isQueryRunning,
 
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
-    loadQuestion,
+    loadAndQueryQuestion,
     updateQuestion,
     navigateToNewCard,
   } = useLoadQuestion({
@@ -122,16 +128,23 @@ export const InteractiveQuestionProvider = ({
   }, [globalPlugins, componentPlugins]);
 
   const mode = useMemo(() => {
-    return question && getEmbeddingMode(question, combinedPlugins ?? undefined);
+    return (
+      question &&
+      getEmbeddingMode({
+        question,
+        plugins: combinedPlugins ?? undefined,
+      })
+    );
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
+    originalId: initialQuestionId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
-    resetQuestion: loadQuestion,
-    onReset: loadQuestion,
+    resetQuestion: loadAndQueryQuestion,
+    onReset: loadAndQueryQuestion,
     onNavigateBack,
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -144,12 +157,13 @@ export const InteractiveQuestionProvider = ({
     onCreate: handleCreate,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
+    isCardIdError,
   };
 
   useEffect(() => {
-    loadQuestion();
-  }, [loadQuestion]);
+    loadAndQueryQuestion();
+  }, [loadAndQueryQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.comparison-test
+(ns metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.query :as query]

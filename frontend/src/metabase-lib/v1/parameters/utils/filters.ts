@@ -56,9 +56,7 @@ export function columnFilterForParameter(
         !Lib.isLocation(column);
     case "string":
       return column =>
-        (Lib.isStringOrStringLike(column) ||
-          Lib.isCategory(column) ||
-          Lib.isBoolean(column)) &&
+        (Lib.isStringOrStringLike(column) || Lib.isCategory(column)) &&
         !Lib.isLocation(column);
     case "temporal-unit":
       return column => Lib.isTemporalBucketable(query, stageIndex, column);

@@ -57,7 +57,7 @@ describe("FilterHeaderButton", () => {
   it("should render filter button", () => {
     renderWithProviders(<FilterHeaderButton onOpenModal={jest.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
+    expect(screen.getByText("Filter")).toBeInTheDocument();
     expect(screen.getByTestId("question-filter-header")).toBeInTheDocument();
   });
 

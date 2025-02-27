@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
@@ -10,6 +11,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
+
+(defn- notification-recipient->channel-id
+  [notification-recipient]
+  (when (= (:type notification-recipient) :notification-recipient/raw-value)
+    (-> notification-recipient :details :value)))
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
@@ -91,17 +97,17 @@
     (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                           Alerts                                                ;;
+;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload]} _template channel-ids]
+  [_channel-type {:keys [payload]} _template recipients]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
                      (part->attachment-data (:card_part payload) (slack/files-channel))]]
-    (for [channel-id channel-ids]
+    (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments attachments})))
 
@@ -142,16 +148,16 @@
   [parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (part->attachment-data part channel-id)]
+          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
           :when attachment]
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} _template channel-ids]
+  [_channel-type {:keys [payload creator]} _template recipients]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
-    (for [channel-id channel-ids]
+    (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
-       :attachments (remove nil?
-                            (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                      (create-slack-attachment-data (:dashboard_parts payload))]))})))
+       :attachments (doall (remove nil?
+                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                             (create-slack-attachment-data (:dashboard_parts payload))])))})))

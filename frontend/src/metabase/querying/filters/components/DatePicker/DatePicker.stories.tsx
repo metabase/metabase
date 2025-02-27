@@ -1,6 +1,6 @@
 import FakeTimers from "@sinonjs/fake-timers";
-import type { ComponentMeta, Story, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import type { Meta, StoryFn } from "@storybook/react";
+import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
@@ -11,9 +11,9 @@ import { DatePicker } from "./DatePicker";
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
-  title: "Parameters/DatePicker",
+  title: "Components/Parameters/DatePicker",
   component: DatePicker,
-} as ComponentMeta<typeof DatePicker>;
+} as Meta<typeof DatePicker>;
 
 let clock: FakeTimers.InstalledClock | undefined;
 function withMockDate(StoryFn: StoryFn) {
@@ -42,7 +42,7 @@ type CustomStoryProps = {
     height: number;
   };
 };
-const Template: Story<
+const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
 > = args => {
   const isDarkTheme = args.theme === "dark";
@@ -194,7 +194,7 @@ export const RelativeNext = {
       name: "Next",
     });
     next.classList.add("pseudo-hover");
-    await userEvent.click(canvas.getByRole("searchbox", { name: "Unit" }));
+    await userEvent.click(canvas.getByRole("textbox", { name: "Unit" }));
   },
   decorators: [withMockDate],
 };

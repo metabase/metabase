@@ -1,12 +1,13 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import * as modelActions from "metabase/query_builder/actions/models";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -44,9 +45,20 @@ const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
 interface SetupOpts {
   card: Card;
   hasDataPermissions?: boolean;
+  hasAcknowledgedModelModal?: boolean;
 }
 
-function setup({ card, hasDataPermissions = true }: SetupOpts) {
+function setup({
+  card,
+  hasDataPermissions = true,
+  hasAcknowledgedModelModal = false,
+}: SetupOpts) {
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: hasAcknowledgedModelModal,
+  });
+
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
@@ -87,8 +99,7 @@ describe("QuestionActions", () => {
       setup({ card });
 
       await userEvent.hover(screen.getByRole("button", { name: label }));
-      const tooltip = screen.getByRole("tooltip", { name: tooltipText });
-      expect(tooltip).toHaveAttribute("data-placement", "top");
+      const tooltip = await screen.findByRole("tooltip", { name: tooltipText });
       expect(tooltip).toHaveTextContent(tooltipText);
     },
   );
@@ -168,6 +179,29 @@ describe("QuestionActions", () => {
 
       await userEvent.click(screen.getByText("Turn into a model"));
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
+    });
+
+    it("should skip showing model modal if user has acknowledged it previously", async () => {
+      const turnQuestionIntoModelSpy = jest
+        .spyOn(modelActions, "turnQuestionIntoModel")
+        .mockImplementation(() => async () => {});
+
+      const { onOpenModal } = setup({
+        card: createMockCard({
+          type: "question",
+          can_write: true,
+        }),
+        hasAcknowledgedModelModal: true,
+      });
+
+      await openActionsMenu();
+
+      await userEvent.click(screen.getByText("Turn into a model"));
+      expect(onOpenModal).not.toHaveBeenCalled();
+
+      // should still turn into a model
+      expect(turnQuestionIntoModelSpy).toHaveBeenCalled();
+      turnQuestionIntoModelSpy.mockRestore();
     });
 
     it("should allow to turn into a question with write data & collection permissions", async () => {

@@ -1,71 +1,56 @@
-import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
-import { connect } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Modal, type ModalProps } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
-import { CreateDashboardFormConnected } from "./CreateDashboardForm";
+import { CreateDashboardForm } from "./CreateDashboardForm";
 
-interface CreateDashboardModalOwnProps
+interface CreateDashboardModalProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
   onClose?: () => void;
 }
 
-interface CreateDashboardModalDispatchProps {
-  onChangeLocation: (location: LocationDescriptor) => void;
-}
-
-type Props = CreateDashboardModalOwnProps & CreateDashboardModalDispatchProps;
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
-
-function CreateDashboardModal({
+export const CreateDashboardModal = ({
   onCreate,
-  onChangeLocation,
   onClose,
-  ...props
-}: Props) {
+  initialValues,
+  filterPersonalCollections,
+  collectionId,
+  ...modalProps
+}: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
+  const dispatch = useDispatch();
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
       if (typeof onCreate === "function") {
         onCreate(dashboard);
       } else {
         onClose?.();
-        onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
+        dispatch(push(Urls.dashboard(dashboard, { editMode: true })));
       }
     },
-    [onCreate, onChangeLocation, onClose],
+    [onCreate, onClose, dispatch],
   );
 
   return (
-    <ModalContent
+    <Modal
       title={t`New dashboard`}
-      onClose={onClose}
+      onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"
+      size="lg"
+      {...modalProps}
     >
-      <CreateDashboardFormConnected
-        {...props}
+      <CreateDashboardForm
         onCreate={handleCreate}
         onCancel={onClose}
+        initialValues={initialValues}
+        filterPersonalCollections={filterPersonalCollections}
+        collectionId={collectionId}
       />
-    </ModalContent>
+    </Modal>
   );
-}
-
-export const CreateDashboardModalConnected = connect<
-  unknown,
-  CreateDashboardModalDispatchProps,
-  CreateDashboardModalOwnProps,
-  State
->(
-  null,
-  mapDispatchToProps,
-)(CreateDashboardModal);
+};

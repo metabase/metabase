@@ -1,8 +1,8 @@
 ---
-title: Filters
+title: Filtering
 ---
 
-# Filters
+# Filtering
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Borges," or pictures of people wearing olive-colored pants reading Jorge Luis Borges.
 
@@ -53,4 +53,3 @@ Learn more about writing [expressions](./expressions.md) or skip right to the [l
 ## Filtering by a segment
 
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
-

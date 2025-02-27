@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
+import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
@@ -10,15 +10,14 @@ import {
   Editor,
   EditorButton,
   Filter,
-  FilterButton,
   FilterDropdown,
   QuestionResetButton,
   QuestionSettings,
+  QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
   Summarize,
-  SummarizeButton,
   SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
@@ -31,11 +30,16 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["cardId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+  /**
+   * When this is defined, the collection picker will be hidden and
+   * the question will be saved to this collection.
+   **/
+  saveToCollection?: SDKCollectionReference;
 }> &
   Pick<
     InteractiveQuestionProviderProps,
@@ -43,7 +47,6 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "onSave"
     | "entityTypeFilter"
     | "isSaveEnabled"
-    | "saveToCollectionId"
     | "initialSqlParameters"
   >;
 
@@ -61,7 +64,7 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollectionId,
+  saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
@@ -74,7 +77,7 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollectionId={saveToCollectionId}
+    saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
@@ -97,11 +100,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
-  FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
-  SummarizeButton: typeof SummarizeButton;
   SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
@@ -114,8 +115,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   ChartTypeDropdown: typeof ChartTypeDropdown;
-  EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
 };
@@ -123,11 +124,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.FilterButton = FilterButton;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
@@ -139,8 +138,8 @@ InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;

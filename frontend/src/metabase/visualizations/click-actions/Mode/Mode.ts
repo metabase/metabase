@@ -1,4 +1,4 @@
-import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

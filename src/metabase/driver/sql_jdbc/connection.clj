@@ -3,6 +3,7 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -123,10 +124,11 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
-   ;; Only retry once instead of the default of 30 (#51176)
+   ;; Never retry instead of the default of retrying 30 times (#51176)
    ;; While a couple queries may fail during a reboot, this should allow quicker recovery and less spinning on outdated
    ;; credentials
-   "acquireRetryAttempts"         0
+   ;; However, keep 1 retry for the tests to reduce flakiness.
+   "acquireRetryAttempts"         (if config/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1

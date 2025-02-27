@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.audit-app.pages-test
+(ns metabase-enterprise.audit-app.pages-test
   (:require
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]

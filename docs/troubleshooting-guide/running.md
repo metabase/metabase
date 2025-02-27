@@ -1,16 +1,20 @@
 ---
-title: Running Metabase
+title: Troubleshooting memory and JVM issues
 ---
 
-# Running Metabase
+# Troubleshooting memory and JVM issues
 
 Metabase runs on the Java Virtual Machine (JVM), and depending on how it's configured, it may use the server's filesystem to store some information. Problems with either the JVM or the filesystem can therefore prevent Metabase from running.
 
 ## Java version
 
-Make sure you're using a Java version of 11 or higher.
+Metabase should be run on Java version 21 (older versions are unsupported).
 
-# Metabase's memory usage
+When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g., when choosing between Java 21.0.1 and Java 21.0.4, choose the latest version (in this case, 21.0.4).
+
+We recommend running only one version of Java on a single server, because running more than one version of Java on a single server can cause application problems. If you need to run multiple applications that each require a different java version, consider using containers (as containers were meant to solve this problem). Otherwise, just make sure that you can run all your applications with a single Java version.
+
+## Metabase's memory usage
 
 Metabase ships as a JAR file that runs on the Java Virtual Machine (JVM).
 

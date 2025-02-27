@@ -13,6 +13,7 @@ on:
           - master
           - release-x.51.x
           - release-x.52.x
+          - release-x.53.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -211,12 +212,16 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
+          # TODO: Remove this step once github includes the new gh CLI version 2.65.0
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install gh
+
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
-                       --title "Update SDK version to ${{ env.sdk_version }}"\
+                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -256,10 +261,10 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable"}')[inputs.branch]}}
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.52.x`) deployment
-        if: ${{ inputs.branch == 'release-x.52.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.53.x`) deployment
+        if: ${{ inputs.branch == 'release-x.53.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

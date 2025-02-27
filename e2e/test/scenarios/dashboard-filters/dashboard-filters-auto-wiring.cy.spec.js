@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -120,7 +120,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should not suggest to wire parameters to cards that don't have a matching field", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "Products Table",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
       }).then(({ body: { id: questionId } }) => {
@@ -398,7 +398,7 @@ describe("dashboard filters auto-wiring", () => {
           );
 
         H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-        goToFilterMapping("Equal to");
+        goToFilterMapping("Number");
         H.selectDashboardFilter(H.getDashboardCard(0), "Total");
 
         addCardToDashboard();
@@ -454,7 +454,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.spy().as("cardQueryRequest"),
       ).as("cardQuery");
 
-      cy.createQuestion({
+      H.createQuestion({
         name: "Products Question",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
@@ -471,14 +471,14 @@ describe("dashboard filters auto-wiring", () => {
         cy.wrap(id).as("productsQuestionId");
       });
 
-      cy.createQuestion({
+      H.createQuestion({
         name: "Orders Question",
         query: { "source-table": ORDERS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
         cy.wrap(id).as("ordersQuestionId");
       });
 
-      cy.createQuestion({
+      H.createQuestion({
         name: "Reviews Question",
         query: { "source-table": REVIEWS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
@@ -518,7 +518,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("1,");
         cy.button("Add filter").click();
       });
@@ -568,7 +568,7 @@ describe("dashboard filters auto-wiring", () => {
 
       H.dashboardParametersContainer().findByText("ID").click();
 
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("1,");
         cy.button("Add filter").click();
       });
@@ -649,6 +649,8 @@ describe("dashboard filters auto-wiring", () => {
       cy.clock();
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
+      cy.tick(1000);
+
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_TOAST_TIMEOUT
@@ -659,10 +661,12 @@ describe("dashboard filters auto-wiring", () => {
       removeFilterFromDashCard(0);
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
+      cy.tick(1000);
 
-      cy.clock();
+      // cy.clock();
       H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
+      cy.tick(1000);
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_UNDO_TOAST_TIMEOUT
@@ -714,7 +718,7 @@ describe("dashboard filters auto-wiring", () => {
         ],
       },
     ];
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardDetails,
       questions: [questionDetails],
     }).then(({ dashboard, questions: [card] }) => {
@@ -754,16 +758,14 @@ function createDashboardWithCards({
   dashboardName = "my dash",
   cards = [],
 } = {}) {
-  return cy
-    .createDashboard({ name: dashboardName })
-    .then(({ body: { id } }) => {
-      H.updateDashboardCards({
-        dashboard_id: id,
-        cards,
-      });
-
-      cy.wrap(id).as("dashboardId");
+  return H.createDashboard({ name: dashboardName }).then(({ body: { id } }) => {
+    H.updateDashboardCards({
+      dashboard_id: id,
+      cards,
     });
+
+    cy.wrap(id).as("dashboardId");
+  });
 }
 
 function addCardToDashboard(dashcardNames = "Orders Model") {
@@ -796,7 +798,9 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex($columnHeader => $columnHeader.textContent === columnName);
+    // eslint-disable-next-line no-unsafe-element-filtering
     const row = cy.findAllByTestId("table-row").eq(rowIndex);
+    // eslint-disable-next-line no-unsafe-element-filtering
     row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
   });
 

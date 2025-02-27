@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.api.user-test
+(ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require
    [clojure.test :refer :all]
@@ -7,9 +7,9 @@
    [metabase.http-client :as client]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -164,33 +164,31 @@
 
 (deftest user-recipients-list-oss-test
   (testing "GET /api/user/recipients without :email-restrict-recipients feature"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (let [crowberto "crowberto@metabase.com"
-            lucky     "lucky@metabase.com"
-            rasta     "rasta@metabase.com"]
+    (mt/with-premium-features #{}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [crowberto "crowberto@metabase.com"
+              lucky     "lucky@metabase.com"
+              rasta     "rasta@metabase.com"]
+          (testing "return all users for anyone"
+            (is (= [crowberto lucky rasta]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                        (filter mt/test-user?)
+                        (map :email))))
+            (is (= [crowberto lucky rasta]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                        (filter mt/test-user?)
+                        (map :email)))))
+          (testing "not affected by the visibility setting"
+            (doseq [visibility-value [:all :group :none]]
+              (mt/with-temporary-setting-values [user-visibility visibility-value]
+                (testing "`user-visibility` setting returns the default value"
+                  (is (= :all (api.user/user-visibility))))
 
-        (testing "return all users for anyone"
-          (is (= [crowberto lucky rasta]
-                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                      (filter mt/test-user?)
-                      (map :email))))
-
-          (is (= [crowberto lucky rasta]
-                 (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                      (filter mt/test-user?)
-                      (map :email)))))
-
-        (testing "not affected by the visibility setting"
-          (doseq [visibility-value [:all :group :none]]
-            (mt/with-temporary-setting-values [user-visibility visibility-value]
-              (testing "`user-visibility` setting returns the default value"
-                (is (= :all (api.user/user-visibility))))
-
-              (testing "return all user by default"
-                (is (= [crowberto lucky rasta]
-                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                            (filter mt/test-user?)
-                            (map :email))))))))))))
+                (testing "return all user by default"
+                  (is (= [crowberto lucky rasta]
+                         (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                              (filter mt/test-user?)
+                              (map :email)))))))))))))
 
 (deftest user-recipients-list-ee-test
   (mt/with-premium-features #{:email-restrict-recipients}
@@ -239,153 +237,157 @@
                           (filter mt/test-user?)
                           (map :email)))))))))))
 
-(deftest admin-user-list-test
+(deftest ^:parallel admin-user-list-test
   (testing "GET /api/user"
     (testing "Check that admins can get a list of active Users. Should include additional admin Fields"
-      (is (= (->> [{:email                  "crowberto@metabase.com"
-                    :first_name             "Crowberto"
-                    :last_name              "Corv"
-                    :is_superuser           true
-                    :group_ids              #{(u/the-id (perms-group/all-users))
-                                              (u/the-id (perms-group/admin))}
-                    :personal_collection_id true
-                    :common_name            "Crowberto Corv"}
-                   {:email                  "lucky@metabase.com"
-                    :first_name             "Lucky"
-                    :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Lucky Pigeon"}
-                   {:email                  "rasta@metabase.com"
-                    :first_name             "Rasta"
-                    :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Rasta Toucan"}]
-                  (map (partial merge @user-defaults))
-                  (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
-                  (filter mt/test-user?)
-                  group-ids->sets
-                  mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))
-    (testing "Get list of users with a group id"
-      (is (= (->> [{:email                  "crowberto@metabase.com"
-                    :first_name             "Crowberto"
-                    :last_name              "Corv"
-                    :is_superuser           true
-                    :group_ids              #{(u/the-id (perms-group/all-users))
-                                              (u/the-id (perms-group/admin))}
-                    :personal_collection_id true
-                    :common_name            "Crowberto Corv"}]
-                  (map (partial merge @user-defaults))
-                  (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (perms-group/admin))) :data)
-                  (filter mt/test-user?)
-                  group-ids->sets
-                  mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))))
+      (is (=? [{:email                  "crowberto@metabase.com"
+                :first_name             "Crowberto"
+                :last_name              "Corv"
+                :is_superuser           true
+                :group_ids              #{(u/the-id (perms-group/all-users))
+                                          (u/the-id (perms-group/admin))}
+                :personal_collection_id pos-int?
+                :common_name            "Crowberto Corv"}
+               {:email                  "lucky@metabase.com"
+                :first_name             "Lucky"
+                :last_name              "Pigeon"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Lucky Pigeon"}
+               {:email                  "rasta@metabase.com"
+                :first_name             "Rasta"
+                :last_name              "Toucan"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Rasta Toucan"}]
+              (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
+                   (filter mt/test-user?)
+                   group-ids->sets))))))
 
-(deftest user-list-include-inactive-test
+(deftest ^:parallel admin-user-list-test-2
+  (testing "GET /api/user"
+    (testing "Get list of users with a group id"
+      (is (=? [{:email                  "crowberto@metabase.com"
+                :first_name             "Crowberto"
+                :last_name              "Corv"
+                :is_superuser           true
+                :group_ids              #{(u/the-id (perms-group/all-users))
+                                          (u/the-id (perms-group/admin))}
+                :personal_collection_id pos-int?
+                :common_name            "Crowberto Corv"}]
+              (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (perms-group/admin))) :data)
+                   (filter mt/test-user?)
+                   group-ids->sets))))))
+
+(deftest ^:parallel user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
     (testing "Non-admins should *not* be allowed to pass in include_deactivated or status"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user", :include_deactivated true)))
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "user", :status "all"))))
+             (mt/user-http-request :rasta :get 403 "user", :status "all"))))))
 
+(deftest ^:parallel user-list-include-inactive-test-2
+  (testing "GET /api/user?include_deactivated=true"
     (testing "Pagination gets the total users _in query_, not including the Internal User"
-      (is (= (t2/count :model/User :type "personal")
-             ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
-    (testing "for admins, it should include those inactive users as we'd expect"
-      (is (= (->> [{:email                  "crowberto@metabase.com"
-                    :first_name             "Crowberto"
-                    :last_name              "Corv"
-                    :is_superuser           true
-                    :group_ids              #{(u/the-id (perms-group/all-users))
-                                              (u/the-id (perms-group/admin))}
-                    :personal_collection_id true
-                    :common_name            "Crowberto Corv"}
-                   {:email                  "lucky@metabase.com"
-                    :first_name             "Lucky"
-                    :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Lucky Pigeon"}
-                   {:email                  "rasta@metabase.com"
-                    :first_name             "Rasta"
-                    :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Rasta Toucan"}
-                   {:email                  "trashbird@metabase.com"
-                    :first_name             "Trash"
-                    :last_name              "Bird"
-                    :is_active              false
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Trash Bird"}]
-                  (map (partial merge @user-defaults))
-                  (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
-                  (filter mt/test-user?)
-                  group-ids->sets
-                  mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login)))))
-      (is (= (->> [{:email                  "crowberto@metabase.com"
-                    :first_name             "Crowberto"
-                    :last_name              "Corv"
-                    :is_superuser           true
-                    :group_ids              #{(u/the-id (perms-group/all-users))
-                                              (u/the-id (perms-group/admin))}
-                    :personal_collection_id true
-                    :common_name            "Crowberto Corv"}
-                   {:email                  "lucky@metabase.com"
-                    :first_name             "Lucky"
-                    :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Lucky Pigeon"}
-                   {:email                  "rasta@metabase.com"
-                    :first_name             "Rasta"
-                    :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Rasta Toucan"}
-                   {:email                  "trashbird@metabase.com"
-                    :first_name             "Trash"
-                    :last_name              "Bird"
-                    :is_active              false
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Trash Bird"}]
-                  (map (partial merge @user-defaults))
-                  (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user", :status "all") :data)
-                  (filter mt/test-user?)
-                  group-ids->sets
-                  mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login)))))))
+      (is (=? {:total (t2/count :model/User :type "personal")}
+              (mt/user-http-request :crowberto :get 200 "user" :status "all"))))))
 
+(deftest ^:parallel user-list-include-inactive-test-3
+  (testing "GET /api/user?include_deactivated=true"
+    (testing "for admins, it should include those inactive users as we'd expect"
+      (is (=? [{:email                  "crowberto@metabase.com"
+                :first_name             "Crowberto"
+                :last_name              "Corv"
+                :is_superuser           true
+                :group_ids              #{(u/the-id (perms-group/all-users))
+                                          (u/the-id (perms-group/admin))}
+                :personal_collection_id pos-int?
+                :common_name            "Crowberto Corv"}
+               {:email                  "lucky@metabase.com"
+                :first_name             "Lucky"
+                :last_name              "Pigeon"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Lucky Pigeon"}
+               {:email                  "rasta@metabase.com"
+                :first_name             "Rasta"
+                :last_name              "Toucan"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Rasta Toucan"}
+               {:email                  "trashbird@metabase.com"
+                :first_name             "Trash"
+                :last_name              "Bird"
+                :is_active              false
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Trash Bird"}]
+              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
+                   (filter mt/test-user?)
+                   group-ids->sets))))))
+
+(deftest ^:parallel user-list-include-inactive-test-3b
+  (testing "GET /api/user?include_deactivated=true"
+    (testing "for admins, it should include those inactive users as we'd expect"
+      (is (=? [{:email                  "crowberto@metabase.com"
+                :first_name             "Crowberto"
+                :last_name              "Corv"
+                :is_superuser           true
+                :group_ids              #{(u/the-id (perms-group/all-users))
+                                          (u/the-id (perms-group/admin))}
+                :personal_collection_id pos-int?
+                :common_name            "Crowberto Corv"}
+               {:email                  "lucky@metabase.com"
+                :first_name             "Lucky"
+                :last_name              "Pigeon"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Lucky Pigeon"}
+               {:email                  "rasta@metabase.com"
+                :first_name             "Rasta"
+                :last_name              "Toucan"
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Rasta Toucan"}
+               {:email                  "trashbird@metabase.com"
+                :first_name             "Trash"
+                :last_name              "Bird"
+                :is_active              false
+                :group_ids              #{(u/the-id (perms-group/all-users))}
+                :personal_collection_id pos-int?
+                :common_name            "Trash Bird"}]
+              (->> ((mt/user-http-request :crowberto :get 200 "user", :status "all") :data)
+                   (filter mt/test-user?)
+                   group-ids->sets))))))
+
+(deftest ^:parallel user-list-include-inactive-test-4
   (testing "GET /api/user?include_deactivated=false should return only active users"
     (is (= #{"crowberto@metabase.com"
              "lucky@metabase.com"
              "rasta@metabase.com"}
-           (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated false) :data)
+           (->> (mt/user-http-request :crowberto :get 200 "user", :include_deactivated false)
+                :data
                 (filter mt/test-user?)
                 (map :email)
                 set)))))
 
-(deftest user-list-limit-test
+(deftest ^:parallel user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"
       (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "1" :offset "0")
              (mt/user-http-request :crowberto :get 200 "user" :limit "1")))
       (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
-             (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
+             (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))))
+
+(deftest ^:parallel user-list-limit-test-2
+  (testing "GET /api/user?limit=1&offset=1"
     (testing "Limit and offset pagination get the total"
       (is (= (t2/count :model/User :is_active true :type "personal")
-             ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
+             ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))))
+
+(deftest ^:parallel user-list-limit-test-3
+  (testing "GET /api/user?limit=1&offset=1"
     (testing "Limit and offset pagination works for user list"
       (let [first-three-users (:data (mt/user-http-request :crowberto :get 200 "user" :limit "3", :offset "0"))]
         (is (= 3
@@ -393,63 +395,69 @@
         (is (= (drop 1 first-three-users)
                (:data (mt/user-http-request :crowberto :get 200 "user" :limit "2", :offset "1") :data)))))))
 
-(deftest get-current-user-test
+(deftest ^:parallel get-current-user-test
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
       (mt/with-temp [:model/LoginHistory _ {:user_id   (mt/user->id :rasta)
                                             :device_id (str (random-uuid))
                                             :timestamp #t "2021-03-18T19:52:41.808482Z"}
                      :model/Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email                      "rasta@metabase.com"
-                     :first_name                 "Rasta"
-                     :last_name                  "Toucan"
-                     :common_name                "Rasta Toucan"
-                     :first_login                "2021-03-18T19:52:41.808482Z"
-                     :group_ids                  [(u/the-id (perms-group/all-users))]
-                     :personal_collection_id     true
-                     :custom_homepage            nil
-                     :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
-                   (dissoc :is_qbnewb :last_login))
-               (-> (mt/user-http-request :rasta :get 200 "user/current")
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login :has_model))))))
+        (is (=? {:email                      "rasta@metabase.com"
+                 :first_name                 "Rasta"
+                 :last_name                  "Toucan"
+                 :common_name                "Rasta Toucan"
+                 :first_login                "2021-03-18T19:52:41.808482Z"
+                 :group_ids                  [(u/the-id (perms-group/all-users))]
+                 :personal_collection_id     pos-int?
+                 :custom_homepage            nil
+                 :is_installer               (= 1 (mt/user->id :rasta))
+                 :has_invited_second_user    (= 1 (mt/user->id :rasta))}
+                (mt/user-http-request :rasta :get 200 "user/current")))))))
+
+(deftest ^:parallel get-current-user-test-2
+  (testing "GET /api/user/current"
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp [:model/Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
                      :model/Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}
                      :model/Card      _ {:name "model" :creator_id (mt/user->id :rasta) :type "model"}]
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email                      "rasta@metabase.com"
-                     :first_name                 "Rasta"
-                     :last_name                  "Toucan"
-                     :common_name                "Rasta Toucan"
-                     :group_ids                  [(u/the-id (perms-group/all-users))]
-                     :personal_collection_id     true
-                     :has_question_and_dashboard true
-                     :has_model                  true
-                     :custom_homepage            nil
-                     :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
-                   (dissoc :is_qbnewb :last_login))
-               (-> (mt/user-http-request :rasta :get 200 "user/current")
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :first_login :last_login))))))
+        (is (=? {:email                      "rasta@metabase.com"
+                 :first_name                 "Rasta"
+                 :last_name                  "Toucan"
+                 :common_name                "Rasta Toucan"
+                 :group_ids                  [(u/the-id (perms-group/all-users))]
+                 :personal_collection_id     pos-int?
+                 :has_question_and_dashboard true
+                 :has_model                  true
+                 :custom_homepage            nil
+                 :is_installer               (= 1 (mt/user->id :rasta))
+                 :has_invited_second_user    (= 1 (mt/user->id :rasta))}
+                (mt/user-http-request :rasta :get 200 "user/current")))))))
+
+(deftest get-current-user-test-3
+  (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_question_and_dashboard` is `false`"
       (mt/with-empty-h2-app-db
-        (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
-                        :has_question_and_dashboard)))))
+        (is (=? {:has_question_and_dashboard false}
+                (mt/user-http-request :rasta :get 200 "user/current")))))))
+
+(deftest get-current-user-test-4
+  (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_model` is `false`"
       (mt/with-empty-h2-app-db
-        (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
-                        :has_model)))))
+        (is (=? {:has_model false}
+                (mt/user-http-request :rasta :get 200 "user/current")))))))
+
+(deftest get-current-user-custom-homepage-test
+  (testing "GET /api/user/current"
     (testing "Custom homepage"
       (testing "If id is set but not enabled it is not included"
         (mt/with-temporary-setting-values [custom-homepage false
                                            custom-homepage-dashboard 1]
-          (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))
+          (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
+
+(deftest get-current-user-custom-homepage-test-2
+  (testing "GET /api/user/current"
+    (testing "Custom homepage"
       (testing "Not If enabled and set but"
         (testing "user cannot read"
           (mt/with-non-admin-groups-no-root-collection-perms
@@ -470,8 +478,11 @@
         (testing "Dashboard doesn't exist"
           (mt/with-temporary-setting-values [custom-homepage true
                                              custom-homepage-dashboard Long/MAX_VALUE]
-            (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
+            (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))))))
 
+(deftest get-current-user-custom-homepage-test-3
+  (testing "GET /api/user/current"
+    (testing "Custom homepage"
       (testing "Otherwise is set"
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection"}
                        :model/Dashboard  {dash-id :id} {:name          "Dashboard Homepage"
@@ -480,48 +491,48 @@
                                              custom-homepage-dashboard dash-id]
             (is (=? {:first_name      "Rasta"
                      :custom_homepage {:dashboard_id dash-id}}
-                    (mt/user-http-request :rasta :get 200 "user/current"))))))
+                    (mt/user-http-request :rasta :get 200 "user/current")))))))))
+
+(deftest get-current-user-custom-homepage-test-4
+  (testing "GET /api/user/current"
+    (testing "Custom homepage"
       (testing "If id does not point to a dashboard is nil"
         (mt/with-temporary-setting-values [custom-homepage true
                                            custom-homepage-dashboard -3]
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
-(deftest get-user-test
+(deftest ^:parallel get-user-test
   (mt/with-premium-features #{}
     (testing "GET /api/user/:id"
       (testing "should return a smaller set of fields"
         (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
           (is (= [{:id (:id (perms-group/all-users))}]
                  (:user_group_memberships resp)))
-          (is (= (-> (merge
-                      @user-defaults
-                      {:email       "rasta@metabase.com"
-                       :first_name  "Rasta"
-                       :last_name   "Toucan"
-                       :common_name "Rasta Toucan"})
-                     (dissoc :is_qbnewb :last_login))
-                 (-> resp
-                     mt/boolean-ids-and-timestamps
-                     (dissoc :is_qbnewb :last_login :user_group_memberships))))))
+          (is (=? {:email       "rasta@metabase.com"
+                   :first_name  "Rasta"
+                   :last_name   "Toucan"
+                   :common_name "Rasta Toucan"}
+                  resp)))))))
 
+(deftest ^:parallel get-user-test-2
+  (mt/with-premium-features #{}
+    (testing "GET /api/user/:id"
       (testing "Check that a non-superuser CANNOT fetch someone else's user details"
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
+               (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird)))))))))
 
+(deftest ^:parallel get-user-superuser-fetch-another-user-test
+  (mt/with-premium-features #{}
+    (testing "GET /api/user/:id"
       (testing "A superuser should be allowed to fetch another users data"
         (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
           (is (= [{:id (:id (perms-group/all-users))}]
                  (:user_group_memberships resp)))
-          (is (= (-> (merge
-                      @user-defaults
-                      {:email       "rasta@metabase.com"
-                       :first_name  "Rasta"
-                       :last_name   "Toucan"
-                       :common_name "Rasta Toucan"})
-                     (dissoc :is_qbnewb :last_login))
-                 (-> resp
-                     mt/boolean-ids-and-timestamps
-                     (dissoc :is_qbnewb :last_login :user_group_memberships)))))))))
+          (is (=? {:email       "rasta@metabase.com"
+                   :first_name  "Rasta"
+                   :last_name   "Toucan"
+                   :common_name "Rasta Toucan"}
+                  resp)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
@@ -550,15 +561,19 @@
                            mt/boolean-ids-and-timestamps
                            (dissoc :user_group_memberships))))
                 (is (= [{:id (:id (perms-group/all-users))}]
-                       (:user_group_memberships resp)))))))))
+                       (:user_group_memberships resp)))))))))))
 
+(deftest ^:parallel create-user-non-superuser-test
+  (testing "POST /api/user"
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "user"
                                    {:first_name "whatever"
                                     :last_name  "whatever"
-                                    :email      "whatever@whatever.com"}))))
+                                    :email      "whatever@whatever.com"}))))))
 
+(deftest ^:parallel create-user-existing-email-test
+  (testing "POST /api/user"
     (testing "Attempting to create a new user with the same email as an existing user should fail"
       (is (=? {:errors {:email "Email address already in use."}}
               (mt/user-http-request :crowberto :post 400 "user"
@@ -566,7 +581,7 @@
                                      :last_name  "Random"
                                      :email      (:email (mt/fetch-user :rasta))}))))))
 
-(deftest create-user-validate-input-test
+(deftest ^:parallel create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
       (is (=? {:errors {:email "value must be a valid email address."}}
@@ -580,43 +595,45 @@
                                      :last_name  "whatever"
                                      :email      "whatever"}))))))
 
-(defn- do-with-temp-user-email [f]
+(defn- do-with-temp-user-email! [f]
   (let [email (mt/random-email)]
     (try
       (f email)
       (finally (t2/delete! :model/User :email email)))))
 
-(defmacro ^:private with-temp-user-email [[email-binding] & body]
-  `(do-with-temp-user-email (fn [~email-binding] ~@body)))
+(defmacro ^:private with-temp-user-email! [[email-binding] & body]
+  `(do-with-temp-user-email! (fn [~email-binding] ~@body)))
 
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
-    (testing "we should be able to put a User in groups the same time we create them"
-      (mt/with-temp [:model/PermissionsGroup group-1 {:name "Group 1"}
-                     :model/PermissionsGroup group-2 {:name "Group 2"}]
-        (with-temp-user-email [email]
-          (mt/user-http-request :crowberto :post 200 "user"
-                                {:first_name             "Cam"
-                                 :last_name              "Era"
-                                 :email                  email
-                                 :user_group_memberships (group-or-ids->user-group-memberships
-                                                          [(perms-group/all-users) group-1 group-2])})
-          (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (t2/select-one :model/User :email email)))))))
+    (mt/with-premium-features #{}
+      (testing "we should be able to put a User in groups the same time we create them"
+        (mt/with-temp [:model/PermissionsGroup group-1 {:name "Group 1"}
+                       :model/PermissionsGroup group-2 {:name "Group 2"}]
+          (with-temp-user-email! [email]
+            (mt/user-http-request :crowberto :post 200 "user"
+                                  {:first_name             "Cam"
+                                   :last_name              "Era"
+                                   :email                  email
+                                   :user_group_memberships (group-or-ids->user-group-memberships
+                                                            [(perms-group/all-users) group-1 group-2])})
+            (is (= #{"All Users" "Group 1" "Group 2"}
+                   (user-test/user-group-names (t2/select-one :model/User :email email))))))))))
 
+(deftest create-user-set-groups-test-2
+  (testing "POST /api/user"
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
                   "permissions groups get set after the User is created")
       (mt/test-helpers-set-global-values!
         (mt/with-temp [:model/PermissionsGroup group {:name "Group"}]
-          (with-temp-user-email [email]
+          (with-temp-user-email! [email]
             (mt/user-http-request :crowberto :post 400 "user"
                                   {:first_name             "Cam"
                                    :last_name              "Era"
                                    :email                  email
                                    :user_group_memberships (group-or-ids->user-group-memberships [group])})
-            (is (= false
-                   (t2/exists? :model/User :%lower.email (u/lower-case-en email))))))))))
+            (is (not (t2/exists? :model/User :%lower.email (u/lower-case-en email))))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser :model/User :%lower.email (u/lower-case-en email))
@@ -628,19 +645,22 @@
   (testing "POST /api/user"
     (testing (str "We should be able to put someone in the Admin group when we create them by including the admin "
                   "group in group_ids")
-      (with-temp-user-email [email]
-        (mt/user-http-request :crowberto :post 200 "user"
-                              {:first_name             "Cam"
-                               :last_name              "Era"
-                               :email                  email
-                               :user_group_memberships (group-or-ids->user-group-memberships
-                                                        [(perms-group/all-users) (perms-group/admin)])})
-        (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email)))))
+      (mt/with-premium-features #{}
+        (with-temp-user-email! [email]
+          (mt/user-http-request :crowberto :post 200 "user"
+                                {:first_name             "Cam"
+                                 :last_name              "Era"
+                                 :email                  email
+                                 :user_group_memberships (group-or-ids->user-group-memberships
+                                                          [(perms-group/all-users) (perms-group/admin)])})
+          (is (= {:is-superuser? true, :pgm-exists? true}
+                 (superuser-and-admin-pgm-info email))))))))
 
+(deftest create-user-add-to-admin-group-test-2
+  (testing "POST /api/user"
     (testing (str "for whatever reason we don't let you set is_superuser in the POST endpoint so if someone tries to "
                   "pass that it should get ignored")
-      (with-temp-user-email [email]
+      (with-temp-user-email! [email]
         (mt/user-http-request :crowberto :post 200 "user"
                               {:first_name   "Cam"
                                :last_name    "Era"
@@ -665,8 +685,10 @@
                                                    :login_attributes {:test "value"}}))
                            (finally
                              ;; clean up after ourselves
-                             (t2/delete! :model/User :email email)))))))))
+                             (t2/delete! :model/User :email email)))))))))))
 
+(deftest create-user-mixed-case-email-2
+  (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (=? {:errors {:email "Email address already in use."}}
               (mt/user-http-request :crowberto :post 400 "user"
@@ -687,47 +709,48 @@
 (deftest admin-update-other-user-test
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
-      (mt/with-temp [:model/User {user-id :id} {:first_name   "Cam"
-                                                :last_name    "Era"
-                                                :email        "cam.era@metabase.com"
-                                                :is_superuser true}
-                     :model/Collection _ {}]
-        (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
-                                      (t2/hydrate :personal_collection_id ::personal-collection-name)
-                                      (dissoc :id :personal_collection_id :common_name))))]
-          (testing "before API call"
-            (is (= {:first_name                "Cam"
-                    :last_name                 "Era"
-                    :is_superuser              true
-                    :email                     "cam.era@metabase.com"
-                    ::personal-collection-name "Cam Era's Personal Collection"}
-                   (user))))
-          (testing "response"
-            (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                                             {:last_name "Eron"
-                                              :email     "cam.eron@metabase.com"})]
-              (is (= (group-or-ids->user-group-memberships [(perms-group/all-users)
-                                                            (perms-group/admin)])
-                     (:user_group_memberships resp)))
-              (is (= (merge
-                      @user-defaults
-                      {:common_name  "Cam Eron"
-                       :email        "cam.eron@metabase.com"
-                       :first_name   "Cam"
-                       :last_name    "Eron"
-                       :is_superuser true})
-                     (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/User {user-id :id} {:first_name   "Cam"
+                                                  :last_name    "Era"
+                                                  :email        "cam.era@metabase.com"
+                                                  :is_superuser true}
+                       :model/Collection _ {}]
+          (letfn [(user [] (into {} (-> (t2/select-one [:model/User :id :first_name :last_name :is_superuser :email], :id user-id)
+                                        (t2/hydrate :personal_collection_id ::personal-collection-name)
+                                        (dissoc :id :personal_collection_id :common_name))))]
+            (testing "before API call"
+              (is (= {:first_name                "Cam"
+                      :last_name                 "Era"
+                      :is_superuser              true
+                      :email                     "cam.era@metabase.com"
+                      ::personal-collection-name "Cam Era's Personal Collection"}
+                     (user))))
+            (testing "response"
+              (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                                {:last_name "Eron"
-                                                :email     "cam.eron@metabase.com"})
-                         (dissoc :user_group_memberships)
-                         mt/boolean-ids-and-timestamps)))))
-          (testing "after API call"
-            (is (= {:first_name                "Cam"
-                    :last_name                 "Eron"
-                    :is_superuser              true
-                    :email                     "cam.eron@metabase.com"
-                    ::personal-collection-name "Cam Eron's Personal Collection"}
-                   (user)))))))))
+                                                :email     "cam.eron@metabase.com"})]
+                (is (= (group-or-ids->user-group-memberships [(perms-group/all-users)
+                                                              (perms-group/admin)])
+                       (:user_group_memberships resp)))
+                (is (= (merge
+                        @user-defaults
+                        {:common_name  "Cam Eron"
+                         :email        "cam.eron@metabase.com"
+                         :first_name   "Cam"
+                         :last_name    "Eron"
+                         :is_superuser true})
+                       (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                                 {:last_name "Eron"
+                                                  :email     "cam.eron@metabase.com"})
+                           (dissoc :user_group_memberships)
+                           mt/boolean-ids-and-timestamps)))))
+            (testing "after API call"
+              (is (= {:first_name                "Cam"
+                      :last_name                 "Eron"
+                      :is_superuser              true
+                      :email                     "cam.eron@metabase.com"
+                      ::personal-collection-name "Cam Eron's Personal Collection"}
+                     (user))))))))))
 
 (deftest update-login-attributes-test
   (testing "PUT /api/user/:id"
@@ -750,7 +773,7 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
-(deftest updated-user-name-test
+(deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.api.user/updated-user-name` works as intended."
     (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
           nonames   {:first_name nil :last_name nil}
@@ -930,13 +953,16 @@
 (deftest update-groups-test
   (testing "PUT /api/user/:id"
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
-      (mt/with-temp [:model/User             user {}
-                     :model/PermissionsGroup group {:name "Blue Man Group"}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
-                              {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
-        (is (= #{"All Users" "Blue Man Group"}
-               (user-test/user-group-names user)))))
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/User             user {}
+                       :model/PermissionsGroup group {:name "Blue Man Group"}]
+          (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
+                                {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
+          (is (= #{"All Users" "Blue Man Group"}
+                 (user-test/user-group-names user))))))))
 
+(deftest update-groups-test-2
+  (testing "PUT /api/user/:id"
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:first_name "Rasta"}
@@ -951,30 +977,39 @@
                  (user-test/user-group-names (mt/user->id :rasta)))))
         (testing "first name"
           (is (= "Rasta"
-                 (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta)))))))
+                 (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta)))))))))
 
+(deftest update-groups-test-3
+  (testing "PUT /api/user/:id"
     (testing "if we pass user_group_memberships as a non-superuser the call should succeed, so long as the value doesn't change"
-      (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:first_name "Rasta"}
-        (with-preserved-rasta-personal-collection-name!
-          (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                                {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])
-                                 :first_name             "Reggae"}))
-        (testing "groups"
-          (is (= #{"All Users"}
-                 (user-test/user-group-names (mt/user->id :rasta)))))
-        (testing "first name"
-          (is (= "Reggae"
-                 (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta)))))))
+      (mt/with-premium-features #{}
+        (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:first_name "Rasta"}
+          (with-preserved-rasta-personal-collection-name!
+            (is (=? {:id (mt/user->id :rasta)}
+                    (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                                          {:user_group_memberships [{:id (:id (perms-group/all-users))}]
+                                           :first_name             "Reggae"}))))
+          (testing "groups"
+            (is (= #{"All Users"}
+                   (user-test/user-group-names (mt/user->id :rasta)))))
+          (testing "first name"
+            (is (= "Reggae"
+                   (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta))))))))))
 
+(deftest update-groups-test-4
+  (testing "PUT /api/user/:id"
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
                   "and user_group_memberships including admin group ID)")
-      (mt/with-temp [:model/User {:keys [email id]}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                              {:is_superuser           true
-                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
-        (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email)))))
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/User {:keys [email id]}]
+          (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                                {:is_superuser           true
+                                 :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
+          (is (= {:is-superuser? true, :pgm-exists? true}
+                 (superuser-and-admin-pgm-info email))))))))
 
+(deftest update-groups-test-5
+  (testing "PUT /api/user/:id"
     (testing (str "if we try to create a new user with is_superuser FALSE but user_group_memberships that includes the Admin group "
                   "ID, the entire call should fail")
       (mt/test-helpers-set-global-values!
@@ -985,8 +1020,10 @@
                                  :first_name             "Cool New First Name"})
           (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
                  (assoc (superuser-and-admin-pgm-info email)
-                        :first-name (t2/select-one-fn :first_name :model/User :id id)))))))
+                        :first-name (t2/select-one-fn :first_name :model/User :id id)))))))))
 
+(deftest update-groups-test-6
+  (testing "PUT /api/user/:id"
     (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
       (mt/test-helpers-set-global-values!
@@ -995,28 +1032,36 @@
                                 {:is_superuser           true
                                  :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})
           (is (= {:is-superuser? false, :pgm-exists? false}
-                 (superuser-and-admin-pgm-info email))))))
+                 (superuser-and-admin-pgm-info email))))))))
 
+(deftest update-groups-test-7
+  (testing "PUT /api/user/:id"
     (testing "if we PUT a user with is_superuser TRUE but don't specify user_group_memberships, we should be ok"
       (mt/with-temp [:model/User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:is_superuser true})
         (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email)))))
+               (superuser-and-admin-pgm-info email)))))))
 
+(deftest update-groups-test-8
+  (testing "PUT /api/user/:id"
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
-      (mt/with-temp [:model/User {:keys [email id]}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                              {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
-        (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email))))))
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/User {:keys [email id]}]
+          (is (=? {:id           id
+                   :is_superuser true}
+                  (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                                        {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})))
+          (is (= {:is-superuser? true, :pgm-exists? true}
+                 (superuser-and-admin-pgm-info email))))))))
 
-  (testing "Double-check that the test cleaned up after itself"
+(deftest ^:parallel update-groups-test-9
+  (testing "Double-check that the tests above cleaned up after themselves"
     (is (= "Rasta"
            (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta))))
     (is (= {:name "Rasta Toucan's Personal Collection"
             :slug "rasta_toucan_s_personal_collection"}
-           (mt/derecordize (t2/select-one [:model/Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
+           (t2/select-one [:model/Collection :name :slug] :personal_owner_id (mt/user->id :rasta))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"

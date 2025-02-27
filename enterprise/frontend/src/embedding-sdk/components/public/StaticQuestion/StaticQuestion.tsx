@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  QuestionNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
@@ -11,7 +12,10 @@ import { useLoadStaticQuestion } from "embedding-sdk/hooks/private/use-load-stat
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import {
+  getResponseErrorMessage,
+  isResourceNotFoundError,
+} from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
@@ -67,7 +71,7 @@ const StaticQuestionVisualizationSelector = ({
 };
 
 const StaticQuestionInner = ({
-  questionId: initId,
+  questionId: initialQuestionId,
   withChartTypeSelector,
   height,
   initialSqlParameters,
@@ -75,7 +79,7 @@ const StaticQuestionInner = ({
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
       type: "card",
-      id: initId,
+      id: initialQuestionId,
     });
 
   const metadata = useSelector(getMetadata);
@@ -84,6 +88,10 @@ const StaticQuestionInner = ({
     useLoadStaticQuestion(questionId, initialSqlParameters);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
+
+  if (!questionId || isResourceNotFoundError(error)) {
+    return <QuestionNotFoundError id={initialQuestionId} />;
+  }
 
   if (error) {
     return (

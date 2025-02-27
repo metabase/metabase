@@ -10,11 +10,11 @@ import "jspdf";
 
 export * from "./hooks/public";
 export * from "./components/public";
-export * from "./lib/plugins";
+export * from "metabase/embedding-sdk/types/plugins";
 
 export type { MetabaseAuthConfig } from "./types";
 
-export type { MetabaseQuestion } from "./types/public/question";
+export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
 export type {
   MetabaseFetchRequestTokenFn,
@@ -25,6 +25,6 @@ export type {
   MetabaseTheme,
   MetabaseColors,
   MetabaseComponentTheme,
-} from "./types/theme";
+} from "metabase/embedding-sdk/theme";
 
 export type { Dashboard as MetabaseDashboard } from "metabase-types/api";

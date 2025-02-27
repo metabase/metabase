@@ -1,10 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions
-  "Code for generating and updating the Application Permission graph. See [[metabase.models.permissions]] for more
+  "Code for generating and updating the Application Permission graph. See [[metabase.permissions.models.permissions]] for more
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
    [metabase.models.application-permissions-revision :as a-perm-revision]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -51,7 +51,7 @@
 
 (mu/defn graph :- ApplicationPermissionsGraph
   "Fetch a graph representing the application permissions status for groups that has at least one application permission enabled.
-  This works just like the function of the same name in `metabase.models.permissions`;
+  This works just like the function of the same name in `metabase.permissions.models.permissions`;
   see also the documentation for that function."
   []
   {:revision (a-perm-revision/latest-id)
@@ -73,8 +73,8 @@
 
 (mu/defn update-graph!
   "Update the application Permissions graph.
-  This works just like [[metabase.models.data-permissions.graph/update-data-perms-graph!]], but for Application permissions;
-  refer to that function's extensive documentation to get a sense for how this works."
+  This works just like [[metabase.permissions.models.data-permissions.graph/update-data-perms-graph!]], but for
+  Application permissions; refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph :- ApplicationPermissionsGraph]
    (update-graph! new-graph false))
 

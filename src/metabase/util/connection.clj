@@ -1,7 +1,8 @@
 (ns metabase.util.connection
-  (:require [clojure.set :as set]
-            [metabase.util :as u]
-            [toucan2.core :as t2])
+  (:require
+   [clojure.set :as set]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 

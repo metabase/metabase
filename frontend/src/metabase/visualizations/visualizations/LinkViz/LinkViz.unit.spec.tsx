@@ -11,6 +11,7 @@ import {
   getIcon,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
@@ -201,6 +202,84 @@ describe("LinkViz", () => {
   });
 
   describe("entity links", () => {
+    it("renders markdown in entity description tooltip", async () => {
+      const markdownDescription =
+        "**Bold text** and _italic text_ and [link](https://example.com)";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: markdownDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+      await userEvent.hover(infoIcon);
+
+      await waitFor(() => {
+        expect(screen.getByText("Bold text")).toHaveStyle({
+          "font-weight": "bold",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("italic text")).toHaveStyle({
+          "font-style": "italic",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("link")).toHaveAttribute(
+          "href",
+          "https://example.com",
+        );
+      });
+    });
+
+    it("disallows headings in markdown tooltip", async () => {
+      const markdownDescription = "# Heading\nRegular text";
+
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: markdownDescription,
+          },
+        },
+      } as LinkCardVizSettings;
+
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
+
+      const infoIcon = screen.getByLabelText("info icon");
+      await userEvent.hover(infoIcon);
+
+      const tooltip = await screen.findByTestId("wrapped-tooltip");
+      expect(tooltip).not.toContainHTML("<h1>");
+      expect(tooltip).toHaveTextContent("Heading");
+    });
+
     it("shows a link to a pie chart question", () => {
       setup({
         isEditing: false,

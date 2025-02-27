@@ -1,20 +1,19 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
-import {
-  FixedWidthContainer,
-  ParametersFixedWidthContainer,
-} from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import TransitionS from "metabase/css/core/transitions.module.css";
+import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
+import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -73,6 +72,7 @@ export type EmbedFrameBaseProps = Partial<{
   children: ReactNode;
   dashboardTabs: ReactNode;
   downloadsEnabled: boolean;
+  withFooter: boolean;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -102,6 +102,7 @@ export const EmbedFrame = ({
   theme,
   hide_parameters,
   downloadsEnabled = true,
+  withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -124,13 +125,18 @@ export const EmbedFrame = ({
     initializeIframeResizer(() => setHasFrameScroll(false));
   });
 
-  const [isFilterSticky, intersectionObserverTargetRef] = useIsFiltersSticky();
+  const parameterPanelRef = useRef<HTMLElement>(null);
+  const {
+    isSticky: isParameterPanelSticky,
+    isStickyStateChanging: isParameterPanelStickyStateChanging,
+  } = useIsParameterPanelSticky({ parameterPanelRef });
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
     .join(",");
 
-  const showFooter = hasEmbedBranding || downloadsEnabled || actionButtons;
+  const isFooterEnabled =
+    withFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -141,15 +147,18 @@ export const EmbedFrame = ({
   const hasVisibleParameters = visibleParameters.length > 0;
 
   const hasHeader = Boolean(finalName || dashboardTabs) || downloadsEnabled;
-  const canParameterPanelSticky =
+
+  const allowParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
+  const shouldApplyParameterPanelThemeChangeTransition =
+    !isParameterPanelStickyStateChanging && isParameterPanelSticky;
 
   return (
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
       hasVisibleOverflowWhenPriting={isPublicDashboard}
-      className={cx(EmbedFrameS.EmbedFrame, className, {
+      className={cx(className, EmbedFrameS.EmbedFrame, {
         [EmbedFrameS.NoBackground]: !background,
       })}
       data-testid="embed-frame"
@@ -157,7 +166,10 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={EmbedFrameS.WithThemeBackground}
+        className={cx(
+          EmbedFrameS.ContentContainer,
+          EmbedFrameS.WithThemeBackground,
+        )}
       >
         {hasHeader && (
           <Header
@@ -197,23 +209,25 @@ export const EmbedFrame = ({
                 </FixedWidthContainer>
               </DashboardTabsContainer>
             )}
-            <Separator />
+
+            <Separator className={EmbedFrameS.Separator} />
           </Header>
         )}
-        {/**
-         * I put the target for IntersectionObserver right above the parameters container,
-         * so that it detects when the parameters container is about to be sticky (is about
-         * to go out of the viewport).
-         */}
-        <span ref={intersectionObserverTargetRef} />
+
+        <span ref={parameterPanelRef} />
         {hasVisibleParameters && (
           <ParametersWidgetContainer
+            className={cx({
+              [TransitionS.transitionThemeChange]:
+                shouldApplyParameterPanelThemeChangeTransition,
+            })}
             embedFrameTheme={theme}
-            canSticky={canParameterPanelSticky}
-            isSticky={isFilterSticky}
+            allowSticky={allowParameterPanelSticky}
+            isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"
           >
-            <ParametersFixedWidthContainer
+            <FixedWidthContainer
+              className={DashboardS.ParametersFixedWidthContainer}
               id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
@@ -235,13 +249,14 @@ export const EmbedFrame = ({
                 }
               />
               {dashboard && <FilterApplyButton />}
-            </ParametersFixedWidthContainer>
+            </FixedWidthContainer>
           </ParametersWidgetContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
-      {showFooter && (
+      {isFooterEnabled && (
         <Footer
+          data-testid="embed-frame-footer"
           className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
         >
@@ -289,33 +304,6 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // Sticky header with more than 5 parameters
   // takes too much space on small screens
   return parameterCount <= 5;
-}
-
-function useIsFiltersSticky() {
-  const intersectionObserverTargetRef = useRef<HTMLElement>(null);
-  const [isSticky, setIsSticky] = useState(false);
-
-  useEffect(() => {
-    if (
-      intersectionObserverTargetRef.current &&
-      // Allow this hook in tests, since Node don't have access to some Browser APIs
-      typeof IntersectionObserver !== "undefined"
-    ) {
-      const settings: IntersectionObserverInit = {
-        threshold: 1,
-      };
-      const observer = new IntersectionObserver(([entry]) => {
-        setIsSticky(entry.intersectionRatio < 1);
-      }, settings);
-      observer.observe(intersectionObserverTargetRef.current);
-
-      return () => {
-        observer.disconnect();
-      };
-    }
-  }, []);
-
-  return [isSticky, intersectionObserverTargetRef] as const;
 }
 
 function getParametersListComponent({

@@ -6,11 +6,11 @@ import {
   useMemo,
 } from "react";
 
-import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import { addDefaultDashboardPluginValues } from "embedding-sdk/lib/plugins/dashboard";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type Question from "metabase-lib/v1/Question";
 
 type InteractiveDashboardContextType = Partial<{

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -39,7 +39,6 @@ describe("scenarios > metrics > search", () => {
     cy.wait("@search");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByTestId("type-search-filter").click();
     });
     H.popover().within(() => {

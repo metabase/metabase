@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -69,7 +69,9 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a filter with an ad-hoc question", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Filter").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Filter/)
+      .click();
     H.modal().within(() => {
       cy.findByText("Product").click();
       cy.findByText("Gadget").click();
@@ -82,7 +84,9 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a custom aggregation expression based on a metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content")
       .button(ORDERS_TIMESERIES_METRIC.name)
       .click();
@@ -96,7 +100,9 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a breakout with an ad-hoc question", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content").findByText("Category").click();
     H.echartsContainer().findByText("Product → Category").should("be.visible");
   });
@@ -104,11 +110,14 @@ describe("scenarios > metrics > question", () => {
   it("should be able to change the temporal unit when consuming a timeseries metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     H.assertQueryBuilderRowCount(49);
-    cy.findByTestId("qb-header-action-panel").button("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .button(/Summarize/)
+      .click();
     cy.findByTestId("sidebar-content")
       .findByTestId("pinned-dimensions")
       .findByLabelText("Created At")
       .findByText("by month")
+      .realHover()
       .click();
     H.popover().findByText("Year").click();
     H.assertQueryBuilderRowCount(5);
@@ -150,8 +159,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 
@@ -164,8 +173,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 
@@ -188,8 +197,8 @@ describe("scenarios > metrics > question", () => {
       .findByText("18,760")
       .should("be.visible");
     cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button("Filter").should("not.exist");
-      cy.button("Summarize").should("not.exist");
+      cy.button(/Filter/).should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
     });
   });
 

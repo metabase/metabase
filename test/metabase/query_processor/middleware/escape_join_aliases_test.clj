@@ -75,6 +75,7 @@
                       actual))
           (recur expected more))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel steps-test-1
   (test-steps
    (ordered-map/ordered-map

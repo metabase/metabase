@@ -33,7 +33,7 @@
 
   _Most_ tables and _all_ models (as of this writing) will bottom out at `:entity/GenericTable` and thus, use the
   `resources/automagic_dashboards/table/GenericTable.yaml` template. `:entity_type` for a given table type is made in
-  the [[metabase.analyze/infer-entity-type-by-name]] function, where the primary logic is table naming based on the
+  the [[metabase.analyze.core/infer-entity-type-by-name]] function, where the primary logic is table naming based on the
   `prefix-or-postfix` var in that ns.
 
   ProTip: If you want to introduce a new template type, do the following:
@@ -148,13 +148,12 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
@@ -166,6 +165,7 @@
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
@@ -173,10 +173,10 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(defmulti
-  ^{:doc      "Get user-defined metrics linked to a given entity."
-    :arglists '([entity])}
-  linked-metrics mi/model)
+(defmulti linked-metrics
+  "Get user-defined metrics linked to a given entity."
+  {:arglists '([entity])}
+  mi/model)
 
 (defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name

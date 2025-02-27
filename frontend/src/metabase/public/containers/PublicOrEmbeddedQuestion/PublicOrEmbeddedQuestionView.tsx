@@ -2,7 +2,7 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -18,6 +18,7 @@ import type {
   DatasetQuery,
   ParameterId,
   ParameterValuesMap,
+  RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -97,8 +98,8 @@ export function PublicOrEmbeddedQuestionView({
         {() => (
           <Visualization
             isNightMode={theme === "night"}
-            error={result && result.error}
-            rawSeries={[{ card: card, data: result && result.data }]}
+            error={result?.error?.toString()}
+            rawSeries={[{ card, data: result?.data }] as RawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,

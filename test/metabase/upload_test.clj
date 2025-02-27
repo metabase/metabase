@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.upload-test
+(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -18,9 +19,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -105,8 +106,8 @@
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
-  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster because it skips
-  syncing every table in the test database."
+  The result is identical to if the table was synced with [[metabase.sync.core/sync-database!]], but faster because it
+  skips syncing every table in the test database."
   [& {:keys [database table-name schema-name]}]
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
@@ -252,12 +253,24 @@
                           "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"]
                          additional-row)))))))))
 
+(defn- unique-table-name [s]
+  (#'upload/unique-table-name driver/*driver* s))
+
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Blank names"
+      (is (=? #"blank_\d+" (unique-table-name nil)))
+      (is (=? #"blank_\d+" (unique-table-name "")))
+      (is (=? #"blank_\d+" (unique-table-name " ! $ _ "))))
     (testing "File name is slugified"
-      (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
+      (is (=? #"my_file_name_\d+" (unique-table-name "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+      (let [escaped (unique-table-name "some text; -- DROP TABLE.csv")]
+        (is (nil? (re-find #";" escaped)))
+        (is (=? #"some_text_DROP_TABLE_csv_\d+" escaped))))
+    (testing "transliteration"
+      ;; <skip lint>
+      (is (=? #"Yia_sou_Privet_alslam_lykm_Ola_\d+" (unique-table-name "¡Γειά σου! Привет! السلام عليكم! Olá!"))))
     (testing "No collisions"
       (let [n 50
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
@@ -439,11 +452,11 @@
                (fn [model]
                  (with-upload-table! [table (card->table model)]
                    (test-names-match table "出色的")
-                   (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                   (is (= (ddl.i/format-name driver/*driver* "chu_se_de_20240628000000")
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-          (let [max-bytes 50]
+          (let [max-bytes 15]
             (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                           upload/max-bytes (constantly max-bytes)]
               (doseq [^String c ["a" "出"]]
@@ -1182,7 +1195,7 @@
                     (:name new-field)
                     (:display_name new-field))))))))))
 
-(deftest ^:mb/once csv-upload-snowplow-test
+(deftest csv-upload-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
       (do-with-uploaded-example-csv!
@@ -1201,7 +1214,7 @@
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
 
            (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+             (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (try (do-with-uploaded-example-csv! {} identity)
                     (catch Throwable _
                       nil))
@@ -1213,7 +1226,7 @@
                        :user-id (str (mt/user->id :rasta))}
                       (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once csv-upload-audit-log-test
+(deftest csv-upload-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (do-with-uploaded-example-csv!
@@ -1257,14 +1270,13 @@
   [_driver _feature _database]
   true)
 
-;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly marked `^:mb/once` prior to
-;;; #47681; I fixed that, but then Redshift tests started failing. We should fix the test so it can run against
-;;; Redshift.
+;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly disabled #47681; I fixed that,
+;;; but then Redshift tests started failing. We should fix the test so it can run against Redshift.
 (defmethod driver/database-supports? [:redshift ::create-csv-upload!-failure-test]
   [_driver _feature _database]
   false)
 
-(deftest ^:mb/once create-csv-upload!-failure-test
+(deftest create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads ::create-csv-upload!-failure-test)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
@@ -1282,7 +1294,7 @@
               {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
                #"^Uploads are not supported on \w+ databases\."
@@ -1309,14 +1321,26 @@
              #"Unsupported File Type"
              (do-with-uploaded-example-csv!
               {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}
-              identity)))))))
+              identity))))
+      (testing "Driver error"
+        (let [metrics (atom {})]
+          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                        analytics/inc! #(swap! metrics update % (fnil inc 0))]
+            (is (thrown-with-msg?
+                 Exception
+                 #"Boom"
+                 (do-with-uploaded-example-csv!
+                  {:file (tmp-file "file" ".csv")}
+                  identity)))
+            (testing "Prometheus alerted"
+              (is (= 1 (:metabase-csv-upload/failed @metrics))))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
+(deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1478,7 +1502,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+              (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1582,8 +1606,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                                       upload/current-database    (constantly (mt/db))]
+              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                          upload/current-database    (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1775,7 +1799,7 @@
                        (rows-for-table table)))))
             (io/delete-file file)))))))
 
-(deftest ^:mb/once update-snowplow-test
+(deftest update-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
@@ -1799,7 +1823,7 @@
                 (io/delete-file file)))
 
             (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-              (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+              (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                 (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                       file     (csv-file-with csv-rows (mt/random-name))]
                   (try
@@ -1816,7 +1840,7 @@
                         :user-id (str (mt/user->id :crowberto))}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once update-audit-log-test
+(deftest update-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
@@ -2181,9 +2205,16 @@
   (let [round-if-float #(if (float? %) (u/round-to-decimals digits-precision %) %)]
     (mapv (partial mapv round-if-float) rows)))
 
+(defn- external-type [t]
+  (keyword "metabase.upload" (name t)))
+
+(defn- promo-allowed? [allowed-promotions col-type new-type]
+  (get-in allowed-promotions [(external-type col-type) (external-type new-type)]))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action (actions-to-test driver/*driver*)]
+    (doseq [action (actions-to-test driver/*driver*)
+            :let [allowed-promotions (driver/allowed-promotions driver/*driver*)]]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
           (testing "Append succeeds if the CSV file contains values that don't match the column types, but are coercible"
@@ -2191,18 +2222,47 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                      [(merge
-                        {:upload-type int-type, :uncoerced "2.1"}
-                        (if (= driver/*driver* :redshift)
-                          ;; TODO: redshift doesn't allow promotion of ints to floats
-                          {:fail-msg "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
-                          {:coerced 2.1})) ; column is promoted to float
-                       {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
-                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
-                       {:upload-type bool-type,  :uncoerced "0",          :coerced false}
-                       {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
-                       {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
-                       {:upload-type int-type,   :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
+                      [; column is promoted to a float
+                       {:upload-type     int-type
+                        :uncoerced      "2.1"
+                        :coerced         2.1
+                        :fail            (not (promo-allowed? allowed-promotions int-type float-type))
+                        :fail-msg        "'2.1' is not an integer"}
+                       ;; column is promoted to an int
+                       {:upload-type     bool-type
+                        :uncoerced       "2"
+                        :coerced         2
+                        :fail            (not (promo-allowed? allowed-promotions bool-type int-type))
+                        :fail-msg        "'2' is not a recognizable boolean"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "2.0"
+                        :coerced         2.0
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
+                        :fail-msg        "'2.0' is not a recognizable boolean"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "3.14"
+                        :coerced         3.14
+                        :fail            (not (promo-allowed? allowed-promotions bool-type float-type))
+                        :fail-msg        "'3.14' is not a recognizable boolean"}
+                       ; value is coerced to an int
+                       {:upload-type     int-type
+                        :uncoerced       "2.0"
+                        :coerced         2}
+                       ; value is coerced to a float
+                       {:upload-type     float-type
+                        :uncoerced       "2"
+                        :coerced         2.0}
+                       ;; value is interpreted as a boolean
+                       {:upload-type     bool-type
+                        :uncoerced       "0"
+                        :coerced         false}
+                       ;; value is not an int
+                       {:upload-type     int-type
+                        :uncoerced       "01/01/2012"
+                        :fail            true
+                        :fail-msg        "'01/01/2012' is not a recognizable number"}]]
                 (with-upload-table!
                   [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
                                                                    (ordered-map/ordered-map :test_column upload-type))
@@ -2211,7 +2271,13 @@
                         file     (csv-file-with csv-rows)
                         update!  (fn []
                                    (update-csv! action {:file file, :table-id (:id table)}))]
-                    (if (contains? args :coerced)
+                    (if (:fail args)
+                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
+                                       uncoerced (name upload-type))
+                        (is (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             (re-pattern (str "^" fail-msg "$"))
+                             (update!))))
                       (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
                                        uncoerced (name upload-type) coerced)
                         (testing "\nAppend should succeed"
@@ -2220,17 +2286,20 @@
                         (is (= (rows-with-auto-pk [[coerced]])
                                ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
                                ;; In this case, 2.1 ⇒ 2.0999999046325684
-                               (round-floats 6 (rows-for-table table)))))
-                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
-                                       uncoerced (name upload-type))
-                        (is (thrown-with-msg?
-                             clojure.lang.ExceptionInfo
-                             (re-pattern (str "^" fail-msg "$"))
-                             (update!)))))
+                               (round-floats 6 (rows-for-table table))))))
                     (io/delete-file file)))))))))))
 
+(defn- col-promotion-drivers
+  "Returns the drivers that support the given column promotions
+  e.g. if you are going to test int -> float: (promo-drivers [int-type float-type])"
+  [& must-support]
+  (set/select (fn [driver]
+                (let [allowed-promotions (driver/allowed-promotions driver)]
+                  (every? #(apply promo-allowed? allowed-promotions %) must-support)))
+              (mt/normal-drivers-with-feature :uploads)))
+
 (deftest update-promotion-multiple-columns-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
+  (mt/test-drivers (col-promotion-drivers [int-type float-type])
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
@@ -2310,6 +2379,48 @@
                                             [[1 1]]
                                             [[1 1]
                                              [1 1]]))
+                     (set (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest update-from-csv-int-and-boolean-test
+  (mt/test-drivers (col-promotion-drivers [int-type bool-type])
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (testing "Append should handle int values being appended to a boolean column"
+          (with-upload-table! [table (create-upload-table!
+                                      :col->upload-type (columns-with-auto-pk {:col bool-type})
+                                      :rows [[1] [0]])]
+            (let [csv-rows ["col"
+                            "1"
+                            "2"]
+                  file     (csv-file-with csv-rows)]
+              (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+              (is (= (set (updated-contents action
+                                            [[1]
+                                             [0]]
+                                            [[1]
+                                             [2]]))
+                     (set (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest update-from-csv-float-and-boolean-test
+  (mt/test-drivers (col-promotion-drivers [bool-type float-type])
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (testing "Append should handle float values being appended to a boolean column"
+          (with-upload-table! [table (create-upload-table!
+                                      :col->upload-type (columns-with-auto-pk {:col bool-type})
+                                      :rows [[1] [0]])]
+            (let [csv-rows ["col"
+                            "1.2"
+                            "2.3"]
+                  file     (csv-file-with csv-rows)]
+              (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+              (is (= (set (updated-contents action
+                                            [[1.0]
+                                             [0.0]]
+                                            [[1.2]
+                                             [2.3]]))
                      (set (rows-for-table table))))
               (io/delete-file file))))))))
 
@@ -2460,9 +2571,18 @@
         expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]
+    (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
              ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
              ;; This is the easiest way to work around the capitalization of alpha.
              (map u/lower-case-en
                   (#'upload/derive-display-names ::short-column-test-driver original)))))))
+
+(deftest allow-lists-transitivity-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "driver allow lists should be transitively closed."
+      ;; Imagine it was possible to go from (int -> float) and (bool -> int) - but not (bool -> float).
+      ;; This would mean a user could get (bool -> float), but only by filtering and re-uploading portions of the csv - Yuk!
+      ;; This test ensure drivers always meet any transitive expectations users might have.
+      (let [allow-list (driver/allowed-promotions driver/*driver*)]
+        (is (= allow-list (or (mt/transitive allow-list) {})))))))

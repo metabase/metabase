@@ -126,16 +126,21 @@ export default function ActionCreatorView({
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}
               onChange={onChangeFormSettings}
+              onClose={onCloseModal}
             />
           ) : activeSideView === "dataReference" ? (
-            <DataReferenceInline onClose={closeSideView} />
+            <DataReferenceInline
+              onClose={onCloseModal}
+              onBack={closeSideView}
+            />
           ) : activeSideView === "actionSettings" ? (
             <InlineActionSettings
               action={action}
               formSettings={formSettings}
               isEditable={isEditable}
               onChangeFormSettings={onChangeFormSettings}
-              onClose={closeSideView}
+              onClose={onCloseModal}
+              onBack={closeSideView}
             />
           ) : null}
         </ModalRight>

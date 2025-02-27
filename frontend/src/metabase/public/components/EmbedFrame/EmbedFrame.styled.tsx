@@ -1,7 +1,9 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
@@ -114,25 +116,16 @@ const footerVariantStyles = {
   `,
 };
 
-function getParameterPanelBackgroundColor(
-  theme: DisplayTheme | undefined,
-  isSticky: boolean,
-) {
+function getParameterPanelBackgroundColor(theme: DisplayTheme | undefined) {
   if (theme === "night") {
-    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard)  ${
-      isSticky ? 15 : 100
-    }%)`;
+    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard) 15%)`;
   }
 
   if (theme === "transparent") {
-    return `color-mix(in srgb, var(--mb-color-bg-white), transparent  ${
-      isSticky ? 15 : 100
-    }%)`;
+    return `color-mix(in srgb, var(--mb-color-bg-white), transparent 15%)`;
   }
 
-  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard)  ${
-    isSticky ? 15 : 100
-  }%)`;
+  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard) 15%)`;
 }
 
 function getParameterPanelBorderColor(theme?: DisplayTheme) {
@@ -144,28 +137,29 @@ function getParameterPanelBorderColor(theme?: DisplayTheme) {
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   embedFrameTheme?: DisplayTheme;
-  canSticky: boolean;
+  allowSticky: boolean;
   isSticky: boolean;
 }>`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
-  ${props =>
-    props.canSticky &&
+  ${({ allowSticky }) =>
+    allowSticky &&
     css`
       position: sticky;
       top: 0;
       left: 0;
       width: 100%;
       z-index: 3;
-      transition: background-color 0.4s;
-      background-color: ${getParameterPanelBackgroundColor(
-        props.embedFrameTheme,
-        props.isSticky,
-      )};
-      border-bottom: ${props.isSticky &&
-      `1px solid
-        ${getParameterPanelBorderColor(props.embedFrameTheme)}`};
+      /* this is for proper transitions from the \`transparent\` value to other values if set */
+      border-bottom: 1px solid transparent;
+    `}
+
+  ${({ embedFrameTheme, isSticky }) =>
+    isSticky &&
+    css`
+      background-color: ${getParameterPanelBackgroundColor(embedFrameTheme)};
+      border-bottom-color: ${getParameterPanelBorderColor(embedFrameTheme)};
     `}
 `;
 

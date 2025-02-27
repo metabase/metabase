@@ -283,6 +283,9 @@
    [:database-local LocalOption]
    [:user-local     LocalOption]
 
+   ;; should this setting be read from env vars?
+   [:can-read-from-env? :boolean]
+
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
@@ -393,6 +396,9 @@
    (not (database-local-only? setting))
    (not (user-local-only? setting))))
 
+(defn- allows-setting-via-env? [setting-definition-or-name]
+  (:can-read-from-env? (resolve-setting setting-definition-or-name)))
+
 (defn- site-wide-only? [setting]
   (and
    (not (allows-database-local-values? setting))
@@ -488,7 +494,8 @@
   environment variable `MB_FOO_BAR`."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
-    (when (allows-site-wide-values? setting)
+    (when (and (allows-site-wide-values? setting)
+               (allows-setting-via-env? setting))
       (let [v (env/env (setting-env-map-name setting))]
         (when (seq v)
           v)))))
@@ -1017,6 +1024,7 @@
                  :user-local     :never
                  :deprecated     nil
                  :enabled?       nil
+                 :can-read-from-env?       true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
@@ -1035,7 +1043,7 @@
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
-          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+          (throw (ex-info (tru "Setting names would collide: {0} and {1}"
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
@@ -1422,9 +1430,8 @@
 
   `options` are passed to [[user-facing-value]].
 
-  This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
-  page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
-  are not allowed to modify them.
+  This is currently used by `GET /api/setting` (admin-only; powers the Admin Settings page) so all admin-visible
+  Settings should be included. We *do not* want to return env var values, since admins are not allowed to modify them.
 
   For settings managers who are not admins, only the subset of settings with the :settings-manager visibility level
   are returned."
@@ -1470,7 +1477,7 @@
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
@@ -1494,6 +1501,7 @@
 
 (defmulti may-contain-raw-token?
   "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
+  {:arglists '([ex setting])}
   (fn [_ex setting] (:type setting)))
 
 ;; fallback to redaction if we have not defined behaviour for a given format

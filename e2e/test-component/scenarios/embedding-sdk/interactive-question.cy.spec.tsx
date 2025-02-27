@@ -12,15 +12,17 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createQuestion,
-  describeEE,
   popover,
+  tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
+  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -31,22 +33,22 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
 
-describeEE("scenarios > embedding-sdk > interactive-question", () => {
+describe("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    createQuestion(
-      {
-        name: "47563",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
+    createQuestion({
+      name: "47563",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
+        limit: 2,
       },
-      { wrapId: true },
-    );
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("questionId");
+      cy.wrap(question.entity_id).as("questionEntityId");
+    });
 
     cy.signOut();
 
@@ -69,6 +71,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", error => {
@@ -91,15 +94,32 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    tableInteractive().findByText("Max of Quantity").should("be.visible");
+    const firstColumnName = "Product ID";
+    const lastColumnName = "Max of Quantity";
+    const columnNames = [firstColumnName, lastColumnName];
 
-    tableHeaderClick("Max of Quantity");
+    columnNames.forEach(columnName => {
+      tableInteractive().findByText(columnName).should("be.visible");
 
-    popover()
-      .findByTestId("click-actions-sort-control-formatting-hide")
-      .click();
+      tableHeaderClick(columnName);
 
-    tableInteractive().findByText("Max of Quantity").should("not.exist");
+      popover()
+        .findByTestId("click-actions-sort-control-formatting-hide")
+        .click();
+
+      const lastColumnName = "Max of Quantity";
+
+      if (columnName !== lastColumnName) {
+        tableInteractive().findByText(columnName).should("not.exist");
+      } else {
+        tableInteractive().should("not.exist");
+
+        tableAllFieldsHiddenImage()
+          .should("be.visible")
+          .should("have.attr", "src")
+          .and("include", METABASE_INSTANCE_URL);
+      }
+    });
   });
 
   it("can save a question to a default collection", () => {
@@ -135,7 +155,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
   it("can save a question to a pre-defined collection", () => {
     mountInteractiveQuestion({
-      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+      saveToCollection: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -147,6 +167,27 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(200);
       expect(response?.body.name).to.equal("Sample Orders 3");
       expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
+    });
+  });
+
+  it("can save a question to their personal collection", () => {
+    cy.intercept("/api/user/current").as("getUser");
+
+    mountInteractiveQuestion({
+      saveToCollection: "personal",
+    });
+
+    cy.wait("@getUser").then(({ response: userResponse }) => {
+      saveInteractiveQuestionAsNewQuestion({
+        entityName: "Orders",
+        questionName: "Sample Orders 3",
+      });
+      const userCollection = userResponse?.body.personal_collection_id;
+      cy.wait("@createCard").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("Sample Orders 3");
+        expect(response?.body.collection_id).to.equal(userCollection);
+      });
     });
   });
 
@@ -216,7 +257,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
           </Box>
 
           {isSaveModalOpen && (
-            <Modal data-testid="modal" opened={isSaveModalOpen} onClose={close}>
+            <Modal opened={isSaveModalOpen} onClose={close}>
               <InteractiveQuestion.SaveQuestionForm onCancel={close} />
             </Modal>
           )}
@@ -272,6 +313,71 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
+
+  it("does not contain known console errors (metabase#48497)", () => {
+    cy.get<number>("@questionId").then(questionId => {
+      mountSdkContentAndAssertNoKnownErrors(
+        <InteractiveQuestion questionId={questionId} />,
+      );
+    });
+  });
+
+  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
+    const successTestCases = [
+      {
+        name: "correct entity ID",
+        questionIdAlias: "@questionEntityId",
+      },
+      {
+        name: "correct number ID",
+        questionIdAlias: "@questionId",
+      },
+    ];
+
+    const failureTestCases = [
+      {
+        name: "wrong entity ID",
+        questionId: "VFCGVYPVtLzCtt4teeoW4",
+      },
+      {
+        name: "one too many entity ID character",
+        questionId: "VFCGVYPVtLzCtt4teeoW49",
+      },
+      {
+        name: "wrong number ID",
+        questionId: 9999,
+      },
+    ];
+
+    successTestCases.forEach(({ name, questionIdAlias }) => {
+      it(`should load question content for ${name}`, () => {
+        cy.get(questionIdAlias).then(questionId => {
+          mountInteractiveQuestion({ questionId });
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+        });
+      });
+    });
+
+    failureTestCases.forEach(({ name, questionId }) => {
+      it(`should show an error message for ${name}`, () => {
+        mountInteractiveQuestion(
+          { questionId },
+          { shouldAssertCardQuery: false },
+        );
+
+        getSdkRoot().within(() => {
+          const expectedErrorMessage = `Question ${questionId} not found. Make sure you pass the correct ID.`;
+          cy.findByRole("alert").should("have.text", expectedErrorMessage);
+          cy.findByText("Product ID").should("not.exist");
+          cy.findByText("Max of Quantity").should("not.exist");
+        });
+      });
     });
   });
 });

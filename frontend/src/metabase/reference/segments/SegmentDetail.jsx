@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";

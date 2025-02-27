@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 
-import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/usage-problem";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -64,6 +63,7 @@ export const SdkUsageProblemBanner = ({
           onClick={() => setExpanded(!expanded)}
           className={cx(S.Indicator, isError ? S.Error : S.Warning)}
           data-testid="sdk-usage-problem-indicator"
+          i-should-be-flex="true"
         >
           <Flex bg="white" px="sm" py="xs" className={S.Logo}>
             <LogoIcon height={24} fill={unthemedBrand} />
@@ -83,7 +83,7 @@ export const SdkUsageProblemBanner = ({
               stroke={isError ? unthemedTextDark : undefined}
             />
 
-            <Text transform="capitalize" c={unthemedTextMedium} ff={fontFamily}>
+            <Text tt="capitalize" c={unthemedTextMedium} ff={fontFamily}>
               {severity}
             </Text>
           </Flex>
@@ -97,12 +97,12 @@ export const SdkUsageProblemBanner = ({
           maw="20rem"
           data-testid="sdk-usage-problem-card"
         >
-          <Stack spacing="sm">
+          <Stack gap="sm">
             <Flex w="100%" justify="space-between">
               <Text
                 fw="bold"
                 size="lg"
-                transform="capitalize"
+                tt="capitalize"
                 c={unthemedTextDark}
                 ff={fontFamily}
               >
@@ -128,19 +128,19 @@ export const SdkUsageProblemBanner = ({
                 variant="subtle"
                 onClick={hideBanner}
                 ff={fontFamily}
-                compact
+                size="compact-md"
               >
                 Hide {severity}
               </Button>
 
-              <ExternalLink href={SDK_SSO_DOCS_LINK}>
+              <ExternalLink role="link" href={problem.documentationUrl}>
                 <Button
                   fz="sm"
                   variant="outline"
-                  rightIcon={<Icon name="external" size={10} />}
+                  rightSection={<Icon name="external" size={10} />}
                   ff={fontFamily}
                   className={S.DocsButton}
-                  compact
+                  size="compact-md"
                 >
                   View documentation
                 </Button>

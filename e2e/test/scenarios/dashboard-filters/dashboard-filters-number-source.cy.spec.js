@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -28,7 +28,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -48,11 +48,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -61,11 +61,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -74,11 +74,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 
@@ -89,7 +89,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (search)", () => {
     it("should be able to use a static list source (search)", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -109,11 +109,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -122,11 +122,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        H.editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 
@@ -159,6 +159,7 @@ const filterDashboard = ({ isLabeled = false, isDropdown = false } = {}) => {
 
   if (isLabeled) {
     H.popover().first().findByPlaceholderText("Enter a number").type("T");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Twenty").click();
     H.popover().first().button("Add filter").click();
     return;

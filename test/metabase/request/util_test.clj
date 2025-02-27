@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.request.util-test
+(ns metabase.request.util-test
   (:require
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
@@ -28,10 +28,18 @@
   (delay (edn/read-string (slurp "test/metabase/server/request/sample-request.edn"))))
 
 (deftest ^:parallel device-info-test
-  (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
-          :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
-          :ip_address         "0:0:0:0:0:0:0:1"}
-         (req.util/device-info @mock-request))))
+  (testing "Regular, non-embedded request"
+    (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+            :embedded           false
+            :ip_address         "0:0:0:0:0:0:0:1"}
+           (req.util/device-info @mock-request))))
+  (testing "Embedded request"
+    (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+            :embedded           true
+            :ip_address         "0:0:0:0:0:0:0:1"}
+           (req.util/device-info (update @mock-request :query-params assoc "token" "true"))))))
 
 (deftest ^:parallel describe-user-agent-test
   (are [user-agent expected] (= expected (req.util/describe-user-agent user-agent))

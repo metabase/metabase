@@ -1,6 +1,10 @@
-import { H } from "e2e/support";
+const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_MODEL_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -8,6 +12,60 @@ const filterButton = () =>
   cy
     .findByTestId("browse-models-header")
     .findByRole("button", { name: /Filters/i });
+
+describe("browse > models", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("correctly displays models empty states", () => {
+    cy.log(
+      "Models explanation banner is visible initially but can be dismissed",
+    );
+    cy.visit("/browse/models");
+    cy.findAllByRole("complementary")
+      .filter(
+        ":contains(Create models to clean up and combine tables to make your data easier to explore)",
+      )
+      .as("banner");
+    cy.get("@banner").should("be.visible");
+    cy.findByRole("button", { name: "Dismiss" }).click();
+    cy.get("@banner").should("not.exist");
+
+    cy.log("Removing the last model from the page displays an empty state");
+    cy.findAllByTestId("model-name").should("have.length", 1); // sanity check
+    cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, {
+      archived: true,
+    });
+    cy.reload();
+    cy.get("iframe").as("YouTubeVideo").should("be.visible");
+    cy.get("@banner").should("not.exist");
+    cy.findByRole("heading", {
+      name: "Create models to clean up and combine tables to make your data easier to explore",
+    }).should("be.visible");
+  });
+
+  it("can browse to a model in a new tab by meta-clicking", () => {
+    cy.on("window:before:load", win => {
+      // prevent Cypress opening in a new window/tab and spy on this method
+      cy.stub(win, "open").as("open");
+    });
+    cy.visit("/browse/models");
+    const macOSX = Cypress.platform === "darwin";
+    cy.findByRole("heading", { name: "Orders Model" }).click({
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+
+    cy.get("@open").should("have.been.calledOnce");
+    cy.get("@open").should(
+      "have.been.calledOnceWithExactly",
+      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      "_blank",
+    );
+  });
+});
 
 H.describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
@@ -30,32 +88,12 @@ H.describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
-  it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", win => {
-      // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").as("open");
-    });
-    cy.visit("/browse/models");
-    const macOSX = Cypress.platform === "darwin";
-    cy.findByRole("heading", { name: "Orders Model" }).click({
-      metaKey: macOSX,
-      ctrlKey: !macOSX,
-    });
-
-    cy.get("@open").should("have.been.calledOnce");
-    cy.get("@open").should(
-      "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
-      "_blank",
-    );
-  });
-
   it("can browse to a table in a database", () => {
     cy.visit("/");
     H.browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
-    cy.findByRole("button", { name: "Summarize" });
+    cy.findByRole("button", { name: /Summarize/ });
     cy.findByRole("link", { name: /Sample Database/ }).click();
     H.expectNoBadSnowplowEvents();
     H.expectGoodSnowplowEvent({
@@ -65,7 +103,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 
   it("browsing to a database only triggers a request for schemas for that specific database", () => {
-    cy.intercept("GET", "/api/database/1/schemas").as(
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
       "schemasForSampleDatabase",
     );
     cy.intercept(
@@ -164,7 +202,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
   const toggleVerificationFilter = () => {
     openFilterPopover();
-    toggle().next("label").click();
+    toggle().parent("label").click();
     cy.wait("@updateFilter");
   };
 
@@ -181,7 +219,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "Create several models - enough that we can see recently viewed models",
     );
     Array.from({ length: 10 }).forEach((_, i) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: `Model ${i}`,
         query: {
           "source-table": PRODUCTS_ID,
@@ -280,5 +318,51 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
       cy.icon("model").should("exist");
       cy.icon("model_with_badge").should("not.exist");
     });
+  });
+});
+
+describe("issue 37907", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+  });
+
+  it("allows to change field descriptions in data reference page (metabase#37907)", () => {
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("link", { name: /Learn about our data/ }).click();
+    cy.findByTestId("data-reference-list-item").click();
+    cy.findByRole("link", { name: /Tables in Sample Database/ }).click();
+    cy.findAllByTestId("data-reference-list-item").findByText("Orders").click();
+    cy.findByRole("link", { name: /Fields in this table/ }).click();
+    cy.button(/Edit/).realClick(); // click() does not work
+    cy.findAllByPlaceholderText("No column description yet")
+      .eq(0)
+      .clear()
+      .type("My ID column");
+    cy.findAllByPlaceholderText("No column description yet")
+      .eq(5)
+      .focus()
+      .type(" Updated.");
+    cy.button(/Save/).realClick(); // click() does not work
+    cy.wait(["@fieldUpdate", "@fieldUpdate"]);
+
+    cy.get("main").within(() => {
+      cy.findByText("My ID column").should("be.visible");
+      cy.findByText("The total billed amount. Updated.").should("be.visible");
+      cy.findByText("Discount amount.").should("be.visible");
+    });
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.tableInteractive().findByTextEnsureVisible("ID").realHover();
+    H.popover().should("include.text", "My ID column");
+
+    H.tableInteractive().findByTextEnsureVisible("Total").realHover();
+    H.popover().should("include.text", "The total billed amount. Updated.");
+
+    H.tableInteractive().findByTextEnsureVisible("Discount ($)").realHover();
+    H.popover().should("include.text", "Discount amount.");
   });
 });

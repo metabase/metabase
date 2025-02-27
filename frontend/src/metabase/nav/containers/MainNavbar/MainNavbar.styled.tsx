@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -19,7 +20,6 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   background-color: var(--mb-color-bg-white);
-  overflow: auto;
   z-index: 4;
   width: ${NAV_SIDEBAR_WIDTH};
   border-inline-end: 1px solid var(--mb-color-border);
@@ -63,13 +63,13 @@ export const SidebarSection = styled(Box)<BoxProps>`
   margin-bottom: ${space(2)};
   padding-inline-start: ${space(2)};
   padding-inline-end: ${space(2)};
-`;
+` as unknown as typeof Box;
 
 export const TrashSidebarSection = styled(SidebarSection)`
   ${ExpandToggleButton} {
     width: 12px;
   }
-`;
+` as unknown as typeof Box;
 
 export const SidebarHeadingWrapper = styled.div`
   display: flex;

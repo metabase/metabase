@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -113,11 +113,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
+
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+
       ensureEmbeddingIsDisabled();
     });
   });

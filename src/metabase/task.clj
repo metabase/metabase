@@ -23,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
+               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,17 +59,6 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- find-and-load-task-namespaces!
-  "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
-  []
-  (doseq [ns-symb u/metabase-namespace-symbols
-          :when   (.startsWith (name ns-symb) "metabase.task.")]
-    (try
-      (log/debug "Loading tasks namespace:" (u/format-color 'blue ns-symb))
-      (classloader/require ns-symb)
-      (catch Throwable e
-        (log/errorf e "Error loading tasks namespace %s" ns-symb)))))
-
 (defn- init-tasks!
   "Call all implementations of `init!`"
   []
@@ -97,7 +87,9 @@
         (qs/get-job scheduler job-key)
         (catch JobPersistenceException e
           (when (instance? ClassNotFoundException (.getCause e))
-            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (log/warnf "Deleting job %s due to class not found (%s)"
+                       (.getName ^JobKey job-key)
+                       (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
 (defn- init-scheduler!
@@ -109,7 +101,6 @@
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
-        (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)
@@ -147,11 +138,12 @@
     (when-let [scheduler (scheduler)]
       (let [job-key          (.getKey ^JobDetail job)
             new-trigger-key  (.getKey ^Trigger new-trigger)
-            triggers         (qs/get-triggers-of-job scheduler job-key)
+            triggers         (try (qs/get-triggers-of-job scheduler job-key) (catch Exception _))
             matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
             replaced-trigger (or matching-trigger (first triggers))]
-        (when replaced-trigger
-          (log/debugf "Rescheduling job %s" (.getName job-key))
+        (log/debugf "Rescheduling job %s" (.getName job-key))
+        (if-not replaced-trigger
+          (.scheduleJob scheduler new-trigger)
           (let [replaced-key (.getKey ^Trigger replaced-trigger)]
             (when-not matching-trigger
               (log/warnf "Replacing trigger %s with trigger %s%s"
@@ -161,9 +153,8 @@
                            ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
                            ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
                            ;; The current behavior is especially confounding if replacing N triggers with M ones.
-                           (str " (chosen randomly from " (count triggers) " existing ones)")))
-              matching-trigger)
-            (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
+                           (str " (chosen randomly from " (count triggers) " existing ones)"))))
+            (.rescheduleJob scheduler replaced-key new-trigger)))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
@@ -315,3 +306,14 @@
   []
   {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
    :jobs      (jobs-info)})
+
+(defmacro rerun-on-error
+  "Retry the current Job if an exception is thrown by the enclosed code."
+  {:style/indent 1}
+  [^JobExecutionContext ctx & body]
+  `(let [msg# (str (.getName (.getKey (.getJobDetail ~ctx))) " failed, but we will try it again.")]
+     (try
+       ~@body
+       (catch Exception e#
+         (log/error e# msg#)
+         (throw (JobExecutionException. msg# e# true))))))

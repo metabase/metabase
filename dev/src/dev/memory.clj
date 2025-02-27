@@ -19,8 +19,6 @@
     (assert (.isThreadAllocatedMemorySupported mx-bean))
     (.getThreadAllocatedBytes mx-bean thread-id)))
 
-(set! *warn-on-reflection* true)
-
 (defn mb-str
   "Format bytes as megabytes"
   [bytes]
@@ -42,11 +40,42 @@
      (log/warnf "Allocated: %s" (mb-str (:allocations m#)))
      (:result m#)))
 
+(def ^{:dynamic true
+       :private true} *memory-log-level* -1)
+
+(defn- used-mb
+  []
+  (let [rt (Runtime/getRuntime)
+        mb (* 1024.0 1024.0)]
+    (/ (- (.totalMemory rt) (.freeMemory rt)) mb)))
+
+(defn log-memory-usage
+  "Executes body-fn and logs memory usage before and after execution.
+  Returns the result of body-fn."
+  [body-fn context]
+  (binding [*memory-log-level* (inc *memory-log-level*)]
+    (let [indent (apply str (repeat *memory-log-level* "  "))
+          before (used-mb)
+          print-stats (fn
+                        ([stats]
+                         (log/infof "%s%s | Memory before:: %.2f MB "
+                                    indent context stats))
+                        ([before after]
+                         (log/infof "%s%s | Memory after:: %.2f MB (delta: %.2f MB)"
+                                    indent context after (- after before))))
+          _ (print-stats before)
+          result (body-fn)
+          after (used-mb)
+          _ (print-stats before after)]
+      result)))
+
+(defmacro with-memory-logging
+  "Executes body and logs memory usage before and after execution.
+  Returns the result of body."
+  [context & body]
+  `(log-memory-usage (fn [] ~@body) ~context))
+
 (comment
   ;; almost correct, at least a constant error
   (measuring-thread-allocations
-   (byte-array (* 1024 1024)))
-  ;; => 1.028MB
-  ;; => 1.028MB
-  ;; => 1.028MB
-  )
+   (byte-array (* 1024 1024))))

@@ -1,5 +1,7 @@
 ---
 title: Exporting results
+redirect_from:
+  - /docs/latest/questions/sharing/exporting-results
 ---
 
 # Exporting results
@@ -25,15 +27,19 @@ You can choose between downloading the results as:
 
 If you don't see the option to export results, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
 
-### Exporting pivot tables
+## Exporting pivot tables
 
 If you're exporting a pivot table, you'll have the option to keep the table pivoted. By default, Metabase will export the unpivoted results.
 
-### Maximum number of rows you can download
+## Export limits
 
-You can download up to 1 million rows.
+You can export (download) up to 1 million rows.
 
 You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md).
+
+### Cell character limit in Excel exports
+
+Just something to be aware of: when exporting results to an Excel document (.xlsx), Metabase will limit the numbers of characters per cell to `32,767`, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/office/excel-specifications-and-limit-1672b34d-7043-467e-8e27-269d656771c3). So if you have a bonkers number of characters in a single cell, Metabase will truncate the number of characters to fit within that limit.
 
 ## Exporting data via a public link
 

@@ -16,7 +16,7 @@ import {
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/FunnelBarChart",
+  title: "Viz/Static Viz/FunnelBarChart",
   component: StaticVisualization,
 };
 

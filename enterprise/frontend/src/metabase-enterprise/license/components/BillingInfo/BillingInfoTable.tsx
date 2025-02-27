@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -93,7 +94,7 @@ function BillingInfoRow({
   // ErrorBoundary serves as an extra guard in case billingInfo schema
   // changes in a way the current application doesn't expect
   return (
-    <ErrorBoundary errorComponent={() => null}>
+    <ErrorBoundary errorComponent={EmptyErrorComponent}>
       <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
         <Text
           color="text-md"
@@ -133,3 +134,7 @@ export const BillingInfoTable = ({
     </>
   );
 };
+
+const EmptyErrorComponent = forwardRef(function EmptyErrorComponent() {
+  return null;
+});

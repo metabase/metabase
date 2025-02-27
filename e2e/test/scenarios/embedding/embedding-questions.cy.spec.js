@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -62,7 +62,7 @@ describe("scenarios > embedding > questions", () => {
   it("should display the regular GUI question correctly", () => {
     const { name: title, description } = regularQuestion;
 
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -78,7 +78,7 @@ describe("scenarios > embedding > questions", () => {
       cy.icon("info").realHover();
     });
 
-    H.popover().contains(description);
+    H.tooltip().contains(description);
 
     cy.findByTestId("embed-frame").within(() => {
       // Data model: Renamed column
@@ -94,7 +94,7 @@ describe("scenarios > embedding > questions", () => {
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
       cy.findByText("Tue, Feb 11, 2025, 21:40:27");
       // Question settings: Show mini-bar
-      cy.findAllByTestId("mini-bar");
+      cy.findAllByTestId("mini-bar-container");
 
       // Data model: Subtotal is turned off globally
       cy.findByText("Subtotal").should("not.exist");
@@ -102,7 +102,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the GUI question with aggregation correctly", () => {
-    cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
+    H.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -122,6 +122,7 @@ describe("scenarios > embedding > questions", () => {
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
@@ -131,12 +132,12 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the nested GUI question correctly", () => {
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
       const nestedQuestion = {
         query: { "source-table": `card__${id}`, limit: 10 },
       };
 
-      cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
+      H.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
@@ -165,7 +166,7 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2025, 9:40 PM");
 
-    cy.findAllByTestId("mini-bar").should("not.exist");
+    cy.findAllByTestId("mini-bar-container").should("not.exist");
 
     // Data model: Subtotal is turned off globally
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -173,7 +174,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display GUI question with explicit joins correctly", () => {
-    cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -196,7 +197,7 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("€39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    cy.findAllByTestId("mini-bar");
+    cy.findAllByTestId("mini-bar-container");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
 
@@ -214,7 +215,7 @@ describe("scenarios > embedding > questions", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > embedding > questions", () => {
+describe("scenarios [EE] > embedding > questions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -238,21 +239,20 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
       enable_embedding: true,
     });
 
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
-
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
 
-    H.visitIframe();
-
-    cy.url().then(url => {
-      cy.visit({
-        // there is already a `#` in the URL from other static embed display options e.g. `#bordered=true&titled=true&downloads=true`
-        url: url + "&locale=de-CH",
-      });
-    });
+    H.visitEmbeddedPage(
+      {
+        resource: { question: ORDERS_QUESTION_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          locale: "de-CH",
+        },
+      },
+    );
 
     cy.wait("@deLocale");
 
@@ -260,6 +260,26 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
     H.main().findByText("Zeilen", { exact: false });
 
     cy.url().should("include", "locale=de");
+  });
+
+  it("should display according to `#font` hash parameter (metabase#45638)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      enable_embedding: true,
+    });
+
+    H.visitEmbeddedPage(
+      {
+        resource: { question: ORDERS_QUESTION_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          font: "Roboto",
+        },
+      },
+    );
+
+    H.main().should("have.css", "font-family", "Roboto, sans-serif");
   });
 });
 
@@ -269,7 +289,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   H.echartsContainer().get("text").contains(yLabel);
 }
 
-H.describeEE("scenarios > embedding > questions > downloads", () => {
+describe("scenarios > embedding > questions > downloads", () => {
   const questionDetails = {
     name: "Simple SQL Query for Embedding",
     native: {
@@ -293,7 +313,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       wrapId: true,
     });
   });

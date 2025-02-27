@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -287,6 +287,8 @@
          (sync/sync-database! db)
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
+               ;; Manually activate Field values since they are not created during sync (#53387)
+               _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
            (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
@@ -361,10 +363,10 @@
     (let [field-id (mt/id :venues :id)]
       (try
         (is (thrown-with-msg? ExceptionInfo
-                              #"Full FieldValues shouldnt have hash_key"
+                              #"Full FieldValues shouldn't have hash_key"
                               (t2/insert! :model/FieldValues :field_id field-id :hash_key "12345")))
         (is (thrown-with-msg? ExceptionInfo
-                              #"Full FieldValues shouldnt have hash_key"
+                              #"Full FieldValues shouldn't have hash_key"
                               (t2/insert! :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
         (is (thrown-with-msg? ExceptionInfo
                               #"Advanced FieldValues require a hash_key"
@@ -396,7 +398,7 @@
                                [sandbox-id {:type :full, :hash_key nil}]
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
-                              #"Cant update field_id, type, or hash_key for a FieldValues."
+                              #"Can't update field_id, type, or hash_key for a FieldValues."
                               (t2/update! :model/FieldValues id update-map)))))
 
     (testing "The model hooks permits mention of the existing values"

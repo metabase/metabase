@@ -55,6 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [dev.render-png :as render-png]
@@ -63,20 +64,20 @@
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
+   [metabase.channel.email :as email]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.email :as email]
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.handler :as handler]
    [metabase.server.instance :as server]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
@@ -108,6 +109,9 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [dev.memory
+  with-memory-logging
+  measuring-thread-allocations]
  [render-png
   open-html
   open-png-bytes
@@ -432,3 +436,12 @@
                                      :sender-name :email-from-name,
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
+
+(defn seed-instance!
+  "Seed an empty instance with test users and test db.
+  This is useful for bootstrapping an instance in the REPL."
+  []
+  ;; seed test users
+  (mt/initialize-if-needed! :test-users)
+  ;; seed test db
+  (mt/id))

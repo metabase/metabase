@@ -2,7 +2,6 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
@@ -125,17 +124,14 @@ module.exports = env => {
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
-    optimization: !isDevMode
-      ? {
-          minimizer: [
-            new TerserPlugin({
-              minify: TerserPlugin.swcMinify,
-              parallel: true,
-              test: /\.(tsx?|jsx?)($|\?)/i,
-            }),
-          ],
-        }
-      : undefined,
+    optimization: {
+      // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
+      // so we use a different value instead
+      moduleIds: isDevMode ? "natural" : undefined,
+
+      minimize: !isDevMode,
+      minimizer: mainConfig.optimization.minimizer,
+    },
 
     plugins: [
       new webpack.BannerPlugin({
@@ -149,7 +145,21 @@ module.exports = env => {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
+        GIT_BRANCH: require("child_process")
+          .execSync("git rev-parse --abbrev-ref HEAD")
+          .toString()
+          .trim(),
+        GIT_COMMIT: require("child_process")
+          .execSync("git rev-parse HEAD")
+          .toString()
+          .trim(),
         IS_EMBEDDING_SDK: true,
+      }),
+      new webpack.DefinePlugin({
+        "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(
+          () => JSON.stringify(new Date().toISOString()),
+          true, // This flag makes it update on each build
+        ),
       }),
       !skipDTS &&
         new ForkTsCheckerWebpackPlugin({

@@ -7,6 +7,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -614,17 +615,23 @@
           (comp (filter :fk-target-field-id)
                 (filter :id)
                 (filter (comp number? :id))
-                (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
+                (map (fn [{source-field-id :id
+                           fk-ident       :ident
+                           :keys [fk-target-field-id]
+                           :as   source}]
                        (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id source-field-id
-                                  ::source-join-alias (:metabase.lib.join/join-alias source)))))
+                           (assoc ::source-field-id   source-field-id
+                                  ::source-join-alias (:metabase.lib.join/join-alias source)
+                                  ::fk-ident          fk-ident))))
                 (remove #(contains? existing-table-ids (:table-id %)))
-                (mapcat (fn [{:keys [table-id], ::keys [source-field-id source-join-alias]}]
+                (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
                           (let [table-metadata (lib.metadata/table query table-id)
                                 options        {:unique-name-fn               unique-name-fn
                                                 :include-implicitly-joinable? false}]
                             (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [field (assoc field
+                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
+                                         field (assoc field
+                                                      :ident                    ident
                                                       :fk-field-id              source-field-id
                                                       :fk-join-alias            source-join-alias
                                                       :lib/source               :source/implicitly-joinable

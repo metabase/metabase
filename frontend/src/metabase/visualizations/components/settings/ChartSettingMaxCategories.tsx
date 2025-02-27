@@ -39,7 +39,7 @@ export const ChartSettingMaxCategories = ({
   );
 
   return (
-    <Stack spacing="md">
+    <Stack gap="md">
       <Checkbox
         checked={isEnabled}
         label={t`Enforce maximum number of series`}
@@ -64,7 +64,7 @@ export const ChartSettingMaxCategories = ({
           data={AGGREGATION_FN_OPTIONS}
           onChange={handleAggregationFunctionChange}
           data-testid="graph-other-category-aggregation-fn-picker"
-          zIndex={401}
+          style={{ zIndex: 401 }}
         />
       </div>
     </Stack>

@@ -1,8 +1,8 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { screen } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";

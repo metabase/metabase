@@ -1,8 +1,7 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import {
   IconContainer,
@@ -37,7 +36,7 @@ export function PermissionsSelectOption({
       onMouseEnter={() => setShouldShowTooltip(true)}
       onMouseLeave={() => setShouldShowTooltip(false)}
     >
-      <Tooltip tooltip={hint} isOpen={shouldShowTooltip}>
+      <Tooltip label={hint} opened={shouldShowTooltip}>
         <IconContainer color={iconColor}>
           <Icon name={icon} />
         </IconContainer>

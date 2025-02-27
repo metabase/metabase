@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
+(ns metabase-enterprise.serialization.v2.load-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.models.action :as action]
+   [metabase.actions.models :as action]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1387,3 +1387,17 @@
 
       (is (= "desc"
              (t2/select-one-fn :description :model/Field (:id f3)))))))
+
+(deftest blank-eid-creates-new-entity-test
+  (mt/with-empty-h2-app-db
+    (let [db         (ts/create! :model/Collection :name "mycoll")
+          [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id db)]]})
+          new-coll   (assoc coll-ser :entity_id nil)
+          coll-count (fn [] (t2/count :model/Collection :name "mycoll"))]
+      (serdes.load/load-metabase! (ingestion-in-memory [new-coll]))
+      (is (= 2 (coll-count)))
+      (serdes.load/load-metabase! (ingestion-in-memory [new-coll]))
+      (is (= 3 (coll-count)))
+      (testing "absent :entity_id also works"
+        (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
+        (is (= 4 (coll-count)))))))

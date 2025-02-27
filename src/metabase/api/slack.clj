@@ -3,9 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [PUT]]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
@@ -14,44 +13,51 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- truncate-url
+  "Cut length of long URLs to avoid spamming the Slack channel"
+  [url]
+  (if (<= (count url) 45)
+    url
+    (str (subs url 0 38) "..." (subs url (- (count url) 5)))))
+
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]
-  (let [metabase-info (get-in diagnostic-info [:bugReportDetails :metabase-info])
-        system-info (get-in diagnostic-info [:bugReportDetails :system-info])
-        version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
+  (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
+        reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
                    file-info
                    (:url file-info))]
-    [{:type "section"
-      :text {:type "mrkdwn"
-             :text "A new bug report has been submitted. Please check it out!"}}
-     {:type "section"
-      :text {:type "mrkdwn"
-             :text (str "*Description:*\n" (or description "N/A"))}}
-     {:type "section"
-      :fields [{:type "mrkdwn"
-                :text (str "*URL:*\n" (get diagnostic-info :url "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*App database:*\n"
-                           (get metabase-info :application-database "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Java Runtime:*\n"
-                           (get system-info :java.runtime.name "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Java Version:*\n"
-                           (get system-info :java.runtime.version "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*OS Name:*\n"
-                           (get system-info :os.name "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*OS Version:*\n"
-                           (get system-info :os.version "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Version info:*\n```"
-                           (json/encode version-info {:pretty true})
-                           "```")}]}
+    [{:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
+                              :text "New bug report from "}
+                             (if reporter
+                               {:type "link"
+                                :url (str "mailto:" (:email reporter))
+                                :text (:name reporter)}
+                               {:type "text"
+                                :text "anonymous user"})
+                             {:type "text"
+                              :text "\n\nDescription:\n"
+                              :style {:bold true}}]}]}
+     {:type "section" :text {:type "mrkdwn" :text (or description "N/A")}}
+     {:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
+                              :text "\n\nURL:\n"
+                              :style {:bold true}}
+                             {:type "link"
+                              :text (truncate-url (get diagnostic-info :url))
+                              :url (get diagnostic-info :url)}
+                             {:type "text"
+                              :text "\n\nVersion info:\n"
+                              :style {:bold true}}]}
+                 {:type "rich_text_preformatted"
+                  :border 0
+                  :elements [{:type "text"
+                              :text (json/encode version-info {:pretty true})}]}]}
      {:type "divider"}
      {:type "actions"
       :elements [{:type "button"
@@ -69,17 +75,19 @@
                          :emoji true}
                   :url file-url}]}]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/settings"
+(api.macros/defendpoint :put "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
   1. falsy token           -> clear
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
-  [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel, slack-bug-report-channel :slack-bug-report-channel} :body}]
-  {slack-app-token     [:maybe ms/NonBlankString]
-   slack-files-channel    [:maybe ms/NonBlankString]
-   slack-bug-report-channel [:maybe :string]}
+  [_route-params
+   _query-params
+   {:keys [slack-app-token slack-files-channel slack-bug-report-channel]}
+   :- [:map
+       [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-files-channel      {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (validation/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
@@ -132,38 +140,34 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/manifest"
+(api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
   (validation/check-has-application-permission :setting)
   @slack-manifest)
 
 ;; Handle bug report submissions to Slack
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/bug-report"
+(api.macros/defendpoint :post "/bug-report"
   "Send diagnostic information to the configured Slack channels."
-  [:as {{:keys [diagnosticInfo]} :body}]
-  {diagnosticInfo map?}
+  [_route-params
+   _query-params
+   {diagnostic-info :diagnosticInfo} :- [:map
+                                         ;; TODO FIXME -- this should not use `camelCase` keys
+                                         [:diagnosticInfo map?]]]
   (try
     (let [files-channel (slack/files-channel)
           bug-report-channel (slack/bug-report-channel)
-          file-content (.getBytes (json/encode diagnosticInfo {:pretty true}))
+          file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content
                                         "diagnostic-info.json"
-                                        files-channel)]
-
-      (let [blocks (create-slack-message-blocks diagnosticInfo file-info)]
-
-        (slack/post-chat-message!
-         bug-report-channel
-         nil
-         {:blocks blocks})
-
-        {:success true
-         :file-url (get file-info :permalink_public)}))
+                                        files-channel)
+          blocks (create-slack-message-blocks diagnostic-info file-info)]
+      (slack/post-chat-message!
+       bug-report-channel
+       nil
+       {:blocks blocks})
+      {:success true
+       :file-url (get file-info :permalink_public)})
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)

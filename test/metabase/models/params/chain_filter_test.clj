@@ -470,6 +470,7 @@
               :has_more_values false}
              (chain-filter-search venues.category_id {venues.price 4} "zzzzz"))))))
 
+;; Detail: Key (entity_id)=(6nmVTpCpKFRkZJigvqSVm) already exists.
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
     (let [field-id (mt/id :categories :name)]
@@ -499,7 +500,7 @@
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
             [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
-                                          (dissoc :id)
+                                          (dissoc :id :entity_id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
                                        :type     :full
@@ -686,12 +687,12 @@
                                 :fk :users}]
                               []]]
       (mt/$ids nil
-        (mt/with-dynamic-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
-                                 chain-filter/find-joins                (fn
-                                                                          ([a b c]
-                                                                           (#'chain-filter/find-joins* a b c false))
-                                                                          ([a b c d]
-                                                                           (#'chain-filter/find-joins* a b c d)))]
+        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                    chain-filter/find-joins                (fn
+                                                                             ([a b c]
+                                                                              (#'chain-filter/find-joins* a b c false))
+                                                                             ([a b c d]
+                                                                              (#'chain-filter/find-joins* a b c d)))]
           (testing "receiver_id is active and should be used for the join"
             (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                      :rhs {:table $$users, :field %users.id}}]

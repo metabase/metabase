@@ -3,11 +3,11 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
-   [metabase.integrations.common :as integrations.common]
    [metabase.public-settings :as public-settings]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -66,7 +66,7 @@
       (binding [events.notification/*skip-sending-notification?* true]
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
-      (when (integrations.common/send-new-sso-user-admin-email?)
+      (when (sso/send-new-sso-user-admin-email?)
         (messages/send-user-joined-admin-notification-email! <>, :google-auth? true)))
     (catch ExceptionInfo e
       (log/error e "Error creating new SSO user")

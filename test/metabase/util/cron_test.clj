@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.cron-test
+(ns metabase.util.cron-test
   "Tests for the util fns that convert things to and from frontend-friendly schedule map and cron strings.
    These don't test every possible combination but hopefully cover enough that we can be reasonably sure the
    logic is right."

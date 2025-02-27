@@ -1,4 +1,4 @@
-(ns ^:mb/once hooks.metabase.util.log-test
+(ns hooks.metabase.util.log-test
   (:require
    [clj-kondo.hooks-api :as api]
    [clj-kondo.impl.utils]

@@ -70,11 +70,6 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("sidebar-header-title"),
-          ).toBeInTheDocument();
-        });
         const headerTitle = await screen.findByTestId("sidebar-header-title");
         expect(headerTitle).toBeInTheDocument();
         expect(headerTitle).toHaveTextContent("Action settings");

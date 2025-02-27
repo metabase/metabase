@@ -127,7 +127,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "=",
         column,
         values: [date1],
@@ -142,7 +142,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "<",
         column,
         values: [date1],
@@ -157,7 +157,7 @@ function getTestCases(
         values: [date1],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: ">",
         column,
         values: [date1],
@@ -172,7 +172,7 @@ function getTestCases(
         values: [date1, date2],
         hasTime: false,
       },
-      expression: Lib.specificDateFilterClause(query, stageIndex, {
+      expression: Lib.specificDateFilterClause({
         operator: "between",
         column,
         values: [date1, date2],

@@ -15,6 +15,9 @@ import {
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { StringFilterEditor } from "./StringFilterEditor";
 
 interface SetupOpts {
@@ -50,15 +53,16 @@ function setup({
   });
 
   renderWithProviders(
-    <StringFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider
+      value={createMockFilterModalContext({ query, onInput })}
+    >
+      <StringFilterEditor
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {

@@ -130,11 +130,12 @@ export function booleanFilterParts(
   return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
 
-export function specificDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values, hasTime }: SpecificDateFilterParts,
-): ExpressionClause {
+export function specificDateFilterClause({
+  operator,
+  column,
+  values,
+  hasTime,
+}: SpecificDateFilterParts): ExpressionClause {
   return ML.specific_date_filter_clause(
     operator,
     column,

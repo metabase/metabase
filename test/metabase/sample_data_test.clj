@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sample-data-test
+(ns metabase.sample-data-test
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
    [clojure.core.memoize :as memoize]
@@ -8,10 +8,11 @@
    [metabase.api.database-test :as api.database-test]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models.field-values :as field-values]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
-   [metabase.sync :as sync]
-   [metabase.task.sync-databases-test :as task.sync-databases-test]
+   [metabase.sync.core :as sync]
+   [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -77,14 +78,15 @@
   (memoize/memo-clear! @#'plugins/plugins-dir*))
 
 (deftest sync-sample-database-test
-  (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "
-                "has_field_values = search instead of `list`.")
+  (testing "Make sure the Sample Database is getting synced correctly."
     (with-temp-sample-database-db [db]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (field db "PEOPLE" "NAME"))
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
               :name             "NAME"
-              :has_field_values :search
+              :has_field_values :list
               :active           true
               :visibility_type  :normal
               :preview_display  true

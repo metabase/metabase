@@ -1,14 +1,19 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
 import { useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
   databaseApi,
+  skipToken,
   tableApi,
+  useGetDatabaseMetadataQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useListDatabaseSchemaTablesQuery,
+  useListTablesQuery,
 } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
@@ -83,6 +88,7 @@ const Tables = createEntity({
         useGetQuery: useGetTableQuery,
       };
     },
+    useListQuery,
   },
 
   api: {
@@ -424,6 +430,52 @@ function getTableForeignKeyFieldIds(table) {
     .map(field => field.fk_target_field_id)
     .uniq()
     .value();
+}
+
+function useListQuery({ dbId, schemaName, ...params } = {}, options) {
+  const endpoint = getUseListQueryEndpoint(dbId, schemaName);
+
+  const databaseSchemaTables = useListDatabaseSchemaTablesQuery(
+    endpoint === "listDatabaseSchemaTables"
+      ? { id: dbId, schema: schemaName, ...params }
+      : skipToken,
+    options,
+  );
+
+  const databaseMetadataQuery = useGetDatabaseMetadataQuery(
+    endpoint === "getDatabaseMetadata" ? { id: dbId, ...params } : skipToken,
+    options,
+  );
+  const databaseMetadata = useMemo(
+    () => ({
+      ...databaseMetadataQuery,
+      data: databaseMetadataQuery.data?.tables,
+    }),
+    [databaseMetadataQuery],
+  );
+
+  const tables = useListTablesQuery(
+    endpoint === "listTables" ? params : skipToken,
+    options,
+  );
+
+  return match(endpoint)
+    .with("listDatabaseSchemaTables", () => databaseSchemaTables)
+    .with("getDatabaseMetadata", () => databaseMetadata)
+    .with("listTables", () => tables)
+    .exhaustive();
+}
+
+function getUseListQueryEndpoint(dbId, schemaName) {
+  if (dbId != null && schemaName != null) {
+    return "listDatabaseSchemaTables";
+  }
+
+  if (dbId != null) {
+    return "getDatabaseMetadata";
+  }
+
+  return "listTables";
 }
 
 export default Tables;

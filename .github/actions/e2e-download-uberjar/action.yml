@@ -68,10 +68,3 @@ runs:
     - name: Unzip Metabase artifact containing an uberjar
       run: unzip mb.zip
       shell: bash
-
-    - name: Get the version info
-      run: |
-        jar xf target/uberjar/metabase.jar version.properties
-        cat version.properties
-        mv version.properties resources/
-      shell: bash

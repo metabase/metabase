@@ -22,6 +22,7 @@
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -51,15 +52,15 @@
   ignore that column and return drills for all of the columns specified in `:dimensions`.
   `:return-drills-for-dimensions?` specifies which type we have."
   [{:f #'lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.column-extract/column-extract-drill,                     :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.combine-columns/combine-columns-drill,                   :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
@@ -74,7 +75,9 @@
   [{:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
   (not-empty
    (for [dimension dimensions]
-     (merge context dimension))))
+     (-> (merge context dimension)
+         ;; Drills expect nil :values to be converted to :null. See docstring in [[lib.js.available-drill-thrus]].
+         (update :value lib.drill-thru.common/js->drill-value)))))
 
 (mu/defn- context-with-dimensions-or-row-dimensions :- ::lib.schema.drill-thru/context
   "Return an updated `context` with either the existing `dimensions` or dimensions constructed from the `row`."
@@ -104,7 +107,8 @@
     context      :- ::lib.schema.drill-thru/context]
    (try
      (into []
-           (when (lib.metadata/editable? query)
+           (when (and (lib.metadata/editable? query)
+                      (not (lib.native/has-template-tag-variables? query)))
              (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
                    context                      (context-with-dimensions-or-row-dimensions query context)

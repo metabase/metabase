@@ -3,7 +3,7 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -56,7 +56,7 @@
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
-                              :settings :field_ref :base_type :effective_type
+                              :settings :field_ref :base_type :effective_type :database_type
                               :remapped_from :remapped_to :coercion_strategy :visibility_type
                               :was_binned])
       insights-col

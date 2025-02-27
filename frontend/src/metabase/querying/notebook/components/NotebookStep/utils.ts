@@ -44,6 +44,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Join data`,
     icon: "join_left_outer",
     priority: 1,
+    compact: true,
     color: () => color("brand"),
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
@@ -51,6 +52,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   expression: {
     title: t`Custom column`,
     icon: "add_data",
+    compact: true,
     secondary: true,
     color: () => color("bg-dark"),
     Step: ExpressionStep,

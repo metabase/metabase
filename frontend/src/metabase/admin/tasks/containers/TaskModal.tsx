@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetTaskQuery } from "metabase/api";
 import Code from "metabase/components/Code";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 

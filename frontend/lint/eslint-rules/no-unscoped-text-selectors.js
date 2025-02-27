@@ -10,7 +10,11 @@ function rule(context) {
 
         context.report({
           node,
-          message: `cy.${name} should be scoped to a container (try using .within())`,
+          message: `cy.${name} should be scoped to a container (try using .within())
+Valid usage:
+- cy.contains('.selector', 'text')
+- cy.get('.selector').${name}('text')
+- cy.within(() => cy.${name}('text'))`,
         });
       }
     },
@@ -41,7 +45,13 @@ const findNearestBlockStatement = node => {
 };
 
 const isDirectlyChainedOffOfCy = node => {
-  return node.parent.object?.name === "cy";
+  // Check if it's directly chained off cy (cy.contains())
+  if (node.parent.object?.name === "cy") {
+    return true;
+  }
+
+  // If it's not directly off cy, it's allowed (e.g. cy.get().contains())
+  return false;
 };
 
 const isFindByText = node => {
@@ -53,9 +63,34 @@ const isContains = node => {
 };
 
 const isBadFindByText = node => {
-  return (
-    (isFindByText(node) || isContains(node)) && isDirectlyChainedOffOfCy(node)
-  );
+  if (isFindByText(node) && isDirectlyChainedOffOfCy(node)) {
+    return true;
+  }
+
+  if (isContains(node) && isDirectlyChainedOffOfCy(node)) {
+    // Get the CallExpression node which contains the arguments
+    const callExpression = node.parent.parent;
+    if (!callExpression || callExpression.type !== "CallExpression") {
+      return false;
+    }
+
+    // If there's only one argument, it's bad
+    if (callExpression.arguments.length === 1) {
+      return true;
+    }
+
+    // If there are two arguments but the second one is an object, treat it like a single argument
+    if (
+      callExpression.arguments.length === 2 &&
+      callExpression.arguments[1].type === "ObjectExpression"
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
 };
 
 // eslint-disable-next-line import/no-commonjs
@@ -63,7 +98,8 @@ module.exports = {
   meta: {
     type: "problem",
     docs: {
-      description: "Flags all top-level cy.findByText and cy.contains calls",
+      description:
+        "Flags unscoped cy.findByText calls and single-argument cy.contains calls. Valid examples: cy.contains('.selector', 'text'), cy.get('.selector').contains('text'), cy.within(() => cy.contains('text')). Invalid examples: cy.contains('text'), cy.findByText('text')",
     },
     schema: [], // no options
   },

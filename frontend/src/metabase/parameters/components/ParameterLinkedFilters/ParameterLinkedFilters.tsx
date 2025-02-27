@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { skipToken, useGetFieldQuery, useGetTableQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Box, Switch } from "metabase/ui";
 import type { FieldId, Parameter, ParameterId } from "metabase-types/api";
 
@@ -22,7 +22,7 @@ import {
   SectionHeader,
   SectionMessage,
   SectionMessageLink,
-} from "./ParameterLinkedFilters.styled";
+} from "./ParameterLinkedFiltersComponents";
 import useFilterFields from "./use-filter-fields";
 
 export interface ParameterLinkedFiltersProps {

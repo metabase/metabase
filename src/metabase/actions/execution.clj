@@ -2,15 +2,15 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.actions :as actions]
+   [metabase.actions.actions :as actions]
    [metabase.actions.http-action :as http-action]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.actions.models :as action]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.action :as action]
-   [metabase.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -47,13 +47,13 @@
                          :parameters request-parameters}
                         e))))))
 
-(defn- implicit-action-table
-  [card_id]
-  (let [card (t2/select-one :model/Card :id card_id)
+(mu/defn- implicit-action-table
+  [card-id :- pos-int?]
+  (let [card (t2/select-one :model/Card :id card-id)
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
-(defn- execute-custom-action [action request-parameters]
+(defn- execute-custom-action! [action request-parameters]
   (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
     (let [model (t2/select-one :model/Card :id (:model_id action))]
@@ -151,7 +151,7 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
-(defn- execute-implicit-action
+(defn- execute-implicit-action!
   [action request-parameters]
   (let [implicit-action (keyword (:kind action))
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
@@ -189,9 +189,9 @@
         request-parameters     (merge missing-param-defaults request-parameters)]
     (case (:type action)
       :implicit
-      (execute-implicit-action action request-parameters)
+      (execute-implicit-action! action request-parameters)
       (:query :http)
-      (execute-custom-action action request-parameters)
+      (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
 (mu/defn execute-dashcard!
@@ -204,11 +204,11 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action
-                           {:event     :action-executed
-                            :source    :dashboard
-                            :type      (:type action)
-                            :action_id (:id action)})
+    (analytics/track-event! :snowplow/action
+                            {:event     :action-executed
+                             :source    :dashboard
+                             :type      (:type action)
+                             :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -223,7 +223,7 @@
               :action-id   (:id action)}
         card (t2/select-one :model/Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
-        result (binding [persisted-info/*allow-persisted-substitution* false]
+        result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query
                   (qp/userland-query
                    (qp.card/query-for-card card prefetch-parameters nil nil)

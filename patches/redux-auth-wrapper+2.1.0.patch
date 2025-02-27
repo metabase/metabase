@@ -1,0 +1,36 @@
+diff --git a/node_modules/redux-auth-wrapper/helper/redirect.js b/node_modules/redux-auth-wrapper/helper/redirect.js
+index 0c4ed18..16eb362 100644
+--- a/node_modules/redux-auth-wrapper/helper/redirect.js
++++ b/node_modules/redux-auth-wrapper/helper/redirect.js
+@@ -103,7 +103,12 @@ exports.default = function (_ref) {
+         authenticatingSelector = allArgs.authenticatingSelector,
+         allowRedirectBack = allArgs.allowRedirectBack,
+         redirectAction = allArgs.redirectAction,
+-        redirectQueryParamName = allArgs.redirectQueryParamName;
++        redirectQueryParamName = allArgs.redirectQueryParamName,
++        context = allArgs.context;
++
++    if (!context) {
++      (0, _invariant2.default)(false, 'you must provide a custom context');
++    }
+ 
+     var _locationHelperBuilde2 = locationHelperBuilder({
+       redirectQueryParamName: redirectQueryParamName
+@@ -140,7 +145,7 @@ exports.default = function (_ref) {
+       };
+     };
+ 
+-    var ConnectedFailureComponent = (0, _reactRedux.connect)(null, createRedirect)(FailureComponent);
++    var ConnectedFailureComponent = (0, _reactRedux.connect)(null, createRedirect, undefined, { context })(FailureComponent);
+ 
+     return function (DecoratedComponent) {
+       return (0, _reactRedux.connect)(function (state, ownProps) {
+@@ -149,7 +154,7 @@ exports.default = function (_ref) {
+           isAuthenticated: authenticatedSelector(state, ownProps),
+           isAuthenticating: authenticatingSelector(state, ownProps)
+         };
+-      })((0, _authWrapper2.default)(_extends({}, allArgs, { FailureComponent: ConnectedFailureComponent }))(DecoratedComponent));
++      }, undefined, undefined, { context })((0, _authWrapper2.default)(_extends({}, allArgs, { FailureComponent: ConnectedFailureComponent }))(DecoratedComponent));
+     };
+   };
+ 

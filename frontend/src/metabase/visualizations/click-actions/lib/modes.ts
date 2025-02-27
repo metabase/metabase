@@ -1,4 +1,5 @@
-import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
 import { Mode } from "../Mode";
@@ -11,9 +12,14 @@ export function getMode(question: Question): Mode | null {
   return new Mode(question, queryMode);
 }
 
-export function getEmbeddingMode(
-  question: Question,
-  plugins?: MetabasePluginsConfig,
-): Mode | null {
-  return new Mode(question, EmbeddingSdkMode, plugins);
+export function getEmbeddingMode({
+  question,
+  queryMode = EmbeddingSdkMode,
+  plugins,
+}: {
+  question: Question;
+  queryMode?: QueryClickActionsMode;
+  plugins?: MetabasePluginsConfig;
+}): Mode {
+  return new Mode(question, queryMode, plugins);
 }

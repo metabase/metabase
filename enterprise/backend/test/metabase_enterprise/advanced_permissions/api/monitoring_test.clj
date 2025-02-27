@@ -1,8 +1,8 @@
-(ns ^:mb/once metabase-enterprise.advanced-permissions.api.monitoring-test
+(ns metabase-enterprise.advanced-permissions.api.monitoring-test
   "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
 (deftest task-test

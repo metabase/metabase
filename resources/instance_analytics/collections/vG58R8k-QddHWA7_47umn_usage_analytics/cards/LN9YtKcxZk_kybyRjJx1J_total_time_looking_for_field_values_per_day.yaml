@@ -31,6 +31,8 @@ dataset_query:
           - v_tasks
           - duration_seconds
         - base-type: type/Float
+    aggregation-idents:
+      0: aggregation_LN9YtKcxZk_kybyRjJx1J@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -46,6 +48,9 @@ dataset_query:
         - name
       - base-type: type/Text
         join-alias: Databases - Database Qualified
+    breakout-idents:
+      0: breakout_LN9YtKcxZk_kybyRjJx1J@0__0
+      1: breakout_LN9YtKcxZk_kybyRjJx1J@0__1
     filter:
     - =
     - - field
@@ -74,6 +79,7 @@ dataset_query:
         - base-type: type/Text
           join-alias: Databases - Database Qualified
       fields: all
+      ident: join_LN9YtKcxZk_kybyRjJx1J@0__Databases - Database Qualified
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     source-table: PKhlEfegdbTozSMfj0aLB
@@ -82,7 +88,7 @@ result_metadata:
 - base_type: type/Date
   coercion_strategy: null
   description: null
-  display_name: Started At
+  display_name: 'Started At: Day'
   effective_type: type/Date
   field_ref:
   - field
@@ -149,6 +155,7 @@ serdes/meta:
   label: total_time_looking_for_field_values_per_day
   model: Card
 archived_directly: false
+dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (a98530f)
 source_card_id: PKhlEfegdbTozSMfj0aLB
 type: question

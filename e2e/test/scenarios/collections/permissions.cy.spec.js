@@ -1,6 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 
@@ -116,11 +116,11 @@ describe("collection permissions", () => {
 
                 it("should be able to archive/unarchive model", () => {
                   cy.skipOn(user === "nodata");
-                  cy.createNativeQuestion({
+                  H.createNativeQuestion({
                     name: "Model",
                     type: "model",
                     native: {
-                      query: "SELECT * FROM ORDERS",
+                      query: "SELECT 1",
                     },
                   });
                   archiveUnarchive("Model", "model");
@@ -376,7 +376,8 @@ describe("collection permissions", () => {
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
-    H.openNativeEditor().type("select * from people");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 

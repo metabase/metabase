@@ -6,7 +6,7 @@ import type {
   OnMoveWithSourceAndDestination,
 } from "metabase/collections/types";
 import { useCollectionQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Collections from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";

@@ -1,11 +1,13 @@
 (ns metabase.notification.payload.execute
   (:require
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
+   [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -15,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
@@ -108,7 +111,7 @@
     ;; If there's no heading text, the heading is empty, so we return nil.
     (when (get-in dashcard [:visualization_settings :text])
       (update-in dashcard [:visualization_settings :text]
-                 #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex))))
+                 #(str "## " %)))
     dashcard))
 
 (defn- escape-markdown-chars?
@@ -131,6 +134,10 @@
                                    {}
                                    tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+
+(defn- data-rows-to-disk!
+  [qp-result]
+  (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -180,7 +187,9 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values parameters)]
-      (execute-dashboard-subscription-card dashcard parameters))
+      ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
+      ;; memory
+      (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -209,7 +218,7 @@
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (keep #(dashcard->part % parameters) ordered-dashcards))))
 
-(def Part
+(mr/def ::Part
   "Part."
   [:multi {:dispatch :type}
    [:card      [:map {:closed true}
@@ -225,7 +234,7 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
-(mu/defn execute-dashboard :- [:sequential Part]
+(mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts."
   [dashboard-id user-id parameters]
   (request/with-current-user user-id
@@ -242,7 +251,7 @@
 
 ;; TODO - this should be done async
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
-(mu/defn execute-card :- [:maybe Part]
+(mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?
@@ -261,7 +270,7 @@
                               (process-fn
                                (qp/userland-query
                                 (assoc query
-                                       :middleware {:skip-results-metadata?            true
+                                       :middleware {:skip-results-metadata?            false
                                                     :process-viz-settings?             true
                                                     :js-int-to-string?                 false
                                                     :add-default-userland-constraints? false})

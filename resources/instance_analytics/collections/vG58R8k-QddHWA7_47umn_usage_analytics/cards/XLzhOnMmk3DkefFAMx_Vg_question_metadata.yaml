@@ -208,6 +208,7 @@ serdes/meta:
   label: question_metadata
   model: Card
 archived_directly: false
+dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

@@ -7,7 +7,7 @@
   4. run migration(s) after that point (verify that they actually run)
   5. verify that data looks like what we'd expect after running migration(s)
 
-  Actual tests using this code live in `metabase.db.schema-migrations-test`."
+  Actual tests using this code live in [[metabase.db.schema-migrations-test]]."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

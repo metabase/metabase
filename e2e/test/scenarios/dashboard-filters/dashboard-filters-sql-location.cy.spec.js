@@ -1,6 +1,10 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import {
+  addWidgetStringFilter,
+  applyFilterByType,
+  selectFilterValueFromList,
+} from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import {
   DASHBOARD_SQL_LOCATION_FILTERS,
@@ -16,7 +20,7 @@ describe("scenarios > dashboard > filters > location", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -39,8 +43,9 @@ describe("scenarios > dashboard > filters > location", () => {
 
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value, { search: true });
 
         cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
@@ -62,7 +67,7 @@ describe("scenarios > dashboard > filters > location", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
-    addWidgetStringFilter("Rye");
+    selectFilterValueFromList("Rye", { search: true });
 
     H.saveDashboard();
 

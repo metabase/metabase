@@ -73,7 +73,7 @@ export function FormCollectionAndDashboardPicker({
   className,
   style,
   title,
-  placeholder = t`Select a collection or dashboard`,
+  placeholder,
   type = "collections",
   filterPersonalCollections,
   collectionPickerModalProps,
@@ -90,6 +90,10 @@ export function FormCollectionAndDashboardPicker({
   const [dashboardIdInput, dashboardIdMeta, dashboardIdHelpers] =
     dashboardField;
 
+  const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
+    ? t`Select a collection or dashboard`
+    : t`Select a collection`;
+
   const pickerValue = dashboardIdInput.value
     ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
     : ({ id: collectionIdInput.value, model: "collection" } as const);
@@ -98,6 +102,7 @@ export function FormCollectionAndDashboardPicker({
   const error = dashboardIdMeta.error || collectionIdMeta.error;
 
   const formFieldRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const openCollection = useSelector(state =>
@@ -162,6 +167,13 @@ export function FormCollectionAndDashboardPicker({
     [collectionIdHelpers, dashboardIdHelpers],
   );
 
+  const handleModalClose = () => {
+    setIsPickerOpen(false);
+    // restore focus to form element so if Esc key is pressed multiple times,
+    // nested modals close in sequence
+    buttonRef.current?.focus();
+  };
+
   return (
     <>
       <FormField
@@ -174,10 +186,11 @@ export function FormCollectionAndDashboardPicker({
       >
         <Button
           data-testid="dashboard-and-collection-picker-button"
+          ref={buttonRef}
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightIcon={<Icon name="ellipsis" />}
+          rightSection={<Icon name="ellipsis" />}
           styles={{
             inner: {
               justifyContent: "space-between",
@@ -193,16 +206,16 @@ export function FormCollectionAndDashboardPicker({
               type={type}
             />
           ) : (
-            placeholder
+            (placeholder ?? pickerTitle)
           )}
         </Button>
       </FormField>
       {isPickerOpen && (
         <CollectionPickerModal
-          title={t`Select a collection or dashboard`}
+          title={pickerTitle}
           value={pickerValue}
           onChange={handleChange}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={handleModalClose}
           options={options}
           {...collectionPickerModalProps}
         />

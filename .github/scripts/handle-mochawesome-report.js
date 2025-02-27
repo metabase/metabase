@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { merge } = require("mochawesome-merge");
 
 const logger = { debug: console.debug, error: console.error };
 
@@ -50,15 +51,16 @@ const extractTestResultsInfo = ({ results, stats }) => {
   };
 };
 
-function parseReport() {
-  const content = fs.readFileSync(
-    "./cypress/reports/cypress-test-report.json",
-    "utf-8",
-  );
+async function generateReport() {
+  const files = ["./cypress/reports/mochareports/*.json"];
 
-  const data = JSON.parse(content);
+  return await merge({ files });
+}
 
-  return extractTestResultsInfo(data).failedTests.map(test => ({
+exports.generateReport = generateReport;
+
+function parseReport(report) {
+  return extractTestResultsInfo(report).failedTests.map(test => ({
     title: test.fullTitle,
     error: test.err?.message,
     path: test.path,

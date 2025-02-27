@@ -1,7 +1,12 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi, datasetApi, useGetCardQuery } from "metabase/api";
+import {
+  cardApi,
+  datasetApi,
+  useGetCardQuery,
+  useListCardsQuery,
+} from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -46,6 +51,7 @@ const Questions = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
+    useListQuery: useListCardsQuery,
   },
 
   api: {
@@ -124,7 +130,7 @@ const Questions = createEntity({
       ),
 
     // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
-    // this function name is incorrectly but maintained for consistency with other entities.
+    // this function name is incorrect but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
       return async dispatch => {
         const archived =

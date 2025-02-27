@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.schema-test
+(ns metabase.legacy-mbql.schema-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
@@ -86,6 +86,37 @@
              #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
              #"keys in template tag map must match the :name of their values"
              (mbql.s/validate-query bad-query)))))))
+
+(deftest ^:parallel coalesce-aggregation-test
+  (testing "should be able to nest aggregation functions within a coalesce"
+    (let [query {:database 1,
+                 :type :query,
+                 :query
+                 {:source-table 5,
+                  :aggregation
+                  [[:aggregation-options
+                    [:/
+                     [:sum [:field 42 {:base-type :type/Float}]]
+                     [:coalesce [:sum [:field 36 {:base-type :type/Float}]] 1]]
+                    {:name "Avg discount", :display-name "Avg discount"}]],
+                  :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
+                 :parameters []}]
+      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (= query (mbql.s/validate-query query))))))
+
+(deftest ^:parallel year-of-era-test
+  (testing "year-of-era aggregations should be recognized"
+    (let [query {:database 1,
+                 :type :query,
+                 :query
+                 {:source-table 5,
+                  :aggregation [[:count]],
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
+                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
+                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                 :parameters []}]
+      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (= query (mbql.s/validate-query query))))))
 
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))

@@ -13,9 +13,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -79,11 +79,17 @@
             {:name "id", :id test-uuid, :display-name "ID", :type :text, :default "100"}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
 
-  (testing "Default not used with empty value when required"
-    (is (thrown? Exception
-                 (#'params.values/value-for-tag
-                  {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
-                  [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}])))))
+  (testing "Default used with empty value when required"
+    (is (= "100"
+           (#'params.values/value-for-tag
+            {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+
+  (testing "BigInteger value"
+    (is (= 9223372036854775808
+           (#'params.values/value-for-tag
+            {:name "id", :id test-uuid, :display-name "ID", :type :number}
+            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
@@ -582,7 +588,7 @@
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
-                                      {:cards [(assoc (lib.tu/mock-cards :orders)
+                                      {:cards [(assoc ((lib.tu/mock-cards) :orders)
                                                       :id 1
                                                       :dataset-query (lib.tu.macros/mbql-query orders
                                                                        {:filter      [:between $total 30 60]
@@ -602,45 +608,41 @@
                nil))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-test
-  (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
+  (testing "should not throw an Exception if no :value is specified for a required parameter when defaults are provided"
     (mt/dataset test-data
       (testing "Field filters"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You'll need to pick a value for 'Filter' before this query can run."
-             (query->params-map
-              {:template-tags {"filter"
-                               {:id           "xyz456"
-                                :name         "filter"
-                                :display-name "Filter"
-                                :type         :dimension
-                                :dimension    [:field (mt/id :products :category) nil]
-                                :widget-type  :category
-                                :default      ["Gizmo" "Gadget"]
-                                :required     true}}
-               :parameters    [{:type    :string/=
-                                :id      "abc123"
-                                :default ["Widget"]
-                                :target  [:dimension [:template-tag "filter"]]}]})))))))
+        (is (=? {"filter" {:value {:value ["Gizmo" "Gadget"]}}}
+                (query->params-map
+                 {:template-tags {"filter"
+                                  {:id           "xyz456"
+                                   :name         "filter"
+                                   :display-name "Filter"
+                                   :type         :dimension
+                                   :dimension    [:field (mt/id :products :category) nil]
+                                   :widget-type  :category
+                                   :default      ["Gizmo" "Gadget"]
+                                   :required     true}}
+                  :parameters    [{:type    :string/=
+                                   :id      "abc123"
+                                   :default ["Widget"]
+                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-raw-value-test
-  (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
+  (testing "should not throw an Exception if no :value is specified for a required parameter when defaults are provided"
     (testing "Raw value template tags"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"You'll need to pick a value for 'Filter' before this query can run."
-           (query->params-map
-            {:template-tags {"filter"
-                             {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                              :name         "filter"
-                              :display-name "Filter"
-                              :type         :text
-                              :required     true
-                              :default      "Foo"}}
-             :parameters    [{:type    :string/=
-                              :id      "5791ff38"
-                              :default "Bar"
-                              :target  [:variable [:template-tag "filter"]]}]}))))))
+      (is (= {"filter" "Foo"}
+             (query->params-map
+              {:template-tags {"filter"
+                               {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                :name         "filter"
+                                :display-name "Filter"
+                                :type         :text
+                                :required     true
+                                :default      "Foo"}}
+               :parameters    [{:type    :string/=
+                                :id      "5791ff38"
+                                :default "Bar"
+                                :target  [:variable [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"

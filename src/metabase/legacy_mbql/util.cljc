@@ -473,7 +473,9 @@
       desugar-if
       maybe-desugar-expression))
 
-(defmulti ^:private negate* first)
+(defmulti ^:private negate*
+  {:arglists '([mbql-clause])}
+  first)
 
 (defmethod negate* :not [[_ subclause]]    subclause)
 (defmethod negate* :and [[_ & subclauses]] (into [:or]  (map negate* subclauses)))
@@ -786,17 +788,6 @@
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 
-(defn- safe-min [& args]
-  (transduce
-   (filter some?)
-   (completing
-    (fn [acc n]
-      (if acc
-        (min acc n)
-        n)))
-   nil
-   args))
-
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
@@ -818,12 +809,12 @@
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
   (let [mbql-limit        (when (= query-type :query)
-                            (safe-min items limit))
+                            (u/safe-min items limit))
         constraints-limit (or
                            (when-not aggregations
                              max-results-bare-rows)
                            max-results)]
-    (safe-min mbql-limit constraints-limit)))
+    (u/safe-min mbql-limit constraints-limit)))
 
 (defn- remove-empty [x]
   (cond

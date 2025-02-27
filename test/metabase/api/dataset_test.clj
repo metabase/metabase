@@ -9,7 +9,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.pivots :as api.pivots]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
@@ -19,10 +18,11 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -175,7 +175,7 @@
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
                                    :post 200 url
-                                   :query (json/encode (mt/mbql-query checkins {:limit 1})))
+                                   {:query (mt/mbql-query checkins {:limit 1})})
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
@@ -209,10 +209,9 @@
                                                      :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
-                                                   :query (json/encode
-                                                           {:database lib.schema.id/saved-questions-virtual-database-id
+                                                   {:query {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
-                                                            :query    {:source-table (str "card__" (u/the-id card))}}))]
+                                                            :query    {:source-table (str "card__" (u/the-id card))}}})]
                   (is (some? result))
                   (when (some? result)
                     (is (= 16
@@ -301,37 +300,44 @@
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
       (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
-        (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                           :query (json/encode
-                                                   {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (mt/id :venues)}
-                                                    :middleware
-                                                    {:add-default-userland-constraints? true
-                                                     :userland-query?                   true}}))]
-          (is (some? result))
-          (when (some? result)
-            (is (= 101
-                   (count (csv/read-csv result))))))))))
+        (doseq [:let     [query {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (mt/id :venues)}
+                                 :middleware
+                                 {:add-default-userland-constraints? true
+                                  :userland-query?                   true}}]
+                encoded? [true false]
+                :let     [query (cond-> query
+                                  encoded? json/encode)]]
+          (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                             {:query query})]
+            (is (some? result))
+            (when (some? result)
+              (is (= 101
+                     (count (csv/read-csv result)))))))))))
 
 (deftest export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
-      (let [query (json/encode {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :venues)
-                                           :limit 1}
-                                :middleware
-                                {:add-default-userland-constraints? true
-                                 :userland-query?                   true}})]
-        (mt/with-column-remappings [venues.category_id categories.name]
-          (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                             :query query)]
-            (is (str/includes? result "Asian"))))
-        (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-          (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                             :query query)]
-            (is (str/includes? result "Asian"))))))))
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (mt/id :venues)
+                              :limit 1}
+                   :middleware
+                   {:add-default-userland-constraints? true
+                    :userland-query?                   true}}]
+        (doseq [encoded? [true false]
+                :let     [query (cond-> query
+                                  encoded? json/encode)]]
+          (testing (format "encoded? %b" encoded?)
+            (mt/with-column-remappings [venues.category_id categories.name]
+              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                                 {:query query})]
+                (is (str/includes? result "Asian"))))
+            (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                                 {:query query})]
+                (is (str/includes? result "Asian"))))))))))
 
 (deftest non-download-queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
@@ -677,8 +683,8 @@
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
                                   (lib/limit 2))]
-        (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
-                               ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+        (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mlv2-query-convert-to-native-test
@@ -726,8 +732,7 @@
                  (->> (mt/user-http-request
                        :crowberto :post 200
                        (format "dataset/%s" (name export-format))
-                       :query (json/encode q)
-                       :format_rows apply-formatting?)
+                       {:query q, :format_rows apply-formatting?})
                       ((get output-helper export-format))))))))))
 
 (deftest ^:parallel query-metadata-test

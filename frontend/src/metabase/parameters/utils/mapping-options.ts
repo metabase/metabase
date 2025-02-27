@@ -2,10 +2,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.models.params.shared";
-import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { getGroupName } from "metabase/querying/filters/utils";
+import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
@@ -22,10 +21,12 @@ import {
   buildTextTagTarget,
   getParameterColumns,
 } from "metabase-lib/v1/parameters/utils/targets";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   BaseDashboardCard,
   Card,
+  DimensionReference,
   NativeParameterDimensionTarget,
   Parameter,
   ParameterTarget,
@@ -33,6 +34,7 @@ import type {
   StructuredParameterDimensionTarget,
   WritebackParameter,
 } from "metabase-types/api";
+import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
@@ -210,4 +212,65 @@ export function getParameterMappingOptions(
   );
 
   return options;
+}
+
+export function getMappingOptionByTarget(
+  mappingOptions: ParameterMappingOption[],
+  target?: ParameterTarget | null,
+  question?: Question,
+  parameter?: Parameter,
+): ParameterMappingOption | undefined {
+  if (!target) {
+    return;
+  }
+
+  const matchedMappingOptions = mappingOptions.filter(mappingOption =>
+    _.isEqual(mappingOption.target, target),
+  );
+  // Native queries - targets CAN be tested for equality
+  // MBQL queries - targets generally CANNOT be tested for equality, but if there is an exact match, we use it to
+  // optimize performance
+  if (matchedMappingOptions.length === 1) {
+    return matchedMappingOptions[0];
+  }
+  // `Lib.findColumnIndexesFromLegacyRefs` throws for non-MBQL references, so we
+  // need to ignore such references here
+  if (!question || !isStructuredDimensionTarget(target)) {
+    return undefined;
+  }
+
+  const { query, columns } = getParameterColumns(question, parameter);
+  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const normalizedTarget = normalize(target);
+  const fieldRef = normalizedTarget[1];
+
+  for (const stageIndex of stageIndexes) {
+    const stageColumns = columns
+      .filter(column => column.stageIndex === stageIndex)
+      .map(({ column }) => column);
+
+    const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      stageColumns,
+      [fieldRef],
+    );
+
+    if (columnByTargetIndex !== -1) {
+      const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+        query,
+        stageIndex,
+        stageColumns,
+        mappingOptions.map(({ target }) => target[1] as DimensionReference),
+      );
+
+      const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
+
+      if (mappingIndex >= 0) {
+        return mappingOptions[mappingIndex];
+      }
+    }
+  }
+
+  return undefined;
 }

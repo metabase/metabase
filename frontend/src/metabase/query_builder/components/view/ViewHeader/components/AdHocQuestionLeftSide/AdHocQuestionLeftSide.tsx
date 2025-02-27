@@ -9,7 +9,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
-import { DashboardSaveLocation } from "../DashboardSaveLocation";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
 
@@ -44,8 +43,6 @@ export function AdHocQuestionLeftSide(
     }
   };
 
-  const dashboardName = question.dashboardName();
-
   return (
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
       <Flex align="center" wrap="nowrap">
@@ -74,9 +71,6 @@ export function AdHocQuestionLeftSide(
             isObjectDetail={isObjectDetail}
             subHead
           />
-        )}
-        {dashboardName && (
-          <DashboardSaveLocation dashboardName={dashboardName} />
         )}
       </ViewSubHeading>
     </Box>

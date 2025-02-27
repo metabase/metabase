@@ -1,12 +1,12 @@
-(ns ^:mb/once metabase.sync.field-values-test
+(ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.models.field-values :as field-values]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -24,6 +24,11 @@
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
+      ;; Reset them to values that should get updated during sync
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -32,10 +37,14 @@
       (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
       (is (= nil
              (venues-price-field-values))))
-    (testing "After the delete, a field values should be created, the rest updated"
-      (is (= (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
+    (testing "After the delete, a field values should not be created"
+      (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
              (sync-database!' "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
+      ;; Reset them to values that should get updated during sync
+      (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
       (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
@@ -141,6 +150,8 @@
   (one-off-dbs/with-blueberries-db
     ;; insert 50 rows & sync
     (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
+    ;; Manually activate Field values since they are not created during sync (#53387)
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
@@ -157,23 +168,25 @@
                                     :type :sandbox
                                     :hash_key "random-key"})
 
-    (testing (str "if the number grows past the cardinality threshold & we sync again it should get unmarked as auto-list "
-                  "and set back to `nil` (#3215)\n")
+    (testing "We mark the field values as :has_more_values when it grows too big."
       ;; now insert enough bloobs to put us over the limit and re-sync.
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
-      (testing "has_field_values should have been set to nil."
-        (is (= nil
+      (testing "has_field_values stay auto-list."
+        (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
 
-      (testing "its FieldValues should also get deleted."
-        (is (= nil
-               (t2/select-one :model/FieldValues
-                              :field_id (mt/id :blueberries_consumed :str))))))))
+      (testing "its FieldValues be limited."
+        (is (=? {:values #(>= analyze/auto-list-cardinality-threshold (count %))
+                 :has_more_values true}
+                (t2/select-one :model/FieldValues
+                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest auto-list-with-max-length-threshold-test
   (one-off-dbs/with-blueberries-db
     ;; insert 50 rows & sync
     (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
+    ;; Manually activate Field values since they are not created during sync (#53387)
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
@@ -184,17 +197,20 @@
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
-    (testing (str "If the total length of all values exceeded the length threshold, it should get unmarked as auto list "
-                  "and set back to `nil`")
-      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
+    (testing "If the total length of all values exceeded the length threshold, it should get stay as auto list but be limitted"
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 10 "B"))
+                                          (str/join (repeat (+ 100 field-values/*total-max-length*) "X"))
+                                          (str/join (repeat 10 "Z"))])
       (testing "has_field_values should have been set to nil."
-        (is (= nil
+        (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
 
-      (testing "All of its FieldValues should also get deleted."
-        (is (= nil
-               (t2/select-one :model/FieldValues
-                              :field_id (mt/id :blueberries_consumed :str))))))))
+      (testing "Field values before the limit is reached are added"
+        (is (=? {:has_more_values true
+                 :values [(str/join (repeat 50 "A"))
+                          (str/join (repeat 10 "B"))]}
+                (t2/select-one :model/FieldValues
+                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest list-with-cardinality-threshold-test
   (testing "If we had explicitly marked the Field as `list` (instead of `auto-list`)"
@@ -202,6 +218,8 @@
       ;; insert 50 bloobs & sync
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
       ;; change has_field_values to list
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
@@ -232,6 +250,8 @@
     (one-off-dbs/with-blueberries-db
       ;; insert a row with values contain 50 chars
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
       ;; change has_field_values to list
       (t2/update! :model/Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"

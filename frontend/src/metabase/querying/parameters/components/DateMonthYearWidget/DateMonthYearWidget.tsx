@@ -4,34 +4,33 @@ import { match } from "ts-pattern";
 import { MonthYearPicker } from "metabase/querying/filters/components/MonthYearPicker";
 import type { MonthYearPickerValue } from "metabase/querying/filters/types";
 import {
-  deserializeDateFilter,
-  serializeDateFilter,
-} from "metabase/querying/parameters/utils/dates";
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "metabase/querying/parameters/utils/parsing";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateMonthYearPickerProps = {
-  value: string | undefined;
+  value: ParameterValueOrArray | null | undefined;
   onChange: (value: string) => void;
 };
 
 export function DateMonthYearWidget({
-  value: valueText,
+  value,
   onChange,
 }: DateMonthYearPickerProps) {
-  const value = useMemo(() => getPickerValue(valueText), [valueText]);
+  const pickerValue = useMemo(() => getPickerValue(value), [value]);
 
-  const handleChange = (value: MonthYearPickerValue) => {
-    onChange(serializeDateFilter(value));
+  const handleChange = (newPickerValue: MonthYearPickerValue) => {
+    onChange(serializeDateParameterValue(newPickerValue));
   };
 
-  return <MonthYearPicker value={value} onChange={handleChange} />;
+  return <MonthYearPicker value={pickerValue} onChange={handleChange} />;
 }
 
 function getPickerValue(
-  valueText: string | undefined,
+  value: ParameterValueOrArray | null | undefined,
 ): MonthYearPickerValue | undefined {
-  const value =
-    valueText != null ? deserializeDateFilter(valueText) : undefined;
-  return match(value)
+  return match(deserializeDateParameterValue(value))
     .returnType<MonthYearPickerValue | undefined>()
     .with({ type: "month" }, value => value)
     .otherwise(() => undefined);

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue 26470", { tags: "@external" }, () => {
@@ -55,7 +55,7 @@ describe("issue 21532", () => {
   });
 });
 
-describe("issue 41765", { tags: ["@external"] }, () => {
+describe("issue 41765", { tags: "@external" }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
   // so we need to navigate by clicking trough the UI without reloading the page.
 
@@ -68,8 +68,8 @@ describe("issue 41765", { tags: ["@external"] }, () => {
   const COLUMN_DISPLAY_NAME = "Another Column";
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     cy.signInAsAdmin();
 
     H.resyncDatabase({
@@ -173,6 +173,9 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
+    //TODO: Fix this shame
+    cy.wait(2000);
+
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")
       .click();
@@ -186,12 +189,18 @@ describe("(metabase#46714)", () => {
       cy.findByLabelText("Starting from…").click();
     });
 
-    H.relativeDatePicker.setValue({ value: 68, unit: "day" });
+    H.relativeDatePicker.setValue(
+      { value: 68, unit: "day" },
+      H.segmentEditorPopover,
+    );
 
-    H.relativeDatePicker.setStartingFrom({
-      value: 70,
-      unit: "day",
-    });
+    H.relativeDatePicker.setStartingFrom(
+      {
+        value: 70,
+        unit: "day",
+      },
+      H.segmentEditorPopover,
+    );
 
     H.popover().findByText("Add filter").click();
 
@@ -209,6 +218,7 @@ describe("(metabase#46714)", () => {
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");

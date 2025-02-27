@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
@@ -203,7 +203,9 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-function databaseSupportsPivotTables(query: StructuredQuery) {
+function databaseSupportsPivotTables(
+  query: StructuredQuery | null | undefined,
+) {
   if (!query) {
     return true;
   }
@@ -226,7 +228,7 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 export function checkRenderable(
   [{ data }]: [{ data: DatasetData }],
   settings: VisualizationSettings,
-  query: StructuredQuery,
+  query?: StructuredQuery | null,
 ) {
   if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);

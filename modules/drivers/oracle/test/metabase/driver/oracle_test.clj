@@ -4,7 +4,9 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.oracle :as oracle]
@@ -12,13 +14,16 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -31,9 +36,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Base64)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -388,7 +391,7 @@
 (deftest oracle-connect-with-ssl-test
   ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
   (mt/test-driver :oracle
-    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL") ; only even run this test if this env var is set
+    (if (some-> (env/env :mb-oracle-ssl-test-ssl) Boolean/parseBoolean)
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
@@ -405,8 +408,10 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (.encodeToString (Base64/getEncoder)
-                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               (-> ssl-details
+                                                   :ssl-truststore-path
+                                                   mt/file-path->bytes
+                                                   mt/bytes->base64-data-uri)
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
@@ -414,8 +419,7 @@
                 (testing (str " " variant)
                   (mt/with-temp [:model/Database database {:engine  :oracle,
                                                            :name    (format (str variant " version of %d") (mt/id)),
-                                                           :details (->> details
-                                                                         (driver.u/db-details-client->server :oracle))}]
+                                                           :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})
@@ -541,3 +545,45 @@
                   (mt/run-mbql-query
                     dates_with_time
                     {:filter [:= [:field %date_with_time {:base-type :type/Date}] "2024-11-05T12:12:12"]})))))))))
+
+(deftest ^:parallel repro-49433-test
+  (mt/test-driver
+    :oracle
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                  (lib/aggregate $ (lib/count))
+                  (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
+                                                (lib/breakoutable-columns $)))
+                  (lib/breakout $ (lib/with-temporal-bucket
+                                    (m/find-first (comp #{"Created At"} :display-name)
+                                                  (lib/breakoutable-columns $))
+                                    :minute))
+                  (lib/limit $ 1))]
+      (testing "Column has effective_type DateTime (#49433)"
+        (is (=? {:effective_type :type/DateTime}
+                (m/find-first (comp #{"created_at"} :name)
+                              (mt/cols (qp/process-query query)))))))))
+
+(deftest date-filter-variable
+  (testing "Date filter variables work against date-times"
+    (mt/test-driver
+      :oracle
+      (mt/dataset
+        date-cols-with-datetime-values
+        (doseq [widget-type [:date/single :date/all-options]]
+          (let [query (mt/native-query
+                        {:query "SELECT *
+                               FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\"
+                               WHERE {{date_filter}}"
+                         :template-tags {"date_filter"
+                                         {:name         "date_filter"
+                                          :display-name "Date Filter"
+                                          :type         :dimension
+                                          :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
+                                          :widget-type  widget-type}}})
+                query-with-params (assoc query :parameters [{:type   widget-type
+                                                             :target [:dimension [:template-tag "date_filter"]]
+                                                             :value  "2024-11-06"}])]
+            (is (= [[2M "2024-11-06T13:13:13Z"]]
+                   (mt/rows
+                    (qp/process-query query-with-params))))))))))

@@ -72,8 +72,8 @@ const TimelineEvents = createEntity({
   },
 });
 
-const useGetQuery = ({ id }) => {
-  return useGetTimelineEventQuery(id);
+const useGetQuery = ({ id }, options) => {
+  return useGetTimelineEventQuery(id, options);
 };
 
 export default TimelineEvents;

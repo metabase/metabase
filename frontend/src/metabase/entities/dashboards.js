@@ -4,6 +4,7 @@ import {
   automagicDashboardsApi,
   dashboardApi,
   useGetDashboardQuery,
+  useListDashboardsQuery,
 } from "metabase/api";
 import {
   canonicalCollectionId,
@@ -53,6 +54,7 @@ const Dashboards = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetDashboardQuery,
     }),
+    useListQuery: useListDashboardsQuery,
   },
 
   api: {

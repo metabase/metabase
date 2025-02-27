@@ -1,7 +1,7 @@
-(ns ^:mb/once metabase.task.follow-up-emails-test
+(ns metabase.task.follow-up-emails-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email-test :refer [inbox with-fake-inbox]]
+   [metabase.channel.email-test :refer [inbox with-fake-inbox]]
    [metabase.task.follow-up-emails :as follow-up-emails]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as mt]))

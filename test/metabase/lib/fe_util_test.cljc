@@ -12,6 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 (deftest ^:parallel basic-filter-parts-test
@@ -121,11 +122,11 @@
                    :name "ID"
                    :display-name "ID"}
                   1]}
-          (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
-                                                              1)))))
+          (lib/expression-parts (lib.tu/venues-query) -1 (lib/= (lib/ref (meta/field-metadata :products :id))
+                                                                1)))))
 
 (deftest ^:parallel string-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :venues :name)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
@@ -186,8 +187,10 @@
         (lib.filter/and (lib.filter/= column "A") true)))))
 
 (deftest ^:parallel number-filter-parts-test
-  (let [query  lib.tu/venues-query
-        column (meta/field-metadata :venues :price)]
+  (let [query         (lib.tu/venues-query)
+        column        (meta/field-metadata :venues :price)
+        bigint-string "9007199254740993"
+        bigint-value  (u.number/parse-bigint bigint-string)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
@@ -201,7 +204,12 @@
                               (lib.filter/>= column 10)         {:operator :>=, :column column, :values [10]}
                               (lib.filter/< column 10)          {:operator :<, :column column, :values [10]}
                               (lib.filter/<= column 10)         {:operator :<=, :column column, :values [10]}
-                              (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}}]
+                              (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}
+
+                              ;; bigint
+                              (lib.filter/= column bigint-string) {:operator :=, :column column, :values [bigint-value]}
+                              (lib.filter/!= column bigint-string) {:operator :!=, :column column, :values [bigint-value]}
+                              (lib.filter/> column bigint-string) {:operator :>, :column column, :values [bigint-value]}}]
         (let [{:keys [operator column values]} parts]
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
@@ -215,9 +223,11 @@
         (lib.filter/and (lib.filter/= column 10) true)))))
 
 (deftest ^:parallel coordinate-filter-parts-test
-  (let [query      (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column (meta/field-metadata :people :latitude)
-        lon-column (meta/field-metadata :people :longitude)]
+  (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
+        lat-column    (meta/field-metadata :people :latitude)
+        lon-column    (meta/field-metadata :people :longitude)
+        bigint-string "9007199254740993"
+        bigint-value  (u.number/parse-bigint bigint-string)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
@@ -256,7 +266,21 @@
                               {:operator         :inside
                                :column           lat-column
                                :longitude-column lon-column
-                               :values           [10 20 30 40]}}]
+                               :values           [10 20 30 40]}
+
+                              ;; bigint
+
+                              (lib.filter/= lat-column bigint-string)
+                              {:operator :=, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/!= lat-column bigint-string)
+                              {:operator :!=, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/> lat-column bigint-string)
+                              {:operator :>, :column lat-column, :values [bigint-value]}
+
+                              (lib.filter/between lat-column bigint-string bigint-string)
+                              {:operator :between, :column lat-column, :values [bigint-value bigint-value]}}]
         (let [{:keys [operator column longitude-column values]} parts]
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 (lib.fe-util/coordinate-filter-clause operator
@@ -272,7 +296,7 @@
         (lib.filter/and (lib.filter/= lat-column 10) true)))))
 
 (deftest ^:parallel boolean-filter-parts-test
-  (let [query  (-> lib.tu/venues-query
+  (let [query  (-> (lib.tu/venues-query)
                    (lib.expression/expression "Boolean"
                                               (lib.filter/is-empty (meta/field-metadata :venues :name))))
         column (m/find-first #(= (:name %) "Boolean") (lib.filter/filterable-columns query))]
@@ -300,7 +324,7 @@
           (fn [values] (mapv #(u.time/format-for-base-type % (if with-time? :type/DateTime :type/Date)) values))))
 
 (deftest ^:parallel specific-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
@@ -365,7 +389,7 @@
         (lib.filter/and (lib.filter/< column "2024-11-28") true)))))
 
 (deftest ^:parallel relative-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
@@ -417,7 +441,7 @@
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
@@ -503,7 +527,7 @@
   (update parts :values (fn [values] (mapv #(u.time/format-for-base-type % :type/Time) values))))
 
 (deftest ^:parallel time-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (assoc (meta/field-metadata :checkins :date)
                       :base-type      :type/Time
                       :effective-type :type/Time)]
@@ -550,7 +574,7 @@
         (lib.filter/and (lib.filter/> column "10:20") true)))))
 
 (deftest ^:parallel default-filter-parts-test
-  (let [query  lib.tu/venues-query
+  (let [query  (lib.tu/venues-query)
         column (meta/field-metadata :venues :price)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
@@ -571,7 +595,7 @@
         date-arg-1 "2023-11-02"
         date-arg-2 "2024-01-03"
         datetime-arg "2024-12-05T22:50:27"]
-    (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
+    (are [expected clause] (=? expected (lib/filter-args-display-name (lib.tu/venues-query) -1 clause))
       "4 AM" (lib/= (lib/get-hour created-at) 4)
       "Excludes 12 PM" (lib/!= (lib/get-hour created-at) 12)
       "Mondays" (lib/= (lib.expression/get-day-of-week created-at :iso) 1)
@@ -618,34 +642,34 @@
                       {:type :table,    :id (meta/id :venues)}
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/venues-query
-      (lib/append-stage lib.tu/venues-query)))
+      (lib.tu/venues-query)
+      (lib/append-stage (lib.tu/venues-query))))
   (testing "join query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id (meta/id :venues)}
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-join
-      (lib/append-stage lib.tu/query-with-join)))
+      (lib.tu/query-with-join)
+      (lib/append-stage (lib.tu/query-with-join))))
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-source-card
-      (lib/append-stage lib.tu/query-with-source-card)))
+      (lib.tu/query-with-source-card)
+      (lib/append-stage (lib.tu/query-with-source-card))))
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
-      lib.tu/query-with-source-card-with-result-metadata
-      (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
+      (lib.tu/query-with-source-card-with-result-metadata)
+      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata))))
   (testing "model based query"
-    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-model)]
+    (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
@@ -654,7 +678,7 @@
         query
         (lib/append-stage query))))
   (testing "metric based query"
-    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-metric)]
+    (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-metric)]
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}

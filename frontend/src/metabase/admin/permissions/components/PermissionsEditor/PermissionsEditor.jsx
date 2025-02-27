@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { UpsellPermissions } from "metabase/admin/upsells";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { Box } from "metabase/ui";
 
 import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import {
@@ -18,7 +20,12 @@ export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
   return (
     <PermissionsEditorRoot>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <PermissionsEditorContent {...contentProps} />
+        <>
+          <Box mx="xl" mb="md">
+            <UpsellPermissions source="settings-permissions" />
+          </Box>
+          <PermissionsEditorContent {...contentProps} />
+        </>
       </LoadingAndErrorWrapper>
     </PermissionsEditorRoot>
   );

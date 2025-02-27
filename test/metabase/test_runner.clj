@@ -7,8 +7,8 @@
    [clojure.string :as str]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
-   [metabase.bootstrap]
    [metabase.config :as config]
+   [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2]
@@ -20,7 +20,7 @@
 ;;; TODO -- consider whether we should just mode all of this stuff to [[user]] instead of doing it here
 
 (comment
-  metabase.bootstrap/keep-me
+  metabase.core.bootstrap/keep-me
   ;; make sure stuff like `=?` and what not are loaded
   metabase.test-runner.assert-exprs/keep-me
 

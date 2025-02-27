@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
@@ -72,7 +71,7 @@
   (with-used-cards-setup!
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (pulse.send-test/with-pulse-for-card [pulse {:card card-id}]
-        (do-test! card-id #(pulse/send-pulse! pulse))))))
+        (do-test! card-id #(pulse.send/send-pulse! pulse))))))
 
 (deftest dashboard-subscription-test
   (with-used-cards-setup!
@@ -80,7 +79,7 @@
                    :model/Card      {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (dashboard-subscription-test/with-dashboard-sub-for-card [pulse {:card      card-id
                                                                        :dashboard dash}]
-        (do-test! card-id #(pulse/send-pulse! pulse))))))
+        (do-test! card-id #(pulse.send/send-pulse! pulse))))))
 
 (deftest update-used-card-timestamp-test
   ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on my machine
@@ -108,4 +107,13 @@
         (is (= now
                (-> (t2/select-one-fn :last_used_at :model/Card card-id-2)
                    t/offset-date-time
-                   (.withNano 0))))))))
+                   (.withNano 0))))))
+    (testing "if metabase is in read only mode still sets the last_used_at timestamp"
+      (mt/with-temp
+        [:model/Card {card-id-1 :id} {:last_used_at one-hour-ago}]
+        (mt/with-temporary-setting-values [read-only-mode true]
+          (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp now}])
+          (is (= now
+                 (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
+                     t/offset-date-time
+                     (.withNano 0)))))))))

@@ -1,5 +1,6 @@
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import { type MetabaseTheme, defineMetabaseTheme } from "embedding-sdk";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Flex } from "metabase/ui";
 
 import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
@@ -22,7 +23,7 @@ const DefaultTemplate = () => (
 );
 
 export default {
-  title: "viz/EChartsTooltip",
+  title: "Viz/Components/EChartsTooltip",
   component: EChartsTooltip,
 };
 

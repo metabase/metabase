@@ -29,6 +29,7 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
+  getRecentItemDatabaseId,
   isCollectionItem,
   isTableItem,
   isValueItem,
@@ -122,7 +123,7 @@ export const DataPickerModal = ({
     (recentItems: RecentItem[]) => {
       if (databaseId) {
         return recentItems.filter(
-          item => "database_id" in item && item.database_id === databaseId,
+          item => getRecentItemDatabaseId(item) === databaseId,
         );
       }
 
@@ -256,12 +257,19 @@ const FilterButton = ({
   return (
     <Popover zIndex={450}>
       <Popover.Target>
-        <Button leftIcon={<Icon name="filter" />} variant="subtle">{c(
+        <Button leftSection={<Icon name="filter" />} variant="subtle">{c(
           "A verb, not a noun",
         ).t`Filter`}</Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <Checkbox.Group value={value} onChange={onChange} px="1rem" py="0.5rem">
+        <Checkbox.Group
+          value={value}
+          onChange={(newValues: string[]) =>
+            onChange(newValues as CollectionItemModel[])
+          }
+          px="1rem"
+          py="0.5rem"
+        >
           {options.map(option => (
             <Checkbox
               key={`filter-${option.value}`}

@@ -5,7 +5,7 @@ import Button from "../Button";
 import ButtonGroup from "./ButtonGroup";
 
 export default {
-  title: "Core/ButtonGroup",
+  title: "Deprecated/Components/ButtonGroup",
   component: ButtonGroup,
 };
 

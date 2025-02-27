@@ -6,15 +6,14 @@ import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -34,6 +33,7 @@ import {
   DelayGroup,
   Icon,
   ThemeProvider,
+  Tooltip,
   Button as UIButton,
 } from "metabase/ui";
 import {
@@ -170,7 +170,7 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
@@ -1137,7 +1137,7 @@ class TableInteractive extends Component {
     } = this.props;
 
     if (!width || !height) {
-      return <div className={className} />;
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1171,9 +1171,9 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
-
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1359,20 +1359,27 @@ class TableInteractive extends Component {
   }
 }
 
+const TableInteractiveMemoized = memoizeClass(
+  "_getCellClickedObjectCached",
+  "_visualizationIsClickableCached",
+  "getCellBackgroundColor",
+  "getCellFormattedValue",
+  "getHeaderClickedObject",
+)(TableInteractive);
+
+const TableInteractiveWithRef = forwardRef((props, ref) => (
+  <TableInteractiveMemoized {...props} forwardedRef={ref} />
+));
+
+TableInteractiveWithRef.displayName = "TableInteractiveInner";
+
 export default _.compose(
   withMantineTheme,
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-  memoizeClass(
-    "_getCellClickedObjectCached",
-    "_visualizationIsClickableCached",
-    "getCellBackgroundColor",
-    "getCellFormattedValue",
-    "getHeaderClickedObject",
-  ),
-)(TableInteractive);
+)(TableInteractiveWithRef);
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
@@ -1392,7 +1399,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
     }}
     data-testid="detail-shortcut"
   >
-    <Tooltip tooltip={t`View Details`}>
+    <Tooltip label={t`View Details`}>
       <Button
         iconOnly
         iconSize={10}
@@ -1430,8 +1437,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
     >
       <UIButton
         variant="outline"
-        compact
-        leftIcon={<Icon name="add" />}
+        size="compact-md"
+        leftSection={<Icon name="add" />}
         title={t`Add column`}
         aria-label={t`Add column`}
         onClick={onClick}

@@ -15,6 +15,7 @@ import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
 import { DatePicker } from "../../DatePicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 import S from "./DateFilterEditor.module.css";
@@ -22,13 +23,12 @@ import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
 export function DateFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
+  const { query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -62,11 +62,9 @@ export function DateFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           />
         </Grid.Col>
         <Grid.Col span={4}>
@@ -137,7 +135,7 @@ function DateFilterPopover({
         {isExpanded ? (
           <Button
             variant="outline"
-            rightIcon={
+            rightSection={
               <IconButtonWrapper aria-label={t`Clear`} onClick={handleClear}>
                 <Icon className={S.ClearIcon} name="close" size={12} />
               </IconButtonWrapper>
@@ -148,7 +146,7 @@ function DateFilterPopover({
           </Button>
         ) : (
           <Button
-            leftIcon={<Icon name="ellipsis" />}
+            leftSection={<Icon name="ellipsis" />}
             aria-label={t`More options`}
             onClick={handleOpen}
           />

@@ -3,7 +3,7 @@
  ;; apparently done on purpose, as a security thing. See
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
  :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :deps

@@ -1,11 +1,13 @@
+import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { CollectionBrowserInner } from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -37,7 +39,10 @@ describe("CollectionBrowser", () => {
   it("should render", async () => {
     await setup();
 
-    expect(screen.getByText("Type")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Type")).toBeInTheDocument();
+    });
+
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Last edited by")).toBeInTheDocument();
     expect(screen.getByText("Last edited at")).toBeInTheDocument();
@@ -48,6 +53,10 @@ describe("CollectionBrowser", () => {
       props: {
         visibleColumns: ["type", "name"],
       },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
     });
 
     const columnNames: (string | null)[] = [];
@@ -82,15 +91,23 @@ async function setup({
 
   const state = setupSdkState();
 
-  renderWithProviders(<CollectionBrowserInner {...props} />, {
-    mode: "sdk",
-    sdkProviderProps: {
-      authConfig: createMockAuthProviderUriConfig({
-        authProviderUri: "http://TEST_URI/sso/metabase",
-      }),
+  renderWithSDKProviders(
+    <CollectionBrowserInner collectionId="root" {...props} />,
+    {
+      sdkProviderProps: {
+        authConfig: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
+        }),
+      },
+      storeInitialState: state,
     },
-    storeInitialState: state,
-  });
+  );
 
   expect(await screen.findByTestId("collection-table")).toBeInTheDocument();
+
+  await waitFor(() => {
+    expect(
+      fetchMock.calls(`path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`),
+    ).toHaveLength(1);
+  });
 }

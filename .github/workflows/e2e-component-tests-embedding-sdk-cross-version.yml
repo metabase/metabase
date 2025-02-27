@@ -165,8 +165,9 @@ jobs:
 
       - name: Move tests from the release commit into the repo
         run: |
-          rm -rf ./e2e/support/helpers/*
-          mv ./sdk-release-e2e/e2e/support/helpers/* ./e2e/support/helpers
+          rm -rf ./e2e/support/*
+          mv ./sdk-release-e2e/e2e/support/* ./e2e/support
+
           rm -rf ./e2e/test-component/*
           mv ./sdk-release-e2e/e2e/test-component/* ./e2e/test-component
         shell: bash
@@ -175,11 +176,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -197,8 +193,14 @@ jobs:
       - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
         run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
 
-      - name: Run E2E tests for Embedding SDK
-        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run component tests for Embedding SDK
+        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -228,12 +230,14 @@ jobs:
         with:
           script: | #js
             const {
+               generateReport,
                parseReport,
                formatSummary
              } = require("./.github/scripts/handle-mochawesome-report.js");
 
-             const report = parseReport();
-             const summary = formatSummary(report);
+             const report = await generateReport();
+             const results = parseReport(report);
+             const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
 

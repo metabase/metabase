@@ -1,13 +1,14 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
+
+import { Flex, Title } from "metabase/ui";
 
 import {
   ActionsWrapper,
-  HeaderContainer,
-  HeaderText,
-  HeaderTextContainer,
   ModalContentActionIcon,
   ModalHeaderBackIcon,
 } from "./ModalContent.styled";
+import S from "./ModalHeader.module.css";
 import type { CommonModalProps } from "./types";
 
 export interface ModalHeaderProps extends CommonModalProps {
@@ -29,14 +30,32 @@ export const ModalHeader = ({
   const actionIconSize = fullPageModal ? 24 : 16;
 
   return (
-    <HeaderContainer className={className} data-testid="modal-header">
-      <HeaderTextContainer onClick={onBack}>
+    <Flex
+      gap="sm"
+      align="center"
+      p="xl"
+      className={cx(S.HeaderContainer, className)}
+      data-testid="modal-header"
+    >
+      <Flex
+        align="center"
+        className={cx(S.HeaderTextContainer, {
+          [S.clickable]: !!onBack,
+        })}
+        onClick={onBack}
+      >
         {onBack && <ModalHeaderBackIcon name="chevronleft" />}
 
-        <HeaderText textCentered={fullPageModal || centeredTitle}>
-          {children}
-        </HeaderText>
-      </HeaderTextContainer>
+        <Title
+          order={2}
+          w="100%"
+          className={cx(S.HeaderText, {
+            [S.HeaderTextCentered]: fullPageModal || centeredTitle,
+          })}
+        >
+          <span className={S.HeaderTextContent}>{children}</span>
+        </Title>
+      </Flex>
 
       {hasActions && (
         <ActionsWrapper>
@@ -50,6 +69,6 @@ export const ModalHeader = ({
           )}
         </ActionsWrapper>
       )}
-    </HeaderContainer>
+    </Flex>
   );
 };

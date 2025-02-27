@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -25,7 +25,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      cy.createQuestion(modelDetails).then(({ body: { id } }) => {
+      H.createQuestion(modelDetails).then(({ body: { id } }) => {
         cy.visit(`/model/${id}`);
         cy.wait("@dataset");
       });
@@ -80,37 +80,33 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it(
-      "clears custom metadata when a model is turned back into a question",
-      { tags: "@flaky" },
-      () => {
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("clears custom metadata when a model is turned back into a question", () => {
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-        H.openColumnOptions("Subtotal");
-        H.renameColumn("Subtotal", "Pre-tax");
-        H.setColumnType("No special type", "Cost");
-        H.saveMetadataChanges();
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
+      H.saveMetadataChanges();
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Pre-tax ($)")
-          .and("not.contain", "Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
 
-        H.openQuestionActions();
-        H.popover()
-          .findByTextEnsureVisible("Turn back to saved question")
-          .click();
-        cy.wait("@cardQuery");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      cy.wait("@cardQuery");
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Subtotal")
-          .and("not.contain", "Pre-tax ($)");
-      },
-    );
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax ($)");
+    });
   });
 
   it("should edit native model metadata", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -160,7 +156,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should allow setting column relations (metabase#29318)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -182,7 +178,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should keep metadata in sync with the query", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -196,12 +192,8 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit query definition").click();
 
-    H.main().within(() => {
-      cy.get("textarea")
-        .focus()
-        .invoke("val", "")
-        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
-    });
+    H.NativeEditor.clear();
+    H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");
@@ -215,7 +207,7 @@ describe("scenarios > models metadata", () => {
   it("should allow reverting to a specific metadata revision", () => {
     cy.intercept("POST", "/api/revision/revert").as("revert");
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "Native Model",
       type: "model",
       native: {
@@ -268,7 +260,7 @@ describe("scenarios > models metadata", () => {
 
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -341,7 +333,9 @@ describe("scenarios > models metadata", () => {
 
         // Drill to People table
         // FK column is mapped to real DB column
-        H.queryBuilderHeader().button("Filter").click();
+        H.queryBuilderHeader()
+          .button(/Filter/)
+          .click();
 
         H.modal().within(() => {
           cy.findByRole("tablist").within(() => {
@@ -370,7 +364,7 @@ describe("scenarios > models metadata", () => {
 
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
-        cy.createDashboard().then(response => {
+        H.createDashboard().then(response => {
           const dashboardId = response.body.id;
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
@@ -419,7 +413,7 @@ describe("scenarios > models metadata", () => {
         },
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      H.createQuestion(questionDetails, { visitQuestion: true });
       cy.findAllByTestId("header-cell").should("not.contain", "Vendor");
 
       H.openQuestionActions();

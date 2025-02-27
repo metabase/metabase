@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { ClientSortableTable } from "metabase/common/components/Table";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
@@ -30,7 +29,7 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
       mt="xl"
       align="center"
       justify="center"
-      spacing="sm"
+      gap="sm"
       data-testid="empty-table-warning"
     >
       <Title>{t`No API keys here yet`}</Title>
@@ -67,7 +66,6 @@ function ApiKeysTable({
   error?: unknown;
 }) {
   const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
-  const locale = useLocale();
 
   if (loading || error) {
     return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
@@ -82,7 +80,6 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
-      locale={locale}
       rowRenderer={row => (
         <ApiKeyRow
           apiKey={row}
@@ -116,7 +113,7 @@ const ApiKeyRow = ({
     <td>{apiKey.updated_by.common_name}</td>
     <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
     <td>
-      <Group spacing="md" py="md">
+      <Group gap="md" py="md">
         <Icon
           name="pencil"
           className={CS.cursorPointer}
@@ -163,10 +160,10 @@ export const ManageApiKeys = () => {
         activeApiKey={activeApiKey}
       />
       <AuthTabs activeKey="api-keys" />
-      <Stack pl="md" spacing="lg">
+      <Stack pl="md" gap="lg">
         <Group
           align="start"
-          position="apart"
+          justify="space-between"
           data-testid="api-keys-settings-header"
         >
           <Stack>

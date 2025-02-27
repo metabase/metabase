@@ -27,7 +27,7 @@
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream InputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,6 +76,9 @@
 
       (= "multipart/form-data" content-type)
       (peridot.multipart/build http-body)
+
+      (= "application/x-www-form-urlencoded" content-type)
+      {:body (ByteArrayInputStream. (.getBytes ^String (codec/form-encode http-body) "UTF-8"))}
 
       :else
       (throw (ex-info "If you want this content-type to work, improve me"

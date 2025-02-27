@@ -1,6 +1,6 @@
 import { P, isMatching } from "ts-pattern";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
@@ -28,6 +28,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("should show trash at bottom of the side navbar");
     H.navigationSidebar().within(() => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("sidebar-collection-link-root")
         .last()
         .as("sidebar-trash-link")
@@ -291,7 +292,7 @@ describe("scenarios > collections > trash", () => {
       .then(a => createCollection({ name: "Collection B", parent_id: a.id }));
 
     cy.get("@collectionA").then(collectionA => {
-      cy.archiveCollection(collectionA.id);
+      H.archiveCollection(collectionA.id);
     });
 
     cy.log("only shows restore in root trash collection");
@@ -664,7 +665,7 @@ describe("scenarios > collections > trash", () => {
         cy.button("Yes").click();
       });
 
-      cy.archiveCollection(collection.id);
+      H.archiveCollection(collection.id);
     });
 
     cy.signInAsNormalUser();
@@ -869,12 +870,11 @@ function toggleEllipsisMenuFor(item) {
 }
 
 function createCollection(collectionInfo, archive) {
-  return cy
-    .createCollection(collectionInfo)
+  return H.createCollection(collectionInfo)
     .then(({ body: collection }) => {
       return Promise.all([
         collection,
-        archive && cy.archiveCollection(collection.id),
+        archive && H.archiveCollection(collection.id),
       ]);
     })
     .then(([collection]) => collection);
@@ -897,10 +897,9 @@ function createNativeQuestion(questionInfo, archive) {
 }
 
 function createDashboard(dashboardInfo, archive) {
-  return cy
-    .createDashboard(dashboardInfo)
+  return H.createDashboard(dashboardInfo)
     .then(({ body: dashboard }) =>
-      Promise.all([dashboard, archive && cy.archiveDashboard(dashboard.id)]),
+      Promise.all([dashboard, archive && H.archiveDashboard(dashboard.id)]),
     )
     .then(([dashboard]) => dashboard);
 }

@@ -4,7 +4,7 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]

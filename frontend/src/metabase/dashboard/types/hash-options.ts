@@ -9,6 +9,7 @@ import type {
 export type DashboardControlsHashOptions = {
   refresh?: number | null;
   fullscreen?: boolean;
+  scrollTo?: number;
 };
 
 export type DashboardUrlHashOptions = Partial<

@@ -120,7 +120,9 @@
  [lib.common
   external-op]
  [lib.convert
-  ->pMBQL]
+  ->legacy-MBQL
+  ->pMBQL
+  without-cleaning]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -140,6 +142,7 @@
   expressions-metadata
   expressionable-columns
   expression-ref
+  resolve-expression
   with-expression-name
   +
   -
@@ -288,6 +291,7 @@
  [lib.native
   engine
   extract-template-tags
+  has-template-tag-variables?
   has-write-permission
   native-extras
   native-query
@@ -309,11 +313,14 @@
  [lib.normalize
   normalize]
  [lib.query
+  ->query
   can-preview
   can-run
   can-save
+  check-overwrite
   preview-query
   query
+  query-from-legacy-inner-query
   stage-count
   uses-metric?
   uses-segment?

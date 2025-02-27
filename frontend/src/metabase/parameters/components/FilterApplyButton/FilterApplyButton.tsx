@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import DeprecatedButton from "metabase/core/components/Button/Button";
 import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import {
   getHasUnappliedParameterValues,
@@ -8,7 +9,7 @@ import {
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
-import { ApplyButton } from "./FilterApplyButton.styled";
+import S from "./FilterApplyButton.module.css";
 
 export function FilterApplyButton() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
@@ -26,8 +27,12 @@ export function FilterApplyButton() {
   }
 
   return (
-    <ApplyButton primary onClick={handleApplyFilters}>
+    <DeprecatedButton
+      className={S.ApplyButton}
+      primary
+      onClick={handleApplyFilters}
+    >
       {t`Apply`}
-    </ApplyButton>
+    </DeprecatedButton>
   );
 }

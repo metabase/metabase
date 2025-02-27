@@ -26,7 +26,6 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   embedding_homepage: "1-0-0",
   simple_event: "1-0-0",
   invite: "1-0-1",
-  metabot: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
   search: "1-1-0",

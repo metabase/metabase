@@ -37,7 +37,7 @@
   - City -> LatLon(0.1). Add a filter based on the selected city and 2 breakouts (latitude and longitude) using \"Every
     0.1 degrees\" binning strategy.
 
-  - LatLon -> LatLon. If the binning strategy is more greater than every 20 degrees, change it to 10 degrees. Otherwise
+  - LatLon -> LatLon. If the binning strategy is greater than every 20 degrees, change it to 10 degrees. Otherwise,
     divide the value by 10 and use it as the new binning strategy.
 
   Question transformation:
@@ -87,6 +87,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -191,10 +192,10 @@
   for [[metabase.lib.drill-thru.zoom-in-geographic]] for more information on what circumstances this is returned in
   and what it means to apply this drill."
   [query                        :- ::lib.schema/query
-   stage-number                 :- :int
+   _stage-number                :- :int
    {:keys [value], :as context} :- ::lib.schema.drill-thru/context]
-  (when value
-    (when-let [context (context-with-lat-lon query stage-number context)]
+  (when (and value (not= value :null))
+    (when-let [context (context-with-lat-lon query (lib.underlying/top-level-stage-number query) context)]
       (some (fn [f]
               (f context))
             [country->binned-lat-lon-drill
@@ -231,11 +232,12 @@
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column value], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
-  (-> query
-      (lib.breakout/remove-existing-breakouts-for-column stage-number column)
-      ;; TODO -- remove/update existing filter?
-      (lib.filter/filter stage-number (lib.filter/= column value))
-      (add-or-update-lat-lon-binning stage-number drill)))
+  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+    (-> query
+        (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+        ;; TODO -- remove/update existing filter?
+        (lib.filter/filter stage-number (lib.filter/= resolved-column value))
+        (add-or-update-lat-lon-binning stage-number drill))))
 
 (mu/defn- apply-binned-lat-lon->binned-lat-lon-drill :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -253,11 +255,12 @@
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.geographic :- ::lib.schema/query
   [query                        :- ::lib.schema/query
-   stage-number                 :- :int
+   _stage-number                :- :int
    {:keys [subtype], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic]
-  (case subtype
-    :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
-    (apply-country-state-city->binned-lat-lon-drill query stage-number drill)
+  (let [stage-number (lib.underlying/top-level-stage-number query)]
+    (case subtype
+      :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+      (apply-country-state-city->binned-lat-lon-drill query stage-number drill)
 
-    :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-    (apply-binned-lat-lon->binned-lat-lon-drill query stage-number drill)))
+      :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+      (apply-binned-lat-lon->binned-lat-lon-drill query stage-number drill))))

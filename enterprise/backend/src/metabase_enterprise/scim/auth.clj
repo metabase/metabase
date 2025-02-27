@@ -1,6 +1,7 @@
 (ns metabase-enterprise.scim.auth
   (:require
    [metabase-enterprise.scim.api :as scim]
+   [metabase.api.open-api :as open-api]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -21,12 +22,15 @@
   "Middleware that returns a 401 response if `request` does not have a valid SCIM API key, and/or if
   SCIM is not enabled."
   [handler]
-  (fn [request respond raise]
-    (let [authorization-header (get-in request [:headers "authorization"])
-          [_ api-key]          (re-matches #"Bearer (.*)" (or authorization-header ""))]
-      (if (and (scim/scim-enabled) (validate-scim-api-key api-key))
-        (handler request respond raise)
-        (respond {:status 401
-                  :body   {:schemas [error-schema-uri]
-                           :status  401
-                           :detail  "Unauthenticated"}})))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (let [authorization-header (get-in request [:headers "authorization"])
+           [_ api-key]          (re-matches #"Bearer (.*)" (or authorization-header ""))]
+       (if (and (scim/scim-enabled) (validate-scim-api-key api-key))
+         (handler request respond raise)
+         (respond {:status 401
+                   :body   {:schemas [error-schema-uri]
+                            :status  401
+                            :detail  "Unauthenticated"}}))))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))

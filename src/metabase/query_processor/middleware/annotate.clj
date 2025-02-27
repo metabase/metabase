@@ -4,13 +4,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -348,38 +347,35 @@
 (defn- mlv2-query [inner-query]
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
-      (lib/query
+      (lib/query-from-legacy-inner-query
        (qp.store/metadata-provider)
-       (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
-                             (:id (lib.metadata/database (qp.store/metadata-provider)))
-                             (mbql.normalize/normalize-fragment [:query] inner-query))))
+       (:id (lib.metadata/database (qp.store/metadata-provider)))
+       (mbql.normalize/normalize-fragment [:query] inner-query))
       (catch Throwable e
         (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
-(mu/defn- col-info-for-aggregation-clause
-  "Return appropriate column metadata for an `:aggregation` clause."
-  ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
-  ;; `match` pattern for field clauses below
-  [inner-query :- :map
-   clause]
-  (let [mlv2-clause (lib.convert/->pMBQL clause)]
-    ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
-    ;; inside an aggregation clause, e.g.
-    ;;
-    ;;    Distinct values of Category → Name
-    ;;
-    ;; but `:default` style names when they appear on their own or in breakouts, e.g.
-    ;;
-    ;;    Name
-    ;;
-    ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
-    ;; probably going to involve updating a ton of tests that encode the old behavior.
-    (binding [lib.metadata.calculation/*display-name-style* :long]
-      (-> (lib/metadata (mlv2-query inner-query) -1 mlv2-clause)
-          (update-keys u/->snake_case_en)
-          (dissoc :lib/type)))))
+(mu/defn- col-info-for-aggregation-clauses
+  "Return appropriate (legacy) column metadata for the `:aggregation` clauses of this legacy inner query, in order."
+  [inner-query]
+  ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
+  ;; inside an aggregation clause, e.g.
+  ;;
+  ;;    Distinct values of Category → Name
+  ;;
+  ;; but `:default` style names when they appear on their own or in breakouts, e.g.
+  ;;
+  ;;    Name
+  ;;
+  ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
+  ;; probably going to involve updating a ton of tests that encode the old behavior.
+  (when (seq (:aggregation inner-query))
+    (let [query (mlv2-query inner-query)]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (for [agg-metadata (lib/aggregations-metadata query -1)]
+          (-> (m/remove-keys #(= "lib" (namespace %)) agg-metadata)
+              (update-keys u/->snake_case_en)))))))
 
 (def ^:private LegacyInnerQuery
   [:and
@@ -388,6 +384,10 @@
     {:error/message "legacy inner-query with :source-table or :source-query"}
     (some-fn :source-table :source-query)]])
 
+;; TODO: This function is janky, and converts isolated legacy aggregations and expressions into pMBQL.
+;; The right approach here is to adjust the annotate middleware to ensure that all aggregations and expressions
+;; already have the right column names present in their options. Then this function can be deprecated, and replaced
+;; with another helper (probably in the driver or MBQL utils?) that grabs the :name for a clause from its options.
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
@@ -395,7 +395,7 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [inner-query :- LegacyInnerQuery
    ag-clause]
-  (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
+  (lib/column-name (mlv2-query inner-query) (lib/->pMBQL ag-clause)))
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
@@ -422,13 +422,13 @@
            :source :fields)))
 
 (mu/defn- cols-for-ags-and-breakouts
-  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- :map]
+  [{breakouts :breakout, :as inner-query} :- :map]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
             :source :breakout))
-   (for [[i aggregation] (m/indexed aggregations)]
-     (assoc (col-info-for-aggregation-clause inner-query aggregation)
+   (for [[i aggregation] (m/indexed (col-info-for-aggregation-clauses inner-query))]
+     (assoc aggregation
             :source            :aggregation
             :field_ref         [:aggregation i]
             :aggregation_index i))))

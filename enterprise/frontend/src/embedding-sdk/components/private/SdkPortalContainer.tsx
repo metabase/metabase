@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
+import ZIndex from "metabase/css/core/z-index.module.css";
 import {
   EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
-import ZIndex from "metabase/css/core/z-index.module.css";
+} from "metabase/embedding-sdk/config";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 

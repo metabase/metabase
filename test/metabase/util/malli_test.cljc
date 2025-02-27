@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.malli-test
+(ns metabase.util.malli-test
   "Tests for [[metabase.util.malli/defn]] live in [[metabase.util.malli.defn-test]].
 
   I know these tests are (currently) clj-only, but the parent file is `.cljc` so this is a `.cljc` file as well."

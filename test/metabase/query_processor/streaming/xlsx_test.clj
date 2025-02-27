@@ -547,7 +547,7 @@
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
            (second (xlsx-export [{:id 0, :name "Col"}]
-                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
+                                {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
 (deftest misc-data-test
@@ -774,3 +774,9 @@
       (do-export)
       ;; Should always allocate less than 100Mb.
       (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))
+
+(deftest number-of-characters-cell-test
+  (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."
+    (binding [qp.xlsx/*number-of-characters-cell* 5]
+      (is (= ["abcde"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["abcdefghijklmnopqrstuvwxyz"]])))))))

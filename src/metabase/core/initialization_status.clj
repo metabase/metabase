@@ -1,7 +1,7 @@
 (ns metabase.core.initialization-status
   "Code related to tracking the progress of metabase initialization.
    This is kept in a separate, tiny namespace so it can be loaded right away when the application launches
-   (and so we don't need to wait for `metabase.core` to load to check the status).")
+   (and so we don't need to wait for [[metabase.core.core]] to load to check the status).")
 
 (defonce ^:private progress-atom
   (atom 0))

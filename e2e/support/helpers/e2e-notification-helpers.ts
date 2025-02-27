@@ -1,6 +1,6 @@
-import type { NotificationChannel } from "../../../frontend/src/metabase-types/api/notifications";
+import type { NotificationChannel } from "metabase-types/api/notification-channels";
 
-export const getAlertChannel = name =>
+export const getAlertChannel = (name: string) =>
   cy.findByRole("listitem", {
     name,
   });
@@ -23,5 +23,14 @@ export const setupNotificationChannel = (
       "auth-info": {},
     },
     ...opts,
+  });
+};
+
+export const resetWebhookTester = () => {
+  cy.log("Reset webhook tester");
+  cy.request({
+    method: "DELETE",
+    url: `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+    failOnStatusCode: false, // returns 404 if no requests
   });
 };

@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -55,6 +56,7 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
+                              :describe-fields                        true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -97,28 +99,16 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-options]
+  [{:keys [user password account]
     :as   details}]
   (if password
     details
-    (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))
-          secret-map   (secret/db-details-prop->secret-map details "private-key")
-          private-key-file (cond
-                             ;; Local file path
-                             (= private-key-options "local")
-                             (secret/value->file! secret-map :snowflake)
-
-                             ;; Uploaded file stored in `secrets` table
-                             :else
-                             ;; Why setting `:private-key-options` to "uploaded"? To fix the issue #41852. Snowflake's database edit gui
-                             ;; is designed in a way, that `:private-key-options` are not sent if `hosting` enterprise feature is enabled.
-                             ;; The option must be set to "uploaded" for base64 decoding to happen. Setting that option at this point is fine
-                             ;; because the alternative ("local") is ruled out already in this `cond` branch.
-                             (let [decoded (secret/get-secret-string (assoc details :private-key-options "uploaded") "private-key")]
-                               (secret/value->file! {:connection-property-name "private-key-file"
-                                                     :value                    decoded})))]
-      (assoc (handle-conn-uri base-details user account private-key-file)
-             :private_key_file private-key-file))))
+    (if-let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
+      (-> details
+          (secret/clean-secret-properties-from-details :snowflake)
+          (handle-conn-uri user account private-key-file)
+          (assoc :private_key_file private-key-file))
+      (secret/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
   [raw-name]
@@ -146,6 +136,50 @@
       (-> spec
           (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
     spec))
+
+(defmethod driver/db-details-to-test-and-migrate :snowflake
+  [_ {:keys [password private-key-id private-key-value private-key-path use-password private-key-options] :as details}]
+  (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path])))
+    (let [password-details (when password
+                             (-> details
+                                 ;; Setting private-key-value to nil will delete the secret
+                                 (assoc :use-password true :private-key-value nil)
+                                 (dissoc :private-key-id :private-key-value :private-key-path :private-key-options)
+                                 ;; Add meta for testing
+                                 (with-meta {:auth :password})))
+          private-key-path-details (when private-key-path
+                                     (-> details
+                                         (assoc :use-password false :private-key-options "local")
+                                         (dissoc :password :private-key-value)
+                                         (with-meta {:auth :private-key-path})))
+          private-key-value-details (when private-key-value
+                                      (-> details
+                                          (assoc :use-password false :private-key-options "uploaded")
+                                          (dissoc :password :private-key-path)
+                                          (with-meta {:auth :private-key-value})))
+          private-key-id-details (when private-key-id
+                                   (-> details
+                                       (assoc :use-password false)
+                                       (dissoc :password :private-key-value :private-key-path :private-key-options)
+                                       (with-meta {:auth :private-key-id})))]
+      (cond-> []
+        (and use-password password-details)
+        (conj password-details)
+
+        (and (= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-value-details
+        (conj private-key-value-details)
+
+        (and (not= "local" private-key-options) private-key-path-details)
+        (conj private-key-path-details)
+
+        private-key-id-details
+        (conj private-key-id-details)
+
+        (and (not use-password) password-details)
+        (conj password-details)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
@@ -699,10 +733,18 @@
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
-  (if-not (str/blank? (-> database :details :regionid))
-    (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
+  (cond-> database
+    (not (str/blank? (-> database :details :regionid)))
+    (-> (update-in [:details :account] #(str/join "." [% (-> database :details :regionid)]))
         (m/dissoc-in [:details :regionid]))
-    database))
+
+    (and
+     (not (contains? (:details database) :use-password))
+     (get-in database [:details :password])
+     (nil? (get-in database [:details :private-key-id]))
+     (nil? (get-in database [:details :private-key-path]))
+     (nil? (get-in database [:details :private-key-value])))
+    (assoc-in [:details :use-password] true)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -760,3 +802,53 @@
                   (not host) (assoc :host (str account ".snowflakecomputing.com"))
                   (not port) (assoc :port 443))]
     (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+
+(defmethod driver/describe-fields :snowflake
+  [driver database & args]
+  (let [pks (sql-jdbc.execute/do-with-connection-with-options
+             driver database nil
+             (fn [^java.sql.Connection conn]
+               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in database [:details :db])))
+                           rset (.executeQuery stmt)]
+                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))]
+    (eduction
+     (map (fn [col]
+            (let [lookup ((juxt :table-schema :table-name :name) col)
+                  pk? (contains? pks lookup)]
+              (assoc col :pk? pk?))))
+     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :snowflake
+  [driver & {:keys [schema-names table-names details]}]
+  (sql/format {:select [[:c.COLUMN_NAME :name]
+                        [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
+                        [:c.TABLE_SCHEMA :table-schema]
+                        [:c.TABLE_NAME :table-name]
+                        [[:case-expr [:upper :c.DATA_TYPE]
+                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
+
+                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
+
+                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
+
+                          ;; These are synonymous, but we want consistency with getColumnMetadata
+                          [:inline "FLOAT"] [:inline "DOUBLE"]
+
+                          [:inline "TEXT"] [:inline "VARCHAR"]
+
+                          :else [:upper :c.DATA_TYPE]]
+                         :database-type]
+                        [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
+                        [[:and
+                          [:or [:= :COLUMN_DEFAULT nil] [:= [:lower :COLUMN_DEFAULT] [:inline "null"]]]
+                          [:= :IS_NULLABLE [:inline "NO"]]
+                          [:not [:!= :c.IDENTITY_GENERATION nil]]]
+                         :database-required]
+                        [[:nullif :c.COMMENT [:inline ""]] :field-comment]]
+               :from [[[:raw (format "\"%s\".\"%s\".\"%s\"" (:db details) "INFORMATION_SCHEMA" "COLUMNS")] :c]]
+               :where
+               [:and [:not [:in :c.TABLE_SCHEMA [[:inline "INFORMATION_SCHEMA"]]]]
+                (when (seq schema-names) [:in [:lower :c.TABLE_SCHEMA] (map u/lower-case-en schema-names)])
+                (when (seq table-names) [:in [:lower :c.TABLE_NAME] (map u/lower-case-en table-names)])]
+               :order-by [:c.TABLE_SCHEMA :c.TABLE_NAME :c.ORDINAL_POSITION]}
+              :dialect (sql.qp/quote-style driver)))

@@ -1,5 +1,7 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
+// eslint-disable-next-line no-restricted-imports
 import { type Theme, css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type {
   ChangeEventHandler,
@@ -234,11 +236,13 @@ export function RenameableTabButton({
   }, [isRenaming]);
 
   const onFinishEditing = () => {
-    if (label.length === 0) {
+    const trimmedLabel = label.trim();
+
+    if (trimmedLabel.length === 0) {
       setLabel(prevLabel);
-    } else if (label !== prevLabel) {
-      setPrevLabel(label);
-      onRename(label);
+    } else if (trimmedLabel !== prevLabel) {
+      setPrevLabel(trimmedLabel);
+      onRename(trimmedLabel);
     }
     setIsRenaming(false);
   };

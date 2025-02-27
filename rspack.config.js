@@ -286,14 +286,10 @@ const config = {
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),
-    // https://github.com/metabase/metabase/issues/35374
-    new rspack.NormalModuleReplacementPlugin(
-      /.\/use-popover.js/,
-      `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
-    ),
   ],
 };
 

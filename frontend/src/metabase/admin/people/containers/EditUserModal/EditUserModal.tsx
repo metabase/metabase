@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Params } from "react-router/lib/Router";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";

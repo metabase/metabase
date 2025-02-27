@@ -37,5 +37,6 @@ serdes/meta:
   model: Table
 - id: card_qualified_id
   model: Field
-database_indexed: null
+database_indexed: false
 database_partitioned: null
+entity_id: xZoAsgUDy84UNk8-veVzB

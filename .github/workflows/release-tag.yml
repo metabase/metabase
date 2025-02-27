@@ -288,10 +288,10 @@ jobs:
           git push origin -f ${{ inputs.tag_name }}-oss
         fi
     - name: Add and push git tag for dot X tags
-      if: ${{ inputs.dot-x-tag }}
+      if: ${{ inputs.dot-x-tag && matrix.edition == 'oss' }} # we only need one git tag for dot X
       run: | # sh
         git tag -f ${{ inputs.tag_name }} ${{ needs.check-version.outputs.oss }}
-        git push origin -f ${{ inputs.tag_name }}
+        git push origin tag -f ${{ inputs.tag_name }}
 
   update-version-info:
     if: ${{ !inputs.dot-x-tag }}

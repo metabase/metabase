@@ -3,9 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  skipToken,
   timelineApi,
   timelineEventApi,
   useGetTimelineQuery,
+  useListCollectionTimelinesQuery,
+  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
@@ -31,6 +34,7 @@ const Timelines = createEntity({
     getUseGetQuery: () => ({
       useGetQuery: useGetTimelineQuery,
     }),
+    useListQuery,
   },
 
   api: {
@@ -149,5 +153,19 @@ const Timelines = createEntity({
     return state;
   },
 });
+
+function useListQuery({ collectionId, ...params } = {}, options) {
+  const collectionTimelines = useListCollectionTimelinesQuery(
+    collectionId ? { id: collectionId, ...params } : skipToken,
+    options,
+  );
+
+  const timelines = useListTimelinesQuery(
+    collectionId ? skipToken : params,
+    options,
+  );
+
+  return collectionId ? collectionTimelines : timelines;
+}
 
 export default Timelines;

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const STRING_CASES = [
   {
@@ -351,14 +351,14 @@ const EXCLUDE_DATE_CASES = [
     expectedRowCount: 183,
   },
   {
-    title: "is empty",
-    label: "Is empty",
+    title: "empty values",
+    label: "Empty values",
     expectedDisplayName: "Created At is not empty",
     expectedRowCount: 200,
   },
   {
-    title: "not empty",
-    label: "Is not empty",
+    title: "not empty values",
+    label: "Not empty values",
     expectedDisplayName: "Created At is empty",
     expectedRowCount: 0,
   },
@@ -471,9 +471,9 @@ describe("scenarios > filters > filter types", () => {
           H.openProductsTable({ mode: "notebook" });
           H.filter({ mode: "notebook" });
 
-          H.popover().findByText(columnName).click();
+          H.clauseStepPopover().findByText(columnName).click();
           H.selectFilterOperator(operator);
-          H.popover().within(() => {
+          H.clauseStepPopover().within(() => {
             values.forEach(value => {
               cy.findByLabelText("Filter value")
                 .focus()
@@ -506,19 +506,17 @@ describe("scenarios > filters > filter types", () => {
           H.openProductsTable({ mode: "notebook" });
           H.filter({ mode: "notebook" });
 
-          H.popover().findByText(columnName).click();
+          H.clauseStepPopover().findByText(columnName).click();
           H.selectFilterOperator(operator);
-          H.popover()
-            .first()
-            .within(() => {
-              values.forEach(value => {
-                cy.findByLabelText("Filter value")
-                  .focus()
-                  .type(`${value},`, { delay: 50 })
-                  .blur();
-              });
-              cy.button("Add filter").click();
+          H.clauseStepPopover().within(() => {
+            values.forEach(value => {
+              cy.findByLabelText("Filter value")
+                .focus()
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
+            cy.button("Add filter").click();
+          });
 
           assertFilterName(expectedDisplayName);
           H.visualize();
@@ -536,7 +534,7 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
               cy.findByText(shortcut).click();
             });
@@ -564,24 +562,27 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
               cy.findByText("Relative dates…").click();
               cy.findByRole("tab", { name: offset }).click();
             });
 
-            H.relativeDatePicker.setValue({ value, unit });
+            H.relativeDatePicker.setValue({ value, unit }, H.clauseStepPopover);
 
             if (includeCurrent) {
-              H.relativeDatePicker.toggleCurrentInterval();
+              H.relativeDatePicker.toggleCurrentInterval(H.clauseStepPopover);
             } else if (offsetUnit && offsetValue) {
-              H.relativeDatePicker.addStartingFrom({
-                value: offsetValue,
-                unit: offsetUnit,
-              });
+              H.relativeDatePicker.addStartingFrom(
+                {
+                  value: offsetValue,
+                  unit: offsetUnit,
+                },
+                H.clauseStepPopover,
+              );
             }
 
-            H.popover().button("Add filter").click();
+            H.clauseStepPopover().button("Add filter").click();
 
             assertFilterName(expectedDisplayName);
             H.visualize();
@@ -598,7 +599,7 @@ describe("scenarios > filters > filter types", () => {
             H.openProductsTable({ mode: "notebook" });
             H.filter({ mode: "notebook" });
 
-            H.popover().within(() => {
+            H.clauseStepPopover().within(() => {
               cy.findByText("Created At").click();
               cy.findByText("Exclude…").click();
               cy.findByText(label).click();

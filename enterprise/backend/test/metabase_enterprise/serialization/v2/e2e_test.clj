@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.e2e-test
+(ns metabase-enterprise.serialization.v2.e2e-test
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

@@ -70,6 +70,10 @@ const isCompatible = (expectedType, inferredType) => {
   if (expectedType === "number" && inferredType === "aggregation") {
     return true;
   }
+  if (expectedType === "expression" && inferredType === "aggregation") {
+    return true;
+  }
+
   return false;
 };
 
@@ -188,7 +192,21 @@ export function resolve({
         throw new ResolverError(validationError, expression.node);
       }
     }
-    if (!multiple) {
+    if (multiple) {
+      const argCount = operands.filter(arg => !isOptionsObject(arg)).length;
+      const minArgCount = args.length;
+
+      if (argCount < minArgCount) {
+        throw new ResolverError(
+          ngettext(
+            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            minArgCount,
+          ),
+          expression.node,
+        );
+      }
+    } else {
       const expectedArgsLength = args.length;
       const maxArgCount = hasOptions
         ? expectedArgsLength + 1

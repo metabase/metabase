@@ -23,6 +23,23 @@
        (binding [metabase.search.ingestion/*force-sync* true]
          ~@body))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-new-search-if-available
+  "Create a temporary index table for the duration of the body."
+  [& body]
+  `(if (search/supports-index?)
+     (mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
+       (with-temp-index-table
+         (search/reindex!)
+         ~@body))
+     ~@body))
+
+(defmacro with-legacy-search
+  "Ensure legacy search, which doesn't require an index, is used."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
+     ~@body))
+
 (defmacro with-api-user [raw-ctx & body]
   `(let [raw-ctx# ~raw-ctx]
      (if-let [user-id# (:current-user-id raw-ctx#)]

@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import { entityForObject } from "metabase/lib/schema";
@@ -48,7 +47,6 @@ export const getSecondarySortColumn = (
 export function sortModels(
   models: ModelResult[],
   sortingOptions: SortingOptions,
-  localeCode: string = "en",
 ) {
   const { sort_column, sort_direction } = sortingOptions;
 
@@ -57,8 +55,7 @@ export function sortModels(
     return models;
   }
 
-  const compare = (a: string, b: string) =>
-    a.localeCompare(b, localeCode, { sensitivity: "base" });
+  const compare = (a: string, b: string) => a.localeCompare(b);
 
   return [...models].sort((modelA, modelB) => {
     const a = getValueForSorting(modelA, sort_column);

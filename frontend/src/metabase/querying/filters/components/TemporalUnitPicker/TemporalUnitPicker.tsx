@@ -43,6 +43,7 @@ export function TemporalUnitPicker({
           label={item.label}
           selected={item.value === value}
           onClick={() => onChange(item.value)}
+          role="option"
         />
       ))}
       {!isExpanded && (
@@ -50,10 +51,11 @@ export function TemporalUnitPicker({
           value={t`More…`}
           c="brand"
           onClick={() => setIsExpanded(true)}
+          role="option"
         />
       )}
       {isExpanded && canRemove && (
-        <SelectItem value={t`Don't bin`} onClick={onRemove} />
+        <SelectItem value={t`Don't bin`} onClick={onRemove} role="option" />
       )}
     </Box>
   );

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util-test
+(ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
    #?@(:clj [[metabase.test :as mt]
@@ -9,7 +9,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.number :as u.number])
   #?(:clj (:import [java.time DayOfWeek Month])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -359,6 +360,7 @@
     "x"                                   :dispatch-type/string
     :x                                    :dispatch-type/keyword
     1                                     :dispatch-type/integer
+    (u.number/bigint "10")                :dispatch-type/integer
     1.1                                   :dispatch-type/number
     {:a 1}                                :dispatch-type/map
     [1]                                   :dispatch-type/sequential
@@ -419,11 +421,11 @@
   (testing "classify correctly"
     (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]
+            :to-create [{:name "c5"} {:id -1 :name "-c1"}]
             :to-skip   [{:id 4 :name "c4"}]}
            (u/row-diff
             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"} {:name "c5"}])))
     (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
             :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
             :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
@@ -575,3 +577,8 @@
     (let [acc (volatile! [])]
       (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
       (is (= [1 2 3] @acc)))))
+
+(deftest ^:parallel safe-min-test
+  (testing "safe min behaves like clojure.core/min"
+    (is (= nil (u/safe-min nil)))
+    (is (= 2 (u/safe-min nil 2 nil 3)))))

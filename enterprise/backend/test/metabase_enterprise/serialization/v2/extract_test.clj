@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
+(ns metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -7,9 +7,9 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
+   [metabase.actions.models :as action]
    [metabase.audit :as audit]
-   [metabase.core :as mbc]
-   [metabase.models.action :as action]
+   [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -1002,8 +1002,7 @@
                  (ids-by-model "FieldValues" (extract/extract {})))))
         (testing "with :include-field-values true"
           (let [models (->> {:include-field-values true} extract/extract (map (comp :model last :serdes/meta)))]
-            ;; why 14?
-            (is (= 14
+            (is (= 1
                    (t2/count :model/FieldValues)
                    (count (filter #{"FieldValues"} models))))))))))
 

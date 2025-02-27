@@ -1,7 +1,6 @@
 import type { MantineTheme } from "@mantine/core";
 
-import { color } from "metabase/lib/colors";
-
+import { color as legacyColor } from "metabase/lib/colors";
 type ColorShades = MantineTheme["colors"]["dark"];
 
 const ORIGINAL_COLORS = [
@@ -31,6 +30,7 @@ const CUSTOM_COLORS = [
   "bg-white",
   "border",
   "brand",
+  "brand-light",
   "brand-lighter",
   "danger",
   "error",
@@ -45,10 +45,28 @@ const CUSTOM_COLORS = [
   "text-white",
   "warning",
   "white",
+  // TODO: Check with an adult and make sure this is okay
+  "text-primary",
+  "text-secondary",
+  "text-tertiary",
+  "background",
+  "background-disabled",
 ] as const;
 
-function getColorShades(color: string): ColorShades {
-  return Array(10).fill(color) as ColorShades;
+export function getColorShades(colorName: string): ColorShades {
+  // yes this is silly, but it makes typescript so happy
+  return [
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+  ];
 }
 
 export function getThemeColors(): Record<string, ColorShades> {
@@ -57,7 +75,16 @@ export function getThemeColors(): Record<string, ColorShades> {
       ORIGINAL_COLORS.map(name => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map(name => [name, getColorShades(color(name))]),
+      CUSTOM_COLORS.map(name => [name, getColorShades(legacyColor(name))]),
     ),
   };
+}
+
+/**
+ * css color variable from Metabase's theme
+ * @param colorName
+ * @returns string referencing a css variable
+ */
+export function color(colorName: (typeof CUSTOM_COLORS)[number]): string {
+  return `var(--mb-color-${colorName})`;
 }

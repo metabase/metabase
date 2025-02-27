@@ -4,10 +4,11 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -17,18 +18,15 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
-   [metabase.sync :as sync]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
@@ -37,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (com.ibm.icu.text Transliterator)
    (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
@@ -146,11 +145,24 @@
                 (t/plus (t/seconds 1))
                 (t/truncate-to :seconds))))))
 
+(def ^:private transliterator
+  (Transliterator/getInstance "Arabic-Latin; Bulgarian-Latin/BGN; Greek-Latin/BGN; Any-Latin; Latin-ASCII"))
+
+(defn- transliterate [s]
+  (when-not (str/blank? s)
+    (-> (.transliterate ^Transliterator transliterator ^String s)
+        (str/replace #"\s+" "_")
+        (str/replace #"[^\w]+" "_")
+        (str/replace #"_{2,}" "_")
+        (str/replace #"^_|_$" ""))))
+
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
+  ;; TODO we should not rely on the timestamp to make the filename unique
+  ;; Ideally we would add an incrementing count, but it may be cheaper and easier to include some randomness.
   (let [time-format                 "_yyyyMMddHHmmss"
-        slugified-name               (or (u/slugify table-name) "")
+        slugified-name              (or (u/not-blank (transliterate table-name)) "blank")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (min-safe (driver/table-name-length-limit driver)
@@ -407,7 +419,7 @@
 
 (defn- scan-and-sync-table!
   [database table]
-  (sync-fields/sync-fields-for-table! database table)
+  (sync/sync-fields-for-table! database table)
   (case *auxiliary-sync-steps*
     :asynchronous (future (sync/sync-table! table))
     :synchronous (sync/sync-table! table)
@@ -448,7 +460,7 @@
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
-      (perms-util/sandboxed-user?)
+      (perms/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
@@ -469,16 +481,16 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (data-perms/full-db-permission-for-user api/*current-user-id*
-                                                                   :perms/view-data
-                                                                   (u/the-id db)))
+          (= :unrestricted (perms/full-db-permission-for-user api/*current-user-id*
+                                                              :perms/view-data
+                                                              (u/the-id db)))
           ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
           ;; (at least) `:query-builder` plus unrestricted view-data
           (contains? #{:query-builder :query-builder-and-native}
-                     (data-perms/full-schema-permission-for-user api/*current-user-id*
-                                                                 :perms/create-queries
-                                                                 (u/the-id db)
-                                                                 schema-name))))
+                     (perms/full-schema-permission-for-user api/*current-user-id*
+                                                            :perms/create-queries
+                                                            (u/the-id db)
+                                                            schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
@@ -523,9 +535,9 @@
         schema+table-name (table-identifier {:schema schema :name table-name})
         {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync-tables/create-table! db {:name         table-name
-                                                         :schema       (not-empty schema)
-                                                         :display_name display-name})
+        table             (sync/create-table! db {:name         table-name
+                                                  :schema       (not-empty schema)
+                                                  :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
@@ -629,13 +641,14 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csvupload
-                               (assoc stats
-                                      :event    :csv-upload-successful
-                                      :model-id (:id card)))
+        (analytics/track-event! :snowplow/csvupload
+                                (assoc stats
+                                       :event    :csv-upload-successful
+                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+        (analytics/inc! :metabase-csv-upload/failed)
+        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
         (throw e)))))
@@ -690,6 +703,13 @@
    {:added {}, :updated {}}
    (map vector field-names existing-types new-types)))
 
+(defn- old-column-types
+  [driver field-names existing-types]
+  (->> (for [[field-name col-type] (map vector field-names existing-types)
+             :when col-type]
+         [(keyword field-name) (database-type driver col-type)])
+       (into {})))
+
 (defn- field->db-type [driver field->col-type]
   (m/map-kv
    (fn [field-name col-type]
@@ -705,7 +725,7 @@
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-columns! driver (:id database) (table-identifier table)
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
            args)))
 
@@ -725,7 +745,7 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+  (when-let [query (card/lib-query model)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
@@ -741,7 +761,15 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (persisted-info/invalidate! {:card_id [:in model-ids]})))
+    (model-persistence/invalidate! {:card_id [:in model-ids]})))
+
+(defn- translate-type-keywords [m]
+  (walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
+       (keyword "metabase.upload.types" (name x))
+       x))
+   m))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
@@ -768,15 +796,17 @@
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
               detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              new-types          (map upload-types/new-type old-types detected-types)
+              allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
+              new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
               ;; avoid any schema modification unless all the promotions required by the file are supported,
               ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [changes (field-changes column-names old-types new-types)]
+                                   (let [changes   (field-changes column-names old-types new-types)
+                                         old-types (old-column-types driver column-names old-types)]
                                      (add-columns! driver database table (:added changes))
-                                     (alter-columns! driver database table (:updated changes))))
+                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
               ;; this will fail if any of our required relaxations were rejected.
               parsed-rows        (parse-rows settings new-types rows)
               row-count          (count parsed-rows)
@@ -817,11 +847,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
+          (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+      (analytics/inc! :metabase-csv-upload/failed)
+      (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))
 

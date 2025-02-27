@@ -4,6 +4,36 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.54.0
+
+- Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
+
+- Added the multi-method `alter-table-columns!`, like `alter-columns!` but accepts additional kw-arg opts.
+  Existing implementations of `alter-columns!` will be used by default.
+
+- `alter-columns!` is now marked as deprecated. Drivers
+  should seek to implement the new `alter-table-columns!` method.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-table-columns-sql` has been added, like `alter-columns-sql` but accepts additional kw-arg opts. Existing implementations of `alter-columns-sql` will be used by default.
+
+- `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` is now marked as deprecated. Drivers should seek to implement the new `alter-table-columns-sql` method.
+
+- Added a feature `:test/arrays` and multimethod `native-array-query` to enable the testing of array types for
+  databases that support them.
+
+## Metabase 0.53.0
+
+- Added the multimethod `bad-connection-details` to allow mocking bad connection parameters for tests.
+
+- Added `driver/dynamic-database-types-lookup` and its `:postgres` implementation. The method generates map
+  of `database_type` to `base_type`, for dynamic types, ie. those which are not covered
+  by `sql-jdbc.sync/database-type->base-type`. Its original purpose was to enable mapping of user defined enums in
+  postgres to appropriate base type in results metadata.
+
+## Metabase 0.52.12
+
+- Added the multimethod `metabase.driver/db-details-to-test-and-migrate`. This can be used to cleanup and migrate ambiguous connection details from previous versions.
+
 ## Metabase 0.52.0
 
 - The Docker image for Metabase 0.52.0 now uses Java 21 instead of Java 11. Please make sure to test your driver

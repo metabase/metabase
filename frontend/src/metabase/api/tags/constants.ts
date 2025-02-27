@@ -6,15 +6,17 @@ export const TAG_TYPES = [
   "api-key",
   "bookmark",
   "card",
-  "cloud-migration",
   "channel",
+  "cloud-migration",
   "collection",
   "dashboard",
+  "dashboard-question-candidates",
   "database",
   "field",
   "field-values",
   "indexed-entity",
   "model-index",
+  "notification",
   "parameter-values",
   "permissions-group",
   "persisted-info",
@@ -35,6 +37,7 @@ export const TAG_TYPES = [
   "public-card",
   "embed-card",
   "public-action",
+  "user-key-value",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

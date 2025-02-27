@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [next.jdbc :as next.jdbc]

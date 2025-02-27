@@ -130,6 +130,7 @@ export const createMockTokenFeatures = (
   upload_management: false,
   query_reference_validation: false,
   serialization: false,
+  cache_preemptive: false,
   ...opts,
 });
 
@@ -211,6 +212,7 @@ export const createMockSettings = (
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
+  "show-sdk-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,

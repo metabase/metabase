@@ -3,8 +3,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.db :as mdb]
-   [metabase.models]
    [metabase.models.collection :as collection]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -12,12 +12,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; make sure all the models get loaded up so we can resolve them based on their table names.
-;;;
-;;; TODO -- what about enterprise models that have `entity_id`? Don't know of any yet. We'll have to cross that bridge
-;;; when we get there.
-(comment metabase.models/keep-me)
 
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding views."
@@ -35,8 +29,7 @@
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (->> (descendants :metabase/model)
-       (filter #(= (namespace %) "model"))))
+  (keys models.resolution/model->namespace))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."

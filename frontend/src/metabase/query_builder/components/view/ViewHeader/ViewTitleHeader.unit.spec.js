@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
@@ -119,6 +120,12 @@ function setup({
   ...props
 } = {}) {
   mockSettings(settings);
+
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: false,
+  });
 
   const callbacks = {
     runQuestionQuery: jest.fn(),
@@ -278,12 +285,11 @@ describe("ViewTitleHeader", () => {
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
         });
 
-        it("displays refresh button tooltip above the refresh button", async () => {
+        it("displays refresh button tooltip for the refresh button", async () => {
           setup({ card });
           const refreshButton = screen.getByLabelText("refresh icon");
           await userEvent.hover(refreshButton);
-          const tooltip = screen.getByRole("tooltip");
-          expect(tooltip).toHaveAttribute("data-placement", "top");
+          const tooltip = await screen.findByRole("tooltip");
           expect(tooltip).toHaveTextContent("Refresh");
         });
       });

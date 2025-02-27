@@ -254,7 +254,7 @@ export function createQueryWithSpecificDateFilter({
   values = [new Date(2020, 1, 15)],
   hasTime = false,
 }: SpecificDateFilterOpts = {}) {
-  const clause = Lib.specificDateFilterClause(query, 0, {
+  const clause = Lib.specificDateFilterClause({
     operator,
     column,
     values,

@@ -1,4 +1,4 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Box } from "metabase/ui";
 
 import type { DataSelectorSectionHeaderProps } from "../DataSelectorSectionHeader";

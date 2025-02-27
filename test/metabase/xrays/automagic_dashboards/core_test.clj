@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
+(ns metabase.xrays.automagic-dashboards.core-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -6,12 +6,12 @@
    [clojure.walk :as walk]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -1157,25 +1157,25 @@
     (mt/dataset test-data
       (testing ""
         (testing "A table with a more specific entity-type will match to more specific binding definitions."
-          (let [table (t2/select-one :model/Table (mt/id :people))]
-            (let [{{:keys [entity_type]} :source :as root} (#'magic/->root table)
-                  base-context       (#'magic/make-base-context root)
-                  dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}
-                                      {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                      {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                      {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                      {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
-                                      {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                  candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
-              (testing "For a model, the entity_type is :entity/UserTable"
-                (is (= :entity/UserTable entity_type)))
-              (testing "A table of type :entity/UserTable will match on all 6 of the above dimension definitions."
-                (is (= (count dimensions)
-                       (-> (mt/id :people :latitude)
-                           candidate-bindings
-                           count))))
-              (testing "The return shape of most-specific-definition a single dimension containing a matches vector
+          (let [table (t2/select-one :model/Table (mt/id :people))
+                {{:keys [entity_type]} :source :as root} (#'magic/->root table)
+                base-context       (#'magic/make-base-context root)
+                dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}
+                                    {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                    {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                    {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                    {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                    {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+                candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
+            (testing "For a model, the entity_type is :entity/UserTable"
+              (is (= :entity/UserTable entity_type)))
+            (testing "A table of type :entity/UserTable will match on all 6 of the above dimension definitions."
+              (is (= (count dimensions)
+                     (-> (mt/id :people :latitude)
+                         candidate-bindings
+                         count))))
+            (testing "The return shape of most-specific-definition a single dimension containing a matches vector
                         that contains a single field. Recall from candidate-binding-inner-shape-test that each
                         most-most-specific-definition call ensures every field is bound to at most one dimension
                         definition. The sequence of all most-specific-definition may have multiple of the same dimension
@@ -1189,71 +1189,71 @@
                          {\"Loc\" {:matches [state field]}}
                          {\"Loc\" {:matches [city field]}}]
                         "
-                (testing "Latitude is very specific so binds to Lat"
-                  (is (=?
-                       (-> (peek dimensions)
-                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                       (-> (mt/id :people :latitude)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
-                (testing "Longitude binds to GenericNumber since there is no more specific Lon dimension definition."
-                  (is (=?
-                       (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
-                       (-> (mt/id :people :longitude)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
-                (testing "City and State both have semantic types that descend from type/Location"
-                  (is (=?
-                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
-                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
-                       (-> (mt/id :people :city)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension))))
-                  (is (=?
-                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
-                           (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
-                       (-> (mt/id :people :state)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
-                (testing "Although type/ZipCode exists, in this table that classification wasn't made, so Zip doesn't
+              (testing "Latitude is very specific so binds to Lat"
+                (is (=?
+                     (-> (peek dimensions)
+                         (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                     (-> (mt/id :people :latitude)
+                         candidate-bindings
+                         (#'interesting/most-specific-matched-dimension)))))
+              (testing "Longitude binds to GenericNumber since there is no more specific Lon dimension definition."
+                (is (=?
+                     (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                         (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
+                     (-> (mt/id :people :longitude)
+                         candidate-bindings
+                         (#'interesting/most-specific-matched-dimension)))))
+              (testing "City and State both have semantic types that descend from type/Location"
+                (is (=?
+                     (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                         (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
+                     (-> (mt/id :people :city)
+                         candidate-bindings
+                         (#'interesting/most-specific-matched-dimension))))
+                (is (=?
+                     (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                         (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
+                     (-> (mt/id :people :state)
+                         candidate-bindings
+                         (#'interesting/most-specific-matched-dimension)))))
+              (testing "Although type/ZipCode exists, in this table that classification wasn't made, so Zip doesn't
                           bind to anything since there isn't a more generic dimension definition to bind to."
-                  (is (nil? (-> (mt/id :people :zip)
-                                candidate-bindings
-                                (#'interesting/most-specific-matched-dimension)))))))))))))
+                (is (nil? (-> (mt/id :people :zip)
+                              candidate-bindings
+                              (#'interesting/most-specific-matched-dimension))))))))))))
 
 (deftest bind-dimensions-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from bind-dimensions"
     (mt/dataset test-data
       (testing "Clearly demonstrate the mechanism of full dimension binding"
-        (let [table (t2/select-one :model/Table (mt/id :people))]
-          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root table)
-                base-context     (#'magic/make-base-context root)
-                dimensions       [{"Loc" {:field_type [:type/Location], :score 60}}
-                                  {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                  {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                  {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                  {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                  {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
-                                  {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                bound-dimensions (#'interesting/find-dimensions base-context dimensions)]
-            (testing "For a model, the entity_type is :entity/UserTable"
-              (is (= :entity/UserTable entity_type)))
-            (testing "The return shape of bound dimensions is a map of bound dimensions (those that are used from the
+        (let [table (t2/select-one :model/Table (mt/id :people))
+              {{:keys [entity_type]} :source :as root} (#'magic/->root table)
+              base-context     (#'magic/make-base-context root)
+              dimensions       [{"Loc" {:field_type [:type/Location], :score 60}}
+                                {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
+                                {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+              bound-dimensions (#'interesting/find-dimensions base-context dimensions)]
+          (testing "For a model, the entity_type is :entity/UserTable"
+            (is (= :entity/UserTable entity_type)))
+          (testing "The return shape of bound dimensions is a map of bound dimensions (those that are used from the
                       dimension definitions) to their own definitions with the addition of a `:matches` vector
                       containing the fields that most closely match this particular dimension definition."
-              (is (=?
-                   {"Lat"           {:field_type [:entity/UserTable :type/Latitude]
-                                     :matches [{:id (mt/id :people :latitude)}]
-                                     :score 100}
-                    "GenericNumber" {:field_type [:entity/UserTable :type/Number]
-                                     :matches [{:id (mt/id :people :longitude)}]
-                                     :score 85}
-                    "Loc"           {:field_type [:type/Location]
-                                     :matches    (sort-by :id [{:id (mt/id :people :state)}
-                                                               {:id (mt/id :people :city)}])
-                                     :score      60}}
-                   (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id)))))))))))
+            (is (=?
+                 {"Lat"           {:field_type [:entity/UserTable :type/Latitude]
+                                   :matches [{:id (mt/id :people :latitude)}]
+                                   :score 100}
+                  "GenericNumber" {:field_type [:entity/UserTable :type/Number]
+                                   :matches [{:id (mt/id :people :longitude)}]
+                                   :score 85}
+                  "Loc"           {:field_type [:type/Location]
+                                   :matches    (sort-by :id [{:id (mt/id :people :state)}
+                                                             {:id (mt/id :people :city)}])
+                                   :score      60}}
+                 (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id))))))))))
 
 (deftest binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the

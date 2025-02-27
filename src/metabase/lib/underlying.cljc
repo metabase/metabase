@@ -64,7 +64,7 @@
   [:map
    [:rename-superflous-options? {:optional true} :boolean]])
 
-(mu/defn top-level-column :- ::lib.schema.metadata/column
+(mu/defn top-level-column :- [:maybe ::lib.schema.metadata/column]
   "Given a column, returns the \"top-level\" equivalent.
 
   Top-level means to find the corresponding column in the [[top-level-query]], which requires walking back through the
@@ -98,3 +98,34 @@
   "Whether the `query` has an aggregation or breakout clause in some query stage."
   [query :- ::lib.schema/query]
   (some? (first (pop-until-aggregation-or-breakout query))))
+
+(mu/defn- has-source-or-underlying-source-fn :- [:function
+                                                 [:-> [:maybe ::lib.schema.metadata/column] :boolean]
+                                                 [:->
+                                                  ::lib.schema/query
+                                                  [:maybe ::lib.schema.metadata/column]
+                                                  :boolean]]
+  [source :- :keyword]
+  (fn has-source?
+    ([column]
+     (= (:lib/source column) source))
+    ([query column]
+     (boolean
+      (and (seq column)
+           (or (has-source? column)
+               (has-source? (top-level-column query column))))))))
+
+(def aggregation-sourced?
+  "Does column or top-level-column have :source/aggregations?"
+  (has-source-or-underlying-source-fn :source/aggregations))
+
+(def breakout-sourced?
+  "Does column or top-level-column have :source/breakouts?"
+  (has-source-or-underlying-source-fn :source/breakouts))
+
+(mu/defn strictly-underlying-aggregation? :- :boolean
+  "Does the [[top-level-column]] (but not `column` itself) in `query` have :source/aggregations?"
+  [query  :- ::lib.schema/query
+   column :- [:maybe ::lib.schema.metadata/column]]
+  (and (not (aggregation-sourced? column))
+       (aggregation-sourced? query column)))

@@ -15,9 +15,6 @@ export async function runQuestionQuerySdk(
 ): Promise<SdkQuestionState> {
   let { question, originalQuestion, cancelDeferred } = params;
 
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-
   if (question.isSaved()) {
     const type = question.type();
 
@@ -32,7 +29,7 @@ export async function runQuestionQuerySdk(
 
   let queryResults;
 
-  if (question.canRun() && (question.isSaved() || !isNative)) {
+  if (shouldRunCardQuery(question)) {
     queryResults = await runQuestionQuery(question, {
       cancelDeferred,
       ignoreCache: false,
@@ -46,4 +43,11 @@ export async function runQuestionQuerySdk(
   }
 
   return { question, queryResults };
+}
+
+export function shouldRunCardQuery(question: Question): boolean {
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  return question.canRun() && (question.isSaved() || !isNative);
 }

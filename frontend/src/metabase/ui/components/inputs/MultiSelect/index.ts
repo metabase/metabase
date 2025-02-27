@@ -1,3 +1,2 @@
-export { MultiSelect } from "@mantine/core";
-export type { MultiSelectProps } from "@mantine/core";
-export { getMultiSelectOverrides } from "./MultiSelect.styled";
+export { MultiSelect, type MultiSelectProps } from "@mantine/core";
+export { multiSelectOverrides } from "./MultiSelect.config";

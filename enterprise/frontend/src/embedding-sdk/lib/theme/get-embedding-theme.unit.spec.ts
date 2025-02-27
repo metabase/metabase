@@ -1,7 +1,7 @@
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
-} from "embedding-sdk/lib/theme/default-component-theme";
+} from "metabase/embedding-sdk/theme";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -17,6 +17,13 @@ describe("Transform Embedding Theme Override", () => {
           "text-primary": "yellow",
           "text-tertiary": "green",
           "background-disabled": "pink",
+        },
+
+        // we should strip any explicit "undefined" values and apply default component values
+        components: {
+          popover: {
+            zIndex: undefined,
+          },
         },
       },
       "Roboto",

@@ -5,6 +5,7 @@ default: &default
 shared_sources: &shared_sources
   - "src/**/*.cljc"
   - "src/**/*.cljs"
+  - "package.json"
 
 shared_specs: &shared_specs
   - "test/**/*.cljc"
@@ -93,14 +94,13 @@ sources: &sources
   - *backend_sources
 
 e2e_ci: &e2e_ci
-  - ".github/actions/build-e2e-matrix/**"
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/actions/prepare-uberjar-artifact/**"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
   - ".github/actions/run-snowplow-micro/**"
-  - ".github/workflows/e2e-tests.yml"
+  - ".github/workflows/e2e-*"
 
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"

@@ -22,7 +22,7 @@ export const Editor = ({ onApply = () => {} }: EditorProps) => {
     question,
     originalQuestion,
     updateQuestion,
-    runQuestion,
+    queryQuestion,
     modelsFilterList,
   } = useInteractiveQuestionContext();
 
@@ -54,7 +54,7 @@ export const Editor = ({ onApply = () => {} }: EditorProps) => {
           }
           runQuestionQuery={async () => {
             onApply();
-            await runQuestion();
+            await queryQuestion();
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}

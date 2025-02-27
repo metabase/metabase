@@ -227,7 +227,7 @@ export const calculateLegendRowsWithColumns = ({
 
   const colWidth = Math.floor(availableTotalWidth / numCols);
   const rows: PositionedLegendItem[][] = [...Array(numRows).keys()].map(
-    _ => [],
+    () => [],
   );
 
   for (let colIndex = 0; colIndex < numCols; colIndex++) {

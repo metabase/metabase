@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.api.slack :as api.slack]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.test :as mt]))
@@ -86,3 +88,74 @@
 
     (testing "A non-admin cannot fetch the Slack manifest"
       (mt/user-http-request :rasta :get 403 "slack/manifest"))))
+
+(deftest bug-report-test
+  (testing "POST /api/slack/bug-report"
+    (let [diagnostic-info {:url "https://test.com"
+                           :description "Test description"
+                           :reporter {:name "John McLane"
+                                      :email "diehard@metabase.com"}
+                           :bugReportDetails
+                           {:metabase-info {:version {:date "2025-01-10"
+                                                      :tag "vUNKNOWN"
+                                                      :hash "68b5038"}}}}
+          mock-file-info {:url "https://files.slack.com/files-pri/123/diagnostic.json"
+                          :id "F123ABC"
+                          :permalink_public "https://slack.com/files/123/diagnostic.json"}
+          expected-blocks [{:type "rich_text",
+                            :elements
+                            [{:type "rich_text_section",
+                              :elements
+                              [{:type "text", :text "New bug report from "}
+                               {:type "link", :url "mailto:diehard@metabase.com", :text "John McLane"}
+                               {:type "text", :text "\n\nDescription:\n", :style {:bold true}}]}]}
+                           {:type "section", :text {:type "mrkdwn", :text "Test description"}}
+                           {:type "rich_text",
+                            :elements
+                            [{:type "rich_text_section",
+                              :elements
+                              [{:type "text", :text "\n\nURL:\n", :style {:bold true}}
+                               {:type "link", :text "https://test.com", :url "https://test.com"}
+                               {:type "text", :text "\n\nVersion info:\n", :style {:bold true}}]}
+                             {:type "rich_text_preformatted",
+                              :border 0,
+                              :elements
+                              [{:type "text",
+                                :text "{\n  \"date\" : \"2025-01-10\",\n  \"tag\" : \"vUNKNOWN\",\n  \"hash\" : \"68b5038\"\n}"}]}]}
+                           {:type "divider"}
+                           {:type "actions",
+                            :elements
+                            [{:type "button",
+                              :text {:type "plain_text", :text "Jump to debugger", :emoji true},
+                              :url "https://metabase-debugger.vercel.app/?fileId=F123ABC",
+                              :style "primary"}
+                             {:type "button",
+                              :text {:type "plain_text", :text "Download the report", :emoji true},
+                              :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
+
+      (testing "should post bug report to Slack with correct blocks"
+        (with-redefs [slack/upload-file! (constantly mock-file-info)
+                      slack/post-chat-message! (constantly nil)
+                      slack/channel-exists? (constantly true)]
+          (mt/with-temporary-setting-values [slack-files-channel "test-files"
+                                             slack-bug-report-channel "test-bugs"]
+            (let [response (mt/user-http-request :crowberto :post 200 "slack/bug-report"
+                                                 {:diagnosticInfo diagnostic-info})]
+              (is (= expected-blocks (#'api.slack/create-slack-message-blocks diagnostic-info mock-file-info)))
+              (is (= {:success true
+                      :file-url "https://slack.com/files/123/diagnostic.json"}
+                     response))))))
+
+      (testing "should handle anonymous reports"
+        (with-redefs [slack/upload-file! (constantly mock-file-info)
+                      slack/post-chat-message! (constantly nil)
+                      slack/channel-exists? (constantly true)]
+          (mt/with-temporary-setting-values [slack-files-channel "test-files"
+                                             slack-bug-report-channel "test-bugs"]
+            (let [anonymous-info (dissoc diagnostic-info :reporter)
+                  anonymous-blocks (walk/postwalk
+                                    (fn [m] (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))
+                                              {:type "text" :text "anonymous user"}
+                                              m))
+                                    expected-blocks)]
+              (is (= anonymous-blocks (#'api.slack/create-slack-message-blocks anonymous-info mock-file-info))))))))))

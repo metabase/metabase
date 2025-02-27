@@ -1,4 +1,7 @@
-import type { ChannelDetails, NotificationChannel } from "../notifications";
+import type {
+  ChannelDetails,
+  NotificationChannel,
+} from "metabase-types/api/notification-channels";
 
 export const createMockChannelDetails = (
   opts: Partial<ChannelDetails>,
@@ -10,7 +13,7 @@ export const createMockChannelDetails = (
 });
 
 export const createMockChannel = (
-  opts: Partial<NotificationChannel>,
+  opts: Partial<NotificationChannel> = {},
 ): NotificationChannel => ({
   id: 1,
   name: "Awesome Hook",

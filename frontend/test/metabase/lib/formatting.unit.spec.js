@@ -104,22 +104,46 @@ describe("formatting", () => {
 
       it("shouldn't display small numbers as 0", () => {
         expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
-        expect(formatNumber(-0.1, { compact: true })).toEqual("−0.1");
+        expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
         expect(formatNumber(0.01, { compact: true })).toEqual("0.01");
-        expect(formatNumber(-0.01, { compact: true })).toEqual("−0.01");
+        expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
       });
 
       it("should round up and down", () => {
         expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
-        expect(formatNumber(-1.01, { compact: true })).toEqual("−1.01");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
         expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
-        expect(formatNumber(-1.9, { compact: true })).toEqual("−1.9");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
       });
 
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
+      });
+
+      it("should format large numbers correctly with non-default number separator", () => {
+        const options = { compact: true, number_separators: ",." };
+        expect(formatNumber(10.1, options)).toEqual("10,1");
+        expect(formatNumber(99999999.9, options)).toEqual("100,0M");
+        expect(formatNumber(-10.1, options)).toEqual("-10,1");
+        expect(formatNumber(-99999999.9, options)).toEqual("-100,0M");
+      });
+
+      it("should format big integers", () => {
+        expect(formatNumber(9223372036854775807n, {})).toEqual(
+          "9,223,372,036,854,775,807",
+        );
+      });
+
+      it("should format big integers correctly with non-default number separators", () => {
+        const options = { number_separators: ",." };
+        expect(formatNumber(1000n, options)).toEqual("1.000");
+      });
+
+      it("should format big integers with scale options", () => {
+        const options = { scale: 10 };
+        expect(formatNumber(1000n, options)).toEqual("10,000");
       });
 
       it("should format percentages", () => {
@@ -139,7 +163,7 @@ describe("formatting", () => {
         expect(formatNumber(0.019, options)).toEqual("1.9%");
         expect(formatNumber(0.021, options)).toEqual("2.1%");
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
-        expect(formatNumber(-0.22, options)).toEqual("−22%");
+        expect(formatNumber(-0.22, options)).toEqual("-22%");
       });
 
       it("should format scientific notation", () => {
@@ -264,6 +288,19 @@ describe("formatting", () => {
           column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
         }),
       ).toEqual("12,345");
+    });
+
+    it("should format big integers", () => {
+      const options = {
+        column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
+      };
+
+      expect(formatValue(9223372036854775807n, options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
+      expect(formatValue("9223372036854775807", options)).toEqual(
+        "9,223,372,036,854,775,807",
+      );
     });
 
     it("should format zip codes without commas", () => {
@@ -681,6 +718,11 @@ describe("formatting", () => {
         ).toEqual(formatted);
       },
     );
+
+    it.each([1, 2, 52, 53])("should format week numbers correctly", value => {
+      const text = formatDateTimeWithUnit(value, "week-of-year");
+      expect(text).toMatch(new RegExp(`${value}[a-z]+`));
+    });
   });
 
   describe("formatTime", () => {

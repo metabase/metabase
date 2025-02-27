@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -467,7 +467,7 @@ describe("scenarios > notebook > link to data source", () => {
       });
     });
 
-    H.describeEE("sandboxing", () => {
+    describe("sandboxing", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
 
@@ -531,7 +531,7 @@ describe("scenarios > notebook > link to data source", () => {
         );
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });

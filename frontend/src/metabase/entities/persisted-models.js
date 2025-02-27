@@ -6,6 +6,7 @@ import {
   skipToken,
   useGetPersistedInfoByCardQuery,
   useGetPersistedInfoQuery,
+  useListPersistedInfoQuery,
 } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { PersistedModelSchema } from "metabase/schema";
@@ -31,6 +32,7 @@ const PersistedModels = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListPersistedInfoQuery,
   },
 
   api: {
@@ -96,13 +98,15 @@ const PersistedModels = createEntity({
   },
 });
 
-const useGetQuery = ({ id, type }) => {
+const useGetQuery = ({ id, type }, options) => {
   const persistedInfoByCard = useGetPersistedInfoByCardQuery(
     type === "byModelId" ? id : skipToken,
+    options,
   );
 
   const persistedInfo = useGetPersistedInfoQuery(
     type === "byModelId" ? skipToken : id,
+    options,
   );
 
   return type === "byModelId" ? persistedInfoByCard : persistedInfo;

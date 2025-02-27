@@ -6,6 +6,7 @@ import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -16,7 +17,6 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
-import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 import { Flex, Group, Icon, List, Stack, Text } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
@@ -99,13 +99,13 @@ export function SelectEmbedTypePane({
 
   return (
     <Stack
-      display={"inline-flex"}
+      display="inline-flex"
       p="lg"
-      spacing="lg"
+      gap="lg"
       data-testid="sharing-pane-container"
       align="stretch"
     >
-      <Group spacing="lg" maw="100%" align="stretch">
+      <Group gap="lg" maw="100%" align="stretch">
         {/* STATIC EMBEDDING*/}
         <SharingPaneButton
           title={t`Static embedding`}
@@ -169,7 +169,6 @@ export function SelectEmbedTypePane({
             title={t`Embedded analytics SDK`}
             badge={
               <>
-                <Badge color="gray">{t`Beta`}</Badge>
                 <Badge color="brand">{t`Pro`}</Badge>
               </>
             }
@@ -186,7 +185,7 @@ export function SelectEmbedTypePane({
           </SharingPaneButton>
         </MaybeLink>
       </Group>
-      <Group position="apart">
+      <Group justify="space-between">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
           <PublicEmbedCard

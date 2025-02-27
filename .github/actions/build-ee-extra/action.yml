@@ -4,9 +4,7 @@ description: Build Metabase Enterprise Edition with extra features
 inputs:
   java-version:
     required: true
-    # build with Java 11 since that's still officially what we target as a minimum and we don't want Java >11 bytecode
-    # sneaking in.
-    default: 11
+    default: 21
   iam-role:
     description: "The IAM role to assume"
     required: true
@@ -32,7 +30,7 @@ runs:
       shell: bash
     - uses: actions/setup-node@v4
       with:
-        node-version: lts/Hydrogen # 18.x.x
+        node-version: lts/Jod # 22.x.x
     - run: rm package.json && npm install yaml
       shell: bash
     - name: parse drivers registry
@@ -66,10 +64,7 @@ runs:
           const extraDrivers = {
             firebolt: getDriverUrl('firebolt'),
             starburst: getDriverUrl('starburst'),
-            exasol: getDriverUrl('exasol'),
-            exasol_jdbc: drivers.find(d => d.name === 'exasol').deps[0],
             clickhouse: getDriverUrl('clickhouse'),
-            ocient: getDriverUrl('ocient'),
             materialize: getDriverUrl('materialize'),
           };
 
@@ -86,20 +81,9 @@ runs:
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).starburst }}
       shell: bash
       working-directory: modules
-    - name: Download Exasol driver
-      run: |
-        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).exasol }}
-        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).exasol_jdbc }}
-      shell: bash
-      working-directory: modules
     - name: Download Clickhouse driver
       run: |
         curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).clickhouse }}
-      shell: bash
-      working-directory: modules
-    - name: Download Ocient driver
-      run: |
-        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).ocient }}
       shell: bash
       working-directory: modules
     - name: Download Materialize driver

@@ -1,6 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
@@ -31,7 +31,7 @@
     {}))
 
 (mu/defmethod notification.payload/payload :notification/system-event
-  [notification-info :- notification.payload/Notification]
+  [notification-info :- ::notification.payload/Notification]
   (let [payload                          (:payload notification-info)
         {:keys [event_topic event_info]} payload]
     (assoc payload :custom (custom-payload event_topic event_info))))

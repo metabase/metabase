@@ -241,10 +241,11 @@ const Fields = createEntity({
   ),
 });
 
-const useGetFetchFieldValuesQuery = query => {
+const useGetFetchFieldValuesQuery = (query, options) => {
   const tableId = query.table_id;
   const result = useGetFieldValuesQuery(
     query === skipToken ? skipToken : query.id,
+    options,
   );
 
   const { data } = result;

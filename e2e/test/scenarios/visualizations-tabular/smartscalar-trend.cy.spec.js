@@ -1,6 +1,6 @@
 import Color from "color";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { colors } from "metabase/lib/colors";
 
@@ -25,7 +25,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow data settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -135,7 +135,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // another column
     H.menu().findByText("Value from another column…").click();
-    H.popover().findByText("Mega Count").click();
+    H.selectDropdown().findByText("Mega Count").click();
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -145,7 +145,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
-    H.menu().findByLabelText("Column").click();
+    H.menu().findByRole("textbox", { name: "Column" }).click();
     H.popover().findByText("Count").click();
     H.menu().button("Done").click();
 
@@ -157,7 +157,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should handle up to 3 comparisons", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -208,6 +208,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").should("be.disabled");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("comparison-list")
       .children()
       .last()
@@ -230,7 +231,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -290,7 +291,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().button("Done").click();
 
     cy.findByTestId("chartsettings-field-picker")
-      .find('input[type="search"]')
+      .findByRole("textbox")
       .should("have.value", "Mega Count")
       .click();
 
@@ -345,7 +346,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -364,7 +365,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.error).string(),
+      Color(colors.error).rgb().string(),
     );
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
@@ -431,7 +432,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -494,5 +495,45 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
     H.cartesianChartCircle().should("have.length", 3);
+  });
+
+  it("should support quick-filter drill thru (metabase#46168)", () => {
+    H.createQuestion(
+      {
+        name: "46168",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("scalar-period")
+      .findByText("Apr 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("344").click();
+
+    H.popover().within(() => {
+      // Validate expected filter options
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      // Apply the drill
+      cy.findByText(">").click();
+    });
+
+    // Validate that the filter was applied
+    cy.findByTestId("scalar-period")
+      .findByText("Mar 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });
 });

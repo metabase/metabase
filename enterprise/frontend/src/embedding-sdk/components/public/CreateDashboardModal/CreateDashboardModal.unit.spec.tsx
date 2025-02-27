@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -6,8 +5,9 @@ import {
   setupCollectionByIdEndpoint,
   setupDashboardCreateEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
@@ -123,8 +123,7 @@ describe("CreateDashboardModal", () => {
 function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
-  return renderWithProviders(<CreateDashboardModal {...props} />, {
-    mode: "sdk",
+  return renderWithSDKProviders(<CreateDashboardModal {...props} />, {
     sdkProviderProps: {
       authConfig: createMockAuthProviderUriConfig(),
     },

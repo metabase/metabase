@@ -63,7 +63,7 @@ const ChartSettingsWidget = ({
       borderBottom={borderBottom}
     >
       {title && (
-        <Group align="center" spacing="xs" mb={inline && !hidden ? 0 : "sm"}>
+        <Group align="center" gap="xs" mb={inline && !hidden ? 0 : "sm"}>
           <Text
             component="label"
             fw="bold"

@@ -204,7 +204,7 @@ function getCurrentMetricData({ series, insights, settings }) {
 
   const clicked = {
     value,
-    column: cols[dimensionColIndex],
+    column: cols[metricColIndex],
     dimensions: [
       {
         value: rows[latestRowIndex][dimensionColIndex],

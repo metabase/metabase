@@ -76,7 +76,10 @@ export const MoveModal = ({
     : undefined;
 
   const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
-  const recentFilter = makeRecentFilter(shouldDisableItem);
+
+  const recentFilter = makeRecentFilter(item => {
+    return Boolean(!item.can_write || shouldDisableItem?.(item));
+  });
 
   const handleMove = useCallback(
     (destination: CollectionPickerValueItem) => {

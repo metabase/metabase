@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
@@ -11,13 +12,23 @@
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
+(def search-models
+  "Set of search model string names."
+  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+
+(def ^:private search-model->toucan-model
+  (into {}
+        (map (fn [search-model]
+               [search-model (-> search-model api/model->db-model :db-model)]))
+        search-models))
+
 (def ^:private SearchModel
-  [:enum "dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"])
+  (into [:enum] search-models))
 
 (def ^:private AttrValue
   "Key must be present, to show it's been explicitly considered.
 
-  - false: not present [not: consider making the nil instead, since it implies writing NULL to the column]
+  - false: not present [note: consider making the nil instead, since it implies writing NULL to the column]
   - true: given by a column with the same name (snake case) [note: consider removing this sugar, just repeat the column]
   - keyword: given by the corresponding column
   - vector: calculated by the given expression
@@ -30,9 +41,10 @@
    :collection-id       :pk
    :created-at          :timestamp
    :creator-id          :pk
+   :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
-   :id                  :pk
+   :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
    :last-viewed-at      :timestamp
@@ -57,6 +69,7 @@
         [:id                                                ;;  in addition to being a filter, this is a key property
          :name
          :official-collection
+         :dashboard-id
          :dashboardcard-count
          :last-viewed-at
          :pinned
@@ -147,6 +160,11 @@
     (keyword (subs (name kw) (inc (count (name table)))))
     kw))
 
+(defn- add-table [table kw]
+  (if (and table (not (namespace kw)))
+    (keyword (str (name table) "." (name kw)))
+    kw))
+
 (defn- find-fields-kw [kw]
   ;; Filter out SQL functions
   (when-not (str/starts-with? (name kw) "%")
@@ -217,6 +235,18 @@
        x))
    expr))
 
+(defn- construct-source-where [id-fields]
+  (cond
+    (keyword? id-fields) [:= (add-table :updated id-fields) (add-table :this id-fields)]
+    (boolean? id-fields) [:= :updated.id :this.id]
+    ;; Vector is probably something like `[:concat :field1 "sep" :field2]`; maybe we should switch to more restrictive
+    ;; notation in `:attrs`?
+    (vector? id-fields)  (into [:and]
+                               (for [field (next id-fields) ;; first one is going to be a function
+                                     :when (keyword? field)]
+                                 [:= (add-table :updated field) (add-table :this field)]))
+    :else                (throw (ex-info "Unknown :id form" {:id id-fields}))))
+
 (defn- search-model-hooks
   "Generate a map indicating which search-models to update based on which fields are modified for a given model."
   [spec]
@@ -226,7 +256,7 @@
           (cons
            [(:model spec) #{{:search-model s
                              :fields       (:this (find-fields spec))
-                             :where        [:= :updated.id :this.id]}}]
+                             :where        (construct-source-where (-> spec :attrs :id))}}]
            (for [[table-alias [model join-condition]] (:joins spec)]
              (let [table-fields (fields table-alias)]
                [model #{{:search-model s
@@ -246,16 +276,29 @@
                               (some? (first column))))]
     (qualify-column table column)))
 
-(defmulti spec
+(defmulti spec*
+  "Impl for [[spec]]."
+  {:arglists '([search-model])}
+  identity)
+
+(defn spec
   "Register a metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  (fn [search-model] search-model))
+  [search-model]
+  ;; make sure the model namespace is loaded.
+  (t2/resolve-model (search-model->toucan-model search-model))
+  (spec* search-model))
 
 (defn specifications
   "A mapping from each search-model to its specification."
   []
-  (into {} (for [[s spec-fn] (methods spec)] [s (spec-fn s)])))
+  (into {}
+        (map (fn [[search-model toucan-model]]
+               ;; make sure the model namespace is loaded.
+               (t2/resolve-model toucan-model)
+               [search-model (spec search-model)]))
+        search-model->toucan-model))
 
 (defn validate-spec!
   "Check whether a given specification is valid"
@@ -275,20 +318,24 @@
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
      (derive (:model spec#) :hook/search-index)
-     (defmethod spec ~search-model [~'_] spec#)))
+     (defmethod spec* ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (merge-hooks
-   (for [[search-model spec-fn] (methods spec)]
-     (search-model-hooks (spec-fn search-model)))))
+  (->> (specifications)
+       vals
+       (map search-model-hooks)
+       merge-hooks))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
-  (let [xforms (#'t2.transformed/in-transforms (t2/model instance))]
+  (let [xforms (try
+                 (#'t2.transformed/in-transforms (t2/model instance))
+                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                   nil))]
     (reduce-kv
      (fn [m k v]
        (assoc m k (if-let [f (get xforms k)] (f v) v)))
@@ -310,4 +357,11 @@
   (doseq [d (descendants :hook/search-index)]
     (underive d :hook/search-index))
   (doseq [d (keys (model-hooks))]
-    (derive d :hook/search-index)))
+    (derive d :hook/search-index))
+
+  (search-models-to-update (t2/select-one :model/Card))
+  (methods spec)
+  (model-hooks)
+
+  (let [where (-> (:model/ModelIndexValue (model-hooks)) first :where)]
+    (insert-values where :updated {:model_index_id 1 :model_pk 5})))

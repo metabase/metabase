@@ -12,6 +12,7 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
+  DashboardQuestionCandidate,
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -220,5 +221,20 @@ export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
+  });
+}
+
+export function setupDashboardQuestionCandidatesEndpoint(
+  dashboardQuestionCandidates: DashboardQuestionCandidate[],
+) {
+  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
+    total: dashboardQuestionCandidates.length,
+    data: dashboardQuestionCandidates,
+  });
+}
+
+export function setupStaleItemsEndpoint(total: number) {
+  fetchMock.get("express:/api/ee/stale/:id", {
+    total,
   });
 }

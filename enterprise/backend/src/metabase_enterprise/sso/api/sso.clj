@@ -4,17 +4,16 @@
   Implements the SSO routes needed for SAML and JWT. This namespace primarily provides hooks for those two backends so
   we can have a uniform interface both via the API and code"
   (:require
-   [compojure.core :refer [GET POST]]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
@@ -28,12 +27,11 @@
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 ;; GET /auth/sso
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
-  [:as req]
+  [_route-params _query-params _body request]
   (try
-    (sso.i/sso-get req)
+    (sso.i/sso-get request)
     (catch Throwable e
       (log/error #_e "Error returning SSO entry point")
       (throw e))))
@@ -51,12 +49,11 @@
                                     :additionalData data}))})
 
 ;; POST /auth/sso
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
-  [:as req]
+  [_route-params _query-params _body request]
   (try
-    (sso.i/sso-post req)
+    (sso.i/sso-post request)
     (catch Throwable e
       (log/error e "Error logging in")
       (sso-error-page e :in))))
@@ -68,11 +65,9 @@
   "/auth/sso/handle_slo")
 
 ;; POST /auth/sso/logout
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/logout"
+(api.macros/defendpoint :post "/logout"
   "Logout."
-  [:as {cookies :cookies}]
-  {cookies [:map [request/metabase-session-cookie [:map [:value ms/NonBlankString]]]]}
+  [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])]
     (api/check-exists? :model/Session metabase-session-id)
     (let [{:keys [email sso_source]}
@@ -94,17 +89,14 @@
                         (str (urls/site-url) metabase-slo-redirect-url))))})))
 
 ;; POST /auth/sso/handle_slo
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/handle_slo"
+(api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
-  [:as req]
+  [_route-params _query-params _body request]
   (try
     (if (sso-settings/saml-slo-enabled)
-      (sso.i/sso-handle-slo req)
+      (sso.i/sso-handle-slo request)
       (throw (ex-info "SAML Single Logout is not enabled, request forbidden."
                       {:status-code 403})))
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
-
-(api/define-routes)

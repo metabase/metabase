@@ -48,7 +48,7 @@
 (def ^:private date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
-    :month :month-of-year :quarter :quarter-of-year :year})
+    :month :month-of-year :quarter :quarter-of-year :year :year-of-era})
 
 (def ^:private time-bucketing-units
   "Set of valid units for bucketing or comparing against a *time* Field."
@@ -494,6 +494,7 @@
                        (is-clause? boolean-functions x)  :boolean-expression
                        (is-clause? numeric-functions x)  :numeric-expression
                        (is-clause? datetime-functions x) :datetime-expression
+                       (is-clause? aggregations x)       :aggregation
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
@@ -503,6 +504,7 @@
    [:boolean-expression  BooleanExpression]
    [:numeric-expression  NumericExpression]
    [:datetime-expression DatetimeExpression]
+   [:aggregation         Aggregation]
    [:string              :string]
    [:string-expression   StringExpression]
    [:value               value]
@@ -819,7 +821,7 @@
                      "options" [:optional StringFilterOptions])
      ;; Multi-arg form
      (helpers/clause (keyword (name clause-keyword))
-                     "options" StringFilterOptions
+                     "options" [:maybe StringFilterOptions]
                      "field" StringExpressionArg
                      "string-or-field" StringExpressionArg
                      "second-string-or-field" StringExpressionArg

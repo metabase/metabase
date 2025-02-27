@@ -5,10 +5,11 @@ import {
   VisualizationWrapper,
 } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import type { MetabaseTheme } from "embedding-sdk";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { BarChart } from "./BarChart";
@@ -35,7 +36,7 @@ const MOCK_SERIES = [
       ],
     },
   },
-];
+] as Series;
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>

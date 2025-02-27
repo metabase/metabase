@@ -265,6 +265,8 @@ import pause_component from "./pause.svg?component";
 import pause_source from "./pause.svg?source";
 import pencil_component from "./pencil.svg?component";
 import pencil_source from "./pencil.svg?source";
+import pencil_lines_component from "./pencil_lines.svg?component";
+import pencil_lines_source from "./pencil_lines.svg?source";
 import permissions_limited_component from "./permissions_limited.svg?component";
 import permissions_limited_source from "./permissions_limited.svg?source";
 import person_component from "./person.svg?component";
@@ -385,6 +387,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unsubscribe_component from "./unsubscribe.svg?component";
+import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
 import upload_source from "./upload.svg?source";
 import variable_component from "./variable.svg?component";
@@ -929,6 +933,10 @@ export const Icons = {
     component: pencil_component,
     source: pencil_source,
   },
+  pencil_lines: {
+    component: pencil_lines_component,
+    source: pencil_lines_source,
+  },
   permissions_limited: {
     component: permissions_limited_component,
     source: permissions_limited_source,
@@ -1163,13 +1171,17 @@ export const Icons = {
     component: unarchive_component,
     source: unarchive_source,
   },
+  unknown: {
+    component: unknown_component,
+    source: unknown_source,
+  },
   unpin: {
     component: unpin_component,
     source: unpin_source,
   },
-  unknown: {
-    component: unknown_component,
-    source: unknown_source,
+  unsubscribe: {
+    component: unsubscribe_component,
+    source: unsubscribe_source,
   },
   upload: {
     component: upload_component,

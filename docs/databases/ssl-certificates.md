@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---
 
-## SSL certificate
+# SSL certificate
 
 If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
 
@@ -15,11 +15,11 @@ Why you'd want to do this:
 
 If you're using Metabase Cloud, the application database is handled for you, so you'd only need to secure connections to data warehouses that you add to your Metabase.
 
-### Prerequisites
+## Prerequisites
 
 A database that allows a JDBC connection, as you'll need to use a connection string to specify the certificate you want to use.
 
-### Step 1: Download the root certificate from your provider
+## Step 1: Download the root certificate from your provider
 
 If you're running Metabase via a Docker container, you should already have the certificates for AWS and Azure.
 
@@ -30,7 +30,7 @@ You'll find the certificates in the `/app/certs/` directory in Metabase's Docker
 
 If you need a different certificate, you can build your own Docker image. Visit your external provider's page for your database and find a link to download the root certificate for connecting to your database.
 
-### Step 2: Save the certificate
+## Step 2: Save the certificate
 
 **Self-hosted**
 
@@ -42,15 +42,15 @@ You'll need to complete [Step 3: Add your database](#step-3-add-your-database) f
 
 Once you've done that, you can go to **Admin** > **Databases** and select your database. Find the section named **SSL Client Certificate** and click **Select a file** to upload your downloaded certificate.
 
-### Step 3: Add your database
+## Step 3: Add your database
 
 For example, let's say you want to secure a connection to a PostgreSQL database. Follow the instructions in the app to add the database. For more on setting up a database connection, check out our docs for [adding a database](./connecting.md).
 
-### Step 4: Toggle on the "Use a secure connection (SSL)" option
+## Step 4: Toggle on the "Use a secure connection (SSL)" option
 
 If your database supports a JDBC connection, Metabase will provide you with a field to input additional parameters to your connection string. Metabase will use parameters in the connection string to establish a secure connection.
 
-### Step 5: Add additional connection string options
+## Step 5: Add additional connection string options
 
 You'll need to specify the location of the certificate on the server that's running Metabase.
 

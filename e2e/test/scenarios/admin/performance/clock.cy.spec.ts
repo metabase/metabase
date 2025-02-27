@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 
-import { H } from "e2e/support";
+const { H } = cy;
 dayjs.extend(timezone);
 
 import {

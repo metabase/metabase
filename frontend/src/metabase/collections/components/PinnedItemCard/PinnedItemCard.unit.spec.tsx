@@ -125,29 +125,6 @@ describe("PinnedItemCard", () => {
     expect(await screen.findByText("Unpin")).toBeInTheDocument();
   });
 
-  it("doesn't show model detail page link", () => {
-    setup();
-    expect(screen.queryByTestId("model-detail-link")).not.toBeInTheDocument();
-  });
-
-  describe("models", () => {
-    const model = getCollectionItem({
-      id: 1,
-      name: "Order",
-      model: "dataset",
-      url: "/model/1",
-    });
-
-    it("should show a model detail page link", () => {
-      setup({ item: model });
-      expect(screen.getByTestId("model-detail-link")).toBeInTheDocument();
-      expect(screen.getByTestId("model-detail-link")).toHaveAttribute(
-        "href",
-        "/model/1-order/detail",
-      );
-    });
-  });
-
   describe("description", () => {
     const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const rangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
@@ -180,7 +157,9 @@ describe("PinnedItemCard", () => {
 
       await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
-      expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        MARKDOWN_AS_TEXT,
+      );
     });
   });
 });

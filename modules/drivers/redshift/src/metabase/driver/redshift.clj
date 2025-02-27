@@ -201,9 +201,11 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
-         (h2x/* expr
-                [:raw "INTERVAL '1 second'"])))
+  (h2x/with-database-type-info
+   (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+          (h2x/* expr
+                 [:raw "INTERVAL '1 second'"]))
+   :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -289,6 +291,10 @@
                    [:concat x y]
                    y))
                nil)))
+
+(defmethod sql.qp/->honeysql [:redshift :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
@@ -473,6 +479,8 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/allowed-promotions :redshift [_] {})
+
 (defmethod driver/table-name-length-limit :redshift
   [_driver]
   ;; https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
@@ -538,9 +546,15 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]
     (throw (ex-info (format "There's a value with the wrong type ('%s') in the '%s' column" (name type) (name column-name)) {}))))
+
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_varbyte expr (h2x/literal "UTF8")]))

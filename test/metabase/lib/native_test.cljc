@@ -148,7 +148,7 @@
   add it to `data.results_metadata.columns` in QP results, and add it here as well, so we can start moving toward a
   world where we don't have two versions of the metadata in query responses."
   {:lib/type :metadata/results
-   :columns  (get-in lib.tu/mock-cards [:venues :result-metadata])})
+   :columns  (get-in (lib.tu/mock-cards) [:venues :result-metadata])})
 
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
@@ -189,7 +189,7 @@
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
-         (-> lib.tu/venues-query
+         (-> (lib.tu/venues-query)
              (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
@@ -210,10 +210,27 @@
              (-> query
                  (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :name "garbage" :display-name "Foobar")})
                  lib/template-tags))))
+    (testing "Allows to remove template tag properties"
+      (let [template-tags     {"tag"
+                               {:default nil
+                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                :display-name "Tag"
+                                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                :name "tag"
+                                :type :dimension
+                                :widget-type :date/range}}
+            query             (-> (lib/native-query meta/metadata-provider "select * from venues where {{tag}}")
+                                  (lib/with-template-tags template-tags))
+            new-template-tags {"tag"
+                               {:display-name "Tag"
+                                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                :name "tag"
+                                :type :text}}]
+        (is (= new-template-tags (lib/template-tags (lib/with-template-tags query new-template-tags))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
-         (-> lib.tu/venues-query
+         (-> (lib.tu/venues-query)
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
@@ -227,12 +244,10 @@
     (is (=? {:stages [(complement :collection)]}
             (lib/native-query meta/metadata-provider "myquery" nil {:collection "mycollection"}))))
   (testing "building when requires collection"
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery")))
     (is (=? {:stages [{:collection "mycollection"}]}
-            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs :default)
-         #"Missing extra, required keys for native query: .*:collection.*"
-         (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))))
 
 (deftest ^:parallel with-different-database-test
   (let [query (lib/native-query meta/metadata-provider "myquery")]
@@ -242,19 +257,10 @@
                   (lib/with-different-database
                     (meta.graph-provider/->SimpleGraphMetadataProvider
                      (assoc meta/metadata :id 9999)))))))
-    (testing "Checks collection requirement"
-      (is (=? {:stages [(complement :collection)]}
-              (-> query
-                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
-      (is (thrown-with-msg?
-           #?(:clj Throwable :cljs :default)
-           #"Missing extra, required keys for native query: .*:collection.*"
-           (-> query
-               (lib/with-different-database (metadata-provider-requiring-collection))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
-         (-> lib.tu/venues-query
+         (-> (lib.tu/venues-query)
              (lib/with-different-database meta/metadata-provider))))))
 
 (deftest ^:parallel with-native-collection-test
@@ -290,7 +296,7 @@
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
-         (lib/has-write-permission lib.tu/venues-query)))))
+         (lib/has-write-permission (lib.tu/venues-query))))))
 
 (deftest ^:parallel can-run-native-test
   (is (lib/can-run (lib/with-template-tags
@@ -302,7 +308,7 @@
                              :display-name "foo"
                              :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
                    :question))
-  (is (lib/can-run lib.tu/venues-query :question))
+  (is (lib/can-run (lib.tu/venues-query) :question))
   (mu/disable-enforcement
     (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
     (is (not (lib/can-run (lib/with-template-tags
@@ -318,10 +324,10 @@
                           :question)))))
 
 (deftest ^:parallel engine-test
-  (is (= :h2 (lib/engine lib.tu/native-query))))
+  (is (= :h2 (lib/engine (lib.tu/native-query)))))
 
 (deftest ^:parallel template-tag-card-ids-test
-  (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+  (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards)
                          {:database (meta/id)
                           :type     :native
                           :native   {:query         {}
@@ -336,7 +342,7 @@
 
 (deftest ^:parallel template-tags-referenced-cards-test
   (testing "returns Card instances from raw query"
-    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
+    (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards)
                            {:database (meta/id)
                             :type     :native
                             :native   {:query         {}
@@ -351,3 +357,44 @@
                {:id            2
                 :dataset-query {}}]
               (lib/template-tags-referenced-cards query))))))
+
+(deftest ^:parallel not-has-template-tag-variables?-test
+  (are [query] (not (lib.native/has-template-tag-variables? query))
+    (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (lib/native-query meta/metadata-provider "select * from venues where id = 1")
+    (lib/native-query meta/metadata-provider "select * from venues {{snippet:a snippet}}")
+    (lib/native-query meta/metadata-provider "select * from {{#123-some-card}}")))
+
+(deftest ^:parallel has-template-tag-variables?-test
+  (are [query] (lib.native/has-template-tag-variables? query)
+    ;; text variable
+    (lib/native-query meta/metadata-provider "select * from venues where name = {{mytag}}")
+
+    ;; number variable
+    (-> (lib/native-query meta/metadata-provider "select * from venues where category_id = {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default "1"
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :number}}))
+
+    ;; date variable
+    (-> (lib/native-query meta/metadata-provider "select * from orders where created_at = {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default nil
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :date}}))
+
+    ;; field filter
+    (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default nil
+                                  :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :dimension
+                                  :widget-type :date/range}}))))

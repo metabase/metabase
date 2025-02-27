@@ -40,6 +40,20 @@ describe("getHelpText", () => {
       );
       expect(helpText?.args).toHaveLength(2);
     });
+
+    it("convertTimezone", () => {
+      const { database } = setup();
+      const helpText = getHelpText(
+        "convert-timezone",
+        database,
+        reportTimezone,
+      );
+
+      expect(helpText?.structure).toEqual("convertTimezone");
+      expect(helpText?.description).toEqual(
+        expect.not.stringContaining("https"),
+      );
+    });
   });
 
   describe("help texts customized per database engine", () => {

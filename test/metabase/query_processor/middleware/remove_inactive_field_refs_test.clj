@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.query-processor.middleware.remove-inactive-field-refs-test
+(ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -85,10 +85,10 @@
                                         "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
                                  card3 ["ID" "TAX" "TOTAL" "ID_2" "RATING"]}]
             (let [query (mt/mbql-query orders
-                          {:source-table (str "card__" (u/the-id card))})]
-              (let [results (qp/process-query query)]
-                (is (=? fields
-                        (map :name (mt/cols results)))))))
+                          {:source-table (str "card__" (u/the-id card))})
+                  results (qp/process-query query)]
+              (is (=? fields
+                      (map :name (mt/cols results))))))
           (is (= ["Product → Rating" "Sum of Total"]
                  (->> (mt/process-query summary-query)
                       mt/cols
@@ -122,10 +122,10 @@
                                                   "ID_2" "TITLE" "PRICE" "RATING"]
                                            card3 ["ID" "TOTAL" "ID_2" "RATING"]}]
                       (let [query (mt/mbql-query orders
-                                    {:source-table (str "card__" (u/the-id card))})]
-                        (let [results (qp/process-query query)]
-                          (is (=? fields
-                                  (map :name (mt/cols results))))))))
+                                    {:source-table (str "card__" (u/the-id card))})
+                            results (qp/process-query query)]
+                        (is (=? fields
+                                (map :name (mt/cols results)))))))
                   (testing "Active columns can be used"
                     (is (= ["Product → Rating" "Sum of Total"]
                            (->> (mt/run-mbql-query orders

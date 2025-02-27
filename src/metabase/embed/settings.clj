@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [crypto.random :as crypto-random]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -23,15 +23,15 @@
           (setting/set-value-of-type! :boolean setting-key new-value)
           (when (and new-value (str/blank? (embed/embedding-secret-key)))
             (embed/embedding-secret-key! (crypto-random/hex 32)))
-          (snowplow/track-event! ::snowplow/embed_share
-                                 {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
-                                  :embedding-app-origin-set   (boolean
-                                                               (or (setting/get-value-of-type :string :embedding-app-origin)
-                                                                   (setting/get-value-of-type :string :embedding-app-origins-interactive)
-                                                                   (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
-                                                                     (and sdk-origins (not= "localhost:*" sdk-origins)))))
-                                  :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                  :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+          (analytics/track-event! :snowplow/embed_share
+                                  {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
+                                   :embedding-app-origin-set   (boolean
+                                                                (or (setting/get-value-of-type :string :embedding-app-origin)
+                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive)
+                                                                    (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
+                                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
+                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -216,7 +216,7 @@
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
-  (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
+  (deferred-tru "Embedding homepage status, indicating if it''s visible, hidden or has been dismissed")
   :type       :keyword
   :default    :hidden
   :export?    true

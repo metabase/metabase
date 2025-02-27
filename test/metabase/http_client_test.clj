@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.http-client-test
+(ns metabase.http-client-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]

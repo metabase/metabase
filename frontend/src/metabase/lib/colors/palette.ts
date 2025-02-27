@@ -29,8 +29,9 @@ export const colors = {
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   success: "#84BB4C",
-  danger: "#ED6E6E",
-  error: "#ED6E6E",
+  // --mb-base-color-lobster-50
+  danger: "hsla(358, 71%, 62%, 1)",
+  error: "hsla(358, 71%, 62%, 1)",
   warning: "#F9CF48",
   "text-dark": "#4C5773",
   "text-medium": "#696E7B",
@@ -43,7 +44,8 @@ export const colors = {
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
   "bg-night": "#42484E",
-  "bg-error": "#ED6E6E55",
+  // --mb-base-color-lobster-10
+  "bg-error": "hsla(0, 76%, 97%, 1)",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 
@@ -64,7 +66,11 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   content: palette => color("bg-light", palette),
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
-
+  "text-primary": palette => color("text-dark", palette),
+  "text-secondary": palette => color("text-medium", palette),
+  "text-tertiary": palette => color("text-light", palette),
+  background: palette => color("white", palette),
+  "background-disbaled": palette => color("accent-gray", palette),
   "brand-light": palette => lighten(color("brand", palette), 0.532), // #DDECFA
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),

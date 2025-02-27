@@ -1,8 +1,7 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
@@ -49,9 +48,10 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [metric-query (lib.convert/->pMBQL
-                                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                           (lib/query query (:dataset-query card-metadata))))
+                      (let [metric-query (->> (:dataset-query card-metadata)
+                                              (lib/query query)
+                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                              (lib/query query))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
@@ -254,7 +254,7 @@
   (if-not (find-first-metric (:stages query))
     query
     (do
-      (prometheus/inc! :metabase-query-processor/metrics-adjust)
+      (analytics/inc! :metabase-query-processor/metrics-adjust)
       (try
         (let [query (lib.walk/walk
                      query
@@ -266,5 +266,5 @@
             (when-let [metric (find-first-metric (:stages <>))]
               (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
-          (prometheus/inc! :metabase-query-processor/metrics-adjust-errors)
+          (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))

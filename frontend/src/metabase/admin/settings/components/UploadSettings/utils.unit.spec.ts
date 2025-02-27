@@ -60,7 +60,7 @@ describe("Admin > UploadSettings > utils", () => {
 
   describe("getSchemaOptions", () => {
     it("should return an array of schema", () => {
-      expect(getSchemaOptions(schemas)).toEqual([
+      expect(getSchemaOptions(schemas.map(schema => schema.name))).toEqual([
         { name: "schema1", value: "schema1" },
         { name: "schema2", value: "schema2" },
         { name: "schema3", value: "schema3" },

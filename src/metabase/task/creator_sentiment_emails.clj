@@ -4,12 +4,12 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
+   [metabase.channel.email :as email]
+   [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.email :as email]
-   [metabase.email.messages :as messages]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
@@ -62,7 +62,7 @@
     :else                "unknown"))
 
 (defn- fetch-instance-data []
-  {:created_at     (snowplow/instance-creation)
+  {:created_at     (analytics/instance-creation)
    :plan           (fetch-plan-info)
    :version        (config/mb-version-info :tag)
    :num_users      (t2/count :model/User :is_active true, :type "personal")

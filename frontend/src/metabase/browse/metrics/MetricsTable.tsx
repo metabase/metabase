@@ -8,7 +8,6 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
@@ -93,8 +92,7 @@ export function MetricsTable({
     DEFAULT_SORTING_OPTIONS,
   );
 
-  const locale = useLocale();
-  const sortedMetrics = sortMetrics(metrics, sortingOptions, locale);
+  const sortedMetrics = sortMetrics(metrics, sortingOptions);
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
@@ -408,6 +406,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
+            c="text-dark"
           >
             <Icon name="ellipsis" />
           </Button>
@@ -416,7 +415,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           {actions.map(action => (
             <Menu.Item
               key={action.key}
-              icon={<Icon name={action.icon} />}
+              leftSection={<Icon name={action.icon} />}
               onClick={action.action}
             >
               {action.title}

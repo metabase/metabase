@@ -26,7 +26,7 @@ const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   "day-of-week": "dddd",
   "day-of-month": "D",
   "day-of-year": "DDD",
-  "week-of-year": "wo",
+  "week-of-year": "Wo",
   "month-of-year": "MMMM",
   "quarter-of-year": "[Q]Q",
 };

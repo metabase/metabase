@@ -2,10 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.test :as mt]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
 
 (defn- do-with-test-setup! [f]
   (query-analysis/without-analysis

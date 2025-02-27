@@ -11,13 +11,13 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.db :as mdb]
    [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.premium-features.core :as premium-features]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
@@ -117,19 +117,19 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization
-                           {:event         :serialization
-                            :direction     "import"
-                            :source        "cli"
-                            :duration_ms   (int (u/since-ms timer))
-                            :models        (str/join "," imported)
-                            :count         (if (contains? imported "Setting")
-                                             (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                             (count (:seen report)))
-                            :error_count   (count (:errors report))
-                            :success       (nil? @err)
-                            :error_message (when @err
-                                             (u/strip-error @err nil))})
+    (analytics/track-event! :snowplow/serialization
+                            {:event         :serialization
+                             :direction     "import"
+                             :source        "cli"
+                             :duration_ms   (int (u/since-ms timer))
+                             :models        (str/join "," imported)
+                             :count         (if (contains? imported "Setting")
+                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                              (count (:seen report)))
+                             :error_count   (count (:errors report))
+                             :success       (nil? @err)
+                             :error_message (when @err
+                                              (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during deserialization")
@@ -250,23 +250,23 @@
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization
-                           {:event           :serialization
-                            :direction       "export"
-                            :source          "cli"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :error_count     (count (:errors report))
-                            :collection      (str/join "," collection-ids)
-                            :all_collections (and (empty? collection-ids)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (boolean (:include-field-values opts))
-                            :secrets         (boolean (:include-database-secrets opts))
-                            :success         (nil? @err)
-                            :error_message   (when @err
-                                               (u/strip-error @err nil))})
+    (analytics/track-event! :snowplow/serialization
+                            {:event           :serialization
+                             :direction       "export"
+                             :source          "cli"
+                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                             :count           (count (:seen report))
+                             :error_count     (count (:errors report))
+                             :collection      (str/join "," collection-ids)
+                             :all_collections (and (empty? collection-ids)
+                                                   (not (:no-collections opts)))
+                             :data_model      (not (:no-data-model opts))
+                             :settings        (not (:no-settings opts))
+                             :field_values    (boolean (:include-field-values opts))
+                             :secrets         (boolean (:include-database-secrets opts))
+                             :success         (nil? @err)
+                             :error_message   (when @err
+                                                (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during serialization")

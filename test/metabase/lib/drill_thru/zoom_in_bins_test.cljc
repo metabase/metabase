@@ -10,25 +10,16 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- add-trivial-filter-stage
-  [query name-of-column-to-filter]
-  (let [query'           (lib/append-stage query)
-        column-to-filter (m/find-first #(= (:name %) name-of-column-to-filter)
-                                       (lib/returned-columns query'))]
-    (is (some? column-to-filter))
-    (lib/filter query' (lib/> column-to-filter -1))))
+(defn- variant-expected-query-with-count-filter-stage [base-expected-query]
+  (let [base-filters (get-in base-expected-query [:stages 0 :filters])]
+    (-> base-expected-query
+        (update-in [:stages 0] dissoc :filters)
+        (update :stages conj {:filters (into [[:> {} [:field {} "count"] -1]]
+                                             base-filters)}))))
 
-(defn- test-drill-application-with-extra-stage
-  [test-drill-context
-   & {:keys [custom-query-with-extra-stage expected-query-with-extra-stage]}]
-  (testing "base query"
-    (lib.drill-thru.tu/test-drill-application test-drill-context))
-  (when (and custom-query-with-extra-stage expected-query-with-extra-stage)
-    (testing "base query with extra stage"
-      (lib.drill-thru.tu/test-drill-application
-       (assoc test-drill-context
-              :custom-query   custom-query-with-extra-stage
-              :expected-query expected-query-with-extra-stage)))))
+(defn- variant-with-count-filter-stage [base-case]
+  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "count")
+   :expected-query (variant-expected-query-with-count-filter-stage (:expected-query base-case))})
 
 (deftest ^:parallel zoom-in-bins-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
@@ -44,95 +35,72 @@
 
 (deftest ^:parallel num-bins->default-test
   (testing ":num-bins binning => :default binning + between filter"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/aggregate (lib/count))
-                    (lib/breakout (-> (meta/field-metadata :orders :total)
-                                      (lib/with-binning {:strategy :num-bins, :num-bins 10}))))]
-      (test-drill-application-with-extra-stage
-       {:click-type     :cell
-        :query-type     :aggregated
-        :custom-query   query
-        :custom-row     {"count" 100
-                         "TOTAL" 40}
-        :column-name    "TOTAL"
-        :drill-type     :drill-thru/zoom-in.binning
-        :expected       {:type        :drill-thru/zoom-in.binning
-                         :column      {:name "TOTAL"}
-                         :min-value   40
-                         :max-value   60.0
-                         :new-binning {:strategy :default}}
-        :expected-query {:stages [{:source-table (meta/id :orders)
+    (lib.drill-thru.tu/test-drill-variants-with-merged-args
+     lib.drill-thru.tu/test-drill-application
+     "single-stage query"
+     {:click-type     :cell
+      :query-type     :aggregated
+      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (-> (meta/field-metadata :orders :total)
+                                            (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
+      :custom-row     {"count" 100
+                       "TOTAL" 40}
+      :column-name    "TOTAL"
+      :drill-type     :drill-thru/zoom-in.binning
+      :expected       {:type        :drill-thru/zoom-in.binning
+                       :column      {:name "TOTAL"}
+                       :min-value   40
+                       :max-value   60.0
+                       :new-binning {:strategy :default}}
+      :expected-query (let [total-field (lib.drill-thru.tu/field-key= "TOTAL" (meta/id :orders :total))]
+                        {:stages [{:source-table (meta/id :orders)
                                    :aggregation  [[:count {}]]
-                                   :breakout     [[:field
-                                                   {:binning {:strategy :default}}
-                                                   (meta/id :orders :total)]]
+                                   :breakout     [[:field {:binning {:strategy :default}} total-field]]
                                    :filters      [[:>= {}
-                                                   [:field {} (meta/id :orders :total)]
+                                                   [:field {} total-field]
                                                    40]
                                                   [:< {}
-                                                   [:field {} (meta/id :orders :total)]
-                                                   60.0]]}]}}
-       :custom-query-with-extra-stage (add-trivial-filter-stage query "count")
-       :expected-query-with-extra-stage {:stages [{:source-table (meta/id :orders)
-                                                   :aggregation  [[:count {}]]
-                                                   :breakout     [[:field
-                                                                   {:binning {:strategy :default}}
-                                                                   "TOTAL"]]}
-                                                  {:filters      [[:> {}
-                                                                   [:field {} "count"]
-                                                                   -1]
-                                                                  [:>= {}
-                                                                   [:field {} "TOTAL"]
-                                                                   40]
-                                                                  [:< {}
-                                                                   [:field {} "TOTAL"]
-                                                                   60.0]]}]}))))
+                                                   [:field {} total-field]
+                                                   60.0]]}]})}
+
+     "multi-stage query"
+     variant-with-count-filter-stage)))
 
 (deftest ^:parallel bin-width-test
   (testing ":bin-width binning => :bin-width binning (width ÷= 10) + between filter"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                    (lib/aggregate (lib/count))
-                    (lib/breakout (-> (meta/field-metadata :people :latitude)
-                                      (lib/with-binning {:strategy :bin-width, :bin-width 1.0}))))]
-      (test-drill-application-with-extra-stage
-       {:click-type     :cell
-        :query-type     :aggregated
-        :custom-query   query
-        :custom-row     {"count"    100
-                         "LATITUDE" 41.0}
-        :column-name    "LATITUDE"
-        :drill-type     :drill-thru/zoom-in.binning
-        :expected       {:type        :drill-thru/zoom-in.binning
-                         :column      {:name "LATITUDE"}
-                         :min-value   41.0
-                         :max-value   42.0
-                         :new-binning {:strategy :bin-width, :bin-width 0.1}}
-        :expected-query {:stages [{:source-table (meta/id :people)
+    (lib.drill-thru.tu/test-drill-variants-with-merged-args
+     lib.drill-thru.tu/test-drill-application
+     "single-stage query"
+     {:click-type     :cell
+      :query-type     :aggregated
+      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (-> (meta/field-metadata :people :latitude)
+                                            (lib/with-binning {:strategy :bin-width, :bin-width 1.0}))))
+      :custom-row     {"count"    100
+                       "LATITUDE" 41.0}
+      :column-name    "LATITUDE"
+      :drill-type     :drill-thru/zoom-in.binning
+      :expected       {:type        :drill-thru/zoom-in.binning
+                       :column      {:name "LATITUDE"}
+                       :min-value   41.0
+                       :max-value   42.0
+                       :new-binning {:strategy :bin-width, :bin-width 0.1}}
+      :expected-query (let [lat-field (lib.drill-thru.tu/field-key= "LATITUDE" (meta/id :people :latitude))]
+                        {:stages [{:source-table (meta/id :people)
                                    :aggregation  [[:count {}]]
                                    :breakout     [[:field
                                                    {:binning {:strategy :bin-width, :bin-width 0.1}}
-                                                   (meta/id :people :latitude)]]
+                                                   lat-field]]
                                    :filters      [[:>= {}
-                                                   [:field {} (meta/id :people :latitude)]
+                                                   [:field {} lat-field]
                                                    41.0]
                                                   [:< {}
-                                                   [:field {} (meta/id :people :latitude)]
-                                                   42.0]]}]}}
-       :custom-query-with-extra-stage (add-trivial-filter-stage query "count")
-       :expected-query-with-extra-stage {:stages [{:source-table (meta/id :people)
-                                                   :aggregation  [[:count {}]]
-                                                   :breakout     [[:field
-                                                                   {:binning {:strategy :bin-width, :bin-width 0.1}}
-                                                                   "LATITUDE"]]}
-                                                  {:filters      [[:> {}
-                                                                   [:field {} "count"]
-                                                                   -1]
-                                                                  [:>= {}
-                                                                   [:field {} "LATITUDE"]
-                                                                   41.0]
-                                                                  [:< {}
-                                                                   [:field {} "LATITUDE"]
-                                                                   42.0]]}]}))))
+                                                   [:field {} lat-field]
+                                                   42.0]]}]})}
+     "multi-stage query"
+     variant-with-count-filter-stage)))
 
 (deftest ^:parallel default-binning-test
   (testing ":default binning => :bin-width binning. Should consider :dimensions in drill context (#36117)"
@@ -184,59 +152,45 @@
 ;; TODO: Add a test for clicking on pivot column cells (and headers?) - but that's broken on master. See #38265.
 (deftest ^:parallel cell-click-filters-and-updates-only-one-dimension-test
   (testing "when zooming in on one dimension, existing breakouts are dropped and replaced, along with new filters"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/aggregate (lib/count))
-                    (lib/breakout (-> (meta/field-metadata :orders :quantity)
-                                      (lib/with-binning {:strategy :num-bins, :num-bins 10})))
-                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
-                                      (lib/with-temporal-bucket :month))))]
-      (test-drill-application-with-extra-stage
-       {:click-type     :cell
-        :query-type     :aggregated
-        :custom-query   query
-        :custom-row     {"count"      100
-                         "QUANTITY"   10
-                         "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
-         ;; TODO: Clicking on breakout columns in table views doesn't work properly.
-        :column-name    "count"
-        :drill-type     :drill-thru/zoom-in.binning
-        :expected       {:type        :drill-thru/zoom-in.binning
-                         :column      {:name "QUANTITY"}
-                         :min-value   10
-                         :max-value   20.0
-                         :new-binning {:strategy :default}}
-        :expected-query {:stages [{:source-table (meta/id :orders)
+    (lib.drill-thru.tu/test-drill-variants-with-merged-args
+     lib.drill-thru.tu/test-drill-application
+     "single-stage query"
+     {:click-type     :cell
+      :query-type     :aggregated
+      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (-> (meta/field-metadata :orders :quantity)
+                                            (lib/with-binning {:strategy :num-bins, :num-bins 10})))
+                          (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                            (lib/with-temporal-bucket :month))))
+      :custom-row     {"count"      100
+                       "QUANTITY"   10
+                       "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
+        ;; TODO: Clicking on breakout columns in table views doesn't work properly.
+      :column-name    "count"
+      :drill-type     :drill-thru/zoom-in.binning
+      :expected       {:type        :drill-thru/zoom-in.binning
+                       :column      {:name "QUANTITY"}
+                       :min-value   10
+                       :max-value   20.0
+                       :new-binning {:strategy :default}}
+      :expected-query (let [quantity-field   (lib.drill-thru.tu/field-key= "QUANTITY"   (meta/id :orders :quantity))]
+                        {:stages [{:source-table (meta/id :orders)
                                    :aggregation  [[:count {}]]
                                    :breakout     [[:field
                                                    {:binning {:strategy :default}}
-                                                   (meta/id :orders :quantity)]
+                                                   quantity-field]
                                                   [:field
                                                    {:temporal-unit :month}
                                                    (meta/id :orders :created-at)]]
                                    :filters      [[:>= {}
-                                                   [:field {} (meta/id :orders :quantity)]
+                                                   [:field {} quantity-field]
                                                    10]
                                                   [:< {}
-                                                   [:field {} (meta/id :orders :quantity)]
-                                                   20.0]]}]}}
-       :custom-query-with-extra-stage (add-trivial-filter-stage query "count")
-       :expected-query-with-extra-stage {:stages [{:source-table (meta/id :orders)
-                                                   :aggregation  [[:count {}]]
-                                                   :breakout     [[:field
-                                                                   {:binning {:strategy :default}}
-                                                                   "QUANTITY"]
-                                                                  [:field
-                                                                   {:temporal-unit :month}
-                                                                   (meta/id :orders :created-at)]]}
-                                                  {:filters      [[:> {}
-                                                                   [:field {} "count"]
-                                                                   -1]
-                                                                  [:>= {}
-                                                                   [:field {} "QUANTITY"]
-                                                                   10]
-                                                                  [:< {}
-                                                                   [:field {} "QUANTITY"]
-                                                                   20.0]]}]}))))
+                                                   [:field {} quantity-field]
+                                                   20.0]]}]})}
+     "multi-stage query"
+     variant-with-count-filter-stage)))
 
 (deftest ^:parallel legend-zoom-binning-numeric-test
   ;; Sum of Subtotal by month and Product->Rating with binning, then click a rating to zoom in.
@@ -339,7 +293,9 @@
                                                           :bin-width 2.5
                                                           :min-value 40
                                                           :max-value 60})))]
-      (test-drill-application-with-extra-stage
+      (lib.drill-thru.tu/test-drill-variants-with-merged-args
+       lib.drill-thru.tu/test-drill-application
+       "single-stage query"
        {:click-type     :cell
         :query-type     :aggregated
         :custom-query   (add-zoom-in-filters base-query)
@@ -352,29 +308,19 @@
                          :min-value   50
                          :max-value   52.5
                          :new-binning {:strategy :default}}
-        :expected-query {:stages [{:source-table (meta/id :orders)
-                                   :aggregation  [[:count {}]]
-                                   :breakout     [[:field
-                                                   {:binning {:strategy :default}}
-                                                   (meta/id :orders :subtotal)]]
-                                   :filters      [[:>= {}
-                                                   [:field {} (meta/id :orders :subtotal)]
-                                                   50]
-                                                  [:< {}
-                                                   [:field {} (meta/id :orders :subtotal)]
-                                                   52.5]]}]}}
-       :custom-query-with-extra-stage (add-zoom-in-filters (add-trivial-filter-stage base-query "count"))
-       :expected-query-with-extra-stage {:stages [{:source-table (meta/id :orders)
-                                                   :aggregation  [[:count {}]]
-                                                   :breakout     [[:field
-                                                                   {:binning {:strategy :default}}
-                                                                   "SUBTOTAL"]]}
-                                                  {:filters      [[:> {}
-                                                                   [:field {} "count"]
-                                                                   -1]
-                                                                  [:>= {}
-                                                                   [:field {} "SUBTOTAL"]
-                                                                   50]
-                                                                  [:< {}
-                                                                   [:field {} "SUBTOTAL"]
-                                                                   52.5]]}]}))))
+        :expected-query (let [subtotal-field (lib.drill-thru.tu/field-key= "SUBTOTAL" (meta/id :orders :subtotal))]
+                          {:stages [{:source-table (meta/id :orders)
+                                     :aggregation  [[:count {}]]
+                                     :breakout     [[:field
+                                                     {:binning {:strategy :default}}
+                                                     subtotal-field]]
+                                     :filters      [[:>= {}
+                                                     [:field {} subtotal-field]
+                                                     50]
+                                                    [:< {}
+                                                     [:field {} subtotal-field]
+                                                     52.5]]}]})}
+       "multi-stage query"
+       (fn [base-case]
+         {:custom-query (add-zoom-in-filters (lib.drill-thru.tu/append-filter-stage base-query "count"))
+          :expected-query (variant-expected-query-with-count-filter-stage (:expected-query base-case))})))))

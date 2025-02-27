@@ -75,10 +75,19 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         //If we have a link for a child, then click that instead
         const childAnchor = activeRef.current?.querySelector("a");
 
-        if (childAnchor) {
-          childAnchor.click();
+        const target = childAnchor || activeRef?.current;
+
+        if (!target) {
+          return;
+        } else if (event.ctrlKey || event.metaKey) {
+          target.dispatchEvent(
+            new MouseEvent("click", {
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+            }),
+          );
         } else {
-          activeRef.current?.click();
+          target.click();
         }
       }
     };
@@ -113,13 +122,15 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
   }, [search, currentRootActionId, props.items, query]);
 
   const execute = React.useCallback(
-    (item: RenderParams["item"]) => {
+    (item: RenderParams["item"], e?: React.MouseEvent) => {
       if (typeof item === "string") {
         return;
       }
       if (item.command) {
         item.command.perform(item);
-        query.toggle();
+        if (!(e?.metaKey === true || e?.ctrlKey === true)) {
+          query.toggle();
+        }
       } else if (!item.extra?.href) {
         query.setSearch("");
         query.setCurrentRootAction(item.id);
@@ -151,7 +162,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
               onPointerMove: () =>
                 activeIndex !== index && query.setActiveIndex(index),
               onPointerDown: () => query.setActiveIndex(index),
-              onClick: () => execute(item),
+              onClick: (e: React.MouseEvent) => execute(item, e),
             };
           const active = index === activeIndex;
 

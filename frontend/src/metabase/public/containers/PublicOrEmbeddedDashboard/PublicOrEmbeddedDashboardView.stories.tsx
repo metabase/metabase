@@ -1,20 +1,20 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import LegacyTooltip from "metabase/core/components/Tooltip";
+import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
+import Table from "metabase/visualizations/visualizations/Table";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -36,8 +36,13 @@ import {
   type PublicOrEmbeddedDashboardViewProps,
 } from "./PublicOrEmbeddedDashboardView";
 
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
+
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView",
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
@@ -63,9 +68,17 @@ function ReduxDecorator(Story: StoryFn) {
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
+
   useEffect(() => {
-    setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
+    const timeoutId = setTimeout(
+      asyncCallback,
+      TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING,
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [asyncCallback]);
 
   return <Story />;
@@ -117,7 +130,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState);
+const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -178,6 +191,7 @@ const defaultArgs: Partial<
       id: PARAMETER_ID,
     }),
   ],
+  withFooter: true,
 };
 
 export const LightThemeDefault = {
@@ -331,18 +345,6 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <LegacyTooltip
-        tooltip={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Label
-          </Text>
-        }
-        isOpen
-      >
-        <Card withBorder display="inline-block">
-          Legacy Tooltip
-        </Card>
-      </LegacyTooltip>
       <Popover withArrow shadow="md" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
@@ -355,37 +357,6 @@ export function ComponentCompatibility() {
           </Text>
         </Popover.Dropdown>
       </Popover>
-      <TippyPopoverWithTrigger
-        isInitiallyVisible
-        triggerContent={
-          <Card withBorder display="inline-block">
-            Tippy Popover
-          </Card>
-        }
-        popoverContent={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Dropdown
-          </Text>
-        }
-      />
-      <PopoverWithTrigger
-        isInitiallyOpen
-        triggerElement={
-          <Card withBorder display="inline-block">
-            Legacy Popover
-          </Card>
-        }
-      >
-        {() =>
-          function Inner({ maxHeight, ...props }: { maxHeight: number }) {
-            return (
-              <Text size="sm" c="var(--mb-color-text-primary)" {...props}>
-                Dropdownnnnn
-              </Text>
-            );
-          }
-        }
-      </PopoverWithTrigger>
     </Box>
   );
 }
@@ -428,7 +399,7 @@ export const CardVisualizationsDarkTheme = {
 };
 
 function ScrollDecorator(Story: StoryFn) {
-  const asyncCallback = createAsyncCallback();
+  const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
   useEffect(() => {
     const scrollContainer = document.querySelector("[data-testid=embed-frame]");
@@ -440,6 +411,10 @@ function ScrollDecorator(Story: StoryFn) {
         asyncCallback();
       }
     }, 100);
+
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [asyncCallback]);
 
   return <Story />;

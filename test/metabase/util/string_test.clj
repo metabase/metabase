@@ -28,3 +28,7 @@
     (testing "works with custom end-limit"
       (is (= "ab...ra"
              (u.str/mask "abracadabra" 2 2))))))
+
+(deftest elide-test
+  (is (= "short" (u.str/elide "short" 5)))
+  (is (= "lo..." (u.str/elide "longer string" 5))))

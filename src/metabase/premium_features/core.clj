@@ -141,8 +141,7 @@
   :dashboard-subscription-filters)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
-  "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
-  permissions, etc.)?"
+  "Should we enable extra knobs around permissions (block access, connection impersonation, etc.)?"
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?

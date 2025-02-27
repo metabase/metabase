@@ -10,7 +10,6 @@ import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
-import { useMantineTheme } from "metabase/ui";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";
@@ -79,8 +78,6 @@ function TippyPopover({
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
 
-  const theme = useMantineTheme();
-
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
@@ -126,15 +123,12 @@ function TippyPopover({
     [flip, sizeToFit, popperOptions],
   );
 
-  const zIndex =
-    theme.other.popover?.zIndex ||
-    ("var(--mb-overlay-z-index)" as unknown as number);
-
   return (
     <TippyComponent
       className={cx("popover", ZIndex.Overlay, className)}
       theme="popover"
-      zIndex={zIndex}
+      // Tippy's type definition does not support string z-index values
+      zIndex={"var(--mb-overlay-z-index)" as unknown as number}
       arrow={false}
       offset={OFFSET}
       appendTo={getPortalRootElement}

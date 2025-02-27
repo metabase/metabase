@@ -1,8 +1,11 @@
 (ns metabase-enterprise.sso.api.routes
   (:require
-   [compojure.core :as compojure]
-   [metabase-enterprise.sso.api.saml :as saml]
-   [metabase-enterprise.sso.api.sso :as sso]))
+   [metabase-enterprise.sso.api.saml]
+   [metabase-enterprise.sso.api.sso]
+   [metabase.api.util.handlers :as handlers]))
+
+(comment metabase-enterprise.sso.api.saml/keep-me
+         metabase-enterprise.sso.api.sso/keep-me)
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
 ;;
@@ -10,14 +13,11 @@
 ;; directly?
 ;;
 ;; TODO -- we need to feature-flag this based on the `:sso-` feature flags
-(compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints.", :arglists '([request] [request respond raise])} routes
-  (compojure/context
-    "/auth"
-    []
-    (compojure/routes
-     (compojure/context "/sso" [] sso/routes)))
-  (compojure/context
-    "/api"
-    []
-    (compojure/routes
-     (compojure/context "/saml" [] saml/routes))))
+
+;; NOTE: there is a wrapper in metabase.server.auth-wrapper to ensure that oss versions give nice error
+;; messages. These must be kept in sync manually since compojure are opaque functions.
+(def ^{:arglists '([request respond raise])} routes
+  "Ring routes for auth (SAML) API endpoints."
+  (handlers/route-map-handler
+   {"/auth" {"/sso"  'metabase-enterprise.sso.api.sso}
+    "/api"  {"/saml" 'metabase-enterprise.sso.api.saml}}))

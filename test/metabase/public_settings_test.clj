@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.public-settings-test
+(ns metabase.public-settings-test
   (:require
    [clojure.test :refer :all]
    [metabase.config :as config]

@@ -19,7 +19,7 @@ export function setQuarterAndYear({ quarter, year } = {}) {
 }
 
 export function setSingleDate(date) {
-  cy.findByLabelText("Date").clear().type(date).blur();
+  popover().findByLabelText("Date").clear().type(date).blur();
 }
 
 export function setTime({ hours, minutes }) {
@@ -58,7 +58,9 @@ export function setAdHocFilter(
   }
 
   if (timeBucket) {
-    cy.findByLabelText("Unit").should("have.value", "days").click();
+    cy.findByRole("textbox", { name: "Unit" })
+      .should("have.value", "days")
+      .click();
 
     selectDropdown().contains(timeBucket).click();
   }

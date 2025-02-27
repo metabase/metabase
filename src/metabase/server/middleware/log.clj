@@ -4,22 +4,22 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.async.streaming-response :as streaming-response]
-   [metabase.async.streaming-response.thread-pool :as thread-pool]
-   [metabase.async.util :as async.u]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.models.setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.server.instance :as server]
+   [metabase.server.streaming-response :as streaming-response]
+   [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
+   [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (metabase.async.streaming_response StreamingResponse)
+   (metabase.server.streaming_response StreamingResponse)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)

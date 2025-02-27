@@ -223,7 +223,7 @@ Metabase's reference documentation.
 
 ### Metabase API
 
-- [Metabase API documentation](./api-documentation.md)
+- [Metabase API documentation](./api.html)
 - [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api)
 
 ### Troubleshooting
@@ -233,10 +233,6 @@ Metabase's reference documentation.
 ### Developer guide
 
 - [Developer guide](./developers-guide/start.md)
-
-### Paid features
-
-Some Metabase plans offer [additional features](./paid-features/start.md).
 
 ## Getting help
 

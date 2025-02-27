@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -11,7 +11,7 @@ describe("binning related reproductions", () => {
   });
 
   it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "16327",
       native: { query: "select * from products limit 5" },
     });
@@ -78,7 +78,7 @@ describe("binning related reproductions", () => {
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "17975",
         native: {
@@ -110,14 +110,16 @@ describe("binning related reproductions", () => {
     H.popover()
       .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
+      .realHover()
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Quarter").click();
 
     H.getNotebookStep("sort").findByText("CREATED_AT: Quarter");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "18646",
         native: { query: "select * from products" },
@@ -167,7 +169,7 @@ describe("binning related reproductions", () => {
   });
 
   it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "11439",
       query: { "source-table": ORDERS_ID },
     });
@@ -187,6 +189,7 @@ describe("binning related reproductions", () => {
       cy.findAllByRole("listitem", { name: "Created At" })
         .eq(0)
         .findByLabelText("Temporal bucket")
+        .realHover()
         .click();
     });
 
@@ -208,7 +211,7 @@ describe("binning related reproductions", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
     H.openVizTypeSidebar();
@@ -250,7 +253,7 @@ describe("binning related reproductions", () => {
 
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "16379",
           query: {
@@ -308,7 +311,7 @@ describe("binning related reproductions", () => {
 
     beforeEach(() => {
       // This query is the equivalent of saving the question without running it first.
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "SQL Binning",
         native: {
           query:

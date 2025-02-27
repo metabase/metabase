@@ -2,7 +2,7 @@
 
 import cx from "classnames";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";

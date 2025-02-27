@@ -47,7 +47,7 @@ export function formatParameterValue(
   value = Array.isArray(value) ? value[0] : value;
 
   if (isDateParameter(parameter)) {
-    return formatDateValue(String(value), parameter);
+    return formatDateValue(parameter, String(value));
   }
 
   if (isTemporalUnitParameter(parameter)) {

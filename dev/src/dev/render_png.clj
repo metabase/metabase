@@ -10,7 +10,7 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.email.result-attachment :as email.result-attachment]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.models.card :as card]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.query-processor :as qp]

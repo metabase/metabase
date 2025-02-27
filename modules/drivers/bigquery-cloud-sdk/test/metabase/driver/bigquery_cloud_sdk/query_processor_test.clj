@@ -19,7 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.util.timezone :as test.tz]
@@ -728,7 +728,7 @@
 (deftest current-datetime-honeysql-form-test-2
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
-      (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
+      (testing "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set."
         (doseq [timezone ["UTC" "US/Pacific"]]
           (mt/with-report-timezone-id! timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
