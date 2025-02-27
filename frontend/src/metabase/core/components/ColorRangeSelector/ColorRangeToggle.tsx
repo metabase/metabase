@@ -1,8 +1,8 @@
-import {
-  ToggleButton,
-  ToggleColorRange,
-  ToggleRoot,
-} from "./ColorRangeToggle.styled";
+import CS from "metabase/css/core/index.css";
+
+import { ColorRange } from "../ColorRange";
+
+import { ToggleButton, ToggleRoot } from "./ColorRangeToggle.styled";
 
 export interface ColorRangeToggleProps {
   value: string[];
@@ -21,11 +21,13 @@ const ColorRangeToggle = ({
 }: ColorRangeToggleProps) => {
   return (
     <ToggleRoot>
-      <ToggleColorRange
+      <ColorRange
         colors={value}
         isQuantile={isQuantile}
         onSelect={onColorRangeSelect}
         aria-label={getColorRangeLabel(value)}
+        flex="1 1 auto"
+        className={onColorRangeSelect ? CS.cursorPointer : CS.cursorDefault}
       />
       {showToggleButton && (
         <ToggleButton icon="compare" small onClick={onToggleClick} />
