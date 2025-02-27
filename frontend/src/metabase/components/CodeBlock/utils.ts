@@ -22,7 +22,7 @@ import { type RefObject, useEffect } from "react";
 import S from "./CodeBlock.module.css";
 import type { CodeLanguage } from "./types";
 
-export function getLanguageExtension(language: CodeLanguage): Extension | null {
+export function getLanguageExtension(language: CodeLanguage): Extension {
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);
