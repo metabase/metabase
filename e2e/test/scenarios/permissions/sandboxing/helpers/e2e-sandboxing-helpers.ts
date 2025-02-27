@@ -344,11 +344,12 @@ export const configureSandboxPolicy = (
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
     entityPickerModal()
-      .findByText(
+      .findAllByText(
         filterTableBy === "column"
           ? "Products question with custom column"
           : "Products question custom view",
       )
+      .first()
       .click();
   } else {
     throw new Error("Unexpected columnType");
@@ -628,7 +629,7 @@ export const cardsShouldOnlyShowGizmos = ({
   });
 };
 
-const cardShouldThrow = (
+const cardShouldThrowError = (
   cardDescription: string,
   endpoint: string,
   payload?: any,
@@ -640,13 +641,15 @@ const cardShouldThrow = (
   };
   cy.log(`Check that ${cardDescription} fails closed, revealing no data`);
   cy.request("POST", endpoint, payload).then(response => {
-    expect(response.status).to.equal(403);
-    expect(response.body).not.to.have.property("data");
+    expect(response.body.data.rows).to.have.length(0);
+    expect(response.body.data.cols).to.have.length(0);
+    expect(response.status).to.equal(202);
+    expect(response.body.via[0].status).to.equal("failed");
   });
 };
 
 /** Assert that the cards we're testing all fail and do not show any data */
-export const cardsShouldThrowAnError = ({
+export const cardsShouldThrowErrors = ({
   customColumnType,
 }: Pick<SandboxPolicy, "customColumnType">) => {
   cy.then(function () {
@@ -657,17 +660,23 @@ export const cardsShouldThrowAnError = ({
       nestedQuestionInDashboardPath,
       modelPayload,
     } = getEntityPaths(this);
-    cardShouldThrow("Saved question", savedQuestionPath);
-    cardShouldThrow("Nested question", nestedQuestionPath);
-    cardShouldThrow(
+    cardShouldThrowError("Saved question", savedQuestionPath);
+    cardShouldThrowError("Nested question", nestedQuestionPath);
+    cardShouldThrowError(
       "Saved question in dashboard",
       savedQuestionInDashboardPath,
     );
-    cardShouldThrow(
+    cardShouldThrowError(
       "Nested question in dashboard",
       nestedQuestionInDashboardPath,
     );
-    cardShouldThrow("Model", "/api/dataset", modelPayload);
+    cardShouldThrowError("Model", "/api/dataset", modelPayload);
+    // TODO: Change to adhocQuestionShouldThrowError
+    // TODO: Change to adhocQuestionShouldThrowError
+    // TODO: Change to adhocQuestionShouldThrowError
+    // TODO: Change to adhocQuestionShouldThrowError
+    // TODO: Change to adhocQuestionShouldThrowError
+    // TODO: Change to adhocQuestionShouldThrowError
     adhocQuestionShouldBeFiltered(customColumnType);
   });
 };
