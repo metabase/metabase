@@ -1225,3 +1225,8 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+(defn safe-min
+  "nil safe clojure.core/min"
+  [& args]
+  (when-let [filtered (seq (remove nil? args))]
+    (apply min filtered)))

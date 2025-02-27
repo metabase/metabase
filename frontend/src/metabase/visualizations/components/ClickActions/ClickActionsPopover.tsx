@@ -135,6 +135,7 @@ export class ClickActionsPopover extends Component<
         onClose={this.close}
         position="bottom-start"
         offset={8}
+        popoverContentTestId="click-actions-popover"
         {...popoverAction?.popoverProps}
       >
         {popover ? (

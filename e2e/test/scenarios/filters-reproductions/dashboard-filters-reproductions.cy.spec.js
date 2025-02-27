@@ -4247,3 +4247,31 @@ describe("issue 52918", () => {
     });
   });
 });
+
+describe("issue 54236", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.clock(new Date("2025-02-26"));
+  });
+
+  it("should show correct date range in the date picker (metabase#54236)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.setFilter("Date picker", "All Options");
+    H.sidebar().findByLabelText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Next").click();
+      cy.findByDisplayValue("30").clear().type("1");
+      cy.findAllByDisplayValue("day").filter(":visible").click();
+    });
+    H.popover().should("have.length", 2).last().findByText("quarter").click();
+    H.popover().within(() => {
+      cy.icon("arrow_left_to_line").click();
+      cy.findByDisplayValue("4").clear().type("1");
+      cy.findByText("Jul 1 – Sep 30, 2025").should("be.visible");
+      cy.findByText("Apr 1 – Jun 30, 2025").should("not.exist");
+    });
+  });
+});
