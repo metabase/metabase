@@ -10,7 +10,7 @@ There are different ways you can embed questions:
 
 - [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
 - [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
+- [Query builder](#embedding-the-query-builder-for-creating-new-questions). Embeds the graphical query builder without a pre-defined query.
 
 ## Embedding a static question
 
