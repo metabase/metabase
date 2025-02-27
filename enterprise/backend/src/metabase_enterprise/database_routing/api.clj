@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/mirror-database"
   "Create new Mirror Databases."
   [_route-params
    _query-params
@@ -22,7 +22,6 @@
                                               [:map
                                                [:name               ms/NonBlankString]
                                                [:details            ms/Map]]]]]]
-  (api/check-superuser)
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
   (let [{:keys [engine auto_run_queries is_on_demand]} (t2/select-one :model/Database :id router_database_id)
         details-or-errors                              (map (fn [{:keys [details] n :name}]
@@ -65,17 +64,37 @@
                                  (dissoc :valid)
                                  (merge {:name name})))))}))))
 
-(api.macros/defendpoint :put "/database/:id"
-  "Mark a database as a router database"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+(api.macros/defendpoint :post "/router"
+  "Creates a new Router by marking an existing Database as a router."
+  [_route-params
    _query-params
-   {:keys [user_attribute]} :- [:map
-                                [:user_attribute ms/NonBlankString]]]
-  (api/check-404 (t2/exists? :model/Database :id id))
-  (api/check-400 (not (t2/exists? :model/DatabaseRouter :database_id id)))
-  (t2/insert-returning-instance! :model/DatabaseRouter :user_attribute user_attribute :database_id id))
+   {:keys [user_attribute database_id]} :- [:map
+                                            [:user_attribute ms/NonBlankString]
+                                            [:database_id ms/PositiveInt]]]
+  (api/check-404 (t2/exists? :model/Database :id database_id))
+  (api/check-400 (not (t2/exists? :model/DatabaseRouter :database_id database_id)))
+  (t2/insert-returning-instance! :model/DatabaseRouter :user_attribute user_attribute :database_id database_id))
+
+(api.macros/defendpoint :put "/router/:id"
+  "Updates an existing Router to change the user attribute used."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [user_attribute]} :- [:map [:user_attribute ms/NonBlankString]]]
+  (api/check-404 (t2/exists? :model/DatabaseRouter :id id))
+  (t2/update! :model/DatabaseRouter :id id {:user_attribute user_attribute}))
+
+(api.macros/defendpoint :delete "/router/:id"
+  "Deletes a router AND ALL ASSOCIATED MIRROR DATABASES."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-404 (t2/exists? :model/DatabaseRouter :id id))
+  (let [primary-db-id (t2/select-one-fn :database_id
+                                        [:model/DatabaseRouter :database_id]
+                                        :id id)]
+    (t2/with-transaction [_conn]
+      (t2/delete! :model/DatabaseRouter :id id)
+      (t2/delete! :model/Database :router_database_id primary-db-id))
+    api/generic-204-no-content))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* api/+check-superuser +auth))
