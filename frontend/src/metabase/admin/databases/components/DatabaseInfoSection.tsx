@@ -11,7 +11,7 @@ export const DatabaseInfoSection = ({
 }) => (
   <Flex gap="5.5rem" mb="5.5rem">
     <Flex gap="lg" w="100%">
-      <Flex direction="column" maw="17rem">
+      <Flex direction="column" w="100%" maw="17rem">
         <Text size="lg" fw="700">
           {name}
         </Text>

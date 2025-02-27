@@ -21,7 +21,7 @@ import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Divider, Flex, Text } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -30,10 +30,11 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { DatabaseConnectionInfoSectionContent } from "../components/DatabaseConnectionInfoSectionContent";
+import { DatabaseDangerZoneSectionContent } from "../components/DatabaseDangerZoneSectionContent";
 import { DatabaseInfoSection } from "../components/DatabaseInfoSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
-  deleteDatabase,
   dismissSyncSpinner,
   initializeDatabase,
   reset,
@@ -51,10 +52,6 @@ interface DatabaseEditAppProps {
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  deleteDatabase: (
-    databaseId: DatabaseId,
-    isDetailView: boolean,
-  ) => Promise<void>;
   saveDatabase: (database: DatabaseData) => Database;
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
@@ -85,7 +82,6 @@ const mapDispatchToProps = {
   saveDatabase,
   updateDatabase,
   dismissSyncSpinner,
-  deleteDatabase,
   selectEngine,
   onChangeLocation: push,
 };
@@ -102,7 +98,6 @@ type DatabaseEditErrorType = {
 function DatabaseEditApp(props: DatabaseEditAppProps) {
   const {
     database,
-    deleteDatabase,
     updateDatabase,
     initializeError,
     dismissSyncSpinner,
@@ -153,32 +148,43 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   const autofocusFieldName = window.location.hash.slice(1);
 
+  // TODO: handle this on a new page
+  if (addingNewDatabase) {
+    return <div>TODO: b0rked this on purpose for the time being</div>;
+  }
+
   return (
     <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
       <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
-      {!addingNewDatabase && (
-        <>
-          <ExistingDatabaseHeader database={database} />
-          <Divider mb="3.25rem" />
-        </>
-      )}
+      <ExistingDatabaseHeader database={database} />
+
+      <Divider mb="3.25rem" />
 
       <DatabaseInfoSection
         name={t`Connection and sync`}
         description={t`Manage details about the database connection and when Metabase ingests new data.`}
       >
+        <DatabaseConnectionInfoSectionContent database={database} />
+      </DatabaseInfoSection>
+
+      <DatabaseInfoSection
+        name={t`Model features`}
+        description={t`A Jeff B diddy`}
+      >
         <Flex align="center" justify="space-between">
-          <Flex align="center" gap="xs">
-            <Box
-              w=".75rem"
-              h=".75rem"
-              style={{ borderRadius: "50%", background: "green" }}
-            />
-            <Text c="black">{(database?.details?.host as any) ?? ""}</Text>
-          </Flex>
-          <Button>{t`Edit`}</Button>
+          TODO
         </Flex>
+      </DatabaseInfoSection>
+
+      <DatabaseInfoSection
+        name={t`Danger zone`}
+        description={t`Remove this database and other destructive actions`}
+      >
+        <DatabaseDangerZoneSectionContent
+          isAdmin={isAdmin}
+          database={database}
+        />
       </DatabaseInfoSection>
 
       <Flex mb="md">
@@ -216,7 +222,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             isAdmin={isAdmin}
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
-            deleteDatabase={deleteDatabase}
             dismissSyncSpinner={dismissSyncSpinner}
           />
         )}

@@ -1,15 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import {
-  useDiscardDatabaseFieldValuesMutation,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/core/components/Button";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
@@ -34,22 +30,14 @@ interface DatabaseEditAppSidebarProps {
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  deleteDatabase: (
-    databaseId: DatabaseId,
-    isDetailView: boolean,
-  ) => Promise<void>;
 }
 
 const DatabaseEditAppSidebar = ({
   database,
   updateDatabase,
-  deleteDatabase,
   dismissSyncSpinner,
-  isAdmin,
   isModelPersistenceEnabled,
 }: DatabaseEditAppSidebarProps) => {
-  const discardSavedFieldValuesModal = useRef<any>();
-  const deleteDatabaseModal = useRef<any>();
   const isEditingDatabase = !!database.id;
   const isSynced = isSyncCompleted(database);
   const hasModelActionsSection =
@@ -60,7 +48,6 @@ const DatabaseEditAppSidebar = ({
   const dispatch = useDispatch();
   const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
-  const [discardDatabaseFieldValues] = useDiscardDatabaseFieldValuesMutation();
 
   const handleSyncDatabaseSchema = async () => {
     await syncDatabaseSchema(database.id);
@@ -81,19 +68,6 @@ const DatabaseEditAppSidebar = ({
       }),
     [database.id, updateDatabase],
   );
-
-  const handleDeleteDatabase = useCallback(
-    () => deleteDatabase(database.id, true),
-    [database.id, deleteDatabase],
-  );
-
-  const handleSavedFieldsModalClose = useCallback(() => {
-    discardSavedFieldValuesModal.current.close();
-  }, []);
-
-  const handleDeleteDatabaseModalClose = useCallback(() => {
-    deleteDatabaseModal.current.close();
-  }, []);
 
   return (
     <SidebarRoot>
@@ -137,43 +111,6 @@ const DatabaseEditAppSidebar = ({
             {hasModelCachingSection && (
               <SidebarGroup.ListItem>
                 <ModelCachingControl database={database} />
-              </SidebarGroup.ListItem>
-            )}
-          </SidebarGroup.List>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroup.Name>{t`Danger Zone`}</SidebarGroup.Name>
-          <SidebarGroup.List>
-            {isSyncCompleted(database) && (
-              <SidebarGroup.ListItem hasMarginTop={false}>
-                <ModalWithTrigger
-                  triggerElement={
-                    <Button danger>{t`Discard saved field values`}</Button>
-                  }
-                  ref={discardSavedFieldValuesModal}
-                >
-                  <ConfirmContent
-                    title={t`Discard saved field values`}
-                    onClose={handleSavedFieldsModalClose}
-                    onAction={() => discardDatabaseFieldValues(database.id)}
-                  />
-                </ModalWithTrigger>
-              </SidebarGroup.ListItem>
-            )}
-            {isAdmin && (
-              <SidebarGroup.ListItem>
-                <ModalWithTrigger
-                  triggerElement={
-                    <Button danger>{t`Remove this database`}</Button>
-                  }
-                  ref={deleteDatabaseModal}
-                >
-                  <DeleteDatabaseModal
-                    database={database}
-                    onClose={handleDeleteDatabaseModalClose}
-                    onDelete={handleDeleteDatabase}
-                  />
-                </ModalWithTrigger>
               </SidebarGroup.ListItem>
             )}
           </SidebarGroup.List>
