@@ -94,7 +94,7 @@ export const SaveQuestionProvider = ({
       ? lastSelectedEntityModel
       : undefined;
 
-  const mostRecentDashboard =
+  const lastSelectedDashboard =
     lastSelectedEntityModel?.model === "dashboard"
       ? lastSelectedEntityModel
       : undefined;
@@ -105,12 +105,14 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    mostRecentDashboard?.can_write
-      ? mostRecentDashboard?.id
+    lastSelectedDashboard?.can_write
+      ? lastSelectedDashboard?.id
       : undefined;
 
   const initialCollectionId =
-    (!isAnalytics ? mostRecentDashboard?.parent_collection.id : undefined) ??
+    (!isAnalytics
+      ? lastSelectedDashboard?.parent_collection.id
+      : defaultCollectionId) ??
     lastSelectedCollection?.id ??
     defaultCollectionId;
 
