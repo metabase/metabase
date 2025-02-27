@@ -73,7 +73,7 @@ export const InteractiveQuestionResult = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if ((!question || isCardIdError) && originalId) {
+  if ((!question || isCardIdError) && originalId && originalId !== "new") {
     return <QuestionNotFoundError id={originalId} />;
   }
 

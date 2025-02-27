@@ -32,7 +32,7 @@ describe("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -107,7 +107,7 @@ describe("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
