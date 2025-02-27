@@ -1339,7 +1339,7 @@
     [:map
      [:id ms/NonBlankString]]
     [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an 'id' key")))
+   (deferred-tru "value must be a parameter map with an ''id'' key")))
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
