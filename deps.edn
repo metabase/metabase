@@ -247,7 +247,7 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.58.5"}                    ; ui for inspecting values
-    hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
+    dev.weavejester/hashp        {:mvn/version "0.3.0"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:mvn/version "1.0.7"}
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
@@ -264,7 +264,6 @@
     rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
@@ -299,6 +298,13 @@
                  ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
                  "--add-opens"
                  "java.base/java.nio=ALL-UNNAMED"]}
+
+  ;; This is probably the best way to start the app for dev mode.
+  ;; 1. Runs (dev) (start!) for you
+  ;; 2. This start the repl too
+  ;; 3. works with hashp
+  ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+  :dev-start {:main-opts ["-m" "user"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
