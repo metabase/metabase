@@ -205,7 +205,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           />
         )}
 
-        <Box py="sm">
+        <Flex py="sm" gap="sm">
           {onClose && (
             <Button
               onClick={onClose}
@@ -221,7 +221,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           >
             {initialName || initialClause ? t`Update` : t`Done`}
           </Button>
-        </Box>
+        </Flex>
       </Flex>
     </Box>
   );
