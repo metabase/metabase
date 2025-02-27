@@ -5,12 +5,12 @@ import {
   type SandboxPolicy,
   cardsShouldOnlyShowGizmos,
   cardsShouldShowGizmosAndWidgets,
+  cardsShouldThrowErrors,
   configureSandboxPolicy,
   configureUser,
   createCardsShowingGizmosAndWidgets,
   signInAsSandboxedUser,
   sandboxingUser as user,
-  cardsShouldThrowErrors,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -225,50 +225,32 @@ describe(
       });
     });
 
-    describe("we expect an error - and no data to be shown - when applying a sandbox policy", () => {
-      it("to a table filtered by a custom boolean column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "boolean",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldThrowErrors(policy);
-      });
-
-      it("to a table filtered by a custom string column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "string",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldThrowErrors(policy);
-      });
-
-      it.only("to a table filtered by a custom number column", () => {
-        const policy: SandboxPolicy = {
-          filterTableBy: "column",
-          columnType: "custom",
-          customColumnType: "number",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
-        signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldThrowErrors(policy);
+    describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
+      (
+        [
+          ["question", "boolean"],
+          ["question", "string"],
+          ["question", "number"],
+          ["model", "boolean"],
+          ["model", "string"],
+          ["model", "number"],
+        ] as const
+      ).forEach(([customViewType, customColumnType]) => {
+        it(`...to a table filtered by a custom boolean ${customColumnType} column in a ${customViewType}`, () => {
+          const policy: SandboxPolicy = {
+            filterTableBy: "custom_view",
+            columnType: "custom",
+            customViewType,
+            customColumnType,
+          };
+          createCardsShowingGizmosAndWidgets(policy);
+          signInAsSandboxedUser();
+          cardsShouldShowGizmosAndWidgets(policy);
+          const { attributeKey } = configureUser(policy);
+          configureSandboxPolicy({ ...policy, attributeKey });
+          signInAsSandboxedUser();
+          cardsShouldThrowErrors(policy);
+        });
       });
     });
   },
