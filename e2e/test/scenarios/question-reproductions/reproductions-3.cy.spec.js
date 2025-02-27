@@ -2487,6 +2487,9 @@ describe("issue 53036", () => {
 
     cy.log("try to click on add button - it fails is there is an overlap");
 
-    H.getNotebookStep("join").icon("add").click();
+    H.getNotebookStep("join").within(() => {
+      cy.icon("play").should("be.visible");
+      cy.icon("add").click();
+    });
   });
 });
