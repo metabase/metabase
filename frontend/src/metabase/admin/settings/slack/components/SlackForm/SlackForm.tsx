@@ -14,10 +14,6 @@ import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string().ensure().required(Errors.required),
-  "slack-files-channel": Yup.string()
-    .ensure()
-    .required(Errors.required)
-    .lowercase(),
   "slack-bug-report-channel": Yup.string()
     .nullable()
     .default(null)
@@ -61,13 +57,6 @@ const SlackForm = ({
             {SLACK_CHANNEL_PROMPT} {SLACK_CHANNEL_DESCRIPTION}
           </SlackFormMessage>
         )}
-        <FormInput
-          name="slack-files-channel"
-          title={t`Public channel to store image files`}
-          description={isReadOnly ? SLACK_CHANNEL_DESCRIPTION : undefined}
-          placeholder="metabase_files"
-          readOnly={isReadOnly}
-        />
         {isBugReportingEnabled && (
           <FormInput
             name="slack-bug-report-channel"
