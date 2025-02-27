@@ -391,7 +391,7 @@ export const configureSandboxPolicy = (
 
   saveChangesToPermissions();
 
-  cy.wait(1000); // HACK: This avoids an error
+  cy.wait(300); // HACK: This avoids an error
 };
 
 type RegularColumnBasedSandboxPolicy = {
@@ -402,7 +402,7 @@ type RegularColumnBasedSandboxPolicy = {
 
 type CustomViewBasedSandboxPolicy = {
   filterTableBy: "custom_view";
-  columnType: "custom";
+  columnType: ColumnType;
   customViewType: CustomViewType;
   customColumnType?: CustomColumnType;
 };
