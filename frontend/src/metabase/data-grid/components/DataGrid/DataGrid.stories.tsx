@@ -177,7 +177,7 @@ export const CombinedFeatures: Story = () => {
     data: sampleData,
     columnsOptions: columns,
     columnOrder,
-    columnSizing,
+    columnSizingMap: columnSizing,
     onColumnReorder: setColumnOrder,
     onColumnResize: setColumnSizing,
     rowId,

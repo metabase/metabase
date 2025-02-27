@@ -8,6 +8,11 @@
   cursor: default;
   font-size: 12.5px;
   padding: 0 12px;
+  background-color: var(--cell-bg-color);
+}
+
+.root:hover {
+  background-color: var(--cell-hover-bg-color);
 }
 
 .leftAligned {

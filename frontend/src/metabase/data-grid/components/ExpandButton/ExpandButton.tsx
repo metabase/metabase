@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
+import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
 
@@ -16,7 +17,7 @@ export const ExpandButton = ({ className, onClick }: ExpandButtonProps) => (
       className={cx(S.button, className)}
       onClick={onClick}
       data-testid="expand-column"
-      aria-label="Expand column"
+      aria-label={t`Expand column`}
     >
       <Icon name="ellipsis" size={10} />
     </button>

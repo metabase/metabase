@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import _ from "underscore";
 
-import type { DataGridProps } from "metabase/data-grid/components/DataGrid";
+import type { DataGridProps } from "metabase/data-grid/components/DataGrid/DataGrid";
 import {
   MIN_COLUMN_WIDTH,
   ROW_ID_COLUMN_ID,
@@ -35,16 +35,16 @@ const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
 export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
-  columnSizing: controlledColumnSizing,
+  columnSizingMap: controlledColumnSizingMap,
   defaultRowHeight = 36,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   onColumnResize,
   onColumnReorder,
+  measurementRenderWrapper,
 }: DataGridOptions<TData, TValue>): DataGridProps<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
-  const refs = useMemo(() => ({ gridRef }), [gridRef]);
   const hasRowIdColumn = rowId != null;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
@@ -54,14 +54,14 @@ export const useDataGridInstance = <TData, TValue>({
     ),
   );
 
-  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(
-    controlledColumnSizing ?? {},
+  const [columnSizingMap, setColumnSizingMap] = useState<ColumnSizingState>(
+    controlledColumnSizingMap ?? {},
   );
-  const [measuredColumnSizing, setMeasuredColumnSizing] =
+  const [measuredColumnSizingMap, setMeasuredColumnSizingMap] =
     useState<ColumnSizingState>({});
 
-  const [expandedColumns, setExpandedColumns] = useState<ExpandedColumnsState>(
-    () => {
+  const [expandedColumnsMap, setExpandedColumnsMap] =
+    useState<ExpandedColumnsState>(() => {
       return columnsOptions.reduce(
         (acc: ExpandedColumnsState, columnOptions) => {
           acc[columnOptions.id] = false;
@@ -69,8 +69,7 @@ export const useDataGridInstance = <TData, TValue>({
         },
         {},
       );
-    },
-  );
+    });
 
   const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure();
 
@@ -80,7 +79,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   const handleUpdateColumnExpanded = useCallback(
     (columnName: string, isExpanded = true) => {
-      setExpandedColumns(prev => {
+      setExpandedColumnsMap(prev => {
         return { ...prev, [columnName]: isExpanded };
       });
     },
@@ -90,23 +89,26 @@ export const useDataGridInstance = <TData, TValue>({
   const handleExpandButtonClick = useCallback(
     (columnName: string, content: React.ReactNode) => {
       if (typeof content !== "string") {
-        throw new Error("Columns with rich formatting cannot be truncated");
+        throw new Error("Columns with rich formatting cannot be expanded");
       }
 
       const newColumnWidth = Math.max(
         measureBodyCellDimensions(content).width,
-        measuredColumnSizing[columnName],
+        measuredColumnSizingMap[columnName],
       );
-      const newColumnSizing = { ...columnSizing, [columnName]: newColumnWidth };
+      const newColumnSizing = {
+        ...columnSizingMap,
+        [columnName]: newColumnWidth,
+      };
 
-      setColumnSizing(newColumnSizing);
+      setColumnSizingMap(newColumnSizing);
 
       handleUpdateColumnExpanded(columnName);
     },
     [
-      columnSizing,
+      columnSizingMap,
       measureBodyCellDimensions,
-      measuredColumnSizing,
+      measuredColumnSizingMap,
       handleUpdateColumnExpanded,
     ],
   );
@@ -118,9 +120,9 @@ export const useDataGridInstance = <TData, TValue>({
     const dataColumns = columnsOptions.map(options =>
       getDataColumn<TData, TValue>(
         options,
-        columnSizing,
-        measuredColumnSizing,
-        expandedColumns,
+        columnSizingMap,
+        measuredColumnSizingMap,
+        expandedColumnsMap,
         truncateLongCellWidth,
         handleExpandButtonClick,
       ),
@@ -130,9 +132,9 @@ export const useDataGridInstance = <TData, TValue>({
   }, [
     rowId,
     columnsOptions,
-    columnSizing,
-    measuredColumnSizing,
-    expandedColumns,
+    columnSizingMap,
+    measuredColumnSizingMap,
+    expandedColumnsMap,
     truncateLongCellWidth,
     handleExpandButtonClick,
   ]);
@@ -145,14 +147,14 @@ export const useDataGridInstance = <TData, TValue>({
     data,
     columns,
     state: {
-      columnSizing,
+      columnSizing: columnSizingMap,
       columnOrder,
       columnPinning: { left: [ROW_ID_COLUMN_ID] },
     },
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode: "onChange",
     onColumnOrderChange: setColumnOrder,
-    onColumnSizingChange: setColumnSizing,
+    onColumnSizingChange: setColumnSizingMap,
   });
 
   const measureRowHeight = useCallback(
@@ -207,8 +209,9 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     data,
     columnsOptions,
-    setMeasuredColumnSizing,
+    setMeasuredColumnSizingMap,
     truncateLongCellWidth,
+    measurementRenderWrapper,
   );
 
   const { measureGrid } = virtualGrid;
@@ -217,7 +220,7 @@ export const useDataGridInstance = <TData, TValue>({
   useEffect(() => {
     const didColumnSizingChange =
       prevColumnSizing.current != null &&
-      !_.isEqual(prevColumnSizing.current, columnSizing);
+      !_.isEqual(prevColumnSizing.current, columnSizingMap);
 
     const didColumnWrappingChange =
       prevWrappedColumns.current != null &&
@@ -230,15 +233,15 @@ export const useDataGridInstance = <TData, TValue>({
       measureGrid();
     }
 
-    prevColumnSizing.current = columnSizing;
+    prevColumnSizing.current = columnSizingMap;
     prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
-  }, [columnSizing, measureGrid, wrappedColumnsOptions]);
+  }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
       const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
-      const newColumnSizing = { ...columnSizing, [columnName]: newWidth };
-      setColumnSizing(newColumnSizing);
+      const newColumnSizing = { ...columnSizingMap, [columnName]: newWidth };
+      setColumnSizingMap(newColumnSizing);
 
       if (newWidth > truncateLongCellWidth) {
         handleUpdateColumnExpanded(columnName);
@@ -247,7 +250,7 @@ export const useDataGridInstance = <TData, TValue>({
       onColumnResize?.(newColumnSizing);
     },
     [
-      columnSizing,
+      columnSizingMap,
       onColumnResize,
       handleUpdateColumnExpanded,
       truncateLongCellWidth,
@@ -264,7 +267,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   return {
     table,
-    refs,
+    gridRef,
     virtualGrid,
     measureRoot,
     columnsReordering,

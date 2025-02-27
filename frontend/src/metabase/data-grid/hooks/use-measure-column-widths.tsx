@@ -16,11 +16,11 @@ import { ThemeProvider } from "metabase/ui";
 const EXTRA_COLUMN_SPACING = 14;
 
 const getTruncatedColumnSizing = (
-  columnSizing: ColumnSizingState,
+  columnSizingMap: ColumnSizingState,
   truncateWidth: number,
 ): ColumnSizingState =>
   Object.fromEntries(
-    Object.entries(columnSizing).map(([key, value]) => [
+    Object.entries(columnSizingMap).map(([key, value]) => [
       key,
       Math.min(value, truncateWidth),
     ]),
@@ -30,8 +30,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
   table: ReactTable<TData>,
   data: TData[],
   columnsOptions: ColumnOptions<TData, TValue>[],
-  setMeasuredColumnSizing: (columnSizing: ColumnSizingState) => void,
+  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
   truncateLongCellWidth: number,
+  measurementRenderWrapper?: (
+    children: React.ReactElement,
+  ) => React.ReactElement,
 ) => {
   const measureRootRef = useRef<HTMLDivElement>();
   const measureRootTree = useRef<Root>();
@@ -57,7 +60,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
           })
           .filter(isNotNull);
 
-        const columnSizing: ColumnSizingState = contentWidths.reduce<
+        const columnSizingMap: ColumnSizingState = contentWidths.reduce<
           Record<string, number>
         >(
           (acc, { columnId, width }) => ({
@@ -67,13 +70,13 @@ export const useMeasureColumnWidths = <TData, TValue>(
           {},
         );
 
-        setMeasuredColumnSizing(columnSizing);
+        setMeasuredColumnSizing(columnSizingMap);
 
         if (updateCurrent) {
           table.setColumnSizing(
             truncate
-              ? getTruncatedColumnSizing(columnSizing, truncateLongCellWidth)
-              : columnSizing,
+              ? getTruncatedColumnSizing(columnSizingMap, truncateLongCellWidth)
+              : columnSizingMap,
           );
         }
 
@@ -86,64 +89,62 @@ export const useMeasureColumnWidths = <TData, TValue>(
         }, 0);
       };
 
-      const content = (
+      const measureContent = (
+        <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
+          {table
+            .getHeaderGroups()
+            .flatMap(headerGroup => headerGroup.headers)
+            .map(header => {
+              const headerCell = flexRender(
+                header.column.columnDef.header,
+                header.getContext(),
+              );
+              return (
+                <div key={header.column.id} data-measure-id={header.column.id}>
+                  {headerCell}
+                </div>
+              );
+            })}
+
+          {columnsOptions.map(columnOptions => {
+            return (
+              <div key={columnOptions.id} data-measure-id={columnOptions.id}>
+                {pickRowsToMeasure(data, columnOptions.accessorFn).map(
+                  rowIndex => {
+                    const cell = table
+                      .getRowModel()
+                      .rows[rowIndex].getVisibleCells()
+                      .find(cell => cell.column.id === columnOptions.id);
+
+                    if (!cell) {
+                      return null;
+                    }
+
+                    return (
+                      <React.Fragment key={`${columnOptions.id}-${rowIndex}`}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </React.Fragment>
+                    );
+                  },
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+
+      const wrappedContent = (
         <EmotionCacheProvider>
-          <ThemeProvider>
-            <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
-              {table
-                .getHeaderGroups()
-                .flatMap(headerGroup => headerGroup.headers)
-                .map(header => {
-                  const headerCell = flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  );
-                  return (
-                    <div
-                      key={header.column.id}
-                      data-measure-id={header.column.id}
-                    >
-                      {headerCell}
-                    </div>
-                  );
-                })}
-
-              {columnsOptions.map(columnOptions => {
-                return (
-                  <div
-                    key={columnOptions.id}
-                    data-measure-id={columnOptions.id}
-                  >
-                    {pickRowsToMeasure(data, columnOptions.accessorFn).map(
-                      rowIndex => {
-                        const cell = table
-                          .getRowModel()
-                          .rows[rowIndex].getVisibleCells()
-                          .find(cell => cell.column.id === columnOptions.id);
-
-                        if (!cell) {
-                          return null;
-                        }
-
-                        return (
-                          <React.Fragment
-                            key={`${columnOptions.id}-${rowIndex}`}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </React.Fragment>
-                        );
-                      },
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </ThemeProvider>
+          <ThemeProvider>{measureContent}</ThemeProvider>
         </EmotionCacheProvider>
       );
+
+      const content = measurementRenderWrapper
+        ? measurementRenderWrapper(wrappedContent)
+        : wrappedContent;
 
       // Instead of unmounting and creating a new root, reuse the existing root when possible
       if (measureRootRef.current) {
@@ -162,6 +163,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       setMeasuredColumnSizing,
       table,
       truncateLongCellWidth,
+      measurementRenderWrapper,
     ],
   );
 
@@ -179,9 +181,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRootRef.current = measureRoot;
     }
 
-    const columnSizing = table.getState().columnSizing;
+    const columnSizingMap = table.getState().columnSizing;
     const shouldUpdateCurrentWidths =
-      !columnSizing || Object.values(columnSizing).length === 0;
+      !columnSizingMap || Object.values(columnSizingMap).length === 0;
 
     measureColumnWidths(shouldUpdateCurrentWidths);
 

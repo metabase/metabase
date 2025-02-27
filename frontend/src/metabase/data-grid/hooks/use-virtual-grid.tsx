@@ -60,19 +60,6 @@ export const useVirtualGrid = <TData,>({
     },
   });
 
-  const virtualColumns = columnVirtualizer.getVirtualItems();
-  const virtualRows = rowVirtualizer.getVirtualItems();
-
-  let virtualPaddingLeft: number | undefined;
-  let virtualPaddingRight: number | undefined;
-
-  if (columnVirtualizer && virtualColumns?.length) {
-    virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
-    virtualPaddingRight =
-      columnVirtualizer.getTotalSize() -
-      (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
-  }
-
   const measureGrid = useCallback(() => {
     Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
       rowVirtualizer.measureElement(el),
@@ -80,22 +67,26 @@ export const useVirtualGrid = <TData,>({
     columnVirtualizer.measure();
   }, [rowVirtualizer, columnVirtualizer]);
 
-  return useMemo(
-    () => ({
+  const virtualColumns = columnVirtualizer.getVirtualItems();
+  const virtualRows = rowVirtualizer.getVirtualItems();
+
+  return useMemo(() => {
+    let virtualPaddingLeft: number | undefined;
+    let virtualPaddingRight: number | undefined;
+
+    if (columnVirtualizer && virtualColumns?.length) {
+      virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
+      virtualPaddingRight =
+        columnVirtualizer.getTotalSize() -
+        (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
+    }
+    return {
       virtualColumns,
       virtualRows,
       virtualPaddingLeft,
       virtualPaddingRight,
       rowVirtualizer,
       measureGrid,
-    }),
-    [
-      virtualColumns,
-      virtualRows,
-      virtualPaddingLeft,
-      virtualPaddingRight,
-      rowVirtualizer,
-      measureGrid,
-    ],
-  );
+    };
+  }, [virtualColumns, virtualRows, rowVirtualizer, measureGrid]);
 };

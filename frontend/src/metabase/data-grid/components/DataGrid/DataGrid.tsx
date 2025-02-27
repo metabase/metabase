@@ -5,12 +5,17 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
-import { type Ref, forwardRef, useCallback, useMemo } from "react";
+import { type Ref, forwardRef, useCallback, useMemo, useEffect } from "react";
+import _ from "underscore";
 
-import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton";
-import { SortableHeader } from "metabase/data-grid/components/SortableHeader";
-import { HEADER_HEIGHT } from "metabase/data-grid/constants";
+import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
+import { SortableHeader } from "metabase/data-grid/components/SortableHeader/SortableHeader";
+import {
+  ADD_COLUMN_BUTTON_WIDTH,
+  HEADER_HEIGHT,
+} from "metabase/data-grid/constants";
 import type { DataGridInstance } from "metabase/data-grid/types";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
 
 import S from "./DataGrid.module.css";
 
@@ -19,7 +24,7 @@ export type DataGridProps<TData> = DataGridInstance<TData>;
 export const DataGrid = forwardRef(function DataGrid<TData>(
   {
     table,
-    refs,
+    gridRef,
     virtualGrid,
     measureRoot,
     columnsReordering,
@@ -54,14 +59,23 @@ export const DataGrid = forwardRef(function DataGrid<TData>(
     [rowVirtualizer],
   );
 
+  const forceUpdate = useForceUpdate();
+  useEffect(() => {
+    const handleResize = _.debounce(forceUpdate, 100);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [forceUpdate]);
+
   const isAddColumnButtonSticky =
-    table.getTotalSize() >= (refs.gridRef.current?.offsetWidth ?? Infinity);
+    table.getTotalSize() >=
+    (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
+
   const hasAddColumnButton = onAddColumnClick != null;
   const addColumnButton = useMemo(
     () =>
       hasAddColumnButton ? (
         <AddColumnButton
-          isOverflowing={isAddColumnButtonSticky}
+          isSticky={isAddColumnButtonSticky}
           onClick={onAddColumnClick}
         />
       ) : null,
@@ -74,9 +88,11 @@ export const DataGrid = forwardRef(function DataGrid<TData>(
         <div
           data-testid="table-scroll-container"
           className={S.tableGrid}
-          ref={refs.gridRef}
+          ref={gridRef}
           style={{
-            paddingRight: isAddColumnButtonSticky ? "36px" : 0,
+            paddingRight: isAddColumnButtonSticky
+              ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+              : 0,
           }}
           onScroll={onScroll}
         >

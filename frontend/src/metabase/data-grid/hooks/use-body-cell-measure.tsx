@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 
-import { BodyCell } from "metabase/data-grid/components/BodyCell";
+import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 

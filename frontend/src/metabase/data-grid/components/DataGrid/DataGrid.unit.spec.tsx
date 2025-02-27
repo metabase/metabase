@@ -131,7 +131,7 @@ const TestDataGrid = ({
     data: sampleData,
     columnsOptions: columns,
     columnOrder: initialColumnOrder,
-    columnSizing: initialColumnSizing,
+    columnSizingMap: initialColumnSizing,
     onColumnReorder,
     onColumnResize,
     rowId,

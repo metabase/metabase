@@ -8,7 +8,6 @@
   justify-content: end;
   cursor: pointer;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
-  background-color: transparent;
 }
 
 .rowNumber {

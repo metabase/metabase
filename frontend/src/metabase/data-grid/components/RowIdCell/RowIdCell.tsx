@@ -3,7 +3,7 @@ import type React from "react";
 import { memo } from "react";
 import { t } from "ttag";
 
-import { BaseCell } from "metabase/data-grid/components/BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
 import { Icon, Tooltip } from "metabase/ui";
 

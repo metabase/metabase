@@ -1,4 +1,4 @@
-import { BaseCell } from "metabase/data-grid/components/BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 
 import S from "./RowIdHeaderCell.module.css";
 

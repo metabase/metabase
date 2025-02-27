@@ -4,8 +4,8 @@
   justify-content: center;
   z-index: 5;
   background-color: var(--mb-color-bg-white);
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   box-sizing: content-box;
 }
 

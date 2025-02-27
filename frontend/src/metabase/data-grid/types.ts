@@ -114,7 +114,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
   columnOrder?: string[];
 
   /** Width of each column by ID */
-  columnSizing?: ColumnSizingState;
+  columnSizingMap?: ColumnSizingState;
 
   /** Default row height in pixels */
   defaultRowHeight?: number;
@@ -129,10 +129,19 @@ export interface DataGridOptions<TData = any, TValue = any> {
   truncateLongCellWidth?: number;
 
   /** Callback when a column is resized */
-  onColumnResize?: (columnSizing: ColumnSizingState) => void;
+  onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
 
   /** Callback when columns are reordered */
   onColumnReorder?: (columnOrder: string[]) => void;
+
+  /**
+   * Custom render function to wrap content during measurement, applied on top of the default
+   * EmotionCacheProvider and ThemeProvider. Use this to add your own custom context providers
+   * that affect rendering or styling of the measured content.
+   */
+  measurementRenderWrapper?: (
+    children: React.ReactElement,
+  ) => React.ReactElement;
 }
 
 export type CellAlign = "left" | "middle" | "right";
@@ -148,13 +157,9 @@ export type CellFormatter<TValue> = (
 
 export type ExpandedColumnsState = Record<string, boolean>;
 
-export interface DataGridRefs {
-  gridRef: RefObject<HTMLDivElement>;
-}
-
 export interface DataGridInstance<TData> {
   table: Table<TData>;
-  refs: DataGridRefs;
+  gridRef: RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;

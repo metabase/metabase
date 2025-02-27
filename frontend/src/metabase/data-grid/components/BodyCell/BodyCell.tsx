@@ -2,11 +2,11 @@ import cx from "classnames";
 import type React from "react";
 import { type MouseEventHandler, memo, useCallback } from "react";
 
-import { BaseCell } from "metabase/data-grid/components/BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
 import type { BodyCellBaseProps } from "metabase/data-grid/types";
 
-import { ExpandButton } from "../ExpandButton";
+import { ExpandButton } from "../ExpandButton/ExpandButton";
 
 import S from "./BodyCell.module.css";
 

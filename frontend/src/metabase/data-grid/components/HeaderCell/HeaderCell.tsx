@@ -2,7 +2,7 @@ import cx from "classnames";
 import { type ReactNode, forwardRef, memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { BaseCell } from "metabase/data-grid/components/BaseCell";
+import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import type {
   HeaderCellBaseProps,
   HeaderCellVariant,
