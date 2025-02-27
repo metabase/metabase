@@ -30,10 +30,16 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: InteractiveQuestionProviderProps["cardId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+  /**
+   * When this is defined, the collection picker will be hidden and
+   * the question will be saved to this collection.
+   **/
+  saveToCollection?: SDKCollectionReference;
 }> &
   Pick<
     InteractiveQuestionProviderProps,
@@ -41,7 +47,6 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "onSave"
     | "entityTypeFilter"
     | "isSaveEnabled"
-    | "saveToCollection"
     | "initialSqlParameters"
   >;
 
