@@ -24,8 +24,6 @@ interface CodeSampleProps {
   onCopy?: () => void;
 }
 
-// TODO: handle highlighted texts
-
 export const CodeSample = ({
   selectedOptionId,
   source,
