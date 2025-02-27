@@ -25,9 +25,19 @@
    [:channel.render/include-title?       {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description? {:description "default: false", :optional true} :boolean]])
 
+(defn- is-visualizer-dashcard?
+  "Return true if this dashcard is a visualizer dashcard else false"
+  [dashcard]
+  (some? (get-in dashcard [:visualization_settings :visualization])))
+
 (defn- card-href
   [card]
   (h (urls/card-url (u/the-id card))))
+
+(defn- visualizer-dashcard-href
+  "Build deep linking href for visualizer dashcards"
+  [dashcard]
+  (h (str (urls/dashboard-url (:dashboard_id dashcard)) "#scrollTo=" (:id dashcard))))
 
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
@@ -166,13 +176,16 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
+          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+         attachment-href                  (if (is-visualizer-dashcard? dashcard)
+                                            (visualizer-dashcard-href dashcard)
+                                            (card-href card))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
-                         [:a {:href        (card-href card)
+                         [:a {:href        attachment-href
                               :target      "_blank"
                               :rel         "noopener noreferrer"
                               :style       (style/style
