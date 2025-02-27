@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 
 type ToggleHookResult = [
   boolean,
-  { turnOn: () => void; turnOff: () => void; toggle: () => void },
+  {
+    turnOn: () => void;
+    turnOff: () => void;
+    toggle: () => void;
+    setValue: (value: boolean) => void;
+  },
 ];
 
 export function useToggle(initialValue = false): ToggleHookResult {
@@ -14,5 +19,5 @@ export function useToggle(initialValue = false): ToggleHookResult {
 
   const toggle = useCallback(() => setValue(current => !current), []);
 
-  return [value, { turnOn, turnOff, toggle }];
+  return [value, { turnOn, turnOff, toggle, setValue }];
 }
