@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import type { StoryFn } from "@storybook/react";
+
+import { Box } from "metabase/ui";
 
 import { MarkdownPreview, type MarkdownPreviewProps } from "./MarkdownPreview";
 
@@ -10,15 +11,11 @@ export default {
 
 const Template: StoryFn<MarkdownPreviewProps> = args => {
   return (
-    <Container>
+    <Box w="200px">
       <MarkdownPreview {...args} />
-    </Container>
+    </Box>
   );
 };
-
-const Container = styled.div`
-  width: 200px;
-`;
 
 export const PlainText = {
   render: Template,

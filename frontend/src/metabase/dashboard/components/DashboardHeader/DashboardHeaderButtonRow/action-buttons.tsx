@@ -1,4 +1,4 @@
-import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
+import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -145,7 +145,25 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
-    component: DashboardActionMenu,
+    component: ({
+      canResetFilters,
+      onResetFilters,
+      onFullscreenChange,
+      isFullscreen,
+      dashboard,
+      canEdit,
+      openSettingsSidebar,
+    }) => (
+      <DashboardActionMenu
+        dashboard={dashboard}
+        canResetFilters={canResetFilters}
+        canEdit={canEdit}
+        onResetFilters={onResetFilters}
+        isFullscreen={isFullscreen}
+        onFullscreenChange={onFullscreenChange}
+        openSettingsSidebar={openSettingsSidebar}
+      />
+    ),
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&
       !isEditing &&

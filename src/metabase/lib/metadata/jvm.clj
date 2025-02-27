@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
+   [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -408,6 +409,15 @@
 
   This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
   nil)
+
+(defmacro with-metadata-provider-cache
+  "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
+
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  [& body]
+  `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
+                                           (atom (cache/basic-cache-factory {})))]
+     ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

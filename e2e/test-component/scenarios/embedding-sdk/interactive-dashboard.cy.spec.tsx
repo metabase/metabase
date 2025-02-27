@@ -128,6 +128,9 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       },
     ];
 
+    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
+    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
+
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
         cy.get(dashboardIdAlias).then(dashboardId => {
@@ -137,7 +140,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         getSdkRoot().within(() => {
           cy.findByText("Orders in a dashboard").should("be.visible");
           cy.findByText("Orders").should("be.visible");
-          cy.findByText("Rows 1-6 of first 2000").should("be.visible");
+          cy.findByText(rowsTextRegex).should("be.visible");
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -153,7 +156,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Rows 1-6 of first 2000").should("not.exist");
+          cy.findByText(rowsTextRegex).should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });

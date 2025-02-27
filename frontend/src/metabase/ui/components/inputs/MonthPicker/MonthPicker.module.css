@@ -1,0 +1,10 @@
+/* it's different from calendar styles */
+.calendarHeader {
+  min-width: 11rem;
+}
+
+/* mantine styles are inline for this icon, so we have to override it with important */
+.calendarHeaderControlIcon {
+  width: var(--mantine-spacing-md) !important;
+  height: var(--mantine-spacing-md) !important;
+}

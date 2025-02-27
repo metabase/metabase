@@ -10,7 +10,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -145,7 +145,7 @@ export function BreakoutColumnListItem({
         )}
       </Flex>
       {!isSelected && (
-        <Tooltip tooltip={t`Add grouping`}>
+        <Tooltip label={t`Add grouping`}>
           <Button
             className={BreakoutColumnListItemS.AddButton}
             icon="add"

@@ -26,6 +26,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
@@ -136,6 +137,19 @@
   "Returns true if `card` is a model."
   [card]
   (= (keyword (:type card)) :model))
+
+(defn lib-query
+  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
+
+  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
+  ([{:keys [database_id dataset_query] :as card}]
+   (when dataset_query
+     (let [db-id (or database_id (:database dataset_query))
+           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
+       (lib-query mp card))))
+  ([metadata-providerable {:keys [dataset_query] :as _card}]
+   (when dataset_query
+     (lib/query metadata-providerable dataset_query))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -470,7 +484,11 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-        (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+        (not (or *updating-dashboard*
+                 ;; if the `dashboard_id` is changing, allow specifying a `collection_id`. Note that if it's different
+                 ;; than the actual `collection_id` of the new dashboard we're moving to, it will be ignored.
+                 dq-will-change?
+                 (not (api/column-will-change? :collection_id card changes))))
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
@@ -490,7 +508,7 @@
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info
-              (tru "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards.")
+              (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
               {:status-code 400
                :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
@@ -969,6 +987,15 @@
      card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
+
+(defn delete-alert-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent

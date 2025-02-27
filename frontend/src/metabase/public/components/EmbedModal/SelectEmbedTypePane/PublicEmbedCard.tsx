@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { PublicLinkCopyPanel } from "metabase/embedding/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { trackPublicEmbedCodeCopied } from "metabase/public/lib/analytics";
-import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
 import {
   Button,
   Center,
@@ -56,7 +56,7 @@ export const PublicEmbedCard = ({
             onClick={() => setIsOpen(value => !value)}
           >{t`Get embedding code`}</Button>
         </Popover.Target>
-        <Popover.Dropdown>
+        <Popover.Dropdown w="28.5rem">
           <Stack p="lg" w="28rem" mih="7.5rem">
             {loading ? (
               <Center>

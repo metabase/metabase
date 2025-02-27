@@ -3,6 +3,8 @@ import { useMount } from "react-use";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
+import { UPGRADE_URL } from "../constants";
+
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
@@ -43,7 +45,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     // The fallback url only applies when the button opens a modal instead of
     // navigating to an external url. The value is not used otherwise. It is
     // there only because we cannot conditionally skip the hook.
-    url: buttonLink ?? "https://www.metabase.com/upgrade",
+    url: buttonLink ?? UPGRADE_URL,
     campaign,
     source,
   });

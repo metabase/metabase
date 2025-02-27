@@ -131,8 +131,10 @@ describe("issue 33327", () => {
     getRunQueryButton().click();
     cy.wait("@dataset");
 
-    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
-    cy.findByTestId("scalar-value").should("not.exist");
+    cy.findByTestId("visualization-root").within(() => {
+      cy.icon("warning").should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
+    });
 
     H.NativeEditor.get().should("contain", "SELECT --1");
     H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
@@ -305,6 +307,40 @@ describe("issue 53171", () => {
         expect(icon.outerHeight()).to.equal(size);
       });
   }
+});
+
+describe("issue 54124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: "Reference Question",
+        query: { "source-table": ORDERS_ID },
+      },
+      {
+        idAlias: "questionId",
+        wrapId: true,
+      },
+    );
+  });
+
+  it("should be possible to close the data reference sidebar (metabase#54124)", () => {
+    H.startNewNativeQuestion();
+
+    cy.get("@questionId").then(questionId => {
+      H.NativeEditor.type(
+        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
+      );
+    });
+
+    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.findByTestId("sidebar-content").should("not.exist");
+
+    cy.log("moving cursor should open the reference sidebar again");
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+    cy.findByTestId("sidebar-content").should("be.visible");
+  });
 });
 
 describe("issue 52811", () => {
