@@ -1,7 +1,7 @@
 import { render, screen } from "__support__/ui";
 import { color } from "metabase/lib/colors";
 
-import ColorRangeSelector from "./ColorRangeSelector";
+import { ColorRangeSelector } from "./ColorRangeSelector";
 import { getColorRangeLabel } from "./ColorRangeToggle";
 
 const DEFAULT_VALUE = [color("white"), color("brand")];
