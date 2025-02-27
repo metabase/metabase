@@ -191,6 +191,7 @@ function useExpression<S extends StartRule = "expression">({
       setSource(source);
 
       if (source.trim() === "") {
+        debouncedOnChange.cancel();
         onChange(null, null);
         return;
       }
@@ -204,6 +205,7 @@ function useExpression<S extends StartRule = "expression">({
         name,
       });
       if (immediate) {
+        debouncedOnChange.cancel();
         onChange(clause, error);
       } else {
         debouncedOnChange(clause, error);
