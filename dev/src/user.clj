@@ -52,7 +52,9 @@
   :loaded)
 
 (defn -main
-  "This is called by the `:dev-start` cli alias."
+  "This is called by the `:dev-start` cli alias.
+
+  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`"
   [& _args]
   (future (nrepl.cmdline/-main "-p" "50605"))
   (dev)
