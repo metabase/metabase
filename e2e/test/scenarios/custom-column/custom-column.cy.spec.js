@@ -650,7 +650,7 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
   });
 
-  it("should not format expression when tabbing away from the editor", () => {
+  it("should not format expression when pressing tab in the editor", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -663,7 +663,8 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "1+1");
     H.CustomExpressionEditor.type("2");
 
-    // Fix needed will prevent display value from being `1 +2 1`.
+    // Fix prevents display value from being `1 +2 1` due to cursor position
+    // being wrong after formatting.
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
     H.CustomExpressionEditor.value().should("equal", "1+12");
