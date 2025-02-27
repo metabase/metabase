@@ -4,8 +4,6 @@ title: "Embedded analytics SDK - dashboards"
 
 # Embedded analytics SDK - dashboards
 
-{% include beta-blockquote.html %}
-
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed an interactive, editable, or static dashboard.
@@ -38,11 +36,12 @@ You can embed a dashboard using the one of the dashboard components:
 
 _\* Not available for `StaticDashboard`._
 
-_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParaters` to declutter the user interface is fine._
+_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
 ```tsx
+{% raw %}
 <EditableDashboard
   style={{
     height: 800,
@@ -50,15 +49,16 @@ By default, dashboard components take full page height (100vh). You can override
   }}
   dashboardId={dashboardId}
 />
+{% raw %}
 ```
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveDashboard, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -83,12 +83,9 @@ export default function App() {
 
 ## Customizing drill-through question layout
 
-When drilling through or clicking on a question card in the dashboard, you will be taken to the question view.
+When drilling through or clicking on a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
 
-By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
-
-To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component,
-with the custom view as the child component.
+To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
 ```typescript
 <InteractiveQuestion
@@ -100,13 +97,11 @@ with the custom view as the child component.
 const QuestionView = () => <InteractiveQuestion.Title />;
 ```
 
-The questionView prop accepts a React component that will be rendered in the question view, which
-you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 
-### `dashcardMenu`
+### `dashboardCardMenu`
 
 This plugin allows you to add, remove, and modify the custom actions on the overflow menu of dashboard cards. The plugin appears as a dropdown menu on the top right corner of the card.
 
@@ -115,7 +110,7 @@ The plugin's default configuration looks like this:
 ```typescript
 const plugins = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       withDownloads: true,
       withEditLink: true,
       customItems: [],
@@ -124,15 +119,15 @@ const plugins = {
 };
 ```
 
-`dashcardMenu`: can be used in the InteractiveDashboard like this:
+`dashboardCardMenu`: can be used in the InteractiveDashboard like this:
 
 ```typescript
 {% raw %}
 <InteractiveDashboard
-  questionId={1}
+  dashboardId={1}
   plugins={{
     dashboard: {
-      dashcardMenu: null,
+      dashboardCardMenu: null,
     },
   }}
 />
@@ -146,7 +141,7 @@ To remove the download button from the dashcard menu, set `withDownloads` to `fa
 ```typescript
 const plugins = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       withDownloads: false,
       withEditLink: false,
       customItems: [],
@@ -171,9 +166,10 @@ You can add custom actions to the dashcard menu by adding an object to the `cust
 Here's an example:
 
 ```typescript
+{% raw %}
 const plugins: MetabasePluginsConfig = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       customItems: [
         {
           iconName: "chevronright",
@@ -195,6 +191,7 @@ const plugins: MetabasePluginsConfig = {
     },
   },
 };
+{% endraw %}
 ```
 
 #### Replacing the existing menu with your own component
@@ -204,7 +201,7 @@ If you want to replace the existing menu with your own component, you can do so 
 ```typescript
 const plugins: MetabasePluginsConfig = {
   dashboard: {
-    dashcardMenu: ({ question }) => (
+    dashboardCardMenu: () => (
       <button onClick={() => console.log(question.name)}>Click me</button>
     ),
   },

@@ -991,6 +991,45 @@
                         :recipient-type nil}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
+(deftest send-test-pulse-to-non-user-test
+  (testing "sending test email to non user won't include unsubscribe link (#43391)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-fake-inbox
+        (mt/dataset sad-toucan-incidents
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Dashboard {dashboard-id :id} {:name       "Unsaved Subscription Test"
+                                                              :parameters [{:name    "X"
+                                                                            :slug    "x"
+                                                                            :id      "__X__"
+                                                                            :type    "category"
+                                                                            :default 3}]}
+                         :model/Card       card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (api.card-test/with-cards-in-readable-collection! [card]
+              (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                       (is (= {:ok true}
+                                              (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                                    {:name          (mt/random-name)
+                                                                     :dashboard_id  dashboard-id
+                                                                     :cards         [{:id                (:id card)
+                                                                                      :include_csv       false
+                                                                                      :include_xls       false
+                                                                                      :dashboard_card_id nil}]
+                                                                     :channels      [{:enabled       true
+                                                                                      :channel_type  "email"
+                                                                                      :schedule_type "daily"
+                                                                                      :schedule_hour 12
+                                                                                      :schedule_day  nil
+                                                                                      :recipients    [{:email "nonuser@metabase.com"}]}]
+                                                                     :skip_if_empty false}))))]
+                (is (= {:message [{"Unsaved Subscription Test" true, "Unsubscribe" false}
+                                  pulse.test-util/png-attachment]
+                        :message-type :attachments,
+                        :recipients #{"nonuser@metabase.com"}
+                        :subject "Unsaved Subscription Test"
+                        :recipient-type nil}
+                       (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Unsaved Subscription Test" #"Unsubscribe")))))))))))
+
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync

@@ -32,7 +32,7 @@ import {
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["cardId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<
@@ -41,7 +41,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "onSave"
     | "entityTypeFilter"
     | "isSaveEnabled"
-    | "saveToCollectionId"
+    | "saveToCollection"
     | "initialSqlParameters"
   >;
 
@@ -59,7 +59,7 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollectionId,
+  saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
@@ -72,7 +72,7 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollectionId={saveToCollectionId}
+    saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (

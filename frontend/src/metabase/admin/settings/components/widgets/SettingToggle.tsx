@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
 
 import type { SettingElement } from "../../types";
 
@@ -38,7 +38,7 @@ export const SettingToggle = ({
   const on = value === true || value === "true";
   return (
     <div {...props} className={cx(CS.flex, CS.alignCenter, CS.pt1)}>
-      <Tooltip tooltip={tooltip} isEnabled={!!tooltip}>
+      <Tooltip label={tooltip} disabled={!tooltip}>
         <Toggle
           id={id}
           value={on}

@@ -603,7 +603,7 @@ export const Onboarding = () => {
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(<b key="create-alert">{t`Create alert`}</b>)}.`}
+                    )} ${(<b key="create-alert">{t`Create an alert`}</b>)}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}

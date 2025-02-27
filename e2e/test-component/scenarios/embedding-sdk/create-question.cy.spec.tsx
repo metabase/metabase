@@ -1,4 +1,4 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -20,19 +20,19 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describe("scenarios > embedding-sdk > create-question", () => {
+describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
   });
 
-  it("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the InteractiveQuestion component", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -98,7 +98,7 @@ describe("scenarios > embedding-sdk > create-question", () => {
 
     mountSdkContent(
       <Flex p="xl">
-        <CreateQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
