@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
+import { utf8_to_b64 } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { getVisualizerUrlHash } from "metabase/visualizer/selectors";
@@ -16,16 +17,25 @@ import type {
 import { Visualizer } from "../Visualizer";
 
 import S from "./VisualizerModal.module.css";
-function useHasChanged() {
+
+function useHasChanged(
+  initialState: Partial<VisualizerHistoryItem> | undefined,
+) {
   const initialHash = useRef<string | undefined>();
 
   const hash = useSelector(getVisualizerUrlHash);
 
   useEffect(() => {
     if (!initialHash.current) {
-      initialHash.current = hash;
+      if (initialState) {
+        initialHash.current = utf8_to_b64(
+          JSON.stringify({ state: initialState }),
+        );
+      } else {
+        initialHash.current = hash;
+      }
     }
-  }, [hash]);
+  }, [initialState, hash]);
 
   return !!initialHash.current && hash !== initialHash.current;
 }
@@ -52,7 +62,7 @@ export function VisualizerModal({
 
   const { modalContent, show: askConfirmation } = useConfirmation();
 
-  const hasChanged = useHasChanged();
+  const hasChanged = useHasChanged(initialState?.state);
 
   const onModalClose = useCallback(() => {
     if (!hasChanged) {

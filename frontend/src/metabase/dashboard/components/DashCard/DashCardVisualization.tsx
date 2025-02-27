@@ -1,6 +1,7 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -136,18 +137,21 @@ export function DashCardVisualization({
   const datasets = useSelector(
     state => getDashcardData(state, dashcard.id) ?? {},
   );
-  const [isVisualizerModalOpen, setIsVisualizerModalOpen] = useState(false);
+  const [
+    isVisualizerModalOpen,
+    { open: openVisualizerModal, close: closeVisualizerModal },
+  ] = useDisclosure(false);
 
   const dispatch = useDispatch();
 
   const editVisualization = useMemo(() => {
     if (isVisualizerDashboardCard(dashcard)) {
       return () => {
-        setIsVisualizerModalOpen(true);
+        openVisualizerModal();
         editDashboard();
       };
     }
-  }, [editDashboard, dashcard]);
+  }, [editDashboard, dashcard, openVisualizerModal]);
 
   const onVisualizerModalSave = useCallback(
     (visualization: VisualizerHistoryItem) => {
@@ -157,14 +161,14 @@ export function DashCardVisualization({
           visualization,
         }),
       );
-      setIsVisualizerModalOpen(false);
+      closeVisualizerModal();
     },
-    [dashcard.id, dispatch],
+    [dashcard.id, dispatch, closeVisualizerModal],
   );
 
   const onVisualizerModalClose = useCallback(() => {
-    setIsVisualizerModalOpen(false);
-  }, []);
+    closeVisualizerModal();
+  }, [closeVisualizerModal]);
 
   const visualizerModalInitialState = useMemo(
     () => ({
