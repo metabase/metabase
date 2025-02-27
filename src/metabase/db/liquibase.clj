@@ -65,6 +65,10 @@
 
 (def ^{:private true
        :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
+  ^String changelog-file "schema-snapshot.yaml")
+
+#_(def ^{:private true
+       :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
   ^String changelog-file "liquibase.yaml")
 
 (defn table-exists?
