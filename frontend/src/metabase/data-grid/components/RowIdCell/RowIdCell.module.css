@@ -1,0 +1,28 @@
+.root {
+  height: 100%;
+  padding: 0 0.75em;
+  text-align: right;
+  color: var(--mb-color-text-light);
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  cursor: pointer;
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
+  background-color: transparent;
+}
+
+.rowNumber {
+  display: block;
+}
+
+.root:hover > .rowNumber {
+  display: none;
+}
+
+.expandIcon {
+  display: none;
+}
+
+.root:hover > .expandIcon {
+  display: block;
+}

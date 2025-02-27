@@ -23,6 +23,23 @@ const series = (rows, settings = {}) => {
 };
 
 describe("Table", () => {
+  const getDOMRect = (width, height) => ({
+    width,
+    height,
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+    x: 0,
+    y: 0,
+  });
+
+  beforeAll(() => {
+    Element.prototype.getBoundingClientRect = jest.fn(() => {
+      return getDOMRect(500, 500);
+    });
+  });
+
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -52,13 +69,13 @@ describe("Table", () => {
       .map(([value]) => screen.getByText(String(value)))
       .map(element =>
         window
-          .getComputedStyle(element.parentNode)
-          .getPropertyValue("background"),
+          .getComputedStyle(element.closest("[role=gridcell]"))
+          .getPropertyValue("background-color"),
       );
 
     expect(bgColors).toEqual([
-      "",
-      "",
+      "rgba(0, 0, 0, 0)",
+      "rgba(0, 0, 0, 0)",
       "rgba(255, 0, 0, 0.65)",
       "rgba(255, 0, 0, 0.65)",
     ]);

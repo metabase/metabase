@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type React from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -14,13 +15,14 @@ import type {
   DatasetColumn,
   DatasetData,
   RawSeries,
+  RowValue,
   Series,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
-  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -33,6 +35,7 @@ export interface Padding {
 }
 
 export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type TableCellFormatter = (value: RowValue) => React.ReactNode;
 
 export type ColorGetter = (colorName: string) => string;
 
@@ -75,6 +78,7 @@ export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ColumnSettings = OptionsType & {
   "pivot_table.column_show_totals"?: boolean;
+  text_align?: "left" | "middle" | "right";
   [key: string]: unknown;
 };
 
@@ -154,8 +158,9 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn) => TValue;
+  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
   getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
   getProps?: (
     col: DatasetColumn,
     settings: OptionsType,

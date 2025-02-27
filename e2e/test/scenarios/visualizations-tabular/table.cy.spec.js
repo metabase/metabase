@@ -39,9 +39,8 @@ describe("scenarios > visualizations > table", () => {
       // This defocuses the input, which triggers the update
       cy.findByText("Column title").click();
     });
-    // click somewhere else to close the popover
-    // eslint-disable-next-line no-unsafe-element-filtering
-    headerCells().last().click();
+
+    cy.realPress("Escape");
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
 

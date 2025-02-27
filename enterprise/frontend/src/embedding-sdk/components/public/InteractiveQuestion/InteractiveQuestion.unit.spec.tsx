@@ -131,7 +131,7 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      await within(screen.getByTestId("TableInteractive-root")).findByText(
+      await within(screen.getByTestId("table-root")).findByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      within(screen.getByTestId("TableInteractive-root")).getByText(
+      within(screen.getByTestId("table-root")).getByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();

@@ -688,9 +688,7 @@ describe("formatting > sandboxes", () => {
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
         });
 
-        cy.findByTestId("TableInteractive-root")
-          .findByText("Awesome Concrete Shoes")
-          .click();
+        H.tableInteractive().findByText("Awesome Concrete Shoes").click();
         H.popover()
           .findByText(/View details/i)
           .click();

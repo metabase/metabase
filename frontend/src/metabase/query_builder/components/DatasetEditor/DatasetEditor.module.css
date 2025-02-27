@@ -76,7 +76,7 @@
   flex-direction: row;
   align-items: center;
   min-width: 35px;
-  margin: 24px 0.75em;
+  height: 26px;
   padding: 3px 0.5rem;
   white-space: nowrap;
   text-overflow: ellipsis;
