@@ -118,7 +118,7 @@ describe("QuestionFiltersHeader", () => {
       values: [],
       options: {},
     });
-    expect(nextColumnName).toBe("People Via User ID Source");
+    expect(nextColumnName).toBe("Source");
   });
 
   it("should update a filter on the previous stage", async () => {
