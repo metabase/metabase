@@ -449,5 +449,5 @@ export function getSeriesModelsForSettings(
   settings: ComputedVisualizationSettings,
 ) {
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
+  return getCardsSeriesModels(rawSeries, cardsColumns, [], undefined, settings);
 }

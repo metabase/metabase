@@ -53,6 +53,7 @@ function _CartesianChart(props: VisualizationProps) {
     isVisualizerViz,
     isFullscreen,
     hovered,
+    VISUALIZER_DATA,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
@@ -72,6 +73,7 @@ function _CartesianChart(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      VISUALIZER_DATA,
     },
     containerRef,
   );

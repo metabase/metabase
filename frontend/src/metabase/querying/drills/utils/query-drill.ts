@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isNotNull } from "metabase/lib/types";
 import type { ClickAction } from "metabase/visualizations/types";
 import type { DrillThruDisplayInfo } from "metabase-lib";
@@ -7,10 +9,23 @@ import type Question from "metabase-lib/v1/Question";
 import { DRILLS } from "./constants";
 
 export function queryDrill(
-  question: Question,
+  _question: Question,
   clicked: Lib.ClickObject,
   isDrillEnabled: (drill: DrillThruDisplayInfo) => boolean,
 ): ClickAction[] {
+  const isVisualizerCard = _.isEqual(Object.keys(_question.card()), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  const question = isVisualizerCard
+    ? _question.metadata().question(clicked?.cardId)
+    : _question;
+
+  if (!question) {
+    throw new Error("No question found for clicked card");
+  }
+
   const query = question.query();
   const stageIndex = -1;
   const drills = Lib.availableDrillThrus(

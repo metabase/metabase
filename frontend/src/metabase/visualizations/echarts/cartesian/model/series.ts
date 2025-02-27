@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -29,6 +31,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { parseDataSourceId } from "metabase/visualizer/utils";
 import type {
   CardId,
   DatasetColumn,
@@ -38,6 +41,7 @@ import type {
   SeriesSettings,
   SingleSeries,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -119,6 +123,7 @@ export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   settings: ComputedVisualizationSettings,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
@@ -129,6 +134,7 @@ export const getCardsSeriesModels = (
       cardDataset,
       cardColumns,
       hiddenSeries,
+      VISUALIZER_DATA,
       hasMultipleCards,
       index === 0,
       settings,
@@ -150,6 +156,7 @@ export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
@@ -194,7 +201,9 @@ export const getCardSeriesModels = (
         tooltipName,
         color,
         visible: !hiddenSeries.includes(dataKey),
-        cardId,
+        cardId: VISUALIZER_DATA
+          ? findVisualizerColumnCardId(metric.column, VISUALIZER_DATA)
+          : cardId,
         column: metric.column,
         columnIndex: metric.index,
         dataKey,
@@ -273,21 +282,54 @@ export const getCardSeriesModels = (
   });
 };
 
+const findVisualizerColumnCardId = (
+  column: DatasetColumn,
+  VISUALIZER_DATA: VisualizerHistoryItem,
+) => {
+  const [valueSource] =
+    VISUALIZER_DATA?.columnValuesMapping?.[column.name] ?? [];
+  if (typeof valueSource !== "string") {
+    return parseDataSourceId(valueSource.sourceId).sourceId;
+  }
+  return null;
+};
+
 export const getDimensionModel = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
 ): DimensionModel => {
+  const columnByCardId = rawSeries.reduce(
+    (columnByCardId, series, index) => {
+      const cardColumns = cardsColumns[index];
+      if (series.card.id) {
+        columnByCardId[series.card.id] = cardColumns.dimension.column;
+      }
+      return columnByCardId;
+    },
+    {} as Record<CardId, DatasetColumn>,
+  );
+  if (VISUALIZER_DATA) {
+    cardsColumns.forEach(cardColumns => {
+      const cardIds = _.uniq(
+        cardColumns.metrics.map(metric =>
+          findVisualizerColumnCardId(metric.column, VISUALIZER_DATA),
+        ),
+      );
+      const cardId = findVisualizerColumnCardId(
+        cardColumns.dimension.column,
+        VISUALIZER_DATA,
+      );
+      columnByCardId[cardId] = cardColumns.dimension.column;
+      cardIds.forEach(cardId => {
+        columnByCardId[cardId] = cardColumns.dimension.column;
+      });
+    });
+  }
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce(
-      (columnByCardId, series, index) => {
-        const cardColumns = cardsColumns[index];
-        columnByCardId[series.card.id] = cardColumns.dimension.column;
-        return columnByCardId;
-      },
-      {} as Record<CardId, DatasetColumn>,
-    ),
+    columnByCardId,
   };
 };
 

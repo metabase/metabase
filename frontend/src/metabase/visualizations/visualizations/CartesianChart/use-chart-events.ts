@@ -63,21 +63,25 @@ export const useChartEvents = (
     clicked,
     metadata,
     isDashboard,
+    VISUALIZER_DATA,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (VISUALIZER_DATA) {
+        const nextCard = metadata.question(cardId)?.card();
+        if (nextCard) {
+          onChangeCardAndRun?.({ nextCard });
+        }
+      } else {
+        const nextCard =
+          rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [VISUALIZER_DATA, card, metadata, onChangeCardAndRun, rawSeries],
   );
 
   const hoveredSeriesDataKey = useMemo(
@@ -170,7 +174,12 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
-          const clickData = getSeriesClickData(chartModel, settings, event);
+          const clickData = getSeriesClickData(
+            chartModel,
+            settings,
+            event,
+            VISUALIZER_DATA,
+          );
 
           if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             onOpenTimelines?.();
@@ -246,6 +255,7 @@ export const useChartEvents = (
       onOpenQuestion,
       rawSeries,
       metadata,
+      VISUALIZER_DATA,
       onChangeCardAndRun,
     ],
   );

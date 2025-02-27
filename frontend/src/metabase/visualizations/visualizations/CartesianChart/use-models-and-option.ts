@@ -35,6 +35,7 @@ export function useModelsAndOption(
     selectedTimelineEventIds,
     onRender,
     hovered,
+    VISUALIZER_DATA,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
@@ -73,6 +74,7 @@ export function useModelsAndOption(
       seriesToRender,
       settings,
       Array.from(hiddenSeries),
+      VISUALIZER_DATA,
       renderingContext,
       showWarning,
     );
@@ -81,6 +83,7 @@ export function useModelsAndOption(
     seriesToRender,
     settings,
     hiddenSeries,
+    VISUALIZER_DATA,
     renderingContext,
     showWarning,
   ]);

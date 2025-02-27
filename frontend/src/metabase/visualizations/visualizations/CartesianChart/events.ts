@@ -67,11 +67,13 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -805,6 +807,7 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
 ): ClickObject | undefined => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
   const dataIndex = getDataIndex(
@@ -832,7 +835,7 @@ export const getSeriesClickData = (
     seriesModel,
   );
 
-  return {
+  const clicked = {
     cardId: seriesModel.cardId,
     event: event.event.event,
     value: datum[seriesModel.dataKey],
@@ -840,6 +843,44 @@ export const getSeriesClickData = (
     data,
     dimensions,
     settings,
+  };
+
+  if (VISUALIZER_DATA) {
+    if (clicked.column) {
+      clicked.column = patchVisualizerColumn(clicked.column, VISUALIZER_DATA);
+    }
+    if (Array.isArray(clicked.data)) {
+      clicked.data = clicked.data.map(item => ({
+        ...item,
+        col: item.col ? patchVisualizerColumn(item.col, VISUALIZER_DATA) : null,
+      }));
+    }
+    if (Array.isArray(clicked.dimensions)) {
+      clicked.dimensions = clicked.dimensions.map(dimension => ({
+        ...dimension,
+        column: patchVisualizerColumn(dimension.column, VISUALIZER_DATA),
+      }));
+    }
+  }
+
+  return clicked;
+};
+
+const patchVisualizerColumn = (
+  column: DatasetColumn,
+  VISUALIZER_DATA: VisualizerHistoryItem,
+): DatasetColumn => {
+  const [valueSource] = VISUALIZER_DATA?.columnValuesMapping[column.name] ?? [
+    {},
+  ];
+  if (typeof valueSource === "string") {
+    return column;
+  }
+  const { originalName } = valueSource;
+  return {
+    ...column,
+    name: originalName,
+    field_ref: ["field", originalName, column?.field_ref?.[2] ?? null],
   };
 };
 

@@ -378,6 +378,7 @@ export function DashCardVisualization({
         isEditingParameter={isEditingParameter}
         isMobile={isMobile}
         actionButtons={actionButtons}
+        VISUALIZER_DATA={dashcard.visualization_settings?.visualization}
         replacementContent={visualizationOverlay}
         getExtraDataForClick={getExtraDataForClick}
         onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}

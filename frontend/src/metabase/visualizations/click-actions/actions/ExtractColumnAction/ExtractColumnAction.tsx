@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -15,15 +16,25 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
-  const { query, stageIndex } = Lib.asReturned(
-    question.query(),
-    -1,
-    question.id(),
-  );
+  let query: Lib.Query | null = null;
+  let stageIndex = -1;
+  let isEditable = true;
 
-  const { isEditable } = Lib.queryDisplayInfo(query);
+  // HACK: we should pass column's question instance to this function
+  const isVisualizer = _.isEqual(Object.keys(question.card()), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  if (!isVisualizer) {
+    const result = Lib.asReturned(question.query(), -1, question.id());
+    query = result.query;
+    stageIndex = result.stageIndex;
+    isEditable = Lib.queryDisplayInfo(query).isEditable;
+  }
 
   if (
+    !query ||
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -9,7 +10,16 @@ export const HideColumnAction: LegacyDrill = ({
   clicked,
   settings,
 }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  // HACK: we should pass column's question instance to this function
+  const isVisualizer = _.isEqual(Object.keys(question.card()), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  let isEditable = true;
+  if (!isVisualizer) {
+    isEditable = Lib.queryDisplayInfo(question.query()).isEditable;
+  }
 
   if (
     !clicked ||

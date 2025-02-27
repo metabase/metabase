@@ -41,7 +41,16 @@ export const getNewCardUrl = ({
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
   const previousQuestion = new Question(previousCard, metadata);
-  const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
+  const isVisualizer = _.isEqual(Object.keys(previousCard), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  let isEditable = true;
+  if (!isVisualizer) {
+    isEditable = Lib.queryDisplayInfo(previousQuestion.query()).isEditable;
+  }
+
   const parametersMappedToCard = getParametersMappedToDashcard(
     dashboard.parameters,
     dashcard,
@@ -52,7 +61,10 @@ export const getNewCardUrl = ({
   if (isEditable) {
     nextQuestion = new Question(cardAfterClick, metadata)
       .setDisplay(cardAfterClick.display || previousCard.display)
-      .setSettings(dashcard.card.visualization_settings)
+      .setSettings({
+        ...dashcard.card.visualization_settings,
+        ...dashcard.visualization_settings,
+      })
       .lockDisplay();
   } else {
     nextQuestion = new Question(dashcard.card, metadata).setDashboardProps({

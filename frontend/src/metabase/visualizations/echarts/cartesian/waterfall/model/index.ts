@@ -20,6 +20,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { getAxisTransforms } from "../../model/transforms";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
@@ -34,6 +35,7 @@ export const getWaterfallChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): WaterfallChartModel => {
@@ -43,11 +45,16 @@ export const getWaterfallChartModel = (
 
   const cardsColumns = [getCartesianChartColumns(data.cols, settings)];
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(
+    rawSeries,
+    cardsColumns,
+    VISUALIZER_DATA,
+  );
   const [seriesModel] = getCardSeriesModels(
     singleRawSeries,
     cardsColumns[0],
     [],
+    VISUALIZER_DATA,
     false,
     true,
     settings,
