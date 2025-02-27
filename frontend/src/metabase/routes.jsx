@@ -276,7 +276,7 @@ export const getRoutes = store => {
             />
             {PLUGIN_DATA_EDITING.isEnabled() && (
               <Route
-                path="databases/:dbId/tables/:tableId"
+                path="databases/:dbId/tables/:tableName"
                 component={PLUGIN_DATA_EDITING.PAGE_COMPONENT}
               />
             )}

@@ -1,1 +1,1 @@
-export { TableDataView } from "./TableDataView";
+export { TableDataContainer } from "./TableDataContainer";
