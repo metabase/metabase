@@ -19,7 +19,7 @@ import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
-import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -364,6 +364,7 @@ Object.assign(SmartScalar, {
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
+  supportsVisualizer: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
@@ -445,7 +446,7 @@ Object.assign(SmartScalar, {
     settings,
   ) {
     if (!insights || insights.length === 0) {
-      throw new NoBreakoutError(
+      throw new ChartSettingsError(
         t`Group only by a time field to see how this has changed over time`,
       );
     }

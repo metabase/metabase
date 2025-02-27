@@ -43,6 +43,7 @@ export class Scalar extends Component {
   static identifier = "scalar";
   static iconName = "number";
   static canSavePng = false;
+  static supportsVisualizer = true;
 
   static noHeader = true;
   static supportsSeries = true;

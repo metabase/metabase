@@ -67,6 +67,7 @@ class Table extends Component<TableProps, TableState> {
   static identifier = "table";
   static iconName = "table2";
   static canSavePng = false;
+  static supportsVisualizer = true;
 
   static minSize = getMinSize("table");
   static defaultSize = getDefaultSize("table");

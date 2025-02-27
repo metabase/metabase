@@ -23,6 +23,7 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   createDataSource,
+  dashboardCardSupportsVisualizer,
   isVisualizerDashboardCard,
   mergeVisualizerData,
 } from "metabase/visualizer/utils";
@@ -141,7 +142,10 @@ export function DashCardVisualization({
   const dispatch = useDispatch();
 
   const editVisualization = useMemo(() => {
-    if (isVisualizerDashboardCard(dashcard)) {
+    if (
+      isVisualizerDashboardCard(dashcard) &&
+      dashboardCardSupportsVisualizer(dashcard)
+    ) {
       return () => {
         setIsVisualizerModalOpen(true);
         editDashboard();

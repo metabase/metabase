@@ -44,6 +44,7 @@ Object.assign(Funnel, {
   iconName: "funnel",
   noHeader: true,
   minSize: getMinSize("funnel"),
+  supportsVisualizer: true,
   defaultSize: getDefaultSize("funnel"),
   isSensible({ cols }: DatasetData) {
     return cols.length === 2;

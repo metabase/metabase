@@ -48,6 +48,8 @@ export class Map extends Component {
   static minSize = getMinSize("map");
   static defaultSize = getDefaultSize("map");
 
+  static supportsVisualizer = true;
+
   static isSensible({ cols, rows }) {
     return (
       PinMap.isSensible({ cols, rows }) ||
