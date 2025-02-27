@@ -79,7 +79,6 @@ export function NotebookDataPicker({
         table={table}
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
-        hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
       />
@@ -196,7 +195,6 @@ type LegacyDataPickerProps = {
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
   canChangeDatabase: boolean;
-  hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
 };
@@ -207,7 +205,6 @@ function EmbeddingDataPicker({
   table,
   placeholder,
   canChangeDatabase,
-  hasMetrics,
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
@@ -224,8 +221,6 @@ function EmbeddingDataPicker({
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
-  const context = useNotebookContext();
-  const modelList = getModelFilterList(context, hasMetrics);
 
   if (isDataSourceCountLoading) {
     return null;
@@ -264,7 +259,7 @@ function EmbeddingDataPicker({
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
       databaseQuery={{ saved: true }}
-      canSelectMetric={modelList.includes("metric")}
+      canSelectMetric={false}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
