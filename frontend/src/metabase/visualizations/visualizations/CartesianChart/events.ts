@@ -265,7 +265,7 @@ const computeDiffWithPreviousPeriod = (
 export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
-  onChangeCardAndRun?: OnChangeCardAndRun,
+  onChangeCardAndRun?: OnChangeCardAndRun | null,
 ) => {
   const hasCombinedCards = series.length > 1;
   const hasBrushableDimension =
@@ -845,7 +845,7 @@ export const getSeriesClickData = (
 
 export const getBrushData = (
   rawSeries: RawSeries,
-  metadata: Metadata,
+  metadata: Metadata | undefined,
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {

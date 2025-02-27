@@ -16,7 +16,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -55,6 +55,8 @@ export interface SchedulePickerProps {
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
   ) => void;
+
+  mt?: BoxProps["mt"];
 }
 
 const DEFAULT_DAY = "mon";
@@ -247,13 +249,19 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 
   render() {
-    const { schedule, scheduleOptions, textBeforeInterval, className, style } =
-      this.props;
+    const {
+      schedule,
+      scheduleOptions,
+      textBeforeInterval,
+      className,
+      style,
+      mt = "lg",
+    } = this.props;
 
     const scheduleType = schedule.schedule_type;
 
     return (
-      <Box mt="lg" className={className} style={style}>
+      <Box mt={mt} className={className} style={style}>
         <PickerRow>
           <PickerText>{textBeforeInterval}</PickerText>
           <Select
