@@ -18,7 +18,7 @@ export const RuleDescription = ({
   rule: ColumnFormattingSetting;
 }) => {
   return (
-    <Text component="span">
+    <Text component="span" lh="normal">
       {match(rule)
         .with(
           { type: "range" },
@@ -28,7 +28,7 @@ export const RuleDescription = ({
           { type: "single" },
           singleRule =>
             jt`When a cell in these columns ${(
-              <Text component="span" key="bold" fw="bold">
+              <Text component="span" key="bold" fw="bold" lh="normal">
                 {ALL_OPERATOR_NAMES[singleRule.operator]}
                 {getValueForDescription(singleRule)}
               </Text>
