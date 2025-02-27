@@ -120,3 +120,6 @@ modules/drivers/*/.lsp/*
 .swc/
 
 *storybook.log
+
+# jar downloader
+/jars

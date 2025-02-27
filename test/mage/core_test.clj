@@ -1,13 +1,10 @@
 (ns mage.core-test
   (:require
    [clojure.string :as str]
+   [mage.start-db-test :as start-db-test]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(def excluded-public-tasks
-  "Private tasks aren't tested, and do not have the same level of reliability!!"
-  #{"nrepl"})
 
 (defn bin-mage-has-help? []
   (doseq [help-cmds [[] [" "] ["  "]
@@ -25,12 +22,11 @@
        u/shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
-       (remove excluded-public-tasks)
        vec))
 
 (defn- bb-task-has-example? [task-name]
-  (doseq [cmd [(str "bb " task-name " -h")
-               (str "bb " task-name " --help")]]
+  (doseq [cmd [(str "./bin/mage " task-name " -h")
+               (str "./bin/mage " task-name " --help")]]
     (println (str "Testing that task has examples with '" cmd "'"))
     (when-not (str/includes? (u/sh cmd) "Examples:")
       (System/exit 1))))
@@ -38,5 +34,6 @@
 (when (= *file* (System/getProperty "babashka.file"))
   (mapv bb-task-has-example? (bb-tasks-list))
   (bin-mage-has-help?)
+  (start-db-test/run-tests)
   (println "All tests passed")
   (System/exit 0))

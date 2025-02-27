@@ -852,21 +852,42 @@
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
-          {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
+          {com.nextjournal/beholder    {:mvn/version "1.0.2"}  ;; watcher
            io.github.tonsky/clj-reload {:mvn/version "0.8.0"}} ;; reloader
           :extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}
 
-  ;; DB configs -- start DBs with: bb start-db <db> <version>
+  ;; DB configs -- start DBs with:
+  ;; ./bin/mage start-db postgres oldest
   :db/postgres-oldest
   {:jvm-opts
    ["-Dmb.db.type=postgres"
     "-Dmb.db.connection.uri=jdbc:postgresql://localhost:5432/metabase?user=metabase&password=password"]}
-
+  ;; ./bin/mage start-db postgres latest
   :db/postgres-latest
   {:jvm-opts
    ["-Dmb.db.type=postgres"
-    "-Dmb.db.connection.uri=jdbc:postgresql://localhost:5433/metabase?user=metabase&password=password"]}}}
+    "-Dmb.db.connection.uri=jdbc:postgresql://localhost:5433/metabase?user=metabase&password=password"]}
+  ;; ./bin/mage start-db mysql oldest
+  :db/mysql-oldest
+  {:jvm-opts
+   ["-Dmb.db.type=mysql"
+    "-Dmb.db.connection.uri=jdbc:mysql://localhost:3308/metabase_test?user=root&password="]}
+  ;; ./bin/mage start-db mysql latest
+  :db/mysql-latest
+  {:jvm-opts
+   ["-Dmb.db.type=mysql"
+    "-Dmb.db.connection.uri=jdbc:mysql://localhost:3309/metabase_test?user=root&password="]}
+  ;; ./bin/mage start-db mariadb oldest
+  :db/mariadb-oldest
+  {:jvm-opts
+   ["-Dmb.db.type=mysql"
+    "-Dmb.db.connection.uri=jdbc:mysql://localhost:3306/metabase_test?user=root&password="]}
+  ;; ./bin/mage start-db mariadb latest
+  :db/mariadb-latest
+  {:jvm-opts
+   ["-Dmb.db.type=mysql"
+    "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.

@@ -2,15 +2,12 @@
   (:require
    [clojure.string :as str]))
 
-(defn escape
-  "Wrap [[i]] with escape code."
-  [i] (str "\033[" i "m"))
-
 (def ^:dynamic *disable-colors*
   "If set to true, all color functions will return the input string as is."
   false)
 
-(def ^:private reset (escape 0))
+(def ^:private reset
+  (str "\033[" 0 "m"))
 
 (defn- do-color [color-code args]
   (if *disable-colors*

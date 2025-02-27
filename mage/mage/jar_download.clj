@@ -45,9 +45,11 @@
   [[version dir]]
   (let [dir (some-> (or dir (u/env "JARS")) without-slash)]
     (if (or (nil? version) (nil? dir))
-      (do (println "Usage: mb-download 0.42.2")
-          (println "Usage: mb-download 1.45.2")
-          (println "Usage: mb-download 1.45.2 ~/path/to/my/jars")
-          (println "")
-          (println "protip: this script will read from $JARS, and use that as your jar directory."))
+      (do
+        (println "Usage:")
+        (println " ./bin/mage jar-download 0.42.2")
+        (println " ./bin/mage jar-download 1.45.2")
+        (println " ./bin/mage jar-download 1.45.2 ~/path/to/my/jars")
+        (println "")
+        (println "protip: This script will download into [[dir]], $JARS, or /path/to/metabase/jars."))
       (download-jar! version dir))))

@@ -32,7 +32,7 @@
                        (when-let [more (-> opt (dissoc :id :short :long :msg :parse-fn) not-empty)]
                          (c/uncolor "| "  more)))))
     (when-let [examples (:examples current-task)]
-      (println "\n\nExamples:")
+      (println "\nExamples:")
       (doseq [[cmd effect] examples]
         (println "\n" cmd "\n -" (c/magenta effect))))
     (System/exit 0)))

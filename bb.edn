@@ -1,7 +1,7 @@
 {:min-bb-version "1.12.196"
  ;; we put path as bin, and everything is in the mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths          ["mage"]
+ :paths          ["mage" "test"]
  :deps           {metosin/malli {:mvn/version "0.17.0"}
                   table/table   {:mvn/version "0.5.0"}}
 
@@ -13,7 +13,7 @@
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-staged" "Format staged files"]
               ["./bin/mage cljfmt-staged -c" "Check staged files"]]
-   :options [{:id :check? :short "-c" :long "--force-check" :default false}]
+   :options  [{:id :check? :short "-c" :long "--force-check" :default false}]
    :task     (format/staged (:check? (cli/menu! (current-task))))}
 
   cljfmt-file
@@ -22,15 +22,15 @@
    :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
               ["./bin/mage format-file src" "Format all files in src"]
               ["./bin/mage format-file -c src" "Check all files in src"]]
-   :options [{:id :check? :short "-c" :long "--force-check" :default false}]
-   :task (let [{:keys [args check?]} (cli/menu! (current-task))]
-           (format/files check? args))}
+   :options  [{:id :check? :short "-c" :long "--force-check" :default false}]
+   :task     (let [{:keys [args check?]} (cli/menu! (current-task))]
+               (format/files check? args))}
 
   cljfmt-all
   {:doc      "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-all" "Format all files"]]
-   :options [{:id :check :short "-c" :long "--force-check" :default false}]
+   :options  [{:id :check :short "-c" :long "--force-check" :default false}]
    :task     (format/all (cli/menu! (current-task)))}
 
   kondo
@@ -56,9 +56,9 @@
    :requires [[mage.start-db :as start-db]]
    :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
               ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
-   :ports    {:mariadb  {:oldest 3306 :latest 3307}
+   :ports    {:postgres {:oldest 5432 :latest 5433}
               :mysql    {:oldest 3308 :latest 3309}
-              :postgres {:oldest 5432 :latest 5433}}
+              :mariadb  {:oldest 3306 :latest 3307}}
    :task     (do (cli/menu! (current-task))
                  (start-db/start-db (current-task)
                                     *command-line-args*))}
@@ -89,14 +89,14 @@
   ;; - hidden from `./bin/mage` listing and `bb tasks`
   ;; - start with a `-`
 
-  -autocomplete
-  {:doc      "Prints instructions to make autocomplete work"
-   :examples [["./bin/mage install-autotab" "Shows a link to instructions to make autocomplete work."]]
+  setup-autocomplete
+  {:doc      "Prints instructions to setup autocomplete"
+   :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
    :requires [[mage.autotab :as autotab]]
    :task     (do (cli/menu! (current-task))
                  (autotab/instructions *command-line-args*))}
 
-  ;; note: task symbols starting with `-` are not listed in `bb tasks`.
+  ;; note: task symbols starting with `-` are not listed in `./bin/mage`.
   -example
   {;; docstring for the task:
    :doc      "The sample task docstring"
@@ -106,4 +106,4 @@
    :examples [["./bin/mage -example" "it runs this task"]]
    ;; options are things like --file, --name, etc.
    :options  []
-   :task     (prn "hi")}}}
+   :task     (println :hi)}}}
