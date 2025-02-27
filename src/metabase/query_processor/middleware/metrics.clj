@@ -249,7 +249,9 @@
           (not (lib.util/clause? f2)))
       (= f1 f2)
 
-      (and (= (first f1) (first f2))
+      (and (lib.util/clause? f1)
+           (lib.util/clause? f2)
+           (= (first f1) (first f2))
            (= (count (nthnext f1 2)) (count (nthnext f2 2))))
       (every? #(apply equal-filter? %)
               (map vector (nthnext f1 2) (nthnext f2 2)))
@@ -324,8 +326,10 @@
 (defn is-join-compatible?
   "Predicate that checks whether join is compatible to be used in metric or referencing stage."
   [query stage-number join]
-  (every? (fn [condition]
-            (when (= := (first condition))
+  (every? (fn [[op _opts arg1 arg2 :as condition]]
+            (when (and (= := op)
+                       (lib.util/clause-of-type? arg1 :field)
+                       (lib.util/clause-of-type? arg2 :field))
               (let [local-ref (some #(when (and (lib.util/clause? %)
                                                 (not (:join-alias (lib.options/options %)))) %)
                                     condition)
@@ -376,22 +380,22 @@
   "Assert that referencing stage and referenced metric joins and filters are allowed. Returns nil."
   [query path-type path stage-or-join]
   (when (= :lib.walk/stage path-type)
-    (let [stage stage-or-join
-          stage-number (last path)
-          aggregation (:aggregation stage)]
+    (let [aggregation (:aggregation stage-or-join)]
       (when-some [metric-ids (not-empty (set (lib.util.match/match aggregation
                                                [:metric opts id]
                                                id)))]
-        (let [metrics (-> (->> (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
+        (let [refq-stage-number (last path)
+              refq-stages (get-in query (butlast path))
+              refq (lib.query/query-with-stages query refq-stages)
+              metrics (-> (->> (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
                                (m/index-by :id))
                           (update-vals #(->> %
                                              :dataset-query
-                                             ;; TODO: Avoid call to the following function second time during expansion.
                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
                                              (lib/query query))))]
-          (assert-compatible-joins query stage-number metrics)
+          (assert-compatible-joins refq refq-stage-number metrics)
           (assert-compatible-filters-in-metrics metrics)
-          (assert-compatible-stage-filters query stage-number metrics)))))
+          (assert-compatible-stage-filters refq refq-stage-number metrics)))))
   nil)
 
 (defn- assert-compatible-metrics
