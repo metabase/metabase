@@ -861,13 +861,6 @@ describe("scenarios > embedding > full app", () => {
       });
     }
 
-    function verifyMetricClause(metricName) {
-      H.getNotebookStep("summarize")
-        .findByTestId("aggregate-step")
-        .findByText(metricName)
-        .should("be.visible");
-    }
-
     beforeEach(() => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
@@ -1170,133 +1163,28 @@ describe("scenarios > embedding > full app", () => {
     });
 
     describe("metric", () => {
-      it("should select a data source in the root collection", () => {
+      beforeEach(() => {
         const cardDetails = {
           ...ordersCountCardDetails,
           type: "metric",
           collection_id: null,
         };
         H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: [],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
+        cy.intercept({
+          method: "GET",
+          pathname: "/api/database",
+          query: {
+            saved: "true",
+          },
+        }).as("getDatabases");
       });
 
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
+      it("should not be able to select a metric", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["First collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["First collection", "Second collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: ["Your personal collection"],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: cardDetails.type,
-          collectionNames: [
-            "All personal collections",
-            "Robert Tableton's Personal Collection",
-          ],
-        });
-        verifyMetricClause(cardDetails.name);
-        clickOnDataSource("Orders");
-        verifyTableSelected({
-          tableName: "Orders",
-          databaseName: "Sample Database",
-        });
-      });
-
-      it("should not be able to join a metric", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "metric",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectTable({
-          tableName: "Orders",
-        });
-        H.getNotebookStep("data").button("Join data").click();
+        cy.wait("@getDatabases");
         H.popover().within(() => {
-          cy.icon("chevronleft").click();
-          cy.icon("chevronleft").click();
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Saved Questions").should("be.visible");
           cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
           cy.findByText("Metrics").should("not.exist");
         });
       });
