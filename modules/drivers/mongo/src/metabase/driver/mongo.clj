@@ -426,8 +426,7 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
-                              :index-info                      true
-                              :uuid-type                       true}]
+                              :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)

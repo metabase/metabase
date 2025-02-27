@@ -627,3 +627,32 @@
            #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
+
+(deftest ^:parallel filter-uuids-with-string-patterns-test
+  (mt/test-driver :mongo
+    (mt/dataset uuid-dogs
+      (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+              [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+             (->> {:filter [:starts-with
+                            [:field (mt/id :dogs :person_id) {:base-type :type/UUID}]
+                            "d6"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows)))
+      (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+             (->> {:filter [:ends-with
+                            [:field (mt/id :dogs :person_id) {:base-type :type/UUID}]
+                            "9b"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows)))
+      (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+             (->> {:filter [:contains
+                            [:field (mt/id :dogs :person_id) {:base-type :type/UUID}]
+                            "e"
+                            {:case-insensitive false}]
+                   :source-table (mt/id :dogs)}
+                  (mt/run-mbql-query dogs)
+                  mt/rows))))))
