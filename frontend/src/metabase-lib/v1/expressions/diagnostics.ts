@@ -7,12 +7,12 @@ import type { Expression } from "metabase-types/api";
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage, Token } from "./types";
+import type { ErrorWithMessage, StartRule, Token } from "./types";
 import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
 
 export function diagnose(options: {
   source: string;
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
@@ -32,7 +32,7 @@ export function diagnoseAndCompile({
   metadata,
 }: {
   source: string;
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;

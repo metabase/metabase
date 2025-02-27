@@ -5,7 +5,11 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
+import type {
+  ClauseType,
+  ErrorWithMessage,
+  StartRule,
+} from "metabase-lib/v1/expressions";
 
 import {
   trackColumnCombineViaShortcut,
@@ -18,7 +22,6 @@ import type { Shortcut } from "./Editor/Shortcuts";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 import { NameInput } from "./NameInput";
-import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
 

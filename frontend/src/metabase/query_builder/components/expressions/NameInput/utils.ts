@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { StartRule } from "../types";
+import type { StartRule } from "metabase-lib/v1/expressions";
 
 export function getPlaceholder(startRule: StartRule) {
   if (startRule === "expression") {
