@@ -378,13 +378,10 @@
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y lat-field lon-field]}
-   :- [:map
-       [:token     string?]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::api.tiles/field-id-or-name]
-       [:lon-field ::api.tiles/field-id-or-name]]
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:token     string?]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
@@ -397,15 +394,12 @@
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:token       string?]
-       [:dashcard-id ms/PositiveInt]
-       [:card-id     ms/PositiveInt]
-       [:zoom        ms/Int]
-       [:x           ms/Int]
-       [:y           ms/Int]
-       [:lat-field   ::api.tiles/field-id-or-name]
-       [:lon-field   ::api.tiles/field-id-or-name]]
+   :- [:merge
+       [:map
+        :api.tiles/route-params
+        [:token       string?]
+        [:dashcard-id ms/PositiveInt]
+        [:card-id     ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]

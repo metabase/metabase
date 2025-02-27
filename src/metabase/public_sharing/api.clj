@@ -728,13 +728,10 @@
   "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth
   credentials. Public sharing must be enabled."
   [{:keys [uuid zoom x y lat-field lon-field]}
-   :- [:map
-       [:uuid      ms/UUIDString]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::api.tiles/field-id-or-name]
-       [:lon-field ::api.tiles/field-id-or-name]]
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:uuid      ms/UUIDString]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
@@ -747,15 +744,12 @@
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
   require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:uuid        ms/UUIDString]
-       [:dashcard-id ms/PositiveInt]
-       [:card-id     ms/PositiveInt]
-       [:zoom        ms/Int]
-       [:x           ms/Int]
-       [:y           ms/Int]
-       [:lat-field   ::api.tiles/field-id-or-name]
-       [:lon-field   ::api.tiles/field-id-or-name]]
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:uuid        ms/UUIDString]
+        [:dashcard-id ms/PositiveInt]
+        [:card-id     ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]

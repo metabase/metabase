@@ -171,8 +171,16 @@
 
 ;;; TODO -- what if the field name contains a slash? Are we expected to URL-encode it? I don't think we have any code
 ;;; that handles that.
-(mr/def ::field-id-or-name
+(mr/def :api.tiles/field-id-or-name
   [:string {:api/regex #"[^/]+"}])
+
+(mr/def :api.tiles/route-params
+  [:map
+   [:zoom        ms/Int]
+   [:x           ms/Int]
+   [:y           ms/Int]
+   [:lat-field   :api.tiles/field-id-or-name]
+   [:lon-field   :api.tiles/field-id-or-name]])
 
 (defn- result->points
   [{{:keys [rows cols]} :data} lat-field lon-field]
@@ -205,12 +213,7 @@
 ;; parallel.
 (api.macros/defendpoint :get "/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y lat-field lon-field]} :- [:map
-                                              [:zoom      ms/Int]
-                                              [:x         ms/Int]
-                                              [:y         ms/Int]
-                                              [:lat-field ::field-id-or-name]
-                                              [:lon-field ::field-id-or-name]]
+  [{:keys [zoom x y lat-field lon-field]} :- :api.tiles/route-params
    {:keys [query]} :- [:map
                        [:query ms/JSONString]]]
   (let [query         (json/decode+kw query)
@@ -264,13 +267,10 @@
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for a saved Card."
   [{:keys [card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:card-id   ms/PositiveInt]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::field-id-or-name]
-       [:lon-field ::field-id-or-name]]
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:card-id ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
@@ -280,15 +280,12 @@
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for a dashcard."
   [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:map
-       [:dashboard-id ms/PositiveInt]
-       [:dashcard-id ms/PositiveInt]
-       [:card-id   ms/PositiveInt]
-       [:zoom      ms/Int]
-       [:x         ms/Int]
-       [:y         ms/Int]
-       [:lat-field ::field-id-or-name]
-       [:lon-field ::field-id-or-name]]
+   :- [:merge
+       :api.tiles/route-params
+       [:map
+        [:dashboard-id ms/PositiveInt]
+        [:dashcard-id ms/PositiveInt]
+        [:card-id   ms/PositiveInt]]]
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
