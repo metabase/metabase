@@ -1,6 +1,7 @@
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
+import { Text } from "metabase/ui";
 import type {
   ColumnFormattingSetting,
   ColumnSingleFormattingSetting,
@@ -17,17 +18,23 @@ export const RuleDescription = ({
   rule: ColumnFormattingSetting;
 }) => {
   return (
-    <span>
-      {rule.type === "range"
-        ? t`Cells in this column will be tinted based on their values.`
-        : rule.type === "single"
-          ? jt`When a cell in these columns ${(
-              <span key="bold" className={CS.textBold}>
-                {ALL_OPERATOR_NAMES[rule.operator]}
-                {getValueForDescription(rule)}
-              </span>
-            )} it will be tinted this color.`
-          : null}
-    </span>
+    <Text component="span">
+      {match(rule)
+        .with(
+          { type: "range" },
+          () => t`Cells in this column will be tinted based on their values.`,
+        )
+        .with(
+          { type: "single" },
+          singleRule =>
+            jt`When a cell in these columns ${(
+              <Text component="span" key="bold" fw="bold">
+                {ALL_OPERATOR_NAMES[singleRule.operator]}
+                {getValueForDescription(singleRule)}
+              </Text>
+            )} it will be tinted this color.`,
+        )
+        .otherwise(() => null)}
+    </Text>
   );
 };
