@@ -1,24 +1,20 @@
-import type { HTMLAttributes, MouseEvent, Ref } from "react";
+import cx from "classnames";
+import type { MouseEvent, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { getColorScale } from "metabase/lib/colors/scales";
+import { Box, Group, type GroupProps } from "metabase/ui";
 
-import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
-
-export type ColorRangeAttributes = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "onSelect"
->;
-
-export interface ColorRangeProps extends ColorRangeAttributes {
+export interface ColorRangeProps extends Omit<GroupProps, "onSelect"> {
   colors: string[];
   sections?: number;
   isQuantile?: boolean;
   onSelect?: (newColors: string[]) => void;
 }
 
-const ColorRange = forwardRef(function ColorRange(
+export const ColorRange = forwardRef(function ColorRange(
   {
     colors,
     sections = 5,
@@ -42,16 +38,22 @@ const ColorRange = forwardRef(function ColorRange(
   );
 
   return (
-    <ColorRangeRoot {...props} ref={ref} onClick={handleClick}>
+    <Group
+      {...props}
+      ref={ref}
+      onClick={handleClick}
+      h="2rem"
+      className={cx(
+        CS.bordered,
+        CS.rounded,
+        CS.cursorPointer,
+        CS.overflowHidden,
+        props.className,
+      )}
+    >
       {_.range(0, sections).map(section => (
-        <ColorRangeItem
-          key={section}
-          style={{ backgroundColor: scale(section) }}
-        />
+        <Box key={section} flex="1 0 auto" bg={scale(section)} />
       ))}
-    </ColorRangeRoot>
+    </Group>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorRange;
