@@ -119,10 +119,9 @@ export function Editor<S extends StartRule = "expression">(
       />
       <Errors error={error} />
 
-      <Shortcuts
-        shortcuts={shortcuts}
-        hide={source.trim() !== "" || isFormatting || error != null}
-      />
+      {source.trim() === "" && !isFormatting && error == null && (
+        <Shortcuts shortcuts={shortcuts} />
+      )}
 
       <Box className={S.toolbar} p="xs">
         <ButtonTooltip label={t`Format`}>
