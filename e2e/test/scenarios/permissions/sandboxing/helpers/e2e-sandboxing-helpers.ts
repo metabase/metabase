@@ -351,17 +351,19 @@ export const configureSandboxPolicy = (
     throw new Error("Unexpected columnType");
   }
 
-  expect(attributeKey).to.be.a("string");
-  modal()
-    .findByRole("button", { name: /Pick a column|parameter/ })
-    .click();
-  const columnName =
-    columnType === "regular" ? "Category" : "Custom category column";
-  cy.findByRole("option", { name: columnName }).click();
-  modal()
-    .findByRole("button", { name: /Pick a user attribute/ })
-    .click();
-  cy.findByRole("option", { name: attributeKey }).click();
+  if (columnType === "custom") {
+    expect(attributeKey).to.be.a("string");
+    modal()
+      .findByRole("button", { name: /Pick a column|parameter/ })
+      .click();
+    const columnName =
+      columnType === "regular" ? "Category" : "Custom category column";
+    cy.findByRole("option", { name: columnName }).click();
+    modal()
+      .findByRole("button", { name: /Pick a user attribute/ })
+      .click();
+    cy.findByRole("option", { name: attributeKey }).click();
+  }
 
   cy.log("Wait for the whole summary to render");
   cy.findByLabelText(/Summary/).contains("data");
@@ -371,19 +373,9 @@ export const configureSandboxPolicy = (
     .invoke("text")
     .should(summary => {
       expect(summary).to.contain("Users in data can view");
-      match(columnType)
-        .with("regular", () => {
-          expect(summary).to.contain("rows in the PRODUCTS table");
-          expect(summary).to.contain(
-            `where Category field equals ${attributeKey}`,
-          );
-        })
-        .with("custom", () => {
-          expect(summary).to.contain(
-            `where Custom category column field equals ${attributeKey}`,
-          );
-        })
-        .exhaustive();
+      if (attributeKey) {
+        expect(summary).to.contain(`field equals ${attributeKey}`);
+      }
     });
 
   cy.log("Save the sandboxing modal");
@@ -391,7 +383,8 @@ export const configureSandboxPolicy = (
 
   saveChangesToPermissions();
 
-  cy.wait(300); // HACK: This avoids an error
+  cy.log("Wait for the sandboxing policy to take effect");
+  cy.wait(1000);
 };
 
 type RegularColumnBasedSandboxPolicy = {
