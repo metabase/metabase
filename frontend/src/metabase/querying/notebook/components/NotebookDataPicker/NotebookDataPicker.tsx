@@ -237,7 +237,10 @@ function EmbeddingDataPicker({
   const databases = useMemo(() => {
     // We're joining data
     if (!canChangeDatabase) {
-      return [metadata.database(databaseId)];
+      return [
+        metadata.database(databaseId),
+        metadata.savedQuestionsDatabase(),
+      ].filter(Boolean);
     }
 
     /**
