@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
@@ -942,11 +943,77 @@
                     (mt/run-mbql-query dogs)
                     mt/rows)))))))
 
-(deftest encode-mongo-test
+(deftest ^:parallel encode-mongo-test
   (mt/test-driver :mongo
     (mt/dataset nested-bindata-coll
       (testing "a mongo query with filters on different types is properly encoded"
-        (is (= "[\n  {\n    \"$match\": {\n      \"$and\": [\n        {\n          \"_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")\n        },\n        {\n          \"mixed_uuid\": UUID(\"11111111-1111-1111-1111-111111111111\")\n        },\n        {\n          \"$expr\": {\n            \"$eq\": [\n              \"$date\",\n              {\n                \"$dateFromString\": {\n                  \"dateString\": \"2025-01-01T12:00Z\"\n                }\n              }\n            ]\n          }\n        },\n        {\n          \"$expr\": {\n            \"$regexMatch\": {\n              \"input\": \"$text\",\n              \"regex\": \"^a\",\n              \"options\": \"i\"\n            }\n          }\n        },\n        {\n          \"mixed_not_uuid\": {\n            \"$ne\": null\n          }\n        },\n        {\n          \"int\": {\n            \"$gte\": 1\n          }\n        },\n        {\n          \"float\": {\n            \"$lt\": 5.5\n          }\n        }\n      ]\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": \"$_id\",\n      \"date\": \"$date\",\n      \"int\": \"$int\",\n      \"float\": \"$float\",\n      \"nested_mixed_not_uuid\": \"$nested_mixed_not_uuid\",\n      \"mixed_not_uuid\": \"$mixed_not_uuid\",\n      \"mixed_uuid\": \"$mixed_uuid\",\n      \"nested_mixed_uuid\": \"$nested_mixed_uuid\",\n      \"text\": \"$text\"\n    }\n  },\n  {\n    \"$limit\": 1048575\n  }\n]"
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"$and\": ["
+                          "        {"
+                          "          \"_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")"
+                          "        },"
+                          "        {"
+                          "          \"mixed_uuid\": UUID(\"11111111-1111-1111-1111-111111111111\")"
+                          "        },"
+                          "        {"
+                          "          \"$expr\": {"
+                          "            \"$eq\": ["
+                          "              \"$date\","
+                          "              {"
+                          "                \"$dateFromString\": {"
+                          "                  \"dateString\": \"2025-01-01T12:00Z\""
+                          "                }"
+                          "              }"
+                          "            ]"
+                          "          }"
+                          "        },"
+                          "        {"
+                          "          \"$expr\": {"
+                          "            \"$regexMatch\": {"
+                          "              \"input\": \"$text\","
+                          "              \"regex\": \"^a\","
+                          "              \"options\": \"i\""
+                          "            }"
+                          "          }"
+                          "        },"
+                          "        {"
+                          "          \"mixed_not_uuid\": {"
+                          "            \"$ne\": null"
+                          "          }"
+                          "        },"
+                          "        {"
+                          "          \"int\": {"
+                          "            \"$gte\": 1"
+                          "          }"
+                          "        },"
+                          "        {"
+                          "          \"float\": {"
+                          "            \"$lt\": 5.5"
+                          "          }"
+                          "        }"
+                          "      ]"
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"date\": \"$date\","
+                          "      \"int\": \"$int\","
+                          "      \"float\": \"$float\","
+                          "      \"nested_mixed_not_uuid\": \"$nested_mixed_not_uuid\","
+                          "      \"mixed_not_uuid\": \"$mixed_not_uuid\","
+                          "      \"mixed_uuid\": \"$mixed_uuid\","
+                          "      \"nested_mixed_uuid\": \"$nested_mixed_uuid\","
+                          "      \"text\": \"$text\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
                (->> {:filter [:and
                               [:=
                                [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]

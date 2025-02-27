@@ -542,7 +542,9 @@
   [_driver native-form]
   (try
     (encode-mongo native-form)
-    (catch Exception _
+    (catch Throwable e
+      (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
+      (log/debugf e "Unexpected error while encoding Mongo BSON query: %s\nQuery: %s" (ex-message e) native-form)
       native-form)))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
