@@ -119,3 +119,10 @@
     }
   }
 }
+
+.shortcuts {
+  position: absolute;
+  bottom: var(--mantine-spacing-sm);
+  left: calc(1.6rem + var(--mantine-spacing-sm));
+  transition: opacity 300ms;
+}

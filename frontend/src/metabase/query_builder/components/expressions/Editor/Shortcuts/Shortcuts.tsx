@@ -1,7 +1,5 @@
 import { Button, Flex, Icon, type IconName } from "metabase/ui";
 
-import S from "./Shortcuts.module.css";
-
 export type Shortcut = {
   name: string;
   icon: IconName;
@@ -12,11 +10,13 @@ const DEFAULT_SHORTCUTS: Shortcut[] = [];
 
 export function Shortcuts({
   shortcuts = DEFAULT_SHORTCUTS,
+  className,
 }: {
   shortcuts?: Shortcut[];
+  className?: string;
 }) {
   return (
-    <Flex gap="sm" className={S.shortcuts}>
+    <Flex gap="sm" className={className}>
       {shortcuts.map((shortcut, index) => (
         <Button
           key={index}
