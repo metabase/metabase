@@ -147,9 +147,9 @@ export const InteractiveEmbeddingDemo = ({
 
     // IMPORTANT: You must create a least privileged and sandboxed API key for
     // public usage. Otherwise, you risk exposing Metabase to unwanted access.
-    apiKey: "${apiKey}"
+    apiKey: "${apiKey}",
 
-    url: "${origin}${iframePreviewUrl}",
+    url: "${origin}${iframePreviewUrl}"
   });
 </script>
   `.trim();
