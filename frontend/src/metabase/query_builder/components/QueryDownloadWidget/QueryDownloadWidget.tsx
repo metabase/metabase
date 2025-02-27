@@ -40,7 +40,7 @@ const QueryDownloadWidget = ({
   });
 
   return (
-    <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
+    <Popover opened={isPopoverOpen} onChange={() => setIsPopoverOpen(false)}>
       <Popover.Target>
         <Flex className={className}>
           <ViewFooterButton
