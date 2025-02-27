@@ -78,7 +78,7 @@ describe("scenarios > embedding > questions", () => {
       cy.icon("info").realHover();
     });
 
-    H.popover().contains(description);
+    H.tooltip().contains(description);
 
     cy.findByTestId("embed-frame").within(() => {
       // Data model: Renamed column

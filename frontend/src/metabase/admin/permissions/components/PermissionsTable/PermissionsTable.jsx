@@ -5,8 +5,8 @@ import { useRef, useState } from "react";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
@@ -89,7 +89,7 @@ export function PermissionsTable({
                   <ColumnName>
                     {name}{" "}
                     {hint && (
-                      <Tooltip placement="right" tooltip={hint}>
+                      <Tooltip position="right" label={hint}>
                         <HintIcon />
                       </Tooltip>
                     )}
