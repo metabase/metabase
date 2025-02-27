@@ -115,6 +115,7 @@ export function Editor<S extends StartRule = "expression">(
         height="100%"
         width="100%"
         indentWithTab={false}
+        autoFocus
       />
       <Errors error={error} />
 
