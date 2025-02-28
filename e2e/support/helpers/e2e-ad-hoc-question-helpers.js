@@ -132,6 +132,8 @@ export function visitQuestionAdhoc(
 
   const [url, alias] = getInterceptDetails(question, mode, autorun);
 
+  console.log("visitQuestionAdhoc uses alias", alias);
+
   cy.intercept(url).as(alias);
 
   cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));

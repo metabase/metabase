@@ -43,10 +43,10 @@ describe(
         };
         createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets();
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
+        cardsShouldOnlyShowGizmos();
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -57,10 +57,10 @@ describe(
         };
         createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets();
         configureSandboxPolicy(policy);
         signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
+        cardsShouldOnlyShowGizmos();
       });
 
       it("to a table filtered by a regular column", () => {
@@ -70,11 +70,11 @@ describe(
         };
         createCardsShowingGizmosAndWidgets(policy);
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets(policy);
+        cardsShouldShowGizmosAndWidgets();
         const { attributeKey } = configureUser(policy);
         configureSandboxPolicy({ ...policy, attributeKey });
         signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos(policy);
+        cardsShouldOnlyShowGizmos();
       });
     });
 
@@ -248,11 +248,11 @@ describe(
           };
           createCardsShowingGizmosAndWidgets(policy);
           signInAsSandboxedUser();
-          cardsShouldShowGizmosAndWidgets(policy);
+          cardsShouldShowGizmosAndWidgets();
           const { attributeKey } = configureUser(policy);
           configureSandboxPolicy({ ...policy, attributeKey });
           signInAsSandboxedUser();
-          cardsShouldThrowErrors(policy);
+          cardsShouldThrowErrors();
         });
       });
     });
