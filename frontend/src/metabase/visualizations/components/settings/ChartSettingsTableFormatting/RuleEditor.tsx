@@ -7,6 +7,7 @@ import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { Button, MultiSelect, Select, TextInputBlurChange } from "metabase/ui";
+import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
@@ -267,10 +268,18 @@ const RuleEditorValueInput = ({
     return null;
   }
 
-  const inputProps =
+  const inputProps: Partial<TextInputBlurChangeProps> =
     isNumericRule && !isKeyRule
-      ? { type: "number", placeholder: "0" }
-      : { placeholder: t`Column value` };
+      ? {
+          type: "number",
+          placeholder: "0",
+          onBlurChange: e =>
+            onChange({ ...rule, value: e.target.valueAsNumber ?? "" }),
+        }
+      : {
+          type: "text",
+          placeholder: t`Column value`,
+        };
 
   return (
     <TextInputBlurChange

@@ -418,7 +418,6 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       cy.findByTestId("conditional-formatting-value-operator-button").click({
         force: true,
       });
-      cy.findByRole("option", { name: /is equal to/i }).click();
       H.popover().findByText("is less than").click();
 
       cy.findByTestId("conditional-formatting-value-input").type("20");
