@@ -292,7 +292,7 @@
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:= "tables"]]
-                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
+                                                       (deferred-tru "include must be either empty or the value ''tables''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
@@ -612,7 +612,7 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
         " or turn autocompletions off."))
   :visibility :public

@@ -95,6 +95,14 @@
   When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
   true)
 
+(defn without-cleaning
+  "Runs the provided function with cleaning of queries disabled.
+
+  This is preferred over directly cleaning the query."
+  [f]
+  (binding [*clean-query* false]
+    (f)))
+
 (defn- clean [almost-query]
   (if-not *clean-query*
     almost-query
