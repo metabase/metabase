@@ -4,7 +4,7 @@
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
