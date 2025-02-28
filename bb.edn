@@ -60,9 +60,8 @@
                 :mysql    {:oldest 3308 :latest 3309}
                 :mariadb  {:oldest 3306 :latest 3307}}
    :usage-fn   start-db/usage
-   :task       (let [{:keys [ports] :as this-task} (current-task)]
-                 (prn (cli/parse! this-task))
-                 #_(start-db/start-db ports (:arguments (cli/parse! this-task))))}
+   :task       (let [[db version] (:arguments (cli/parse! (current-task)))]
+                 (start-db/start-db (:ports (current-task)) db version))}
 
   nrepl
   {:doc      "Starts the babashka nrepl: helpful for for mage development"
@@ -109,6 +108,10 @@
    :examples [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
               ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
 
+   ;; The task is the actual code that runs when you run the task.
+   :task     (let [{[a op b] :arguments} (cli/parse! (current-task))]
+               (println "Example:" a (name op) b "=" (({:+ + :- -} op) a b)))
+
    ;; `:require` (optional) lazily libraries for just your task:
    :requires []
 
@@ -125,6 +128,6 @@
    :usage-fn (fn [{:keys [doc]}]
                (println "Optional extra usage information, if you want.")
                (println "Reversed docstring:" (apply str (reverse doc))))
-   ;; The task is the actual code that runs when you run the task.
-   :task     (let [{[a op b] :arguments} (cli/parse! (current-task))]
-               (println "Example:" a (name op) b "=" (({:+ + :- -} op) a b)))}}}
+
+   ;; (optional) Any other keys are completely allowed. These will be returned from `(current-task)`.
+   :some-data-for-my-task {:a [:b :c] :b [:d]}}}}

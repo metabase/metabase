@@ -106,43 +106,36 @@
     (println)
     (let [deps-edn-alias (->deps-edn-alias database version)]
       (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
-      (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'")))))
+      (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
+      (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'")))))
 
 (defn- usage
-  [ports]
-  (println (u/sh "./bin/mage start-db --help"))
-  (println)
-  (println "Available DBs:")
-  (println)
-  (t/table (for [[db m] ports [stamp port] m]
-             {:port port
-              :start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))})
-           {:sort [:start-db-cmd :port] :style :github-markdown})
-  (println "Note that we scrape https://endoflife.date/api to determine oldest supported versions,")
-  (println "So this script always have the correct oldest version. 🎉")
-  (System/exit 0))
-
-(defn- start-db* [ports db version]
-  (let [port (get-in ports [db version])
-        _ (u/debug "PORT:" port)
-        _ (when-not (integer? port)
-            (println (c/red "No port found for db: " (name db)  " version: " (name version) ". see :ports in bb.edn"))
-            (usage ports))
-        db               (keyword db)
-        _ (when-not (#{:postgres :mysql :mariadb} db)
-            (println (c/red "Invalid db."))
-            (usage ports))
-        version          (cond-> version (string? version) keyword)
-        resolved-version (resolve-version db version)]
-    (start-db! db version resolved-version port)))
+  [{:keys [ports]}]
+  (let [tbl (for [[db m] ports
+                  [stamp port] m]
+              {:port port
+               :start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))})]
+    (str "\nAvailable DBs:\n"
+         (with-out-str (t/table tbl {:sort [:start-db-cmd :port] :style :github-markdown}))
+         (str/join "\n"
+                   ["Note that we scrape https://endoflife.date/api to determine oldest supported versions,"
+                    "So this script always have the correct oldest version. 🎉"]))))
 
 ;; TODOs:
 ;; - [ ] Swap out the db name
 
 (defn start-db
-  "Starts a db: type + version"
-  [ports {:keys [arguments]}]
-  (if (= (count arguments) 2)
-    (let [[db version] arguments]
-      (start-db* ports (keyword db) (keyword version)))
-    (usage ports)))
+  "Starts a db type + version in docker."
+  [ports db version]
+  (let [port (get-in ports [db version])
+        _ (u/debug "PORT:" port)
+        _ (when-not (integer? port)
+            (println (c/red "No port found for db: " (name db)  " version: " (name version) ". see :ports in bb.edn"))
+            (usage {:ports ports}))
+        db               (keyword db)
+        _ (when-not (#{:postgres :mysql :mariadb} db)
+            (println (c/red "Invalid db."))
+            (usage {:ports ports}))
+        version          (cond-> version (string? version) keyword)
+        resolved-version (resolve-version db version)]
+    (start-db! db version resolved-version port)))
