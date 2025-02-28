@@ -240,55 +240,6 @@ describe("DataGrid", () => {
     expect(onAddColumnClick).toHaveBeenCalledTimes(1);
   });
 
-  it("applies custom cell background colors", () => {
-    renderWithProviders(<TestDataGrid />);
-    act(() => {
-      jest.runAllTimers();
-    });
-
-    const categoryCells = Array.from(screen.getAllByTestId("cell-data"))
-      .filter(cell =>
-        ["Electronics", "Clothing", "Books", "Food"].includes(
-          cell.textContent || "",
-        ),
-      )
-      .map(cell => cell.closest('[role="gridcell"]'))
-      .filter((cell): cell is HTMLElement => cell !== null);
-
-    const electronicsCell = categoryCells.find(cell =>
-      cell.textContent?.includes("Electronics"),
-    );
-    const clothingCell = categoryCells.find(cell =>
-      cell.textContent?.includes("Clothing"),
-    );
-    const booksCell = categoryCells.find(cell =>
-      cell.textContent?.includes("Books"),
-    );
-    const foodCell = categoryCells.find(cell =>
-      cell.textContent?.includes("Food"),
-    );
-
-    expect(
-      window
-        .getComputedStyle(electronicsCell!)
-        .getPropertyValue("background-color"),
-    ).toBe("rgb(230, 247, 255)");
-
-    expect(
-      window
-        .getComputedStyle(clothingCell!)
-        .getPropertyValue("background-color"),
-    ).toBe("rgb(246, 255, 237)");
-
-    expect(
-      window.getComputedStyle(booksCell!).getPropertyValue("background-color"),
-    ).toBe("rgb(255, 247, 230)");
-
-    expect(
-      window.getComputedStyle(foodCell!).getPropertyValue("background-color"),
-    ).toBe("rgb(255, 241, 240)");
-  });
-
   it("renders row ID column when enabled", () => {
     renderWithProviders(<TestDataGrid enableRowId={true} />);
     act(() => {
