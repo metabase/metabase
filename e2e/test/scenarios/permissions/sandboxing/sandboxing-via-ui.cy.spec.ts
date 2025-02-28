@@ -82,7 +82,7 @@ describe(
       cy.signInAsAdmin();
 
       const filter = {
-        id: "c2967a17",
+        id: "12345789",
         name: "Location",
         slug: "Location",
         type: "category",
