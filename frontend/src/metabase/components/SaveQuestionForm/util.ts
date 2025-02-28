@@ -89,6 +89,7 @@ export const getInitialValues = (
   initialDashboardId: FormValues["dashboard_id"],
   initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
+  const isNewQuestion = originalQuestion && question.card().type === "question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
@@ -102,7 +103,9 @@ export const getInitialValues = (
       : question.dashboardId();
 
   const collectionId =
-    question.collectionId() === undefined || isReadonly
+    question.collectionId() === undefined ||
+    isReadonly ||
+    (isNewQuestion && question.collectionId() === undefined)
       ? initialCollectionId
       : question.collectionId();
 
