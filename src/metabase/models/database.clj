@@ -250,11 +250,9 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
 
-(t2/define-after-select :model/Database
-  [database]
-  (serdes/add-entity-id database))
+      true serdes/add-entity-id)))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
