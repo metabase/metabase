@@ -54,11 +54,6 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
             <Icon name="gear" />
           </ActionIcon>
         </Tooltip>
-        <Tooltip label={t`Share`}>
-          <ActionIcon>
-            <Icon name="share" />
-          </ActionIcon>
-        </Tooltip>
         <Tooltip label={t`Fullscreen`}>
           <ActionIcon
             disabled={!isDirty}
