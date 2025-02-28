@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { Box, Flex, Group, Icon } from "metabase/ui";
 
@@ -45,7 +45,7 @@ const ModalHeader = ({
       </Flex>
       {pathOptions?.showPath && (
         <Group gap="xs" align="center">
-          {t`in`}
+          {c("Refers to: 'Events' in a collection").t`in`}
           <Icon name="folder" c="text-light" />
           {pathOptions.collectionName}
         </Group>
