@@ -77,11 +77,8 @@ export function Tooltip({
   }, [canShowBoth, enclosingFn, completions.length]);
 
   useEffect(() => {
-    if (!canShowBoth && completions.length === 0) {
-      setIsHelpTextOpen(true);
-      return;
-    }
-  }, [canShowBoth, completions.length]);
+    setIsHelpTextOpen(completions.length === 0);
+  }, [completions.length]);
 
   return (
     <Popover
