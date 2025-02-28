@@ -9,8 +9,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.model :as t2.model])
+   [toucan2.core :as t2])
   (:import (com.fasterxml.jackson.core JsonParseException)))
 
 ;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
