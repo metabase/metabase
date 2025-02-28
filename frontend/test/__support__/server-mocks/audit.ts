@@ -8,7 +8,7 @@ interface AuditInfo {
   custom_reports: CollectionId;
 }
 
-const defaultAuditInfo: AuditInfo = {
+export const defaultAuditInfo: AuditInfo = {
   dashboard_overview: 201,
   question_overview: 202,
   custom_reports: 203,
