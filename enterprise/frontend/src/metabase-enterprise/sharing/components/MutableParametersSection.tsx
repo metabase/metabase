@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,19 +11,15 @@ import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Dashboard,
-  Parameter,
-  ParameterId,
-  Pulse,
-} from "metabase-types/api";
+import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
+import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 export type MutableParametersSectionProps = {
   className?: string;
-  parameters: Parameter[];
+  parameters: FieldFilterUiParameter[];
   dashboard: Dashboard;
   pulse: Pulse;
-  setPulseParameters: (parameters: Parameter[]) => void;
+  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
   hiddenParameters?: string;
 };
 
@@ -61,8 +58,13 @@ export const MutableParametersSection = ({
     setPulseParameters(newParameters);
   };
 
+  const connectedParameters = useMemo(() => {
+    return parameters.filter(parameter => {
+      return parameter.fields?.length > 0;
+    });
+  }, [parameters]);
 
-  return _.isEmpty(parameters) ? null : (
+  return _.isEmpty(connectedParameters) ? null : (
     <CollapseSection
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
       className={cx(className)}

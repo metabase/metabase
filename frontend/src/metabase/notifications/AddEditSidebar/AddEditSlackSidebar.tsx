@@ -3,7 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
-import SchedulePicker, { ScheduleChangeProp } from "metabase/containers/SchedulePicker";
+import SchedulePicker, {
+  ScheduleChangeProp,
+} from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
@@ -16,10 +18,10 @@ import type {
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
-  Parameter,
   ScheduleSettings,
   DashboardSubscription,
 } from "metabase-types/api";
+import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -32,17 +34,20 @@ interface AddEditSlackSidebarProps {
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
-  parameters: Parameter[];
+  parameters: FieldFilterUiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
   handleSave: () => void;
   onCancel: () => void;
   onChannelPropertyChange: (property: string, value: unknown) => void;
-  onChannelScheduleChange: (schedule: ScheduleSettings, changedProp: ScheduleChangeProp) => void;
+  onChannelScheduleChange: (
+    schedule: ScheduleSettings,
+    changedProp: ScheduleChangeProp,
+  ) => void;
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
-  setPulseParameters: (parameters: Parameter[]) => void;
+  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
 }
 
 function _AddEditSlackSidebar({
@@ -97,7 +102,8 @@ function _AddEditSlackSidebar({
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Send`}
           textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ?? t`Messages`
+            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
+            t`Messages`
           } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)

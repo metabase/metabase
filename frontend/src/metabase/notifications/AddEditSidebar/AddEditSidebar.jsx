@@ -1,4 +1,7 @@
-import { getParameters, getTabHiddenParameterSlugs } from "metabase/dashboard/selectors";
+import {
+  getParameters,
+  getTabHiddenParameterSlugs,
+} from "metabase/dashboard/selectors";
 import { connect } from "metabase/lib/redux";
 
 import _AddEditEmailSidebar from "./AddEditEmailSidebar";
