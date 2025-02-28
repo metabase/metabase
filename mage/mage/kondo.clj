@@ -58,9 +58,11 @@
                               (println "Hunker down, we're running kondo against everything we usually lint...")
                               (println "(Maybe you meant to run it against a certain file?)")
                               ["-M:kondo:kondo/all"])
-                            (list* "-M:kondo" args))
-        {exit-code :exit} (apply shell/sh* "clojure" command)]
-    (System/exit exit-code)))
+                            (list* "-M:kondo" "--lint" args))
+        _ (u/debug "command: " command)]
+    (println "Running Kondo on:" args)
+    (apply shell/sh* "clojure" command)
+    (System/exit 0)))
 
 (defn kondo
   "Run Kondo against our project. With no args, runs Kondo against everything we normally lint. Otherwise args are
@@ -87,8 +89,10 @@
       (println "No updated Clojure source files.")
       (System/exit 0))
     (printf "Linting Clojure source files that have changes compared to %s...\n" diff-target)
-    (let [{exit-code :exit} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
-      (System/exit exit-code))))
+    (println "Files:")
+    (doseq [filename updated-files]
+      (println "  " filename))
+    (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)))
 
 (defn kondo-updated
   "Run Kondo against files that have been changed relative to a Git ref (default `HEAD`).

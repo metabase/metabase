@@ -71,7 +71,7 @@
   [{:keys [options arg-schema] :as current-task}]
   (check-print-help current-task)
   (let [*error-hit? (atom false)
-        {:keys [summary arguments]
+        {:keys [summary]
          option-errors :errors
          :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)
         _ (check-option-errors option-errors *error-hit? summary)

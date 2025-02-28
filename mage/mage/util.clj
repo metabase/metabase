@@ -70,14 +70,18 @@
     (doseq [line (->> (str/join content) str/split-lines)]
       (println (c/cyan "MAGE_DEBUG>") line))))
 
-(defn public-bb-tasks-list []
+(defn public-bb-tasks-list
+  "Returns all public bb tasks as a vector of strings."
+  []
   (->> "bb tasks"
        shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
        vec))
 
-(defn all-bb-tasks-list []
+(defn all-bb-tasks-list
+  "Returns all (even private) bb tasks as a vector of strings."
+  []
   (let [task-keys (-> project-root-directory
                       (str "/bb.edn")
                       slurp

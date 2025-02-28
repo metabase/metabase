@@ -19,8 +19,7 @@
     (printf (c/green "%sing %s...\n") mode (str/join ", " file-paths)) (flush)
     (let [cmd (str "clojure -T:cljfmt " mode " '" (pr-str {:paths file-paths}) "'")]
       (println "Running: " cmd)
-      (try (u/sh cmd)
-           (catch Exception e nil)))))
+      (try (u/sh cmd) (catch Exception _e nil)))))
 
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."

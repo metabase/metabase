@@ -1,6 +1,5 @@
 (ns mage.start-db
   (:require
-   #_:clj-kondo/ignore
    [babashka.http-client :as http]
    [cheshire.core :as json]
    [clojure.string :as str]
@@ -36,7 +35,7 @@
                                  (and eol (.isAfter eol now))))
                        (sort-by :releaseDate)
                        vec)]
-    _ (u/debug "supported: \n" (with-out-str (t/table supported)))
+    (u/debug "supported: \n" (with-out-str (t/table supported)))
     supported))
 
 (defn- fetch-oldest-supported-version [database]
@@ -45,7 +44,7 @@
     (u/debug "OLDEST VERSION:" oldest-version)
     oldest-version))
 
-(defn resolve-version [database version]
+(defn- resolve-version [database version]
   (if (= version :oldest)
     (fetch-oldest-supported-version database)
     (cond-> version (keyword? version) name)))
