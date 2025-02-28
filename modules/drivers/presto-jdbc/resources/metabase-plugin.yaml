@@ -8,10 +8,12 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
+    - merge:
+      - host
+      - required: true
     - merge:
         - port
-        - default: 8080
+        - placeholder: 8080
     - merge:
         - dbname
         - name: catalog
