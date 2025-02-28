@@ -35,7 +35,6 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
