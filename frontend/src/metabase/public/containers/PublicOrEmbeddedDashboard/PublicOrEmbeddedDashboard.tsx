@@ -158,10 +158,9 @@ const PublicOrEmbeddedDashboardInner = ({
 
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
-  const previousParameterValues = usePrevious(
-    dashboard ? parameterValues : null,
-  );
-
+  const previousParameterValues = usePrevious(parameterValues);
+  const hasDashboard = dashboard != null;
+  const previousHasDashboard = usePrevious(hasDashboard);
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
@@ -194,8 +193,10 @@ const PublicOrEmbeddedDashboardInner = ({
       return;
     }
 
+    // `initializeData` changes `parameterValues`. We should not re-run queries
+    // in this case.
     if (
-      previousParameterValues != null &&
+      previousHasDashboard &&
       !_.isEqual(parameterValues, previousParameterValues)
     ) {
       fetchDashboardCardData({ reload: false, clearCache: true });
@@ -210,6 +211,7 @@ const PublicOrEmbeddedDashboardInner = ({
     previousDashboardId,
     previousParameterValues,
     previousSelectedTabId,
+    previousHasDashboard,
     selectedTabId,
     shouldFetchCardData,
   ]);
