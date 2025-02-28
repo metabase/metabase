@@ -5,7 +5,7 @@ import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Button, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Stack, Text, Title, Tooltip } from "metabase/ui";
 import type { Collection, Timeline } from "metabase-types/api";
 
 export interface TimelineEmptyStateProps {
@@ -27,9 +27,11 @@ const TimelineEmptyState = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack align="center" ta="center" gap="lg">
-      <Box maw="6rem">
-        <img src={EmptyEvent} alt={t`Collection event illustration`} />
-      </Box>
+      <Tooltip label={t`Launch of v2.0`} offset={-24} opened>
+        <Box maw="6rem">
+          <img src={EmptyEvent} alt={t`Collection event illustration`} />
+        </Box>
+      </Tooltip>
       <Box maw="25rem">
         <Title
           order={2}
