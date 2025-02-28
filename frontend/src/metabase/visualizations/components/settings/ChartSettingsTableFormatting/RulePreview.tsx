@@ -37,6 +37,7 @@ export const RulePreview = ({
     withBorder
     className={CS.overflowHidden}
     onClick={onClick}
+    data-testid="formatting-rule-preview"
     {...paperProps}
   >
     <Group wrap="nowrap" px="md" bg="bg-light">
