@@ -45,7 +45,10 @@
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
-                         (image-bundle/external-link-image-bundle render-type))]
+                         (image-bundle/external-link-image-bundle render-type))
+          title-href   (if (is-visualizer-dashcard? dashcard)
+                         (visualizer-dashcard-href dashcard)
+                         (card-href card))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
        :content     [:table {:style (style/style {:margin-bottom   :2px
@@ -56,7 +59,7 @@
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
                         [:a {:style  (style/style (style/header-style))
-                             :href   (card-href card)
+                             :href   title-href
                              :target "_blank"
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
@@ -76,13 +79,6 @@
                                             :font-size :12px
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
-
-(defn- is-visualizer-dashcard?
-  "true if dashcard has visualizer specific viz settings"
-  [dashcard]
-  (boolean
-   (and (some? dashcard)
-        (get-in dashcard [:visualization_settings :visualization]))))
 
 (defn- visualizer-display-type
   "Return dashcard's display type if it is a visualizer dashcard else nil"
