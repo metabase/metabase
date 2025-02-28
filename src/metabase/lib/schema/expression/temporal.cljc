@@ -55,10 +55,23 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
     [:schema [:ref ::expression/temporal]]))
 
+;; unlike `::temporal-bucketing/unit.date-time.truncate`, it doesn't contain `:millisecond`
+(mr/def ::datetime-diff-unit
+  [:enum
+   {:decode/normalize common/normalize-keyword}
+   [:day
+    :week
+    :month
+    :quarter
+    :year
+    :second
+    :minute
+    :hour]])
+
 (mbql-clause/define-tuple-mbql-clause :datetime-diff :- :type/Integer
   #_:datetime1 [:schema [:ref ::expression/temporal]]
   #_:datetime2 [:schema [:ref ::expression/temporal]]
-  #_:unit [:ref ::temporal-bucketing/unit.date-time.truncate])
+  #_:unit [:schema [:ref ::datetime-diff-unit]])
 
 (doseq [temporal-extract-op #{:get-second :get-minute :get-hour
                               :get-day :get-month :get-quarter :get-year}]
