@@ -8,6 +8,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Icon, SpecialTagsInput } from "metabase/ui";
 
+import Styles from "./MultiAutocomplete.module.css";
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<TagsInputProps, "shouldCreate"> & {
@@ -137,6 +138,13 @@ export function MultiAutocomplete({
   return (
     <SpecialTagsInput
       {...props}
+      classNames={{
+        pill: Styles.pill,
+        input: Styles.input,
+        empty: Styles.empty,
+        option: Styles.option,
+        options: Styles.optionList,
+      }}
       data={items}
       value={lastSelectedValues}
       searchValue={searchValue}
