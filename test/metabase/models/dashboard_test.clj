@@ -123,7 +123,7 @@
                                                  :col     0
                                                  :size_x  4
                                                  :size_y  4}])
-        (t2/update! :model/Dashboard dashboard-id {:name "Lucky's Close Shaves"})
+        (t2/update! :model/Dashboard dashboard-id {:name "Lucky's Close Shaves2"})
         (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id))))))))
 
 (deftest parameter-card-test
