@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, usePreventClosePopover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 
@@ -67,6 +67,11 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const isValidName = withName ? name.trim().length > 0 : true;
   const isValidExpressionClause = isNotNull(clause);
   const isValid = !error && isValidName && isValidExpressionClause;
+
+  usePreventClosePopover({
+    onEscape: true,
+    onClickOutside: true,
+  });
 
   const handleCommit = useCallback(
     (clause: Clause | null) => {
