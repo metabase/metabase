@@ -110,12 +110,8 @@
                                                        [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
    (not-empty
     (into []
-          (filter (fn [[_ref {:keys [join-alias source-field]} _id-or-name :as a-breakout]]
-                    (and (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? false})
-                         #_(= source-field (:fk-field-id column)) ; Must match, including both being nil/missing.
-                         #_(or
-                            (= join-alias (::lib.join/join-alias column))  ; Must match, including both being nil/missing.
-                            (= join-alias (:source-alias column)))
+          (filter (fn [a-breakout]
+                    (and (lib.equality/find-matching-column query stage-number a-breakout [column])
                          (or (not same-temporal-bucket?)
                              (= (lib.temporal-bucket/temporal-bucket a-breakout)
                                 (lib.temporal-bucket/temporal-bucket column)))
