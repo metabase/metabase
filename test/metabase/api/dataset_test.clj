@@ -683,8 +683,8 @@
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
                                   (lib/limit 2))]
-        (is (=? {:data {:rows [["1" "Red Medicine" "4" 10.0646 -165.374 3]
-                               ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]]}}
+        (is (=? {:data {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
 (deftest ^:parallel mlv2-query-convert-to-native-test
