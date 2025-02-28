@@ -99,7 +99,7 @@ export function SelectEmbedTypePane({
 
   return (
     <Stack
-      display={"inline-flex"}
+      display="inline-flex"
       p="lg"
       spacing="lg"
       data-testid="sharing-pane-container"
