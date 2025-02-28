@@ -16,7 +16,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
   getInterval,
@@ -36,7 +35,7 @@ import {
 } from "./utils";
 
 interface DateOffsetIntervalPickerProps {
-  value: DateOffsetIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
   submitButtonLabel: string;
   onChange: (value: RelativeDatePickerValue) => void;

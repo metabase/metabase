@@ -8,29 +8,28 @@ import type {
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import type { DateOffsetIntervalValue } from "../types";
 import { getAvailableTruncationUnits, getDirection } from "../utils";
 
-export function getDirectionText(value: DateOffsetIntervalValue): string {
+export function getDirectionText(value: RelativeDatePickerValue): string {
   const direction = getDirection(value);
   return direction === "last" ? t`Previous` : t`Next`;
 }
 
 export function setUnit(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   unit: DatePickerTruncationUnit,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, unit, offsetUnit: unit };
 }
 
-export function getOffsetInterval(value: DateOffsetIntervalValue): number {
-  return Math.abs(value.offsetValue);
+export function getOffsetInterval(value: RelativeDatePickerValue): number {
+  return Math.abs(value.offsetValue ?? 0);
 }
 
 export function setOffsetInterval(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   offsetValue: number,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   if (offsetValue === 0) {
     return { ...value, offsetValue: 0 };
   } else {
@@ -40,20 +39,20 @@ export function setOffsetInterval(
 }
 
 export function setOffsetUnit(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   offsetUnit: DatePickerTruncationUnit,
-): DateOffsetIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, offsetUnit };
 }
 
 export function removeOffset(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
 ): RelativeDatePickerValue {
   return { ...value, offsetValue: undefined, offsetUnit: undefined };
 }
 
 export function getOffsetUnitOptions(
-  value: DateOffsetIntervalValue,
+  value: RelativeDatePickerValue,
   availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
@@ -64,7 +63,7 @@ export function getOffsetUnitOptions(
     .filter((_, index) => index >= unitIndex)
     .map(unit => ({
       value: unit,
-      label: getOffsetUnitText(unit, direction, value.offsetValue),
+      label: getOffsetUnitText(unit, direction, value.offsetValue ?? 0),
     }));
 }
 

@@ -9,7 +9,6 @@ import type {
 import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE } from "./constants";
-import type { DateOffsetIntervalValue } from "./types";
 
 export function isRelativeValue(
   value: DatePickerValue | undefined,
@@ -17,13 +16,11 @@ export function isRelativeValue(
   return value != null && value.type === "relative";
 }
 
-export function isIntervalValue(value: RelativeDatePickerValue | undefined) {
-  return value != null && value.value !== 0;
+export function isIntervalValue(value: RelativeDatePickerValue) {
+  return value.value !== 0;
 }
 
-export function isOffsetIntervalValue(
-  value: RelativeDatePickerValue,
-): value is DateOffsetIntervalValue {
+export function isOffsetIntervalValue(value: RelativeDatePickerValue) {
   return (
     isIntervalValue(value) &&
     value.offsetValue != null &&
