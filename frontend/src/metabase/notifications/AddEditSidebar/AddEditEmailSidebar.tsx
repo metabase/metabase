@@ -3,11 +3,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
-import SchedulePicker, { ScheduleChangeProp } from "metabase/containers/SchedulePicker";
+import SchedulePicker, {
+  ScheduleChangeProp,
+} from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import {
+  dashboardPulseIsValid,
+  RecipientPickerValue,
+} from "metabase/lib/pulse";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
@@ -17,12 +22,12 @@ import type {
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
-  Parameter,
   Pulse,
   ScheduleSettings,
   DashboardSubscription,
   User,
 } from "metabase-types/api";
+import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -36,18 +41,21 @@ interface AddEditEmailSidebarProps {
   channel: Channel;
   channelSpec: ChannelSpec;
   users: User[];
-  parameters: Parameter[];
+  parameters: FieldFilterUiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
   handleSave: () => void;
   onCancel: () => void;
-  onChannelPropertyChange: (property: string, value: User[]) => void;
-  onChannelScheduleChange: (schedule: ScheduleSettings, changedProp: ScheduleChangeProp) => void;
+  onChannelPropertyChange: (property: string, value: unknown) => void;
+  onChannelScheduleChange: (
+    schedule: ScheduleSettings,
+    changedProp: ScheduleChangeProp,
+  ) => void;
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
   setPulse: (pulse: Pulse) => void;
   handleArchive: () => void;
-  setPulseParameters: (parameters: Parameter[]) => void;
+  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
 }
 
 function _AddEditEmailSidebar({
@@ -112,13 +120,14 @@ function _AddEditEmailSidebar({
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
           textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ?? t`Messages`
+            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
+            t`Messages`
           } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className={cx(CS.pt2, CS.pb1)}>
+        <div className={cx(CS.py2)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}

@@ -264,10 +264,11 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 type PluginDashboardSubscriptionParametersSectionOverride = {
   Component?: React.ComponentType<MutableParametersSectionProps>;
-}
-export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride = {
-  Component: undefined,
 };
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
+  {
+    Component: undefined,
+  };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   isEnabled: () => false,
