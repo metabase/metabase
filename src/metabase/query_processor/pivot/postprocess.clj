@@ -182,14 +182,27 @@
   [{:keys [data settings timezone format-rows?]}]
   (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data)
         column-split (:pivot_table.column_split settings)
-        indexes (column-split->indexes column-split columns)
-        row-indexes (:rows indexes)
-        col-indexes (:columns indexes)
-        val-indexes (:values indexes)
+        {row-indexes :rows
+         col-indexes :columns
+         val-indexes :values} (pivot/column-split->indexes column-split columns)
         col-settings (merge-column-settings columns settings)
-        {:keys [row-formatters col-formatters val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
-        {:keys [leftHeaderItems topHeaderItems getRowSection]} (pivot/process-pivot-table pivot-data row-indexes col-indexes val-indexes columns col-formatters row-formatters val-formatters settings col-settings (constantly nil))
+        {:keys [row-formatters
+                col-formatters
+                val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
+        {:keys [leftHeaderItems
+                topHeaderItems
+                getRowSection]} (pivot/process-pivot-table pivot-data
+                                                           row-indexes
+                                                           col-indexes
+                                                           val-indexes
+                                                           columns
+                                                           col-formatters
+                                                           row-formatters
+                                                           val-formatters
+                                                           settings
+                                                           col-settings
+                                                           (constantly nil))
         top-left-header (map (fn [i] (get-column-title (nth col-settings i))) row-indexes)
         top-headers (build-top-headers top-left-header topHeaderItems)
         left-headers (build-left-headers leftHeaderItems)]
-    (build-full-pivot getRowSection left-headers top-headers (count val-indexes))))
+    (build-full-pivot getRowSection left-headers top-headers (count (:values column-split)))))
