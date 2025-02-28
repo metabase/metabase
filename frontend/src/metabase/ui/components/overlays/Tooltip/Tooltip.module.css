@@ -4,4 +4,5 @@
   font-size: var(--mantine-font-size-sm);
   font-weight: bold;
   padding: 0.6rem 0.75rem;
+  white-space: unset;
 }

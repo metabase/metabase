@@ -147,7 +147,7 @@ describe("admin > database > add", () => {
         });
 
         H.tooltip()
-          .findByText(/your databases ip address/i)
+          .findByText(/your database's ip address/i)
           .should("be.visible");
 
         cy.findByTestId("database-form").within(() => {

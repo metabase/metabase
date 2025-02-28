@@ -123,7 +123,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
 
 export const useClickedStateTooltipSync = (
   chart?: EChartsType,
-  clicked?: ClickObject,
+  clicked?: ClickObject | null,
 ) => {
   useEffect(
     function toggleTooltip() {
