@@ -11,9 +11,13 @@
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.task :as task]
+   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def test-channel-type
   "The channel type for the test channel."
@@ -234,6 +238,30 @@
    ;; => [{:to \"test@test.com\"} {:to \"test2@test.com\"}]"
   [& body]
   `(do-with-mock-inbox-email! (fn [] ~@body)))
+
+(defn- send-notification-triggers
+  "Return the quartz triggers for a subscription."
+  [subscription-id]
+  (map
+   #(select-keys % [:key :schedule :data :timezone])
+   (task/existing-triggers @#'task.notification/send-notification-job-key
+                           (#'task.notification/send-notification-trigger-key subscription-id))))
+
+(defn notification-triggers
+  "Return the quartz triggers for a notification."
+  [notification-id]
+  (let [subscription-ids (t2/select-pks-set :model/NotificationSubscription :notification_id notification-id)]
+    (mapcat send-notification-triggers subscription-ids)))
+
+(defn subscription->trigger-info
+  "Return the quartz trigger info for a subscription."
+  ([subscription-id cron-schedule]
+   (subscription->trigger-info subscription-id cron-schedule "UTC"))
+  ([subscription-id cron-schedule timezone]
+   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
+    :schedule cron-schedule
+    :data     {"subscription-id" subscription-id}
+    :timezone timezone}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

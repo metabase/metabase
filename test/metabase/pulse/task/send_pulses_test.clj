@@ -303,3 +303,40 @@
                           :timezone "Asia/Ho_Chi_Minh"
                           :next-fire-time (next-fire-hour 1))}
                  (pulse-channel-test/send-pulse-triggers pulse :additional-keys [:next-fire-time :timezone]))))))))
+
+(deftest init-send-pulse-triggers-idempotent-test
+  (pulse-channel-test/with-send-pulse-setup!
+    (mt/with-temp-scheduler!
+      (task/init! ::task.send-pulses/SendPulses)
+      (mt/with-temp
+        [:model/Dashboard    {dash-id :id} {}
+         :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
+         :model/PulseChannel {_pc-id :id}   (merge
+                                             {:pulse_id     pulse-id
+                                              :channel_type :slack
+                                              :details      {:channel "#random"}}
+                                             daily-at-1am)]
+        (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
+          (testing "sanity check that it has triggers to begin with"
+            (is (not-empty pulse-triggers)))
+          (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
+            (#'task.send-pulses/init-send-pulse-triggers!)
+            (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
+
+(deftest init-send-pulse-triggers-skip-alert-test
+  (pulse-channel-test/with-send-pulse-setup!
+    (mt/with-temp-scheduler!
+      (task/init! ::task.send-pulses/SendPulses)
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {:alert_condition "goal"}
+         :model/PulseChannel {_pc-id :id}   (merge
+                                             {:pulse_id     pulse-id
+                                              :channel_type :slack
+                                              :details      {:channel "#random"}}
+                                             daily-at-1am)]
+        (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
+          (testing "sanity check that it has triggers to begin with"
+            (is (not-empty pulse-triggers)))
+          (testing "init send pulse triggers skip alerts"
+            (#'task.send-pulses/init-send-pulse-triggers!)
+            (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
