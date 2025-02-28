@@ -162,8 +162,8 @@ export const hasAdvancedFilterOptions = (screen: Screen) => {
   ).not.toBeInTheDocument();
 
   expect(
-    screen.getByText(/set filter values for when this gets sent/i),
-  ).toBeVisible();
+    screen.queryByText(/set filter values for when this gets sent/i),
+  ).not.toBeInTheDocument();
 
   return true;
 };

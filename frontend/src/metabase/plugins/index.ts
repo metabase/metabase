@@ -40,6 +40,7 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   BaseUser,
   Bookmark,
@@ -57,6 +58,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  Pulse,
   Revision,
   User,
 } from "metabase-types/api";
@@ -67,7 +69,6 @@ import type {
   PluginGroupManagersType,
   PluginLLMAutoDescription,
 } from "./types";
-import { MutableParametersSectionProps } from "metabase-enterprise/sharing/components/MutableParametersSection";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -262,9 +263,16 @@ export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-type PluginDashboardSubscriptionParametersSectionOverride = {
-  Component?: React.ComponentType<MutableParametersSectionProps>;
-};
+interface PluginDashboardSubscriptionParametersSectionOverride {
+  Component?: ComponentType<{
+    className?: string;
+    parameters: FieldFilterUiParameter[];
+    hiddenParameters?: string;
+    dashboard: Dashboard;
+    pulse: Pulse;
+    setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
+  }>;
+}
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
   {
     Component: undefined,

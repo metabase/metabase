@@ -4,30 +4,27 @@ import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
 import SchedulePicker, {
-  ScheduleChangeProp,
+  type ScheduleChangeProp,
 } from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import {
-  dashboardPulseIsValid,
-  RecipientPickerValue,
-} from "metabase/lib/pulse";
+import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
+  DashboardSubscription,
   Pulse,
   ScheduleSettings,
-  DashboardSubscription,
   User,
 } from "metabase-types/api";
-import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -58,7 +55,7 @@ interface AddEditEmailSidebarProps {
   setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
 }
 
-function _AddEditEmailSidebar({
+export const AddEditEmailSidebar = ({
   pulse,
   formInput,
   channel,
@@ -78,7 +75,7 @@ function _AddEditEmailSidebar({
   setPulse,
   handleArchive,
   setPulseParameters,
-}: AddEditEmailSidebarProps) {
+}: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -142,10 +139,10 @@ function _AddEditEmailSidebar({
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className={cx(CS.py3, CS.mt2, CS.borderTop)}
             parameters={parameters}
+            hiddenParameters={hiddenParameters}
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
-            hiddenParameters={hiddenParameters}
           />
         ) : (
           <DefaultParametersSection
@@ -186,6 +183,4 @@ function _AddEditEmailSidebar({
       </div>
     </Sidebar>
   );
-}
-
-export default _AddEditEmailSidebar;
+};

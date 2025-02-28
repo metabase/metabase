@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
 import SchedulePicker, {
-  ScheduleChangeProp,
+  type ScheduleChangeProp,
 } from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
@@ -13,15 +13,15 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
   Dashboard,
-  ScheduleSettings,
   DashboardSubscription,
+  ScheduleSettings,
 } from "metabase-types/api";
-import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -50,7 +50,7 @@ interface AddEditSlackSidebarProps {
   setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
 }
 
-function _AddEditSlackSidebar({
+export const AddEditSlackSidebar = ({
   pulse,
   formInput,
   channel,
@@ -67,7 +67,7 @@ function _AddEditSlackSidebar({
   toggleSkipIfEmpty,
   handleArchive,
   setPulseParameters,
-}: AddEditSlackSidebarProps) {
+}: AddEditSlackSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -164,6 +164,4 @@ function _AddEditSlackSidebar({
       </div>
     </Sidebar>
   );
-}
-
-export default _AddEditSlackSidebar;
+};
