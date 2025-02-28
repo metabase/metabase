@@ -158,7 +158,9 @@ const PublicOrEmbeddedDashboardInner = ({
 
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
-  const previousParameterValues = usePrevious(parameterValues);
+  const previousParameterValues = usePrevious(
+    dashboard ? parameterValues : null,
+  );
 
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
@@ -192,7 +194,10 @@ const PublicOrEmbeddedDashboardInner = ({
       return;
     }
 
-    if (!_.isEqual(parameterValues, previousParameterValues)) {
+    if (
+      previousParameterValues != null &&
+      !_.isEqual(parameterValues, previousParameterValues)
+    ) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }, [
