@@ -136,9 +136,7 @@ export function DashCardVisualization({
   downloadsEnabled,
   editDashboard,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(
-    state => getDashcardData(state, dashcard.id) ?? {},
-  );
+  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
   const [
     isVisualizerModalOpen,
     { open: openVisualizerModal, close: closeVisualizerModal },
