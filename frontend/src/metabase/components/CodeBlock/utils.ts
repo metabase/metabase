@@ -38,7 +38,6 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
       return StreamLanguage.define(pug);
     case "ruby":
       return StreamLanguage.define(ruby);
-    case "javascript":
     case "typescript":
       return javascript({
         jsx: true,
