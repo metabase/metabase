@@ -35,7 +35,11 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
@@ -104,6 +108,7 @@ export const CreateOrEditQuestionAlertModal = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const userCanAccessSettings = useSelector(canAccessSettings);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -147,7 +152,7 @@ export const CreateOrEditQuestionAlertModal = ({
               channelSpec,
               hookChannels,
               availableTriggerOptions: triggerOptions,
-              isAdmin,
+              userCanAccessSettings,
             }),
       );
     }
@@ -160,7 +165,7 @@ export const CreateOrEditQuestionAlertModal = ({
     editingNotification,
     isEditMode,
     hookChannels,
-    isAdmin,
+    userCanAccessSettings,
   ]);
 
   const onCreateOrEditAlert = async () => {
@@ -222,7 +227,7 @@ export const CreateOrEditQuestionAlertModal = ({
     }
   };
 
-  const channelRequirementsMet = isAdmin
+  const channelRequirementsMet = userCanAccessSettings
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
