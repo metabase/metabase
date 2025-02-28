@@ -47,10 +47,7 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
 
       <Flex align="center" gap="sm">
         <Tooltip label={t`Settings`}>
-          <ActionIcon
-            disabled={!isDirty}
-            onClick={() => dispatch(toggleVizSettingsSidebar())}
-          >
+          <ActionIcon onClick={() => dispatch(toggleVizSettingsSidebar())}>
             <Icon name="gear" />
           </ActionIcon>
         </Tooltip>
