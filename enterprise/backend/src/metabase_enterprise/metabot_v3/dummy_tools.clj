@@ -17,21 +17,25 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- get-current-user
-  [_tool-id _arguments _e]
-  (if-let [{:keys [id email first_name last_name]}
-           (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
-    {:structured-output {:id id
-                         :name (str first_name " " last_name)
-                         :email-address email}}
-    {:output  "current user not found"}))
+(defn get-current-user
+  "Get information about the current user."
+  ([_tool-id _arguments _e] (get-current-user))
+  ([]
+   (if-let [{:keys [id email first_name last_name]}
+            (or (some-> api/*current-user* deref)
+                (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
+     {:structured-output {:id id
+                          :name (str first_name " " last_name)
+                          :email-address email}}
+     {:output "current user not found"})))
 
-(defn- get-dashboard-details
-  [_tool-id {:keys [dashboard-id]} _e]
-  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)]
-    {:structured-output dashboard}
-    {:output "dashboard not found"}))
+(defn get-dashboard-details
+  "Get information about the dashboard with ID `dashboard-id`."
+  ([_tool-id arguments _e] (get-dashboard-details arguments))
+  ([{:keys [dashboard-id]}]
+   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)]
+     {:structured-output dashboard}
+     {:output "dashboard not found"})))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -122,16 +126,29 @@
                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics card-query)))
                         :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
 
-(defn- get-table-details
-  [_tool-id {:keys [table-id]} _e]
-  (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                  (card-details (parse-long card-id))
-                  (if (re-matches #"\d+" table-id)
-                    (table-details (parse-long table-id) {:include-foreign-key-tables? true})
-                    "invalid table_id"))]
-    (if (map? details)
-      {:structured-output (assoc details :id table-id)}
-      {:output (or details "table not found")})))
+(defn get-table-details
+  "Get information about the table or model with ID `table-id`.
+  `table-id` is string either encoding an integer that is the ID of a table
+  or a string containing the prefix card__ and the ID of a model (card) as suffix.
+  Alternatively, `table-id` can be an integer ID of a table.
+  `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
+  should be supplied."
+  ([_tool-id arguments _e] (get-table-details arguments))
+  ([{:keys [model-id table-id]}]
+   (let [details (cond
+                   (int? model-id) (card-details model-id)
+                   (int? table-id) (table-details table-id {:include-foreign-key-tables? true})
+                   (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                                        (card-details (parse-long card-id))
+                                        (if (re-matches #"\d+" table-id)
+                                          (table-details (parse-long table-id) {:include-foreign-key-tables? true})
+                                          "invalid table_id"))
+                   :else "invalid arguments")]
+     (if (map? details)
+       {:structured-output (assoc details :id (if (int? model-id)
+                                                (str "card__" model-id)
+                                                (str table-id)))}
+       {:output (or details "table not found")}))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -141,26 +158,30 @@
       (get-table-details :get-table-details {:table-id id} {})))
   -)
 
-(defn- get-metric-details
-  [_tool-id {:keys [metric-id]} _e]
-  (let [details (if (int? metric-id)
-                  (metric-details metric-id)
-                  "invalid metric_id")]
-    (if (map? details)
-      {:structured-output details}
-      {:output (or details "metric not found")})))
+(defn get-metric-details
+  "Get information about the metric with ID `metric-id`."
+  ([_tool-id arguments _e] (get-metric-details arguments))
+  ([{:keys [metric-id]}]
+   (let [details (if (int? metric-id)
+                   (metric-details metric-id)
+                   "invalid metric_id")]
+     (if (map? details)
+       {:structured-output details}
+       {:output (or details "metric not found")}))))
 
-(defn- get-report-details
-  [_tool-id {:keys [report-id]} _e]
-  (let [details (if (int? report-id)
-                  (let [details (card-details report-id)]
-                    (some-> details
-                            (select-keys [:id :description :name])
-                            (assoc :result_columns (:fields details))))
-                  "invalid report_id")]
-    (if (map? details)
-      {:structured-output details}
-      {:output (or details "report not found")})))
+(defn get-report-details
+  "Get information about the report (card) with ID `report-id`."
+  ([_tool-id arguments _e] (get-report-details arguments))
+  ([{:keys [report-id]}]
+   (let [details (if (int? report-id)
+                   (let [details (card-details report-id)]
+                     (some-> details
+                             (select-keys [:id :description :name])
+                             (assoc :result_columns (:fields details))))
+                   "invalid report_id")]
+     (if (map? details)
+       {:structured-output details}
+       {:output (or details "report not found")}))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -235,7 +256,8 @@
 
 (defn- execute-query
   [query-id legacy-query]
-  (let [field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+  (let [legacy-query (mbql.normalize/normalize legacy-query)
+        field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         mp (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))
         query (lib/query mp legacy-query)
         returned-cols (lib/returned-columns query)]
@@ -246,13 +268,18 @@
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
+(defn get-query-details
+  "Get the details of a (legacy) query."
+  [{:keys [query]}]
+  {:structured-output (execute-query (u/generate-nano-id) query)})
+
 (defn- dummy-run-query
   [{:keys [context] :as env}]
   (transduce (filter (comp #{"adhoc"} :type))
              (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query_id query-id}
-                                 result (execute-query query-id (mbql.normalize/normalize query))]
+                                 result (execute-query query-id query)]
                              (as-> env $env
                                (reduce envelope/add-dummy-message
                                        $env

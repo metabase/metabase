@@ -6,8 +6,10 @@
    [clj-time.core :as time]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -257,6 +259,107 @@
           [:map [:report_id :int]]
           [:map [:query :map]]]]])
 
+(mr/def ::get-current-user-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:id :int]
+                         [:name :string]
+                         [:email_address :string]]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-dashboard-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:id :int]
+                         [:name :string]
+                         [:description {:optional true} :string]]]]
+   [:map [:output :string]]])
+
+(mr/def ::field-type
+  [:enum "boolean" "date" "number" "string"])
+
+(mr/def ::column
+  [:map
+   [:field_id :string]
+   [:name :string]
+   [:type [:maybe ::field-type]]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::basic-metric
+  [:map
+   [:id :int]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
+
+(mr/def ::columns
+  [:sequential ::column])
+
+(mr/def ::get-metric-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:merge ::basic-metric [:map [:queryable_dimensions ::columns]]]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-query-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response
+     (fn [result]
+       (let [query (:query ((some-fn :structured-output :structured_output) result))]
+         (-> result
+             (m/dissoc-in [:structured-output :query] [:structured_output :query])
+             (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
+             (assoc-in [:structured_output :query] query))))}
+    [:structured_output [:map
+                         [:type [:= :query]]
+                         [:query_id :string]
+                         [:query :map]
+                         [:result_columns ::columns]]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-report-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:id :int]
+                         [:name :string]
+                         [:description {:optional true} [:maybe :string]]
+                         [:result_columns ::columns]]]]
+   [:map [:output :string]]])
+
+(mr/def ::get-table-details-arguments
+  [:and
+   [:map
+    {:encode/tool-api-request #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->kebab-case-en)}
+    [:model_id {:optional true} :int]
+    [:table_id {:optional true} [:or :int :string]]]
+   [:fn {:error/message "Exactly one of model_id and table_id required"}
+    #(= (count (select-keys % [:model_id :table_id])) 1)]])
+
+(mr/def ::basic-table
+  [:map
+   [:id :int]
+   [:name :string]
+   [:fields ::columns]
+   [:description {:optional true} [:maybe :string]]
+   [:metrics {:optional true} [:sequential ::basic-metric]]])
+
+(mr/def ::get-table-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:merge
+                         ::basic-table
+                         [:map [:queryable_foreign_key_tables {:optional true} [:sequential ::basic-table]]]]]]
+   [:map [:output :string]]])
+
 (api.macros/defendpoint :post "/create-dashboard-subscription" :- [:merge
                                                                    [:map [:output :string]]
                                                                    ::tool-request]
@@ -336,6 +439,92 @@
     (doto (-> (metabot-v3.tools.generate-insights/generate-insights arguments)
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-current-user" :- [:merge ::get-current-user-result ::tool-request]
+  "Get information about user that started the conversation."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-current-user) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-current-user-result
+                       (metabot-v3.dummy-tools/get-current-user)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-dashboard-details" :- [:merge ::get-dashboard-details-result ::tool-request]
+  "Get information about a given dashboard."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map [:dashboard_id :int]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-dashboard-details) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-dashboard-details-result
+                       (metabot-v3.dummy-tools/get-dashboard-details
+                        (metabot-v3.u/recursive-update-keys arguments metabot-v3.u/safe->kebab-case-en))
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-metric-details" :- [:merge ::get-metric-details-result ::tool-request]
+  "Get information about a given metric."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map [:metric_id :int]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-metric-details) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-metric-details-result
+                       (metabot-v3.dummy-tools/get-metric-details
+                        (metabot-v3.u/recursive-update-keys arguments metabot-v3.u/safe->kebab-case-en))
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-query-details" :- [:merge ::get-query-details-result ::tool-request]
+  "Get information about a given query."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map [:query :map]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-query-details) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-query-details-result
+                       (metabot-v3.dummy-tools/get-query-details arguments)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-report-details" :- [:merge ::get-report-details-result ::tool-request]
+  "Get information about a given report."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments [:map [:report_id :int]]]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-report-details) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-report-details-result
+                       (metabot-v3.dummy-tools/get-report-details
+                        (metabot-v3.u/recursive-update-keys arguments metabot-v3.u/safe->kebab-case-en))
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
+
+(api.macros/defendpoint :post "/get-table-details" :- [:merge ::get-table-details-result ::tool-request]
+  "Get information about a given table or model."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments  ::get-table-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-table-details) :llm.log/llm->be)
+  (doto (-> (mc/decode ::get-table-details-result
+                       (metabot-v3.dummy-tools/get-table-details
+                        (metabot-v3.u/recursive-update-keys arguments metabot-v3.u/safe->kebab-case-en))
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
 
 (api.macros/defendpoint :post "/query-metric" :- [:merge ::filtering-result ::tool-request]
   "Construct a query from a metric."
