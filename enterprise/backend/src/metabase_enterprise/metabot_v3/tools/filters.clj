@@ -201,7 +201,7 @@
        {:structured-output
         {:type :query
          :query_id query-id
-         :query (lib.convert/->legacy-MBQL query)
+         :query (lib/->legacy-MBQL query)
          :result_columns (into []
                                (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                                (lib/returned-columns query))}})
