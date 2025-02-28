@@ -104,7 +104,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     await exitFunction(FAILURE_EXIT_CODE);
   }
 
-  const config = await configs[suite]({ suite });
+  const config = await configs[suite]();
 
   try {
     const { status, message, totalFailed, failures } = config.openMode
