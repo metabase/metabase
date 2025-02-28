@@ -38,8 +38,7 @@
 (defn pivot-grouping-key
   "Get the index into the raw pivot rows for the 'pivot-grouping' column."
   [column-titles]
-  ;; a vector is kinda sorta a map of indices->values, so
-  ;; we can use map-invert to create the map
+  ;; A vector is kinda sorta a map of indices->values, so we can use map-invert to create the map
   (get (set/map-invert (vec column-titles)) "pivot-grouping"))
 
 (mu/defn- pivot-measures
@@ -201,7 +200,7 @@
                                                            val-formatters
                                                            settings
                                                            col-settings
-                                                           (constantly nil))
+                                                           nil)
         top-left-header (map (fn [i] (get-column-title (nth col-settings i))) row-indexes)
         top-headers (build-top-headers top-left-header topHeaderItems)
         left-headers (build-left-headers leftHeaderItems)]
