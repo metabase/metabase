@@ -370,7 +370,7 @@
     "path-to-regexp": "^0.1.12"
   },
   "scripts": {
-    "build": "yarn build:cljs && yarn build:js && yarn build:javascript-sdk",
+    "build": "yarn build:javascript-sdk && yarn build:cljs && yarn build:js",
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-embedding-sdk:pure --watch",
