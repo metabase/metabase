@@ -186,7 +186,7 @@
         (lib.expression/concat column "A")
         (lib.filter/and (lib.filter/= column "A") true)))
     (testing "should correctly propagate `:id` when destructuring a filter clause in a nested query"
-      (let [query         (lib.tu/venues-query)
+      (let [query         lib.tu/venues-query
             query         (-> query
                               (lib/aggregate (lib/count))
                               (lib/breakout (m/find-first #(= (:name %) "NAME") (lib/breakoutable-columns query)))
