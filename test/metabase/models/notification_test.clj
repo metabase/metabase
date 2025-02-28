@@ -337,11 +337,11 @@
           (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                  :cron_schedule   "0 * * * * ? *"
                                                                                  :notification_id noti-id})]
-            (is (= [(subscription->trigger-info
+            (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "0 * * * * ? *"
                      "Asia/Ho_Chi_Minh")]
-                   notification.tu/send-notification-triggers sub-id)))))))))
+                   (notification.tu/send-notification-triggers sub-id)))))))))
 
 (deftest archive-notification-triggers-test
   (mt/with-temp-scheduler!
