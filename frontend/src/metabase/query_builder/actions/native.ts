@@ -9,7 +9,7 @@ import type {
   CardId,
   DatabaseId,
   NativeQuerySnippet,
-  Parameter,
+  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -172,7 +172,7 @@ export const setTemplateTag = createThunkAction(
 export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
 export const setTemplateTagConfig = createThunkAction(
   SET_TEMPLATE_TAG_CONFIG,
-  (tag: TemplateTag, parameter: Parameter) => {
+  (tag: TemplateTag, parameter: ParameterValuesConfig) => {
     return (dispatch: Dispatch, getState: GetState) => {
       const question = getQuestion(getState());
       if (!question) {

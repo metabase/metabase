@@ -56,8 +56,8 @@
 
   &[data-variant="filled"] {
     &:hover {
-      border-color: alpha(var(--mb-color-brand), 0.88);
-      background-color: alpha(var(--mb-color-brand), 0.88);
+      border-color: alpha(var(--button-bg), 0.88);
+      background-color: alpha(var(--button-bg), 0.88);
     }
   }
 

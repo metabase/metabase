@@ -8,16 +8,16 @@
 
 .input {
   display: block;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border-radius: var(--mantine-radius-xs);
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background);
 
   &::placeholder {
     color: var(--mb-color-text-light);
   }
 
   &:disabled {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-disabled);
   }
 
   &[data-size="xs"] {

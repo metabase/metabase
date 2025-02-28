@@ -54,6 +54,14 @@ describe("getHelpText", () => {
         expect.not.stringContaining("https"),
       );
     });
+
+    it("offset", () => {
+      const { database } = setup();
+      const helpText = getHelpText("offset", database, reportTimezone);
+
+      expect(helpText?.structure).toBe("Offset");
+      expect(helpText?.example).toBe("Offset(Sum([Total]), -1)");
+    });
   });
 
   describe("help texts customized per database engine", () => {
