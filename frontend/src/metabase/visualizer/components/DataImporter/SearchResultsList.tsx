@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
 import { skipToken, useSearchQuery } from "metabase/api";
+import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Loader } from "metabase/ui";
 import { createDataSource } from "metabase/visualizer/utils";
@@ -13,7 +15,6 @@ interface SearchResultsListProps {
   search: string;
   onSelect: ResultsListProps["onSelect"];
   dataSourceIds: Set<VisualizerDataSourceId>;
-  dashboardId: DashboardId | undefined;
 }
 
 function shouldIncludeDashboardQuestion(
@@ -27,8 +28,9 @@ export function SearchResultsList({
   search,
   onSelect,
   dataSourceIds,
-  dashboardId,
 }: SearchResultsListProps) {
+  const dashboardId = useSelector(getDashboard)?.id;
+
   const { data: result = { data: [] } } = useSearchQuery(
     search.length > 0
       ? {

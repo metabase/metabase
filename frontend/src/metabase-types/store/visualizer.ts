@@ -9,17 +9,11 @@ import type {
 export type VisualizerDataSourceType = "card";
 export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${number}`;
 
-export type VisualizerDataSourceDashboard = {
-  id: number;
-  name: string;
-};
-
 export type VisualizerDataSource = {
   id: VisualizerDataSourceId;
   sourceId: number;
   type: VisualizerDataSourceType;
   name: string;
-  dashboard: VisualizerDataSourceDashboard;
 };
 
 export type VisualizerColumnReference = {

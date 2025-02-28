@@ -10,7 +10,6 @@ import { useCallback, useEffect } from "react";
 import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import EditableText from "metabase/core/components/EditableText";
-import { getDashboard } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -54,7 +53,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const { className, onSave, saveLabel } = props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
-  const dashboardId = useSelector(getDashboard)?.id;
   const title = useSelector(getVisualizationTitle);
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
@@ -146,7 +144,7 @@ export const Visualizer = (props: VisualizerProps) => {
           {!isFullscreen && (
             <Flex direction="column" miw={320}>
               <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
-                <DataImporter dashboardId={dashboardId} />
+                <DataImporter />
               </Box>
               <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
                 <DataManager />
