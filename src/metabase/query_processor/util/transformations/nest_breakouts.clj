@@ -2,6 +2,7 @@
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
@@ -43,11 +44,12 @@
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
 (mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
-  "Force a `[:field {} <name>]` ref."
+  "Force a `[:field {} <name>]` ref. Must manually escape field refs here, since `escape-join-aliases` mw is already run."
   [col :- ::lib.schema.metadata/column]
   (-> col
+      (update :lib/desired-column-alias #(driver/escape-alias driver/*driver* %))
       (assoc :lib/source              :source/previous-stage
-             :lib/source-column-alias (:lib/desired-column-alias col))
+             :lib/source-column-alias (driver/escape-alias driver/*driver* (:lib/desired-column-alias col)))
       (lib/with-temporal-bucket (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
                                   ;; for temporal columns: set temporal type to `:default` to
                                   ;; prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from
