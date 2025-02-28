@@ -51,7 +51,7 @@ export const TableDataContainer = ({
   }
 
   return (
-    <>
+    <div data-testid="table-data-view-root">
       {database && (
         <TableDataViewHeader
           database={database}
@@ -59,6 +59,6 @@ export const TableDataContainer = ({
         />
       )}
       <TableDataView data={datasetData} />
-    </>
+    </div>
   );
 };
