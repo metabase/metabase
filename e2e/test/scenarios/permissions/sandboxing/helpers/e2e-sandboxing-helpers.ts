@@ -465,11 +465,15 @@ export const createCardsShowingGizmosAndWidgets = ({
 };
 
 /** The endpoint should include results containing Gizmos and Widgets */
-export const rowsShouldIncludeGizmosAndWidgets = (
-  cardDescription: string,
-  endpoint: string,
-  payload?: any,
-) => {
+export const rowsShouldIncludeGizmosAndWidgets = ({
+  cardDescription,
+  endpoint,
+  payload,
+}: {
+  cardDescription: string;
+  endpoint: string;
+  payload?: any;
+}) => {
   payload ??= {
     collection_preview: false,
     ignore_cache: false,
@@ -491,11 +495,17 @@ export const rowsShouldIncludeGizmosAndWidgets = (
   });
 };
 
-export const rowsShouldOnlyIncludeGizmos = (
-  cardDescription: string,
-  endpoint: string,
-  payload?: any,
-) => {
+export const rowsShouldOnlyIncludeGizmos = ({
+  cardDescription,
+  resultsEndpoint,
+  fieldValuesEndpoint,
+  payload,
+}: {
+  cardDescription: string;
+  resultsEndpoint: string;
+  fieldValuesEndpoint: string;
+  payload?: any;
+}) => {
   payload ??= {
     collection_preview: false,
     ignore_cache: false,
@@ -504,7 +514,7 @@ export const rowsShouldOnlyIncludeGizmos = (
   cy.log(
     `Check that rows in ${cardDescription} are filtered, with some hidden according to the sandboxing policy`,
   );
-  cy.request("POST", endpoint, payload).then(({ body }) => {
+  cy.request("POST", resultsEndpoint, payload).then(({ body }) => {
     const { data } = body;
     expect(data.is_sandboxed).to.equal(true);
     const actualCategories = data.rows.map((row: any[]) => row[3]);
@@ -512,6 +522,11 @@ export const rowsShouldOnlyIncludeGizmos = (
       true,
       "User should only see Gizmos",
     );
+  });
+
+  cy.request("GET", fieldValuesEndpoint).then(({ body }) => {
+    const { data } = body;
+    expect(data.values).to.deep.equal([["Gizmo"]]);
   });
 };
 
@@ -522,11 +537,40 @@ function isNumber(value: unknown): asserts value is number {
   }
 }
 
+const getQuestionResultsPath = (questionId: number | string) =>
+  `/api/card/${questionId}/query`;
+
+const getQuestionFieldValuesPath = (fieldId: number | string) =>
+  `/api/field/${fieldId}/values`;
+
+const getDashcardResultsPath = (
+  dashboardId: number | string,
+  dashcardId: number | string,
+  questionId: number | string,
+) =>
+  `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${questionId}/query`;
+
 const getEntityPaths = (aliases: Record<string, number | string>) => {
-  const savedQuestionPath = `/api/card/${aliases.savedQuestionId}/query`;
-  const nestedQuestionPath = `/api/card/${aliases.nestedQuestionId}/query`;
-  const savedQuestionInDashboardPath = `/api/dashboard/${aliases.idOfDashboardWithSavedQuestion}/dashcard/${aliases.savedQuestionDashcardId}/card/${aliases.savedQuestionId}/query`;
-  const nestedQuestionInDashboardPath = `/api/dashboard/${aliases.idOfDashboardWithNestedQuestion}/dashcard/${aliases.nestedQuestionDashcardId}/card/${aliases.nestedQuestionId}/query`;
+  const savedQuestionPath = getQuestionResultsPath(aliases.savedQuestionId);
+  const savedQuestionFieldValuesPath = getQuestionFieldValuesPath(
+    // TODO: set this alias
+    aliases.savedQuestionCategoryFieldId,
+  );
+  const nestedQuestionPath = getQuestionResultsPath(aliases.nestedQuestionId);
+  const nestedQuestionFieldValuesPath = getQuestionFieldValuesPath(
+    // TODO: set this alias
+    aliases.nestedQuestionCategoryFieldId,
+  );
+  const savedQuestionInDashboardPath = getDashcardResultsPath(
+    aliases.idOfDashboardWithSavedQuestion,
+    aliases.savedQuestionDashcardId,
+    aliases.savedQuestionId,
+  );
+  const nestedQuestionInDashboardPath = getDashcardResultsPath(
+    aliases.idOfDashboardWithNestedQuestion,
+    aliases.nestedQuestionDashcardId,
+    aliases.nestedQuestionId,
+  );
   const modelPayload = {
     database: SAMPLE_DB_ID,
     parameters: [],
@@ -535,7 +579,9 @@ const getEntityPaths = (aliases: Record<string, number | string>) => {
   };
   return {
     savedQuestionPath,
+    savedQuestionFieldValuesPath,
     nestedQuestionPath,
+    nestedQuestionFieldValuesPath,
     savedQuestionInDashboardPath,
     nestedQuestionInDashboardPath,
     modelPayload,
@@ -557,17 +603,27 @@ export const cardsShouldShowGizmosAndWidgets = ({
     cy.log(
       "Ensure that the entities we will be testing are at first unfiltered, so that we can see how the sandboxing policy affects them",
     );
-    rowsShouldIncludeGizmosAndWidgets("Saved question", savedQuestionPath);
-    rowsShouldIncludeGizmosAndWidgets("Nested question", nestedQuestionPath);
-    rowsShouldIncludeGizmosAndWidgets(
-      "Saved question in dashboard",
-      savedQuestionInDashboardPath,
-    );
-    rowsShouldIncludeGizmosAndWidgets(
-      "Nested question in dashboard",
-      nestedQuestionInDashboardPath,
-    );
-    rowsShouldIncludeGizmosAndWidgets("Model", "/api/dataset", modelPayload);
+    rowsShouldIncludeGizmosAndWidgets({
+      cardDescription: "Saved question",
+      endpoint: savedQuestionPath,
+    });
+    rowsShouldIncludeGizmosAndWidgets({
+      cardDescription: "Nested question",
+      endpoint: nestedQuestionPath,
+    });
+    rowsShouldIncludeGizmosAndWidgets({
+      cardDescription: "Saved question in dashboard",
+      endpoint: savedQuestionInDashboardPath,
+    });
+    rowsShouldIncludeGizmosAndWidgets({
+      cardDescription: "Nested question in dashboard",
+      endpoint: nestedQuestionInDashboardPath,
+    });
+    rowsShouldIncludeGizmosAndWidgets({
+      cardDescription: "Model",
+      endpoint: "/api/dataset",
+      payload: modelPayload,
+    });
     adhocQuestionShouldBeUnfiltered(customColumnType);
   });
 };
@@ -578,13 +634,23 @@ export const cardsShouldOnlyShowGizmos = ({
   cy.then(function () {
     const {
       savedQuestionPath,
+      savedQuestionFieldValuesPath,
       nestedQuestionPath,
+      nestedQuestionFieldValuesPath,
       savedQuestionInDashboardPath,
       nestedQuestionInDashboardPath,
       modelPayload,
     } = getEntityPaths(this);
-    rowsShouldOnlyIncludeGizmos("Saved question", savedQuestionPath);
-    rowsShouldOnlyIncludeGizmos("Nested question", nestedQuestionPath);
+    rowsShouldOnlyIncludeGizmos(
+      "Saved question",
+      savedQuestionPath,
+      savedQuestionFieldValuesPath,
+    );
+    rowsShouldOnlyIncludeGizmos(
+      "Nested question",
+      nestedQuestionPath,
+      nestedQuestionFieldValuesPath,
+    );
     rowsShouldOnlyIncludeGizmos(
       "Saved question in dashboard",
       savedQuestionInDashboardPath,
@@ -593,7 +659,9 @@ export const cardsShouldOnlyShowGizmos = ({
       "Nested question in dashboard",
       nestedQuestionInDashboardPath,
     );
-    rowsShouldOnlyIncludeGizmos("Model", "/api/dataset", modelPayload);
+    rowsShouldOnlyIncludeGizmos("Model", "/api/dataset", modelFieldValuesPath, {
+      payload: modelPayload,
+    });
     adhocQuestionShouldBeFiltered(customColumnType);
   });
 };
