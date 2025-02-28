@@ -258,7 +258,11 @@
   (and
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
-   (not (str/blank? (raw-native-query query)))))
+   (not (str/blank? (raw-native-query query)))
+   (every? #(if (= :dimension (:type %))
+              (:dimension %)
+              true)
+           (vals (template-tags query)))))
 
 (mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
