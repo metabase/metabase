@@ -140,7 +140,8 @@
   (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-temp
-        [:model/Pulse        {pulse-1 :id} {}
+        [:model/Dashboard    {dash-id :id} {}
+         :model/Pulse        {pulse-1 :id} {:dashboard_id dash-id}
          :model/PulseChannel {pc-1-1 :id}  (merge
                                             {:pulse_id     pulse-1
                                              :channel_type :slack
@@ -151,7 +152,7 @@
                                              :channel_type :slack
                                              :details      {:channel "#general"}}
                                             daily-at-1am)
-         :model/Pulse        {pulse-2 :id} {}
+         :model/Pulse        {pulse-2 :id} {:dashboard_id dash-id}
          :model/PulseChannel {pc-2-1 :id}  (merge
                                             {:pulse_id     pulse-2
                                              :channel_type :slack
@@ -168,7 +169,6 @@
                                              :channel_type :slack
                                              :details      {:channel "#general"}}
                                             daily-at-6pm)
-         :model/Dashboard    {dash-id :id} {}
          :model/Pulse        {pulse-3 :id} {:dashboard_id dash-id}
          :model/PulseChannel {pc-3-1 :id}  (merge
                                             {:enabled      true
