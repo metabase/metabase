@@ -151,7 +151,6 @@
   Called when starting the instance."
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (log/info "Initializing SendNotification triggers")
   (task/delete-all-triggers-of-job! send-notification-job-key)
   (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription :type :notification-subscription/cron)))
 
@@ -161,6 +160,7 @@
     Run once on startup."}
   InitNotificationTriggers
   [_context]
+  (log/info "Initializing SendNotification triggers")
   (init-send-notification-triggers!))
 
 (defmethod task/init! ::SendNotifications [_]
