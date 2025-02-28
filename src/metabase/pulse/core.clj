@@ -5,6 +5,7 @@
   (:require
    [metabase.pulse.dashboard-subscription]
    [metabase.pulse.models.pulse]
+   [metabase.pulse.task.send-pulses]
    [metabase.pulse.update-alerts]
    [potemkin :as p]))
 
@@ -20,4 +21,6 @@
   retrieve-alerts-for-cards
   update-pulse!]
  [metabase.pulse.update-alerts
-  delete-alerts-if-needed!])
+  delete-alerts-if-needed!]
+ [metabase.pulse.task.send-pulses
+  init-send-pulse-triggers!])

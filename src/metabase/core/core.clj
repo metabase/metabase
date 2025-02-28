@@ -24,10 +24,12 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
+   [metabase.pulse.core :as pulse]
    [metabase.sample-data :as sample-data]
    [metabase.server.core :as server]
    [metabase.setup.core :as setup]
    [metabase.task :as task]
+   [metabase.task.notification :as task.notification]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.system-info :as u.system-info])
@@ -152,6 +154,8 @@
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
+  (task.notification/init-send-notification-triggers!)
+  (pulse/init-send-pulse-triggers!)
   (init-status/set-progress! 0.9)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)

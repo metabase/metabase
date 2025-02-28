@@ -53,9 +53,13 @@
    ;; higher than sync
    (triggers/with-priority 6)))
 
+(defn- create-new-trigger!
+  [{:keys [id cron_schedule] :as _notification-subscription}]
+  (task/add-trigger! (build-trigger id cron_schedule)))
+
 (defn update-subscription-trigger!
   "Update the trigger for a notification subscription if it exists and needs to be updated."
-  [{:keys [id type cron_schedule] :as _notification-subscription}]
+  [{:keys [id type cron_schedule] :as notification-subscription}]
   (let [existing-trigger (first (task/existing-triggers send-notification-job-key (send-notification-trigger-key id)))]
     (cond
      ;; delete trigger if type changes
@@ -74,13 +78,13 @@
       (not existing-trigger)
       (do
         (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
-        (task/add-trigger! (build-trigger id cron_schedule)))
+        (create-new-trigger! notification-subscription))
 
       (not= cron_schedule (:schedule existing-trigger))
       (do
         (log/infof "Rescheduling trigger for subscription %d from %s to %s" id (:schedule existing-trigger) cron_schedule)
         (task/delete-trigger! (-> existing-trigger :key triggers/key))
-        (task/add-trigger! (build-trigger id cron_schedule)))
+        (create-new-trigger! notification-subscription))
 
       :else
       (log/infof "No changes to trigger for subscription %d" id))))
@@ -141,30 +145,19 @@
   (let [{:strs [subscription-id]} (qc/from-job-data context)]
     (send-notification* subscription-id)))
 
-(jobs/defjob
-  ^{:doc
-    "Find all notification subscriptions with cron schedules and create a trigger for each.
+(defn init-send-notification-triggers!
+  "Initialize all notification subscription triggers.
 
-    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
-    This job is needed to create triggers for all existing notification subscriptions.
-    Will only run once when Metabase starts up."}
-  InitNotificationTriggers
-  [_context]
-  (run! update-subscription-trigger! (t2/reducible-select :model/NotificationSubscription)))
+  Called when starting the instance."
+  []
+  (log/info "Initializing SendNotification triggers")
+  (task/delete-all-triggers-of-job! send-notification-job-key)
+  (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription)))
 
 (defmethod task/init! ::SendNotifications [_]
   (let [send-notification-job              (jobs/build
                                             (jobs/with-identity send-notification-job-key)
                                             (jobs/with-description "Send Notification")
                                             (jobs/of-type SendNotification)
-                                            (jobs/store-durably))
-        init-notification-triggers-job     (jobs/build
-                                            (jobs/of-type InitNotificationTriggers)
-                                            (jobs/with-identity (jobs/key "metabase.task.notification.init-notification-triggers.job"))
-                                            (jobs/store-durably))
-        init-notification-triggers-trigger (triggers/build
-                                            (triggers/with-identity (triggers/key "metabase.task.notification.init-notification-triggers.trigger"))
-                                            ;; run only once per MB instance (like a migration)
-                                            (triggers/start-now))]
-    (task/add-job! send-notification-job)
-    (task/schedule-task! init-notification-triggers-job init-notification-triggers-trigger)))
+                                            (jobs/store-durably))]
+    (task/add-job! send-notification-job)))
