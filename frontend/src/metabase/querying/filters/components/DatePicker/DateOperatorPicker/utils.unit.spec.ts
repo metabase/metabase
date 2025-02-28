@@ -388,7 +388,7 @@ describe("setOptionType", () => {
     });
   });
 
-  describe(0, () => {
+  describe("current", () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
       value => {
