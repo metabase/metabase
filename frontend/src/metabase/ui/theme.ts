@@ -3,6 +3,7 @@ import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 
+import Styles from "./Theme.module.css";
 import {
   accordionOverrides,
   actionIconOverrides,
@@ -58,6 +59,7 @@ export const breakpoints = {
 export type BreakpointName = keyof typeof breakpoints;
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
+  focusClassName: Styles.focus,
   breakpoints,
   colors: getThemeColors(),
   primaryColor: "brand",

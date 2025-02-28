@@ -39,8 +39,8 @@ export function ChartSettingsButton({
 
       <Modal.Root opened={isOpened} onClose={close} size="85%">
         <Modal.Overlay />
-        <Modal.Content mih="85%">
-          <Modal.Body>
+        <Modal.Content h="85%" style={{ overflowY: "hidden" }}>
+          <Modal.Body h="100%" p={0}>
             <DashboardChartSettings
               series={series}
               onChange={onReplaceAllVisualizationSettings}
