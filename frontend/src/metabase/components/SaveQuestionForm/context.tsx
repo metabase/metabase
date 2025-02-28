@@ -62,7 +62,6 @@ export const SaveQuestionProvider = ({
   multiStep = false,
   saveToCollection,
   children,
-  initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
@@ -131,15 +130,8 @@ export const SaveQuestionProvider = ({
         question,
         initialCollectionId,
         initialDashboardId,
-        initialDashboardTabId,
       ),
-    [
-      originalQuestion,
-      initialCollectionId,
-      initialDashboardId,
-      question,
-      initialDashboardTabId,
-    ],
+    [originalQuestion, initialCollectionId, initialDashboardId, question],
   );
 
   const handleSubmit = useCallback(

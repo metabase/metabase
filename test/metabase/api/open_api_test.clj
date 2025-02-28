@@ -186,3 +186,20 @@
 (deftest ^:parallel openapi-all-routes
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
     (is (open-api/root-open-api-object #'routes/routes))))
+
+(deftest ^:parallel get-core-fn!-test
+  (is (= {:status 200, :headers {}, :body 12345}
+         (->
+          (api.macros/defendpoint :get "add/:a"
+            "Adds id, qp-one, qp-two, and body."
+            [{:keys [a]} :- [:map [:a :int]]
+             {:keys [b c]} :- [:map [:b :int] [:c :int]]
+             {:keys [d]} :- [:map [:d :int]]
+             {{e :e} :headers} :- [:map [:headers [:map [:e :int]]]]]
+            (+ a b c d e))
+          (api.macros/call-core-fn
+           {:a 5}                   ;; route params
+           {:b 40 :c 300}           ;; query params
+           {:d 2000}                ;; body
+           {:headers {:e "10000"}}) ;; the entire ring request map
+          ))))
