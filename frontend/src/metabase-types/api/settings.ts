@@ -195,6 +195,7 @@ export const tokenFeatures = [
   "cache_granular_controls",
   "disable_password_login",
   "content_verification",
+  // "data_editing", // TODO[WRK]: enable this check after this feature token is added on the BE
   "embedding",
   "embedding_sdk",
   "hosting",
