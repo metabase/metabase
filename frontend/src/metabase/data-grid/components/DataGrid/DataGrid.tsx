@@ -81,7 +81,7 @@ export const DataGrid = function DataGrid<TData>({
 
   return (
     <DndContext {...dndContextProps}>
-      <div ref={ref} className={S.table} data-testid="table-root">
+      <div className={S.table} data-testid="table-root">
         <div
           data-testid="table-scroll-container"
           className={S.tableGrid}

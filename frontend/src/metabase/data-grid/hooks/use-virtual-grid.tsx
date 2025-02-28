@@ -88,5 +88,11 @@ export const useVirtualGrid = <TData,>({
       rowVirtualizer,
       measureGrid,
     };
-  }, [virtualColumns, virtualRows, rowVirtualizer, measureGrid]);
+  }, [
+    virtualColumns,
+    virtualRows,
+    rowVirtualizer,
+    columnVirtualizer,
+    measureGrid,
+  ]);
 };
