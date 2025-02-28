@@ -18,6 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- sandboxed?
+  [database-or-id]
+  (when api/*current-user-id*
+    (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id))))
+
 (defn- enforce-impersonations?
   "Given a list of Connection Impersonation policies and a list of permission group IDs that the current user is in,
   returns a Boolean indicating whether the policies should be enforced. They are not enforced if any of the *other*
@@ -46,8 +51,10 @@
      (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
 
 (defn enforced-impersonations-for-db
-  "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if one
-  exists. Returns `nil` if no policies exist, or none should be enforced for the current user.
+  "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
+  one exists. Returns `nil` if no policies exist, or none should be enforced for the current user.
+
+  Throws if an enforced sandbox conflicts with any impersonations.
 
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
@@ -57,6 +64,10 @@
                               (t2/select :model/ConnectionImpersonation
                                          :group_id [:in group-ids]
                                          :db_id (u/the-id db-or-id)))]
+    (when (and (seq conn-impersonations) (sandboxed? db-or-id))
+      (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
+                      {:user-id api/*current-user-id*
+                       :database-id (u/id db-or-id)})))
     (when (and (seq conn-impersonations)
                (enforce-impersonations? db-or-id conn-impersonations group-ids))
       conn-impersonations)))
@@ -68,12 +79,7 @@
   [database-or-id]
   (when (and database-or-id (not api/*is-superuser?*))
     (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
-          role-attributes      (set (map :attribute conn-impersonations))
-          conflicting-sandbox? (when api/*current-user-id* (sandbox.api.util/sandboxed-user-for-db? (u/id database-or-id)))]
-      (when (and (seq conn-impersonations) conflicting-sandbox?)
-        (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
-                        {:user-id api/*current-user-id*
-                         :database-id (u/id database-or-id)})))
+          role-attributes      (set (map :attribute conn-impersonations))]
       (when conn-impersonations
         (when (> (count role-attributes) 1)
           (throw (ex-info (tru "Multiple conflicting connection impersonation policies found for current user")

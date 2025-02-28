@@ -82,14 +82,15 @@
 
 (deftest connection-impersonation-role-test-9
   (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
-    (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
-      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                     :attributes     {"impersonation_attr" "impersonation_role"}}
-        (mt/with-test-user :rasta
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Conflicting sandboxing and impersonation policies found."
-               (impersonation.driver/connection-impersonation-role (mt/db)))))))))
+    (mt/with-premium-features #{:advanced-permissions}
+      (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
+          (mt/with-test-user :rasta
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Conflicting sandboxing and impersonation policies found."
+                 (impersonation.driver/connection-impersonation-role (mt/db))))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
