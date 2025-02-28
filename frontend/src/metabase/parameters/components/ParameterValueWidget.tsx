@@ -237,6 +237,7 @@ export const ParameterValueWidget = ({
       opened={isOpen}
       onChange={toggle}
       position="bottom-start"
+      trapFocus
       {...popoverProps}
     >
       <Popover.Target>
