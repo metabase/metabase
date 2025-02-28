@@ -512,10 +512,13 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver models premium-features public-settings request util enterprise/sso}}
+   :uses #{analytics api config core db driver models premium-features public-settings session request util enterprise/sso}}
 
   session
-  {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
+  {:api  #{metabase.session.core
+           metabase.session.api
+           metabase.session.init
+           metabase.session.models.session}
    :uses #{api channel config db driver events login-history models public-settings request sso task util}}
 
   setup
