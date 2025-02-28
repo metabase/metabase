@@ -11,6 +11,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
+  DashboardCard,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -145,6 +146,8 @@ export interface VisualizationProps {
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
+  dashcard?: DashboardCard;
+  getCard: (id: number) => Promise<Card>;
 }
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
