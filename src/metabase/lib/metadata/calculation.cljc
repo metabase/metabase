@@ -309,6 +309,8 @@
    [:is-main-group {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
    [:is-source-table {:optional true} [:maybe :boolean]]
+   ;; TODO: comment
+   [:is-source-card {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
@@ -401,6 +403,7 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
+          :is-source-card (not (nil? (lib.util/source-card-id query)))
           :schema (:schema table)
           :visibility-type (:visibility-type table)}))
 
