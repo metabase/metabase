@@ -70,7 +70,7 @@ Writing SQL queries that use variables or parameters can be very powerful, but i
 
 ## Snippets
 
-You can use [Snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
+You can use [Snippets](snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
 
 ## How Metabase executes SQL queries
 

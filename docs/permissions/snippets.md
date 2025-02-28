@@ -1,14 +1,14 @@
 ---
-title: SQL snippet folder permissions
+title: Snippet folder permissions
 redirect_from:
   - /docs/latest/enterprise-guide/sql-snippets
 ---
 
-# SQL snippet folder permissions
+# Snippet folder permissions
 
-{% include plans-blockquote.html feature="SQL snippet controls" %}
+{% include plans-blockquote.html feature="Snippet controls" %}
 
-This article covers **SQL snippet folders**, which allow you to organize and set permissions on [Snippets](../questions/native-editor/sql-snippets.md).
+This article covers **Snippet folders**, which allow you to organize and set permissions on [Snippets](../questions/native-editor/snippets.md).
 
 Folder permissions should not be considered a security feature, but instead a feature that helps organize and standardize snippets. Although folders are distinct and separate from Collections, they both serve an organizational function: Collections gather and permission dashboards and questions; folders gather and permission snippets. For more info, see the [discussion on permissions below](#permissions).
 
@@ -18,9 +18,9 @@ Folders work similarly to a file system. You can add snippets to folders, and pu
 
 The **Top folder** is the snippet sidebar's default folder. It is the root folder that contains all folders and snippets.
 
-### Creating a new SQL snippet folder
+### Creating a new Snippet folder
 
-You can create a SQL snippet folder from the **Snippets** menu in the [SQL editor](../questions/native-editor/writing-sql.md).
+You can create a Snippet folder from the **Snippets** menu in the [SQL editor](../questions/native-editor/writing-sql.md).
 
 ![Create new snippet folder](./images/snippet-folder.png)
 
@@ -30,9 +30,9 @@ You can create a SQL snippet folder from the **Snippets** menu in the [SQL edito
 
 ![Create new folder modal](./images/create-new-folder-modal.png)
 
-### Creating a new SQL snippet
+### Creating a new Snippet
 
-On [some plans](https://www.metabase.com/pricing), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
+On [some plans](https://www.metabase.com/pricing), when creating a Snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
 
 ![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
@@ -88,4 +88,4 @@ Because of how snippet folder permissions work, we recommend that you consider s
 
 ## Further reading
 
-- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets).
+- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/snippets).

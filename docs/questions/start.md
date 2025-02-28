@@ -40,7 +40,7 @@ Write native code (like SQL) to query your data source.
 
 Pass parameters into variables in your SQL templates.
 
-### [Snippets](./native-editor/sql-snippets.md)
+### [Snippets](./native-editor/snippets.md)
 
 Reuse and share bits of SQL.
 

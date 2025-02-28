@@ -64,7 +64,7 @@ From the Snippets menu, you can:
 - **Create a snippet.** Click on the `+` in the upper right of the Snippets sidebar to create a new snippet.
 - **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
 - **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
-- **Search for snippets**. If you've saved over 15 snippets, a **Search** icon (the classic magnifying glass) will appear to the left of the `+` button. Note that search results only include snippets the user has permissions for. SQL snippet folders do not populate the search results.
+- **Search for snippets**. If you've saved over 15 snippets, a **Search** icon (the classic magnifying glass) will appear to the left of the `+` button. Note that search results only include snippets the user has permissions for. Snippet folders do not populate the search results.
 - [**Edit a snippet.**](#editing-snippets) You can change a snippet's name, description and code.
 - [**Archive and unarchive a snippet.**](#archiving-snippets) From the Edit modal, you can archive a snippet, which removes the snippet from the snippet menu and autocomplete options in the SQL editor.
 
@@ -96,7 +96,7 @@ Note: two snippets cannot share the same name, as even if a snippet is archived,
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.
 
-Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../../permissions/snippets.md).
+Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on Snippet folders and permissions](../../permissions/snippets.md).
 
 ## Learn more
 

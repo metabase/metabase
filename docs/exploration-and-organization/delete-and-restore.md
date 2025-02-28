@@ -123,9 +123,9 @@ You won't see archived Events and Timelines in Trash. To see archived events and
 
 ## Deleting and restoring Snippets
 
-Snippets can be archived and unarchived. See [Archiving Snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
+Snippets can be archived and unarchived. See [Archiving Snippets](../questions/native-editor/snippets.md#archiving-snippets).
 
-You won't see archived Snippets in Trash. To see archived Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
+You won't see archived Snippets in Trash. To see archived Snippets, you need to [access them from the Snippet menu](../questions/native-editor/snippets.md#snippet-menu).
 
 ## Deleting segments
 

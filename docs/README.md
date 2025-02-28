@@ -86,8 +86,8 @@ Metabase's reference documentation.
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
-- [Snippets](./questions/native-editor/sql-snippets.md)
-- [SQL snippet folder permissions](./permissions/snippets.md)
+- [Snippets](./questions/native-editor/snippets.md)
+- [Snippet folder permissions](./permissions/snippets.md)
 
 #### Visualizing data
 
