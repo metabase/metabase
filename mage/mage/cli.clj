@@ -4,21 +4,57 @@
    [clojure.tools.cli :as tools.cli]
    [mage.color :as c]
    [mage.util :as u]
-   [malli.core :as mc]))
+   [malli.core :as mc]
+   [malli.transform :as mtx]))
 
 (set! *warn-on-reflection* true)
 
-(defn- check-print-help [{:keys [options] :as current-task}]
+(defn- check-print-help [{:keys [options usage-fn] :as current-task}]
   (let [command-line-args *command-line-args*]
     (when (or (get (set command-line-args) "-h")
               (get (set command-line-args) "--help"))
-      (println (:name current-task))
+      (println "Task Name:" (:name current-task))
       (println (str " "  (c/green (:doc current-task))))
+      (println "Usages:")
       (println (:summary (tools.cli/parse-opts *command-line-args* options)))
       (when-let [examples (:examples current-task)]
         (println "\nExamples:")
         (doseq [[cmd effect] examples]
           (println "\n" cmd "\n -" (c/magenta effect))))
+      (when usage-fn
+        (println "\n"
+                 #_:clj-kondo/ignore
+                 ((eval usage-fn) current-task)))
+      (System/exit 0))))
+
+(defn- coerce-arguments [arg-schema current-task arguments]
+  (when arg-schema
+    (let [decoded-args (mc/decode arg-schema arguments mtx/string-transformer)]
+      (u/debug (mc/validate arg-schema decoded-args))
+      (u/debug (pr-str decoded-args))
+      #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
+      (if (mc/validate arg-schema decoded-args)
+        decoded-args
+        (do (doseq [{:keys [path schema value]} (:errors
+                                                 #_:clj-kondo/ignore
+                                                 (mc/explain arg-schema decoded-args))]
+              (println (c/red "Invalid Argument at position " path
+                              ", should match: " (mc/form schema)
+                              " got: " (pr-str value))))
+            (binding [*command-line-args* ["-h"]]
+              (check-print-help current-task))
+            (System/exit 0))))))
+
+(defn- check-option-errors [option-errors *error-hit? summary]
+  (when option-errors
+    (doseq [error-or-warning option-errors]
+      (if (str/starts-with? error-or-warning "Unknown option:")
+        (println (c/yellow error-or-warning))
+        (do (reset! *error-hit? true)
+            (println (c/red error-or-warning)))))
+    (when @*error-hit?
+      (println "Usage:")
+      (println summary)
       (System/exit 0))))
 
 (defn parse!
@@ -33,24 +69,22 @@
   :property value]
 
   See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts"
-  [{:keys [options] :as current-task}]
+  [{:keys [options arg-schema] :as current-task}]
   (check-print-help current-task)
   (let [*error-hit? (atom false)
-        {:keys [summary errors] :as parsed} (tools.cli/parse-opts *command-line-args* options)]
-    (when errors
-      (doseq [error-or-warning errors]
-        (if (str/starts-with? error-or-warning "Unknown option:")
-          (println (c/yellow error-or-warning))
-          (do (reset! *error-hit? true)
-              (println (c/red error-or-warning)))))
-      (when @*error-hit?
-        (println "Usage:")
-        (println summary)
-        (System/exit 0)))
+        {:keys [summary arguments]
+         option-errors :errors
+         :as parsed} (tools.cli/parse-opts *command-line-args* options)]
+    (check-option-errors option-errors *error-hit? summary)
+    (u/debug "arg-schema: " arg-schema)
+    (u/debug "unparsed: " *command-line-args*)
     (u/debug "parsed: " parsed)
-    parsed))
+    (u/debug "o " (pr-str (update parsed :arguments (partial coerce-arguments arg-schema current-task))))
+    (update parsed :arguments (partial coerce-arguments arg-schema current-task))))
 
-{:options {:force-check true},
- :arguments ["asd" "qwe"],
- :summary "  -c, --force-check  false  Check staged files",
- :errors ["Unknown option: \"-j\""]}
+(comment
+
+  {:options {:force-check true},
+   :arguments ["asd" "qwe"],
+   :summary "  -c, --force-check  false  Check staged files",
+   :errors ["Unknown option: \"-j\""]})

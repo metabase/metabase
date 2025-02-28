@@ -29,6 +29,10 @@
     (println (c/blue "Found existing jar at " (dir->file version dir) " deleting it now."))
     (io/delete-file (dir->file version dir))
     (println (c/green "Deleted.\n")))
+  (when-not (.exists (io/file dir))
+    (println (c/blue "Creating directory " dir " ..."))
+    (.mkdirs (io/file dir))
+    (println (c/green "Created.\n")))
   (try
     (println (str "Downloading from: " (url version)
                   "\n              to: " (dir->file version dir) " ..."))
@@ -40,16 +44,16 @@
 
 (defn- without-slash [s] (str/replace s #"/$" ""))
 
+(defn usages [_]
+  (println "Usage:")
+  (println " ./bin/mage jar-download 0.42.2")
+  (println " ./bin/mage jar-download 1.45.2")
+  (println " ./bin/mage jar-download 1.45.2 ~/path/to/my/jars")
+  (println "")
+  (println "protip: This script will download into [[dir]], $JARS, or /path/to/metabase/jars."))
+
 (defn jar-download
   "Download a specific version of Metabase to a directory."
   [[version dir]]
-  (let [dir (some-> (or dir (u/env "JARS")) without-slash)]
-    (if (or (nil? version) (nil? dir))
-      (do
-        (println "Usage:")
-        (println " ./bin/mage jar-download 0.42.2")
-        (println " ./bin/mage jar-download 1.45.2")
-        (println " ./bin/mage jar-download 1.45.2 ~/path/to/my/jars")
-        (println "")
-        (println "protip: This script will download into [[dir]], $JARS, or /path/to/metabase/jars."))
-      (download-jar! version dir))))
+  (let [dir (some-> (or dir (u/env "JARS") (str u/project-root-directory "/jars")) without-slash)]
+    (download-jar! version dir)))

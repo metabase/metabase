@@ -1,6 +1,7 @@
 (ns mage.util
   (:require
    [babashka.tasks :refer [shell]]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]))
@@ -67,9 +68,18 @@
     (doseq [line (->> (str/join content) str/split-lines)]
       (println (c/cyan "MAGE_DEBUG>") line))))
 
-(defn bb-tasks-list []
+(defn public-bb-tasks-list []
   (->> "bb tasks"
        shl
        (drop 2)
        (map (comp first #(str/split % #"\s+")))
        vec))
+
+(defn all-bb-tasks-list []
+  (let [task-keys (-> project-root-directory
+                      (str "/bb.edn")
+                      slurp
+                      edn/read-string
+                      :tasks
+                      keys)]
+    (mapv str (remove #{:requires} task-keys))))

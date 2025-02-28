@@ -8,7 +8,7 @@
 
 (defn invalid-task? []
   (let [task-name (first *command-line-args*)]
-    (when-not (contains? (set (u/bb-tasks-list)) task-name)
+    (when-not (contains? (set (u/all-bb-tasks-list)) task-name)
       (println (c/red (str "Unknown task: " task-name)))
       true)))
 

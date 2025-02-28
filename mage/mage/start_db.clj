@@ -138,8 +138,7 @@
     (start-db! db version resolved-version port)))
 
 ;; TODOs:
-;; Can i swap out the db name?
-;; - [ ] Does it get wiped when I stop docker?
+;; - [ ] Swap out the db name
 
 (defn start-db
   "Starts a db: type + version"

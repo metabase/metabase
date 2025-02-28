@@ -33,7 +33,7 @@
         (System/exit 1)))))
 
 (when (= *file* (System/getProperty "babashka.file"))
-  (mapv bb-task-has-example? (u/bb-tasks-list))
+  (mapv bb-task-has-example? (u/public-bb-tasks-list))
   (bin-mage-has-help?)
   (invalid-task-names-print-help-test)
   (start-db-test/run-tests)
