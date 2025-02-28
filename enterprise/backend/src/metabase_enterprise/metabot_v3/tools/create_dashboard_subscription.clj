@@ -1,11 +1,9 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.api.common :as api]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn create-dashboard-subscription
@@ -50,7 +48,3 @@
          (do (pulse/create-pulse! (map pulse/card->ref cards) [channel] pulse-data)
              "success"))})
     {:output "invalid dashboard_id"}))
-
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
-  [_tool-name arguments _env]
-  (create-dashboard-subscription arguments))

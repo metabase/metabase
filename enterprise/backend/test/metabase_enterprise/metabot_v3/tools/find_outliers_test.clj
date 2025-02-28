@@ -5,7 +5,6 @@
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -65,10 +64,8 @@
 
 (deftest metric-find-outliers-test
   (mt/with-temp [:model/Card {metric-id :id} (assoc (test-card) :type :metric)]
-    (execute-test! #(metabot-v3.tools.interface/*invoke-tool*
-                     :metabot.tool/find-outliers
-                     {:data-source {:metric_id metric-id}}
-                     {}))))
+    (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
+                     {:data-source {:metric_id metric-id}}))))
 
 (deftest report-find-outliers-test
   (mt/with-temp [:model/Card {report-id :id} (assoc (test-card) :type :question)]
@@ -78,11 +75,9 @@
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))
           result-field-id (->field-id "Average of Subtotal")]
-      (execute-test! #(metabot-v3.tools.interface/*invoke-tool*
-                       :metabot.tool/find-outliers
+      (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
                        {:data-source {:report_id report-id
-                                      :result_field_id result-field-id}}
-                       {})))))
+                                      :result_field_id result-field-id}})))))
 
 (deftest query-find-outliers-test
   (let [query-id (u/generate-nano-id)
@@ -91,14 +86,6 @@
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
         result-field-id (->field-id "Average of Subtotal")]
-    (testing "classical tool call"
-      (execute-test! #(metabot-v3.tools.interface/*invoke-tool*
-                       :metabot.tool/find-outliers
-                       {:data-source {:query_id query-id
-                                      :result_field_id result-field-id}}
-                       {:history [{:role :tool
-                                   :tool-call-id "some tool call ID"
-                                   :structured-content query-details}]})))
     (testing "new style tool call with query and query_id"
       (execute-test! #(metabot-v3.tools.find-outliers/find-outliers
                        {:data-source {:query (:query query-details)
@@ -116,10 +103,8 @@
                                                  (assoc :type :metric))]
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "No temporal dimension found. Outliers can only be detected when a temporal dimension is available."}
-             (metabot-v3.tools.interface/*invoke-tool*
-              :metabot.tool/find-outliers
-              {:data-source {:metric_id metric-id}}
-              {}))))))
+             (metabot-v3.tools.find-outliers/find-outliers
+              {:data-source {:metric_id metric-id}}))))))
 
 (deftest ^:parallel metric-find-outliers-no-numeric-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
@@ -128,10 +113,8 @@
                                                  (assoc :type :metric))]
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "Could not determine result field."}
-             (metabot-v3.tools.interface/*invoke-tool*
-              :metabot.tool/find-outliers
-              {:data-source {:metric_id metric-id}}
-              {}))))))
+             (metabot-v3.tools.find-outliers/find-outliers
+              {:data-source {:metric_id metric-id}}))))))
 
 (deftest ^:parallel find-outliers-wrong-query-test
   (let [query-id (u/generate-nano-id)
@@ -142,8 +125,7 @@
         result-field-id (->field-id "Average of Subtotal")]
     (mt/with-current-user (mt/user->id :crowberto)
       (are [details output] (= {:output output}
-                               (metabot-v3.tools.interface/*invoke-tool*
-                                :metabot.tool/find-outliers
+                               (metabot-v3.tools.find-outliers/find-outliers
                                 {:data-source {:query_id query-id
                                                :result_field_id result-field-id}}
                                 {:history [{:role :tool
@@ -157,8 +139,7 @@
         "No temporal dimension found. Outliers can only be detected when a temporal dimension is available.")
       (let [wrong-result-field-id (str result-field-id "99999")]
         (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}
-               (metabot-v3.tools.interface/*invoke-tool*
-                :metabot.tool/find-outliers
+               (metabot-v3.tools.find-outliers/find-outliers
                 {:data-source {:query_id query-id
                                :result_field_id wrong-result-field-id}}
                 {:history [{:role :tool
@@ -167,8 +148,7 @@
 
 (deftest ^:parallel invalid-ids-test
   (are [data-source output] (= {:output output}
-                               (metabot-v3.tools.interface/*invoke-tool*
-                                :metabot.tool/find-outliers {:data-source data-source} {}))
+                               (metabot-v3.tools.find-outliers/find-outliers {:data-source data-source} {}))
     {:metric_id "42"} "Invalid metric_id as data_source"
     {:report_id "42"} "Invalid report_id as data_source"
     {:query_id "42"}  "No query found with query_id 42"

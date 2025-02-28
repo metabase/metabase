@@ -4,9 +4,8 @@
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
+   [metabase-enterprise.metabot-v3.tools.show-results-to-user :as metabot-v3.tools.show-results-to-user]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -260,10 +259,8 @@
                                (reduce envelope/add-dummy-message
                                        $env
                                        (dummy-tool-messages :show-results-to-user arguments
-                                                            (metabot-v3.tools.interface/*invoke-tool*
-                                                             :metabot.tool/show-results-to-user
-                                                             {:query-id query-id}
-                                                             $env)))))))
+                                                            (metabot-v3.tools.show-results-to-user/show-results-to-user
+                                                             {:query query})))))))
              env
              (:user_is_viewing context)))
 

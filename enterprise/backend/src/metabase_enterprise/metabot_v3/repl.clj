@@ -6,7 +6,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api :as api]
-   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.db :as mdb]
    [metabase.util :as u]
@@ -38,27 +37,27 @@
 
 (defn user-repl
   "REPL for interacting with MetaBot."
-
-  ([history context session-id]
-   (when-let [history' (try
-                         (when-let [input (try
-                                            #_{:clj-kondo/ignore [:discouraged-var]}
-                                            (print "\n> ")
-                                            (flush)
-                                            (read-line)
-                                            (catch Throwable _))]
-                           #_{:clj-kondo/ignore [:discouraged-var]}
-                           (println "🗨 " (u/colorize :blue input))
-                           (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
-                                      (not (str/blank? input)))
-                             (let [env (api/request input context history session-id)]
-                               (handle-reactions (metabot-v3.envelope/reactions env))
-                               (metabot-v3.envelope/history env))))
-                         (catch Throwable e
-                           #_{:clj-kondo/ignore [:discouraged-var]}
-                           (println (u/pprint-to-str :red e))
-                           history))]
-     (recur history' context session-id))))
+  ([history context conversation-id] (user-repl history context conversation-id {}))
+  ([history context conversation-id state]
+   (when-let [{history' :history, state' :state} (try
+                                                   (when-let [input (try
+                                                                      #_{:clj-kondo/ignore [:discouraged-var]}
+                                                                      (print "\n> ")
+                                                                      (flush)
+                                                                      (read-line)
+                                                                      (catch Throwable _))]
+                                                     #_{:clj-kondo/ignore [:discouraged-var]}
+                                                     (println "🗨 " (u/colorize :blue input))
+                                                     (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
+                                                                (not (str/blank? input)))
+                                                       (let [result (api/request input context history conversation-id state)]
+                                                         (handle-reactions (:reactions result))
+                                                         result)))
+                                                   (catch Throwable e
+                                                     #_{:clj-kondo/ignore [:discouraged-var]}
+                                                     (println (u/pprint-to-str :red e))
+                                                     history))]
+     (recur history' context conversation-id state'))))
 
 (defn user-repl-cli
   "CLI entrypoint for using the MetaBot REPL.
