@@ -409,7 +409,6 @@
                                             :name "mytag"
                                             :type :dimension
                                             :widget-type :date/range}}))]
-    (prn query)
     (testing "remove dimensions from template tags"
       (is (empty? (-> query
                       (lib/with-different-database
