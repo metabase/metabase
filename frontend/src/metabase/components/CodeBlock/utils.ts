@@ -26,7 +26,6 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);
-    case "erb":
     case "html":
       return html();
     case "json":

@@ -31,7 +31,7 @@ export const getEmbedClientCodeExampleOptions =
       id: "erb",
       name: "ERB",
       source: getHtmlSource({ iframeUrl: `"<%= @iframe_url %>"` }),
-      language: "erb",
+      language: "html",
     },
     {
       id: "jsx",

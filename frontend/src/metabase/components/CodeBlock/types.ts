@@ -1,6 +1,5 @@
 export type CodeLanguage =
   | "clojure"
-  | "erb"
   | "html"
   | "javascript"
   | "json"
