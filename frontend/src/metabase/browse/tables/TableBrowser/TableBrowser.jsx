@@ -23,7 +23,7 @@ import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
   tables: PropTypes.array.isRequired,
-  getTableDataViewUrl: PropTypes.func.isRequired,
+  getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
   dbId: PropTypes.number,
   schemaName: PropTypes.string,
@@ -33,7 +33,7 @@ const propTypes = {
 
 export const TableBrowser = ({
   tables,
-  getTableDataViewUrl,
+  getTableUrl,
   metadata,
   dbId,
   schemaName,
@@ -60,7 +60,7 @@ export const TableBrowser = ({
               <TableLink
                 to={
                   !isSyncInProgress(table)
-                    ? getTableDataViewUrl(table, metadata, dbId)
+                    ? getTableUrl(table, metadata, dbId)
                     : ""
                 }
                 onClick={() => trackTableClick(table.id)}

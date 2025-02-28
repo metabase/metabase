@@ -36,7 +36,7 @@ const getSchemaName = props => {
 const getReloadInterval = (_state, _props, tables = []) =>
   tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 
-const getTableDataViewUrl = (table, metadata, dbId) => {
+const getTableUrl = (table, metadata, dbId) => {
   if (PLUGIN_DATA_EDITING.isEnabled()) {
     return `/browse/databases/${dbId}/tables/${table.name.toLowerCase()}`;
   }
@@ -58,6 +58,6 @@ export default _.compose(
     schemaName: getSchemaName(props),
     metadata: getMetadata(state),
     xraysEnabled: getSetting(state, "enable-xrays"),
-    getTableDataViewUrl,
+    getTableUrl,
   })),
 )(TableBrowser);
