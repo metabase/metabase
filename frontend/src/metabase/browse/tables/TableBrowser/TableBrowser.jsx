@@ -22,7 +22,6 @@ import {
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
-  database: PropTypes.object,
   tables: PropTypes.array.isRequired,
   getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
@@ -33,7 +32,6 @@ const propTypes = {
 };
 
 export const TableBrowser = ({
-  database,
   tables,
   getTableUrl,
   metadata,
@@ -61,12 +59,13 @@ export const TableBrowser = ({
             <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink
                 to={
-                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
+                  !isSyncInProgress(table)
+                    ? getTableUrl(table, metadata, dbId)
+                    : ""
                 }
                 onClick={() => trackTableClick(table.id)}
               >
                 <TableBrowserItem
-                  database={database}
                   table={table}
                   dbId={dbId}
                   xraysEnabled={xraysEnabled}
@@ -89,7 +88,7 @@ const itemPropTypes = {
   xraysEnabled: PropTypes.bool,
 };
 
-const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({ table, dbId, xraysEnabled }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
 

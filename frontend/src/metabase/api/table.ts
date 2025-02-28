@@ -1,8 +1,10 @@
 import type {
   Field,
+  GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
+  TableData,
   TableId,
   TableListQuery,
   UpdateTableFieldsOrderRequest,
@@ -51,6 +53,12 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
+    }),
+    getTableData: builder.query<TableData, GetTableDataRequest>({
+      query: ({ dbId, tableId }) => ({
+        method: "GET",
+        url: `/api/database/${dbId}/table/${tableId}`,
+      }),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -115,6 +123,7 @@ export const {
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
   useLazyListTableForeignKeysQuery,
+  useGetTableDataQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,
