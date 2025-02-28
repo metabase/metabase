@@ -1,5 +1,5 @@
-(ns metabase.sync.concurrent
-  "Namespace with helpers for concurrent tasks in sync. Intended for quick, one-off tasks like re-syncing a table,
+(ns metabase.util.quick-task
+  "Namespace with helpers for quick tasks. Intended for quick, one-off tasks like re-syncing a table,
   fingerprinting a field, etc."
   (:require
    [metabase.plugins.classloader :as classloader])
