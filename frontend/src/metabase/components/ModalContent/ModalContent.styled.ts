@@ -7,8 +7,6 @@ export const ActionsWrapper = styled.div`
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
-
-  margin: -0.5rem -0.5rem -0.5rem 0;
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
