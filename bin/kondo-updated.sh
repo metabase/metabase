@@ -7,7 +7,9 @@
 #
 #    ./bin/kondo-updated.sh master
 
-echo 'This command is deprecated and will be removed at a future date. use: ./bin/mage kondo-updated'
+echo "This script is deprecated. Please use mage instead."
+echo "see:"
+echo "./bin/mage"
 
 set -euo pipefail
 

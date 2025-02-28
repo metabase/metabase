@@ -25,6 +25,7 @@ _bb_tasks() {
 }
 # autocomplete filenames as well
 complete -f -F _bb_tasks mage
+```
 
 ## fish
 - Add this to your .config/fish/completions/bb.fish to get tab-complete feature on Fish shell.

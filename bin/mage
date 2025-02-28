@@ -1,5 +1,11 @@
 #! /usr/bin/env bb
 
+;; Getting env: bb: No such file or directory ?
+;; Install bb with: brew install borkdude/brew/babashka
+
+;; you may want to set an alias for mage:
+;; alias mage='cd ~/your/repo/metabase && ./bin/mage'
+
 (ns mage
   (:require
    [mage.color :as c]
