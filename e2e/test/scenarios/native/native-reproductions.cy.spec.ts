@@ -354,6 +354,7 @@ describe("issues 52811, 52812", () => {
     H.NativeEditor.type("{{x");
     cy.findByLabelText("Variable type").click();
 
+    cy.log("popover should close when clicking away (metabase#52811)");
     H.popover().findByText("Field Filter").click();
     clickAway();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
@@ -366,6 +367,9 @@ describe("issues 52811, 52812", () => {
       .should("not.exist");
     cy.findByLabelText("Always require a value").should("not.exist");
 
+    cy.log(
+      "existing popover should close when opening a new one (metabase#52811)",
+    );
     cy.findByTestId("sidebar-content").findByText("Select...").click();
     cy.findByLabelText("Variable type").click();
     H.popover()
