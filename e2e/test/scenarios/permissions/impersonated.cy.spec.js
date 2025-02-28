@@ -101,10 +101,10 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.log(
           "create a question for a table the impersonated user does not have access to",
         );
-        H.startNewNativeQuestion();
+        H.startNewNativeQuestion().as("editor");
         cy.findByTestId("gui-builder-data").click();
         cy.findByLabelText("QA Postgres12").click();
-        H.NativeEditor.type("select * from reviews");
+        cy.get("@editor").type("select * from reviews");
         H.runNativeQuery();
         H.saveQuestion("foo", undefined, {
           path: ["Our analytics", "First collection"],
