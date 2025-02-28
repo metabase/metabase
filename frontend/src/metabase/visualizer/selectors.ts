@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { isCartesianChart } from "metabase/visualizations";
@@ -185,8 +186,11 @@ export const getTabularPreviewSeries = createSelector(
 
 export const getCurrentVisualizerState = getCurrentHistoryItem;
 
-export const getIsDirty = createSelector([getCurrentHistoryItem], state =>
-  checkIfStateDirty(state),
+export const getIsDirty = createSelector(
+  [getCurrentHistoryItem, state => state.visualizer.initialState],
+  (state, initialState) => {
+    return !_.isEqual(state, initialState);
+  },
 );
 
 export const getVisualizerUrlHash = createSelector(
