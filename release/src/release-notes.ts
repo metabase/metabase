@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import { getMilestoneIssues, hasBeenReleased } from "./github";
+import { issueNumberRegex } from "./linked-issues";
 import { githubReleaseTemplate, websiteChangelogTemplate } from "./release-notes-templates";
 import type { Issue, ReleaseProps } from "./types";
 import {
@@ -192,6 +193,7 @@ export const generateReleaseNotes = ({
   const eeVersion = getEnterpriseVersion(version);
 
   return template
+    .replace("{{version}}", getGenericVersion(version))
     .replace(
       "{{enhancements}}",
       formatIssues(issuesByType.enhancements),
@@ -241,6 +243,14 @@ export async function publishRelease({
   return github.rest.repos.createRelease(payload);
 }
 
+const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
+
+export function markdownIssueLinks(text: string) {
+  return text?.replaceAll(issueNumberRegex, (_, issueNumber) => {
+    return `([#${issueNumber}](${issueLink(issueNumber)}))`;
+  }) ?? text ?? '';
+}
+
 export function getWebsiteChangelog({
   version,
   issues,
@@ -249,11 +259,13 @@ export function getWebsiteChangelog({
     throw new Error(`Invalid version string: ${version}`);
   }
 
-  return generateReleaseNotes({
+  const notes = generateReleaseNotes({
     version,
     issues,
     template: websiteChangelogTemplate,
   });
+
+  return markdownIssueLinks(notes);
 }
 
 export async function getChangelog({
