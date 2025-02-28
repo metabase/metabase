@@ -36,7 +36,7 @@
   *quartz-scheduler*
   (atom nil))
 
-(defn- scheduler
+(defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)

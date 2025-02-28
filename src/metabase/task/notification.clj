@@ -150,6 +150,7 @@
 
   Called when starting the instance."
   []
+  (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
   (log/info "Initializing SendNotification triggers")
   (task/delete-all-triggers-of-job! send-notification-job-key)
   (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription)))
