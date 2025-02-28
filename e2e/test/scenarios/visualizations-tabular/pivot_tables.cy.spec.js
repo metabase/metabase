@@ -929,7 +929,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a rule").click();
-    cy.findByTestId("conditional-formatting-value-input").type("70");
+    cy.findByTestId("conditional-formatting-value-input").type("70").blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is equal to").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
