@@ -316,6 +316,7 @@
                             {"foo" {:type :dimension
                                     :id "1"
                                     :name "foo"
+                                    ;; missing :dimension
                                     :widget-type :text
                                     :display-name "foo"}})
                           :question)))
