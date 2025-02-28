@@ -325,7 +325,7 @@
     "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.9",
     "ts-morph": "^25.0.0",
-    "tsx": "^4.19.2",
+    "tsx": "^4.19.3",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^5.1.1",
