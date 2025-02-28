@@ -239,7 +239,7 @@
   [& body]
   `(do-with-mock-inbox-email! (fn [] ~@body)))
 
-(defn- send-notification-triggers
+(defn send-notification-triggers
   "Return the quartz triggers for a subscription."
   [subscription-id]
   (map
