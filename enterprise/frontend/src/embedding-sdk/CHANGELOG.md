@@ -1,3 +1,19 @@
+## [0.52.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.14...embedding-sdk-0.52.15) (2025-02-27)
+
+
+### Bug Fixes
+
+* **sdk:** deprecate the CreateQuestion component ([#54288](https://github.com/metabase/metabase/issues/54288)) ([e7669a3](https://github.com/metabase/metabase/commit/e7669a37cb38b8ecc76f3d8ba78fd440fc6c861a)), closes [#54212](https://github.com/metabase/metabase/issues/54212)
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([#54433](https://github.com/metabase/metabase/issues/54433)) ([d3dcfc5](https://github.com/metabase/metabase/commit/d3dcfc502f14a280d07b03b9ec4d841b50939098))
+* **sdk:** Rename saveToCollectionId => saveToCollection ([#54264](https://github.com/metabase/metabase/issues/54264)) ([fd64b07](https://github.com/metabase/metabase/commit/fd64b073a7a98a7407139a846c070cd4a279745c)), closes [#54225](https://github.com/metabase/metabase/issues/54225)
+
+
+### Features
+
+* **sdk:** use questionId={new} for creating new questions ([#54404](https://github.com/metabase/metabase/issues/54404)) ([ee5e616](https://github.com/metabase/metabase/commit/ee5e61647c9c8ecd5f148941c45e07afd785a6c1))
+
+
+
 ## [0.52.14](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.13...embedding-sdk-0.52.14) (2025-02-26)
 
 

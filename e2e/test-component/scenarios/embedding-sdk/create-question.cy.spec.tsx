@@ -9,7 +9,7 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
-describeEE("scenarios > embedding-sdk > create-question", () => {
+describeEE("scenarios > embedding-sdk > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -17,12 +17,14 @@ describeEE("scenarios > embedding-sdk > create-question", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("can create a question via the CreateQuestion component", () => {
+  it("can create a question via the InteractiveQuestion component", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
