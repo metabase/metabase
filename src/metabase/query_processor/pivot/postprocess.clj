@@ -180,7 +180,7 @@
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports."
   [{:keys [data settings timezone format-rows?]}]
-  (let [{:keys [pivot-data columns]} (pivot/split-pivot-data data)
+  (let [columns (pivot/columns-without-pivot-group (:cols data))
         column-split (:pivot_table.column_split settings)
         {row-indexes :rows
          col-indexes :columns
@@ -191,7 +191,7 @@
                 val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
         {:keys [leftHeaderItems
                 topHeaderItems
-                getRowSection]} (pivot/process-pivot-table pivot-data
+                getRowSection]} (pivot/process-pivot-table data
                                                            row-indexes
                                                            col-indexes
                                                            val-indexes
