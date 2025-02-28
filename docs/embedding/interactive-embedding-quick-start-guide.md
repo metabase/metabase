@@ -19,25 +19,25 @@ The code featured in this guide can be found in our [sample repo](https://github
 
 ## Set up SSO and interactive embedding in Metabase
 
-### Create a dashboard in Metabase
+### Have a dashboard ready to embed
 
-You'll first need to create something to embed. In the left nav, go to **Browse** > **Databases** > **Sample Database**. Hover over the `Invoices` table and click on the lightning bolt to X-ray the table. Metabase will create a bunch of questions that you can save as a dashboard. Click the button to **Save this** as a dashboard. Metabase will save this dashboard in the collection called "Automatically generated dashboards".
+You'll first need a dashboard to embed. If you don't have one yet, you can use the Example Dashboard Metabase includes on new instances or you can generate one using x-rays.
 
-Visit that dashboard in the "Automatically generated dashboards" collection and make a note of its URL. If that dashboard is the first dashboard you created, it's probably `/dashboard/1` followed by a description, e.g. `/dashboard/1-a-look-at-your-invoices-table`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
+Visit that dashboard and make a note of its URL, e.g. `/dashboard/1-e-commerce-insights`. You'll need to put this relative URL in your app, as you'll use the dashboard as the first page that logged-in people will see when they visit the analytics section in your app. It's enough to include the ID only and omit the rest of the URL, e.g. `/dashboard/1`.
 
-You could also use the dashboard's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items). Visit that dashboard in the "Automatically generated dashboards" collection. Click on the **info** button. On the **Overview**, look for the dashboard's **Entity ID**. Copy that Entity ID. You'll use that Entity ID in the iframe's `src` URL: (e.g., `src=/dashboard/entity/[Entity ID]`).
+You could also use the dashboard's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items). On the dashboard, click on the **info** button. On the **Overview**, look for the dashboard's **Entity ID**. Copy that Entity ID. You'll use that Entity ID in the iframe's `src` URL: (e.g., `src=/dashboard/entity/[Entity ID]`).
 
 ### Enable interactive embedding
 
-In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding** and click on the **Enable** button.
+In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding**. Look for **Interactive Embedding** and click on the **Enabled** toggle.
 
-Click on the **Interactive embedding** card. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
-
-### Set up SSO with JWT in your Metabase
+Click on the **Configure** button under **Interactive Embedding**. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
 If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
+
+### Set up SSO with JWT in your Metabase
 
 #### Enable authentication with JWT
 
