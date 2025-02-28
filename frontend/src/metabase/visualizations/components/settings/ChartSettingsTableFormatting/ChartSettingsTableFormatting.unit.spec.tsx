@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { mockScrollIntoView, render, screen } from "__support__/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -98,6 +98,8 @@ const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
 
+mockScrollIntoView();
+
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
     setup();
@@ -129,15 +131,15 @@ describe("ChartSettingsTableFormatting", () => {
 
     expect(
       await screen.findByRole("option", { name: "Number Column" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).toHaveAttribute("data-combobox-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "Boolean Column" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).toHaveAttribute("data-combobox-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "String Column 2" }),
-    ).toHaveAttribute("aria-disabled", "false");
+    ).not.toHaveAttribute("data-combobox-disabled");
   });
 
   describe("should show appropriate operators based on column selection", () => {
