@@ -431,7 +431,6 @@ export const createCardsShowingGizmosAndWidgets = ({
   createSavedQuestion({
     columnType,
     customColumnType,
-    dashcardIdAlias: "savedQuestionDashcardId",
   });
 
   if (filterTableBy === "custom_view") {
