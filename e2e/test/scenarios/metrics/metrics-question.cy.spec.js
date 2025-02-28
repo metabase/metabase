@@ -117,6 +117,7 @@ describe("scenarios > metrics > question", () => {
       .findByTestId("pinned-dimensions")
       .findByLabelText("Created At")
       .findByText("by month")
+      .realHover()
       .click();
     H.popover().findByText("Year").click();
     H.assertQueryBuilderRowCount(5);

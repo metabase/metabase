@@ -138,7 +138,7 @@ export const ModelPersistenceConfiguration = () => {
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
   return (
-    <Stack spacing="xl" maw="40rem">
+    <Stack gap="xl" maw="40rem">
       <Box
         mb="sm"
         lh="1.5rem"
@@ -178,7 +178,8 @@ export const ModelPersistenceConfiguration = () => {
           />
         </DelayedLoadingAndErrorWrapper>
       </Box>
-      {modelPersistenceEnabled && (
+      {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
+      {modelPersistenceEnabled && modelCachingSchedule && (
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}

@@ -44,7 +44,7 @@ const IconsTemplate = (args: TabsProps) => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          icon={<Icon name={tab.icon as keyof typeof Icon} />}
+          leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
         >
           {tab.label}
         </Tabs.Tab>
@@ -59,7 +59,7 @@ const IconsTemplate = (args: TabsProps) => (
 );
 
 export default {
-  title: "Navigation/Tabs",
+  title: "Components/Navigation/Tabs",
   component: Tabs,
   args,
   argTypes,

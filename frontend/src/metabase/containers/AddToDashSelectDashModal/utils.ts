@@ -51,3 +51,14 @@ export const filterWritableDashboards = (
 export const filterWritableRecents = (dashes: RecentItem[]) => {
   return dashes.filter(dash => dash.model !== "table" && dash.can_write);
 };
+
+export const filterPersonalRecents = (
+  dashes: RecentItem[],
+  personalCollectionId: CollectionId,
+) => {
+  return dashes.filter(
+    dash =>
+      dash.model !== "table" &&
+      dash.parent_collection.id === personalCollectionId,
+  );
+};

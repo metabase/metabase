@@ -487,7 +487,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
 
-    it("can share a dashboard card via public link", { tags: "@flaky" }, () => {
+    it("can share a dashboard card via public link", () => {
       H.createQuestion(
         {
           name: "Total Orders",
@@ -504,6 +504,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.openSharingMenu("Create a public link");
       cy.findByTestId("public-link-input")
         .invoke("val")
+        .should("not.be.empty")
         .then(publicLink => {
           cy.signOut();
           cy.visit(publicLink);
@@ -544,6 +545,59 @@ describe("Dashboard > Dashboard Questions", () => {
       H.navigationSidebar().findByText("Orders").should("be.visible");
     });
 
+    it("shows trash action for the last dashcard for a dashboard question", () => {
+      H.createDashboard({
+        name: "Foo Dashboard",
+      }).then(({ body: dashboard }) => {
+        H.createQuestion({
+          name: "Foo dashboard question",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 5 },
+          dashboard_id: dashboard.id,
+        }).then(({ body: card }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: card.id,
+            dashboard_id: dashboard.id,
+            card: {
+              size_x: 6,
+              size_y: 6,
+            },
+          });
+
+          H.visitDashboard(dashboard.id);
+        });
+      });
+
+      H.editDashboard();
+
+      cy.log(
+        "should have trash option as only dashcard for dashboard question",
+      );
+      H.showDashboardCardActions(0);
+      cy.icon("trash").realHover();
+      H.tooltip().findByText("Remove and trash").should("exist");
+
+      cy.log(
+        "should have remove options if there's more than one dashcard for the dashboard question",
+      );
+      cy.icon("copy").click();
+      cy.findAllByTestId("dashcard").should("have.length", 2);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("not.exist");
+      cy.icon("close").should("exist");
+
+      cy.log(
+        "should have the trash option if changes leave only one dashcard for a question",
+      );
+      cy.findAllByTestId("dashcard").eq(1).realHover().icon("close").click();
+      cy.findAllByTestId("dashcard").should("have.length", 1);
+      H.showDashboardCardActions(0);
+      cy.icon("trash").should("exist");
+
+      cy.log("should notify user that removal will also trash the card");
+      cy.icon("trash").click();
+      cy.findAllByTestId("dashcard").should("have.length", 0);
+    });
+
     it("can delete a question from a dashboard without deleting all of the questions in metabase", () => {
       H.createQuestion({
         name: "Total Orders",
@@ -582,8 +636,8 @@ describe("Dashboard > Dashboard Questions", () => {
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
       // eslint-disable-next-line no-unsafe-element-filtering
-      cy.icon("close").last().click();
-      H.undoToast().findByText("Removed card");
+      cy.icon("trash").last().click();
+      H.undoToast().findByText("Trashed and removed card");
       H.saveDashboard();
 
       // check that we didn't accidentally delete everything
@@ -861,6 +915,128 @@ describe("Dashboard > Dashboard Questions", () => {
         "not.contain.text",
         "Average Quantity by Month Question",
       );
+    });
+
+    it("should be able to save a question to a specific tab", () => {
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+
+      const NO_TABS_DASH_NAME = "Orders in a dashboard";
+      const TABS_DASH_NAME = "Dashboard with tabs";
+      const TAB_ONE_NAME = "First tab";
+      const TAB_TWO_NAME = "Second tab";
+      const DASHBOARD_QUESTION_NAME = "A tab two kind of question";
+
+      H.createDashboardWithTabs({
+        name: TABS_DASH_NAME,
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: TAB_TWO_NAME },
+        ],
+        dashcards: [],
+      });
+
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+
+      H.newButton("SQL query").click();
+      H.NativeEditor.type("SELECT 123;");
+
+      H.queryBuilderHeader().button("Save").click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          NO_TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).should(
+          "contain.text",
+          TABS_DASH_NAME,
+        );
+
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME)
+          .click();
+      });
+
+      H.popover().findByText(TAB_TWO_NAME).click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should(
+          "have.value",
+          TAB_TWO_NAME,
+        );
+
+        cy.findByLabelText(/Name/).type(DASHBOARD_QUESTION_NAME);
+
+        cy.findByText("Save").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_TWO_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
+      });
+    });
+
+    it("should allow a user to copy a question into a tab", () => {
+      const TAB_ONE_NAME = "First tab";
+      H.createDashboardWithTabs({
+        name: "Dashboard with tabs",
+        tabs: [
+          { id: -1, name: TAB_ONE_NAME },
+          { id: -2, name: "Second tab" },
+        ],
+        dashcards: [],
+      });
+
+      H.visitQuestion(S.ORDERS_COUNT_QUESTION_ID);
+      H.openQuestionActions();
+      H.popover().findByText("Duplicate").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/).should("not.exist");
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Browse").click();
+        cy.findByText("Dashboard with tabs").click();
+        cy.findByText("Select this dashboard").click();
+      });
+
+      H.entityPickerModal().should("not.exist"); // avoid test flaking from two modals being open at once
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Which tab should this go on/)
+          .should("exist")
+          .should("have.value", TAB_ONE_NAME);
+        cy.findByText("Duplicate").click();
+      });
+
+      cy.log("should navigate user to the tab the question was saved to");
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("search").should("contain", "tab"); // url should have tab param configured
+      H.assertTabSelected(TAB_ONE_NAME);
+      H.dashboardCards().within(() => {
+        cy.findByText("Orders, Count - Duplicate").should("exist");
+      });
     });
   });
 

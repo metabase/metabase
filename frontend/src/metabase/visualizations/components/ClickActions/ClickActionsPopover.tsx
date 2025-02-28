@@ -13,18 +13,21 @@ import type {
 } from "metabase/visualizations/types";
 import { isPopoverClickAction } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { ClickActionsView } from "./ClickActionsView";
 
 interface ChartClickActionsProps {
-  clicked: ClickObject;
+  clicked: ClickObject | null;
   clickActions: RegularClickAction[];
-  series: Series;
+  series: Series | null;
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
-  onUpdateVisualizationSettings: () => void;
+  onUpdateVisualizationSettings: (
+    settings: VisualizationSettings,
+    question?: Question,
+  ) => void;
   onUpdateQuestion?: (question: Question) => void;
   onClose?: () => void;
 }
@@ -115,9 +118,7 @@ export class ClickActionsPopover extends Component<
           onResize={() => {
             this.instance?.popperInstance?.update();
           }}
-          onChangeCardAndRun={({ nextCard }) => {
-            onChangeCardAndRun({ nextCard });
-          }}
+          onChangeCardAndRun={onChangeCardAndRun}
           onClose={this.close}
           series={series}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
@@ -132,10 +133,15 @@ export class ClickActionsPopover extends Component<
       <PopoverWithRef
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
-        onClose={this.close}
+        // TODO - come back to this
+        onChange={open => {
+          if (!open) {
+            this.close();
+          }
+        }}
         position="bottom-start"
-        width={700}
         offset={8}
+        popoverContentTestId="click-actions-popover"
         {...popoverAction?.popoverProps}
       >
         {popover ? (

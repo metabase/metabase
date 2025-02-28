@@ -54,10 +54,15 @@
     timezone-id
     (str (t/zone-id))))
 
+;; TODO -- we really need to decouple this stuff and use an event for this
+
 (defn- update-send-pulse-triggers-timezone!
   []
-  (classloader/require 'metabase.task.send-pulses)
-  ((resolve 'metabase.task.send-pulses/update-send-pulse-triggers-timezone!)))
+  ((requiring-resolve 'metabase.pulse.task.send-pulses/update-send-pulse-triggers-timezone!)))
+
+(defn- update-send-notification-triggers-timezone!
+  []
+  ((requiring-resolve 'metabase.task.notification/update-send-notification-triggers-timezone!)))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
@@ -69,7 +74,8 @@
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)
-    (update-send-pulse-triggers-timezone!)))
+    (update-send-pulse-triggers-timezone!)
+    (update-send-notification-triggers-timezone!)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -1049,6 +1055,26 @@
   ;; no normalization by default
   database)
 
+(defmulti db-details-to-test-and-migrate
+  "When `details` are in an ambiguous state, this should return a sequence of modified `details` of the
+   possible, normalized, unambiguous states.
+
+   The result of this function will be used to test each new `details`, in order,
+   and the first one that succeeds will be saved in the database.
+
+   If none of the details succeed, nothing will change.
+   Returning `nil` will skip the test.
+
+   This should, in practice, supersede `normalize-db-details`."
+  {:added "0.52.12" :arglists '([driver details])}
+  dispatch-on-initialized-driver-safe-keys
+  :hierarchy #'hierarchy)
+
+(defmethod db-details-to-test-and-migrate ::driver
+  [_ _database]
+  ;; nothing by default
+  nil)
+
 (defmulti superseded-by
   "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
   deprecated in Metabase and will eventually be replaced by the returned driver, in some future version (at which point
@@ -1066,7 +1092,7 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
   Drivers that support `:actions/custom` must implement this method."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
@@ -1170,10 +1196,43 @@
 
 (defmulti alter-columns!
   "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
-  Currently we do not currently support changing the the primary key, or take any guidance on how to coerce values."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  Currently, we do not currently support changing the primary key, or take any guidance on how to coerce values."
+  {:added "0.49.0"
+   :arglists '([driver db-id table-name column-definitions])
+   :deprecated "0.54.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti alter-table-columns!
+  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  Currently, we do not currently support changing the primary key.
+
+  Used to change the types of columns when appending to or replacing uploads with a new .csv that infers a different type.
+
+  `column-definitions` should be supplied as a map of column-name keyword to column type.
+  e.g. `{:my-column [:varchar 255]}`
+
+  Note: column types may be supplied as honeysql vectors (e.g. `[:varchar 255]`) or a raw string.
+  Both should be handled by implementations.
+
+  Options:
+
+  - `:old-types`: a map of the existing column definitions, e.g `{:my-column [:bigint]}`
+     Can be useful to infer an expression to convert old values to the new type
+     where the database engine does not support it natively.
+     Implementations are free to ignore this parameter if they cannot do anything with it.
+
+  Replaces `alter-columns!` that was previously used for the same purpose in versions < `0.54.0`"
+  {:added "0.54.0", :arglists '([driver db-id table-name column-definitions & opts])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; used for compatibility with drivers only implementing alter-columns!
+;; remove once alter-columns! is deleted (v0.57+)
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod alter-table-columns! ::driver
+  [driver db-id table-name column-definitions & _opts]
+  (alter-columns! driver db-id table-name column-definitions))
 
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."
@@ -1193,6 +1252,38 @@
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti allowed-promotions
+  "Returns a mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
+  In the context of uploads, this permits certain appends or replacements of an existing csv table
+  to change column types with `alter-table-columns!`.
+
+  e.g. `{:metabase.upload/int #{:metabase.upload/float}}` would allow int columns to be migrated to floats.
+  If we require a relaxation which is not allowed here, we will reject the corresponding file.
+
+  It is expected that the returned map is transitively closed.
+  If type A can be relaxed to B, and B can be relaxed to C, then A must also explicitly list C as a valid relaxation.
+  This is to avoid situations where promotions are reachable but require additional user effort,
+  such as filtering and re-uploading csv files.
+
+  e.g.
+
+  Valid (transitively closed):
+  {:metabase.upload/int #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int, :metabase.upload/float}}
+  Since boolean -> int and int -> float, we also include boolean -> float.
+
+  Invalid (not transitively closed):
+  {:metabase.upload/int #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int}}
+  This would reject a boolean -> float transition, despite boolean reaching float through int."
+  {:added "0.54.0", :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod allowed-promotions ::driver [_]
+  ;; for compatibility with older drivers, in which this promotion was assumed
+  {:metabase.upload/int #{:metabase.upload/float}})
 
 (defmulti create-auto-pk-with-append-csv?
   "Returns true if the driver should create an auto-incrementing primary key column when appending CSV data to an existing
@@ -1225,3 +1316,17 @@
   {:added "0.48.0", :arglists '([driver database & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dynamic-database-types-lookup
+  "Generate mapping of `database-types` to base types for dynamic database types (eg. defined by user; postgres enums).
+
+  The `sql-jdbc.sync/database-type->base-type` is used as simple look-up, while this method is expected to do database
+  calls when necessary. At the time it was added, its purpose was to check for postgres enum types. Its meant to
+  be extended also for other dynamic types when necessary."
+  {:added "0.53.0" :arglists '([driver database database-types])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dynamic-database-types-lookup ::driver
+  [_driver _database _database-types]
+  nil)

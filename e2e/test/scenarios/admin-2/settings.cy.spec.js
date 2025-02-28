@@ -21,7 +21,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      H.onlyOnOSS();
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
@@ -275,24 +274,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
-  it(
-    "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
-    { tags: "@OSS" },
-    () => {
-      H.isEE && H.setTokenFeatures("all");
-
-      const lastItem = H.isOSS ? "Cloud" : "Appearance";
-
-      cy.visit("/admin/settings/setup");
-      cy.findByTestId("admin-list-settings-items").within(() => {
-        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
-        cy.get("@settingsOptions").first().contains("Setup");
-        // eslint-disable-next-line no-unsafe-element-filtering
-        cy.get("@settingsOptions").last().contains(lastItem);
-      });
-    },
-  );
-
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
   it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
     H.setupMetabaseCloud();
@@ -339,7 +320,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    H.onlyOnOSS();
     H.restore();
     cy.signInAsAdmin();
   });
@@ -353,7 +333,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   });
 });
 
-H.describeEE("scenarios > admin > settings (EE)", () => {
+describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -468,8 +448,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.startNewNativeQuestion().as("editor");
-        cy.get("@editor").type(nativeQuery);
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
@@ -528,13 +508,16 @@ describe("Cloud settings section", () => {
   it("should prompt us to migrate to cloud if we are not hosted", () => {
     H.setTokenFeatures("all");
     cy.visit("/admin");
-    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
-
+    cy.findAllByTestId("settings-sidebar-link")
+      .filter(":contains(Cloud)")
+      .should("have.descendants", ".Icon-gem")
+      .click();
     cy.location("pathname").should("contain", "/admin/settings/cloud");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Migrate to Cloud/i).should("exist");
-    cy.button("Get started").should("exist");
+    cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
+      "exist",
+    );
+    cy.button("Try for free").should("exist");
   });
 });
 
@@ -688,7 +671,7 @@ describe("scenarios > admin > license and billing", () => {
     cy.signInAsAdmin();
   });
 
-  H.describeEE("store info", () => {
+  describe("store info", () => {
     it("should show the user a link to the store for an unlincensed enterprise instance", () => {
       cy.visit("/admin/settings/license");
       cy.findByTestId("license-and-billing-content")

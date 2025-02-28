@@ -1,0 +1,7 @@
+.BadgeListItem:not([data-css-specificity-hack]) {
+  background: color-mix(in srgb, var(--mb-color-brand) 20%, transparent);
+
+  .BadgeListRemoveButton:hover {
+    background: transparent;
+  }
+}

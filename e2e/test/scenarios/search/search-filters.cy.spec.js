@@ -858,7 +858,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    describe("verified filter", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
         H.createModerationReview({

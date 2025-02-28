@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
@@ -32,7 +33,7 @@ export const AppBarRightContainer = styled.div`
   align-items: center;
   gap: 1rem;
   max-width: 32.5rem;
-  justify-content: end;
+  justify-content: flex-end;
 `;
 
 interface AppBarInfoContainerProps {

@@ -720,6 +720,8 @@ describe("scenarios > admin > datamodel > segments", () => {
         cy.findByText("Orders").click();
       });
 
+      cy.findByTestId("segment-editor").findByText("Orders").should("exist");
+
       cy.findByTestId("segment-editor")
         .findByText("Add filters to narrow your answer")
         .click();

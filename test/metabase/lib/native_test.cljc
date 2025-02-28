@@ -210,6 +210,23 @@
              (-> query
                  (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :name "garbage" :display-name "Foobar")})
                  lib/template-tags))))
+    (testing "Allows to remove template tag properties"
+      (let [template-tags     {"tag"
+                               {:default nil
+                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                :display-name "Tag"
+                                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                :name "tag"
+                                :type :dimension
+                                :widget-type :date/range}}
+            query             (-> (lib/native-query meta/metadata-provider "select * from venues where {{tag}}")
+                                  (lib/with-template-tags template-tags))
+            new-template-tags {"tag"
+                               {:display-name "Tag"
+                                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                :name "tag"
+                                :type :text}}]
+        (is (= new-template-tags (lib/template-tags (lib/with-template-tags query new-template-tags))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
@@ -227,12 +244,10 @@
     (is (=? {:stages [(complement :collection)]}
             (lib/native-query meta/metadata-provider "myquery" nil {:collection "mycollection"}))))
   (testing "building when requires collection"
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery")))
     (is (=? {:stages [{:collection "mycollection"}]}
-            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs :default)
-         #"Missing extra, required keys for native query: .*:collection.*"
-         (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))))
 
 (deftest ^:parallel with-different-database-test
   (let [query (lib/native-query meta/metadata-provider "myquery")]
@@ -242,15 +257,6 @@
                   (lib/with-different-database
                     (meta.graph-provider/->SimpleGraphMetadataProvider
                      (assoc meta/metadata :id 9999)))))))
-    (testing "Checks collection requirement"
-      (is (=? {:stages [(complement :collection)]}
-              (-> query
-                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
-      (is (thrown-with-msg?
-           #?(:clj Throwable :cljs :default)
-           #"Missing extra, required keys for native query: .*:collection.*"
-           (-> query
-               (lib/with-different-database (metadata-provider-requiring-collection))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"

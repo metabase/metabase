@@ -2,11 +2,10 @@
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.integrations.common :as integrations.common]
-   [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
@@ -15,7 +14,7 @@
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
 (def ^:private EEUserInfo
-  [:merge default-impl/UserInfo
+  [:merge sso/LDAPUserInfo
    [:map [:attributes [:maybe [:map-of :keyword :any]]]]])
 
 (defsetting ldap-sync-user-attributes
@@ -67,9 +66,9 @@
   :feature :sso-ldap
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
    username        :- ms/NonBlankString
-   settings        :- default-impl/LDAPSettings]
-  (when-let [result (default-impl/search ldap-connection username settings)]
-    (when-let [user-info (default-impl/ldap-search-result->user-info
+   settings        :- sso/LDAPSettings]
+  (when-let [result (sso/ldap-search ldap-connection username settings)]
+    (when-let [user-info (sso/ldap-search-result->user-info
                           ldap-connection
                           result
                           settings
@@ -82,7 +81,7 @@
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
-   {:keys [sync-groups?], :as settings}                                  :- default-impl/LDAPSettings]
+   {:keys [sync-groups?], :as settings}                                  :- sso/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
                  (sso-utils/check-user-provisioning :ldap)
                  (-> (user/create-new-ldap-auth-user! {:first_name       first-name
@@ -92,8 +91,8 @@
                      (assoc :is_active true)))]
     (u/prog1 user
       (when sync-groups?
-        (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
-              all-mapped-group-ids (default-impl/all-mapped-group-ids settings)]
-          (integrations.common/sync-group-memberships! user
-                                                       group-ids
-                                                       all-mapped-group-ids))))))
+        (let [group-ids            (sso/ldap-groups->mb-group-ids groups settings)
+              all-mapped-group-ids (sso/all-mapped-ldap-group-ids settings)]
+          (sso/sync-group-memberships! user
+                                       group-ids
+                                       all-mapped-group-ids))))))

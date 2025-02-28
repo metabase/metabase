@@ -8,6 +8,8 @@ import {
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
+import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
@@ -134,11 +136,36 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy
-    .findAllByTestId("echarts-tooltip")
-    .filter(":visible")
-    .should("have.length", 1)
-    .eq(0);
+  return cy.findAllByTestId("echarts-tooltip").should($elements => {
+    // Use a custom function to check if the fixed-position tooltip is visible,
+    // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
+    const visibleTooltips = $elements
+      .toArray()
+      .filter(isFixedPositionElementVisible);
+
+    // Assert we have exactly one visible tooltip
+    expect(visibleTooltips).to.have.length(
+      1,
+      "there must be only one visible echarts tooltip",
+    );
+
+    const visibleTooltip = visibleTooltips[0];
+
+    const tooltipContainerStyle = window.getComputedStyle(
+      visibleTooltip.closest(".echarts-tooltip-container"),
+    );
+
+    // (metabase#51904): tooltip container must render above the fold in the Embedding SDK.
+    // ensures that we are using fixed-positioned tooltips.
+    expect(tooltipContainerStyle.position).to.equal("fixed");
+
+    // (metabase#52732): tooltip container must have the correct z-index (200)
+    // this assertion prevents the tooltip from being rendered below charts.
+    expect(Number(tooltipContainerStyle.zIndex)).to.equal(200);
+
+    // Return the visible tooltip
+    return visibleTooltip;
+  });
 }
 
 export function tooltipHeader() {
@@ -190,7 +217,6 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
-  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);

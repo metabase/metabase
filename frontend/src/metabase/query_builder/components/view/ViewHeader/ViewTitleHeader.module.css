@@ -1,42 +1,43 @@
 .FilterButton {
-  transition: background 300ms linear;
+  &[data-variant="default"] {
+    transition: background 300ms linear;
 
-  &:hover:not([data-css-specificity-hack="🤣"]) {
-    color: var(--mb-color-filter);
-    background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+    &:hover {
+      color: var(--mb-color-filter);
+      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+    }
   }
 }
 
 .FilterButtonAttachment {
-  &:not([data-css-specificity-hack="🤣"]) {
+  &[data-variant="default"] {
     padding: 0.5rem;
-  }
-
-  transition: background 300ms linear;
-
-  &:hover:not([data-css-specificity-hack="🤣"]) {
-    color: var(--mb-color-filter);
-    background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
-
-    .FilterCountChip {
-      background-color: var(--mb-color-filter);
-    }
-  }
-
-  &[data-expanded="true"] {
-    background-color: var(--mb-color-filter);
-
-    .FilterCountChip {
-      background-color: var(--mb-color-bg-white);
-      color: var(--mb-color-text-dark);
-    }
+    transition: background 300ms linear;
 
     &:hover {
-      background-color: color-mix(in srgb, var(--mb-color-filter) 80%, white);
+      color: var(--mb-color-filter);
+      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+
+      .FilterCountChip {
+        background-color: var(--mb-color-filter);
+      }
+    }
+
+    &[data-expanded="true"] {
+      background-color: var(--mb-color-filter);
 
       .FilterCountChip {
         background-color: var(--mb-color-bg-white);
         color: var(--mb-color-text-dark);
+      }
+
+      &:hover {
+        background-color: color-mix(in srgb, var(--mb-color-filter) 80%, white);
+
+        .FilterCountChip {
+          background-color: var(--mb-color-bg-white);
+          color: var(--mb-color-text-dark);
+        }
       }
     }
   }
@@ -101,6 +102,7 @@
   align-items: center;
   margin-left: auto;
   gap: 0.5rem;
+  position: relative;
 
   @media screen and (max-width: 40em) {
     margin-left: 0;

@@ -4,7 +4,6 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
    [metabase-enterprise.scim.api :as scim]
-   [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
@@ -70,7 +69,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 (defsetting saml-identity-provider-certificate
   (deferred-tru "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,
-open it in a text editor, then copy and paste the certificate's contents here.")
+open it in a text editor, then copy and paste the certificate''s contents here.")
   :feature    :sso-saml
   :audit      :no-value
   :encryption :no
@@ -81,7 +80,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
                 (setting/set-value-of-type! :string :saml-identity-provider-certificate new-value)))
 
 (defsetting saml-identity-provider-issuer
-  (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
+  (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
   :encryption :when-encryption-key-set
   :feature    :sso-saml
@@ -213,28 +212,28 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :audit      :no-value)
 
 (defsetting jwt-attribute-email
-  (deferred-tru "Key to retrieve the JWT user's email address")
+  (deferred-tru "Key to retrieve the JWT user''s email address")
   :encryption :when-encryption-key-set
   :default    "email"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-firstname
-  (deferred-tru "Key to retrieve the JWT user's first name")
+  (deferred-tru "Key to retrieve the JWT user''s first name")
   :encryption :when-encryption-key-set
   :default    "first_name"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-lastname
-  (deferred-tru "Key to retrieve the JWT user's last name")
+  (deferred-tru "Key to retrieve the JWT user''s last name")
   :encryption :when-encryption-key-set
   :default    "last_name"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-groups
-  (deferred-tru "Key to retrieve the JWT user's groups")
+  (deferred-tru "Key to retrieve the JWT user''s groups")
   :default    "groups"
   :feature    :sso-jwt
   :encryption :when-encryption-key-set
@@ -282,7 +281,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
 
-(define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
+(define-multi-setting-impl send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
   :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
 

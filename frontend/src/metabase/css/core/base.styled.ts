@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 
 export const rootStyle = css`
@@ -42,48 +43,5 @@ export const baseStyle = css`
     padding: 0;
     margin: 0;
     list-style-type: none;
-  }
-
-  /*
-  explicitly set the th text alignment to left. this is required for IE
-  which follows the suggested rendering and defaults to center, whereas
-  chrome and others do not
-*/
-  th {
-    text-align: left;
-  }
-
-  /* reset button element */
-  button {
-    font-size: 100%;
-    -webkit-appearance: none;
-    border: 0;
-    padding: 0;
-    margin: 0;
-    outline: none;
-    background-color: transparent;
-  }
-
-  a:focus,
-  button:focus,
-  [role="button"]:focus {
-    outline: 2px solid var(--mb-color-focus);
-  }
-
-  a {
-    color: inherit;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  button,
-  input,
-  textarea {
-    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
-      sans-serif;
-  }
-
-  textarea {
-    min-height: 110px;
   }
 `;

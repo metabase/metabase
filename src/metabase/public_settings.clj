@@ -8,13 +8,10 @@
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n
-    :as i18n
-    :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -45,21 +42,21 @@
     (binding [config/*disable-setting-cache* true]
       (application-name))))
 
-(defn- google-auth-enabled? []
+(defn google-auth-enabled?
+  "Is Google Auth (OIDC not SAML) enabled?"
+  []
   (boolean (setting/get :google-auth-enabled)))
 
 (defn ldap-enabled?
   "Is LDAP enabled?"
   []
-  (classloader/require 'metabase.api.ldap)
-  ((resolve 'metabase.api.ldap/ldap-enabled)))
+  (setting/get :ldap-enabled))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
-    (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
-    (varr)))
+    (setting/get :other-sso-enabled?)))
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
   []
@@ -82,7 +79,7 @@
     (setting/set-value-of-type! :string :update-channel new-channel)))
 
 (defsetting update-channel
-  (deferred-tru "We'll notify you here when there's a new version of this type of release.")
+  (deferred-tru "We''ll notify you here when there''s a new version of this type of release.")
   :visibility :admin
   :type       :string
   :encryption :no
@@ -227,7 +224,7 @@ x.com")
   site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
   same way as [[site-uuid]] but should only be used by the token check logic
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :encryption :when-encryption-key-set
   :visibility :internal
@@ -321,13 +318,6 @@ x.com")
   :visibility :public
   :audit      :getter)
 
-(defsetting map-tile-server-url
-  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :encryption :no
-  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :public
-  :audit      :getter)
-
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
    Otherwise make the landing-page a relative path."
@@ -362,13 +352,6 @@ x.com")
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-public-sharing
-  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
@@ -386,22 +369,6 @@ x.com")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
-
-(defsetting persisted-models-enabled
-  (deferred-tru "Allow persisting models into the source database.")
-  :type       :boolean
-  :default    false
-  :visibility :public
-  :export?    true
-  :audit      :getter)
-
-(defsetting persisted-model-refresh-cron-schedule
-  (deferred-tru "cron syntax string to schedule refreshing persisted models.")
-  :encryption :no
-  :type       :string
-  :default    "0 0 0/6 * * ? *"
-  :visibility :admin
   :audit      :getter)
 
 (def ^:private ^:const global-max-caching-kb
@@ -718,13 +685,14 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting show-metabase-links
-  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  (deferred-tru "Whether or not to display Metabase links outside admin settings.")
   :type       :boolean
   :default    true
   :visibility :public
   :audit      :getter
   :feature    :whitelabel)
 
+;;; TODO -- consider whether this belongs here or in the `sso` module
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
   :visibility :public
@@ -807,7 +775,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :audit      :getter)
 
 (defsetting source-address-header
-  (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
+  (deferred-tru "Identify the source of HTTP requests by this header''s value, instead of its remote address.")
   :encryption :no
   :default "X-Forwarded-For"
   :export? true
@@ -823,15 +791,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :default    false
   :export?    false)
-
-(defn remove-public-uuid-if-public-sharing-is-disabled
-  "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
-  won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
-  [object]
-  (if (and (:public_uuid object)
-           (not (enable-public-sharing)))
-    (assoc object :public_uuid nil)
-    object))
 
 (defsetting available-fonts
   "Available fonts"
@@ -1059,12 +1018,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :type       :boolean)
 
-(defsetting download-row-limit
-  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
-  :visibility :internal
-  :export?    true
-  :type       :integer)
-
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.
 
@@ -1092,6 +1045,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :setter     :none
   :audit      :getter)
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
@@ -1142,3 +1102,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!                                                                                                !!
+;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
+;;; !!                                                                                                !!
+;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

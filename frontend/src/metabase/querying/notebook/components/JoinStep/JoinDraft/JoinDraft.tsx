@@ -140,7 +140,7 @@ export function JoinDraft({
       {rhsTable && (
         <>
           <Box mt="1.5rem">
-            <Text color="brand" weight="bold">{t`on`}</Text>
+            <Text color="brand" fw="bold">{t`on`}</Text>
           </Box>
           <NotebookCell
             className={S.JoinConditionCell}

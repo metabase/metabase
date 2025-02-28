@@ -1,0 +1,50 @@
+.control {
+  padding-left: 0.875rem;
+}
+
+.label {
+  color: var(--mb-color-brand);
+  font-weight: 700;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1rem;
+}
+
+.item {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-spacing-sm);
+
+  &[data-active] {
+    border: 1px solid var(--mb-color-border);
+  }
+
+  & + & {
+    margin-top: 0.75rem;
+  }
+
+  /* We need the extra specificity for outline: none */
+  .control:focus {
+    outline: none;
+  }
+}
+
+.content {
+  border-top: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-dark);
+}
+
+.chevron {
+  color: var(--mb-color-text-dark);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 100%;
+  margin-left: 1rem;
+  height: 1.75rem;
+  width: 1.75rem;
+  justify-content: center;
+}
+
+.panel {
+  word-break: break-word;
+  line-height: 1rem;
+}

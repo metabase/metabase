@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
@@ -530,17 +531,18 @@
       (is (= [["20th Century Cafe" 2 2 0]
               ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
-             (mt/formatted-rows
-              [str int int int]
-              (mt/run-mbql-query venues
-                {:source-query {:source-table (mt/id :venues)
-                                :aggregation  [[:min (mt/id :venues :price)]
-                                               [:max (mt/id :venues :price)]]
-                                :breakout     [[:field (mt/id :venues :name) nil]]
-                                :limit        3}
-                 :expressions  {:price_range [:-
-                                              [:field "max" {:base-type :type/Number}]
-                                              [:field "min" {:base-type :type/Number}]]}})))))))
+             (sort-by first
+                      (mt/formatted-rows
+                       [str int int int]
+                       (mt/run-mbql-query venues
+                         {:source-query {:source-table (mt/id :venues)
+                                         :aggregation  [[:min (mt/id :venues :price)]
+                                                        [:max (mt/id :venues :price)]]
+                                         :breakout     [[:field (mt/id :venues :name) nil]]
+                                         :limit        3}
+                          :expressions  {:price_range [:-
+                                                       [:field "max" {:base-type :type/Number}]
+                                                       [:field "min" {:base-type :type/Number}]]}}))))))))
 
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -693,3 +695,11 @@
           (mt/with-native-query-testing-context query
             (is (= [[1020]]
                    (mt/formatted-rows [int] (qp/process-query query))))))))))
+
+(deftest ^:parallel null-array-test
+  (testing "a null array should be handled gracefully and return nil"
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/null-arrays)
+      (is (= [[nil]]
+             (-> (mt/native-query {:query (tx/native-null-array-query driver/*driver*)})
+                 mt/process-query
+                 mt/rows))))))

@@ -94,9 +94,9 @@ export const NotebookCellItem = forwardRef<
             [S.canHover]: !inactive && !readOnly && !disabled,
           },
         )}
-        p={CONTAINER_PADDING}
         style={
           {
+            padding: CONTAINER_PADDING,
             ...containerStyle,
             "--notebook-cell-item-content-container-color": color,
           } as CSSProperties
@@ -115,9 +115,9 @@ export const NotebookCellItem = forwardRef<
               [S.canHover]: !inactive && !readOnly && !disabled,
             },
           )}
-          p={CONTAINER_PADDING}
           style={
             {
+              padding: CONTAINER_PADDING,
               ...rightContainerStyle,
               "--notebook-cell-item-content-container-color": color,
             } as CSSProperties

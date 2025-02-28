@@ -219,7 +219,7 @@ describe("DashCardCardParameterMapper", () => {
       expect(queryIcon("sparkles")).not.toBeInTheDocument();
     });
 
-    it("should render only an icon when a dashcard is short", () => {
+    it("should render only an icon when a dashcard is short", async () => {
       const card = createMockCard();
       const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 5 });
 
@@ -238,7 +238,9 @@ describe("DashCardCardParameterMapper", () => {
       });
 
       expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
-      expect(getIcon("sparkles")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("img", { name: /sparkles/ }),
+      ).toBeInTheDocument();
     });
 
     it("should not render an icon when a dashcard is narrow", () => {
@@ -335,6 +337,23 @@ describe("DashCardCardParameterMapper", () => {
       mappingOptions: ["foo", "bar"],
     });
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
+  });
+
+  describe("Action parameter", () => {
+    it("should show action parameter warning if an action parameter is used", () => {
+      const dashcard = createMockActionDashboardCard();
+
+      setup({
+        card: dashcard.card,
+        dashcard,
+        target: ["variable", ["template-tag", "source"]],
+      });
+      expect(
+        screen.getByText(
+          /Action parameters only accept a single value\. They do not support dropdown lists/i,
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Native question", () => {

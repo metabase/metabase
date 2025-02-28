@@ -12,10 +12,10 @@
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.setup.api :as api.setup]
    [metabase.setup.core :as setup]
@@ -231,11 +231,11 @@
     (testing "site locale"
       (testing "invalid format"
         (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"eng-USA\""]}}
-                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.>")}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
                 (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
         (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"en-EN\""]}}
-                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.>")}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
                 (setup! assoc-in [:prefs :site_locale] "en-EN")))))))
 
 (deftest setup-validation-test-4

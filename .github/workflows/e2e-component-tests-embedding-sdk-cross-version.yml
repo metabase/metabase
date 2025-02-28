@@ -193,8 +193,14 @@ jobs:
       - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
         run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
 
-      - name: Run E2E tests for Embedding SDK
-        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run component tests for Embedding SDK
+        run: node e2e/runner/run_cypress_ci.js component --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

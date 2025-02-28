@@ -22,7 +22,7 @@
                     {:order-by [[:started_at :desc]]}))
 
 (deftest e2e-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
       (mt/test-helpers-set-global-values!
@@ -48,3 +48,19 @@
                                           :notification_ids             [(:id noti)]}}
                           (u/poll {:thunk #(latest-task-history-entry "notification-trigger")
                                    :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))
+
+(deftest init-send-notification-triggers-test
+  (mt/with-temp [:model/Notification]
+    (mt/with-temp-scheduler!
+      (task/init! ::task.notification/SendNotifications)
+      (let [notification (models.notification/create-notification!
+                          {:payload_type :notification/testing}
+                          [{:type :notification-subscription/cron
+                            :cron_schedule every-second}]
+                          [])
+            notification-triggers (notification.tu/notification-triggers (:id notification))]
+        (testing "sanity check that it has triggers to begin with"
+          (is (not-empty notification-triggers)))
+        (testing "init send notification triggers are idempotent if the subscription doesn't change"
+          (task.notification/init-send-notification-triggers!)
+          (is (= notification-triggers (notification.tu/notification-triggers (:id notification)))))))))

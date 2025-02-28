@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +24,8 @@ import type {
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Box, Flex } from "metabase/ui";
 import type {
   CardId,
   DashCardId,
@@ -50,14 +53,8 @@ import { DashboardGridConnected } from "../DashboardGrid";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
-import {
-  CardsContainer,
-  DashboardBody,
-  DashboardHeaderContainer,
-  DashboardLoadingAndErrorWrapper,
-  DashboardStyled,
-  ParametersAndCardsContainer,
-} from "./Dashboard.styled";
+import S from "./Dashboard.module.css";
+import { DashboardLoadingAndErrorWrapper } from "./DashboardComponents";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
@@ -236,17 +233,18 @@ function Dashboard(props: DashboardProps) {
 
   const handleSetEditing = useCallback(
     (dashboard: IDashboard | null) => {
-      onRefreshPeriodChange(null);
-      setEditingDashboard(dashboard);
+      if (!isEditing) {
+        onRefreshPeriodChange(null);
+        setEditingDashboard(dashboard);
+      }
     },
-    [onRefreshPeriodChange, setEditingDashboard],
+    [isEditing, onRefreshPeriodChange, setEditingDashboard],
   );
 
   const handleAddQuestion = useCallback(() => {
-    onRefreshPeriodChange(null);
-    setEditingDashboard(dashboard);
+    handleSetEditing(dashboard);
     toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [onRefreshPeriodChange, setEditingDashboard, dashboard, toggleSidebar]);
+  }, [handleSetEditing, dashboard, toggleSidebar]);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
@@ -402,7 +400,7 @@ function Dashboard(props: DashboardProps) {
           !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
         return (
-          <DashboardStyled>
+          <Flex direction="column" mih="100%" w="100%" flex="1 0 auto">
             {dashboard.archived && (
               <ArchivedEntityBanner
                 name={dashboard.name}
@@ -423,11 +421,14 @@ function Dashboard(props: DashboardProps) {
               />
             )}
 
-            <DashboardHeaderContainer
+            <Box
+              component="header"
+              className={cx(S.DashboardHeaderContainer, {
+                [S.isFullscreen]: isFullscreen,
+                [S.isNightMode]: shouldRenderAsNightMode,
+              })}
               data-element-id="dashboard-header-container"
               data-testid="dashboard-header-container"
-              isFullscreen={isFullscreen}
-              isNightMode={shouldRenderAsNightMode}
             >
               {/**
                * Do not conditionally render `<DashboardHeader />` as it calls
@@ -448,23 +449,34 @@ function Dashboard(props: DashboardProps) {
                 refreshPeriod={props.refreshPeriod}
                 setRefreshElapsedHook={props.setRefreshElapsedHook}
               />
-            </DashboardHeaderContainer>
+            </Box>
 
-            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              <ParametersAndCardsContainer
+            <Flex
+              pos="relative"
+              miw={0}
+              mih={0}
+              className={cx(S.DashboardBody, {
+                [S.isEditingOrSharing]: isEditing || isSharing,
+              })}
+            >
+              <Box
+                className={cx(S.ParametersAndCardsContainer, {
+                  [S.shouldMakeDashboardHeaderStickyAfterScrolling]:
+                    !isFullscreen && (isEditing || isSharing),
+                  [S.notEmpty]: !isEmpty,
+                })}
                 id={DASHBOARD_PDF_EXPORT_ROOT_ID}
                 data-element-id="dashboard-parameters-and-cards"
                 data-testid="dashboard-parameters-and-cards"
-                isEmpty={isEmpty}
-                shouldMakeDashboardHeaderStickyAfterScrolling={
-                  !isFullscreen && (isEditing || isSharing)
-                }
               >
                 <DashboardParameterPanel isFullscreen={isFullscreen} />
                 {isEmpty ? (
                   renderEmptyStates()
                 ) : (
-                  <CardsContainer data-element-id="dashboard-cards-container">
+                  <FullWidthContainer
+                    className={S.CardsContainer}
+                    data-element-id="dashboard-cards-container"
+                  >
                     <DashboardGridConnected
                       clickBehaviorSidebarDashcard={
                         props.clickBehaviorSidebarDashcard
@@ -486,9 +498,9 @@ function Dashboard(props: DashboardProps) {
                         reportAutoScrolledToDashcard
                       }
                     />
-                  </CardsContainer>
+                  </FullWidthContainer>
                 )}
-              </ParametersAndCardsContainer>
+              </Box>
 
               <DashboardSidebars
                 dashboard={dashboard}
@@ -525,8 +537,8 @@ function Dashboard(props: DashboardProps) {
                 selectedTabId={selectedTabId}
                 onCancel={() => setSharing(false)}
               />
-            </DashboardBody>
-          </DashboardStyled>
+            </Flex>
+          </Flex>
         );
       }}
     </DashboardLoadingAndErrorWrapper>

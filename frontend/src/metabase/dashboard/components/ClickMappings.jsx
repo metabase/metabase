@@ -7,14 +7,14 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { getParameters } from "metabase/dashboard/selectors";
+import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { GTAPApi } from "metabase/services";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -22,7 +22,7 @@ import {
   getTargetsForQuestion,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 
-import { TargetTrigger } from "./ClickMappings.styled";
+import S from "./ClickMappings.module.css";
 
 class ClickMappings extends Component {
   render() {
@@ -134,6 +134,7 @@ export const ClickMappingsConnected = _.compose(
     const { object, isDashboard, dashcard, clickBehavior } = props;
     let parameters = getParameters(state, props);
     const metadata = getMetadata(state);
+    const dashcardData = getDashcardData(state, dashcard.id);
     const question = new Question(dashcard.card, metadata);
 
     if (props.excludeParametersSources) {
@@ -156,8 +157,12 @@ export const ClickMappingsConnected = _.compose(
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
+
+    const availableColumns =
+      Object.values(dashcardData).flatMap(dataset => dataset.data.cols) ?? [];
+
     const sourceOptions = {
-      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
+      column: availableColumns.filter(isMappableColumn),
       parameter: parameters,
     };
     return { setTargets, unsetTargets, sourceOptions, question };
@@ -183,7 +188,16 @@ function TargetWithoutSource({
     <Select
       key={id}
       triggerElement={
-        <TargetTrigger data-testid="click-target-column">{name}</TargetTrigger>
+        <Flex
+          className={S.TargetTrigger}
+          p="sm"
+          mb="sm"
+          fw="bold"
+          w="100%"
+          data-testid="click-target-column"
+        >
+          {name}
+        </Flex>
       }
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
@@ -232,6 +246,7 @@ function TargetWithSource({
           CS.flex,
           CS.alignCenter,
         )}
+        // eslint-disable-next-line no-color-literals
         style={{ borderColor: "#E2E4E8" }}
       >
         <svg
@@ -245,12 +260,14 @@ function TargetWithSource({
           <g opacity="0.6">
             <path
               d="M9 32C9 33.6569 7.65685 35 6 35C4.34315 35 3 33.6569 3 32C3 30.3431 4.34315 29 6 29C7.65685 29 9 30.3431 9 32Z"
+              // eslint-disable-next-line no-color-literals
               fill="#509EE3"
             />
             <path
               fillRule="evenodd"
               clipRule="evenodd"
               d="M12 6C12 8.973 9.83771 11.441 7 11.917V26.083C9.83771 26.559 12 29.027 12 32C12 35.3137 9.31371 38 6 38C2.68629 38 0 35.3137 0 32C0 29.027 2.16229 26.559 5 26.083V11.917C2.16229 11.441 0 8.973 0 6C0 2.68629 2.68629 0 6 0C9.31371 0 12 2.68629 12 6ZM6 10C8.20914 10 10 8.20914 10 6C10 3.79086 8.20914 2 6 2C3.79086 2 2 3.79086 2 6C2 8.20914 3.79086 10 6 10ZM6 36C8.20914 36 10 34.2091 10 32C10 29.7909 8.20914 28 6 28C3.79086 28 2 29.7909 2 32C2 34.2091 3.79086 36 6 36Z"
+              // eslint-disable-next-line no-color-literals
               fill="#509EE3"
             />
           </g>

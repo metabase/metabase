@@ -39,11 +39,11 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
-   [metabase.integrations.common :as integrations.common]
-   [metabase.models.session :as session]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -78,19 +78,19 @@
   [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
-      (integrations.common/sync-group-memberships! user
-                                                   (group-names->ids group-names)
-                                                   (all-mapped-group-ids)))))
+      (sso/sync-group-memberships! user
+                                   (group-names->ids group-names)
+                                   (all-mapped-group-ids)))))
 
 (mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
-    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not enabled"))))
+    (throw (IllegalArgumentException. (tru "Can''t create new SAML user when SAML is not enabled"))))
   (when-not email
     (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
                          " "
-                         (tru "We tried looking for {0}, but couldn't find the attribute."
+                         (tru "We tried looking for {0}, but couldn''t find the attribute."
                               (sso-settings/saml-attribute-email))
                          " "
                          (tru "Please make sure your SAML IdP is properly configured."))

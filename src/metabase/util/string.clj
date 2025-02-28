@@ -55,3 +55,10 @@
   "True if the given string is formatted like a UUID"
   [s] (try (java.util.UUID/fromString s) true
            (catch Exception _e false)))
+
+(defn elide
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))

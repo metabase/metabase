@@ -46,12 +46,12 @@ export const TabsView = <
         style={{
           borderBottom: "1px solid var(--mb-color-border)",
         }}
-        pb="1px" // Keeps the selected tab underline above the border
       >
         <Tabs.List
           h="2.5rem"
           style={{
-            borderBottom: "none",
+            // eslint-disable-next-line no-color-literals
+            "--tab-border-color": "rgba(0, 0, 0, 0)",
           }}
         >
           {tabs.map(tab => {
@@ -61,7 +61,7 @@ export const TabsView = <
               <Tabs.Tab
                 key={id}
                 value={id}
-                icon={<Icon name={icon} />}
+                leftSection={<Icon name={icon} />}
                 onClick={() => onTabChange(id)}
               >
                 {displayName}

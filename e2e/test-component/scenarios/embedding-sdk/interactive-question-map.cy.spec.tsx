@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, describeEE, mapPinIcon } from "e2e/support/helpers";
+import { createQuestion, mapPinIcon } from "e2e/support/helpers";
 import {
   METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
@@ -10,7 +10,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-question-map", () => {
+describe("scenarios > embedding-sdk > interactive-question-map", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

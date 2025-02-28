@@ -4,7 +4,6 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { describeEE } from "e2e/support/helpers";
 import {
   AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
@@ -31,7 +30,7 @@ function setup({ locale }: { locale: string }) {
   });
 }
 
-describeEE("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
+describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

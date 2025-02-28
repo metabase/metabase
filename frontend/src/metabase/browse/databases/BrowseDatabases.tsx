@@ -16,6 +16,7 @@ import {
   Box,
   Group,
   Icon,
+  SimpleGrid,
   Stack,
   type StackProps,
   Text,
@@ -24,7 +25,6 @@ import {
 
 import {
   BrowseContainer,
-  BrowseGrid,
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
@@ -66,7 +66,7 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <BrowseMain>
         <BrowseSection>
-          <BrowseGrid data-testid="database-browser">
+          <SimpleGrid data-testid="database-browser" cols={3}>
             {databases &&
               databases.length > 0 &&
               databases.map(database => (
@@ -76,7 +76,7 @@ export const BrowseDatabases = () => {
                     className={cx(CS.rounded, CS.bordered, DB.dbCard)}
                   >
                     <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {database.name}
                     </Title>
                   </DatabaseCard>
@@ -88,13 +88,13 @@ export const BrowseDatabases = () => {
                 <DatabaseCard
                   className={cx(CS.rounded, CS.bordered, DB.addCard)}
                 >
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <CardImageWrapper database={"postgres"} />
                     <CardImageWrapper database={"mysql"} />
                     <CardImageWrapper database={"snowflake"} />
                   </Group>
                   <div>
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {t`Add a database`}
                     </Title>
                     <Text
@@ -107,7 +107,7 @@ export const BrowseDatabases = () => {
                 </DatabaseCard>
               </Link>
             )}
-          </BrowseGrid>
+          </SimpleGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
@@ -123,6 +123,7 @@ const CardImageWrapper = ({ database }: { database: string }) => {
       className={CS.rounded}
       style={{
         boxShadow:
+          // eslint-disable-next-line no-color-literals
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >

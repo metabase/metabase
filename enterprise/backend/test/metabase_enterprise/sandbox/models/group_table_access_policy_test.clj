@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as sandboxes]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.util :as u]

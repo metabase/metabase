@@ -467,7 +467,7 @@ describe("scenarios > notebook > link to data source", () => {
       });
     });
 
-    H.describeEE("sandboxing", () => {
+    describe("sandboxing", () => {
       beforeEach(() => {
         H.setTokenFeatures("all");
 
@@ -531,7 +531,7 @@ describe("scenarios > notebook > link to data source", () => {
         );
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });

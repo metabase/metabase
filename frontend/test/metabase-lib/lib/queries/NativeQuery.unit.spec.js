@@ -19,7 +19,12 @@ const metadata = createMockMetadata({
     createMockDatabase({
       id: MONGO_DB_ID,
       engine: "mongo",
-      features: ["basic-aggregations", "nested-fields", "dynamic-schema"],
+      features: [
+        "basic-aggregations",
+        "nested-fields",
+        "dynamic-schema",
+        "native-requires-specified-collection",
+      ],
     }),
   ],
 });
@@ -128,7 +133,7 @@ describe("NativeQuery", () => {
 
     describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
-        const fakeCollectionID = 9999;
+        const fakeCollectionID = "9999";
         const fakeMongoQuery =
           makeMongoQuery("").setCollectionName(fakeCollectionID);
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);

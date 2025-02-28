@@ -11,7 +11,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf])
   (:import
    (java.io File IOException OutputStream)))
 
@@ -48,11 +49,9 @@
                           (assoc-in [:data :pivot?] pivot?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
-        (dorun
-         (map-indexed
-          (fn [i row]
-            (qp.si/write-row! w row i ordered-cols viz-settings'))
-          rows))
+        (perf/reduce (fn [_ i row]
+                       (qp.si/write-row! w row i ordered-cols viz-settings'))
+                     nil (range) rows)
         (qp.si/finish! w results)))))
 
 (defn- create-temp-file
@@ -90,13 +89,15 @@
   (when (pos-int? (:row_count result))
     (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
           result (:result (realize-data-rows part))]
-      [(when-let [temp-file (and (:include_csv card)
-                                 (create-temp-file-or-throw "csv"))]
-         (with-open [os (io/output-stream temp-file)]
-           (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
-         (create-result-attachment-map "csv" card-name temp-file))
-       (when-let [temp-file (and (:include_xls card)
-                                 (create-temp-file-or-throw "xlsx"))]
-         (with-open [os (io/output-stream temp-file)]
-           (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
-         (create-result-attachment-map "xlsx" card-name temp-file))])))
+      (->>
+       [(when-let [temp-file (and (:include_csv card)
+                                  (create-temp-file-or-throw "csv"))]
+          (with-open [os (io/output-stream temp-file)]
+            (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+          (create-result-attachment-map "csv" card-name temp-file))
+        (when-let [temp-file (and (:include_xls card)
+                                  (create-temp-file-or-throw "xlsx"))]
+          (with-open [os (io/output-stream temp-file)]
+            (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
+          (create-result-attachment-map "xlsx" card-name temp-file))]
+       (filterv some?)))))

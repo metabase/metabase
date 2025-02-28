@@ -34,7 +34,7 @@ export const timelineApi = Api.injectEndpoints({
     >({
       query: ({ id, ...params }) => ({
         method: "GET",
-        url: `/api/collection/${id}/timelines`,
+        url: `/api/timeline/collection/${id}`,
         params,
       }),
       providesTags: (timelines = []) => provideTimelineListTags(timelines),

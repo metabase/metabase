@@ -710,7 +710,10 @@ describe("scenarios > collection defaults", () => {
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Second collection").should("have.attr", "disabled");
+            findPickerItem("Second collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -732,7 +735,10 @@ describe("scenarios > collection defaults", () => {
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Third collection").should("have.attr", "disabled");
+            findPickerItem("Third collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -749,10 +755,13 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            findPickerItem("First collection").should("have.attr", "disabled");
+            findPickerItem("First collection").should(
+              "have.attr",
+              "data-disabled",
+            );
             findPickerItem("Another collection").should(
               "have.attr",
-              "disabled",
+              "data-disabled",
             );
             findPickerItem("Our analytics").should(
               "have.attr",
@@ -1255,5 +1264,5 @@ function moveItemToCollection(itemName, collectionName) {
 
 // the button element that gets attributes is 2 levels up from the text
 function findPickerItem(name) {
-  return cy.findByText(name).closest("button");
+  return cy.findByText(name).closest("a");
 }

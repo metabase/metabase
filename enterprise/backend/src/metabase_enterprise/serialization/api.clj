@@ -7,7 +7,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -179,9 +179,9 @@
                                               [:or
                                                ms/PositiveInt
                                                [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
-                                                "^.{21}$"]
+                                                #"^.{21}$"]
                                                [:re {:error/message "value must be string with `eid:<...>` prefix"}
-                                                "^eid:.{21}$"]])]]
+                                                #"^eid:.{21}$"]])]]
        [:all_collections   {:default true}  (mu/with ms/BooleanValue {:description "Serialize all collections (`true` unless you specify `collection`)"})]
        [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
@@ -207,22 +207,22 @@
                 report
                 error-message
                 callback]} (serialize&pack opts)]
-    (snowplow/track-event! ::snowplow/serialization
-                           {:event           :serialization
-                            :direction       "export"
-                            :source          "api"
-                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                            :count           (count (:seen report))
-                            :error_count     (count (:errors report))
-                            :collection      (str/join "," (map str collection))
-                            :all_collections (and (empty? collection)
-                                                  (not (:no-collections opts)))
-                            :data_model      (not (:no-data-model opts))
-                            :settings        (not (:no-settings opts))
-                            :field_values    (:include-field-values opts)
-                            :secrets         (:include-database-secrets opts)
-                            :success         (boolean archive)
-                            :error_message   error-message})
+    (analytics/track-event! :snowplow/serialization
+                            {:event           :serialization
+                             :direction       "export"
+                             :source          "api"
+                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                             :count           (count (:seen report))
+                             :error_count     (count (:errors report))
+                             :collection      (str/join "," (map str collection))
+                             :all_collections (and (empty? collection)
+                                                   (not (:no-collections opts)))
+                             :data_model      (not (:no-data-model opts))
+                             :settings        (not (:no-settings opts))
+                             :field_values    (:include-field-values opts)
+                             :secrets         (:include-database-secrets opts)
+                             :success         (boolean archive)
+                             :error_message   error-message})
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"
@@ -264,18 +264,18 @@
                                              :continue-on-error continue-on-error?
                                              :full-stacktrace   full-stacktrace?})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (snowplow/track-event! ::snowplow/serialization
-                             {:event         :serialization
-                              :direction     "import"
-                              :source        "api"
-                              :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
-                              :models        (str/join "," imported)
-                              :count         (if (contains? imported "Setting")
-                                               (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                               (count (:seen report)))
-                              :error_count   (count (:errors report))
-                              :success       (not error-message)
-                              :error_message error-message})
+      (analytics/track-event! :snowplow/serialization
+                              {:event         :serialization
+                               :direction     "import"
+                               :source        "api"
+                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                               :models        (str/join "," imported)
+                               :count         (if (contains? imported "Setting")
+                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                (count (:seen report)))
+                               :error_count   (count (:errors report))
+                               :success       (not error-message)
+                               :error_message error-message})
       (if error-message
         {:status  (or status 500)
          :headers {"Content-Type" "text/plain"}
@@ -286,4 +286,6 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-(api/define-routes +auth)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/serialization` routes."
+  (api.macros/ns-handler *ns* +auth))

@@ -3,12 +3,21 @@
 
   This namespace is deprecated, soon everything will be migrated to notifications."
   (:require
-   [metabase.pulse.send]
+   [metabase.pulse.dashboard-subscription]
+   [metabase.pulse.models.pulse]
+   [metabase.pulse.update-alerts]
    [potemkin :as p]))
 
 (comment
-  metabase.pulse.send/keep-me)
+  metabase.pulse.dashboard-subscription/keep-me
+  metabase.pulse.models.pulse/keep-me
+  metabase.pulse.update-alerts/keep-me)
 
 (p/import-vars
- [metabase.pulse.send
-  send-pulse!])
+ [metabase.pulse.dashboard-subscription
+  update-dashboard-subscription-pulses!]
+ [metabase.pulse.models.pulse
+  retrieve-alerts-for-cards
+  update-pulse!]
+ [metabase.pulse.update-alerts
+  delete-alerts-if-needed!])

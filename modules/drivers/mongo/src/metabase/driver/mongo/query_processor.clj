@@ -932,7 +932,8 @@
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
                                              ;; aliases should also contain no . characters (#32182).
-                                             (str/replace #"~|\." "_")
+                                             ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
+                                             (str/replace #"[~\. ]" "_")
                                              (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]

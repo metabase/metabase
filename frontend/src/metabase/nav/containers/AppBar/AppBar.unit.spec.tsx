@@ -16,7 +16,10 @@ import {
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
-import type { DashboardState, EmbedOptions } from "metabase-types/store";
+import type {
+  DashboardState,
+  InteractiveEmbeddingOptions,
+} from "metabase-types/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -266,7 +269,7 @@ function setup({
   dashboardState,
   initialRoute = "/question/1",
 }: {
-  embedOptions?: Partial<EmbedOptions>;
+  embedOptions?: Partial<InteractiveEmbeddingOptions>;
   card?: Card;
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;

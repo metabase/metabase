@@ -215,11 +215,11 @@ describe("issue 39487", () => {
   }
 
   function nextButton() {
-    return H.popover().get("button[data-next]");
+    return H.popover().get("button[data-direction=next]");
   }
 
   function previousButton() {
-    return H.popover().get("button[data-previous]");
+    return H.popover().get("button[data-direction=previous]");
   }
 });
 
@@ -283,4 +283,24 @@ describe("issue 47793", () => {
         .and("contain.text", "quantity: 10");
     },
   );
+});
+
+describe("issue 49270", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("document title should not indicate that loading takes place when query has errored (metabase#49270)", () => {
+    H.openOrdersTable();
+    cy.icon("sum").click();
+
+    cy.intercept("POST", "/api/dataset", request => {
+      request.reply({ statusCode: 500, delay: 1000 });
+    });
+
+    cy.button("Done").click();
+    cy.title().should("equal", "Doing science... · Metabase");
+    cy.title().should("equal", "Question · Metabase");
+  });
 });

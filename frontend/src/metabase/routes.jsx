@@ -190,7 +190,6 @@ export const getRoutes = store => {
                   name: "tab",
                   resourceType: "dashboard-tab",
                   type: "search",
-                  required: false,
                 },
               ],
             })}

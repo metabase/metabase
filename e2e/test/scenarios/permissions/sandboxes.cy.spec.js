@@ -22,7 +22,7 @@ const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const VIEW_DATA_PERMISSION_INDEX = 0;
 
-H.describeEE("formatting > sandboxes", () => {
+describe("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
       H.restore();
@@ -127,7 +127,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: ATTRIBUTE_VALUE,
+          columnAssertion: Number(ATTRIBUTE_VALUE),
         });
       });
     });
@@ -171,7 +171,7 @@ H.describeEE("formatting > sandboxes", () => {
         H.openPeopleTable();
         H.assertDatasetReqIsSandboxed({
           columnId: PEOPLE.ID,
-          columnAssertion: ATTRIBUTE_VALUE,
+          columnAssertion: Number(ATTRIBUTE_VALUE),
         });
         cy.get(".test-TableInteractive-headerCellData").should(
           "have.length",
@@ -333,7 +333,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
       H.assertDatasetReqIsSandboxed({
         columnId: PEOPLE.USER_ID,
-        columnAssertion: ATTRIBUTE_VALUE,
+        columnAssertion: Number(ATTRIBUTE_VALUE),
       });
     });
 
@@ -440,7 +440,7 @@ H.describeEE("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
           requestAlias: `@cardQuery${QUESTION_ID}`,
         });
       });
@@ -533,7 +533,7 @@ H.describeEE("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });
@@ -618,7 +618,7 @@ H.describeEE("formatting > sandboxes", () => {
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -685,7 +685,7 @@ H.describeEE("formatting > sandboxes", () => {
         H.assertDatasetReqIsSandboxed({
           requestAlias: "@datasetQuery",
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         cy.findByTestId("TableInteractive-root")
@@ -818,7 +818,7 @@ H.describeEE("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         // Title of the first order for User ID = 1
@@ -1024,7 +1024,7 @@ H.describeEE("formatting > sandboxes", () => {
       H.assertDatasetReqIsSandboxed({
         requestAlias: "@cardQuery",
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -1117,11 +1117,13 @@ H.describeEE("formatting > sandboxes", () => {
       H.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+      H.getDashboardCards()
+        .findByText(/Rows 1-\d of 11/)
+        .should("exist");
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -1221,11 +1223,13 @@ H.describeEE("formatting > sandboxes", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+        H.getDashboardCards()
+          .findByText(/Rows 1-\d of 11/)
+          .should("exist");
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         H.openSharingMenu("Subscriptions");

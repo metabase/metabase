@@ -13,12 +13,12 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.public-test :as public-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.public-sharing.api-test :as public-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -1052,7 +1052,7 @@
                                                        :card_id          (u/the-id series-card)
                                                        :position         0}]
             (is (= "completed"
-                   (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
+                   (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
@@ -1832,6 +1832,33 @@
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
 
+(deftest biginteger-numeric-param-between-test
+  (testing "Embedded numeric params with mixed long and biginteger values in a between filter should be correctly applied"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card source-card {:dataset_query (mt/native-query
+                                                                 {:query "SELECT CAST('9223372036854775808' AS DECIMAL) as NUMBER UNION ALL
+                                                                          SELECT CAST('0' AS DECIMAL) as NUMBER UNION ALL
+                                                                          SELECT CAST('-9223372036854775809' as DECIMAL) as NUMBER"})}
+                       :model/Card target-card {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (format "card__%s" (u/the-id source-card))
+                                                                           :aggregation  [[:count]]}}}
+                       :model/Dashboard dashboard {:parameters       [{:id "number" :slug "number" :name "number" :type :number/between}]
+                                                   :enable_embedding true
+                                                   :embedding_params {:number "enabled"}}
+                       :model/DashboardCard dashcard {:dashboard_id       (u/the-id dashboard)
+                                                      :card_id            (u/the-id target-card)
+                                                      :parameter_mappings [{:parameter_id "number"
+                                                                            :card_id      (u/the-id target-card)
+                                                                            :target       [:dimension [:field "NUMBER" {:base-type :type/Decimal}]]}]}]
+          (is (=? {:status "completed"
+                   :data   {:rows [[3]]}}
+                  (client/client :get 202 (dashcard-url dashcard))))
+          (is (=? {:status "completed"
+                   :data   {:rows [[2]]}}
+                  (client/client :get 202 (dashcard-url dashcard {:params {:number ["-9223372036854775809", 0]}})))))))))
+
 (deftest format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
     (let [q             {:database (mt/id)
@@ -2038,3 +2065,47 @@
            :status :invalid-format,
            :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))
+
+;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
+
+(defn- png? [s]
+  (= [\P \N \G] (drop 1 (take 4 s))))
+
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
+(deftest card-tile-query-test
+  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
+                                                :enable_embedding true}]
+        (let [token (card-token card-id)]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1/%d/%d"
+                                                 token
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))
+
+(deftest dashcard-tile-query-test
+  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
+        (let [token (dash-token dashboard-id)]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+                                                 token
+                                                 dashcard-id
+                                                 card-id
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))

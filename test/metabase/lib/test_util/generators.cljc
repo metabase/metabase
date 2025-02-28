@@ -12,6 +12,7 @@
    [metabase.lib.test-util.generators.filters :as gen.filters]
    [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.test.util.random :as tu.rng]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -94,9 +95,9 @@
 (defn- choose-stage
   "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
   [query]
-  (if (< (rand) 0.8)
+  (if (< (tu.rng/rand) 0.8)
     -1
-    (rand-int (count (:stages query)))))
+    (tu.rng/rand-int (count (:stages query)))))
 
 (def ^:private ^:dynamic *safe-for-old-refs*
   "Controls whether the generators will construct queries with things like multiple joins to the same table, which
@@ -335,16 +336,18 @@
   (let [stage-number        (choose-stage query)
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
-                                                    :right-join 5
-                                                    :full-join  5})
+                                                    :right-join 10
+                                                    ;; TODO: Make the following driver dependent? Temporarily suppressed
+                                                    ;;       as I test against h2
+                                                    #_#_:full-join  5})
         ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
         condition-space     (for [table (lib.metadata/tables query)
                                   :let [conditions (lib/suggested-join-conditions query stage-number table)]
                                   :when (seq conditions)]
                               [table conditions])]
     (when-let [[target conditions] (and (seq condition-space)
-                                        (rand-nth condition-space))]
-      [:join stage-number target (rand-nth conditions) strategy])))
+                                        (tu.rng/rand-nth condition-space))]
+      [:join stage-number target (tu.rng/rand-nth conditions) strategy])))
 
 (defmethod run-step* :join [query [_join stage-number target condition strategy]]
   (lib/join query stage-number (lib/join-clause target [condition] strategy)))
@@ -357,13 +360,17 @@
         (is (= (inc (count before-joins))
                (count after-joins)))
         (testing "at the end"
-          (is (=? {:lib/type   :mbql/join
-                   :strategy   strategy
-                   :alias      string?
-                   :fields     :all
-                   :stages     [{:source-table (:id target)}]
-                   :conditions [condition]}
-                  (last after-joins))))))))
+          (let [summaries? (or (seq (lib/aggregations after))
+                               (seq (lib/breakouts after)))]
+            (is (=? {:lib/type   :mbql/join
+                     :strategy   strategy
+                     :alias      string?
+                     :fields     (if summaries?
+                                   (symbol "nil #_\"key is not present.\"")
+                                   :all)
+                     :stages     [{:source-table (:id target)}]
+                     :conditions [condition]}
+                    (last after-joins)))))))))
 
 ;; Append stage ==================================================================================
 (add-step {:kind   :append-stage
@@ -440,7 +447,7 @@
 
 (defn- mk-step-control [p-reset p-pop]
   (fn []
-    (let [r (rand)]
+    (let [r (tu.rng/rand)]
       (cond
         (< r p-reset)           :reset
         (< r (+ p-pop p-reset)) :pop

@@ -149,7 +149,7 @@ export const DashboardPickerModal = ({
       key="dashboard-on-the-go"
       miw="9.5rem"
       onClick={openCreateDialog}
-      leftIcon={<Icon name="add_to_dash" />}
+      leftSection={<Icon name="add_to_dash" />}
       disabled={selectedItem?.can_write === false}
     >
       {t`New dashboard`}

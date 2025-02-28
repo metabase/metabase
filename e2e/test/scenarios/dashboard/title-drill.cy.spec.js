@@ -317,7 +317,7 @@ describe("scenarios > dashboard > title drill", () => {
 
         // update the parameter filter to a new value
         H.filterWidget().contains("Doohickey").click();
-        H.popover().within(() => {
+        H.dashboardParametersPopover().within(() => {
           H.fieldValuesInput().type("{backspace}Gadget,");
           cy.findByText("Update filter").click();
         });
@@ -338,7 +338,7 @@ describe("scenarios > dashboard > title drill", () => {
         // make sure the unset id parameter works
         // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().last().click();
-        H.popover().within(() => {
+        H.dashboardParametersPopover().within(() => {
           H.fieldValuesInput().type("5");
           cy.findByText("Add filter").click();
         });

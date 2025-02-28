@@ -17,8 +17,8 @@ is_on_demand: false
 is_sample: false
 is_audit: false
 is_attached_dwh: false
-metadata_sync_schedule: 0 3 * * * ? *
-cache_field_values_schedule: 0 0 11 * * ? *
+metadata_sync_schedule: 0 9 * * * ? *
+cache_field_values_schedule: 0 0 9 * * ? *
 settings:
   database-source-dataset-name: test-data
 caveats: null
@@ -27,6 +27,7 @@ initial_sync_status: complete
 serdes/meta:
 - id: test-data (h2)
   model: Database
+entity_id: ymbeYS8YN6P6Vltnq81Ib
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null

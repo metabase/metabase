@@ -20,7 +20,7 @@ export const SearchButton = () => {
     return (
       <Button
         h="36px"
-        leftIcon={<Icon name="search" />}
+        leftSection={<Icon name="search" />}
         variant="subtle"
         onClick={handleClick}
         color="text-medium"
@@ -33,7 +33,7 @@ export const SearchButton = () => {
         <Button
           h="36px"
           w="240px"
-          leftIcon={<Icon name="search" />}
+          leftSection={<Icon name="search" />}
           onClick={handleClick}
           // TODO: Adjust this with Mantine V7
           styles={{

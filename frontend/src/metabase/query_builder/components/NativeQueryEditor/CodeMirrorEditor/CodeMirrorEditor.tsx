@@ -32,7 +32,7 @@ export interface CodeMirrorEditorRef {
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import { convertIndexToPosition, matchCardIdAtCursor } from "./util";
+import { convertSelectionToRange, matchCardIdAtCursor } from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
@@ -66,18 +66,31 @@ export const CodeMirrorEditor = forwardRef<
       // handle selection changes
       const value = update.state.doc.toString();
       if (onSelectionChange) {
-        onSelectionChange({
-          start: convertIndexToPosition(
-            value,
-            update.state.selection.main.from,
-          ),
-          end: convertIndexToPosition(value, update.state.selection.main.to),
-        });
+        const beforeRange = convertSelectionToRange(
+          update.startState.doc.toString(),
+          update.startState.selection.main,
+        );
+        const afterRange = convertSelectionToRange(
+          value,
+          update.state.selection.main,
+        );
+
+        if (
+          beforeRange.start !== afterRange.start ||
+          beforeRange.end !== afterRange.end
+        ) {
+          onSelectionChange(afterRange);
+        }
       }
       if (onCursorMoveOverCardTag) {
-        const cardId = matchCardIdAtCursor(update.state);
-        if (cardId !== null) {
-          onCursorMoveOverCardTag(cardId);
+        if (
+          update.startState.selection.main.head !==
+          update.state.selection.main.head
+        ) {
+          const cardId = matchCardIdAtCursor(update.state);
+          if (cardId !== null) {
+            onCursorMoveOverCardTag(cardId);
+          }
         }
       }
     },

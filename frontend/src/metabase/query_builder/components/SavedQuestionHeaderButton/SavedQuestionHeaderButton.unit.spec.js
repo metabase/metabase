@@ -7,7 +7,7 @@ import Question from "metabase-lib/v1/Question";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
+import { SavedQuestionHeaderButton } from "./SavedQuestionHeaderButton";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

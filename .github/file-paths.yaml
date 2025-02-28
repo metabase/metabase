@@ -5,6 +5,7 @@ default: &default
 shared_sources: &shared_sources
   - "src/**/*.cljc"
   - "src/**/*.cljs"
+  - "package.json"
 
 shared_specs: &shared_specs
   - "test/**/*.cljc"

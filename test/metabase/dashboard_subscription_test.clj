@@ -8,11 +8,11 @@
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.shared :as channel.shared]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -107,7 +107,7 @@
                           :channel/email
                           :channel/slack)
                         (pulse.test-util/with-captured-channel-send-messages!
-                          (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+                          (mt/with-temporary-setting-values [site-url "https://testmb.com"]
                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                   (thunk []
                     (if fixture
@@ -315,11 +315,11 @@
                            ;; Inline table
                            "ID</th>" true
                            ;; Links to source dashboard
-                           "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\\"" true
+                           "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\\"" true
                            ;; Links to Metabase instance
-                           "Sent from <a href=\\\"https://metabase.com/testmb\\\"" true
+                           "Sent from <a href=\\\"https://testmb.com\\\"" true
                            ;; Links to subscription management page in account settings
-                           "\\\"https://metabase.com/testmb/account/notifications\\\"" true
+                           "\\\"https://testmb.com/account/notifications\\\"" true
                            "Manage your subscriptions" true}
                           pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
@@ -328,9 +328,9 @@
                                                    #"Sent by Rasta Toucan"
                                                    #"More results have been included"
                                                    #"ID</th>"
-                                                   #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\""
-                                                   #"Sent from <a href=\"https://metabase.com/testmb\""
-                                                   #"\"https://metabase.com/testmb/account/notifications\""
+                                                   #"<a class=\"title\" href=\"https://testmb.com/dashboard/\d+\""
+                                                   #"Sent from <a href=\"https://testmb.com\""
+                                                   #"\"https://testmb.com/account/notifications\""
                                                    #"Manage your subscriptions"))))
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -341,13 +341,13 @@
            (is (= {:channel-id "#general"
                    :attachments
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                              {:type "section", :fields [{:type "mrkdwn", :text (str "<https://metabase.com/testmb/dashboard/"
+                              {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                      dashboard-id
                                                                                      " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false
                                        :content     true}
-                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                     :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
                      :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
@@ -391,12 +391,12 @@
          (is (= {:channel-id "#general"
                  :attachments
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                            {:type "section", :fields [{:type "mrkdwn", :text (str "<https://metabase.com/testmb/dashboard/"
+                            {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                    dashboard-id
                                                                                    " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                   :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
                    :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
@@ -437,12 +437,12 @@
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                             {:type "section", :fields [{:type "mrkdwn"
                                                         :text
-                                                        (str "<https://metabase.com/testmb/dashboard/"
+                                                        (str "<https://testmb.com/dashboard/"
                                                              dashboard-id
                                                              " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                   :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
                    :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
@@ -467,10 +467,10 @@
        (fn [_ [email]]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
-                                                     "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\\\"" true}
+                                                     "<a class=\\\"title\\\" href=\\\"https://testmb.com/dashboard/\\d+\\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\\\"" true}
                                                     pulse.test-util/png-attachment]})
                   (mt/summarize-multipart-single-email email #"Aviary KPIs"
-                                                       #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\"")))))
+                                                       #"<a class=\"title\" href=\"https://testmb.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\"")))))
 
        :slack
        (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -484,13 +484,13 @@
                                :fields [{:type "mrkdwn", :text "*State*\nCA, NY…"}         ;; "*State*\nCA, NY and NJ"
                                         {:type "mrkdwn", :text "*Quarter and Y…"}]} ;; "*Quarter and Year*\nQ1, 2021"
                               {:type "section", :fields [{:type "mrkdwn", :text
-                                                          (str "<https://metabase.com/testmb/dashboard/"
+                                                          (str "<https://testmb.com/dashboard/"
                                                                dashboard-id
                                                                "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
 
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
-                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                     :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
                      :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
@@ -514,27 +514,27 @@
        (is (every?
             true?
             (-> (mt/summarize-multipart-single-email email
-                                                     #"https://metabase\.com/testmb/collection/\d+"
+                                                     #"https://testmb\.com/collection/\d+"
                                                      #"Linked collection name"
                                                      #"Linked collection desc"
 
-                                                     #"https://metabase\.com/testmb/browse/\d+"
+                                                     #"https://testmb\.com/browse/\d+"
                                                      #"Linked database name"
                                                      #"Linked database desc"
 
-                                                     #"https://metabase\.com/testmb/question\?db=\d+table=\d+"
+                                                     #"https://testmb\.com/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
 
-                                                     #"https://metabase\.com/testmb/question/\d+"
+                                                     #"https://testmb\.com/question/\d+"
                                                      #"Linked card name"
                                                      #"Linked card desc"
 
-                                                     #"https://metabase\.com/testmb/question/\d+"
+                                                     #"https://testmb\.com/question/\d+"
                                                      #"Linked model name"
                                                      #"Linked model desc"
 
-                                                     #"https://metabase\.com/testmb/dashboard/\d+"
+                                                     #"https://testmb\.com/dashboard/\d+"
                                                      #"Linked Dashboard name"
                                                      #"Linked Dashboard desc")
                 (get "rasta@metabase.com")
@@ -555,11 +555,11 @@
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn",
                                                :text
-                                               #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
-                  :title_link #"https://metabase.com/testmb/question/.+",
+                  :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
                   :channel-id "FOO",
                   :fallback "Test card"}
@@ -567,28 +567,28 @@
                   [{:type "section",
                     :text
                     {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}]}
+                     :text #"\*<https://testmb\.com/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
-                    {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/browse/\d+\|Linked database name>\*\nLinked database desc"}}]}
-                 {:blocks
-                  [{:type "section",
-                    :text
-                    {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}]}
+                    {:type "mrkdwn", :text #"\*<https://testmb\.com/browse/\d+\|Linked database name>\*\nLinked database desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
                     {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}]}
-                 {:blocks
-                  [{:type "section",
-                    :text {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/question/\d+\|Linked card name>\*\nLinked card desc"}}]}
+                     :text #"\*<https://testmb\.com/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
-                    {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/question/\d+\|Linked model name>\*\nLinked model desc"}}]}
+                    {:type "mrkdwn",
+                     :text #"\*<https://testmb\.com/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}]}
+                 {:blocks
+                  [{:type "section",
+                    :text {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked card name>\*\nLinked card desc"}}]}
+                 {:blocks
+                  [{:type "section",
+                    :text
+                    {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked model name>\*\nLinked model desc"}}]}
                  {:blocks
                   [{:type "section", :text {:type "mrkdwn", :text "*<https://metabase.com|https://metabase.com>*"}}]}]}
                (pulse.test-util/thunk->boolean pulse-results))))}}))
@@ -965,12 +965,12 @@
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
-                  :title_link #"https://metabase.com/testmb/question/.+",
+                  :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
                   :channel-id "FOO",
                   :fallback "Test card"}
@@ -1000,9 +1000,9 @@
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (mt/with-temp [:model/Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                       :model/Dashboard     {dash-id :id} {:name "just dash"}]
+                       :model/Dashboard {dash-id :id} {:name "just dash"}]
           (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
                 ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
                 viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]

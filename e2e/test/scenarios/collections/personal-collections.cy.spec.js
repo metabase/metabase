@@ -174,12 +174,10 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  H.openNewCollectionItemFlowFor("collection");
+  H.newButton("Collection").click();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
   });
 
-  cy.findByTestId("new-collection-modal").then(modal => {
-    cy.findByText("Create").click();
-  });
+  cy.findByTestId("new-collection-modal").button("Create").click();
 }

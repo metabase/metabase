@@ -149,5 +149,3 @@
       {:ok true}
       {:status 400
        :body   (humanize-error-messages response)})))
-
-(api/define-routes)

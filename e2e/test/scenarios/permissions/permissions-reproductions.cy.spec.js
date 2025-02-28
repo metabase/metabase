@@ -74,7 +74,7 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
   });
 });
 
-H.describeEE("postgres > user > query", { tags: "@external" }, () => {
+describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -212,7 +212,7 @@ describe("issue 19603", () => {
   });
 });
 
-H.describeEE("issue 20436", () => {
+describe("issue 20436", () => {
   const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
 
   function changePermissions(from, to) {
@@ -317,8 +317,6 @@ describe("UI elements that make no sense for users without data permissions (met
   });
 
   it("should not show visualization or question settings to users with block data permissions", () => {
-    H.onlyOnEE();
-
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
     cy.updatePermissionsGraph({
@@ -390,7 +388,7 @@ describe("issue 22473", () => {
   });
 });
 
-H.describeEE("issue 22695 ", () => {
+describe("issue 22695 ", () => {
   function assert() {
     cy.visit("/");
 
@@ -548,7 +546,7 @@ describe("issue 23981", () => {
   });
 });
 
-H.describeEE("issue 24966", () => {
+describe("issue 24966", () => {
   const sandboxingQuestion = {
     name: "geadsfasd",
     native: {

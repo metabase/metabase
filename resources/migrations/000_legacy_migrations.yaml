@@ -5829,16 +5829,14 @@ databaseChangeLog:
   - changeSet:
         id: 109
         author: camsaul
-        comment: Added 0.34.2
+        comment: Added 0.34.2, but not necessary anymore with the liquibase session lock
         failOnError: false
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
           - or:
               - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+                    type: none
         changes:
           - sql:
                 sql: ALTER TABLE `DATABASECHANGELOGLOCK` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -127,7 +127,7 @@ describe("scenarios > navigation > navbar", () => {
     });
   });
 
-  H.describeEE("EE", () => {
+  describe("EE", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();

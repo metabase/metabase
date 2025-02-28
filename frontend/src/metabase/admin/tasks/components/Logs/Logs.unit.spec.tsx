@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { act, render, screen, waitFor } from "__support__/ui";
 import { UtilApi } from "metabase/services";
 
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";

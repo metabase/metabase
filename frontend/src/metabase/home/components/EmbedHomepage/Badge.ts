@@ -1,5 +1,7 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type { MantineSize } from "@mantine/styles";
+
+import type { MantineSize } from "metabase/ui";
 
 type BadgeColor = "brand" | "gray";
 

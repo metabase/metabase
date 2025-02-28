@@ -8,9 +8,9 @@ import {
   getParameters,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
   DashCardId,
@@ -216,7 +216,12 @@ export function DashboardSidebars({
         />
       );
     case SIDEBAR_NAME.sharing:
-      return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
+      return (
+        <DashboardSubscriptionsSidebar
+          dashboard={dashboard}
+          onCancel={onCancel}
+        />
+      );
     case SIDEBAR_NAME.info:
       return (
         <DashboardInfoSidebar

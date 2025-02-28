@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]

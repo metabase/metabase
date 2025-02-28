@@ -1,33 +1,17 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
@@ -65,11 +49,8 @@ jobs:
             };
 
   build:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.e2e_all == 'true'
+    needs: [get-build-requirements]
+    if: ${{ !cancelled() && !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:

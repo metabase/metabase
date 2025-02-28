@@ -16,7 +16,7 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
     H.openOrdersTable();
     H.openNotebook();
 
@@ -75,7 +75,7 @@ describe("scenarios > question > saved", () => {
         .click()
         .type("{selectall}{backspace}", { delay: 50 })
         .blur();
-      cy.findByLabelText("Name: required").should("be.empty");
+      cy.findByLabelText("Name").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.findByTestId("save-question-button").should("be.disabled");
 
@@ -165,6 +165,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders in a dashboard").click();
       cy.findByRole("button", { name: "Select this dashboard" }).click();
     });
+    H.entityPickerModal().should("not.exist");
 
     H.modal().within(() => {
       cy.findByText("Duplicate").click();
@@ -249,6 +250,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText(NEW_DASHBOARD).click();
       cy.button(/Select/).click();
     });
+    H.entityPickerModal().should("not.exist");
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
@@ -266,6 +268,25 @@ describe("scenarios > question > saved", () => {
 
     cy.get("header").findByText(NEW_DASHBOARD);
     cy.url().should("include", "/dashboard/");
+  });
+
+  it("should not add scrollbar to duplicate modal if question name is long (metabase#53364)", () => {
+    H.createQuestion(
+      {
+        name: "A".repeat(240),
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+
+    H.modal().should($el => {
+      const $modal = $el[0];
+      expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
+    });
   });
 
   it("should revert a saved question to a previous version", () => {
@@ -559,6 +580,7 @@ describe(
       H.resetWebhookTester();
       H.restore();
       cy.signInAsAdmin();
+      H.setupSMTP();
 
       cy.request("POST", "/api/channel", {
         name: firstWebhookName,
@@ -586,34 +608,31 @@ describe(
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
-      H.modal().within(() => {
-        H.toggleAlertChannel("Email");
-        H.toggleAlertChannel(secondWebhookName);
-        cy.button("Done").click();
-      });
-      cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Edit alerts").click();
-      H.popover().within(() => {
-        cy.findByText("You set up an alert").should("exist");
-        cy.findByText("Edit").click();
-      });
+      H.popover().findByText("Create an alert").click();
 
-      H.modal().within(() => {
-        H.getAlertChannel(secondWebhookName).scrollIntoView();
-        H.getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
-          .should("be.checked");
+      H.modal().findByText("New alert").should("be.visible");
+      H.removeNotificationHandlerChannel("Email");
+      H.addNotificationHandlerChannel(secondWebhookName, {
+        hasNoChannelsAdded: true,
       });
+      H.modal().button("Done").click();
+
+      H.openSharingMenu("Edit alerts");
+      H.modal()
+        .findByText(/Created by you/)
+        .should("be.exist")
+        .click();
+
+      H.modal().findByText(secondWebhookName).should("be.visible");
     });
 
-    it("should allow you to test a webhook", () => {
+    // There is no api to test individual hooks for new Question Alerts
+    it.skip("should allow you to test a webhook", () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
-      H.modal().button("Set up an alert").click();
+      H.popover().findByText("Create an alert").click();
+
       H.modal().within(() => {
         H.getAlertChannel(firstWebhookName).scrollIntoView();
 

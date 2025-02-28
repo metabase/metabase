@@ -136,7 +136,8 @@
           q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider
                                                                                   (:venues (lib.tu/mock-cards)))
           venues-category-id-metadata (meta/field-metadata :venues :category-id)
-          categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
+          categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                    (lib/visible-columns q2))]
 
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
@@ -145,7 +146,10 @@
                                 :source-table (meta/id :venues)}]
                  :conditions  [[:=
                                 {:lib/uuid string?}
-                                [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
+                                [:field {:base-type    :type/BigInteger
+                                         :lib/uuid     string?
+                                         :source-field (meta/id :venues :category-id)}
+                                 (meta/id :categories :id)]
                                 [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
                 clause)))
       (is (=? {:database (meta/id)
@@ -160,7 +164,7 @@
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
                                                             :join-alias absent-key-marker}
-                                                           "ID"]
+                                                           (meta/id :categories :id)]
                                                           [:field
                                                            {:lib/uuid string?
                                                             :join-alias "Venues"}
@@ -1489,3 +1493,26 @@
           (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
             (is (=? nil
                     (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))
+
+(deftest ^:parallel join-and-summary-ordering-test
+  (let [has-fields? #(-> % lib/joins first (contains? :fields))]
+    (testing "adding an aggregation or breakout removes :fields from any joins"
+      (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (meta/table-metadata :products)))
+            aggregated (lib/aggregate base (lib/count))
+            broken-out (lib/breakout base (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))]
+        (is (=? [{:fields :all}]
+                (lib/joins base)))
+        (is (has-fields? base))
+        (is (not (has-fields? aggregated)))
+        (is (not (has-fields? broken-out)))))
+    (testing "a join added with an existing breakout has no :fields clause"
+      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                   (lib/join (meta/table-metadata :products))
+                   has-fields?))))
+    (testing "a join added with an existing aggregation has no :fields clause"
+      (is (not (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/aggregate (lib/count))
+                   (lib/join (meta/table-metadata :products))
+                   has-fields?))))))

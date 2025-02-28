@@ -2,8 +2,9 @@
   "OpenAPI documentation for our API."
   (:require
    [clojure.string :as str]
-   [compojure.core :as compojure :refer [GET]]
-   [metabase.api.common :as api]
+   [compojure.core :refer [GET]]
+   [metabase.api.open-api :as open-api]
+   [metabase.api.util.handlers :as handlers]
    [ring.middleware.content-type :as content-type]
    [ring.util.response :as response]))
 
@@ -28,19 +29,21 @@
        (raise e)))))
 
 (defn- json-handler
-  "Return `openapi.json`."
-  ([_request]
-   {:status 200
-    :body  (merge
-            (api/openapi-object (requiring-resolve 'metabase.api.routes/routes))
-            {:servers [{:url         "/api"
-                        :description "Metabase API"}]})})
+  "Given the [[metabase.api.routes/routes]] handler, return a Ring handler that returns `openapi.json`."
+  [root-handler]
+  (fn handler*
+    ([_request]
+     {:status 200
+      :body  (merge
+              (open-api/root-open-api-object root-handler)
+              {:servers [{:url         ""
+                          :description "Metabase API"}]})})
 
-  ([request respond raise]
-   (try
-     (respond (json-handler request))
-     (catch Throwable e
-       (raise e)))))
+    ([request respond raise]
+     (try
+       (respond (handler* request))
+       (catch Throwable e
+         (raise e))))))
 
 (defn- redirect-handler
   ([_request]
@@ -54,9 +57,16 @@
      (catch Throwable e
        (raise e)))))
 
-(def routes
-  "/api/docs routes"
-  (compojure/routes
-   (GET "/" [] #'index-handler)
-   (GET "/openapi.json" [] #'json-handler)
-   #'redirect-handler))
+(defn make-routes
+  "/api/docs routes. Takes the [[metabase.api.routes/routes]] handler and returns a Ring handler with the signature
+
+    (handler request respond raise)"
+  [root-handler]
+  (open-api/handler-with-open-api-spec
+   (handlers/routes
+    (GET "/" [] #'index-handler)
+    (GET "/openapi.json" [] (json-handler root-handler))
+    #'redirect-handler)
+   ;; don't generate a spec for these routes
+   (fn [_prefix]
+     nil)))

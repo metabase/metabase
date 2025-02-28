@@ -1,8 +1,11 @@
 (ns metabase.notification.send-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -12,8 +15,8 @@
 (use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test
-  (testing "sending a ntoification will call render on all of its handlers"
-    (notification.tu/with-notification-testing-setup
+  (testing "sending a notification will call render on all of its handlers"
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
@@ -63,7 +66,7 @@
 
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
                nil
@@ -89,7 +92,7 @@
                            {:order-by [[:started_at :asc]]})))))))
 
 (deftest notification-send-retrying-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
@@ -108,7 +111,7 @@
                                 (if (= @retry-count 1)
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
-              (with-redefs [channel/send! send!]
+              (mt/with-dynamic-fn-redefs [channel/send! send!]
                 (notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
@@ -118,3 +121,66 @@
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
+
+(deftest send-notification-record-prometheus-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel ch notification.tu/default-can-connect-channel]
+        (let [n (models.notification/create-notification!
+                 {:payload_type :notification/testing}
+                 nil
+                 [{:channel_type notification.tu/test-channel-type
+                   :channel_id   (:id ch)
+                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])
+              original-render @#'channel/render-notification]
+          (with-redefs [channel/render-notification (fn [& args]
+                                                      (testing "during execution of render-notification, concurrent-tasks metric is updated"
+                                                        (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
+                                                      (apply original-render args))]
+            (notification.tu/with-captured-channel-send!
+              (notification/send-notification! n {:notification/sync? true})))
+          (testing "once the execution is done, concurrent tasks is decreased"
+            (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-notification/concurrent-tasks {:payload-type "notification/testing"}))))
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type "notification/testing"})))
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type "notification/testing"
+                                                                                                         :channel-type "channel/metabase-test"})))
+          (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-ok {:payload-type "notification/testing"
+                                                                                                         :channel-type "channel/metabase-test"})))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type "notification/testing"}))))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/wait-duration-ms {:payload-type "notification/testing"}))))
+          (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/total-duration-ms {:payload-type "notification/testing"})))))))))
+
+(deftest send-notification-record-prometheus-error-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (let [n (models.notification/create-notification!
+                 {:payload_type :notification/testing}
+                 nil
+                 [{:channel_type notification.tu/test-channel-type
+                   :channel_id   (:id chn)
+                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+          (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
+                                                                                  (throw (Exception. "test-exception")))]
+            (is (thrown? Exception (notification.send/send-notification-sync! n)))
+            (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
+                                                            {:payload-type "notification/testing"})))))))))
+
+(deftest send-notification-record-prometheus-channel-error-metrics-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+    (mt/with-prometheus-system! [_ system]
+      (notification.tu/with-notification-testing-setup!
+        (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+          (let [n (models.notification/create-notification!
+                   {:payload_type :notification/testing}
+                   nil
+                   [{:channel_type notification.tu/test-channel-type
+                     :channel_id   (:id chn)
+                     :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+            (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-attempts 1)
+                          channel/send! (fn [& _]
+                                          (throw (Exception. "test-channel-exception")))]
+              (notification.send/send-notification-sync! n)
+              (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
+                                                              {:payload-type "notification/testing"
+                                                               :channel-type "channel/metabase-test"}))))))))))

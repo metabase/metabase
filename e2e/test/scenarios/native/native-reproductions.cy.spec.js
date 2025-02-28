@@ -86,7 +86,7 @@ describe("issue 16886", () => {
   });
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
     H.NativeEditor.type(ORIGINAL_QUERY);
     cy.realPress("Home");
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -97,7 +97,7 @@ describe("issue 16886", () => {
 
     cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
-    cy.get("@editor").contains(ORIGINAL_QUERY);
+    H.NativeEditor.get().contains(ORIGINAL_QUERY);
   });
 });
 
@@ -499,7 +499,7 @@ describe("issue 21597", { tags: "@external" }, () => {
     H.addPostgresDatabase(databaseCopyName);
 
     // Create a native query and run it
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
     H.NativeEditor.type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
 
     cy.findByTestId("variable-type-select").click();
@@ -621,6 +621,10 @@ describe("issue 34330", () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
+
     H.NativeEditor.type("SEAT", { delay: 10 });
     H.NativeEditor.completion("SEATS").should("be.visible");
 

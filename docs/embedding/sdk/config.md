@@ -4,9 +4,7 @@ title: Embedded analytics SDK - config
 
 # Embedded analytics SDK - config
 
-{% include beta-blockquote.html %}
-
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with an `authConfig` object, like so:
 

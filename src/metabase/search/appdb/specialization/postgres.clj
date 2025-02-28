@@ -55,7 +55,7 @@
       (str/join " <-> " <>))
 
     ;; negation
-    (str/starts-with? word-or-phrase "-")
+    (re-find #"^-\w" word-or-phrase)
     (str "!" (quote* (subs word-or-phrase 1)))
 
     ;; just a regular word
@@ -88,7 +88,8 @@
            complete?      (not (str/ends-with? trimmed "\""))
            ;; TODO also only complete if the :context is appropriate
            maybe-complete (if complete? complete-last-word identity)]
-       (->> (split-preserving-quotes trimmed)
+       (->> (str/replace trimmed "\\" "\\\\")
+            split-preserving-quotes
             (remove str/blank?)
             (partition-by #{"or"})
             (remove #(= (first %) "or"))

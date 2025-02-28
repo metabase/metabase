@@ -4,7 +4,7 @@ import { useState } from "react";
 import NumericInput from "./NumericInput";
 
 export default {
-  title: "Core/NumericInput",
+  title: "Components/Ask Before Using/NumericInput",
   component: NumericInput,
 };
 

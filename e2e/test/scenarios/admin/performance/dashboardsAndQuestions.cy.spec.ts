@@ -122,7 +122,7 @@ describe(
   "Cache invalidation for dashboards and questions",
   { tags: "@external" },
   () => {
-    H.describeEE("ee", () => {
+    describe("ee", () => {
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();

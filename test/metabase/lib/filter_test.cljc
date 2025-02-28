@@ -8,7 +8,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -29,7 +28,8 @@
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
         venues-longitude-metadata   (meta/field-metadata :venues :longitude)
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                  (lib/visible-columns q2))
         checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
@@ -42,7 +42,10 @@
          [op
           {:lib/uuid string?}
           [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -53,7 +56,10 @@
         {:lib/uuid string?}
         [:field {:lib/uuid string?} (meta/id :venues :category-id)]
         42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42
@@ -738,6 +744,21 @@
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
       {:clause [:not-null tax], :name "Tax is not empty"}])))
+
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id        (meta/field-metadata :orders :id)
+        pos-value "9223372036854775808"
+        neg-value "-9223372036854775809"]
+    (check-display-names
+     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

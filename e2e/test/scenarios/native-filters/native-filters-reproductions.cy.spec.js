@@ -962,41 +962,37 @@ describe("issue 29786", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "should allow using field filters with null schema (metabase#29786)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion({
-        display: "table",
-        collection_id: COLLECTION_GROUP,
-        query: SQL_QUERY,
-      });
+  it("should allow using field filters with null schema (metabase#29786)", () => {
+    H.startNewNativeQuestion({
+      display: "table",
+      collection_id: COLLECTION_GROUP,
+      query: SQL_QUERY,
+    });
 
-      // type a space to trigger fields
-      H.NativeEditor.type(" ");
+    // type a space to trigger fields
+    H.NativeEditor.type(" ");
 
-      cy.findByTestId("tag-editor-variable-f1")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Category" });
+    cy.findByTestId("tag-editor-variable-f1")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Category" });
 
-      cy.findByTestId("tag-editor-variable-f2")
-        .findByTestId("variable-type-select")
-        .click();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Vendor" });
+    cy.findByTestId("tag-editor-variable-f2")
+      .findByTestId("variable-type-select")
+      .click();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
-      H.filterWidget().should("have.length", 2).first().click();
-      FieldFilter.selectFilterValueFromList("Widget");
-      H.filterWidget().should("have.length", 2).last().click();
-      FieldFilter.addWidgetStringFilter("Von-Gulgowski");
+    H.filterWidget().should("have.length", 2).first().click();
+    FieldFilter.selectFilterValueFromList("Widget");
+    H.filterWidget().should("have.length", 2).last().click();
+    FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
-      SQLFilter.runQuery();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1087115303928").should("be.visible");
-    },
-  );
+    SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("1087115303928").should("be.visible");
+  });
 });
 
 describe("issue 31606", { tags: "@external" }, () => {
@@ -1215,7 +1211,8 @@ describe("issue 49577", () => {
   });
 
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
-    H.startNewNativeQuestion().type("select * from {{param");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()

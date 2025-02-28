@@ -1,0 +1,141 @@
+.root {
+  --button-height-md: calc(2.5rem * var(--mantine-scale));
+  --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
+
+  font-family: var(--mb-default-font-family);
+  padding-inline: rem(15px);
+  overflow: hidden;
+  line-height: 1.15; /* mimic line-height ratio from mantine v6 */
+  font-size: var(--mantine-font-size-md);
+
+  &:active {
+    transform: none; /* Remove Mantine's default pressed effect */
+  }
+
+  [data-position="right"] {
+    margin-left: 0.5rem;
+  }
+
+  [data-position="left"] {
+    margin-right: 0.5rem;
+  }
+
+  &[data-with-left-section],
+  &[data-with-right-section] {
+    padding: rem(11px) rem(15px);
+  }
+
+  /* Button with icon only */
+  &:has(.label:empty) {
+    padding: rem(11px);
+
+    &[data-size^="compact"] {
+      padding: rem(3px);
+    }
+
+    [data-position="right"],
+    [data-position="left"] {
+      margin-inline: 0;
+    }
+  }
+
+  &[data-size^="compact"] {
+    padding: rem(3px) rem(7px);
+  }
+
+  &[data-variant="default"] {
+    color: var(--mb-color-text-primary);
+    border-color: var(--mb-color-border);
+    background-color: var(--mb-color-background);
+
+    &:hover {
+      color: var(--mb-color-text-hover);
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+
+  &[data-variant="filled"] {
+    &:hover {
+      border-color: alpha(var(--button-bg), 0.88);
+      background-color: alpha(var(--button-bg), 0.88);
+    }
+  }
+
+  &[data-variant="subtle"] {
+    &:hover {
+      color: alpha(var(--button-color), 0.88);
+      background-color: transparent;
+    }
+
+    &:disabled,
+    &[data-disabled="true"] {
+      color: var(--mb-color-text-light);
+      border-color: transparent;
+      background-color: transparent;
+
+      &:hover {
+        color: var(--mb-color-text-light);
+        border-color: transparent;
+        background-color: transparent;
+      }
+    }
+  }
+
+  &[data-variant="inverse"] {
+    /* need to implement variantColorResolver to support other colors */
+    --button-color: var(--mb-color-brand);
+    --button-color-hover: var(--mb-color-brand-light);
+
+    display: flex;
+    justify-content: flex-start;
+    color: var(--mb-color-text-dark);
+    background-color: transparent;
+
+    &:hover {
+      color: var(--button-color);
+      background-color: var(--button-color-hover);
+
+      [data-position] {
+        color: var(--button-color);
+      }
+    }
+
+    [data-position] {
+      color: var(--button-color);
+    }
+
+    &:disabled,
+    &[data-disabled="true"] {
+      color: var(--mb-color-text-light);
+      border-color: transparent;
+      background-color: transparent;
+
+      &:hover {
+        color: var(--mb-color-text-light);
+        border-color: transparent;
+        background-color: transparent;
+      }
+    }
+  }
+
+  &:disabled,
+  &:disabled:hover {
+    color: var(--mb-color-text-tertiary);
+    border-color: var(--mb-color-border);
+    background-color: var(--mb-color-background-disabled);
+  }
+}
+
+.label {
+  height: auto;
+  display: inline-block;
+  text-overflow: ellipsis;
+}
+
+.leftSection {
+  margin-inline-end: 0.5rem;
+}
+
+.rightSection {
+  margin-inline-start: 0.5rem;
+}

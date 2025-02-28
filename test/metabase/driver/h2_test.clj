@@ -208,6 +208,16 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
+  (mt/test-driver :h2
+    (testing "Don't cast date binned by week"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!week.date]})
+              compiled (some-> (qp.compile/compile query) :query pretty-sql)]
+          (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
+
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
@@ -349,7 +359,7 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.api.action-test]]
+;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint

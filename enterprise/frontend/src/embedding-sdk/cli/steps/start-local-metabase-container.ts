@@ -79,7 +79,9 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
     }
   }
 
-  const spinner = ora("Starting Metabase in a Docker container.").start();
+  const spinner = ora(
+    "Starting Metabase in a Docker container (~1 mins)",
+  ).start();
 
   // if the container has never been run before, we should run it.
   try {

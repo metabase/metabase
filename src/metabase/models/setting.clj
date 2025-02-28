@@ -283,6 +283,9 @@
    [:database-local LocalOption]
    [:user-local     LocalOption]
 
+   ;; should this setting be read from env vars?
+   [:can-read-from-env? :boolean]
+
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
@@ -393,6 +396,9 @@
    (not (database-local-only? setting))
    (not (user-local-only? setting))))
 
+(defn- allows-setting-via-env? [setting-definition-or-name]
+  (:can-read-from-env? (resolve-setting setting-definition-or-name)))
+
 (defn- site-wide-only? [setting]
   (and
    (not (allows-database-local-values? setting))
@@ -488,7 +494,8 @@
   environment variable `MB_FOO_BAR`."
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
-    (when (allows-site-wide-values? setting)
+    (when (and (allows-site-wide-values? setting)
+               (allows-setting-via-env? setting))
       (let [v (env/env (setting-env-map-name setting))]
         (when (seq v)
           v)))))
@@ -1017,6 +1024,7 @@
                  :user-local     :never
                  :deprecated     nil
                  :enabled?       nil
+                 :can-read-from-env?       true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
@@ -1035,7 +1043,7 @@
       (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
-          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+          (throw (ex-info (tru "Setting names would collide: {0} and {1}"
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))

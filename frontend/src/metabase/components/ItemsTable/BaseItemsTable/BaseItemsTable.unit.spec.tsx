@@ -99,7 +99,7 @@ describe("BaseItemsTable", () => {
 
     await userEvent.hover(screen.getByText(lastEditedAt));
 
-    expect(screen.getByRole("tooltip")).toHaveTextContent(
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
   });
@@ -151,7 +151,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent(DESCRIPTION);
@@ -166,7 +166,7 @@ describe("BaseItemsTable", () => {
       const icon = getIcon("info");
       await userEvent.hover(icon);
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");

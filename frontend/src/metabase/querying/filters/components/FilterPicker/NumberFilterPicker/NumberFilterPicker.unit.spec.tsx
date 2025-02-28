@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { columnFinder } from "metabase-lib/test-helpers";
 
 import {
   createQuery,
@@ -161,6 +162,27 @@ describe("NumberFilterPicker", () => {
           values: [15],
         });
         expect(getNextFilterColumnName()).toBe("Total");
+      });
+
+      it("should add a filter with a big integer value", async () => {
+        const query = createQuery();
+        const columns = Lib.filterableColumns(query, -1);
+        const findColumn = columnFinder(query, columns);
+        const column = findColumn("ORDERS", "ID");
+        const { onChange, getNextFilterParts, getNextFilterColumnName } = setup(
+          { query, column },
+        );
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "9007199254740993{enter}");
+        expect(onChange).toHaveBeenCalled();
+        expect(getNextFilterParts()).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [9007199254740993n],
+        });
+        expect(getNextFilterColumnName()).toBe("ID");
       });
     });
 

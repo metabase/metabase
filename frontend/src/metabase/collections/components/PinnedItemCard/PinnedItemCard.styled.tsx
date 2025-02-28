@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
@@ -32,7 +34,7 @@ export const ActionsContainer = styled(Box)<BoxProps>`
   align-items: center;
   gap: 0.5rem;
   visibility: hidden;
-`;
+` as unknown as typeof Box;
 
 export const Title = styled.div`
   font-weight: bold;

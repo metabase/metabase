@@ -277,11 +277,19 @@
              :when (supports? driver feature database)]
          feature)))
 
+(defn- supported-in-environment?
+  "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
+  sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
+  [driver]
+  (or (not (premium-features/is-hosted?))
+      (not= :sqlite (keyword driver))))
+
 (defn available-drivers
   "Return a set of all currently available drivers."
   []
   (set (for [driver (descendants driver/hierarchy :metabase.driver/driver)
-             :when  (driver/available? driver)]
+             :when  (and (driver/available? driver)
+                         (supported-in-environment? driver))]
          driver)))
 
 (mu/defn semantic-version-gte :- :boolean
@@ -510,7 +518,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "exasol" "firebolt" "materialize" "ocient" "starburst"})
+  #{"clickhouse" "firebolt" "materialize" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

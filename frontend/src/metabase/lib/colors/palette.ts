@@ -6,6 +6,7 @@ import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
+/* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
@@ -66,7 +67,11 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   content: palette => color("bg-light", palette),
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
-
+  "text-primary": palette => color("text-dark", palette),
+  "text-secondary": palette => color("text-medium", palette),
+  "text-tertiary": palette => color("text-light", palette),
+  background: palette => color("white", palette),
+  "background-disbaled": palette => color("accent-gray", palette),
   "brand-light": palette => lighten(color("brand", palette), 0.532), // #DDECFA
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),

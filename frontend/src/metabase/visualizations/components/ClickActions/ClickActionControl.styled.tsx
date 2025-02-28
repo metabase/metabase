@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
@@ -6,7 +7,6 @@ import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
-  color: var(--mb-color-brand);
   transition: all 200ms linear;
 `;
 
@@ -16,7 +16,6 @@ export const ClickActionButtonTextIcon = styled.span`
   text-align: center;
   font-weight: 700;
   font-size: 1.25rem;
-  color: var(--mb-color-brand);
   transition: all 200ms linear;
 `;
 

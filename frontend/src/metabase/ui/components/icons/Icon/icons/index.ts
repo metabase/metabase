@@ -387,6 +387,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unsubscribe_component from "./unsubscribe.svg?component";
+import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
 import upload_source from "./upload.svg?source";
 import variable_component from "./variable.svg?component";
@@ -1169,13 +1171,17 @@ export const Icons = {
     component: unarchive_component,
     source: unarchive_source,
   },
+  unknown: {
+    component: unknown_component,
+    source: unknown_source,
+  },
   unpin: {
     component: unpin_component,
     source: unpin_source,
   },
-  unknown: {
-    component: unknown_component,
-    source: unknown_source,
+  unsubscribe: {
+    component: unsubscribe_component,
+    source: unsubscribe_source,
   },
   upload: {
     component: upload_component,

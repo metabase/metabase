@@ -17,11 +17,14 @@ module.exports = {
       {
         vars: "all",
         args: "none",
-        varsIgnorePattern: "^_",
+        varsIgnorePattern: "^_.+$",
         ignoreRestSiblings: true,
       },
     ],
     "no-empty": [1, { allowEmptyCatch: true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -108,7 +111,6 @@ module.exports = {
           "When",
           "Then",
           "describeWithSnowplow",
-          "describeEE",
         ],
       },
     ],
@@ -169,6 +171,7 @@ module.exports = {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
         "no-unconditional-metabase-links-render": "error",
+        "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
         "depend/ban-dependencies": [
           "error",
@@ -190,11 +193,13 @@ module.exports = {
         "frontend/src/metabase/setup/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
       ],
       rules: {
+        "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
       },
@@ -220,10 +225,10 @@ module.exports = {
         "@typescript-eslint/no-unused-vars": [
           "error",
           {
-            argsIgnorePattern: "^_",
-            varsIgnorePattern: "^_",
+            argsIgnorePattern: "^_.+$",
+            varsIgnorePattern: "^_.+$",
             ignoreRestSiblings: true,
-            destructuredArrayIgnorePattern: "^_",
+            destructuredArrayIgnorePattern: "^_.+$",
           },
         ],
         // This was introduced in 6.0.0

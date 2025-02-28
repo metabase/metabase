@@ -13,7 +13,7 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-H.describeEE("scenarios > admin > permissions > application", () => {
+describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -89,7 +89,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.openSharingMenu(/alert/i);
-        H.modal().findByText("The wide world of alerts").should("be.visible");
+        H.modal().findByText("New alert").should("be.visible");
       });
     });
   });

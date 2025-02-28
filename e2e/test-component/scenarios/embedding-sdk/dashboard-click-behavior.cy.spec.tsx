@@ -5,7 +5,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   POPOVER_ELEMENT,
   cartesianChartCircle,
-  describeEE,
   popover,
 } from "e2e/support/helpers";
 import {
@@ -17,7 +16,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
+describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

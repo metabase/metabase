@@ -25,7 +25,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _x]
@@ -102,6 +103,7 @@
   [_query _card-type]
   true)
 
+;;; TODO FIXME -- boolean functions should end in `?`
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query
@@ -293,6 +295,16 @@
    x]
   (lib.cache/attach-query-cache (query-method metadata-providerable x)))
 
+(mu/defn ->query :- ::lib.schema/query
+  "[[->]] friendly form of [[query]].
+
+  Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
+  existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
+  it in separately -- metadata is needed for most query manipulation operations."
+  [x
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (query metadata-providerable x))
+
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -433,3 +445,67 @@
   (-> a-query
       (dissoc a-query :lib/metadata)
       lib.cache/discard-query-cache))
+
+(defn- stage-seq* [query-fragment]
+  (cond
+    (vector? query-fragment)
+    (case (first query-fragment)
+      :metric
+      [{:source-card (get query-fragment 2)}]
+
+      (mapcat stage-seq* query-fragment))
+
+    (map? query-fragment)
+    (concat (:stages query-fragment) (mapcat stage-seq* (vals query-fragment)))
+
+    :else
+    []))
+
+(defn- stage-seq [card-id a-query]
+  (map #(assoc % ::from-card card-id) (stage-seq* a-query)))
+
+(defn- expand-stage [metadata-provider stage]
+  (let [card-id (:source-card stage)
+        expanded-query (some->> card-id
+                                (lib.metadata/card metadata-provider)
+                                :dataset-query
+                                (query metadata-provider))]
+    (stage-seq card-id expanded-query)))
+
+(defn- add-stage-dep [graph stage]
+  (let [card-id  (:source-card  stage)
+        table-id (:source-table stage)
+        from-id  (::from-card   stage)]
+    (try
+      (cond-> graph
+        card-id  (dep/depend [:card from-id] [:card  card-id])
+        table-id (dep/depend [:card from-id] [:table table-id]))
+      (catch #?(:clj Exception :cljs :default) _e
+        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
+
+(defn- build-graph [source-id metadata-provider a-query]
+  (loop [graph (dep/graph)
+         stages-visited 0
+         stages (stage-seq source-id a-query)]
+    (cond
+      (empty? stages)
+      graph
+
+      (> stages-visited 50)
+      (throw (ex-info (i18n/tru "The chain of dependencies is too long to save card.") {}))
+
+      :else
+      (let [[stage & stages] stages]
+        (recur (add-stage-dep graph stage)
+               (inc stages-visited)
+               (concat stages (expand-stage metadata-provider stage)))))))
+
+(defn check-overwrite
+  "Returns nil if the card with given `card-id` can be overwritten with `query`.
+  Throws `ExceptionInfo` with a user-facing message otherwise.
+
+  Currently checks for cycles (self-referencing queries)."
+  [card-id new-query]
+  (build-graph card-id new-query new-query)
+  ;; return nil if nothing throws
+  nil)

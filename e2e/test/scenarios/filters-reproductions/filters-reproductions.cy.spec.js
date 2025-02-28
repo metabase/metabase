@@ -221,10 +221,9 @@ describe("issue 18770", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
-        .should("have.length", 5)
+        .should("have.length", 6)
         .and("contain", "See these Orders")
-        // TODO fix this drill thru and re-enable this check (metabase#52236)
-        // .and("contain", "Break out by")
+        .and("contain", "Break out by")
         .and("contain", "<")
         .and("contain", ">")
         .and("contain", "=")
@@ -363,13 +362,13 @@ describe("issue 22230", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
       cy.findByText("Is").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Zo").blur();
       cy.button("Add filter").click();
     });
@@ -528,7 +527,7 @@ describe("issue 45410", () => {
   it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
     H.openPeopleTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Email").click();
       cy.findByPlaceholderText("Search by Email")
         .type("abc@example.com,abc2@example.com")
@@ -536,7 +535,7 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.get("[data-chevron]").then(([chevronIcon]) => {
+          cy.get("[data-combobox-chevron]").then(([chevronIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
             const chevronIconRect = chevronIcon.getBoundingClientRect();
             expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
@@ -571,14 +570,14 @@ describe("issue 25378", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Relative dates…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByLabelText("Starting from…").click();
       cy.button("Add filter").click();
     });
@@ -876,7 +875,7 @@ describe("issue 30312", () => {
 
     H.popover().findByText("Filter by this column").click();
     H.selectFilterOperator("Equal to");
-    H.popover().within(() => {
+    H.clickActionsPopover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("10");
       cy.realPress("Tab");
       cy.button("Add filter").should("be.enabled").click();
@@ -1570,11 +1569,11 @@ describe("issue 49642", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
       cy.findByText("Zackery Kuhn").should("be.visible").click();
 
-      cy.findByPlaceholderText("Search by Name").should(
+      cy.findByPlaceholderText("Search the list").should(
         "have.value",
         "Zackery Kuhn",
       );
@@ -1601,7 +1600,8 @@ describe("issue 44665", () => {
   });
 
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.startNewNativeQuestion().type("select * from {{param");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
@@ -1646,5 +1646,30 @@ describe("issue 44665", () => {
       cy.findByText("baz").should("be.visible");
       cy.findByText("foobar").should("be.visible");
     });
+  });
+});
+
+describe("issue 50731", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.viewport(800, 800);
+  });
+
+  it("tooltip content should not overflow the tooltip (metabase#50731)", () => {
+    H.openOrdersTable();
+    cy.icon("filter").click();
+    cy.icon("label").realHover();
+
+    H.popover()
+      .should("be.visible")
+      .and($element => {
+        const [container] = $element;
+        const descendants = container.querySelectorAll("*");
+
+        descendants.forEach(descendant => {
+          H.assertDescendantNotOverflowsContainer(descendant, container);
+        });
+      });
   });
 });

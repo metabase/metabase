@@ -40,7 +40,7 @@ describe("new collection dialog", () => {
     const apiCalls = fetchMock.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_, options] = apiCalls[0];
+    const [_url, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
     expect(body.parent_id).toBe(null);
   });
@@ -56,7 +56,7 @@ describe("new collection dialog", () => {
     const apiCalls = fetchMock.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_, options] = apiCalls[0];
+    const [_url, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
     expect(body.parent_id).toBe(12);
   });
@@ -72,7 +72,7 @@ describe("new collection dialog", () => {
     const apiCalls = fetchMock.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_, options] = apiCalls[0];
+    const [_url, options] = apiCalls[0];
     const body = JSON.parse((await options?.body) as string);
     expect(body.parent_id).toBe(null);
   });

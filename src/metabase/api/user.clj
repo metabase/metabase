@@ -3,24 +3,22 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.integrations.google :as google]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.session :as session]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.models.session :as session]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -82,7 +80,7 @@
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
     (when (some? is-superuser?)
-      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms-group/admin))))
+      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
                   "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
     (if-let [f (and (premium-features/enable-advanced-permissions?)
                     config/ee-available?
@@ -154,18 +152,18 @@
   - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
-    true                                         (sql.helpers/where [:= :core_user.type "personal"])
-    true                                         (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where (status-clause status include_deactivated))
     ;; don't send the internal user
-    (perms-util/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                                (sql.helpers/where (query-clause query))
-    (some? group_ids)                            (sql.helpers/right-join
-                                                  :permissions_group_membership
-                                                  [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                            (sql.helpers/where
-                                                  [:in :permissions_group_membership.group_id group_ids])
-    (some? (request/limit))                      (sql.helpers/limit (request/limit))
-    (some? (request/offset))                     (sql.helpers/offset (request/offset))))
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                           (sql.helpers/where (query-clause query))
+    (some? group_ids)                       (sql.helpers/right-join
+                                             :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? (request/limit))                 (sql.helpers/limit (request/limit))
+    (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
 (defn- filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
@@ -205,11 +203,10 @@
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
-                    (cond-> clauses
-                      (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                      true             (sql.helpers/order-by [:%lower.first_name :asc]
-                                                             [:%lower.last_name :asc]
-                                                             [:id :asc])))
+                    (sql.helpers/order-by clauses
+                                          [:%lower.first_name :asc]
+                                          [:%lower.last_name :asc]
+                                          [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
              (t2/hydrate :personal_collection_id)
@@ -241,7 +238,7 @@
                           {:select-distinct [:permissions_group_membership.group_id]
                            :from  [:permissions_group_membership]
                            :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]}]})))
+                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
 (api.macros/defendpoint :get "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
@@ -272,7 +269,7 @@
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
-      (perms-util/sandboxed-user?)
+      (perms/sandboxed-user?)
       (just-me)
 
       api/*is-superuser?*
@@ -385,10 +382,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite
-                             {:event           :invite-sent
-                              :invited-user-id new-user-id
-                              :source          "admin"})
+      (analytics/track-event! :snowplow/invite
+                              {:event           :invite-sent
+                               :invited-user-id new-user-id
+                               :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -485,8 +482,8 @@
                ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
-                               :google (when (google/google-auth-enabled) :google)
-                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
+                               :google (when (sso/google-auth-enabled) :google)
+                               :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
@@ -573,5 +570,3 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
   {:success true})
-
-(api/define-routes)

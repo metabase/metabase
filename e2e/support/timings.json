@@ -1143,6 +1143,26 @@
     {
       "duration": 192000,
       "spec": "../test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js"
+    },
+    {
+      "duration": 673000,
+      "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-2-stage.cy.spec.ts"
+    },
+    {
+      "duration": 121000,
+      "spec": "../test/scenarios/i18n/i18n.cy.spec.ts"
+    },
+    {
+      "duration": 12000,
+      "spec": "../test/scenarios/native/suggestions.cy.spec.ts"
+    },
+    {
+      "duration": 7000,
+      "spec": "../test/scenarios/question/questions-entity-id.cy.spec.ts"
+    },
+    {
+      "duration": 52000,
+      "spec": "../test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js"
     }
   ]
 }

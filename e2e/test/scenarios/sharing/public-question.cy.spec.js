@@ -1,4 +1,7 @@
+import xlsx from "xlsx";
+
 const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -125,7 +128,7 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    H.startNewNativeQuestion({ display: "table" });
 
     // Create a snippet
     cy.icon("snippet").click();
@@ -139,7 +142,7 @@ describe("scenarios > public > question", () => {
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type("{moveToStart}select ");
+    H.NativeEditor.type("{moveToStart}select ");
 
     H.saveQuestion(
       "test question",
@@ -168,7 +171,7 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
+      H.startNewNativeQuestion({ display: "table" });
 
       H.NativeEditor.type(`select * from {{#${id}`);
 
@@ -194,7 +197,48 @@ describe("scenarios > public > question", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > question", () => {
+describe("scenarios > question > public link with extension", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(
+      {
+        name: "Question A",
+        native: {
+          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
+        },
+      },
+      {
+        visitQuestion: true,
+        wrapId: true,
+      },
+    ).as("questionId");
+  });
+
+  it("should download a json file when a public link with .json is shared", () => {
+    downloadPublicFileURL("json", response => {
+      expect(response.body[0]).to.deep.eq({ ID: 1 });
+    });
+  });
+
+  ["csv", "xlsx"].forEach(fileType =>
+    it(`should download a ${fileType} file when a public link with .${fileType} is shared`, () => {
+      downloadPublicFileURL(fileType, response => {
+        const { SheetNames, Sheets } = xlsx.read(response.body, {
+          type: "binary",
+        });
+
+        const sheetName = SheetNames[0];
+        const sheet = Sheets[sheetName];
+        expect(sheet["A1"].v).to.eq("ID");
+        expect(sheet["A2"].v).to.eq(1);
+      });
+    }),
+  );
+});
+
+describe("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
@@ -259,4 +303,28 @@ const visitPublicURL = () => {
       cy.signOut();
       cy.visit(publicURL);
     });
+};
+
+const downloadPublicFileURL = (fileType, validationCallback) => {
+  H.openSharingMenu("Create a public link");
+
+  H.popover().findByText(fileType).click();
+
+  H.popover().findByTestId("public-link-input").invoke("val").as("publicUrl");
+
+  cy.get("@publicUrl").should(
+    "match",
+    new RegExp(`\\/public\\/question\\/.*\\.${fileType}`),
+  );
+
+  cy.get("@publicUrl").then(url => {
+    cy.request({
+      method: "GET",
+      url: url,
+      followRedirect: true,
+      encoding: "binary",
+    }).then(response => {
+      validationCallback(response);
+    });
+  });
 };

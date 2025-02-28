@@ -118,7 +118,13 @@ export type MetabaseComponentTheme = {
   };
 
   question: {
+    /** Background color for all questions */
     backgroundColor: string;
+
+    /** Toolbar of the default interactive question layout */
+    toolbar?: {
+      backgroundColor?: string;
+    };
   };
 
   /** Data tables **/

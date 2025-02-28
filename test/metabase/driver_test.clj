@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -84,26 +85,6 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
-(defmulti bad-connection-details
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(doseq [driver [:redshift :snowflake :vertica]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:db (mt/random-name)}))
-
-(doseq [driver [:oracle]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:service-name (mt/random-name)}))
-
-(doseq [driver [:presto-jdbc]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:catalog (mt/random-name)}))
-
 (doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
   (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
     [_driver _feature _database]
@@ -127,7 +108,7 @@
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
                     details (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
-                              (merge details (bad-connection-details driver/*driver*))
+                              (merge details (tx/bad-connection-details driver/*driver*))
                               ;; otherwise destroy the db and use the original details
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
@@ -171,7 +152,7 @@
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (merge details (bad-connection-details driver/*driver*))]
+                    new-details (merge details (tx/bad-connection-details driver/*driver*))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
@@ -187,36 +168,82 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
 
-(deftest nonsql-dialects-return-original-query-test
+(deftest ^:parallel mongo-prettify-native-form-test
   (mt/test-driver :mongo
-    (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
-      (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
-                                                                                              "date"     "$created_at"}}}
-                                                             "in"   {"$dateFromParts" {"timezone" "UTC"
-                                                                                       "year"     "$$parts.year"
-                                                                                       "month"    "$$parts.month"
-                                                                                       "day"      "$$parts.day"}}}}}
-                                "sum" {"$sum" "$tax"}}}
-                   {"$sort"    {"_id" 1}}
-                   {"$project" {"_id"        false
-                                "created_at" "$_id.created_at"
-                                "sum"        true}}]
-            formatted-query (driver/prettify-native-form :mongo query)]
+    (let [query [{"$group"   {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                            "date"     "$created_at"}}}
+                                                           "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                     "year"     "$$parts.year"
+                                                                                     "month"    "$$parts.month"
+                                                                                     "day"      "$$parts.day"}}}}}
+                              "sum" {"$sum" "$tax"}}}
+                 {"$sort"    {"_id" 1}}
+                 {"$project" {"_id"        false
+                              "created_at" "$_id.created_at"
+                              "sum"        true}}]
+          formatted-query (driver/prettify-native-form :mongo query)]
 
-        (testing "Formatting a non-sql query returns the same query"
-          (is (= query formatted-query)))
+      (testing "Formatting a mongo query returns a JSON-like string"
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$group\": {"
+                          "      \"_id\": {"
+                          "        \"created_at\": {"
+                          "          \"$let\": {"
+                          "            \"vars\": {"
+                          "              \"parts\": {"
+                          "                \"$dateToParts\": {"
+                          "                  \"timezone\": \"UTC\","
+                          "                  \"date\": \"$created_at\""
+                          "                }"
+                          "              }"
+                          "            },"
+                          "            \"in\": {"
+                          "              \"$dateFromParts\": {"
+                          "                \"timezone\": \"UTC\","
+                          "                \"year\": \"$$parts.year\","
+                          "                \"month\": \"$$parts.month\","
+                          "                \"day\": \"$$parts.day\""
+                          "              }"
+                          "            }"
+                          "          }"
+                          "        }"
+                          "      },"
+                          "      \"sum\": {"
+                          "        \"$sum\": \"$tax\""
+                          "      }"
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$sort\": {"
+                          "      \"_id\": 1"
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": false,"
+                          "      \"created_at\": \"$_id.created_at\","
+                          "      \"sum\": true"
+                          "    }"
+                          "  }"
+                          "]"])
+               formatted-query)))
+
+      (testing "The formatted JSON-like string is equivalent to the query"
+        (is (= query (json/decode formatted-query))))
 
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
-        (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
               ;; This is a corner case since the system should always be using the right driver
-              weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
-          (testing "The wrong formatter will change the format..."
-            (is (not= query weird-formatted-query)))
-          (testing "...but the resulting data is still the same"
+            weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
+        (testing "The wrong formatter will change the format..."
+          (is (not= query weird-formatted-query)))
+        (testing "...but the resulting data is still the same"
             ;; Bottom line - Use the right driver, but if you use the wrong
             ;; one it should be harmless but annoying
-            (is (= query
-                   (json/decode weird-formatted-query)))))))))
+          (is (= query
+                 (json/decode weird-formatted-query))))))))
 
 (deftest ^:parallel prettify-native-form-executable-test
   (mt/test-drivers

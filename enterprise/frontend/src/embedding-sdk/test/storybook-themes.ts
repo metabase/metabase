@@ -7,7 +7,7 @@ export const darkColors = {
   lighterGrey: "#E3E7E4",
   lightGrey: "#ADABA9",
   darkGrey: "#3B3F3F",
-  background: "#151C20",
+  background: "#161A1D",
 };
 
 export const darkTheme = defineMetabaseTheme({
@@ -15,8 +15,6 @@ export const darkTheme = defineMetabaseTheme({
   fontSize: "14px",
   colors: {
     brand: darkColors.primary,
-    "brand-hover": darkColors.darkGrey,
-    "brand-hover-light": darkColors.darkGrey,
     filter: darkColors.filter,
     "text-primary": darkColors.lighterGrey,
     "text-secondary": darkColors.lighterGrey,
@@ -59,8 +57,8 @@ export const darkTheme = defineMetabaseTheme({
 });
 
 const pugColors = {
-  primary: "#3F4BF3",
-  secondary: "#3F4BF3",
+  primary: "rgba(63, 75, 243)",
+  secondary: "rgba(63, 75, 243)",
   lighterGrey: "#D1CFC5",
   lightGrey: "#545455",
   darkGrey: "#1B1C21",
@@ -110,6 +108,11 @@ const pugTheme: MetabaseTheme = {
         lineHeight: "30px",
       },
     },
+    question: {
+      toolbar: {
+        backgroundColor: "#D8D9EE",
+      },
+    },
   },
 };
 
@@ -119,7 +122,7 @@ const stitchColors = {
   lighterGrey: "#E3E7E4",
   lightGrey: "#ADABA9",
   darkGrey: "#3B3F3F",
-  background: "#151C20",
+  background: "#161A1D",
 };
 
 const stitchTheme: MetabaseTheme = {
@@ -127,8 +130,6 @@ const stitchTheme: MetabaseTheme = {
   fontSize: "14px",
   colors: {
     brand: stitchColors.primary,
-    "brand-hover": stitchColors.darkGrey,
-    "brand-hover-light": stitchColors.darkGrey,
     filter: stitchColors.filter,
     "text-primary": stitchColors.lighterGrey,
     "text-secondary": stitchColors.lighterGrey,
@@ -184,8 +185,6 @@ const luminaraTheme: MetabaseTheme = {
   fontSize: "14px",
   colors: {
     brand: luminaraColors.primary,
-    "brand-hover": "#fff",
-    "brand-hover-light": "#fff",
     filter: luminaraColors.viz1,
     summarize: "#BE54C0",
     "text-primary": luminaraColors.green3,
@@ -217,6 +216,12 @@ const luminaraTheme: MetabaseTheme = {
     dashboard: {
       backgroundColor: "transparent",
     },
+    question: {
+      toolbar: {
+        backgroundColor: "rgba(244, 243, 239, 1)",
+      },
+    },
+
     number: {
       value: {
         fontSize: "36px",
@@ -229,7 +234,7 @@ const luminaraTheme: MetabaseTheme = {
 const proficiencyColors = {
   primary: "rgba(106, 87, 201, 1)",
   lighterGrey: "#D1CFC5",
-  lightGrey: "rgba(0, 0, 0, 0.7)",
+  lightGrey: "#4C4C4C",
   darkGrey: "#1B1C21",
   background: "#FCFDFD",
   positive: "rgba(0, 143, 93, 1)",
@@ -244,8 +249,8 @@ const proficiencyTheme: MetabaseTheme = {
     filter: proficiencyColors.primary,
     "text-primary": proficiencyColors.lightGrey,
     "text-secondary": proficiencyColors.lightGrey,
-    "text-tertiary": "rgba(0, 0, 0, 0.4)",
-    border: "rgba(0, 0, 0, 0.12)",
+    "text-tertiary": "#979898",
+    border: "#DEDFDF",
     background: proficiencyColors.background,
     "background-hover": "#fCFDFD",
     "background-disabled": "rgba(0, 0, 0, 0.1)",
@@ -294,6 +299,11 @@ const proficiencyTheme: MetabaseTheme = {
     },
     popover: {
       zIndex: 201,
+    },
+    question: {
+      toolbar: {
+        backgroundColor: "transparent",
+      },
     },
   },
 };

@@ -12,8 +12,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.persisted-info :as persisted-info]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -99,7 +100,7 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (into [:enum] export-formats))
+  (into [:enum {:api/regex (u.regex/re-or export-formats)}] export-formats))
 
 (mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -183,7 +184,7 @@
    {:keys [database pretty] :as query} :- [:map
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
-  (binding [persisted-info/*allow-persisted-substitution* false]
+  (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
@@ -253,5 +254,3 @@
                               [:parameter ms/Parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field-ids query))
-
-(api/define-routes)

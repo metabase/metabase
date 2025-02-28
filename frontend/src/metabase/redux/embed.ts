@@ -2,9 +2,9 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { pick } from "underscore";
 
 import { parseSearchOptions } from "metabase/lib/browser";
-import type { EmbedOptions } from "metabase-types/store";
+import type { InteractiveEmbeddingOptions } from "metabase-types/store";
 
-export const DEFAULT_EMBED_OPTIONS: EmbedOptions = {
+export const DEFAULT_EMBED_OPTIONS: InteractiveEmbeddingOptions = {
   top_nav: true,
   side_nav: "default",
   search: false,
@@ -34,7 +34,7 @@ export const urlParameterToBoolean = (
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
-    options: {} as EmbedOptions,
+    options: {} as InteractiveEmbeddingOptions,
     isEmbeddingSdk: false,
   },
   reducers: {
@@ -49,7 +49,10 @@ const interactiveEmbedSlice = createSlice({
         ...pick(searchOptions, allowedEmbedOptions),
       };
     },
-    setOptions: (state, action: PayloadAction<Partial<EmbedOptions>>) => {
+    setOptions: (
+      state,
+      action: PayloadAction<Partial<InteractiveEmbeddingOptions>>,
+    ) => {
       state.options = {
         ...state.options,
         ...action.payload,

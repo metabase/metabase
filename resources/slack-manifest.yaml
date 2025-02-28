@@ -18,3 +18,4 @@ oauth_config:
       - chat:write
       - chat:write.customize
       - chat:write.public
+      - groups:read

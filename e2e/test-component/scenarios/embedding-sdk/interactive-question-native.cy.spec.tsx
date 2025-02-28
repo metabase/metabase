@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createNativeQuestion,
-  describeEE,
   tableInteractiveBody,
 } from "e2e/support/helpers";
 import {
@@ -13,7 +12,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
+describe("scenarios > embedding-sdk > interactive-question > native", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 

@@ -302,9 +302,31 @@ describe("scenarios > filters > bulk filtering", () => {
       });
     });
 
-    it("should apply and remove segment filter", () => {
+    it("should apply and remove segment filter (metabase#50734)", () => {
       H.visitQuestionAdhoc(rawQuestionDetails);
       H.filter();
+
+      // Only the H.modal().within(() => { ... }) block is the repro. The rest is a regular test.
+      cy.log(
+        "segment filter icon should be aligned with other filter icons (metabase#50734)",
+      );
+      H.modal().within(() => {
+        H.filterField("segments")
+          .findByRole("img")
+          .should("be.visible")
+          .then(([$segmentsIcon]) => {
+            const segmentsIconRect = $segmentsIcon.getBoundingClientRect();
+
+            H.filterField("Discount")
+              .findAllByRole("img")
+              .first()
+              .should(([$discountIcon]) => {
+                const discountIconRect = $discountIcon.getBoundingClientRect();
+                expect(segmentsIconRect.left).to.eq(discountIconRect.left);
+                expect(segmentsIconRect.right).to.eq(discountIconRect.right);
+              });
+          });
+      });
 
       H.modal().within(() => {
         H.filterField("segments").within(() =>

@@ -124,7 +124,7 @@ const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
   .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
-H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
+describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -668,8 +668,10 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
       H.filterWidget().contains("Hello").click();
-      H.popover().within(() => {
-        H.fieldValuesInput().type("{backspace}World{enter}");
+      H.dashboardParametersPopover().within(() => {
+        H.fieldValuesInput().type("{backspace}World{enter}", {
+          force: true,
+        });
         cy.button("Update filter").click();
       });
 
@@ -750,7 +752,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         .contains(DASHBOARD_FILTER_TEXT.name)
         .parent()
         .click();
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("John Doe{enter}");
         cy.button("Add filter").click();
       });
@@ -759,7 +761,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
         .parent()
         .click();
-      H.popover().within(() => {
+      H.dashboardParametersPopover().within(() => {
         H.fieldValuesInput().type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
@@ -1068,8 +1070,8 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.saveDashboard({ waitMs: 250 });
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
 
@@ -1551,7 +1553,8 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.editDashboard();
 
-      H.getDashboardCard().realHover().icon("click").click();
+      H.getDashboardCard().realHover();
+      cy.icon("click").click();
 
       (function addUpdateDashboardFilters() {
         cy.log("update dashboard filters behavior for 'Count' column");
@@ -1624,9 +1627,9 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.log("it handles 'Created at' column click");
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
-        H.popover().within(() => {
+        H.dashboardParametersPopover().within(() => {
           H.removeFieldValuesValue(0);
-          cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+          cy.findByPlaceholderText("Search the list").type("Dell Adams");
           cy.button("Update filter").click();
         });
         onNextAnchorClick(anchor => {
@@ -1797,8 +1800,8 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {

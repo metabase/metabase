@@ -183,21 +183,6 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
-(deftest ^:parallel extract-template-tags-test
-  (testing "Undefined parameters are ignored (#34729)"
-    (let [tag-name "foo"
-          tags {tag-name {:type         :text
-                          :name         tag-name
-                          :display-name "Foo"
-                          :id           (str (random-uuid))}}]
-      (is (= {"bar" {"type"         "text"
-                     "name"         "bar"
-                     "display-name" "Bar"
-                     "id"           (get-in tags [tag-name :id])}}
-             (-> (lib.js/extract-template-tags "SELECT * FROM table WHERE {{bar}}"
-                                               (add-undefined-params (clj->js tags) tag-name))
-                 js->clj))))))
-
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))

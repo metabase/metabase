@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -76,13 +75,11 @@
   (let [[source-metric mp] (or metric-and-mp (mock-metric))
         query              (if query-fn
                              (query-fn mp source-metric)
-                             (lib/query mp source-metric))
-        metrics              (atom {})
-        read-metric          #(% @metrics 0)]
-    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+                             (lib/query mp source-metric))]
+    (mt/with-prometheus-system! [_ system]
       (check-fn query)
-      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics-adjust)))
-      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metrics-adjust-errors))))))
+      (is (== expected-metrics-count (mt/metric-value system :metabase-query-processor/metrics-adjust)))
+      (is (== expected-metrics-errors (mt/metric-value system :metabase-query-processor/metrics-adjust-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"

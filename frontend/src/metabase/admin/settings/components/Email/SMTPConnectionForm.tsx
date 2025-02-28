@@ -148,7 +148,7 @@ export const SMTPConnectionForm = ({
 
   return (
     <Flex justify="space-between">
-      <Stack spacing="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
+      <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
         {isEmailConfigured && (
           <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
         )}

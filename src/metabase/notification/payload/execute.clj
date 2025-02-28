@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
@@ -217,7 +218,7 @@
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (keep #(dashcard->part % parameters) ordered-dashcards))))
 
-(def Part
+(mr/def ::Part
   "Part."
   [:multi {:dispatch :type}
    [:card      [:map {:closed true}
@@ -233,7 +234,7 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
-(mu/defn execute-dashboard :- [:sequential Part]
+(mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts."
   [dashboard-id user-id parameters]
   (request/with-current-user user-id
@@ -250,7 +251,7 @@
 
 ;; TODO - this should be done async
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
-(mu/defn execute-card :- [:maybe Part]
+(mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?
@@ -269,7 +270,7 @@
                               (process-fn
                                (qp/userland-query
                                 (assoc query
-                                       :middleware {:skip-results-metadata?            true
+                                       :middleware {:skip-results-metadata?            false
                                                     :process-viz-settings?             true
                                                     :js-int-to-string?                 false
                                                     :add-default-userland-constraints? false})

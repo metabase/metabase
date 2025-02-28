@@ -1,11 +1,15 @@
-import { SDK_PACKAGE_NAME } from "embedding-sdk/cli/constants/config";
+import { SDK_DOCS_LINK } from "embedding-sdk/cli/constants/config";
 
+import { SHOW_ON_STARTUP_MESSAGE } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
-import { printEmptyLines, printTitle } from "../utils/print";
+import { printEmptyLines, printTitle, printWithPadding } from "../utils/print";
 
 export const showMetabaseCliTitle: CliStepMethod = state => {
   printTitle(`Welcome to the Metabase Embedding SDK CLI`);
-  printTitle(`View docs at https://npm.im/${SDK_PACKAGE_NAME}`);
+  printTitle(`View docs at ${SDK_DOCS_LINK}`);
+  printEmptyLines();
+
+  printWithPadding(SHOW_ON_STARTUP_MESSAGE.trim());
   printEmptyLines();
 
   return [{ type: "success" }, state];

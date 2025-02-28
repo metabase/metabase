@@ -7,7 +7,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DATA_MODEL_PERMISSION_INDEX = 3;
 
-H.describeEE("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

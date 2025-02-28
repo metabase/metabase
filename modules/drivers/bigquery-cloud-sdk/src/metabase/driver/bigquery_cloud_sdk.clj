@@ -15,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.table :as table]
+   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -56,6 +57,8 @@
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
+    (when-let [host (not-empty (:host details))]
+      (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -594,6 +597,8 @@
         result-promise (promise)
         request (build-bigquery-request sql parameters)
         query-future (future
+                       ;; ensure the classloader is available within the future.
+                       (classloader/the-classloader)
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]

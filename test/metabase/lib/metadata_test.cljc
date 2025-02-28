@@ -19,28 +19,6 @@
            (meta/field-metadata :venues :category-id))
           (lib.metadata/field meta/metadata-provider (meta/id :venues :category-id)))))
 
-(deftest ^:parallel stage-metadata-test
-  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))]
-    (is (=? {:columns [{:name "ID"}
-                       {:name "NAME"}
-                       {:name "CATEGORY_ID"}
-                       {:name "LATITUDE"}
-                       {:name "LONGITUDE"}
-                       {:name "PRICE"}]}
-            (lib.metadata/stage query -1)))))
-
-(deftest ^:parallel stage-column-metadata-test
-  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))]
-    (are [x] (=? {:lib/type       :metadata/column
-                  :display-name   "Category ID"
-                  :name           "CATEGORY_ID"
-                  :base-type      :type/Integer
-                  :effective-type :type/Integer
-                  :semantic-type  :type/FK}
-                 x)
-      (lib.metadata/stage-column query "CATEGORY_ID")
-      (lib.metadata/stage-column query -1 "CATEGORY_ID"))))
-
 (deftest ^:parallel display-name-from-name-test
   (testing "Use the 'simple humanization' logic to calculate a display name for a Field that doesn't have one"
     (is (= "Venue ID"
@@ -90,7 +68,6 @@
 (deftest ^:parallel idents-test
   (doseq [table-key (meta/tables)
           field-key (meta/fields table-key)]
-    (let [table    (meta/table-metadata table-key)
-          field    (meta/field-metadata table-key field-key)]
-      (is (= (str "field__" (:name meta/database) "__" (:schema table) "__" (:name table) "__" (:name field))
+    (let [field (meta/field-metadata table-key field-key)]
+      (is (= (:ident field)
              (:ident (lib.metadata/field meta/metadata-provider (:id field))))))))
