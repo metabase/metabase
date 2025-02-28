@@ -219,3 +219,26 @@ describe("issue 53194", () => {
     });
   });
 });
+
+describe("issue 52812", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("popovers should close when clicking outside (metabase#52812)", () => {
+    H.startNewNativeQuestion();
+    H.nativeEditor().type("{{x");
+    cy.findByLabelText("Variable type").click();
+
+    H.popover().findByText("Field Filter").click();
+
+    cy.log(
+      "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
+    );
+    H.rightSidebar()
+      .findByText("Default filter widget value")
+      .should("not.exist");
+    cy.findByLabelText("Always require a value").should("not.exist");
+  });
+});
