@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,12 +7,12 @@ import CollapseSection from "metabase/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
-import { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 
 export type MutableParametersSectionProps = {
   className?: string;
