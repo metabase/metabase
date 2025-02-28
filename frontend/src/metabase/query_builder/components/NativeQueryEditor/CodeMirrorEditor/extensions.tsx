@@ -20,14 +20,18 @@ import {
   keymap,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
-import type {
-  EditorState,
-  Extension,
-  Transaction,
+import {
+  type EditorState,
+  type Extension,
+  type Range,
+  type ReactCodeMirrorRef,
+  StateEffect,
+  StateField,
+  type Transaction,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { getNonce } from "get-nonce";
-import { useMemo } from "react";
+import { type RefObject, useEffect, useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
@@ -87,8 +91,9 @@ export function useExtensions(query: Lib.Query): Extension[] {
           keywordsCompletion,
         ],
       }),
-      highlighting(),
-      tagDecorator(),
+      highlightSyntax(),
+      highlightTags(),
+      highlightLines(),
       folds(),
       disableCmdEnter(),
     ]
@@ -232,11 +237,11 @@ const metabaseStyle = HighlightStyle.define(
     })),
 );
 
-function highlighting() {
+function highlightSyntax() {
   return syntaxHighlighting(metabaseStyle);
 }
 
-function tagDecorator() {
+function highlightTags() {
   const decorator = new MatchDecorator({
     regexp: /\{\{([^\}]*)\}\}/g,
     decoration(match) {
@@ -293,4 +298,49 @@ export function insertIndent({
   );
 
   return true;
+}
+
+const highlightLinesEffect = StateEffect.define<Range<Decoration>[]>();
+const highlightLinesDecoration = Decoration.mark({
+  class: "cm-highlight-line",
+});
+
+function highlightLines() {
+  return StateField.define({
+    create() {
+      return Decoration.none;
+    },
+    update(value, transaction) {
+      value = value.map(transaction.changes);
+
+      for (const effect of transaction.effects) {
+        if (effect.is(highlightLinesEffect)) {
+          value = value.update({ filter: () => false });
+          value = value.update({ add: effect.value });
+        }
+      }
+
+      return value;
+    },
+    provide: field => EditorView.decorations.from(field),
+  });
+}
+
+export function useHighlightLines(
+  editorRef: RefObject<ReactCodeMirrorRef>,
+  highlightedLineNumbers: number[] = [],
+) {
+  useEffect(() => {
+    const view = editorRef.current?.view;
+    if (!view) {
+      return;
+    }
+
+    const lines = highlightedLineNumbers.map(line => view.state.doc.line(line));
+    const lineRanges = lines.map(line =>
+      highlightLinesDecoration.range(line.from, line.to),
+    );
+
+    view.dispatch({ effects: highlightLinesEffect.of(lineRanges) });
+  }, [editorRef, highlightedLineNumbers]);
 }

@@ -120,3 +120,6 @@ modules/drivers/*/.lsp/*
 .swc/
 
 *storybook.log
+
+# metabot
+llm-payloads
