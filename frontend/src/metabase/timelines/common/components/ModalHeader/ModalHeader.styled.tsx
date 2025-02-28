@@ -39,7 +39,8 @@ export const HeaderMenu = styled.div`
 
 /**
  * Both the `height` and the `width` need to be in sync with `EntityMenuIconButton`
- * in order to prevent the header from visually jumping. See: CLO-3660
+ * in order to prevent the header from visually jumping.
+ * See: https://linear.app/metabase/issue/CLO-3660
  */
 export const HeaderCloseButton = styled(IconButtonWrapper)`
   height: 36px;
