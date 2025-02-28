@@ -58,7 +58,8 @@
 ;; unlike `::temporal-bucketing/unit.date-time.truncate`, it doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
   [:enum
-   {:decode/normalize common/normalize-keyword}
+   {:error/message    "Valid datetime-diff unit"
+    :decode/normalize common/normalize-keyword}
    :day
    :week
    :month
