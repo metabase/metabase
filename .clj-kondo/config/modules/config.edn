@@ -649,7 +649,8 @@
    :uses #{models premium-features sso util enterprise/sso}}
 
   enterprise/impersonation
-  {:api #{metabase-enterprise.impersonation.core}
+  {:api #{metabase-enterprise.impersonation.core
+          metabase-enterprise.impersonation.api}
    :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
 
   enterprise/llm
@@ -675,7 +676,7 @@
            query-processor
            request
            util
-           enterprise/advanced-permissions
+           enterprise/impersonation
            enterprise/api}}
 
   enterprise/scim

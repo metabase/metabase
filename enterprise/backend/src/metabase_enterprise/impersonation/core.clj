@@ -1,7 +1,7 @@
 (ns metabase-enterprise.impersonation.core
   (:require
-   [metabase-enterprise.impersonation.core]
    [metabase-enterprise.impersonation.driver]
+   [metabase-enterprise.impersonation.util]
    [potemkin :as p]))
 
 (p/import-vars
