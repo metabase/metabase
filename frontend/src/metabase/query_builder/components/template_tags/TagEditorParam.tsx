@@ -51,7 +51,11 @@ import type { WidgetOption } from "./types";
 
 interface Props {
   tag: TemplateTag;
-  parameter: Parameter;
+  /**
+   * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
+   * `field` ("Field to map to" input) is not set yet.
+   */
+  parameter: Parameter | undefined;
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
@@ -59,7 +63,7 @@ interface Props {
   metadata: Metadata;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setTemplateTagConfig: (tag: TemplateTag, config: Partial<Parameter>) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   fetchField: (fieldId: FieldId, force?: boolean) => void;
 }
@@ -100,7 +104,7 @@ class TagEditorParamInner extends Component<Props> {
       .find((originalTag: TemplateTag) => originalTag.id === tag.id);
     const originalParameter = originalQuestion
       ?.parameters()
-      .find(originalParameter => originalParameter.id === parameter.id);
+      .find(originalParameter => originalParameter.id === parameter?.id);
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -117,7 +121,6 @@ class TagEditorParamInner extends Component<Props> {
         // clear the values_source_config when changing the type
         // as the values will most likely not work for the new type.
         setTemplateTagConfig(tag, {
-          ...parameter,
           values_source_type: undefined,
           values_source_config: undefined,
           values_query_type: undefined,
@@ -125,7 +128,6 @@ class TagEditorParamInner extends Component<Props> {
       } else {
         // reset the original values_source_config when changing the type
         setTemplateTagConfig(tag, {
-          ...parameter,
           values_source_type: originalParameter?.values_source_type,
           values_source_config: originalParameter?.values_source_config,
           values_query_type: originalParameter?.values_query_type,
@@ -162,16 +164,21 @@ class TagEditorParamInner extends Component<Props> {
       setTemplateTag({ ...tag, required: required });
     }
 
+    if (!parameter) {
+      // this handler is attached to a component rendered only when parameter is truthy
+      // so this case should never happen
+      return;
+    }
+
     if (!parameter.value && required && tag.default) {
       setParameterValue(tag.id, tag.default);
     }
   };
 
   setQueryType = (queryType: ValuesQueryType) => {
-    const { tag, parameter, setTemplateTagConfig } = this.props;
+    const { tag, setTemplateTagConfig } = this.props;
 
     setTemplateTagConfig(tag, {
-      ...parameter,
       values_query_type: queryType,
     });
   };
@@ -180,10 +187,9 @@ class TagEditorParamInner extends Component<Props> {
     sourceType: ValuesSourceType,
     sourceConfig: ValuesSourceConfig,
   ) => {
-    const { tag, parameter, setTemplateTagConfig } = this.props;
+    const { tag, setTemplateTagConfig } = this.props;
 
     setTemplateTagConfig(tag, {
-      ...parameter,
       values_source_type: sourceType,
       values_source_config: sourceConfig,
     });
@@ -318,16 +324,18 @@ class TagEditorParamInner extends Component<Props> {
           </InputContainer>
         )}
 
-        <DefaultRequiredValueControl
-          tag={tag}
-          parameter={parameter}
-          isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
-          onChangeDefaultValue={value => {
-            this.setParameterAttribute("default", value);
-            this.props.setParameterValue(tag.id, value);
-          }}
-          onChangeRequired={this.setRequired}
-        />
+        {parameter && (
+          <DefaultRequiredValueControl
+            tag={tag}
+            parameter={parameter}
+            isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
+            onChangeDefaultValue={value => {
+              this.setParameterAttribute("default", value);
+              this.props.setParameterValue(tag.id, value);
+            }}
+            onChangeRequired={this.setRequired}
+          />
+        )}
       </Box>
     );
   }
