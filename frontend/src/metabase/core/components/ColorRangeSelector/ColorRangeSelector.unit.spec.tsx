@@ -33,7 +33,7 @@ describe("ColorRangeSelector", () => {
     const { onChange } = setup();
 
     screen.getByRole("button").click();
-    expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
     (await screen.findByLabelText(color("summarize"))).click();
     expect(onChange).toHaveBeenCalled();
@@ -46,7 +46,7 @@ describe("ColorRangeSelector", () => {
     const { onChange } = setup();
 
     screen.getByRole("button").click();
-    expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
     (await screen.findByLabelText(getColorRangeLabel(DEFAULT_VALUE))).click();
     expect(onChange).not.toHaveBeenCalled();
