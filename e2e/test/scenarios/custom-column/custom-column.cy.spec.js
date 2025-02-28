@@ -1211,4 +1211,14 @@ describe("scenarios > question > custom column > help text", () => {
       .should("be.visible")
       .should("contain", "round([Temperature])");
   });
+
+  it("should not be possible to close the custom expression editor by clicking outside of it", () => {
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("be.visible");
+  });
+
+  it("should not be possible to close the custom expression editor by clicking outside of it", () => {
+    cy.button("View SQL").click();
+    H.CustomExpressionEditor.get().should("be.visible");
+  });
 });
