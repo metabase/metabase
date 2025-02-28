@@ -178,6 +178,21 @@
                                                       :rows [[#t "2020" 2]
                                                              [#t "2021" 3]]}))))))
 
+(deftest ^:parallel detect-pulse-chart-type-test-10
+  (testing "Visualizer dashboard card display type takes precedence"
+    (is (= :javascript_visualization
+           (mt/with-temp [:model/Card                card1 {:display :row}
+                          :model/Card                card2 {:display :row}
+                          :model/Dashboard           dashboard {}
+                          :model/DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1) :visualization_settings {:visualization {:display :line}}}
+                          :model/DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
+             (channel.render/detect-pulse-chart-type card1
+                                                     dc1
+                                                     {:cols [{:base_type :type/Temporal}
+                                                             {:base_type :type/Number}]
+                                                      :rows [[#t "2020" 2]
+                                                             [#t "2021" 3]]}))))))
+
 (deftest ^:parallel make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
     (mt/with-temp [:model/Card          card {:description "Card description"}
