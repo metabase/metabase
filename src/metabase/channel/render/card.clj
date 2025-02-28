@@ -101,6 +101,7 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
+             (= false (is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
