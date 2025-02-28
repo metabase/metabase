@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
