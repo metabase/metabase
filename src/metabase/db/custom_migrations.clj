@@ -1765,13 +1765,7 @@
 ;; Migrate alerts to notifications
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
-;; - delete all the send pulse triggers
-;; - And then on startup new send notification triggers are created by running [[metabase.task.notification/InitNotificationTriggers]]
-;;   job once. This job is idempotent
-;; on migrate down:
-;; - we delete all the notifications
-;; - delete the [[metabase.task.send-pulses/InitSendPulseTriggers]] job so that when instance startup, this job is run
-;;   again so that it iterates all existing alerts and re-creates the send pulse triggers. This job is idempotent
-(define-reversible-migration MigrateAlertToNotification
-  (pulse-to-notification/migrate-alerts!)
-  (pulse-to-notification/remove-init-send-pulse-trigger!))
+;; - And then on startup new send notification triggers are created by running
+;; [[metabase.task.notification/init-send-notification-triggers!]]
+(define-migration MigrateAlertToNotification
+  (pulse-to-notification/migrate-alerts!))

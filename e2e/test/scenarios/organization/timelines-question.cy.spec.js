@@ -26,7 +26,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2024");
@@ -52,7 +52,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").click();
+      cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC2");
       cy.findByLabelText("Date").type("10/30/2024");
@@ -334,7 +334,7 @@ describe("scenarios > organization > timelines > question", () => {
         H.echartsIcon("cloud").should("be.visible");
 
         // should show a newly created event
-        cy.button("Add an event").click();
+        cy.button("Create event").click();
         cy.findByLabelText("Event name").type("RC2");
         cy.findByLabelText("Date").type("10/20/2023");
         cy.button("Create").click();
@@ -523,7 +523,7 @@ describe("scenarios > organization > timelines > question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Events in Metabase/);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("not.exist");
+      cy.findByText("Create event").should("not.exist");
     });
 
     it("should not allow creating or editing events", () => {
@@ -542,7 +542,7 @@ describe("scenarios > organization > timelines > question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an event").should("not.exist");
+      cy.findByText("Create event").should("not.exist");
       H.rightSidebar().icon("ellipsis").should("not.exist");
     });
   });

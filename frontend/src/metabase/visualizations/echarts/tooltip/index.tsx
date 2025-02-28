@@ -78,7 +78,11 @@ export const getTooltipBaseOption = (
         container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");
         container.style.setProperty("pointer-events", "none");
-        container.style.setProperty("z-index", "var(--mb-overlay-z-index)");
+        // Need to add 1 to z-index to ensure tooltips are visible when viz is rendered in a modal
+        container.style.setProperty(
+          "z-index",
+          "calc(var(--mb-overlay-z-index) + 1)",
+        );
 
         document.body.append(container);
       }

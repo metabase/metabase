@@ -443,7 +443,7 @@
                    :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
                    :model/Field       field {:name "sku" :table_id (:id table)}
                    :model/FieldValues fv    {:field_id (:id field)}]
-      (is (= "6f5bb4ba"
+      (is (= "cb0ff8ea"
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))
 

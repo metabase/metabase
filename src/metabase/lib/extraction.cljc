@@ -104,7 +104,7 @@
   (let [unique-name-fn (->> (lib.util/query-stage query stage-number)
                             (lib.metadata.calculation/returned-columns query stage-number)
                             (map :name)
-                            (lib.util/unique-name-generator (lib.metadata/->metadata-provider query)))]
+                            (lib.util/unique-name-generator))]
     (lib.expression/expression
      query
      stage-number

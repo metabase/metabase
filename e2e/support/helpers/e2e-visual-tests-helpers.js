@@ -159,9 +159,9 @@ export function echartsTooltip() {
     // ensures that we are using fixed-positioned tooltips.
     expect(tooltipContainerStyle.position).to.equal("fixed");
 
-    // (metabase#52732): tooltip container must have the correct z-index (200)
-    // this assertion prevents the tooltip from being rendered below charts.
-    expect(Number(tooltipContainerStyle.zIndex)).to.equal(200);
+    // (metabase#52732): tooltip container must have the correct z-index (201)
+    // this assertion prevents the tooltip from being rendered below charts or modals.
+    expect(Number(tooltipContainerStyle.zIndex)).to.equal(201);
 
     // Return the visible tooltip
     return visibleTooltip;

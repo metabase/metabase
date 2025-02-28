@@ -70,11 +70,13 @@ export const openNextMilestones = async ({
 
   await Promise.all(
     nextMilestones.map(milestoneName =>
-      github.rest.issues.createMilestone({
-        owner,
-        repo,
-        title: milestoneName,
-      }).catch(console.error),
+      github.rest.issues
+        .createMilestone({
+          owner,
+          repo,
+          title: milestoneName,
+        })
+        .catch(console.error),
     ),
   );
 };

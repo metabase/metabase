@@ -16,6 +16,7 @@
   (:require
    [clojure.core.specs.alpha]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clout.core :as clout]
    [compojure.response]
    [flatland.ordered.map :as ordered-map]
@@ -289,6 +290,15 @@
    ;; strings.
    (update-vals (:regexes route) (fn [regex-form]
                                    `(str ~regex-form)))])
+
+(mu/defn- unique-fn-name
+  "Generate a unique name for the endpoint function based on parsed args."
+  [{:keys [method route]} :- ::parsed-args]
+  (symbol
+   (-> (str (name method) "-" (:path route) "--thunk")
+       (str/replace #"/" "-")
+       (str/replace #" " "-")
+       (str/replace #":" ""))))
 
 (def ^:private decode-transformer
   (mtx/transformer
@@ -711,7 +721,9 @@
 (defmacro defendpoint
   "NEW macro for defining REST API endpoints. See
   [Cam's tech design doc](https://www.notion.so/metabase/defendpoint-2-0-16169354c901806ca10cf45be6d91891) for
-  motivation behind it."
+  motivation behind it.
+
+  REPL Tip: use [[call-core-fn]] to call the core-fn directly."
   {:added "0.53.0"}
   [& args]
   (let [parsed (parse-args args)]
@@ -721,7 +733,7 @@
                       :handler handler#
                       :form    ~(quote-parsed-args parsed)}]
        (update-ns-endpoints! *ns* ~(unique-key-form parsed) info#)
-       info#)))
+       (fn ~(unique-fn-name parsed) [] info#))))
 
 (s/fdef defendpoint
   :args ::defendpoint
@@ -827,6 +839,13 @@
    method :- ::method
    route  :- string?]
   (:core-fn (find-route nmspace method route)))
+
+(defn call-core-fn
+  "Call this on the return value of [[defendpoint]] to get the core function for the endpoint.
+
+  You can call that from the repl on the args [[-core-fn]] expects as in [[metabase.api.open-api-test/get-core-fn!-test]]."
+  [defendpoint-return & [route-params query-params body-params request]]
+  ((:core-fn (defendpoint-return)) route-params query-params body-params request))
 
 ;;;;
 ;;;; Example usages

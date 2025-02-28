@@ -12,23 +12,6 @@ function setup(props: TimelineEmptyStateProps) {
 }
 
 describe("TimelineEmptyState", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2015, 0, 1));
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("should render an empty state with the current date", () => {
-    const props = getProps();
-
-    setup(props);
-
-    expect(screen.getByText("January 1, 2015")).toBeInTheDocument();
-  });
-
   it("should not allow to add events when the timeline is read-only", () => {
     const props = getProps({
       timeline: createMockTimeline({
@@ -43,7 +26,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.queryByText("Add an event")).not.toBeInTheDocument();
+    expect(screen.queryByText("Create event")).not.toBeInTheDocument();
   });
 
   it("should allow to add events when the timeline is not read-only", () => {
@@ -60,7 +43,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.getByText("Add an event")).toBeInTheDocument();
+    expect(screen.getByText("Create event")).toBeInTheDocument();
   });
 
   it("should allow to add events when the collection is not read-only", () => {
@@ -72,7 +55,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    expect(screen.getByText("Add an event")).toBeInTheDocument();
+    expect(screen.getByText("Create event")).toBeInTheDocument();
   });
 });
 

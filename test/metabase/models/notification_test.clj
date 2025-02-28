@@ -287,27 +287,6 @@
                                           :permissions_group_id 1
                                           :details              {:value "ngoc@metabase.com"}}))))))))
 
-(defn- send-notification-triggers
-  [subscription-id]
-  (map
-   #(select-keys % [:key :schedule :data :timezone])
-   (task/existing-triggers @#'task.notification/send-notification-job-key
-                           (#'task.notification/send-notification-trigger-key subscription-id))))
-
-(defn notification-triggers
-  [notification-id]
-  (let [subscription-ids (t2/select-pks-set :model/NotificationSubscription :notification_id notification-id)]
-    (mapcat send-notification-triggers subscription-ids)))
-
-(defn- subscription->trigger-info
-  ([subscription-id cron-schedule]
-   (subscription->trigger-info subscription-id cron-schedule "UTC"))
-  ([subscription-id cron-schedule timezone]
-   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
-    :schedule cron-schedule
-    :data     {"subscription-id" subscription-id}
-    :timezone timezone}))
-
 (deftest update-subscription-trigger-test
   (mt/with-temp-scheduler!
     (task/init! ::task.notification/SendNotifications)
@@ -316,38 +295,38 @@
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (= [(subscription->trigger-info
+          (is (= [(notification.tu/subscription->trigger-info
                    sub-id
                    "0 * * * * ? *")]
-                 (send-notification-triggers sub-id)))
+                 (notification.tu/send-notification-triggers sub-id)))
           (testing "update trigger when cron schedule is changed"
             (t2/update! :model/NotificationSubscription sub-id {:cron_schedule "1 * * * * ? *"})
-            (is (= [(subscription->trigger-info
+            (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
-                   (send-notification-triggers sub-id))))
+                   (notification.tu/send-notification-triggers sub-id))))
 
           (testing "delete the trigger when type changes"
             (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
                                                                 :cron_schedule nil
                                                                 :event_name :event/card-create})
-            (is (empty? (send-notification-triggers sub-id))))))
+            (is (empty? (notification.tu/send-notification-triggers sub-id))))))
 
       (testing "delete the trigger when delete subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (not-empty (send-notification-triggers sub-id)))
+          (is (not-empty (notification.tu/send-notification-triggers sub-id)))
           (t2/delete! :model/NotificationSubscription sub-id)
-          (is (empty? (send-notification-triggers sub-id)))))
+          (is (empty? (notification.tu/send-notification-triggers sub-id)))))
 
       (testing "delete notification will delete all subscription triggers"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (not-empty (send-notification-triggers sub-id)))
+          (is (not-empty (notification.tu/send-notification-triggers sub-id)))
           (t2/delete! :model/Notification noti-id)
-          (is (empty? (send-notification-triggers sub-id))))))))
+          (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
   (mt/with-temp-scheduler!
@@ -358,11 +337,11 @@
           (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                  :cron_schedule   "0 * * * * ? *"
                                                                                  :notification_id noti-id})]
-            (is (= [(subscription->trigger-info
+            (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "0 * * * * ? *"
                      "Asia/Ho_Chi_Minh")]
-                   (send-notification-triggers sub-id)))))))))
+                   (notification.tu/send-notification-triggers sub-id)))))))))
 
 (deftest archive-notification-triggers-test
   (mt/with-temp-scheduler!
@@ -374,12 +353,12 @@
                                  {:type          :notification-subscription/cron
                                   :cron_schedule "1 * * * * ? *"}]}]
       (testing "sanity check that it has a trigger to begin with"
-        (is (= 2 (count (notification-triggers id)))))
+        (is (= 2 (count (notification.tu/notification-triggers id)))))
 
       (testing "disabled notification should remove triggers"
         (t2/update! :model/Notification id {:active false})
-        (is (empty? (notification-triggers id))))
+        (is (empty? (notification.tu/notification-triggers id))))
 
       (testing "activate notification should restore triggers"
         (t2/update! :model/Notification id {:active true})
-        (is (= 2 (count (notification-triggers id))))))))
+        (is (= 2 (count (notification.tu/notification-triggers id))))))))

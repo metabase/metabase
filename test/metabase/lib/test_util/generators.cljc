@@ -360,13 +360,17 @@
         (is (= (inc (count before-joins))
                (count after-joins)))
         (testing "at the end"
-          (is (=? {:lib/type   :mbql/join
-                   :strategy   strategy
-                   :alias      string?
-                   :fields     :all
-                   :stages     [{:source-table (:id target)}]
-                   :conditions [condition]}
-                  (last after-joins))))))))
+          (let [summaries? (or (seq (lib/aggregations after))
+                               (seq (lib/breakouts after)))]
+            (is (=? {:lib/type   :mbql/join
+                     :strategy   strategy
+                     :alias      string?
+                     :fields     (if summaries?
+                                   (symbol "nil #_\"key is not present.\"")
+                                   :all)
+                     :stages     [{:source-table (:id target)}]
+                     :conditions [condition]}
+                    (last after-joins)))))))))
 
 ;; Append stage ==================================================================================
 (add-step {:kind   :append-stage

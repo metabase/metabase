@@ -34,6 +34,7 @@ const knownIssues = [
   "--multiselect-pill-font-size",
   "--select-item-font-size",
   "--select-item-line-height",
+  "--button-bg", // Mantine var defined for buttons and used in Button.module.css
 ];
 
 interface UsageMap {

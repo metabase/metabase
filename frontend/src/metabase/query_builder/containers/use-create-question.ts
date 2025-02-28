@@ -8,6 +8,9 @@ import {
   updateUrl,
 } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/v1/Question";
+import type { DashboardTabId } from "metabase-types/api";
+
+type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
 interface UseCreateQuestionParams {
   scheduleCallback?: ScheduleCallback;
@@ -19,11 +22,11 @@ export const useCreateQuestion = ({
   const dispatch = useDispatch();
 
   return useCallback(
-    async (newQuestion: Question) => {
+    async (newQuestion: Question, options?: OnCreateOptions) => {
       const shouldBePinned =
         newQuestion.type() === "model" || newQuestion.type() === "metric";
       const createdQuestion = await dispatch(
-        apiCreateQuestion(newQuestion.setPinned(shouldBePinned)),
+        apiCreateQuestion(newQuestion.setPinned(shouldBePinned), options),
       );
       await dispatch(setUIControls({ isModifiedFromNotebook: false }));
 

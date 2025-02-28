@@ -18,6 +18,6 @@
                      :model/Dimension dim    {:field_id                (:id field1)
                                               :human_readable_field_id (:id field2)
                                               :created_at              now}]
-        (is (= "c52f8889"
+        (is (= "0f5162d3"
                (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) now])
                (serdes/identity-hash dim)))))))

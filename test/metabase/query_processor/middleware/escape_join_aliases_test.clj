@@ -22,7 +22,7 @@
     (thunk)
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                       meta/metadata-provider
-                                      {:database {:lib/methods {:escape-alias #(driver/escape-alias driver/*driver* %)}}})
+                                      {:database {}})
       (thunk))))
 
 ;;; the tests below are tests for the individual sub-steps of the middleware.

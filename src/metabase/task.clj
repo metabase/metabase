@@ -36,7 +36,7 @@
   *quartz-scheduler*
   (atom nil))
 
-(defn- scheduler
+(defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
@@ -209,6 +209,12 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
+
+(mu/defn delete-all-triggers-of-job!
+  "Delete all triggers for a given job key."
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (when-let [scheduler (scheduler)]
+    (qs/delete-triggers scheduler (map #(.getKey ^Trigger %) (qs/get-triggers-of-job scheduler job-key)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |

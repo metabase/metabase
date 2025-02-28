@@ -37,15 +37,12 @@
     color: inherit;
     cursor: pointer;
     text-decoration: none;
-
-    &:focus {
-      outline: 2px solid var(--mb-color-focus);
-    }
   }
 
   button,
+  a,
   [role="button"] {
-    &:focus {
+    &:focus-visible {
       outline: 2px solid var(--mb-color-focus);
     }
   }

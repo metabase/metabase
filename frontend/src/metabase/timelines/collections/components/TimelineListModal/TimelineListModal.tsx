@@ -34,7 +34,7 @@ const TimelineListModal = ({
   onGoBack,
 }: TimelineListModalProps): JSX.Element => {
   const title = getTitle(timelines, collection, isArchive);
-  const menuItems = getMenuItems(timelines, collection, isArchive);
+  const menuItems = getMenuItems(collection, isArchive);
   const hasTimelines = timelines.length > 0;
   const hasMenuItems = menuItems.length > 0;
 
@@ -46,12 +46,18 @@ const TimelineListModal = ({
     onGoBack?.(collection);
   }, [collection, onGoBack]);
 
+  const pathOptions = {
+    showPath: hasTimelines,
+    collectionName: collection.name,
+  };
+
   return (
     <ModalRoot>
       <ModalHeader
         title={title}
         onClose={onClose}
         onGoBack={isArchive ? handleGoBack : undefined}
+        pathOptions={pathOptions}
       >
         {hasMenuItems && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
@@ -84,11 +90,7 @@ const getTitle = (
   }
 };
 
-const getMenuItems = (
-  timelines: Timeline[],
-  collection: Collection,
-  isArchive: boolean,
-) => {
+const getMenuItems = (collection: Collection, isArchive: boolean) => {
   if (!collection.can_write || isArchive) {
     return [];
   }

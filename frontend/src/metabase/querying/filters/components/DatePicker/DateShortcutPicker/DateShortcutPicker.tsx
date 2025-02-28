@@ -10,6 +10,7 @@ import { Box, Button, Divider, PopoverBackButton } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
 
+import Styles from "./DateShortcutPicker.module.css";
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
@@ -50,7 +51,9 @@ export function DateShortcutPicker({
           {group.map((option, optionIndex) => (
             <Button
               key={optionIndex}
-              c="text-primary"
+              classNames={{
+                root: Styles.Button,
+              }}
               display="block"
               variant="subtle"
               onClick={() => onChange(option.value)}
@@ -66,7 +69,9 @@ export function DateShortcutPicker({
       {typeOptions.map((option, optionIndex) => (
         <Button
           key={optionIndex}
-          c="text-primary"
+          classNames={{
+            root: Styles.Button,
+          }}
           display="block"
           variant="subtle"
           onClick={() => onSelectType(option.type)}

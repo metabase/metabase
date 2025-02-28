@@ -158,15 +158,6 @@
     }
 
     &:not(:last-of-type) .cell {
-      padding-bottom: var(--vertical-padding);
-    }
-  }
-}
-
-/* TODO double check in other pickers */
-.monthsList {
-  .row {
-    &:not(:last-of-type) .cell {
       padding-bottom: 0;
     }
   }

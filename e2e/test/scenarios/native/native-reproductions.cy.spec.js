@@ -621,6 +621,10 @@ describe("issue 34330", () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
+
     H.NativeEditor.type("SEAT", { delay: 10 });
     H.NativeEditor.completion("SEATS").should("be.visible");
 

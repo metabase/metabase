@@ -9,7 +9,6 @@
 }
 
 .SelectWrapper {
-  margin-top: var(--mantine-spacing-xs);
   color: var(--mb-color-text-dark);
 
   &[data-disabled] {

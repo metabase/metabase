@@ -418,9 +418,13 @@
     (ObjectId. (str value))
 
     (isa? base-type :type/UUID)
-    (-> (str value)
-        java.util.UUID/fromString
-        uuid->bsonbinary)
+    (try
+      (-> (str value)
+          java.util.UUID/fromString
+          uuid->bsonbinary)
+      (catch IllegalArgumentException _
+        ;; Allow comparison with non-UUID values for things like string search
+        value))
 
     :else value))
 
@@ -737,10 +741,16 @@
 (defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
-    (do
+    (let [base-type (get-in field [2 :base-type])]
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (->rvalue field)
+      {$regexMatch {"input" (if (= :type/UUID base-type)
+                              ;; TODO: Update this to use $toString once all supported
+                              ;; Mongo versions have $toString available (>= 8.0)
+                              {"$function" {"body" "function(uuid) { return uuid.toString().substring(6, 42) }",
+                                            "args" [(->rvalue field)],
+                                            "lang" "js"}}
+                              (->rvalue field))
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})

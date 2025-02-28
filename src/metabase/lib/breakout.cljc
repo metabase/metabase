@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -110,10 +109,8 @@
                                                        [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
    (not-empty
     (into []
-          (filter (fn [[_ref {:keys [join-alias source-field]} _id-or-name :as a-breakout]]
-                    (and (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true})
-                         (= source-field (:fk-field-id column)) ; Must match, including both being nil/missing.
-                         (= join-alias   (::lib.join/join-alias column))  ; Must match, including both being nil/missing.
+          (filter (fn [a-breakout]
+                    (and (lib.equality/find-matching-column query stage-number a-breakout [column])
                          (or (not same-temporal-bucket?)
                              (= (lib.temporal-bucket/temporal-bucket a-breakout)
                                 (lib.temporal-bucket/temporal-bucket column)))

@@ -70,7 +70,7 @@ export const DashboardChartSettings = ({
   );
 
   return (
-    <Flex justify="unset" align="unset" wrap="nowrap">
+    <Flex justify="unset" align="unset" wrap="nowrap" h="100%">
       <BaseChartSettings
         flex="1 0 0"
         series={series}

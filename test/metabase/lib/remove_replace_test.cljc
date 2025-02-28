@@ -228,7 +228,8 @@
                    :conditions [[:= {}
                                  [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
                                  [:field {} (meta/id :categories :id)]]]
-                   :fields :all
+                   ;; No :fields :all because it gets removed on joins when there are aggregations/breakouts.
+                   :fields (symbol "nil #_\"key is not present.\"")
                    :alias "Venues"}]}]}
               (lib/replace-clause query'
                                   (first aggs)

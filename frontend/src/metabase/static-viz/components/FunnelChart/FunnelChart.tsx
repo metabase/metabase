@@ -29,8 +29,11 @@ const layout = {
   nameFontSize: 16,
   stepTextOffset: 8,
   colors: {
+    // eslint-disable-next-line no-color-literals
     textMedium: "#949aab",
+    // eslint-disable-next-line no-color-literals
     brand: "#509ee3",
+    // eslint-disable-next-line no-color-literals
     border: "#f0f0f0",
   },
   paddingLeft: 10,
