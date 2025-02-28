@@ -143,7 +143,7 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
 
   const getStyles = useStyles<TagsInputFactory>({
     name: "TagsInput",
-    classes: {} as any,
+    classes: {},
     props,
     classNames,
     styles,
