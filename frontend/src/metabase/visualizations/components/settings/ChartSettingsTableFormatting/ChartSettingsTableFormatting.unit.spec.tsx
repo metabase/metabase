@@ -111,8 +111,9 @@ describe("ChartSettingsTableFormatting", () => {
       await screen.findByText("Which columns should be affected?"),
     );
 
-    expect(await screen.findByText("is equal to")).toBeInTheDocument();
-
+    expect(
+      await screen.findByTestId("conditional-formatting-value-operator-button"),
+    ).toHaveValue("is equal to");
     await userEvent.type(
       await screen.findByTestId("conditional-formatting-value-input"),
       "toucan",
@@ -131,15 +132,15 @@ describe("ChartSettingsTableFormatting", () => {
 
     expect(
       await screen.findByRole("option", { name: "Number Column" }),
-    ).toHaveAttribute("data-combobox-disabled", "true");
+    ).toHaveAttribute("data-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "Boolean Column" }),
-    ).toHaveAttribute("data-combobox-disabled", "true");
+    ).toHaveAttribute("data-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "String Column 2" }),
-    ).not.toHaveAttribute("data-combobox-disabled");
+    ).not.toHaveAttribute("data-disabled");
   });
 
   describe("should show appropriate operators based on column selection", () => {
