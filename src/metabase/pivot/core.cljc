@@ -9,8 +9,9 @@
    #?(:clj (java.text Collator))))
 
 (defn- json-parse
+  "Parses a JSON string in Clojure or ClojureScript"
   [x]
-  #?(:cljs (js->clj (js/JSON.parse (clj->js x)))
+  #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
 (defn- is-pivot-group-column
@@ -23,26 +24,41 @@
   [columns]
   (filter #(not (is-pivot-group-column %)) columns))
 
+(defn- get-active-breakout-indexes
+  "For a given pivot group value (k), returns the indexes of active breakouts.
+   The pivot group value is a bitmask where each bit represents a breakout.
+   If a bit is 0, the corresponding breakout is active for this group."
+  [pivot-group num-breakouts]
+  (let [breakout-indexes (range num-breakouts)]
+    (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))
+
+(defn- remove-pivot-group-column-from-row
+  "Removes the pivot group column value from a row."
+  [row pivot-group-index]
+  (vec (m/remove-nth pivot-group-index row)))
+
+(defn- process-grouped-rows
+  "Processes rows for a specific pivot group value (k).
+   Returns a tuple of [active-breakout-indexes, rows-with-pivot-column-removed]."
+  [pivot-gruop rows pivot-group-index num-breakouts]
+  (let [active-indexes (get-active-breakout-indexes pivot-gruop num-breakouts)
+        processed-rows (map #(remove-pivot-group-column-from-row % pivot-group-index) rows)]
+    [active-indexes processed-rows]))
+
 (defn split-pivot-data
   "Pulls apart different aggregations that were packed into one result set returned from the QP.
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
   to split apart the data and convert field refs to indices"
   [data]
-  (let [group-index (u/index-of is-pivot-group-column (:cols data))
-        columns     (columns-without-pivot-group (:cols data))
-        breakouts   (filter #(= (keyword (:source %)) :breakout) columns)
-        pivot-data  (->> (:rows data)
-                         (group-by #(nth % group-index))
-                         ;; TODO: Make this logic more understandable
-                         (m/map-kv
-                          (fn [k rows]
-                            (let [breakout-indexes (range (count breakouts))
-                                  indexes (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) k)) breakout-indexes))]
-                              [indexes
-                               (map #(vec (concat (subvec % 0 group-index) (subvec % (inc group-index))))
-                                    rows)]))))]
+  (let [group-index   (u/index-of is-pivot-group-column (:cols data))
+        columns       (columns-without-pivot-group (:cols data))
+        breakouts     (filter #(= (keyword (:source %)) :breakout) columns)
+        num-breakouts (count breakouts)
+        pivot-data    (->> (:rows data)
+                           (group-by #(nth % group-index))
+                           (m/map-kv #(process-grouped-rows %1 %2 group-index num-breakouts)))]
     {:pivot-data pivot-data
-     :primary-rows-key (into [] (range (count breakouts)))
+     :primary-rows-key (into [] (range num-breakouts))
      :columns columns}))
 
 (defn get-subtotal-values
@@ -364,8 +380,7 @@
 
 (defn- enumerate-paths
   "Given a node of a row or column tree, generates all paths to leaf nodes."
-  [{:keys [rawValue isGrandTotal children isValueColumn]}
-   & [path]]
+  [{:keys [rawValue isGrandTotal children isValueColumn]} & [path]]
   (let [path (or path [])]
     (cond
       isGrandTotal [[]]
@@ -431,9 +446,19 @@
       #?(:cljs (clj->js result)
          :clj result))))
 
-(defn tree-to-array [nodes]
+(defn- tree-to-array
+  "Flattens a hierarchical tree structure into an array of nodes with positioning information.
+   Each node in the result contains:
+   - Original node properties (except :children)
+   - :depth - How deep the node is in the tree
+   - :offset - Horizontal position in the flattened representation
+   - :span - How many leaf nodes this node spans
+   - :hasChildren - Whether this node has any children
+   - :path - The path of rawValues from root to this node
+   - :maxDepthBelow - Maximum depth of the subtree below this node"
+  [tree]
   (let [a (atom [])]
-    (letfn [(dfs [nodes depth offset path]
+    (letfn [(process-tree [nodes depth offset path]
               (if (empty? nodes)
                 {:span 1 :maxDepth 0}
                 (loop [remaining nodes
@@ -451,7 +476,7 @@
                                           :path path-with-value))
                           item-index (count @a)
                           _ (swap! a conj item)
-                          result (dfs children (inc depth) current-offset path-with-value)
+                          result (process-tree children (inc depth) current-offset path-with-value)
                           _ (swap! a update-in [item-index] assoc
                                    :span (:span result)
                                    :maxDepthBelow (:maxDepth result))]
@@ -459,7 +484,7 @@
                              (+ total-span (:span result))
                              (max max-depth (:maxDepth result))
                              (+ current-offset (:span result))))))))]
-      (dfs nodes 0 0 [])
+      (process-tree tree 0 0 [])
       @a)))
 
 (defn process-pivot-table
