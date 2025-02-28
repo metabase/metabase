@@ -59,14 +59,14 @@
 (mr/def ::datetime-diff-unit
   [:enum
    {:decode/normalize common/normalize-keyword}
-   [:day
-    :week
-    :month
-    :quarter
-    :year
-    :second
-    :minute
-    :hour]])
+   :day
+   :week
+   :month
+   :quarter
+   :year
+   :second
+   :minute
+   :hour])
 
 (mbql-clause/define-tuple-mbql-clause :datetime-diff :- :type/Integer
   #_:datetime1 [:schema [:ref ::expression/temporal]]
