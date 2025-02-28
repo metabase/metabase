@@ -616,3 +616,22 @@
                 results (qp/process-query query)]
             (is (str/includes? (get-in results [:data :native_form]) y))
             (is (= [[1000]] (mt/formatted-rows [int] results)))))))))
+
+(deftest nest-window-functions-test
+  (mt/test-driver
+    :oracle
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          orders            (lib.metadata/table mp (mt/id :orders))
+          orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          orders-id         (lib.metadata/field mp (mt/id :orders :id))
+          products-category (m/find-first (fn [col]
+                                            (= (:id col) (mt/id :products :category)))
+                                          (lib/visible-columns (lib/query mp orders)))
+          _                 (assert (some? products-category))
+          query             (-> (lib/query mp orders)
+                                (lib/filter (lib/> orders-id 5000))
+                                (lib/aggregate (lib/count))
+                                (lib/aggregate (lib/cum-count))
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                (lib/breakout products-category))]
+      (is (= 20 (count (mt/rows (qp/process-query query))))))))

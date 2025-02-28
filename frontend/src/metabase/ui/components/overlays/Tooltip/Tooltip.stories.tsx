@@ -26,6 +26,9 @@ const argTypes = {
     ],
     control: { type: "select" },
   },
+  color: {
+    control: { type: "text" },
+  },
 };
 
 const DefaultTemplate = (args: TooltipProps) => (
