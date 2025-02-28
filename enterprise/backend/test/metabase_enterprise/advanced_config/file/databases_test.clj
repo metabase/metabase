@@ -72,7 +72,7 @@
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
-(defn- run-cruft-tables! [crufted-table-setting freq message]
+(defn- test-cruft-tables! [crufted-table-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
     (try
       (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
@@ -81,6 +81,7 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-tables crufted-table-setting}})]
         (is (future? sync-future))
+        ;; wait for the sync to finish or crash out after 5 seconds
         (deref sync-future 5000 :timeout)
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
@@ -91,12 +92,12 @@
         (t2/delete! :model/Database :name test-db-name)))))
 
 (deftest sync-cruft-tables-test
-  (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
-    (run-cruft-tables! []           {nil 8}          "No tables marked crufty")
-    (run-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
-    (run-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
+  (testing "tables marked crufty should be marked as such in the database"
+    (test-cruft-tables! []           {nil 8}          "No tables marked crufty")
+    (test-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
+    (test-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
 
-(defn- run-cruft-columns! [crufted-field-setting freq message]
+(defn- test-cruft-columns! [crufted-field-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
     (try
       (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
@@ -105,7 +106,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-columns crufted-field-setting}})]
         (is (future? sync-future))
-        (deref sync-future 500000 :timeout)
+         ;; wait for the sync to finish or crash out after 5 seconds
+        (deref sync-future 5000 :timeout)
         (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
@@ -117,9 +119,9 @@
         (t2/delete! :model/Database :name test-db-name)))))
 
 (deftest sync-cruft-columns-test
-  (testing "`init-from-config-file!` returns syncs database in a separate thread by default"
-    (run-cruft-columns! [] {:normal 52} "No fields marked crufty")
-    (run-cruft-columns! ["id"] {:normal 38, :details-only 14}  "All id fields marked crufty")))
+  (testing "columns (aka fields) marked crufty should be marked as such in the database"
+    (test-cruft-columns! [] {:normal 52} "No fields marked crufty")
+    (test-cruft-columns! ["id"] {:normal 38, :details-only 14}  "All id fields marked crufty")))
 
 (deftest disable-sync-test
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"
