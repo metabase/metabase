@@ -109,7 +109,7 @@ export const CopyQuestionForm = ({
     >
       {({ values }) => (
         <Form>
-          <Stack gap="md" mb="md">
+          <Stack spacing="md">
             <FormTextInput
               name="name"
               label={t`Name`}
