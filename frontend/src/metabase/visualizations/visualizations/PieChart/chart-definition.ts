@@ -53,6 +53,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   iconName: "pie",
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
+  supportsVisualizer: true,
   isSensible: ({ cols, rows }) => {
     const numDimensions = cols.filter(isDimension).length;
     const numMetrics = cols.filter(isMetric).length;
