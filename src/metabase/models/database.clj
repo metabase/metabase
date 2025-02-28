@@ -252,6 +252,10 @@
            (not *normalizing-details*))
       normalize-details)))
 
+(t2/define-after-select :model/Database
+  [entity]
+  (assoc entity :entity_id (serdes/backfill-entity-id entity)))
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)

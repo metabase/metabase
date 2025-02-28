@@ -4630,7 +4630,7 @@
           :dashboards [{:id link-dash}]}
          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
 
-(deftest metadata-has-entity-ids-test
+(deftest dashboard-metadata-has-entity-ids-test
   (mt/with-temp
     [:model/Dashboard           {dashboard-id :id}  {}
      :model/Dashboard           {link-dash :id}     {}
