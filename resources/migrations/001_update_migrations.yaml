@@ -10531,7 +10531,7 @@ databaseChangeLog:
       rollback: # not needed, these are created on startup using deserialization
 
   - changeSet:
-      id: v53.2025-02-05T20:43:40
+      id: v53.2025-02-21T20:43:40
       author: nvoxland
       comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
       preConditions:
@@ -10548,7 +10548,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v53.2025-02-10T15:21:04
+      id: v53.2025-02-21T15:21:04
       author: nvoxland
       comment: Creating index on the hashed session key
       preConditions:
