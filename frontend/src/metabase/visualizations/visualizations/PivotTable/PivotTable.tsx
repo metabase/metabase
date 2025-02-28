@@ -386,46 +386,44 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                     width: leftHeaderWidth,
                   }}
                 >
-                  {rowIndexes.map((rowIndex: number, index: number) => {
-                    return (
-                      <Cell
-                        key={rowIndex}
-                        isEmphasized
-                        isBold
-                        isBorderedHeader
-                        isTransparent
-                        hasTopBorder={topHeaderRows > 1}
-                        isNightMode={isNightMode}
-                        value={getColumnTitle(rowIndex)}
-                        onResize={(newWidth: number) =>
-                          handleColumnResize("leftHeader", index, newWidth)
-                        }
-                        style={{
-                          flex: "0 0 auto",
-                          width:
-                            (leftHeaderWidths?.[index] ?? 0) +
-                            (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
-                          ...(index === 0
-                            ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
-                            : {}),
-                          ...(index === rowIndexes.length - 1
-                            ? { borderRight: "none" }
-                            : {}),
-                        }}
-                        icon={
-                          // you can only collapse before the last column
-                          index < rowIndexes.length - 1 &&
-                          isColumnCollapsible(rowIndex) && (
-                            <RowToggleIcon
-                              value={index + 1}
-                              settings={settings}
-                              updateSettings={onUpdateVisualizationSettings}
-                            />
-                          )
-                        }
-                      />
-                    );
-                  })}
+                  {rowIndexes.map((rowIndex: number, index: number) => (
+                    <Cell
+                      key={rowIndex}
+                      isEmphasized
+                      isBold
+                      isBorderedHeader
+                      isTransparent
+                      hasTopBorder={topHeaderRows > 1}
+                      isNightMode={isNightMode}
+                      value={getColumnTitle(rowIndex)}
+                      onResize={(newWidth: number) =>
+                        handleColumnResize("leftHeader", index, newWidth)
+                      }
+                      style={{
+                        flex: "0 0 auto",
+                        width:
+                          (leftHeaderWidths?.[index] ?? 0) +
+                          (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+                        ...(index === 0
+                          ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
+                          : {}),
+                        ...(index === rowIndexes.length - 1
+                          ? { borderRight: "none" }
+                          : {}),
+                      }}
+                      icon={
+                        // you can only collapse before the last column
+                        index < rowIndexes.length - 1 &&
+                        isColumnCollapsible(rowIndex) && (
+                          <RowToggleIcon
+                            value={index + 1}
+                            settings={settings}
+                            updateSettings={onUpdateVisualizationSettings}
+                          />
+                        )
+                      }
+                    />
+                  ))}
                 </PivotTableTopLeftCellsContainer>
                 {/* top header */}
                 <Collection

@@ -26,31 +26,21 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
 
-  const columnsWithoutPivotGroup = data.cols.filter(
-    col => !isPivotGroupColumn(col),
-  );
+  const columns = Pivot.columns_without_pivot_group(data.cols);
 
   const {
-    columns: columnColumnIndexes,
-    rows: rowColumnIndexes,
-    values: valueColumnIndexes,
-  } = _.mapObject(columnSplit, columnNames =>
-    columnNames
-      .map(columnName =>
-        columnsWithoutPivotGroup.findIndex(col => col.name === columnName),
-      )
-      .filter(index => index !== -1),
-  );
-
-  const { pivotData, columns } = Pivot.split_pivot_data(data);
+    columns: columnIndexes,
+    rows: rowIndexes,
+    values: valueIndexes,
+  } = Pivot.column_split_indexes(columnSplit, columns);
 
   const columnSettings = columns.map(column => settings.column(column));
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
   const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
-    valueColumnIndexes,
-    columnColumnIndexes,
-    rowColumnIndexes,
+    valueIndexes,
+    columnIndexes,
+    rowIndexes,
   ].map(indexes =>
     indexes.map(index =>
       _.memoize(
@@ -60,29 +50,27 @@ export function multiLevelPivot(data, settings) {
     ),
   );
 
-  const primaryRowsKey = JSON.stringify(
-    _.range(columnColumnIndexes.length + rowColumnIndexes.length),
-  );
-
-  const colorGetter = makeCellBackgroundGetter(
-    pivotData[primaryRowsKey],
-    columns,
-    settings["table.column_formatting"] ?? [],
-    true,
-  );
+  const makeColorGetter = rows => {
+    return makeCellBackgroundGetter(
+      rows,
+      columns,
+      settings["table.column_formatting"] ?? [],
+      true,
+    );
+  };
 
   const formatResults = Pivot.process_pivot_table(
-    pivotData,
-    rowColumnIndexes,
-    columnColumnIndexes,
-    valueColumnIndexes,
+    data,
+    rowIndexes,
+    columnIndexes,
+    valueIndexes,
     columns,
     topIndexFormatters,
     leftIndexFormatters,
     valueFormatters,
     settings,
     columnSettings,
-    colorGetter,
+    makeColorGetter,
   );
   const {
     columnIndex,
@@ -99,9 +87,9 @@ export function multiLevelPivot(data, settings) {
     columnCount: columnIndex.length,
     rowIndex,
     getRowSection,
-    rowIndexes: rowColumnIndexes,
-    columnIndexes: columnColumnIndexes,
-    valueIndexes: valueColumnIndexes,
+    rowIndexes: rowIndexes,
+    columnIndexes: columnIndexes,
+    valueIndexes: valueIndexes,
   };
 }
 

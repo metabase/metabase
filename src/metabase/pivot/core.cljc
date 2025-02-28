@@ -8,21 +8,16 @@
   (:import
    #?(:clj (java.text Collator))))
 
-(defn is-pivot-group-column
-  "Is the given column the pivot-grouping column?"
-  [col]
-  (= (:name col) "pivot-grouping"))
-
 ;; TODO: Remove these JSON helpers once more logic is encapsualted in CLJC and we don't need to use
 ;; JSON-encoded keys in maps.
 (defn- to-key
   [x]
-  #?(:cljs (js/JSON.stringify (clj->js x))
+  #?(:cljs x
      :clj x))
 
 (defn- from-key
   [x]
-  #?(:cljs (js->clj (js/JSON.parse (clj->js x)))
+  #?(:cljs x
      :clj x))
 
 (defn- json-parse
@@ -30,13 +25,22 @@
   #?(:cljs (js->clj (js/JSON.parse (clj->js x)))
      :clj (json/decode x)))
 
+(defn- is-pivot-group-column
+  "Is the given column the pivot-grouping column?"
+  [col]
+  (= (:name col) "pivot-grouping"))
+
+(defn columns-without-pivot-group
+  [columns]
+  (filter #(not (is-pivot-group-column %)) columns))
+
 (defn split-pivot-data
   "Pulls apart different aggregations that were packed into one result set returned from the QP.
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
   to split apart the data and convert field refs to indices"
   [data]
   (let [group-index (u/index-of is-pivot-group-column (:cols data))
-        columns     (filter #(not (is-pivot-group-column %)) (:cols data))
+        columns     (columns-without-pivot-group (:cols data))
         breakouts   (filter #(= (keyword (:source %)) :breakout) columns)
         pivot-data  (->> (:rows data)
                          (group-by #(nth % group-index))
@@ -49,6 +53,7 @@
                                (map #(vec (concat (subvec % 0 group-index) (subvec % (inc group-index))))
                                     rows)]))))]
     {:pivot-data pivot-data
+     :primary-rows-key (to-key (into [] (range (count breakouts))))
      :columns columns}))
 
 (defn get-subtotal-values
@@ -211,14 +216,28 @@
             :value value
             :children (postprocess-tree (:children tree-node))))))
 
+(defn column-split->indexes
+  "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
+    e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
+    ->   {:rows [1] :columns [0] :values [2]}"
+  [column-split columns-without-pivot-group]
+  (let [find-index (fn [col-name] (u/index-of #(= (:name %) col-name) columns-without-pivot-group))]
+    (update-vals
+     column-split
+     (fn [column-names] (into [] (keep find-index column-names))))))
+
+(defn- get-rows-from-pivot-data
+  [pivot-data row-indexes col-indexes]
+  (let [primary-rows-key (to-key (range (+ (count row-indexes)
+                                           (count col-indexes))))]
+
+    (get pivot-data primary-rows-key)))
+
 (defn build-pivot-trees
   "TODO"
   [pivot-data cols row-indexes col-indexes val-indexes settings col-settings]
   (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
-        primary-rows-key (to-key (range (+ (count row-indexes)
-                                           (count col-indexes))))
-
-        rows (get pivot-data primary-rows-key)
+        rows (get-rows-from-pivot-data pivot-data row-indexes col-indexes)
         {:keys [row-tree col-tree]}
         (reduce
          (fn [{:keys [row-tree col-tree]} row]
@@ -457,8 +476,10 @@
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [pivot-data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings color-getter]
-  (let [{:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
+  [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings make-color-getter]
+  (let [pivot-data (:pivot-data (split-pivot-data data))
+        color-getter (make-color-getter (get-rows-from-pivot-data pivot-data row-indexes col-indexes))
+        {:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
         left-index-columns (select-indexes columns row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
         ;; TODO condense the below functions
