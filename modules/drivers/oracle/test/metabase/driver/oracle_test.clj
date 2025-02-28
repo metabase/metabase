@@ -21,7 +21,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
