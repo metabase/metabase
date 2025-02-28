@@ -3,8 +3,12 @@ import cx from "classnames";
 import Styles from "./MetabotIcon.module.css";
 
 export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
-  const dotsStrokeColor = isLoading ? "#88BF4D" : "#509EE3";
-  const dotsFillColor = isLoading ? "#88BF4D" : "#CBE2F7";
+  const dotsStrokeColor = isLoading
+    ? "var(--mb-color-summarize)"
+    : "var(--mb-color-brand)";
+  const dotsFillColor = isLoading
+    ? "var(--mb-color-summarize)"
+    : "var(--mb-color-focus)";
 
   return (
     <svg
@@ -20,8 +24,8 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
         width="30.8721"
         height="22.5"
         rx="3.25"
-        fill="#CBE2F7"
-        stroke="#509EE3"
+        fill="var(--mb-color-focus)"
+        stroke="var(--mb-color-brand)"
         strokeWidth="1.5"
       />
       <rect
@@ -30,8 +34,8 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
         width="24.5581"
         height="14.5116"
         rx="2"
-        fill="#EEF6FD"
-        stroke="#509EE3"
+        fill="var(--mb-color-brand-ligher)"
+        stroke="var(--mb-color-brand)"
         strokeWidth="1.5"
       />
       {isLoading && (
@@ -40,15 +44,15 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
             fillRule="evenodd"
             clipRule="evenodd"
             d="M18 13H15V12H18V13Z"
-            fill="#509EE3"
+            fill="var(--mb-color-brand)"
           />
           <path
             d="M10 8.5C10 9 10.8 10 12 10C13.2 10 13.8333 9 14 8.5"
-            stroke="#509EE3"
+            stroke="var(--mb-color-brand)"
           />
           <path
             d="M19 8.5C19 9 19.8 10 21 10C22.2 10 22.8333 9 23 8.5"
-            stroke="#509EE3"
+            stroke="var(--mb-color-brand)"
           />
         </>
       )}
@@ -56,15 +60,20 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
         <>
           <path
             d="M17.3023 11.4414H17.8605C17.8605 12.4289 17.2754 13.1158 16.186 13.1158C15.0967 13.1158 14.5116 12.4289 14.5116 11.4414H15.0698C15.0698 11.9995 15.3488 12.5577 16.186 12.5577C17.0233 12.5577 17.3023 11.9995 17.3023 11.4414Z"
-            fill="#509EE3"
+            fill="var(--mb-color-brand)"
           />
-          <circle cx="11.5814" cy="8.7912" r="0.976744" fill="#509EE3" />
+          <circle
+            cx="11.5814"
+            cy="8.7912"
+            r="0.976744"
+            fill="var(--mb-color-brand)"
+          />
           <ellipse
             cx="20.5117"
             cy="8.7912"
             rx="0.976745"
             ry="0.976744"
-            fill="#509EE3"
+            fill="var(--mb-color-brand)"
           />
         </>
       )}
