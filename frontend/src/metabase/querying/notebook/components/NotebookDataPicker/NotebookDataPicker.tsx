@@ -1,4 +1,10 @@
-import { type MouseEvent, type Ref, forwardRef, useState } from "react";
+import {
+  type MouseEvent,
+  type Ref,
+  forwardRef,
+  useMemo,
+  useState,
+} from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -190,7 +196,7 @@ function ModernDataPicker({
   );
 }
 
-type LegacyDataPickerProps = {
+type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
@@ -210,7 +216,7 @@ function EmbeddingDataPicker({
   hasMetrics,
   isDisabled,
   onChange,
-}: LegacyDataPickerProps) {
+}: EmbeddingDataPickerProps) {
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
     useSearchQuery({
       models: ["dataset", "table"],
@@ -226,6 +232,24 @@ function EmbeddingDataPicker({
   );
   const context = useNotebookContext();
   const modelList = getModelFilterList(context, hasMetrics);
+
+  const metadata = useSelector(getMetadata);
+  const databases = useMemo(() => {
+    // We're joining data
+    if (!canChangeDatabase) {
+      return [
+        metadata.database(databaseId),
+        metadata.savedQuestionsDatabase(),
+      ].filter(Boolean);
+    }
+
+    /**
+     * When not joining data, we want to use all databases loaded inside `DataSourceSelector`
+     *
+     * @see https://github.com/metabase/metabase/blob/fb25682fe8dbafe2062e37bce832f62440872ab7/frontend/src/metabase/query_builder/components/DataSelector/DataSelector.jsx#L1163-L1168
+     */
+    return undefined;
+  }, [canChangeDatabase, databaseId, metadata]);
 
   if (isDataSourceCountLoading) {
     return null;
@@ -256,10 +280,13 @@ function EmbeddingDataPicker({
       />
     );
   }
+
   return (
     <DataSourceSelector
       key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
+      databases={databases}
+      canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}

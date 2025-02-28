@@ -886,17 +886,66 @@ describe("scenarios > embedding > full app", () => {
       });
 
       it(
-        "should select a table when there are multiple databases",
+        "should select a table when there are multiple databases (metabase#54127)",
         { tags: "@external" },
         () => {
           H.restore("postgres-12");
           cy.signInAsAdmin();
+          H.createModelFromTableName({
+            tableName: "orders",
+            modelName: "Orders Model (Postgres)",
+          });
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
           selectTable({ tableName: "Orders", databaseName: "QA Postgres12" });
           clickOnDataSource("Orders");
           verifyTableSelected({
             tableName: "Orders",
             databaseName: "QA Postgres12",
+          });
+
+          cy.log(
+            "assert that even after selecting a data source from one database, the data picker still shows the other data sources database",
+          );
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByRole("heading", { name: "Sample Database" }).should(
+              "be.visible",
+            );
+            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+              "be.visible",
+            );
+
+            cy.icon("chevronleft").click();
+            cy.findByText("Models").click();
+            cy.findByText("Orders Model").should("be.visible");
+            cy.findByText("Orders Model (Postgres)").should("be.visible");
+          });
+
+          cy.log("close the data picker popover");
+          cy.findByTestId("data-step-cell").click();
+
+          cy.log(
+            "assert that the tables should be filtered by the selected database from the starting data source.",
+          );
+          H.getNotebookStep("data").button("Join data").click();
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByRole("heading", { name: "Sample Database" }).should(
+              "not.exist",
+            );
+            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+              "be.visible",
+            );
+          });
+
+          cy.log(
+            "assert that the models should be filtered by the selected database from the starting data source.",
+          );
+          H.popover().within(() => {
+            cy.icon("chevronleft").click();
+            cy.findByText("Models").click();
+            cy.findByText("Orders Model").should("not.exist");
+            cy.findByText("Orders Model (Postgres)").should("be.visible");
           });
         },
       );
