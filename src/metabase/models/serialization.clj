@@ -223,7 +223,10 @@
 (defn add-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field, add an entity-id (using backfill-entity-id) if it is missing."
   [entity]
-  (assoc entity :entity_id (backfill-entity-id entity)))
+  (if (and (contains? entity :entity_id)
+           (nil? (:entity_id entity)))
+    (assoc entity :entity_id (backfill-entity-id entity))
+    entity))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
