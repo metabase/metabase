@@ -1678,9 +1678,6 @@ describe("issue 54400", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-  });
-
-  it("should use model icon when source data is a model (metabase#54400)", () => {
     H.createQuestion(
       {
         name: "My model",
@@ -1691,20 +1688,26 @@ describe("issue 54400", () => {
         visitQuestion: true,
       },
     );
+  });
 
+  it("should use model icon when source data is a model (metabase#54400)", () => {
+    cy.log("filter modal");
     H.filter();
     verifyFilterModalTabIcon({ name: "My model", icon: "model" });
 
+    cy.log("filters");
     cy.realPress("Escape");
     H.openNotebook();
     H.filter({ mode: "notebook" });
     verifyPopoverItemIcon({ name: "My model", icon: "model" });
 
+    cy.log("aggregations");
     cy.realPress("Escape");
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Sum of ...").click();
     verifyPopoverItemIcon({ name: "My model", icon: "model" });
 
+    cy.log("breakouts");
     H.getNotebookStep("summarize")
       .findByTestId("breakout-step")
       .findByTestId("notebook-cell-item")
