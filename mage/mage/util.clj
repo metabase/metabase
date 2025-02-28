@@ -17,7 +17,9 @@
       getCanonicalPath))
 
 (defn sh
-  "Run a shell command and return the output as a trimmed string."
+  "Run a blocking shell command and return the output as a trimmed string.
+
+  Will throw an exception if the command returns a non-zero exit code."
   [cmd]
   (->> (shell {:out :string :dir project-root-directory} cmd)
        :out
@@ -43,11 +45,11 @@
 (defn env
   "Get environment variables"
   ([] (into {} (System/getenv)))
-  ([env-var] (env env-var (fn [] (println "Warning: cannot find " (c/red env-var) " in env."))))
+  ([env-var] (env env-var (fn [] (println "Warning:" (c/yellow env-var) "not found in env."))))
   ([env-var error-thunk] (or ((env) (name env-var)) (error-thunk))))
 
 (defn print-env
-  "Prints environment variables matching `match`"
+  "Prints environment variables matching `match`, or all if no match is given."
   ([] (print-env ".*" (env)))
   ([match] (print-env match (env)))
   ([match env]
@@ -62,7 +64,7 @@
        (println (c/cyan value))))))
 
 (defn debug
-  "Prints out verbose info when "
+  "Prints out verbose info when MAGE_DEBUG is set"
   [& content]
   (when (env "MAGE_DEBUG" (constantly nil))
     (doseq [line (->> (str/join content) str/split-lines)]

@@ -122,4 +122,4 @@ modules/drivers/*/.lsp/*
 *storybook.log
 
 # jar downloader
-/jars
+/jars/

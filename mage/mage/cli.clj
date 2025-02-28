@@ -28,18 +28,17 @@
       (System/exit 0))))
 
 (defn- coerce-arguments [arg-schema current-task arguments]
-  (when arg-schema
+  (if-not arg-schema
+    arguments
     (let [decoded-args (mc/decode arg-schema arguments mtx/string-transformer)]
-      (u/debug (mc/validate arg-schema decoded-args))
-      (u/debug (pr-str decoded-args))
       #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
         (do (doseq [{:keys [path schema value]} (:errors
                                                  #_:clj-kondo/ignore
                                                  (mc/explain arg-schema decoded-args))]
-              (println (c/red "Invalid Argument at position " path
-                              ", should match: " (mc/form schema)
+              (println (c/red "Invalid Argument at " path
+                              ". It should match: " (mc/form schema)
                               " got: " (pr-str value))))
             (binding [*command-line-args* ["-h"]]
               (check-print-help current-task))
@@ -74,13 +73,12 @@
   (let [*error-hit? (atom false)
         {:keys [summary arguments]
          option-errors :errors
-         :as parsed} (tools.cli/parse-opts *command-line-args* options)]
-    (check-option-errors option-errors *error-hit? summary)
-    (u/debug "arg-schema: " arg-schema)
-    (u/debug "unparsed: " *command-line-args*)
-    (u/debug "parsed: " parsed)
-    (u/debug "o " (pr-str (update parsed :arguments (partial coerce-arguments arg-schema current-task))))
-    (update parsed :arguments (partial coerce-arguments arg-schema current-task))))
+         :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)
+        _ (check-option-errors option-errors *error-hit? summary)
+        parsed (update parsed-opts :arguments (partial coerce-arguments arg-schema current-task))]
+    (u/debug (c/green "UNPARSED: ") *command-line-args*)
+    (u/debug (c/green "PARSED:   ") parsed)
+    parsed))
 
 (comment
 

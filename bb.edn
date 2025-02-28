@@ -79,10 +79,11 @@
   {:doc      "Given a version, downloads a metabase jar"
    :examples [["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
               ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
-              ["$JARS=.. ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to '.."]]
+              ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
    :requires [[mage.jar-download :as jar-download]]
-   :arg-schema [:or [:tuple {:desc "version"} :string] [:tuple :string :string]]
-   :usage-fn jar-download/usages
+   :arg-schema [:or
+                [:tuple {:desc "version"} :string]
+                [:tuple :string :string]]
    :task     (do
                (cli/parse! (current-task))
                (jar-download/jar-download *command-line-args*))}
@@ -119,7 +120,8 @@
    ;; `:arg-schema` (optional) is a malli schema for the arguments passed to the task, after the options
    :arg-schema [:tuple :int [:enum :+ :-] :int]
 
-   ;; `:usage-fn` (optional) is a function called with the current-task map and prints usage information.
+   ;; `:usage-fn` (optional) is a function called with the current-task map
+   ;; and returns a string containing extra-detailed usage information.
    :usage-fn (fn [{:keys [doc]}]
                (println "Optional extra usage information, if you want.")
                (println "Reversed docstring:" (apply str (reverse doc))))

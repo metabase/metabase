@@ -63,7 +63,10 @@
         (symb->external-usages)))
 
 (defn privatize-symbol! [[symb {:keys [analysis]}]]
-  (clojure-lsp.api/call))
+  (lsp-cmd/call-command
+   :cycle-privacy
+   {:loc "?"
+    :db}))
 
 (comment
 
