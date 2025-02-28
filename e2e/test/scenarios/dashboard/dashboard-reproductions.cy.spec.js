@@ -1655,3 +1655,85 @@ describe("issue 49556", () => {
     H.dashboardParameterSidebar().button("Edit").should("be.enabled");
   });
 });
+
+describe("issue 54353", () => {
+  const peopleSourceFieldRef = [
+    "field",
+    PEOPLE.SOURCE,
+    { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+  ];
+  const ordersCreatedAtFieldRef = [
+    "field",
+    ORDERS.CREATED_AT,
+    { "base-type": "type/DateTime", "temporal-unit": "month" },
+  ];
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should close date filter on esc (metabase#54353)", () => {
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "param-1",
+            name: "Date",
+            slug: "date",
+            type: "date/all-options",
+          }),
+        ],
+      },
+      questions: [
+        {
+          name: "fooBarQuestion",
+          display: "bar",
+          query: {
+            aggregation: [["count"]],
+            breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
+            "source-table": ORDERS_ID,
+          },
+        },
+      ],
+    }).then(({ dashboard }) => {
+      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+          const [parameter] = dashboard.parameters;
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                parameter_mappings: [
+                  {
+                    card_id: dashcard.card_id,
+                    parameter_id: parameter.id,
+                    target: ["dimension", ordersCreatedAtFieldRef],
+                  },
+                ],
+              },
+            ],
+          }).then(() => {
+            cy.wrap(dashboard.id).as("dashboardId");
+          });
+        },
+      );
+    });
+    H.visitDashboard("@dashboardId");
+
+    cy.log("set dashboard filter value");
+    cy.findByLabelText("Date").click();
+    H.popover()
+      .findByText(/Previous 12 months/i)
+      .click();
+
+    cy.findByLabelText("Date").click();
+
+    cy.log("press esc");
+    cy.get("body").type("{esc}");
+
+    cy.log("make sure popover is not open");
+    cy.findByRole("dialog").should("not.exist");
+  });
+});
