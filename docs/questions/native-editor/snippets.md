@@ -2,6 +2,7 @@
 title: Snippets
 redirect_from:
   - /docs/latest/users-guide/sql-snippets
+  - /docs/latest/questions/native-editor/sql-snippets
 ---
 
 # Snippets
