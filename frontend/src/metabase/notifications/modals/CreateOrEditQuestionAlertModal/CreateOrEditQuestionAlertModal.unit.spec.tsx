@@ -53,13 +53,13 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
     "should display first available channel by default - Webhook %p",
-    async () => {
+    async setupConfig => {
       const mockWebhook = createMockChannel();
       setup({
         isEmailSetup: false,
         isHttpSetup: true,
-        isAdmin: true,
         webhooksResult: [mockWebhook],
+        ...setupConfig,
       });
 
       await waitFor(() => {
@@ -70,6 +70,23 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText(mockWebhook.name)).toBeInTheDocument();
     },
   );
+
+  it("should not show channels if user does not have permissions", async () => {
+    const mockWebhook = createMockChannel();
+    setup({
+      isEmailSetup: false,
+      isSlackSetup: true,
+      isHttpSetup: true,
+      webhooksResult: [mockWebhook],
+      userCanAccessSettings: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Alerts")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("New alert")).not.toBeInTheDocument();
+  });
 });
 
 function setup({
@@ -104,20 +121,18 @@ function setup({
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
 
-  if (userCanAccessSettings) {
-    /**
-     * Technically this is a dirty hack to avoid loading enterprise packages
-     * and rely on typings from enterprise package to mock the user:
-     * - import { UserWithApplicationPermissions } from "metabase-enterprise/application_permissions/types/user";
-     * - createMockUser({ ... } as UserWithApplicationPermissions);
-     *
-     * However the trade-off is worth it, because 3 LOC keeps the test clean,
-     * avoids loading unnecessary code or writing e2e tests for this.
-     */
-    jest
-      .spyOn(PLUGIN_APPLICATION_PERMISSIONS.selectors, "canAccessSettings")
-      .mockReturnValue(true);
-  }
+  /**
+   * Technically this is a dirty hack to avoid loading enterprise packages
+   * and rely on typings from enterprise package to mock the user:
+   * - import { UserWithApplicationPermissions } from "metabase-enterprise/application_permissions/types/user";
+   * - createMockUser({ ... } as UserWithApplicationPermissions);
+   *
+   * However the trade-off is worth it, because 4 LOC keeps the test clean,
+   * avoids loading unnecessary code or writing e2e tests for this.
+   */
+  jest
+    .spyOn(PLUGIN_APPLICATION_PERMISSIONS.selectors, "canAccessSettings")
+    .mockReturnValue(userCanAccessSettings);
 
   renderWithProviders(
     <CreateOrEditQuestionAlertModal
