@@ -59,7 +59,13 @@ export function multiLevelPivot(data, settings) {
     );
   };
 
-  const formatResults = Pivot.process_pivot_table(
+  const {
+    columnIndex,
+    rowIndex,
+    leftHeaderItems,
+    topHeaderItems,
+    getRowSection,
+  } = Pivot.process_pivot_table(
     data,
     rowIndexes,
     columnIndexes,
@@ -72,13 +78,6 @@ export function multiLevelPivot(data, settings) {
     columnSettings,
     makeColorGetter,
   );
-  const {
-    columnIndex,
-    rowIndex,
-    leftHeaderItems,
-    topHeaderItems,
-    getRowSection,
-  } = formatResults;
 
   return {
     leftHeaderItems,
