@@ -470,8 +470,8 @@
           ;; we leave alone the condition otherwise
           :else &match)))))
 
-(defn- generate-unique-name [metadata-providerable base-name taken-names]
-  (let [generator (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))]
+(defn- generate-unique-name [base-name taken-names]
+  (let [generator (lib.util/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 
@@ -486,7 +486,7 @@
          cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name query s (keep :alias (:joins stage)))))))
+       (generate-unique-name s (keep :alias (:joins stage)))))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
@@ -879,10 +879,10 @@
                   (filter-clause (::target fk) fk))
                 fks)))))))
 
-(defn- xform-add-join-alias [metadata-providerable a-join]
+(defn- xform-add-join-alias [a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
     (fn [xf]
-      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))]
+      (let [unique-name-fn (lib.util/unique-name-generator)]
         (fn
           ([] (xf))
           ([result] (xf result))
@@ -921,7 +921,7 @@
     (into []
           (if a-join
             (comp xform-fix-source-for-joinable-columns
-                  (xform-add-join-alias query a-join)
+                  (xform-add-join-alias a-join)
                   (xform-mark-selected-joinable-columns a-join))
             identity)
           cols)))
