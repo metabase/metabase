@@ -62,8 +62,3 @@
   [& args] (do-color "[46m" args))
 (defn on-white "Wrap a string with code to make it on-white then resets it."
   [& args] (do-color "[47m" args))
-
-(defn uncolor "Wrap a string with code to make it plain again."
-  [& args]
-  (str "\033[" "0" "m"
-       (str/join args)))

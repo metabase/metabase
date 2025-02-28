@@ -6,13 +6,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- ->mode [check?] (if check? "check" "fix"))
+(defn- ->mode [force-check?] (if force-check? "check" "fix"))
 
 (defn files
   "Formats or checks a list of files."
-  [check? file-paths]
-  (prn ["check?" check?])
-  (let [mode (->mode check?)]
+  [{{force-check? :force-check} :options
+    file-paths :arguments}]
+  (let [mode (->mode force-check?)]
     (when-not (seq file-paths)
       (println (str "No files to " mode "."))
       (System/exit 0))
@@ -27,24 +27,19 @@
 
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."
-  [check?]
+  [{{force-check? :force-check} :options}]
   (try (let [file-paths (u/staged-files)]
          (if (seq file-paths)
-           (files check? file-paths)
-           (println (str "No staged clj, cljc, or cljs files to " (->mode check?) "."))))
+           (files {:options {:force-check force-check?}
+                   :arguments file-paths})
+           (println (str "No staged clj, cljc, or cljs files to " (->mode force-check?) "."))))
        (catch Exception e
          (println "Error:" (.getMessage e))
          (System/exit 1))))
 
 (defn all
   "Formats or checks of the usual clojure files with cljfmt."
-  [check]
-  (let [mode (->mode check)]
+  [{{force-check? :force-check} :options}]
+  (let [mode (->mode force-check?)]
     (println (str mode "ing all clojure files, sit tight: this could take a minute..."))
     (u/sh (str "clojure -T:cljfmt " mode))))
-
-(comment
-
-  (u/sh (str "clojure -T:cljfmt fix " (pr-str {:paths (staged-files)})))
-
-  (println (str "clojure -T:cljfmt fix " (pr-str {:paths (staged-files)}))))

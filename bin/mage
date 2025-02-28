@@ -2,22 +2,28 @@
 
 (ns mage
   (:require
-   [babashka.tasks :refer [shell]]
-   [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [mage.shell :as sh]
+   [mage.util :as u]))
+
+(defn invalid-task? []
+  (let [task-name (first *command-line-args*)]
+    (when-not (contains? (set (u/bb-tasks-list)) task-name)
+      (println (c/red (str "Unknown task: " task-name)))
+      true)))
 
 (defn -main [& _]
   (if (or (nil? *command-line-args*) ;; forgot to pass args
-          ;; trying to get help
-          (= *command-line-args* ["-h"])
-          (= *command-line-args* ["--help"]))
+          (= *command-line-args* ["-h"]) ;; trying to get help
+          (= *command-line-args* ["--help"])
+          (invalid-task?))
     (do
       (print (slurp "./mage/resource.txt"))
       (flush)
       (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
       (println "")
-      (shell "bb tasks"))
-    (shell (str "bb " (str/join " " *command-line-args*)))))
+      (println (u/sh "bb tasks")))
+    (apply sh/sh (into ["bb"] *command-line-args*))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (-main))

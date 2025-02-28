@@ -66,9 +66,7 @@
   "Run Kondo against our project. With no args, runs Kondo against everything we normally lint. Otherwise args are
   passed directly to Kondo e.g.
 
-    ./bin/mage.sh kondo # run Kondo against everything
-
-    ./bin/mage.sh kondo --lint src/metabase/my_file.clj # run against a specific file"
+    ./bin/mage.sh kondo # run Kondo against everything"
   [cli-args]
   (kondo* cli-args))
 

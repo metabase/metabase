@@ -143,8 +143,8 @@
 
 (defn start-db
   "Starts a db: type + version"
-  [{:keys [ports]} cli-args]
-  (if (= (count cli-args) 2)
-    (let [[db version] cli-args]
+  [ports {:keys [arguments]}]
+  (if (= (count arguments) 2)
+    (let [[db version] arguments]
       (start-db* ports (keyword db) (keyword version)))
     (usage ports)))

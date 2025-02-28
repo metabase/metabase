@@ -66,3 +66,10 @@
   (when (env "MAGE_DEBUG" (constantly nil))
     (doseq [line (->> (str/join content) str/split-lines)]
       (println (c/cyan "MAGE_DEBUG>") line))))
+
+(defn bb-tasks-list []
+  (->> "bb tasks"
+       shl
+       (drop 2)
+       (map (comp first #(str/split % #"\s+")))
+       vec))

@@ -13,43 +13,41 @@
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-staged" "Format staged files"]
               ["./bin/mage cljfmt-staged -c" "Check staged files"]]
-   :options  [{:id :check? :short "-c" :long "--force-check" :default false}]
-   :task     (format/staged (:check? (cli/menu! (current-task))))}
+   :options  [["-c" "--force-check" "Check staged files"]]
+   :task     (format/staged (cli/parse! (current-task)))}
 
-  cljfmt-file
+  cljfmt-files
   {:doc      "Runs cljfmt on the given files/directories"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
               ["./bin/mage format-file src" "Format all files in src"]
               ["./bin/mage format-file -c src" "Check all files in src"]]
-   :options  [{:id :check? :short "-c" :long "--force-check" :default false}]
-   :task     (let [{:keys [args check?]} (cli/menu! (current-task))]
-               (format/files check? args))}
+   :options  [["-c" "--force-check" "Check staged files"]]
+   :args     [:sequential [:string {:description "Files or directories to format."}]]
+   :task     (format/files (cli/parse! (current-task)))}
 
   cljfmt-all
   {:doc      "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-all" "Format all files"]]
-   :options  [{:id :check :short "-c" :long "--force-check" :default false}]
-   :task     (format/all (cli/menu! (current-task)))}
+   :options  [["-c" "--force-check" "Check staged files"]]
+   :task     (format/all (cli/parse! (current-task)))}
 
   kondo
   {:doc      "Runs Kondo against a file, directory, or everything we usually lint"
    :examples [["./bin/mage kondo" "run Kondo against everything we usually lint"]
-              ["./bin/mage kondo --lint src/metabase/db.clj" "run Kondo against a file"]
-              ["./bin/mage kondo --lint src/metabase/api/macros" "run Kondo against a directory"]]
-
+              ["./bin/mage kondo src/metabase/db.clj" "run Kondo against a file"]
+              ["./bin/mage kondo src/metabase/db.clj src/metabase/config.clj" "run Kondo against 2 files"]
+              ["./bin/mage kondo src/metabase/api/macros" "run Kondo against a directory"]]
    :requires [[mage.kondo :as kondo]]
-   :task     (do (cli/menu! (current-task))
-                 (kondo/kondo *command-line-args*))}
+   :task     (kondo/kondo (:arguments (cli/parse! (current-task))))}
 
   kondo-updated
   {:doc      "Runs kondo against files changed compared to a git ref"
    :examples [["./bin/mage kondo-updated" "run Kondo on files with changes relative to HEAD"]
               ["./bin/mage kondo-updated master" "run Kondo on files with changes relative to master"]]
    :requires [[mage.kondo :as kondo]]
-   :task     (do (cli/menu! (current-task))
-                 (kondo/kondo-updated *command-line-args*))}
+   :task     (kondo/kondo-updated (:arguments (cli/parse! (current-task))))}
 
   start-db
   {:doc      "Start a db on a default port in docker"
@@ -59,9 +57,8 @@
    :ports    {:postgres {:oldest 5432 :latest 5433}
               :mysql    {:oldest 3308 :latest 3309}
               :mariadb  {:oldest 3306 :latest 3307}}
-   :task     (do (cli/menu! (current-task))
-                 (start-db/start-db (current-task)
-                                    *command-line-args*))}
+   :task     (start-db/start-db (:ports (current-task))
+                                (:arguments (cli/parse! (current-task))))}
 
   nrepl
   {:doc      "Starts the babashka nrepl: helpful for for mage development"
@@ -69,7 +66,7 @@
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
    :task     (do
-               (cli/menu! (current-task))
+               (cli/parse! (current-task))
                (spit ".nrepl-port" 1667)
                (nrepl.server/start-server!)
                (deref (promise)))}
@@ -81,7 +78,7 @@
               ["./bin/mage jar-download 0.45.2" "Download 0.45.2 to $JARS.\n   ProTip: this script will read from $JARS, and use that as your jar directory."]]
    :requires [[mage.jar-download :as jar-download]]
    :task     (do
-               (cli/menu! (current-task))
+               (cli/parse! (current-task))
                (jar-download/jar-download *command-line-args*))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,7 +90,7 @@
   {:doc      "Prints instructions to setup autocomplete"
    :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
    :requires [[mage.autotab :as autotab]]
-   :task     (do (cli/menu! (current-task))
+   :task     (do (cli/parse! (current-task))
                  (autotab/instructions *command-line-args*))}
 
   ;; note: task symbols starting with `-` are not listed in `./bin/mage`.
@@ -104,6 +101,8 @@
    :requires []
    ;; examples get printed out when you pass -h or --help.
    :examples [["./bin/mage -example" "it runs this task"]]
-   ;; options are things like --file, --name, etc.
+   ;; options are things like --file, --name, etc, and defined as in
+   ;; https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
    :options  []
+   ;; args are space delimited values passed into the task, after flags
    :task     (println :hi)}}}

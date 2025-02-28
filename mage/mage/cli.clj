@@ -1,126 +1,56 @@
 (ns mage.cli
   (:require
    [clojure.string :as str]
-   [clojure.tools.cli :refer [parse-opts]]
+   [clojure.tools.cli :as tools.cli]
    [mage.color :as c]
    [mage.util :as u]
-   [table.core :as t]))
+   [malli.core :as mc]))
 
 (set! *warn-on-reflection* true)
 
-(defn tbl
-  "Prints a table in unicode 3d style."
-  [x]
-  (t/table x
-           :fields [:short :long :msg :default :options :id :prompt]
-           :style :github-markdown))
+(defn- check-print-help [{:keys [options] :as current-task}]
+  (let [command-line-args *command-line-args*]
+    (when (or (get (set command-line-args) "-h")
+              (get (set command-line-args) "--help"))
+      (println (:name current-task))
+      (println (str " "  (c/green (:doc current-task))))
+      (println (:summary (tools.cli/parse-opts *command-line-args* options)))
+      (when-let [examples (:examples current-task)]
+        (println "\nExamples:")
+        (doseq [[cmd effect] examples]
+          (println "\n" cmd "\n -" (c/magenta effect))))
+      (System/exit 0))))
 
-(defn- ->cli-tools-option [{:keys [msg short long id default parse-fn update-fn validate] :as _opt}]
-  (vec (concat [short long msg]
-               (when id [:id id])
-               (when default [:default default])
-               (when parse-fn [:parse-fn parse-fn])
-               (when update-fn [:update-fn update-fn])
-               (when validate [:validate validate]))))
+(defn parse!
+  "Options are pulled from the current task map in bb.edn.
 
-(defn- check-print-help [current-task options args]
-  (when (or (get (set args) "-h")
-            (get (set args) "--help"))
-    (println (c/green (str "  " (:doc current-task))))
-    (doseq [opt options]
-      (println (c/cyan " " (:short opt) " " (:long opt) " " (:msg opt)
-                       (when-let [more (-> opt (dissoc :id :short :long :msg :parse-fn) not-empty)]
-                         (c/uncolor "| "  more)))))
-    (when-let [examples (:examples current-task)]
-      (println "\nExamples:")
-      (doseq [[cmd effect] examples]
-        (println "\n" cmd "\n -" (c/magenta effect))))
-    (System/exit 0)))
+  Returns a map of options and args.
 
-(defn- try-eval [maybe-code-str]
-  (try #_:clj-kondo/ignore
-   (eval maybe-code-str)
-       (catch Exception _ ::nope)))
+  TLDR:
+  Option specifications are a sequence of vectors with the following format:
 
-(defn- ->ask [{:keys [id title prompt choices] :as _option}]
-  {:id id
-   :msg title
-   :type prompt
-   :choices (cond
-              (delay? choices) @choices
-              (not= ::nope (try-eval choices)) (try-eval choices)
-              :else choices)})
+  [short-opt long-opt-with-required-description description
+  :property value]
 
-(defn- ask-unknown! [cli-options all-options]
-  (let [answered-ids (set (keys cli-options))
-        unanswered (remove #(or (nil? (:prompt %)) (answered-ids (:id %))) all-options)
-        to-ask (mapv ->ask unanswered)]
-    (u/debug "to-ask:" to-ask)
-    (if (empty? to-ask)
-      cli-options
-      (throw (ex-info (str "Missing cli args:\n"
-                           (pr-str to-ask))
-                      {})))))
+  See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts"
+  [{:keys [options] :as current-task}]
+  (check-print-help current-task)
+  (let [*error-hit? (atom false)
+        {:keys [summary errors] :as parsed} (tools.cli/parse-opts *command-line-args* options)]
+    (when errors
+      (doseq [error-or-warning errors]
+        (if (str/starts-with? error-or-warning "Unknown option:")
+          (println (c/yellow error-or-warning))
+          (do (reset! *error-hit? true)
+              (println (c/red error-or-warning)))))
+      (when @*error-hit?
+        (println "Usage:")
+        (println summary)
+        (System/exit 0)))
+    (u/debug "parsed: " parsed)
+    parsed))
 
-(defn- menu-cli
-  "Gets required cli options through a menu when not provided by users."
-  [current-task opts args]
-  (check-print-help current-task opts args)
-  (let [options (mapv ->cli-tools-option opts)
-        _ (u/debug "options:" options)
-        {:keys [error summary arguments] parsed-opts :options} (try (parse-opts args options)
-                                                                    (catch Throwable _t {:error "parse-opts threw."}))
-        _ (when error (println "WARNING:" "args, " args  "options," options " | " error "|" summary))
-        required-opts (filter :required opts)
-        missing-opts (remove (fn [req-opt] (contains? parsed-opts (:id req-opt))) required-opts)
-        missing-and-unaskable (remove #(-> % :options seq) missing-opts)
-        missing-and-askable (filter #(-> % :options seq) missing-opts)
-        _ (when (seq missing-and-unaskable)
-            (println (c/red "Missing required option(s):"))
-            (tbl options)
-            (System/exit 1))
-        asked-opts (into {} (for [hybrid-option missing-and-askable]
-                              (println "todo: ask (menu-ask hybrid-option)" (pr-str hybrid-option))))
-        cli (assoc (merge parsed-opts asked-opts) :args arguments)
-        _ (u/debug "cli: " cli)
-        out (ask-unknown! cli opts)
-        _ (u/debug "out: " out)]
-    ;; (println out)
-    out))
-
-(defn- add-parsing-for-multi [option]
-  (if (= :multi (:prompt option))
-    (assoc option :parse-fn #(str/split % #","))
-    option))
-
-(defn menu!
-  "Options have keys that map to clojure.tools.cli options via [[->cli-tools-option]].
-
-  Custom keys are:
-
-  :prompt one of :text :number :select :multi
-  When missing a :prompt key, we will not ask this quesion on the cli menu.
-  So if it is required, it must be passed via cli flags.
-
-  :choices - a string seq, or a delay that references a string seq.
-
-  n.b. - a handy trick for debugging this is to add a bb task like:
-
-  x (prn (menu! (current-task)
-         {:id :fav-foods
-          :short \"-p\"
-          :long \"--port PORT\"
-          :prompt :multi
-          :choices [\"apple\" \"banana\" \"egg salad\" \"green onions\" \"mango\"]}))
-
-  and call it via running `bb x` in your terminal.
-
-
- - to pass values into a :multi :prompt from the cli, seperate them with commas, like so:
-   bb mytask --multi a,b,c
-
-  "
-  [current-task]
-  (menu-cli current-task
-            (map add-parsing-for-multi (:options current-task))
-            *command-line-args*))
+{:options {:force-check true},
+ :arguments ["asd" "qwe"],
+ :summary "  -c, --force-check  false  Check staged files",
+ :errors ["Unknown option: \"-j\""]}
