@@ -2,26 +2,9 @@ import { P, match } from "ts-pattern";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createDashboard,
-  createQuestion,
-  enterCustomColumnDetails,
-  entityPickerModal,
-  entityPickerModalTab,
-  filter,
-  getNotebookStep,
-  modal,
-  modifyPermission,
-  openNotebook,
-  popover,
-  saveChangesToPermissions,
-  saveQuestion,
-  startNewQuestion,
-  visitMetric,
-  visitModel,
-  visitQuestion,
-} from "e2e/support/helpers";
 import type { CardType, StructuredQuery } from "metabase-types/api";
+
+const { H } = cy;
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
@@ -43,15 +26,16 @@ const customColumnTypeToFormula: Record<CustomColumnType, string> = {
 
 const addCustomColumnToQuestion = (customColumnType: CustomColumnType) => {
   cy.log("Add a custom column");
-  getNotebookStep("data").button("Custom column").click();
-  enterCustomColumnDetails({
+  H.getNotebookStep("data").button("Custom column").click();
+  H.enterCustomColumnDetails({
     formula: customColumnTypeToFormula[customColumnType],
     name: "Custom category column",
   });
-  popover().button("Done").click();
+  H.popover().button("Done").click();
 };
 
 type CreateQuestionOptions = {
+  name?: string;
   columnType?: ColumnType;
   customColumnType?: CustomColumnType;
   idAlias?: string;
@@ -60,18 +44,20 @@ type CreateQuestionOptions = {
   dashcardIdAlias?: string;
   sourceTable?: StructuredQuery["source-table"];
   type?: CardType;
+  query?: StructuredQuery;
+  addToDashboard?: boolean;
 };
 
 const createSavedQuestion = (opts: CreateQuestionOptions) => {
   cy.log(
     "Create a saved question that shows Gizmos and Widgets, and put it in a dashboard",
   );
-  createCard({
-    ...opts,
+  createCardAndAddToDashboard({
     idAlias: "savedQuestionId",
     dashboardName: "Dashboard with saved question",
     dashboardIdAlias: "idOfDashboardWithSavedQuestion",
     dashcardIdAlias: "savedQuestionDashcardId",
+    ...opts,
   });
 };
 
@@ -79,7 +65,7 @@ const createModel = (opts: CreateQuestionOptions) => {
   cy.log(
     "Create a model that shows Gizmos and Widgets, and put it in a dashboard",
   );
-  createCard({
+  createCardAndAddToDashboard({
     ...opts,
     type: "model",
     idAlias: "modelId",
@@ -89,58 +75,64 @@ const createModel = (opts: CreateQuestionOptions) => {
   });
 };
 
-const createCard = ({
+const createCardAndAddToDashboard = ({
+  name = "Products question",
   columnType,
   customColumnType,
   idAlias = "cardId",
   dashboardName = "Test Dashboard",
   dashboardIdAlias = "dashboardId",
   dashcardIdAlias = "dashcardId",
+  addToDashboard = true,
   sourceTable = PRODUCTS_ID,
   type = "question",
+  query,
 }: CreateQuestionOptions) => {
-  createQuestion(
+  H.createQuestion(
     {
-      name: "Products question",
+      name,
       query: {
         "source-table": sourceTable,
+        ...query,
       },
       type,
     },
     { wrapId: true, idAlias },
   );
 
-  cy.get("@" + idAlias).then(cardId => {
-    isNumber(cardId);
-    createDashboard(
-      {
-        name: dashboardName,
-        dashcards: [
-          {
-            id: 1,
-            size_x: 10,
-            size_y: 20,
-            row: 0,
-            col: 0,
-            card_id: cardId,
-          },
-        ],
-      },
-      {
-        wrapId: true,
-        idAlias: dashboardIdAlias,
-        dashcardIdAliases: [dashcardIdAlias],
-      },
-    );
-  });
+  if (addToDashboard) {
+    cy.get("@" + idAlias).then(cardId => {
+      isNumber(cardId);
+      H.createDashboard(
+        {
+          name: dashboardName,
+          dashcards: [
+            {
+              id: 1,
+              size_x: 10,
+              size_y: 20,
+              row: 0,
+              col: 0,
+              card_id: cardId,
+            },
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: dashboardIdAlias,
+          dashcardIdAliases: [dashcardIdAlias],
+        },
+      );
+    });
+  }
 
   const visitCard = () => {
     // Get a function that will visit the card
     const visit = match(type)
       .returnType<(id: number) => void>()
-      .with("question", () => visitQuestion)
-      .with("model", () => visitModel)
-      .with("metric", () => visitMetric)
+      .with("question", () => H.visitQuestion)
+      .with("model", () => H.visitModel)
+      .with("metric", () => H.visitMetric)
       .exhaustive();
 
     // Call the function with the id of the saved question, model, or metric
@@ -153,11 +145,15 @@ const createCard = ({
         "columnType is required when customColumnType is provided",
       );
     }
+    cy.log("Add a custom column to the card and save it");
     visitCard();
     addCustomColumnToCardAndSave(type, columnType, customColumnType, idAlias);
   }
 };
 
+/** Though this can be done via the API, we want to test via the UI because
+ * we've had regressions due to mismatches between the specific payload
+ * generated by the UI and the BE's expectations. */
 const addCustomColumnToCardAndSave = (
   cardType: CardType,
   columnType: ColumnType,
@@ -165,13 +161,13 @@ const addCustomColumnToCardAndSave = (
   idAlias: string,
 ) => {
   cy.log("Add a custom column to the question");
-  openNotebook();
+  H.openNotebook();
   addCustomColumnToQuestion(customColumnType);
   cy.button("Visualize").click();
   const { attributeValue } = getUserAttribute(columnType, customColumnType);
   cy.findAllByText(attributeValue);
 
-  saveQuestion("Products question with custom column", {
+  H.saveQuestion("Products question with custom column", {
     idAlias,
     shouldSaveAsNewQuestion: cardType === "question",
   });
@@ -189,7 +185,7 @@ const createNestedQuestion = ({
   cy.log("Create a nested question and put it in a dashboard");
 
   cy.get("@savedQuestionId").then(savedQuestionId => {
-    createCard({
+    createCardAndAddToDashboard({
       columnType: "regular",
       idAlias: nestedQuestionIdAlias,
       sourceTable: `card__${savedQuestionId}`,
@@ -200,20 +196,18 @@ const createNestedQuestion = ({
   });
 };
 
-const createAdhocQuestion = ({
-  customColumnType,
-}: {
-  customColumnType?: CustomColumnType;
-}) => {
-  startNewQuestion();
-  entityPickerModal().within(() => {
-    entityPickerModalTab("Tables").click();
-    cy.findByText("Products", { timeout: 10000 }).click();
-  });
-  if (customColumnType) {
-    addCustomColumnToQuestion(customColumnType);
-  }
-  cy.button("Visualize").click();
+const adhocQuestionData = {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  },
+};
+
+const visitAdhocProductsQuestion = () => {
+  H.visitQuestionAdhoc(adhocQuestionData);
 };
 
 export const sandboxingUser = {
@@ -234,22 +228,12 @@ export const signInAsSandboxedUser = () => {
   });
 };
 
-export const renderedResultsShouldBeUnfiltered = () => {
-  cy.findAllByText("Gizmo").should("exist");
-  cy.findAllByText("Widget").should("exist");
-};
-
-export const renderedResultsShouldBeFiltered = () => {
-  cy.findAllByText("Gizmo").should("exist");
-  cy.findAllByText("Widget").should("not.exist");
-};
-
 const editFirstUser = () => {
   cy.log("Add login attribute");
   cy.visit("/admin/people");
   cy.icon("ellipsis").first().click();
-  popover().findByText("Edit user").click();
-  modal()
+  H.popover().findByText("Edit user").click();
+  H.modal()
     .button(/Add an attribute/)
     .click();
 };
@@ -306,7 +290,7 @@ const assignAttributeToUser = ({
   cy.findByPlaceholderText("Key").type(attributeKey);
   cy.findByPlaceholderText("Value").type(attributeValue);
   cy.button("Update").click();
-  modal().should("not.exist");
+  H.modal().should("not.exist");
   cy.findByTestId("admin-people-list-table").should("exist");
 };
 
@@ -325,14 +309,14 @@ export const configureSandboxPolicy = (
   );
   cy.findByRole("menuitem", { name: /Products/ }).click();
   cy.log("Modify the sandboxing policy for the 'data' group");
-  modifyPermission("data", 0, "Sandboxed");
+  H.modifyPermission("data", 0, "Sandboxed");
 
-  modal().within(() => {
+  H.modal().within(() => {
     cy.findByText(/Change access to this database to .*Sandboxed.*?/);
     cy.button("Change").click();
   });
 
-  modal().findByText(/Restrict access to this table/);
+  H.modal().findByText(/Restrict access to this table/);
   if (columnType === "regular" && filterTableBy !== "custom_view") {
     cy.log("Filter by a column in the table");
     cy.findByRole("radio", {
@@ -343,7 +327,7 @@ export const configureSandboxPolicy = (
       /Use a saved question to create a custom view for this table/,
     ).click();
     cy.findByTestId("custom-view-picker-button").click();
-    entityPickerModal()
+    H.entityPickerModal()
       .findAllByText(/Products.*custom/)
       .first()
       .click();
@@ -353,13 +337,13 @@ export const configureSandboxPolicy = (
 
   if (filterTableBy === "column" || columnType === "custom") {
     expect(attributeKey).to.be.a("string");
-    modal()
+    H.modal()
       .findByRole("button", { name: /Pick a column|parameter/ })
       .click();
     const columnName =
       columnType === "regular" ? "Category" : "Custom category column";
     cy.findByRole("option", { name: columnName }).click();
-    modal()
+    H.modal()
       .findByRole("button", { name: /Pick a user attribute/ })
       .click();
     cy.findByRole("option", { name: attributeKey }).click();
@@ -379,9 +363,9 @@ export const configureSandboxPolicy = (
     });
 
   cy.log("Save the sandboxing modal");
-  modal().findByRole("button", { name: "Save" }).click();
+  H.modal().findByRole("button", { name: "Save" }).click();
 
-  saveChangesToPermissions();
+  H.saveChangesToPermissions();
 
   cy.log("Wait for the sandboxing policy to take effect");
   cy.wait(3000);
@@ -391,13 +375,14 @@ type RegularColumnBasedSandboxPolicy = {
   filterTableBy: "column";
   columnType: "regular";
   customColumnType?: never;
+  customViewType?: never;
 };
 
 type CustomViewBasedSandboxPolicy = {
   filterTableBy: "custom_view";
   columnType: ColumnType;
-  customViewType: CustomViewType;
   customColumnType?: CustomColumnType;
+  customViewType: CustomViewType;
 };
 
 export type SandboxPolicy =
@@ -409,29 +394,26 @@ const createCustomView = (customViewType: CustomViewType) => {
     "Create a saved question that we'll use as a custom view when configuring the sandboxing policy",
   );
   createSavedQuestion({
-    idAlias: "unfilteredCustomViewId",
+    name: "Products question custom view",
+    idAlias: "customViewId",
     columnType: "custom",
     customColumnType: "string",
     type: customViewType === "model" ? "model" : "question",
-  });
-  cy.then(function () {
-    cy.log(`Custom view created with id: ${this.unfilteredCustomViewId}`);
-    visitQuestion(this.unfilteredCustomViewId);
-    filter();
-
-    modal().within(() => {
-      cy.findByText("Gizmo").click();
-      cy.findByTestId("apply-filters").click();
-    });
-
-    cy.findAllByText("Category is Gizmo");
-
-    cy.log("Save custom view");
-
-    saveQuestion("Products question custom view", {
-      idAlias: "customViewId",
-      shouldSaveAsNewQuestion: true,
-    });
+    addToDashboard: false,
+    query: {
+      "source-table": PRODUCTS_ID,
+      filter: [
+        "=",
+        [
+          "field",
+          SAMPLE_DATABASE.PRODUCTS.CATEGORY,
+          {
+            "base-type": "type/Text",
+          },
+        ],
+        "Gizmo",
+      ],
+    },
   });
 };
 
@@ -460,8 +442,6 @@ export const createCardsShowingGizmosAndWidgets = ({
   });
 
   createNestedQuestion();
-
-  createAdhocQuestion({ customColumnType });
 };
 
 /** The endpoint should include results containing Gizmos and Widgets */
@@ -542,9 +522,7 @@ const getEntityPaths = (aliases: Record<string, number | string>) => {
   };
 };
 
-export const cardsShouldShowGizmosAndWidgets = ({
-  customColumnType,
-}: Pick<SandboxPolicy, "customColumnType">) => {
+export const cardsShouldShowGizmosAndWidgets = () => {
   cy.then(function () {
     const {
       savedQuestionPath,
@@ -568,13 +546,15 @@ export const cardsShouldShowGizmosAndWidgets = ({
       nestedQuestionInDashboardPath,
     );
     rowsShouldIncludeGizmosAndWidgets("Model", "/api/dataset", modelPayload);
-    adhocQuestionShouldBeUnfiltered(customColumnType);
+    rowsShouldIncludeGizmosAndWidgets(
+      "Adhoc question",
+      "/api/dataset",
+      adhocQuestionData.dataset_query,
+    );
   });
 };
 
-export const cardsShouldOnlyShowGizmos = ({
-  customColumnType,
-}: Pick<SandboxPolicy, "customColumnType">) => {
+export const cardsShouldOnlyShowGizmos = () => {
   cy.then(function () {
     const {
       savedQuestionPath,
@@ -594,7 +574,11 @@ export const cardsShouldOnlyShowGizmos = ({
       nestedQuestionInDashboardPath,
     );
     rowsShouldOnlyIncludeGizmos("Model", "/api/dataset", modelPayload);
-    adhocQuestionShouldBeFiltered(customColumnType);
+    rowsShouldOnlyIncludeGizmos(
+      "Adhoc question",
+      "/api/dataset",
+      adhocQuestionData.dataset_query,
+    );
   });
 };
 
@@ -618,9 +602,7 @@ const cardShouldThrowError = (
 };
 
 /** Assert that the cards we're testing all fail and do not show any data */
-export const cardsShouldThrowErrors = ({
-  customColumnType,
-}: Pick<SandboxPolicy, "customColumnType">) => {
+export const cardsShouldThrowErrors = () => {
   cy.then(function () {
     const {
       savedQuestionPath,
@@ -640,18 +622,13 @@ export const cardsShouldThrowErrors = ({
       nestedQuestionInDashboardPath,
     );
     cardShouldThrowError("Model", "/api/dataset", modelPayload);
-    adhocQuestionShouldThrowError(customColumnType);
+    adhocQuestionShouldThrowError();
   });
 };
 
-const adhocQuestionShouldBeFiltered = (customColumnType?: CustomColumnType) => {
-  createAdhocQuestion({ customColumnType });
-  renderedResultsShouldBeFiltered();
-};
-
-const adhocQuestionShouldThrowError = (customColumnType?: CustomColumnType) => {
+const adhocQuestionShouldThrowError = () => {
   cy.intercept("POST", "/api/dataset").as("dataset");
-  createAdhocQuestion({ customColumnType });
+  visitAdhocProductsQuestion();
   cy.findAllByText("Gizmos").should("not.exist");
   cy.findAllByText("Widgets").should("not.exist");
   cy.findByText(/There was a problem with your question/i).should("be.visible");
@@ -661,11 +638,4 @@ const adhocQuestionShouldThrowError = (customColumnType?: CustomColumnType) => {
     expect(response?.body.data.rows).to.have.length(0);
     expect(response?.body.data.cols).to.have.length(0);
   });
-};
-
-const adhocQuestionShouldBeUnfiltered = (
-  customColumnType?: CustomColumnType,
-) => {
-  createAdhocQuestion({ customColumnType });
-  renderedResultsShouldBeUnfiltered();
 };
