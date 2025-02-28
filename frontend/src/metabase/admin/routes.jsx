@@ -3,7 +3,7 @@ import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
+import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";

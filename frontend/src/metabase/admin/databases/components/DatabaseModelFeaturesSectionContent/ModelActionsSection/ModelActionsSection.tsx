@@ -3,13 +3,9 @@ import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
+import { Box, Flex } from "metabase/ui";
 
-import {
-  Description,
-  Error,
-  Label,
-  ToggleContainer,
-} from "./ModelActionsSection.styled";
+import { Description, Error, Label } from "./ModelActionsSection.styled";
 
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;
@@ -33,17 +29,22 @@ function ModelActionsSection({
 
   return (
     <div>
-      <ToggleContainer>
+      <Flex align="center" justify="space-between" mb="sm">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
         <Toggle
           id="model-actions-toggle"
           value={hasModelActionsEnabled}
           onChange={handleToggleModelActionsEnabled}
         />
-      </ToggleContainer>
-      {error ? <Error>{error}</Error> : null}
-      <Description>{t`Allow actions from models created from this data to be run. Actions are able to read, write, and possibly delete data.`}</Description>
-      <Description>{t`Note: Your database user will need write permissions.`}</Description>
+      </Flex>
+      <Box maw="22.5rem">
+        {error ? <Error>{error}</Error> : null}
+        <Description>
+          {t`Allow actions from models created from this data to be run. Actions are able to read, write, and possibly delete data.`}
+          <br />
+          {t`Note: Your database user will need write permissions.`}
+        </Description>
+      </Box>
     </div>
   );
 }
