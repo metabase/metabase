@@ -127,8 +127,8 @@
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (t2/define-after-select :model/Field
-  [entity]
-  (assoc entity :entity_id (serdes/backfill-entity-id entity)))
+  [field]
+  (serdes/add-entity-id field))
 
 (t2/define-before-insert :model/Field
   [field]

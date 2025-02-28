@@ -55,8 +55,8 @@
   :model/Table)
 
 (t2/define-after-select :model/Table
-  [entity]
-  (assoc entity :entity_id (serdes/backfill-entity-id entity)))
+  [table]
+  (serdes/add-entity-id table))
 
 (t2/define-before-insert :model/Table
   [table]
