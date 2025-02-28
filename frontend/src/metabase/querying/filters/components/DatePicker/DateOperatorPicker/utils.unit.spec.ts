@@ -50,7 +50,7 @@ describe("getAvailableOptions", () => {
       "All time",
       "Previous",
       "Next",
-      0,
+      "Current",
     ]);
   });
 
