@@ -180,23 +180,39 @@ class TagEditorParamInner extends Component<Props> {
   };
 
   setQueryType = (queryType: ValuesQueryType) => {
-    const { tag, setTemplateTagConfig } = this.props;
+    const { tag, parameter, setTemplateTagConfig } = this.props;
 
-    setTemplateTagConfig(tag, {
-      values_query_type: queryType,
-    });
+    if (parameter) {
+      setTemplateTagConfig(tag, {
+        values_source_type: parameter.values_source_type,
+        values_source_config: parameter.values_source_config,
+        values_query_type: queryType,
+      });
+    } else {
+      setTemplateTagConfig(tag, {
+        values_query_type: queryType,
+      });
+    }
   };
 
   setSourceSettings = (
     sourceType: ValuesSourceType,
     sourceConfig: ValuesSourceConfig,
   ) => {
-    const { tag, setTemplateTagConfig } = this.props;
+    const { tag, parameter, setTemplateTagConfig } = this.props;
 
-    setTemplateTagConfig(tag, {
-      values_source_type: sourceType,
-      values_source_config: sourceConfig,
-    });
+    if (parameter) {
+      setTemplateTagConfig(tag, {
+        values_source_type: sourceType,
+        values_source_config: sourceConfig,
+        values_query_type: parameter.values_query_type,
+      });
+    } else {
+      setTemplateTagConfig(tag, {
+        values_source_type: sourceType,
+        values_source_config: sourceConfig,
+      });
+    }
   };
 
   setParameterAttribute(attr: keyof TemplateTag, val: any) {
