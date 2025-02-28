@@ -40,7 +40,7 @@ const QueryDownloadWidget = ({
   });
 
   return (
-    <Popover opened={isPopoverOpen} onChange={() => setIsPopoverOpen(false)}>
+    <Popover opened={isPopoverOpen} onChange={setIsPopoverOpen}>
       <Popover.Target>
         <Flex className={className}>
           <ViewFooterButton
@@ -48,6 +48,7 @@ const QueryDownloadWidget = ({
             data-testid="download-button"
             tooltipLabel={t`Download full results`}
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            disableTooltip={isPopoverOpen}
           />
         </Flex>
       </Popover.Target>
