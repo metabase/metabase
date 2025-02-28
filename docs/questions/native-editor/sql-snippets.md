@@ -1,14 +1,14 @@
 ---
-title: SQL snippets
+title: Snippets
 redirect_from:
   - /docs/latest/users-guide/sql-snippets
 ---
 
-# SQL snippets
+# Snippets
 
 ![Highlight and save as snippet](../images/highlight_and_save_as_snippet.gif)
 
-**SQL snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
+**Snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
 For example, if you frequently perform queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
@@ -54,13 +54,13 @@ Note: if you use aliases in a snippet, you'll need to observe those aliases outs
 
 ![Snippet sidebar and insertion](../images/snippet_sidebar_and_insertion.gif)
 
-The SQL editor **sidebar** has a **SQL Snippets** menu to list available and archived snippets.
+The SQL editor **sidebar** has a **Snippets** menu to list available and archived snippets.
 
 Click on the snippet icon on the right side of the SQL editor, below the Data Reference book icon and the Variables χ icon. Metabase will slide out a sidebar menu that lists available snippets.
 
-From the SQL Snippets menu, you can:
+From the Snippets menu, you can:
 
-- **Create a snippet.** Click on the `+` in the upper right of the SQL Snippets sidebar to create a new snippet.
+- **Create a snippet.** Click on the `+` in the upper right of the Snippets sidebar to create a new snippet.
 - **Preview snippets.** Click on the down arrow to the right of a snippet to see its description and a preview of its SQL code. There's also an option to edit the snippet.
 - **Insert a snippet.** Click on a snippet's name to insert it into your query at the cursor's current location.
 - **Search for snippets**. If you've saved over 15 snippets, a **Search** icon (the classic magnifying glass) will appear to the left of the `+` button. Note that search results only include snippets the user has permissions for. SQL snippet folders do not populate the search results.
@@ -69,7 +69,7 @@ From the SQL Snippets menu, you can:
 
 ## Editing snippets
 
-You can **edit** a snippet at any time by selecting the snippet from the SQL Snippets sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
+You can **edit** a snippet at any time by selecting the snippet from the Snippets sidebar menu in the SQL editor. Click on the down arrow to the right of the snippet, then click **Edit**. You can change the SQL code, snippet name, and snippet description.
 
 Editing snippets is a great way to make changes to many questions at once. If, for example, you've saved the SQL code to pull user data from tables X, Y, and Z as the snippet `User Data`, but you need to change how that data is pulled (such as by adding data from another column or table), you can update the SQL code in the snippet, and all questions that use the snippet `User Data` will have the updated code.
 
@@ -99,6 +99,6 @@ Some plans contain additional functionality for organizing snippets into folders
 
 ## Learn more
 
-- [SQL snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
-- [SQL Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql).
+- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
+- [Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql).
 - If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).

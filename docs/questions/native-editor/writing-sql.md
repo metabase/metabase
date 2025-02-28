@@ -68,9 +68,9 @@ If you or someone else wrote a SQL query that includes [variables][variable-glos
 
 Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
 
-## SQL snippets
+## Snippets
 
-You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
+You can use [Snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
 
 ## How Metabase executes SQL queries
 

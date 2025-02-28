@@ -86,7 +86,7 @@ Metabase's reference documentation.
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
-- [SQL snippets](./questions/native-editor/sql-snippets.md)
+- [Snippets](./questions/native-editor/sql-snippets.md)
 - [SQL snippet folder permissions](./permissions/snippets.md)
 
 #### Visualizing data
@@ -181,7 +181,7 @@ Metabase's reference documentation.
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
-- [SQL snippets folder permissions](./permissions/snippets.md)
+- [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
 
 ### Embedding
