@@ -5,7 +5,6 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -86,11 +85,6 @@
     (lib.metadata.calculation/metadata query stage-number a-ref)
     a-ref)))
 
-(defn- filterable-column-from-ref
-  [query stage-number a-ref]
-  (->> (lib.filter/filterable-columns query stage-number)
-       (lib.equality/find-matching-column a-ref)))
-
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -170,28 +164,24 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col    #(filterable-column-from-ref query stage-number %)
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
         string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values [], :options {}})
+      {:operator op, :column (ref->col col-ref), :values [], :options {}}
 
       ;; multiple arguments, `:=`
       [(_ :guard #{:= :in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :=, :column col, :values args, :options {}})
+      {:operator :=, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments, `:!=`
       [(_ :guard #{:!= :not-in}) _ (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :!=, :column col, :values args, :options {}})
+      {:operator :!=, :column (ref->col col-ref), :values args, :options {}}
 
       ;; multiple arguments with options
       [(op :guard #{:contains :does-not-contain :starts-with :ends-with}) opts (col-ref :guard string-col?) & (args :guard #(every? string? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values args, :options {:case-sensitive (get opts :case-sensitive true)}})
+      {:operator op, :column (ref->col col-ref), :values args, :options {:case-sensitive (get opts :case-sensitive true)}}
 
       ;; do not match inner clauses
       _
@@ -232,34 +222,29 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col    #(filterable-column-from-ref query stage-number %)
+  (let [ref->col    #(column-metadata-from-ref query stage-number %)
         number-col? #(ref-clause-with-type? % [:type/Number])
         number-arg? #(some? (expression-arg->number %))]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values []})
+      {:operator op, :column (ref->col col-ref), :values []}
 
       ;; multiple arguments, `:=`
       [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :=, :column col, :values (mapv expression-arg->number args)})
+      {:operator :=, :column (ref->col col-ref), :values (mapv expression-arg->number args)}
 
       ;; multiple arguments, `:!=`
       [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :!=, :column col, :values (mapv expression-arg->number args)})
+      {:operator :!=, :column (ref->col col-ref), :values (mapv expression-arg->number args)}
 
       ;; exactly 1 argument
       [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number-arg?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values [(expression-arg->number arg)]})
+      {:operator op, :column (ref->col col-ref), :values [(expression-arg->number arg)]}
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values [(expression-arg->number start) (expression-arg->number end)]})
+      {:operator op, :column (ref->col col-ref), :values [(expression-arg->number start) (expression-arg->number end)]}
 
       ;; do not match inner clauses
       _
@@ -290,47 +275,40 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col    #(let [col (filterable-column-from-ref query stage-number %)]
-                       (when (lib.types.isa/coordinate? col)
-                         col))
-        number-col? #(ref-clause-with-type? % [:type/Number])
-        number-arg? #(some? (expression-arg->number %))]
+  (let [ref->col        #(column-metadata-from-ref query stage-number %)
+        coordinate-col? #(and (ref-clause-with-type? % [:type/Number])
+                              (lib.types.isa/coordinate? (ref->col %)))
+        number-arg?     #(some? (expression-arg->number %))]
     (lib.util.match/match-one filter-clause
       ;; multiple arguments, `:=`
-      [(_ :guard #{:= :in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :=, :column col, :values (mapv expression-arg->number args)})
+      [(_ :guard #{:= :in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number-arg? %))]
+      {:operator :=, :column (ref->col col-ref), :values (mapv expression-arg->number args)}
 
       ;; multiple arguments, `:!=`
-      [(_ :guard #{:!= :not-in}) _ (col-ref :guard number-col?) & (args :guard #(every? number-arg? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :!=, :column col, :values (mapv expression-arg->number args)})
+      [(_ :guard #{:!= :not-in}) _ (col-ref :guard coordinate-col?) & (args :guard #(every? number-arg? %))]
+      {:operator :!=, :column (ref->col col-ref), :values (mapv expression-arg->number args)}
 
      ;; exactly 1 argument
-      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard number-col?) (arg :guard number-arg?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values [(expression-arg->number arg)]})
+      [(op :guard #{:> :>= :< :<=}) _ (col-ref :guard coordinate-col?) (arg :guard number-arg?)]
+      {:operator op, :column (ref->col col-ref), :values [(expression-arg->number arg)]}
 
       ;; exactly 2 arguments
       [(op :guard #{:between})
        _
-       (col-ref :guard number-col?)
+       (col-ref :guard coordinate-col?)
        & (args :guard #(and (every? number-arg? %) (= (count %) 2)))]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values (mapv expression-arg->number args)})
+      {:operator op, :column (ref->col col-ref), :values (mapv expression-arg->number args)}
 
       ;; exactly 4 arguments
       [(op :guard #{:inside})
        _
-       (lat-col-ref :guard number-col?)
-       (lon-col-ref :guard number-col?)
+       (lat-col-ref :guard coordinate-col?)
+       (lon-col-ref :guard coordinate-col?)
        & (args :guard #(and (every? number-arg? %) (= (count %) 4)))]
-      (when-let [lat-col (ref->col lat-col-ref)]
-        (when-let [lon-col (ref->col lon-col-ref)]
-          {:operator op
-           :column lat-col
-           :longitude-column lon-col
-           :values (mapv expression-arg->number args)}))
+      {:operator op
+       :column (ref->col lat-col-ref)
+       :longitude-column (ref->col lon-col-ref)
+       :values (mapv expression-arg->number args)}
 
       ;; do not match inner clauses
       _
@@ -356,17 +334,16 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col     #(filterable-column-from-ref query stage-number %)
+  (let [ref->col     #(column-metadata-from-ref query stage-number %)
         boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values []})
+      {:operator op, :column (ref->col col-ref), :values []}
+
       ;; exactly 1 argument
       [(op :guard #{:=}) _ (col-ref :guard boolean-col?) (arg :guard boolean?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values [arg]})
+      {:operator op, :column (ref->col col-ref), :values [arg]}
 
       ;; do not match inner clauses
       _
@@ -397,25 +374,23 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col  #(filterable-column-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
+  (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       ;; exactly 1 argument
       [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) (arg :guard string?)]
-      (let [col   (ref->col col-ref)
-            date? (u.time/matches-date? arg)
+      (let [date? (u.time/matches-date? arg)
             arg   (u.time/coerce-to-timestamp arg)]
-        (when (and (some? col) (u.time/valid? arg))
-          {:operator op, :column col, :values [arg], :with-time? (not date?)}))
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg], :with-time? (not date?)}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard date-col?) (start :guard string?) (end :guard string?)]
-      (let [col   (ref->col col-ref)
-            date? (or (u.time/matches-date? start) (u.time/matches-date? end))
+      (let [date? (or (u.time/matches-date? start) (u.time/matches-date? end))
             start (u.time/coerce-to-timestamp start)
             end   (u.time/coerce-to-timestamp end)]
-        (when (and (some? col) (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column col, :values [start end], :with-time? (not date?)}))
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end], :with-time? (not date?)}))
 
       ;; do not match inner clauses
       _
@@ -450,7 +425,7 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col  #(filterable-column-from-ref query stage-number %)
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
     (lib.util.match/match-one filter-clause
       [:time-interval
@@ -458,11 +433,10 @@
        (col-ref :guard date-col?)
        (value :guard #(or (number? %) (= :current %)))
        (unit :guard keyword?)]
-      (when-let [col (ref->col col-ref)]
-        {:column       col
-         :value        value
-         :unit         unit
-         :options      (select-keys opts [:include-current])})
+      {:column       (ref->col col-ref)
+       :value        value
+       :unit         unit
+       :options      (select-keys opts [:include-current])}
 
       [:relative-time-interval
        _
@@ -471,13 +445,12 @@
        (unit :guard keyword?)
        (offset-value :guard number?)
        (offset-unit :guard keyword?)]
-      (when-let [col (ref->col col-ref)]
-        {:column       col
-         :value        value
-         :unit         unit
-         :offset-value offset-value
-         :offset-unit  offset-unit
-         :options      {}})
+      {:column       (ref->col col-ref)
+       :value        value
+       :unit         unit
+       :offset-value offset-value
+       :offset-unit  offset-unit
+       :options      {}}
 
        ;; do not match inner clauses
       _
@@ -511,7 +484,7 @@
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
   [query stage-number filter-clause]
-  (let [ref->col  #(filterable-column-from-ref query stage-number %)
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
         op->unit  {:get-hour :hour-of-day
                    :get-month :month-of-year
@@ -519,18 +492,15 @@
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values []})
+      {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
       [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard #(every? int? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :!=, :column col, :unit (op->unit op), :values args})
+      {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
       [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard #(every? int? %))]
-      (when-let [col (ref->col col-ref)]
-        {:operator :!=, :column col, :unit :day-of-week, :values args})
+      {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
       _
@@ -557,28 +527,25 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col  #(filterable-column-from-ref query stage-number %)
+  (let [ref->col  #(column-metadata-from-ref query stage-number %)
         time-col? #(ref-clause-with-type? % [:type/Time])]
     (lib.util.match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col, :values []})
+      {:operator op, :column (ref->col col-ref), :values []}
 
       ;; exactly 1 argument
       [(op :guard #{:> :<}) _ (col-ref :guard time-col?) (arg :guard string?)]
-      (let [col (ref->col col-ref)
-            arg (u.time/coerce-to-time arg)]
-        (when (and (some? col) (u.time/valid? arg))
-          {:operator op, :column col, :values [arg]}))
+      (let [arg (u.time/coerce-to-time arg)]
+        (when (u.time/valid? arg)
+          {:operator op, :column (ref->col col-ref), :values [arg]}))
 
       ;; exactly 2 arguments
       [(op :guard #{:between}) _ (col-ref :guard time-col?) (start :guard string?) (end :guard string?)]
-      (let [col   (ref->col col-ref)
-            start (u.time/coerce-to-time start)
+      (let [start (u.time/coerce-to-time start)
             end   (u.time/coerce-to-time end)]
-        (when (and (some? col) (u.time/valid? start) (u.time/valid? end))
-          {:operator op, :column col, :values [start end]}))
+        (when (and (u.time/valid? start) (u.time/valid? end))
+          {:operator op, :column (ref->col col-ref), :values [start end]}))
 
       ;; do not match inner clauses
       _
@@ -603,14 +570,13 @@
   [query         :- ::lib.schema/query
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
-  (let [ref->col       #(filterable-column-from-ref query stage-number %)
+  (let [ref->col       #(column-metadata-from-ref query stage-number %)
         supported-col? #(and (lib.util/ref-clause? %)
                              (not (lib.util/original-isa? % :type/Text))
                              (not (lib.util/original-isa? % :type/TextLike)))]
     (lib.util.match/match-one filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
-      (when-let [col (ref->col col-ref)]
-        {:operator op, :column col})
+      {:operator op, :column (ref->col col-ref)}
 
       ;; do not match inner clauses
       _
