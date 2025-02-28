@@ -130,4 +130,9 @@
                (println "Reversed docstring:" (apply str (reverse doc))))
 
    ;; (optional) Any other keys are completely allowed. These will be returned from `(current-task)`.
-   :some-data-for-my-task {:a [:b :c] :b [:d]}}}}
+   :some-data-for-my-task {:a [:b :c] :b [:d]}}
+
+  -test-examples
+  {:doc      "Runs every example and checks that it exits with 0"
+   :requires [[mage.examples-test :as examples-test]]
+   :task     (examples-test/run-example-tests)}}}
