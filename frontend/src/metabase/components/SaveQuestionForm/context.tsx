@@ -16,7 +16,7 @@ import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -90,23 +90,22 @@ export const SaveQuestionProvider = ({
     }
   }, [isLoading]);
 
-  const defaultDashboard = useMemo(() => {
-    if (!recentItems || recentItems.length === 0) {
-      return undefined;
-    }
-    const lastUsedDashboardIndex = recentItems?.findIndex(
-      item => item.model === "dashboard",
-    );
-    const lastUsedEntityModelIndex = recentItems?.findIndex(
+  const lastSelectedEntityModel = useMemo(() => {
+    return recentItems?.find(
       item => item.model === "collection" || item.model === "dashboard",
     );
-
-    if (lastUsedDashboardIndex === lastUsedEntityModelIndex) {
-      return recentItems[lastUsedDashboardIndex] as RecentCollectionItem;
-    } else {
-      return undefined;
-    }
   }, [recentItems]);
+
+  // we only care about the most recently select dashboard or collection
+  const lastSelectedCollection =
+    lastSelectedEntityModel?.model === "collection"
+      ? lastSelectedEntityModel
+      : undefined;
+
+  const lastSelectedDashboard =
+    lastSelectedEntityModel?.model === "dashboard"
+      ? lastSelectedEntityModel
+      : undefined;
 
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
@@ -114,13 +113,16 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    defaultDashboard?.can_write
-      ? defaultDashboard?.id
+    lastSelectedDashboard?.can_write
+      ? lastSelectedDashboard?.id
       : undefined;
 
-  const initialCollectionId = isAnalytics
-    ? defaultCollectionId
-    : (defaultDashboard?.parent_collection.id ?? defaultCollectionId);
+  const initialCollectionId =
+    (!isAnalytics
+      ? lastSelectedDashboard?.parent_collection.id
+      : defaultCollectionId) ??
+    lastSelectedCollection?.id ??
+    defaultCollectionId;
 
   const initialValues: FormValues = useMemo(
     () =>

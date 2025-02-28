@@ -3573,7 +3573,7 @@
                                          {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
                                                         :value 3}]}))))
           (testing "Should return sensible error message for invalid parameter input"
-            (is (= {:errors {:parameters "nullable sequence of value must be a parameter map with an id key"},
+            (is (= {:errors {:parameters "nullable sequence of value must be a parameter map with an 'id' key"},
                     :specific-errors {:parameters ["invalid type, received: {:_PRICE_ 3}"]}}
                    (mt/user-http-request :rasta :post 400 url
                                          {:parameters {"_PRICE_" 3}}))))
@@ -4727,8 +4727,9 @@
                                                        (:id dash) load-id))])))
               (testing "make fewer AppDB calls than uncached"
                 (is (< (call-count-fn) @uncached-calls)))))
-          (testing "don't construct any MetadataProviders in bulk mode"
-            (is (= {} @provider-counts))))))))
+          (testing "constructs only 1 MetadataProvider in bulk mode"
+            ;; It's needed to compute the query hashes, which is needed for the average duration mechanism.
+            (is (= {(mt/id) 1} @provider-counts))))))))
 
 (deftest ^:synchronized dashboard-table-prefetch-test
   (mt/with-temp
