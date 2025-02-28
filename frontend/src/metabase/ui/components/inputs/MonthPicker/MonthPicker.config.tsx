@@ -1,7 +1,9 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { MonthPicker } from "@mantine/dates";
 
-import Styles from "./MonthPicker.module.css";
+import CalendarS from "../Calendar/Calendar.module.css";
+
+import S from "./MonthPicker.module.css";
 
 export const monthPickerOverrides: MantineThemeOverride["components"] = {
   MonthPicker: MonthPicker.extend({
@@ -10,10 +12,15 @@ export const monthPickerOverrides: MantineThemeOverride["components"] = {
       mih: 0, // overwrite Calendar's default value
     },
     classNames: {
-      levelsGroup: Styles.LevelsGroup,
-      calendarHeaderLevel: Styles.CalendarHeaderLevel,
-      monthsListCell: Styles.MonthListCell,
-      monthsListRow: Styles.MonthListRow,
+      levelsGroup: S.levelsGroup,
+      calendarHeader: S.calendarHeader,
+      monthsList: CalendarS.monthsList,
+      calendarHeaderLevel: CalendarS.calendarHeaderLevel,
+      calendarHeaderControl: CalendarS.calendarHeaderControl,
+      monthsListCell: CalendarS.cell,
+      monthsListRow: CalendarS.row,
+      monthsListControl: CalendarS.monthsListControl,
+      calendarHeaderControlIcon: S.calendarHeaderControlIcon,
     },
   }),
 };
