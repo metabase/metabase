@@ -526,10 +526,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     function testFilters({
       minValue,
       maxValue,
+      formattedMinValue,
+      formattedMaxValue,
       withDrillThru,
     }: {
       minValue: string;
       maxValue: string;
+      formattedMinValue: string;
+      formattedMaxValue: string;
       withDrillThru?: boolean;
     }) {
       cy.log("number/= parameter");
@@ -538,7 +542,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
         filterDisplayName: `NUMBER is equal to ${maxValue}`,
-        filterArgsDisplayName: maxValue,
+        filterArgsDisplayName: formattedMaxValue,
         filteredRowCount: 1,
         withDrillThru,
       });
@@ -549,7 +553,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
         filterDisplayName: `NUMBER is not equal to ${minValue}`,
-        filterArgsDisplayName: minValue,
+        filterArgsDisplayName: formattedMinValue,
         filteredRowCount: 2,
         withDrillThru,
       });
@@ -560,7 +564,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(minValue),
         filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
-        filterArgsDisplayName: minValue,
+        filterArgsDisplayName: formattedMinValue,
         filteredRowCount: 3,
         withDrillThru,
       });
@@ -571,7 +575,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
         setParameterValue: () =>
           cy.findByPlaceholderText("Enter a number").type(maxValue),
         filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
-        filterArgsDisplayName: maxValue,
+        filterArgsDisplayName: formattedMaxValue,
         filteredRowCount: 3,
         withDrillThru,
       });
@@ -622,6 +626,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: minBigIntValue,
         maxValue: maxBigIntValue,
+        formattedMinValue: "-9,223,372,036,854,775,808",
+        formattedMaxValue: "9,223,372,036,854,775,807",
         withDrillThru,
       });
     }
@@ -632,6 +638,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: negativeDecimalValue,
         maxValue: positiveDecimalValue,
+        formattedMinValue: "-9,223,372,036,854,775,809",
+        formattedMaxValue: "9,223,372,036,854,775,808",
         withDrillThru,
       });
     }

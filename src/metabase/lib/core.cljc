@@ -121,7 +121,8 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
-  ->pMBQL]
+  ->pMBQL
+  without-cleaning]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -141,6 +142,7 @@
   expressions-metadata
   expressionable-columns
   expression-ref
+  resolve-expression
   with-expression-name
   +
   -
@@ -312,12 +314,14 @@
  [lib.normalize
   normalize]
  [lib.query
+  ->query
   can-preview
   can-run
   can-save
   check-overwrite
   preview-query
   query
+  query-from-legacy-inner-query
   stage-count
   uses-metric?
   uses-segment?

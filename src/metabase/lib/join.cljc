@@ -601,6 +601,11 @@
        (with-join-conditions conditions)
        (with-join-strategy strategy))))
 
+(defn- has-summaries? [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (boolean (or (seq (:aggregation stage))
+                 (seq (:breakout stage))))))
+
 (mu/defn join :- ::lib.schema/query
   "Add a join clause to a `query`."
   ([query a-join]
@@ -612,8 +617,11 @@
    (let [a-join              (join-clause a-join)
          suggested-conditions (when (empty? (join-conditions a-join))
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
+         summaries?          (has-summaries? query stage-number)
          a-join              (cond-> a-join
-                               (seq suggested-conditions) (with-join-conditions suggested-conditions))
+                               (seq suggested-conditions) (with-join-conditions suggested-conditions)
+                               ;; If there are aggregations or breakouts on this stage, drop the `:fields`.
+                               summaries?                 (with-join-fields nil))
          a-join              (add-default-alias query stage-number a-join)]
      (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
                                                                      (conj (vec existing-joins) a-join))))))

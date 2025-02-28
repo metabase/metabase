@@ -3,7 +3,6 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -95,7 +94,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query_id query-id
-     :query (lib.convert/->legacy-MBQL query)
+     :query (lib/->legacy-MBQL query)
      :result_columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -196,7 +195,7 @@
        {:structured-output
         {:type :query
          :query_id query-id
-         :query (lib.convert/->legacy-MBQL query)
+         :query (lib/->legacy-MBQL query)
          :result_columns (into []
                                (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                                (lib/returned-columns query))}})

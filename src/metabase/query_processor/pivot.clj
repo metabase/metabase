@@ -5,7 +5,6 @@
   instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
@@ -575,7 +574,7 @@
   results -- "
   [query :- ::lib.schema/query]
   (let [remapped-query          (->> query
-                                     lib.convert/->legacy-MBQL
+                                     lib/->legacy-MBQL
                                      qp.add-dimension-projections/add-remapped-columns
                                      (lib.query/query (qp.store/metadata-provider)))
         remap                   (remapped-indexes (lib/breakouts remapped-query))

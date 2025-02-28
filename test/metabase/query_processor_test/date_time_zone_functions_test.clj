@@ -630,7 +630,7 @@
             (testing "source-timezone is required"
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"input column doesnt have a set timezone. Please set the source parameter in convertTimezone to convert it."
+                   #"input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
                    (mt/$ids (test-convert-tz
                              $times.dt
                              [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))

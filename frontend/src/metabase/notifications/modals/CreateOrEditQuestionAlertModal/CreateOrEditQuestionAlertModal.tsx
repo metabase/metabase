@@ -52,7 +52,6 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 
 import { AlertModalSettingsBlock } from "./AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
-import S from "./CreateOrEditQuestionAlertModal.module.css";
 import type { NotificationTriggerOption } from "./types";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
@@ -251,12 +250,12 @@ export const CreateOrEditQuestionAlertModal = ({
           <Modal.Title>{isEditMode ? t`Edit alert` : t`New alert`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body p="2.5rem">
-          <Stack gap="2.5rem">
+        <Modal.Body p="0 2.5rem 2rem">
+          <Stack gap="xl">
             <AlertModalSettingsBlock
               title={t`What do you want to be alerted about?`}
             >
-              <Flex gap="1.5rem">
+              <Flex gap="lg" align="center">
                 <AlertTriggerIcon />
                 <Select
                   data-testid="alert-goal-select"
@@ -278,7 +277,7 @@ export const CreateOrEditQuestionAlertModal = ({
             </AlertModalSettingsBlock>
             <AlertModalSettingsBlock title={t`When do you want to check this?`}>
               <SchedulePicker
-                className={S.noMarginTop}
+                mt={0}
                 schedule={
                   cronToScheduleSettings(subscription.cron_schedule) ||
                   DEFAULT_ALERT_SCHEDULE // default is just for typechecking
@@ -340,7 +339,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Flex
           justify="space-between"
           px="2.5rem"
-          py="1.5rem"
+          py="lg"
           className={CS.borderTop}
         >
           <Button
