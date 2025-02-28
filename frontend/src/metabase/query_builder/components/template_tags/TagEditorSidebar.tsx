@@ -159,7 +159,10 @@ interface SettingsPaneProps {
   databaseFields: Field[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (tag: TemplateTag, config: Partial<Parameter>) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }

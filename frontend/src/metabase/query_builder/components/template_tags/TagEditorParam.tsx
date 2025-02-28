@@ -25,6 +25,7 @@ import type {
   DimensionReference,
   FieldId,
   Parameter,
+  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -63,7 +64,10 @@ interface Props {
   metadata: Metadata;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (tag: TemplateTag, config: Partial<Parameter>) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   fetchField: (fieldId: FieldId, force?: boolean) => void;
 }
