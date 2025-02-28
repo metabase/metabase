@@ -3,11 +3,12 @@ import { t } from "ttag";
 import type {
   DatePickerTruncationUnit,
   DatePickerUnit,
+  RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
+import type { DateOffsetIntervalValue } from "../types";
 import { getAvailableTruncationUnits, getDirection } from "../utils";
 
 export function getDirectionText(value: DateOffsetIntervalValue): string {
@@ -47,7 +48,7 @@ export function setOffsetUnit(
 
 export function removeOffset(
   value: DateOffsetIntervalValue,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, offsetValue: undefined, offsetUnit: undefined };
 }
 

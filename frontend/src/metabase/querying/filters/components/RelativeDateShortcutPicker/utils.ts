@@ -9,7 +9,7 @@ export function getShortcutGroups(): ShortcutGroup[] {
       shortcuts: [
         {
           label: t`Today`,
-          value: { type: "relative", value: "current", unit: "day" },
+          value: { type: "relative", value: 0, unit: "day" },
         },
         {
           label: t`Yesterday`,
@@ -49,15 +49,15 @@ export function getShortcutGroups(): ShortcutGroup[] {
       shortcuts: [
         {
           label: t`Week`,
-          value: { type: "relative", value: "current", unit: "week" },
+          value: { type: "relative", value: 0, unit: "week" },
         },
         {
           label: t`Month`,
-          value: { type: "relative", value: "current", unit: "month" },
+          value: { type: "relative", value: 0, unit: "month" },
         },
         {
           label: t`Year`,
-          value: { type: "relative", value: "current", unit: "year" },
+          value: { type: "relative", value: 0, unit: "year" },
         },
       ],
     },

@@ -9,7 +9,7 @@ import type {
 import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE } from "./constants";
-import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
+import type { DateOffsetIntervalValue } from "./types";
 
 export function isRelativeValue(
   value: DatePickerValue | undefined,
@@ -17,17 +17,14 @@ export function isRelativeValue(
   return value != null && value.type === "relative";
 }
 
-export function isIntervalValue(
-  value: RelativeDatePickerValue | undefined,
-): value is DateIntervalValue {
-  return value != null && value.value !== "current";
+export function isIntervalValue(value: RelativeDatePickerValue | undefined) {
+  return value != null && value.value !== 0;
 }
 
 export function isOffsetIntervalValue(
-  value: RelativeDatePickerValue | undefined,
+  value: RelativeDatePickerValue,
 ): value is DateOffsetIntervalValue {
   return (
-    value != null &&
     isIntervalValue(value) &&
     value.offsetValue != null &&
     value.offsetUnit != null
@@ -37,7 +34,7 @@ export function isOffsetIntervalValue(
 export function getDirection(
   value: RelativeDatePickerValue | undefined,
 ): RelativeIntervalDirection {
-  if (value == null || value.value === "current") {
+  if (value == null || value.value === 0) {
     return "current";
   } else {
     return value.value < 0 ? "last" : "next";
@@ -55,7 +52,7 @@ export function setDirection(
 ): RelativeDatePickerValue | undefined {
   if (direction === "current") {
     return fallbackUnit
-      ? { type: "relative", value: "current", unit: fallbackUnit }
+      ? { type: "relative", value: 0, unit: fallbackUnit }
       : undefined;
   }
 
@@ -90,14 +87,14 @@ export function setDirectionAndCoerceUnit(
   return setDirection(value, direction, fallbackUnit);
 }
 
-export function getInterval(value: DateIntervalValue): number {
+export function getInterval(value: RelativeDatePickerValue): number {
   return Math.abs(value.value);
 }
 
 export function setInterval(
-  value: DateIntervalValue,
+  value: RelativeDatePickerValue,
   interval: number,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   const sign = Math.sign(value.value);
 
   return {
@@ -113,7 +110,7 @@ export function getAvailableTruncationUnits(availableUnits: DatePickerUnit[]) {
 }
 
 export function getUnitOptions(
-  value: DateIntervalValue,
+  value: RelativeDatePickerValue,
   availableUnits: DatePickerUnit[],
 ) {
   const truncationUnits = getAvailableTruncationUnits(availableUnits);

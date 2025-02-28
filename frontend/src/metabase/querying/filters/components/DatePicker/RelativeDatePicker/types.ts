@@ -9,11 +9,7 @@ export interface Tab {
   direction: RelativeIntervalDirection;
 }
 
-export interface DateIntervalValue extends RelativeDatePickerValue {
-  value: number;
-}
-
-export interface DateOffsetIntervalValue extends DateIntervalValue {
+export interface DateOffsetIntervalValue extends RelativeDatePickerValue {
   offsetValue: number;
   offsetUnit: DatePickerTruncationUnit;
 }

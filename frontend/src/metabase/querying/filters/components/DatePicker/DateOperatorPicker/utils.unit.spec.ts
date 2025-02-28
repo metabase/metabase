@@ -34,7 +34,7 @@ const SPECIFIC_VALUES: SpecificDatePickerValue[] = [
 const RELATIVE_VALUES: RelativeDatePickerValue[] = [
   { type: "relative", value: -1, unit: "minute" },
   { type: "relative", value: 1, unit: "hour" },
-  { type: "relative", value: "current", unit: "day" },
+  { type: "relative", value: 0, unit: "day" },
 ];
 
 const EXCLUDE_VALUES: ExcludeDatePickerValue[] = [
@@ -50,7 +50,7 @@ describe("getAvailableOptions", () => {
       "All time",
       "Previous",
       "Next",
-      "Current",
+      0,
     ]);
   });
 
@@ -292,21 +292,18 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])(
-      'should preserve "%s" unit and use default value for "current" value',
-      unit => {
-        const value: DatePickerValue = {
-          type: "relative",
-          value: "current",
-          unit,
-        };
-        expect(setOptionType(value, "last")).toEqual({
-          type: "relative",
-          value: -30,
-          unit,
-        });
-      },
-    );
+    ])('should preserve "%s" unit and use default value for 0 value', unit => {
+      const value: DatePickerValue = {
+        type: "relative",
+        value: 0,
+        unit,
+      };
+      expect(setOptionType(value, "last")).toEqual({
+        type: "relative",
+        value: -30,
+        unit,
+      });
+    });
 
     it.each<DatePickerTruncationUnit>([
       "minute",
@@ -350,21 +347,18 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])(
-      'should preserve "%s" unit and use default value for "current" value',
-      unit => {
-        const value: DatePickerValue = {
-          type: "relative",
-          value: "current",
-          unit,
-        };
-        expect(setOptionType(value, "next")).toEqual({
-          type: "relative",
-          value: 30,
-          unit,
-        });
-      },
-    );
+    ])('should preserve "%s" unit and use default value for 0 value', unit => {
+      const value: DatePickerValue = {
+        type: "relative",
+        value: 0,
+        unit,
+      };
+      expect(setOptionType(value, "next")).toEqual({
+        type: "relative",
+        value: 30,
+        unit,
+      });
+    });
 
     it.each<DatePickerTruncationUnit>([
       "minute",
@@ -388,13 +382,13 @@ describe("setOptionType", () => {
     });
   });
 
-  describe("current", () => {
+  describe(0, () => {
     it.each([...SPECIFIC_VALUES, ...EXCLUDE_VALUES])(
       'should return default value for "$operator" operator',
       value => {
         expect(setOptionType(value, "current")).toEqual({
           type: "relative",
-          value: "current",
+          value: 0,
           unit: "day",
         });
       },
@@ -411,7 +405,7 @@ describe("setOptionType", () => {
           };
           expect(setOptionType(value, "current")).toEqual({
             type: "relative",
-            value: "current",
+            value: 0,
             unit: "day",
           });
         });
@@ -433,7 +427,7 @@ describe("setOptionType", () => {
         };
         expect(setOptionType(value, "current")).toEqual({
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         });
       });
