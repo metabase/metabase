@@ -67,11 +67,26 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
+(defn- is-visualizer-dashcard?
+  "true if dashcard has visualizer specific viz settings"
+  [dashcard]
+  (boolean
+   (and (some? dashcard)
+        (get-in dashcard [:visualization_settings :visualization]))))
+
+(defn- visualizer-display-type
+  "Return dashcard's display type if it is a visualizer dashcard else nil"
+  [dashcard]
+  (if (is-visualizer-dashcard? dashcard)
+    (keyword (get-in dashcard [:visualization_settings :visualization :display]))
+    nil))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
-  (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))]
+  (let [col-sample-count  (delay (count (take 3 cols)))
+        row-sample-count  (delay (count (take 2 rows)))
+        display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -86,6 +101,7 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
+             (= false (is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
