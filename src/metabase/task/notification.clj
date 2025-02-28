@@ -155,10 +155,27 @@
   (task/delete-all-triggers-of-job! send-notification-job-key)
   (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription :type :notification-subscription/cron)))
 
+(jobs/defjob
+  ^{:doc
+    "Find all notification subscriptions with cron schedules and create a trigger for each.
+    Run once on startup."}
+  InitNotificationTriggers
+  [_context]
+  (init-send-notification-triggers!))
+
 (defmethod task/init! ::SendNotifications [_]
   (let [send-notification-job              (jobs/build
                                             (jobs/with-identity send-notification-job-key)
                                             (jobs/with-description "Send Notification")
                                             (jobs/of-type SendNotification)
-                                            (jobs/store-durably))]
-    (task/add-job! send-notification-job)))
+                                            (jobs/store-durably))
+        init-notification-triggers-job     (jobs/build
+                                            (jobs/of-type InitNotificationTriggers)
+                                            (jobs/with-identity (jobs/key "metabase.task.notification.init-notification-triggers.job"))
+                                            (jobs/store-durably))
+        init-notification-triggers-trigger (triggers/build
+                                            (triggers/with-identity (triggers/key "metabase.task.notification.init-notification-triggers.trigger"))
+                                            ;; run once on startup
+                                            (triggers/start-now))]
+    (task/add-job! send-notification-job)
+    (task/schedule-task! init-notification-triggers-job init-notification-triggers-trigger)))

@@ -153,12 +153,12 @@
 
 (declare update-send-pulse-trigger-if-needed!)
 
-(defn init-send-pulse-triggers!
+(defn init-dashboard-subscription-triggers!
   "Update send pulse triggers for all active pulses.
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (log/info "Initializing SendPulse triggers")
+  (log/info "Initializing SendPulse triggers for dashboard subscriptions")
   (task/delete-all-triggers-of-job! send-pulse-job-key)
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
                                               {:select    [:pc.*]
@@ -227,6 +227,14 @@
         (task/delete-trigger! trigger-key)
         (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
+(jobs/defjob
+  ^{:doc
+    "Find all active Dashboard Subscriptino channels, group them by pulse-id and schedule time and create a trigger for each.
+    Do this every startup to make sure all active pulse channels are triggered correctly."}
+  InitSendPulseTriggers
+  [_context]
+  (init-dashboard-subscription-triggers!))
+
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 
 (defmethod task/init! ::SendPulses [_]
@@ -234,5 +242,14 @@
                         (jobs/with-identity send-pulse-job-key)
                         (jobs/with-description "Send Pulse")
                         (jobs/of-type SendPulse)
-                        (jobs/store-durably))]
-    (task/add-job! send-pulse-job)))
+                        (jobs/store-durably))
+        init-job       (jobs/build
+                        (jobs/of-type InitSendPulseTriggers)
+                        (jobs/with-identity (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+                        (jobs/store-durably))
+        init-trigger   (triggers/build
+                        ;; run once on startup
+                        (triggers/with-identity (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))
+                        (triggers/start-now))]
+    (task/add-job! send-pulse-job)
+    (task/schedule-task! init-job init-trigger)))

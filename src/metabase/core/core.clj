@@ -24,13 +24,10 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
    [metabase.sample-data :as sample-data]
    [metabase.server.core :as server]
    [metabase.setup.core :as setup]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.system-info :as u.system-info])
@@ -161,8 +158,6 @@
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
   (task/start-scheduler!)
-  (task.notification/init-send-notification-triggers!)
-  (pulse/init-send-pulse-triggers!)
    ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
   (database/check-health-and-schedule-tasks!)
   (init-status/set-complete!)
