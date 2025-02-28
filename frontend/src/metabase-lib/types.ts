@@ -118,6 +118,7 @@ export type TableDisplayInfo = {
   name: string;
   displayName: string;
   isSourceTable: boolean;
+  isSourceCard: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
