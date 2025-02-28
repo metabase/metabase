@@ -1673,3 +1673,53 @@ describe("issue 50731", () => {
       });
   });
 });
+
+describe("issue 54400", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use model icon when source data is a model (metabase#54400)", () => {
+    H.createQuestion(
+      {
+        name: "My model",
+        type: "model",
+        query: { "source-table": ORDERS_ID },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    H.filter();
+    verifyFilterModalTabIcon({ name: "My model", icon: "model" });
+
+    cy.realPress("Escape");
+    H.openNotebook();
+    H.filter({ mode: "notebook" });
+    verifyPopoverItemIcon({ name: "My model", icon: "model" });
+
+    cy.realPress("Escape");
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Sum of ...").click();
+    verifyPopoverItemIcon({ name: "My model", icon: "model" });
+
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .findByTestId("notebook-cell-item")
+      .click();
+    verifyPopoverItemIcon({ name: "My model", icon: "model" });
+  });
+
+  function verifyPopoverItemIcon({ name, icon }) {
+    H.popover().findByText(name).prev().icon(icon).should("be.visible");
+  }
+
+  function verifyFilterModalTabIcon({ name, icon }) {
+    cy.findAllByRole("tab")
+      .filter(`:contains('${name}')`)
+      .icon(icon)
+      .should("be.visible");
+  }
+});
