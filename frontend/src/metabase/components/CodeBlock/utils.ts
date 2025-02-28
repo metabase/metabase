@@ -35,7 +35,6 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
       return python();
     case "mustache":
       return handlebars;
-    case "jade":
     case "pug":
       return StreamLanguage.define(pug);
     case "ruby":

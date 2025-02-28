@@ -2,7 +2,6 @@ export type CodeLanguage =
   | "clojure"
   | "erb"
   | "html"
-  | "jade"
   | "javascript"
   | "json"
   | "mustache"

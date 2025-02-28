@@ -19,7 +19,7 @@ export const getEmbedClientCodeExampleOptions =
       id: "pug",
       name: "Pug / Jade",
       source: getPugSource({ iframeUrl: `iframeUrl` }),
-      language: "jade",
+      language: "pug",
     },
     {
       id: "mustache",
