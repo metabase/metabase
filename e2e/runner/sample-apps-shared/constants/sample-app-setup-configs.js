@@ -8,8 +8,8 @@ const BASE_ENV = {
 };
 
 const BASE_SETUP_CONFIG = {
-  "docker-up-command": "yarn docker:e2e:up",
-  "docker-down-command": "yarn docker:e2e:down",
+  "docker-up-command": "yarn docker:up",
+  "docker-down-command": "yarn docker:down",
   "docker-env-example-path": ".env.docker.example",
   "docker-env-path": ".env.docker",
   branch: BRANCH_NAME,
