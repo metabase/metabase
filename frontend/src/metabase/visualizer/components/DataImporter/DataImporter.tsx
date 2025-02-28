@@ -10,13 +10,18 @@ import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
+import type { DashboardId } from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { RecentsList } from "./RecentsList";
 import type { ResultsListProps } from "./ResultsList";
 import { SearchResultsList } from "./SearchResultsList";
 
-export const DataImporter = () => {
+export const DataImporter = ({
+  dashboardId,
+}: {
+  dashboardId: DashboardId | undefined;
+}) => {
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const [search, setSearch] = useState("");
@@ -90,6 +95,7 @@ export const DataImporter = () => {
             search={debouncedSearch}
             onSelect={handleDataSourceSelect}
             dataSourceIds={dataSourceIds}
+            dashboardId={dashboardId}
           />
         )}
       </Flex>
