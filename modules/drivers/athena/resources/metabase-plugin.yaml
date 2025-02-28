@@ -31,13 +31,11 @@ driver:
     - name: access_key
       display-name: Access key
       helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
-      required: true
     - merge:
         - password
         - name: secret_key
           display-name: Secret key
           helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
-          required: true
     - advanced-options-start
     - merge:
         - additional-options

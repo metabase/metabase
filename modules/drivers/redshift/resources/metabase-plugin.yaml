@@ -25,7 +25,6 @@ driver:
     - user
     - merge:
       - password
-      - required: true
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
