@@ -79,7 +79,7 @@
     (setting/set-value-of-type! :string :update-channel new-channel)))
 
 (defsetting update-channel
-  (deferred-tru "We'll notify you here when there's a new version of this type of release.")
+  (deferred-tru "We''ll notify you here when there''s a new version of this type of release.")
   :visibility :admin
   :type       :string
   :encryption :no
@@ -775,7 +775,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :audit      :getter)
 
 (defsetting source-address-header
-  (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
+  (deferred-tru "Identify the source of HTTP requests by this header''s value, instead of its remote address.")
   :encryption :no
   :default "X-Forwarded-For"
   :export? true

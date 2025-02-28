@@ -60,9 +60,6 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
         classNames={{
           monthsList: S.monthsList,
         }}
-        getYearControlProps={() => ({
-          className: S.yearLevel,
-        })}
         value={value}
         date={date}
         level={level}

@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 
 import { alpha, color } from "metabase/lib/colors";
 
+// eslint-disable-next-line no-color-literals
 export const TextEditorRoot = styled.div`
   color: #000;
   background: #fff;
