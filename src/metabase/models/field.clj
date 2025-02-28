@@ -126,6 +126,10 @@
   [field]
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
+(t2/define-after-select :model/Field
+  [entity]
+  (assoc entity :entity_id (serdes/backfill-entity-id entity)))
+
 (t2/define-before-insert :model/Field
   [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]

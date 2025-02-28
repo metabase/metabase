@@ -770,7 +770,7 @@
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
 
-(deftest ^:parallel query-metadata-has-entity-ids-test
+(deftest ^:parallel dataset-metadata-has-entity-ids-test
   (testing "MBQL query"
     (is (=? {:databases api.test-util/all-have-entity-ids?
              :tables    api.test-util/all-have-entity-ids?
