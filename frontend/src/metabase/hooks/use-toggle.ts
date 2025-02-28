@@ -6,7 +6,6 @@ type ToggleHookResult = [
     turnOn: () => void;
     turnOff: () => void;
     toggle: () => void;
-    setValue: (value: boolean) => void;
   },
 ];
 
@@ -19,5 +18,5 @@ export function useToggle(initialValue = false): ToggleHookResult {
 
   const toggle = useCallback(() => setValue(current => !current), []);
 
-  return [value, { turnOn, turnOff, toggle, setValue }];
+  return [value, { turnOn, turnOff, toggle }];
 }
