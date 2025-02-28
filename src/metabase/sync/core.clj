@@ -3,7 +3,6 @@
   -- Tables and Fields."
   (:require
    [metabase.sync.analyze]
-   [metabase.sync.concurrent]
    [metabase.sync.field-values]
    [metabase.sync.sync]
    [metabase.sync.sync-metadata]
@@ -13,7 +12,6 @@
 
 (comment
   metabase.sync.analyze/keep-me
-  metabase.sync.concurrent/keep-me
   metabase.sync.field-values/keep-me
   metabase.sync.sync/keep-me
   metabase.sync.sync-metadata/keep-me
@@ -23,8 +21,6 @@
 (p/import-vars
  [metabase.sync.analyze
   analyze-db!]
- [metabase.sync.concurrent
-  submit-task!]
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]

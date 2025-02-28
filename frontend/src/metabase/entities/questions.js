@@ -64,9 +64,12 @@ const Questions = createEntity({
         cardApi.endpoints.getCard,
       ),
     create: (entityQuery, dispatch) => {
-      const { dashboard_id, collection_id, ...rest } = entityQuery;
+      const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
+        entityQuery;
 
-      const destination = dashboard_id ? { dashboard_id } : { collection_id };
+      const destination = dashboard_id
+        ? { dashboard_id, dashboard_tab_id }
+        : { collection_id };
 
       return entityCompatibleQuery(
         { ...rest, ...destination },
@@ -250,6 +253,7 @@ const Questions = createEntity({
     "embedding_params",
     "collection_id",
     "dashboard_id",
+    "dashboard_tab_id",
     "collection_position",
     "collection_preview",
     "result_metadata",

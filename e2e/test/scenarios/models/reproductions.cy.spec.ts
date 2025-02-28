@@ -15,15 +15,23 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    // drag & drop the Custom column 100 px to the left to switch it with Total column
+    // drag & drop the Total column 10 px to the right of the Custom column to swap their positions
     cy.findAllByTestId("header-cell")
       .contains("Custom")
       .then(customColumn => {
-        const rect = customColumn[0].getBoundingClientRect();
-        cy.wrap(customColumn)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
-          .trigger("mouseup");
+        const customColumnRect = customColumn[0].getBoundingClientRect();
+        cy.findAllByTestId("header-cell")
+          .contains("Total")
+          .then(totalColumn => {
+            const totalColumnRect = totalColumn[0].getBoundingClientRect();
+            cy.wrap(totalColumn)
+              .trigger("mousedown")
+              .trigger("mousemove", {
+                clientX: customColumnRect.right + 10,
+                clientY: totalColumnRect.y,
+              })
+              .trigger("mouseup");
+          });
       });
 
     getHeaderCell(1, "Custom").should("exist");

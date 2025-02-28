@@ -11,12 +11,12 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -596,7 +596,7 @@
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
         (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}

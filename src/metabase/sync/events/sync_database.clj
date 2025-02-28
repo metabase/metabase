@@ -1,11 +1,11 @@
 (ns metabase.sync.events.sync-database
   (:require
    [metabase.events :as events]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]))
 
 (derive ::event :metabase/event)
@@ -18,7 +18,7 @@
   (try
     (when database
       ;; just kick off a sync on another thread
-      (sync.concurrent/submit-task!
+      (quick-task/submit-task!
        (fn []
          (try
            ;; only do the 'full' sync if this is a "full sync" database. Otherwise just do metadata sync only

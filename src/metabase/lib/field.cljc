@@ -75,7 +75,7 @@
         (when-let [column (and (seq stage-columns)
                                (resolve-column-name-in-metadata column-name stage-columns))]
           (cond-> column
-            previous-stage-number (-> (dissoc :id :table-id
+            previous-stage-number (-> (dissoc :table-id
                                               ::binning ::temporal-unit)
                                       (lib.join/with-join-alias nil)
                                       (assoc :name (or (:lib/desired-column-alias column) (:name column)))

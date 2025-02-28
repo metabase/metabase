@@ -165,6 +165,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders in a dashboard").click();
       cy.findByRole("button", { name: "Select this dashboard" }).click();
     });
+    H.entityPickerModal().should("not.exist");
 
     H.modal().within(() => {
       cy.findByText("Duplicate").click();
@@ -249,6 +250,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText(NEW_DASHBOARD).click();
       cy.button(/Select/).click();
     });
+    H.entityPickerModal().should("not.exist");
 
     H.modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");

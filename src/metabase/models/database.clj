@@ -19,12 +19,12 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -165,7 +165,7 @@
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
-    (sync.concurrent/submit-task!
+    (quick-task/submit-task!
      (fn []
        (let [details (maybe-test-and-migrate-details! database)]
          (try
