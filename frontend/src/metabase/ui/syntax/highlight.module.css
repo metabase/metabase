@@ -36,7 +36,10 @@
   font-style: italic;
 }
 
-.brace,
+.brace {
+  color: var(--mb-color-text-light);
+}
+
 .squareBracket {
   color: var(--mb-color-brand);
 }
@@ -62,6 +65,6 @@
   color: var(--mb-color-saturated-red);
 }
 
-.propertyName {
-  color: var(--mb-color-brand);
+.typeName {
+  color: var(--mb-color-saturated-purple);
 }
