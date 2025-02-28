@@ -5,9 +5,12 @@ import {
   PickerControl,
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
+import cx from "classnames";
 import dayjs from "dayjs";
 import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
+
+import CalendarS from "../Calendar/Calendar.module.css";
 
 import S from "./QuarterPicker.module.css";
 
@@ -58,7 +61,10 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
     <Box ref={ref} {...props}>
       <MonthPicker
         classNames={{
-          monthsList: S.monthsList,
+          monthsList: cx(CalendarS.monthsList, S.monthsList),
+          yearsList: CalendarS.yearsList,
+          yearsListCell: CalendarS.cell,
+          yearsListRow: CalendarS.row,
         }}
         value={value}
         date={date}
