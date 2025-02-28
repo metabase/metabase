@@ -534,7 +534,7 @@
                                     (:updated_at obj))))
         ; don't stomp on `:updated_at` if it's already explicitly specified.
         changes-already-include-updated-at? (some #{:updated_at} changed-fields)
-        has-non-ignored-fields? (or (empty? changed-fields) (seq (set/difference changed-fields (non-timestamped-fields obj))))]
+        has-non-ignored-fields? (seq (set/difference changed-fields (non-timestamped-fields obj)))]
     (cond-> obj
       (and has-non-ignored-fields? (not changes-already-include-updated-at?)) (assoc :updated_at (now)))))
 
