@@ -25,6 +25,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   columnId,
   rowIndex,
   className,
+  style,
   onExpand,
 }: BodyCellProps<TValue>) {
   const formattedValue = formatter
@@ -52,6 +53,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
     >
       {formattedValue != null ? (
         <div
+          style={style}
           data-grid-cell-content
           className={cx(S.content, {
             [S.noWrap]: !wrap,

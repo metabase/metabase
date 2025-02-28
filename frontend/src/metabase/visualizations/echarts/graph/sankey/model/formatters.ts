@@ -1,8 +1,6 @@
+import { memoize } from "metabase/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
-
-import { cachedFormatter } from "../../../cartesian/utils/formatter";
 
 import type { SankeyChartColumns, SankeyFormatters, SankeyNode } from "./types";
 
@@ -10,12 +8,12 @@ export const getSankeyFormatters = (
   columns: SankeyChartColumns,
   settings: ComputedVisualizationSettings,
 ): SankeyFormatters => {
-  const source = cachedFormatter((value: RowValue) => {
+  const source = memoize(value => {
     return String(
       formatValue(value, settings.column?.(columns.source.column) ?? {}),
     );
   });
-  const target = cachedFormatter((value: RowValue) => {
+  const target = memoize(value => {
     return String(
       formatValue(value, settings.column?.(columns.target.column) ?? {}),
     );
@@ -28,20 +26,18 @@ export const getSankeyFormatters = (
     node,
     source,
     target,
-    value: cachedFormatter((value: RowValue) => {
+    value: memoize(value => {
       if (typeof value !== "number") {
         return "";
       }
-
       return String(
         formatValue(value, settings.column?.(columns.value.column) ?? {}),
       );
     }),
-    valueCompact: cachedFormatter((value: RowValue) => {
+    valueCompact: memoize(value => {
       if (typeof value !== "number") {
         return "";
       }
-
       return String(
         formatValue(value, {
           ...(settings.column?.(columns.value.column) ?? {}),

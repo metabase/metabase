@@ -545,7 +545,7 @@ class Visualization extends PureComponent<
       queryBuilderMode,
       rawSeries = [],
       renderEmptyMessage,
-      renderTableHeaderWrapper,
+      renderTableHeader,
       replacementContent,
       scrollToColumn,
       selectedTimelineEventIds,
@@ -777,7 +777,7 @@ class Visualization extends PureComponent<
                   queryBuilderMode={queryBuilderMode}
                   rawSeries={rawSeries}
                   renderEmptyMessage={renderEmptyMessage}
-                  renderTableHeaderWrapper={renderTableHeaderWrapper}
+                  renderTableHeader={renderTableHeader}
                   scrollToColumn={scrollToColumn}
                   selectedTimelineEventIds={selectedTimelineEventIds}
                   series={series}

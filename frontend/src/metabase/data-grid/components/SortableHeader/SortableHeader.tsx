@@ -110,6 +110,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       </div>
       {canResize ? (
         <div
+          data-testid={`resize-handle-${id}`}
           className={S.resizeHandle}
           onMouseDown={resizeHandler}
           onTouchStart={resizeHandler}

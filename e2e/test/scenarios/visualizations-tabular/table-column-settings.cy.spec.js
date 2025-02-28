@@ -360,7 +360,7 @@ describe("scenarios > visualizations > table column settings", () => {
       // clicking outside of the popover to close it
       cy.findByTestId("app-bar").click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("prod_id");
       });
     });
@@ -537,6 +537,26 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _hideColumn(testData2);
       _showColumn(testData2);
+    });
+
+    it("should allow enabling text wrapping", () => {
+      H.openReviewsTable();
+      H.openColumnOptions("Body");
+
+      assertRowHeight(0, 36);
+
+      H.popover().within(() => {
+        cy.icon("gear").click();
+        cy.findByText("Wrap text").click();
+      });
+
+      assertRowHeight(0, 52);
+
+      H.popover().within(() => {
+        cy.findByText("Wrap text").click();
+      });
+
+      assertRowHeight(0, 36);
     });
   });
 
@@ -816,11 +836,11 @@ const openSettings = () => {
 };
 
 const visualization = () => {
-  return cy.findByTestId("TableInteractive-root");
+  return H.tableInteractive();
 };
 
 const scrollVisualization = (position = "right") => {
-  cy.get("#main-data-grid").scrollTo(position, {
+  H.tableInteractiveScrollContainer().scrollTo(position, {
     force: true,
   });
 };
@@ -839,4 +859,11 @@ const assertColumnEnabled = column => {
 
 const assertColumnHidden = column => {
   column.should("have.attr", "data-enabled", "false");
+};
+
+const assertRowHeight = (index, height) => {
+  H.tableInteractive()
+    .find(`[data-index=${index}]`)
+    .should("exist")
+    .should("have.css", "height", `${height}px`);
 };

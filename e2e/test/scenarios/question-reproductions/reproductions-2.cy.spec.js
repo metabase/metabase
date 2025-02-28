@@ -690,7 +690,7 @@ function createAdHocQuestion(questionName) {
 
 function visualizeAndAssertColumns() {
   H.visualize();
-  cy.findByTestId("TableInteractive-root").within(() => {
+  H.tableInteractive().within(() => {
     cy.findByText("ID").should("exist");
     cy.findByText("Total").should("not.exist");
   });

@@ -31,7 +31,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       cy.wait("@datasetQuery");
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByTextEnsureVisible("admin@metabase.test");
         cy.findByTextEnsureVisible("Robert Tableton");
         cy.findByTextEnsureVisible("Read Only Tableton");

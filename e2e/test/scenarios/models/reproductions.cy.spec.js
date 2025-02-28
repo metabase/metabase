@@ -46,7 +46,7 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.get(".test-TableInteractive");
+          H.tableInteractive();
           cy.findByText("Here's where your results will appear").should(
             "not.exist",
           );
@@ -1532,7 +1532,7 @@ describe("issue 31663", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
-    cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
+    H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByLabelText("Foreign key target").click();
     H.popover().within(() => {

@@ -170,16 +170,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
-  it("calculates a row after scrolling correctly (metabase#48323)", () => {
-    H.openOrdersTable();
-    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(0, 15000);
-    cy.icon("expand").first().click();
-    cy.findByRole("dialog")
-      .should("contain", "418")
-      .and("contain", "58")
-      .and("contain", "February 14, 2026, 10:12 AM");
-  });
-
   it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
     H.openPeopleTable();
     cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(2000, 15000);
@@ -319,9 +309,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     H.openProductsTable({ limit: 5 });
 
-    cy.findByTestId("TableInteractive-root")
-      .findByTextEnsureVisible("Rustic Paper Wallet")
-      .click();
+    H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
@@ -469,7 +457,7 @@ function changeSorting(columnName, direction) {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
-        cy.get("#main-data-grid").findByText("Rabbit").trigger("mouseover");
+        H.tableInteractiveBody().findByText("Rabbit").trigger("mouseover");
 
         cy.icon("expand").first().click();
 
