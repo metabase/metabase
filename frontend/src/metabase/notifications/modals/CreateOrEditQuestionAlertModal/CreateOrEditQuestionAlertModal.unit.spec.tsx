@@ -27,7 +27,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("New alert")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-create")).toBeInTheDocument();
     });
 
     expect(screen.getByText("Email")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("New alert")).toBeInTheDocument();
+        expect(screen.getByTestId("alert-create")).toBeInTheDocument();
       });
 
       expect(screen.queryByText("Email")).not.toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("New alert")).toBeInTheDocument();
+        expect(screen.getByTestId("alert-create")).toBeInTheDocument();
       });
 
       expect(screen.queryByText("Email")).not.toBeInTheDocument();
@@ -82,10 +82,12 @@ describe("CreateOrEditQuestionAlertModal", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Alerts")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("alerts-channel-setup-modal"),
+      ).toBeInTheDocument();
     });
 
-    expect(screen.queryByText("New alert")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("alert-create")).not.toBeInTheDocument();
   });
 });
 

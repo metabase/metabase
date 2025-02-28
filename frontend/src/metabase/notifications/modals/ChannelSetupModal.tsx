@@ -35,7 +35,13 @@ export const ChannelSetupModal = ({
   onClose,
 }: ChannelSetupContentProps) => {
   return (
-    <Modal opened title={t`Alerts`} size="sm" onClose={onClose}>
+    <Modal
+      opened
+      title={t`Alerts`}
+      size="sm"
+      onClose={onClose}
+      data-testid="alerts-channel-setup-modal"
+    >
       <Stack gap="0.5rem">
         <Text mb="1rem">
           {isAdmin
