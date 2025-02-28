@@ -84,6 +84,7 @@ function getInitialState(): VisualizerState {
     past: [],
     present: getInitialVisualizerHistoryItem(),
     future: [],
+    initialState: getInitialVisualizerHistoryItem(),
   };
 }
 
@@ -374,6 +375,17 @@ const visualizerSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(initializeVisualizer.fulfilled, (state, action) => {
+        const initialState = action.payload;
+        if (initialState) {
+          state.initialState = {
+            ...getInitialVisualizerHistoryItem(),
+            ...initialState,
+          };
+        }
+
+        maybeUpdateHistory(state, action);
+      })
       .addCase(handleDrop, (state, action) => {
         state.draggedItem = null;
         maybeUpdateHistory(state, action);

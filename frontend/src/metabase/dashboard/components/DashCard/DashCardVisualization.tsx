@@ -1,8 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { cardApi } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -23,6 +25,7 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   createDataSource,
+  dashboardCardSupportsVisualizer,
   isVisualizerDashboardCard,
   mergeVisualizerData,
 } from "metabase/visualizer/utils";
@@ -136,18 +139,24 @@ export function DashCardVisualization({
   const datasets = useSelector(
     state => getDashcardData(state, dashcard.id) ?? {},
   );
-  const [isVisualizerModalOpen, setIsVisualizerModalOpen] = useState(false);
+  const [
+    isVisualizerModalOpen,
+    { open: openVisualizerModal, close: closeVisualizerModal },
+  ] = useDisclosure(false);
 
   const dispatch = useDispatch();
 
   const editVisualization = useMemo(() => {
-    if (isVisualizerDashboardCard(dashcard)) {
+    if (
+      isVisualizerDashboardCard(dashcard) &&
+      dashboardCardSupportsVisualizer(dashcard)
+    ) {
       return () => {
-        setIsVisualizerModalOpen(true);
+        openVisualizerModal();
         editDashboard();
       };
     }
-  }, [editDashboard, dashcard]);
+  }, [editDashboard, dashcard, openVisualizerModal]);
 
   const onVisualizerModalSave = useCallback(
     (visualization: VisualizerHistoryItem) => {
@@ -157,14 +166,14 @@ export function DashCardVisualization({
           visualization,
         }),
       );
-      setIsVisualizerModalOpen(false);
+      closeVisualizerModal();
     },
-    [dashcard.id, dispatch],
+    [dashcard.id, dispatch, closeVisualizerModal],
   );
 
   const onVisualizerModalClose = useCallback(() => {
-    setIsVisualizerModalOpen(false);
-  }, []);
+    closeVisualizerModal();
+  }, [closeVisualizerModal]);
 
   const visualizerModalInitialState = useMemo(
     () => ({
@@ -172,6 +181,19 @@ export function DashCardVisualization({
         ?.visualization as Partial<VisualizerHistoryItem>,
     }),
     [dashcard.visualization_settings],
+  );
+
+  const getCard = useCallback(
+    async (cardName: string) => {
+      const [, cardId] = cardName.split(":");
+
+      const { data } = await dispatch(
+        cardApi.endpoints.getCard.initiate({ id: +cardId }),
+      );
+
+      return data;
+    },
+    [dispatch],
   );
 
   const series = useMemo(() => {
@@ -384,6 +406,7 @@ export function DashCardVisualization({
         onTogglePreviewing={onTogglePreviewing}
         onChangeCardAndRun={onChangeCardAndRun}
         onChangeLocation={onChangeLocation}
+        getCard={getCard}
       />
       {isVisualizerModalOpen && (
         <VisualizerModal

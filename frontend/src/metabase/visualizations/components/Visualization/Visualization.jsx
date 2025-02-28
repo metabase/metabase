@@ -304,8 +304,24 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
-    const { rawSeries } = this.props;
+  handleOnChangeCardAndRun = async ({ nextCard, objectId }) => {
+    const { rawSeries, dashcard } = this.props;
+
+    if (isVisualizerDashboardCard(dashcard)) {
+      const cardId = nextCard.id;
+
+      if (!cardId) {
+        return;
+      }
+
+      const card = await this.props.getCard(`card:${cardId}`);
+      this.props.onChangeCardAndRun({
+        nextCard: card,
+        previousCard: card,
+        objectId,
+      });
+      return;
+    }
 
     const previousCard =
       rawSeries.find(series => series.card.id === nextCard?.id)?.card ??

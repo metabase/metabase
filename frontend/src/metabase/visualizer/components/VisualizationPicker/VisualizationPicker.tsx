@@ -26,7 +26,7 @@ export function VisualizationPicker({
     const [mainSeries] = series ?? [];
     const { data } = mainSeries ?? {};
     return Array.from(visualizations)
-      .filter(([, viz]) => !viz.hidden)
+      .filter(([, viz]) => !viz.hidden && viz.supportsVisualizer)
       .map(([vizType, viz]) => {
         return {
           label: viz.uiName,

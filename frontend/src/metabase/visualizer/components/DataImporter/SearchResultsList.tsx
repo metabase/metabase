@@ -25,6 +25,7 @@ export function SearchResultsList({
           q: search,
           limit: 10,
           models: ["card"],
+          include_dashboard_questions: true,
         }
       : skipToken,
     {

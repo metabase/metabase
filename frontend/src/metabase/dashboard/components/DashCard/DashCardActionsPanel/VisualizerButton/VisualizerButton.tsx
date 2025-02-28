@@ -59,6 +59,7 @@ export function VisualizerButton({ series, dashcard }: VisualizerButtonProps) {
           initialState={initialState}
           onSave={handleChangeVisualization}
           onClose={close}
+          saveLabel={t`Save`}
         />
       )}
     </>

@@ -74,4 +74,6 @@ export interface VisualizerState extends VisualizerCommonState {
   past: VisualizerHistoryItem[];
   present: VisualizerHistoryItem;
   future: VisualizerHistoryItem[];
+
+  initialState: VisualizerHistoryItem;
 }
