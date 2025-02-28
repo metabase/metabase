@@ -16,9 +16,8 @@ export const Label = styled.label`
 `;
 
 export const Description = styled.p`
-  margin-top: 24px;
   color: var(--mb-color-text-medium);
-  line-height: 22px;
+  line-height: 1.4;
 `;
 
 export const Error = styled(Description)`

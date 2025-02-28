@@ -7,7 +7,7 @@ import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Button, Flex, Text } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { deleteDatabase } from "../database";
@@ -43,44 +43,41 @@ export const DatabaseDangerZoneSectionContent = ({
   // or show a disabled button or something if the sync is not complete?
 
   return (
-    <Flex align="center" justify="space-between">
-      <Text c="black">{t`Blow up the command module`}</Text>
-      <Flex gap="sm">
-        {isSyncCompleted(database) && (
-          <ModalWithTrigger
-            triggerElement={
-              <Button
-                variant="filled"
-                color="danger"
-              >{t`Discard saved field values`}</Button>
-            }
-            ref={discardSavedFieldValuesModal}
-          >
-            <ConfirmContent
-              title={t`Discard saved field values`}
-              onClose={handleSavedFieldsModalClose}
-              onAction={() => discardDatabaseFieldValues(database.id)}
-            />
-          </ModalWithTrigger>
-        )}
-        {isAdmin && (
-          <ModalWithTrigger
-            triggerElement={
-              <Button
-                variant="filled"
-                color="danger"
-              >{t`Remove this database`}</Button>
-            }
-            ref={deleteDatabaseModal}
-          >
-            <DeleteDatabaseModal
-              database={database}
-              onClose={handleDeleteDatabaseModalClose}
-              onDelete={handleDeleteDatabase}
-            />
-          </ModalWithTrigger>
-        )}
-      </Flex>
+    <Flex gap="sm">
+      {isSyncCompleted(database) && (
+        <ModalWithTrigger
+          triggerElement={
+            <Button
+              variant="filled"
+              color="danger"
+            >{t`Discard saved field values`}</Button>
+          }
+          ref={discardSavedFieldValuesModal}
+        >
+          <ConfirmContent
+            title={t`Discard saved field values`}
+            onClose={handleSavedFieldsModalClose}
+            onAction={() => discardDatabaseFieldValues(database.id)}
+          />
+        </ModalWithTrigger>
+      )}
+      {isAdmin && (
+        <ModalWithTrigger
+          triggerElement={
+            <Button
+              variant="filled"
+              color="danger"
+            >{t`Remove this database`}</Button>
+          }
+          ref={deleteDatabaseModal}
+        >
+          <DeleteDatabaseModal
+            database={database}
+            onClose={handleDeleteDatabaseModalClose}
+            onDelete={handleDeleteDatabase}
+          />
+        </ModalWithTrigger>
+      )}
     </Flex>
   );
 };
