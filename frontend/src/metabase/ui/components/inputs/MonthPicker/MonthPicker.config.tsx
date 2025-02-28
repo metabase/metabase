@@ -12,6 +12,7 @@ export const monthPickerOverrides: MantineThemeOverride["components"] = {
       mih: 0, // overwrite Calendar's default value
     },
     classNames: {
+      levelsGroup: S.levelsGroup,
       calendarHeader: S.calendarHeader,
       monthsList: CalendarS.monthsList,
       calendarHeaderLevel: CalendarS.calendarHeaderLevel,
