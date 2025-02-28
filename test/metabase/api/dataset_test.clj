@@ -450,19 +450,19 @@
     (testing "\nCan we fetch a native version of an MBQL query?"
       (testing "`:now` is usable inside `:case` with mongo (#32216)"
         (mt/test-driver :mongo
-          (is (= {:$switch
-                  {:branches
-                   [{:case {:$eq [{:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}
-                                  {:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}]},
-                     :then "a"}]
-                   :default "b"}}
+          (is (= {"$switch"
+                  {"branches"
+                   [{"case" {"$eq" [{"$dayOfMonth" {"date" "$$NOW", "timezone" "UTC"}}
+                                    {"$dayOfMonth" {"date" "$$NOW", "timezone" "UTC"}}]},
+                     "then" "a"}]
+                   "default" "b"}}
                  (-> (mt/user-http-request
                       :crowberto :post 200 "dataset/native"
                       (mt/mbql-query venues
                         {:expressions
                          {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
                               {:default "b"}]}}))
-                     :query first :$project :E))))))))
+                     :query json/decode first (get-in ["$project" "E"])))))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
