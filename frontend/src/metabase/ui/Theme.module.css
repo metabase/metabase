@@ -1,4 +1,3 @@
-.focus:focus {
-  outline: 0.125rem solid var(--mb-color-brand);
-  outline-offset: 0.125rem;
+.focus:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
 }
