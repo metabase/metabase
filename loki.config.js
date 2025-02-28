@@ -10,6 +10,7 @@ module.exports = {
     "^Components/Inputs/DatePicker Dates range",
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
+    "^Components/overlays/Tooltip",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

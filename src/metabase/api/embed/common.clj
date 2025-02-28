@@ -547,7 +547,7 @@
                              (pr-str searched-param-slug))
                         {:status-code 400})))
       (when (get slug-token-params (keyword searched-param-slug))
-        (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
         (binding [api/*current-user-permissions-set* (atom #{"/"})
@@ -605,7 +605,7 @@
         (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str searched-param-slug))
                         {:status-code 400})))
       (when (get slug-token-params (keyword searched-param-slug))
-        (throw (ex-info (tru "You can''t specify a value for {0} if it's already set in the JWT." (pr-str searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
