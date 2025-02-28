@@ -8,18 +8,6 @@
   (:import
    #?(:clj (java.text Collator))))
 
-;; TODO: Remove these JSON helpers once more logic is encapsualted in CLJC and we don't need to use
-;; JSON-encoded keys in maps.
-(defn- to-key
-  [x]
-  #?(:cljs x
-     :clj x))
-
-(defn- from-key
-  [x]
-  #?(:cljs x
-     :clj x))
-
 (defn- json-parse
   [x]
   #?(:cljs (js->clj (js/JSON.parse (clj->js x)))
@@ -31,6 +19,7 @@
   (= (:name col) "pivot-grouping"))
 
 (defn columns-without-pivot-group
+  "Removes the pivot-grouping column from a list of columns."
   [columns]
   (filter #(not (is-pivot-group-column %)) columns))
 
@@ -49,11 +38,11 @@
                           (fn [k rows]
                             (let [breakout-indexes (range (count breakouts))
                                   indexes (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) k)) breakout-indexes))]
-                              [(to-key indexes)
+                              [indexes
                                (map #(vec (concat (subvec % 0 group-index) (subvec % (inc group-index))))
                                     rows)]))))]
     {:pivot-data pivot-data
-     :primary-rows-key (to-key (into [] (range (count breakouts))))
+     :primary-rows-key (into [] (range (count breakouts)))
      :columns columns}))
 
 (defn get-subtotal-values
@@ -61,10 +50,10 @@
   [pivot-data value-column-indexes]
   (m/map-kv-vals
    (fn [subtotalName subtotal]
-     (let [indexes (from-key subtotalName)]
+     (let [indexes subtotalName]
        (reduce
         (fn [acc row]
-          (let [value-key (to-key (map #(nth row %) indexes))]
+          (let [value-key (map #(nth row %) indexes)]
             (assoc acc
                    value-key
                    (map #(nth row %) value-column-indexes))))
@@ -127,7 +116,7 @@
   (let [col-and-row-indexes (concat col-indexes row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (to-key (select-indexes row col-and-row-indexes))
+       (let [value-key  (select-indexes row col-and-row-indexes)
              values     (select-indexes row val-indexes)
              ;; @tsp - this now assumes that cols is indexed the same as the row
              data       (map-indexed
@@ -228,8 +217,8 @@
 
 (defn- get-rows-from-pivot-data
   [pivot-data row-indexes col-indexes]
-  (let [primary-rows-key (to-key (range (+ (count row-indexes)
-                                           (count col-indexes))))]
+  (let [primary-rows-key (range (+ (count row-indexes)
+                                   (count col-indexes)))]
 
     (get pivot-data primary-rows-key)))
 
@@ -404,8 +393,8 @@
                           other-attrs))
        (format-values
         (get-in subtotal-values
-                [(to-key (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes))
-                 (to-key (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values))])
+                [(sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes)
+                 (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values)])
         value-formatters)))
 
 ;; TODO - memoize the getter
@@ -426,7 +415,7 @@
                                        {})]
                      (get-subtotals subtotal-values indexes index-values other-attrs value-formatters))
                    (let [{:keys [values valueColumns data dimensions]}
-                         (get values-by-key (to-key index-values))]
+                         (get values-by-key index-values)]
                      (map-indexed
                       (fn [index o]
                         (if-not data
@@ -476,9 +465,11 @@
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings make-color-getter]
+  [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings & [make-color-getter]]
   (let [pivot-data (:pivot-data (split-pivot-data data))
-        color-getter (make-color-getter (get-rows-from-pivot-data pivot-data row-indexes col-indexes))
+        color-getter (if make-color-getter
+                       (make-color-getter (get-rows-from-pivot-data pivot-data row-indexes col-indexes))
+                       (constantly nil))
         {:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
         left-index-columns (select-indexes columns row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
