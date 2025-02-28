@@ -109,6 +109,7 @@ features.forEach(feature => {
               }),
             );
 
+          // Verify that switching tabs keeps the highlighted texts
           highlightedTexts().should("have.length", 1);
 
           cy.findByRole("tab", { name: "Parameters" }).click();
@@ -175,6 +176,7 @@ features.forEach(feature => {
         .and("contain", "Clojure");
 
       if (feature === "all") {
+        // Verify that switching tabs keeps the highlighted texts
         highlightedTexts().should("have.length", 1);
 
         cy.findByRole("tab", { name: "Parameters" }).click();
