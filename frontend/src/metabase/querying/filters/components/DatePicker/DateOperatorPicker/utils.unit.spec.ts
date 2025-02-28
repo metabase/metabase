@@ -292,18 +292,21 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and use default value for 0 value', unit => {
-      const value: DatePickerValue = {
-        type: "relative",
-        value: 0,
-        unit,
-      };
-      expect(setOptionType(value, "last")).toEqual({
-        type: "relative",
-        value: -30,
-        unit,
-      });
-    });
+    ])(
+      'should preserve "%s" unit and use default value for "0" value',
+      unit => {
+        const value: DatePickerValue = {
+          type: "relative",
+          value: 0,
+          unit,
+        };
+        expect(setOptionType(value, "last")).toEqual({
+          type: "relative",
+          value: -30,
+          unit,
+        });
+      },
+    );
 
     it.each<DatePickerTruncationUnit>([
       "minute",
@@ -347,18 +350,21 @@ describe("setOptionType", () => {
       "month",
       "quarter",
       "year",
-    ])('should preserve "%s" unit and use default value for 0 value', unit => {
-      const value: DatePickerValue = {
-        type: "relative",
-        value: 0,
-        unit,
-      };
-      expect(setOptionType(value, "next")).toEqual({
-        type: "relative",
-        value: 30,
-        unit,
-      });
-    });
+    ])(
+      'should preserve "%s" unit and use default value for "0" value',
+      unit => {
+        const value: DatePickerValue = {
+          type: "relative",
+          value: 0,
+          unit,
+        };
+        expect(setOptionType(value, "next")).toEqual({
+          type: "relative",
+          value: 30,
+          unit,
+        });
+      },
+    );
 
     it.each<DatePickerTruncationUnit>([
       "minute",
