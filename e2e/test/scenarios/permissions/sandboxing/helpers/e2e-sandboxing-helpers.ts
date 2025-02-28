@@ -52,8 +52,9 @@ const createSavedQuestion = (opts: CreateQuestionOptions) => {
   cy.log(
     "Create a saved question that shows Gizmos and Widgets, and put it in a dashboard",
   );
-  createCardAndAddToDashboard({
+  createCard({
     idAlias: "savedQuestionId",
+    addToDashboard: true,
     dashboardName: "Dashboard with saved question",
     dashboardIdAlias: "idOfDashboardWithSavedQuestion",
     dashcardIdAlias: "savedQuestionDashcardId",
@@ -65,17 +66,18 @@ const createModel = (opts: CreateQuestionOptions) => {
   cy.log(
     "Create a model that shows Gizmos and Widgets, and put it in a dashboard",
   );
-  createCardAndAddToDashboard({
-    ...opts,
+  createCard({
     type: "model",
     idAlias: "modelId",
+    addToDashboard: true,
     dashboardName: "Dashboard with model",
     dashboardIdAlias: "idOfDashboardWithModel",
     dashcardIdAlias: "modelDashcardId",
+    ...opts,
   });
 };
 
-const createCardAndAddToDashboard = ({
+const createCard = ({
   name = "Products question",
   columnType,
   customColumnType,
@@ -83,7 +85,7 @@ const createCardAndAddToDashboard = ({
   dashboardName = "Test Dashboard",
   dashboardIdAlias = "dashboardId",
   dashcardIdAlias = "dashcardId",
-  addToDashboard = true,
+  addToDashboard,
   sourceTable = PRODUCTS_ID,
   type = "question",
   query,
@@ -185,9 +187,10 @@ const createNestedQuestion = ({
   cy.log("Create a nested question and put it in a dashboard");
 
   cy.get("@savedQuestionId").then(savedQuestionId => {
-    createCardAndAddToDashboard({
+    createCard({
       columnType: "regular",
       idAlias: nestedQuestionIdAlias,
+      addToDashboard: true,
       sourceTable: `card__${savedQuestionId}`,
       dashboardName: "Dashboard with nested question",
       dashboardIdAlias,
