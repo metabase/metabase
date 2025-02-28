@@ -362,6 +362,79 @@ redirect_from:
         },
         "required" : [ "id" ]
       },
+      "metabase.channel.models.channel/Channel" : {
+        "description" : "Channel schema.",
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "type", "details" ]
+      },
+      "metabase.channel.models.channel/ChannelTemplate" : {
+        "description" : "Channel Template schema.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { },
+            "details" : {
+              "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplateEmailDetails"
+            }
+          },
+          "required" : [ "channel_type", "details" ]
+        }, { } ]
+      },
+      "metabase.channel.models.channel/ChannelTemplateEmailDetails" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "path" : {
+              "type" : "string"
+            },
+            "recipient-type" : {
+              "enum" : [ "cc", "bcc", "cc", "bcc" ]
+            },
+            "subject" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "email/handlebars-resource", "email/handlebars-text", "email/handlebars-resource", "email/handlebars-text" ]
+            }
+          },
+          "required" : [ "type", "subject", "path" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "body" : {
+              "type" : "string"
+            },
+            "recipient-type" : {
+              "enum" : [ "cc", "bcc", "cc", "bcc" ]
+            },
+            "subject" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "email/handlebars-resource", "email/handlebars-text", "email/handlebars-resource", "email/handlebars-text" ]
+            }
+          },
+          "required" : [ "type", "subject", "body" ]
+        } ]
+      },
       "metabase.lib.schema.common/non-blank-string" : {
         "type" : "string",
         "minLength" : 1
@@ -402,6 +475,422 @@ redirect_from:
       "metabase.lib.schema.temporal-bucketing/unit" : {
         "type" : "string",
         "enum" : [ "quarter", "day", "hour", "week", "second", "default", "day-of-week", "hour-of-day", "month", "month-of-year", "day-of-month", "year", "day-of-year", "millisecond", "year-of-era", "second-of-minute", "week-of-year", "quarter-of-year", "minute-of-hour", "minute" ]
+      },
+      "metabase.models.notification/FullyHydratedNotification" : {
+        "description" : "Fully hydrated notification.",
+        "oneOf" : [ {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, { } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, { } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload" ]
+          }, { } ]
+        } ]
+      },
+      "metabase.models.notification/Notification" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "payload_id" : {
+              "type" : "null"
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            }
+          },
+          "required" : [ "payload_type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "creator_id" : {
+              "type" : "integer"
+            },
+            "payload_id" : {
+              "type" : "integer"
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            }
+          },
+          "required" : [ "payload_type" ]
+        }, { } ]
+      },
+      "metabase.models.notification/NotificationCard" : {
+        "description" : "Schema for :model/NotificationCard.",
+        "type" : "object",
+        "properties" : {
+          "card" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "send_condition" : {
+            "type" : "string",
+            "enum" : [ "goal_below", "has_result", "goal_above" ]
+          },
+          "send_once" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "card_id" ]
+      },
+      "metabase.models.notification/NotificationHandler" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "channel_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "channel_type" : { },
+          "notification_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "template_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "channel_type" ]
+      },
+      "metabase.models.notification/NotificationRecipient" : {
+        "description" : "Schema for :model/NotificationRecipient.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "details" : { },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "type", "user_id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : { },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "permissions_group_id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : {
+              "type" : "object",
+              "properties" : {
+                "value" : { }
+              },
+              "required" : [ "value" ],
+              "additionalProperties" : false
+            },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "details" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : {
+              "type" : "object",
+              "properties" : {
+                "is_optional" : {
+                  "type" : "boolean"
+                },
+                "pattern" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "pattern" ],
+              "additionalProperties" : false
+            },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "details" ]
+        } ]
+      },
+      "metabase.models.notification/NotificationSubscription" : {
+        "description" : "Schema for :model/NotificationSubscription.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "cron_schedule" : {
+              "type" : "null"
+            },
+            "event_name" : {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            }
+          },
+          "required" : [ "type", "event_name" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "cron_schedule" : {
+              "type" : "string"
+            },
+            "event_name" : {
+              "type" : "null"
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            }
+          },
+          "required" : [ "type", "cron_schedule" ]
+        } ]
       },
       "metabase.sync.schedules/ExpandedSchedulesMap" : {
         "description" : "value must be a valid map of schedule maps for a DB.",
@@ -929,89 +1418,6 @@ redirect_from:
           "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "/api/alert" ]
-      },
-      "post" : {
-        "summary" : "POST /api/alert/",
-        "description" : "Create a new Alert.",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "alert_above_goal" : {
-                    "type" : "boolean"
-                  },
-                  "alert_condition" : {
-                    "type" : "string",
-                    "enum" : [ "rows", "goal" ]
-                  },
-                  "alert_first_only" : {
-                    "type" : "boolean"
-                  },
-                  "card" : {
-                    "description" : "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                    "type" : "object",
-                    "properties" : {
-                      "dashboard_card_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "format_rows" : {
-                        "type" : "boolean"
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "include_csv" : {
-                        "type" : "boolean"
-                      },
-                      "include_xls" : {
-                        "type" : "boolean"
-                      },
-                      "pivot_results" : {
-                        "type" : "boolean"
-                      }
-                    },
-                    "required" : [ "include_csv", "include_xls", "id" ]
-                  },
-                  "channels" : { }
-                },
-                "required" : [ "alert_condition", "alert_first_only", "card", "channels" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/alert" ]
-      }
-    },
-    "/api/alert/question/{id}" : {
-      "get" : {
-        "summary" : "GET /api/alert/question/{id}",
-        "description" : "Fetch all alerts for the given question (`Card`) id",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        } ],
-        "tags" : [ "/api/alert" ]
       }
     },
     "/api/alert/{id}" : {
@@ -1028,75 +1434,6 @@ redirect_from:
           },
           "description" : "value must be an integer greater than zero."
         } ],
-        "tags" : [ "/api/alert" ]
-      },
-      "put" : {
-        "summary" : "PUT /api/alert/{id}",
-        "description" : "Update a `Alert` with ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "alert_above_goal" : {
-                    "type" : "boolean"
-                  },
-                  "alert_condition" : {
-                    "type" : "string",
-                    "enum" : [ "rows", "goal" ]
-                  },
-                  "alert_first_only" : {
-                    "type" : "boolean"
-                  },
-                  "archived" : {
-                    "type" : "boolean"
-                  },
-                  "card" : {
-                    "description" : "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                    "type" : "object",
-                    "properties" : {
-                      "dashboard_card_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "format_rows" : {
-                        "type" : "boolean"
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "include_csv" : {
-                        "type" : "boolean"
-                      },
-                      "include_xls" : {
-                        "type" : "boolean"
-                      },
-                      "pivot_results" : {
-                        "type" : "boolean"
-                      }
-                    },
-                    "required" : [ "include_csv", "include_xls", "id" ]
-                  },
-                  "channels" : { }
-                }
-              }
-            }
-          }
-        },
         "tags" : [ "/api/alert" ]
       }
     },
@@ -1970,6 +2307,11 @@ redirect_from:
                     "type" : "object",
                     "properties" : { }
                   },
+                  "dashboard_tab_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
                   "entity_id" : {
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
@@ -2462,6 +2804,11 @@ redirect_from:
                     "description" : "Value must be a map.",
                     "type" : "object",
                     "properties" : { }
+                  },
+                  "dashboard_tab_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   },
                   "collection_preview" : {
                     "type" : "boolean"
@@ -7606,7 +7953,7 @@ redirect_from:
       },
       "put" : {
         "summary" : "PUT /api/mt/gtap/{id}",
-        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
+        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -7799,6 +8146,253 @@ redirect_from:
           }
         },
         "tags" : [ "/api/native-query-snippet" ]
+      }
+    },
+    "/api/notification/" : {
+      "get" : {
+        "summary" : "GET /api/notification/",
+        "description" : "List notifications.\n  - `creator_id`: if provided returns only notifications created by this user\n  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient\n  - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient\n  - `card_id`: if provided returns only notification that has card_id as payload",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "creator_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "recipient_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_or_recipient_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "card_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_inactive",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pyaload_type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+          }
+        } ],
+        "tags" : [ "/api/notification" ]
+      },
+      "post" : {
+        "summary" : "POST /api/notification/",
+        "description" : "Create a new notification, return the created notification.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/send" : {
+      "post" : {
+        "summary" : "POST /api/notification/send",
+        "description" : "Send an unsaved notification.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/unsubscribe/" : {
+      "post" : {
+        "summary" : "POST /api/notification/unsubscribe/",
+        "description" : "Allow non-users to unsubscribe from notifications, with the hash given through email.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "email" : {
+                    "type" : "string"
+                  },
+                  "hash" : {
+                    "type" : "string"
+                  },
+                  "notification-handler-id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "notification-handler-id", "email", "hash" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/unsubscribe" ]
+      }
+    },
+    "/api/notification/unsubscribe/undo" : {
+      "post" : {
+        "summary" : "POST /api/notification/unsubscribe/undo",
+        "description" : "Allow non-users to undo an unsubscribe from notifications, with the hash given through email.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "email" : {
+                    "type" : "string"
+                  },
+                  "hash" : {
+                    "type" : "string"
+                  },
+                  "notification-handler-id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "notification-handler-id", "email", "hash" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/unsubscribe" ]
+      }
+    },
+    "/api/notification/{id}" : {
+      "get" : {
+        "summary" : "GET /api/notification/{id}",
+        "description" : "Get a notification by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/notification" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/notification/{id}",
+        "description" : "Update a notification, can also update its subscriptions, handlers.\n  Return the updated notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/{id}/send" : {
+      "post" : {
+        "summary" : "POST /api/notification/{id}/send",
+        "description" : "Send a notification by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "handler_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/{id}/unsubscribe" : {
+      "post" : {
+        "summary" : "POST /api/notification/{id}/unsubscribe",
+        "description" : "Unsubscribe current user from a notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/notification" ]
       }
     },
     "/api/notify/db/attached_datawarehouse" : {
@@ -11759,7 +12353,7 @@ redirect_from:
     }
   },
   "servers" : [ {
-    "url" : "http://localhost:3000/api",
+    "url" : "http://localhost:3000",
     "description" : "Localhost"
   } ]
 }

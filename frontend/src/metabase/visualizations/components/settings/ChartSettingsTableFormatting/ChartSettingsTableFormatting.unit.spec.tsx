@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { mockScrollIntoView, render, screen } from "__support__/ui";
+import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import { ChartSettingsTableFormatting } from "./ChartSettingsTableFormatting";
+import {
+  ChartSettingsTableFormatting,
+  type ChartSettingsTableFormattingProps,
+} from "./ChartSettingsTableFormatting";
 
 const STRING_COLUMN = createMockColumn({
   base_type: "type/Text",
@@ -77,8 +81,8 @@ const NUMBER_OPERATORS = [
 
 const BOOLEAN_OPERATORS = ["is null", "is not null", "is true", "is false"];
 
-const Wrapper = props => {
-  const [value, setValue] = useState([]);
+const Wrapper = (props: Partial<ChartSettingsTableFormattingProps> = {}) => {
+  const [value, setValue] = useState<ColumnFormattingSetting[]>([]);
 
   return (
     <ChartSettingsTableFormatting
@@ -90,9 +94,11 @@ const Wrapper = props => {
   );
 };
 
-const setup = props => {
+const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
+
+mockScrollIntoView();
 
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
@@ -125,15 +131,15 @@ describe("ChartSettingsTableFormatting", () => {
 
     expect(
       await screen.findByRole("option", { name: "Number Column" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).toHaveAttribute("data-combobox-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "Boolean Column" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).toHaveAttribute("data-combobox-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "String Column 2" }),
-    ).toHaveAttribute("aria-disabled", "false");
+    ).not.toHaveAttribute("data-combobox-disabled");
   });
 
   describe("should show appropriate operators based on column selection", () => {

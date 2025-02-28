@@ -253,7 +253,9 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  (update dashboard :dashcards add-query-average-duration-to-dashcards))
+  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-id*.
+  ;; Otherwise it happens on other threads without the MetadataProvider caching and makes many more AppDB requests.
+  (update dashboard :dashcards (comp doall add-query-average-duration-to-dashcards)))
 
 ;; ## Dashboard load caching
 ;; When the FE loads a dashboard, there is a burst of requests sent to the BE:
@@ -1337,7 +1339,7 @@
     [:map
      [:id ms/NonBlankString]]
     [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an 'id' key")))
+   (deferred-tru "value must be a parameter map with an ''id'' key")))
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 

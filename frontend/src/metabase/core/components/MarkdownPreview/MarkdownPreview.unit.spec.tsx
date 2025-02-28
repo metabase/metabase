@@ -75,7 +75,7 @@ describe("MarkdownPreview", () => {
 
       await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
-      const tooltip = screen.getByRole("tooltip");
+      const tooltip = await screen.findByRole("tooltip");
       expect(tooltip).not.toHaveTextContent(MARKDOWN);
       expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
       expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);
