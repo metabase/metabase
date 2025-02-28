@@ -6,6 +6,7 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type {
   ChannelApiResponse,
   NotificationChannel,
@@ -32,46 +33,54 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(screen.getByText("Email")).toBeInTheDocument();
   });
 
-  it("should display first available channel by default - Slack", async () => {
-    setup({
-      isEmailSetup: false,
-      isSlackSetup: true,
-      isAdmin: true,
-    });
+  it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
+    "should display first available channel by default - Slack %p",
+    async setupConfig => {
+      setup({
+        isEmailSetup: false,
+        isSlackSetup: true,
+        ...setupConfig,
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText("New alert")).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByText("New alert")).toBeInTheDocument();
+      });
 
-    expect(screen.queryByText("Email")).not.toBeInTheDocument();
-    expect(screen.getByText("Slack")).toBeInTheDocument();
-  });
+      expect(screen.queryByText("Email")).not.toBeInTheDocument();
+      expect(screen.getByText("Slack")).toBeInTheDocument();
+    },
+  );
 
-  it("should display first available channel by default - Webhook", async () => {
-    const mockWebhook = createMockChannel();
-    setup({
-      isEmailSetup: false,
-      isHttpSetup: true,
-      isAdmin: true,
-      webhooksResult: [mockWebhook],
-    });
+  it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
+    "should display first available channel by default - Webhook %p",
+    async () => {
+      const mockWebhook = createMockChannel();
+      setup({
+        isEmailSetup: false,
+        isHttpSetup: true,
+        isAdmin: true,
+        webhooksResult: [mockWebhook],
+      });
 
-    await waitFor(() => {
-      expect(screen.getByText("New alert")).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByText("New alert")).toBeInTheDocument();
+      });
 
-    expect(screen.queryByText("Email")).not.toBeInTheDocument();
-    expect(screen.getByText(mockWebhook.name)).toBeInTheDocument();
-  });
+      expect(screen.queryByText("Email")).not.toBeInTheDocument();
+      expect(screen.getByText(mockWebhook.name)).toBeInTheDocument();
+    },
+  );
 });
 
 function setup({
+  userCanAccessSettings = false,
   isAdmin = false,
   isEmailSetup = true,
   isSlackSetup = false,
   isHttpSetup = false,
   webhooksResult = [],
 }: {
+  userCanAccessSettings?: boolean;
   isAdmin?: boolean;
   isEmailSetup?: boolean;
   isSlackSetup?: boolean;
@@ -94,6 +103,21 @@ function setup({
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
+
+  if (userCanAccessSettings) {
+    /**
+     * Technically this is a dirty hack to avoid loading enterprise packages
+     * and rely on typings from enterprise package to mock the user:
+     * - import { UserWithApplicationPermissions } from "metabase-enterprise/application_permissions/types/user";
+     * - createMockUser({ ... } as UserWithApplicationPermissions);
+     *
+     * However the trade-off is worth it, because 3 LOC keeps the test clean,
+     * avoids loading unnecessary code or writing e2e tests for this.
+     */
+    jest
+      .spyOn(PLUGIN_APPLICATION_PERMISSIONS.selectors, "canAccessSettings")
+      .mockReturnValue(true);
+  }
 
   renderWithProviders(
     <CreateOrEditQuestionAlertModal

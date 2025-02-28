@@ -25,7 +25,6 @@ type NotificationChannelsAddMenuProps = {
   notificationHandlers: NotificationHandler[];
   channelsSpec: ChannelApiResponse["channels"];
   httpChannelsConfig: NotificationChannel[];
-  isAdmin: boolean;
   userCanAccessSettings: boolean;
   onAddChannel: (channel: ChannelToAddOption) => void;
 };
@@ -34,7 +33,6 @@ export const NotificationChannelsAddMenu = ({
   notificationHandlers,
   channelsSpec,
   httpChannelsConfig,
-  isAdmin,
   userCanAccessSettings,
   onAddChannel,
 }: NotificationChannelsAddMenuProps) => {
@@ -74,8 +72,8 @@ export const NotificationChannelsAddMenu = ({
     return null;
   }
 
-  if (!hasChannelsToAdd) {
-    return isAdmin ? <ManageDestinationsButton /> : null;
+  if (userCanAccessSettings && !hasChannelsToAdd) {
+    return <ManageDestinationsButton />;
   }
 
   return (
@@ -123,7 +121,7 @@ export const NotificationChannelsAddMenu = ({
           </>
         )}
 
-        {isAdmin && (
+        {userCanAccessSettings && (
           <Button
             variant="subtle"
             size="xs"
