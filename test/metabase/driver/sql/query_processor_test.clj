@@ -14,7 +14,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -315,7 +315,7 @@
       (is (= {:select    '[c.NAME AS c__NAME]
               :from      '[VENUES]
               :left-join '[CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]
-              :limit     [qp.i/absolute-max-results]}
+              :limit     [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields [&c.categories.name]
                     :joins  [{:fields       [&c.categories.name]
@@ -331,7 +331,7 @@
               :from   '[{:select    [c.NAME AS c__NAME]
                          :from      [VENUES]
                          :left-join [CATEGORIES AS c ON VENUES.CATEGORY_ID = c.ID]} AS source]
-              :limit  [qp.i/absolute-max-results]}
+              :limit  [limit/absolute-max-results]}
              (-> (lib.tu.macros/mbql-query venues
                    {:fields       [&c.categories.name]
                     :source-query {:source-table $$venues

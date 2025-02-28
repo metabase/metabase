@@ -29,18 +29,18 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, saveToCollectionId } = options;
+  const { details, question, onCreate, saveToCollection } = options;
 
   if (details.saveType !== "create") {
     return;
   }
 
-  // `saveToCollectionId` is used to override the target collection of the question,
+  // `saveToCollection` is used to override the target collection of the question,
   // this is mainly used for the embedding SDK.
   const collectionId = canonicalCollectionId(
-    isNullOrUndefined(saveToCollectionId)
+    isNullOrUndefined(saveToCollection)
       ? details.collection_id
-      : saveToCollectionId,
+      : saveToCollection,
   );
   const dashboardId = details.dashboard_id;
 
@@ -63,7 +63,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
     question,
     onSave,
     onCreate,
-    saveToCollectionId,
+    saveToCollection,
   } = options;
 
   if (details.saveType === "overwrite" && originalQuestion) {
@@ -77,7 +77,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       question,
       details,
       onCreate,
-      saveToCollectionId,
+      saveToCollection,
     });
   }
 }
@@ -89,6 +89,7 @@ export const getInitialValues = (
   initialDashboardId: FormValues["dashboard_id"],
   initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
+  const isNewQuestion = originalQuestion && question.card().type === "question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
@@ -102,7 +103,9 @@ export const getInitialValues = (
       : question.dashboardId();
 
   const collectionId =
-    question.collectionId() === undefined || isReadonly
+    question.collectionId() === undefined ||
+    isReadonly ||
+    (isNewQuestion && question.collectionId() === undefined)
       ? initialCollectionId
       : question.collectionId();
 

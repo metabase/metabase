@@ -286,22 +286,24 @@
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
-  (if throttling-disabled?
-    (google/do-google-auth request)
+  (letfn [(do-login []
+            (let [user (google/do-google-auth request)
+                  {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
+                  response {:id (str session-uuid)}
+                  user (t2/select-one [:model/User :id :is_active], :email (:email user))]
+              (if (and user (:is_active user))
+                (request/set-session-cookies request
+                                             response
+                                             session
+                                             (t/zoned-date-time (t/zone-id "GMT")))
+                (throw (ex-info (str disabled-account-message)
+                                {:status-code 401
+                                 :errors      {:account disabled-account-snippet}})))))]
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-        (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
-              response {:id (str session-uuid)}
-              user (t2/select-one [:model/User :id :is_active], :email (:email user))]
-          (if (and user (:is_active user))
-            (request/set-session-cookies request
-                                         response
-                                         session
-                                         (t/zoned-date-time (t/zone-id "GMT")))
-            (throw (ex-info (str disabled-account-message)
-                            {:status-code 401
-                             :errors      {:account disabled-account-snippet}}))))))))
+      (if throttling-disabled?
+        (do-login)
+        (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
+          (do-login))))))
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

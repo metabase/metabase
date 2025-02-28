@@ -2038,3 +2038,47 @@
            :status :invalid-format,
            :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))
+
+;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
+
+(defn- png? [s]
+  (= [\P \N \G] (drop 1 (take 4 s))))
+
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
+(deftest card-tile-query-test
+  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
+                                                :enable_embedding true}]
+        (let [token (card-token card-id)]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1/%d/%d"
+                                                 token
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))
+
+(deftest dashcard-tile-query-test
+  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
+        (let [token (dash-token dashboard-id)]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+                                                 token
+                                                 dashcard-id
+                                                 card-id
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))

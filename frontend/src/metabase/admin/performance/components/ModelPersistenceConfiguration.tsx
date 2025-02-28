@@ -178,7 +178,8 @@ export const ModelPersistenceConfiguration = () => {
           />
         </DelayedLoadingAndErrorWrapper>
       </Box>
-      {modelPersistenceEnabled && (
+      {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
+      {modelPersistenceEnabled && modelCachingSchedule && (
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}

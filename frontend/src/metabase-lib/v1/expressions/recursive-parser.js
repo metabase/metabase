@@ -270,7 +270,7 @@ export const adjustOptions = tree =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length === clause.args.length + 1 || clause.multiple) {
+          if (operands.length > clause.args.length) {
             // the last one holds the function options
             const options = operands[operands.length - 1];
 
