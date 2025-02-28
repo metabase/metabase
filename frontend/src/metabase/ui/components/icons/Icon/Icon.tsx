@@ -41,11 +41,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   );
 
   return tooltip ? (
-    <Tooltip
-      style={{ whiteSpace: "unset" }}
-      label={tooltip}
-      data-testid="wrapped-tooltip"
-    >
+    <Tooltip label={tooltip} data-testid="icon-tooltip">
       {icon}
     </Tooltip>
   ) : (
