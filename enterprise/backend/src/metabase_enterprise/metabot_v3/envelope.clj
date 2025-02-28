@@ -75,7 +75,7 @@
   (update e :round-trips-remaining (fn [v]
                                      (u/prog1 (dec v)
                                        (when (neg? <>)
-                                         (let [msg (i18n/tru "I can't answer your question.")]
+                                         (let [msg (i18n/tru "I cannot answer your question.")]
                                            (throw (ex-info "Error: too many round trips."
                                                            {:envelope e
                                                             :assistant-message msg}))))))))
