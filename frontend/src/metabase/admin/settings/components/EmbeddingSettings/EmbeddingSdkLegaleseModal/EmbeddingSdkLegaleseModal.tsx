@@ -41,7 +41,7 @@ export const EmbeddingSdkLegaleseModal = ({
       closeOnClickOutside={false}
     >
       <Text mt="xs">
-        {t`When using the Embedded analytics SDK, each end user should have their own Metabase account.`}
+        {t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`}
       </Text>
       <List mt="xs">
         <List.Item>
