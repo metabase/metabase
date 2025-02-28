@@ -1730,7 +1730,7 @@ describe("issue 54353", () => {
 
     cy.findByLabelText("Date").click();
 
-    cy.realPress("{esc}");
+    cy.realPress("Escape");
 
     cy.log("make sure popover is not open");
     cy.findByRole("dialog").should("not.exist");
