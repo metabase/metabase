@@ -136,8 +136,8 @@
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
 
-(deftest init-send-pulse-triggers!-group-runs-test
-  (testing "a SendJob trigger will send pulse to channels that have the same schedueld time"
+(deftest init-dashboard-subscription-triggers!-group-runs-test
+  (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-temp
         [:model/Dashboard    {dash-id :id} {}
@@ -196,7 +196,7 @@
           (testing "sanity check that there are no triggers"
             (is (empty? (all-send-pulse-triggers))))
           (testing "init-send-pulse-triggers! should create triggers for each pulse-channel"
-            (#'task.send-pulses/init-send-pulse-triggers!)
+            (#'task.send-pulses/init-dashboard-subscription-triggers!)
             (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
                       ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
                       ;; different schedule
@@ -320,7 +320,7 @@
           (testing "sanity check that it has triggers to begin with"
             (is (not-empty pulse-triggers)))
           (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
-            (#'task.send-pulses/init-send-pulse-triggers!)
+            (#'task.send-pulses/init-dashboard-subscription-triggers!)
             (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
 
 (deftest init-send-pulse-triggers-skip-alert-test
@@ -338,5 +338,5 @@
           (testing "sanity check that it has triggers to begin with"
             (is (not-empty pulse-triggers)))
           (testing "init send pulse triggers skip alerts"
-            (#'task.send-pulses/init-send-pulse-triggers!)
+            (#'task.send-pulses/init-dashboard-subscription-triggers!)
             (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
