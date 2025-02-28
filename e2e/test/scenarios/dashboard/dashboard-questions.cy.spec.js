@@ -935,7 +935,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
 
       H.newButton("SQL query").click();
-      H.NativeEditor.type("SELECT 123;");
+      H.focusNativeEditor().type("SELECT 123;");
 
       H.queryBuilderHeader().button("Save").click();
 
