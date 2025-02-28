@@ -901,42 +901,31 @@ describe("issue 17547", () => {
     display: "area",
   };
 
-  function setUpAlert(questionId) {
-    cy.request("POST", "/api/alert", {
-      channels: [
-        {
-          schedule_type: "daily",
-          schedule_hour: 12,
-          channel_type: "slack",
-          schedule_frame: null,
-          recipients: [],
-          details: { channel: "#work" },
-          pulse_id: 1,
-          id: 1,
-          schedule_day: null,
-          enabled: true,
-        },
-      ],
-      alert_condition: "rows",
-      name: null,
-      creator_id: ADMIN_USER_ID,
-      card: { id: questionId, include_csv: true, include_xls: false },
-      alert_first_only: false,
-      skip_if_empty: true,
-      parameters: [],
-      dashboard_id: null,
-    }).then(({ body: { id: alertId } }) => {
-      cy.intercept("PUT", `/api/alert/${alertId}`).as("alertQuery");
-    });
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.mockSlackConfigured();
 
     H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
-      setUpAlert(questionId);
+      H.createQuestionAlert({
+        user_id: ADMIN_USER_ID,
+        card_id: questionId,
+        handlers: [
+          {
+            channel_type: "channel/slack",
+            recipients: [
+              {
+                type: "notification-recipient/raw-value",
+                details: {
+                  value: "#work",
+                },
+              },
+            ],
+          },
+        ],
+      }).then(({ body: { id: alertId } }) => {
+        cy.intercept("PUT", `/api/notification/${alertId}`).as("alertQuery");
+      });
 
       H.visitQuestion(questionId);
     });
@@ -944,21 +933,20 @@ describe("issue 17547", () => {
 
   it("editing an alert should not delete it (metabase#17547)", () => {
     H.openSharingMenu("Edit alerts");
-    H.popover().within(() => {
-      cy.findByText("Daily, 12:00 PM");
-      cy.findByText("Edit").click();
-    });
+    H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("AM").click();
-    cy.button("Save changes").click();
+    H.modal().within(() => {
+      cy.findByText("PM").click();
+      cy.button("Save changes").click();
+    });
 
     cy.wait("@alertQuery");
 
-    H.openSharingMenu("Edit alerts");
-    H.popover().within(() => {
-      cy.findByText("Daily, 12:00 AM");
-    });
+    cy.findByTestId("toast-undo")
+      .findByText("Your alert was updated.")
+      .should("be.visible");
+
+    H.modal().findByText("Check daily at 9:00 PM");
   });
 });
 

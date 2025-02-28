@@ -131,8 +131,10 @@ describe("issue 33327", () => {
     getRunQueryButton().click();
     cy.wait("@dataset");
 
-    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
-    cy.findByTestId("scalar-value").should("not.exist");
+    cy.findByTestId("visualization-root").within(() => {
+      cy.icon("warning").should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
+    });
 
     H.NativeEditor.get().should("contain", "SELECT --1");
     H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
@@ -304,5 +306,67 @@ describe("issue 53171", () => {
         expect(icon.outerWidth()).to.equal(size);
         expect(icon.outerHeight()).to.equal(size);
       });
+  }
+});
+
+describe("issue 54124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: "Reference Question",
+        query: { "source-table": ORDERS_ID },
+      },
+      {
+        idAlias: "questionId",
+        wrapId: true,
+      },
+    );
+  });
+
+  it("should be possible to close the data reference sidebar (metabase#54124)", () => {
+    H.startNewNativeQuestion();
+
+    cy.get("@questionId").then(questionId => {
+      H.NativeEditor.type(
+        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
+      );
+    });
+
+    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.findByTestId("sidebar-content").should("not.exist");
+
+    cy.log("moving cursor should open the reference sidebar again");
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+    cy.findByTestId("sidebar-content").should("be.visible");
+  });
+});
+
+describe("issue 52811", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("popovers should close when clicking outside (metabase#52811)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{x");
+    cy.findByLabelText("Variable type").click();
+
+    H.popover().findByText("Field Filter").click();
+    clickAway();
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.findByTestId("sidebar-content").findByText("Select...").click();
+    cy.findByLabelText("Variable type").click();
+    H.popover()
+      .should("have.length", 1)
+      .and("contain.text", "Field Filter")
+      .and("not.contain.text", "Sample Database");
+  });
+
+  function clickAway() {
+    cy.get("body").click(0, 0);
   }
 });

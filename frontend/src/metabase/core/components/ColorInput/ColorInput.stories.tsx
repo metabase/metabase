@@ -4,7 +4,7 @@ import type { StoryFn } from "@storybook/react";
 import ColorInput from "./ColorInput";
 
 export default {
-  title: "Core/ColorInput",
+  title: "Components/ColorInput",
   component: ColorInput,
 };
 

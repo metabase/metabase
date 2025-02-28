@@ -164,6 +164,17 @@ describe("getXValues", () => {
     const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
     expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
   });
+
+  it("should exclude values that cannot be parsed according to the column type", () => {
+    const xValues = getXValuesForRows(
+      [[["2019-01-02"], ["abc"], ["2019-01-03"]]],
+      {
+        "graph.x_axis.scale": "timeseries",
+      },
+    );
+    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
+    expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
+  });
 });
 
 describe("parseXValue", () => {

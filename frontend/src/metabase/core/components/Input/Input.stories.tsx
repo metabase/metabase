@@ -4,7 +4,7 @@ import { useState } from "react";
 import Input, { type InputProps } from "./Input";
 
 export default {
-  title: "Core/Input",
+  title: "Deprecated/Components/Input",
   component: Input,
 };
 

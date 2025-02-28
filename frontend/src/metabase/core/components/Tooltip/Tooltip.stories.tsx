@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import Tooltip from "./Tooltip";
 
 export default {
-  title: "Core/Tooltip",
+  title: "Deprecated/Components/Tooltip",
   component: Tooltip,
 };
 

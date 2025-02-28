@@ -9,6 +9,7 @@ import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Table from "metabase/visualizations/visualizations/Table";
+import type { Series } from "metabase-types/api";
 
 import RAW_SERIES from "./stories-data/table-simple-orders-with-people.json";
 
@@ -22,7 +23,7 @@ export default {
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
     <Box h={500}>
-      <Visualization rawSeries={RAW_SERIES} isDashboard />,
+      <Visualization rawSeries={RAW_SERIES as unknown as Series} isDashboard />,
     </Box>
   </VisualizationWrapper>
 );
@@ -49,7 +50,11 @@ export const EmbeddingTheme: StoryFn = () => {
   return (
     <SdkVisualizationWrapper theme={theme}>
       <Box h={500}>
-        <Visualization rawSeries={RAW_SERIES} isDashboard />,
+        <Visualization
+          rawSeries={RAW_SERIES as unknown as Series}
+          isDashboard
+        />
+        ,
       </Box>
     </SdkVisualizationWrapper>
   );

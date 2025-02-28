@@ -17,7 +17,7 @@ import { ScalarChart } from "./ScalarChart";
 import { data } from "./stories-data";
 
 export default {
-  title: "static-viz/ScalarChart",
+  title: "Viz/Static Viz/ScalarChart",
   component: ScalarChart,
 };
 

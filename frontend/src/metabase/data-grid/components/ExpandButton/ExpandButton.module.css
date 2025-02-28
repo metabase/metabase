@@ -1,0 +1,26 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0.25rem;
+  margin-left: auto;
+}
+
+.button {
+  border: 1px solid color-mix(in srgb, var(--mb-color-brand) 30%, white);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--mb-color-brand);
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button:hover {
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-brand);
+}

@@ -262,7 +262,14 @@
               action-kind     (:kind action)
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
-                                (map (fn [param] (merge param (get saved-params (:id param)))))
+                                (map (fn [param]
+                                       (let [saved-param  (saved-params (:id param))
+                                             ;; we ignore the saved type, to allow schema changes (type changes) to be
+                                             ;; reflected in the field presentation
+                                             ;; this also fixes #39101 and avoids us making awkward changes to
+                                             ;; :parameter transforms for QueryActions.
+                                             saved-param' (dissoc saved-param :type)]
+                                         (merge param saved-param'))))
 
                                 (= "row/delete" action-kind)
                                 (filter ::pk?)

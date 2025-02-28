@@ -86,7 +86,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       fontFamily,
       isEditing,
       onVisualizationClick,
-    }: VisualizationProps,
+    },
     ref,
   ) {
     const [viewPortWidth, setViewPortWidth] = useState(width);
