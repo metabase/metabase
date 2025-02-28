@@ -16,6 +16,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models :refer [Database]]
    [metabase.models.table :as table]
+   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -595,6 +596,8 @@
         result-promise (promise)
         request (build-bigquery-request sql parameters)
         query-future (future
+                       ;; ensure the classloader is available within the future.
+                       (classloader/the-classloader)
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]

@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { ACCENT_COUNT, color } from "./palette";
-import type { AccentColorOptions, ColorPalette } from "./types";
+import type { AccentColorOptions, ColorName, ColorPalette } from "./types";
 
 export const getAccentColors = (
   {
@@ -12,7 +12,7 @@ export const getAccentColors = (
     gray = true,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
-) => {
+): ColorName[] => {
   const ranges = [];
   main && ranges.push(getMainAccentColors(palette, gray));
   light && ranges.push(getLightAccentColors(palette, gray));
@@ -55,7 +55,7 @@ export const getDarkAccentColors = (
   );
 };
 
-export const getStatusColorRanges = () => {
+export const getStatusColorRanges = (): string[][] => {
   return [
     [color("error"), color("bg-white"), color("success")],
     [color("error"), color("warning"), color("success")],

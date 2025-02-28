@@ -14,7 +14,9 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
   it("should display the correct title and badges", () => {
     setup();
 
-    expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+    expect(
+      screen.getByText("Embedded analytics SDK for React"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });

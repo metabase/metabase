@@ -23,11 +23,7 @@ import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 import { ChartSettingRadio } from "../ChartSettingRadio";
 import { ChartSettingToggle } from "../ChartSettingToggle";
 
-import {
-  COLORS,
-  COLOR_RANGES,
-  DEFAULTS_BY_TYPE,
-} from "../ChartSettingsTableFormatting";
+import { COLORS, COLOR_RANGES, DEFAULTS_BY_TYPE } from "./constants";
 import { getOperatorsForColumns } from "./get-operators-for-columns";
 
 interface RuleEditorProps {
@@ -87,10 +83,9 @@ export const RuleEditor = ({
     <div>
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <MultiSelect
-        comboboxProps={{ withinPortal: false }}
         value={rule.columns}
         onChange={handleColumnChange}
-        defaultDropdownOpened={rule.columns.length === 0}
+        initiallyOpened={rule.columns.length === 0}
         placeholder={t`Choose a column`}
         data={cols.map(col => ({
           value: col.name,
@@ -125,10 +120,12 @@ export const RuleEditor = ({
               selectedColumns.length,
             )}
           </h3>
-          <Select<ColumnFormattingOperator>
+          <Select
             comboboxProps={{ withinPortal: false }}
             value={rule.operator}
-            onChange={operator => onChange({ ...rule, operator })}
+            onChange={(operator: ColumnFormattingOperator) =>
+              onChange({ ...rule, operator })
+            }
             data={_.pairs(operators).map(([value, label]) => ({
               value,
               label,
