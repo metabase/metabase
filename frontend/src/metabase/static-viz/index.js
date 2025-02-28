@@ -48,17 +48,17 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
   });
 }
 
-function getVisualizerRawSeries(cards, dashcardSettings) {
+function getVisualizerRawSeries(rawSeries, dashcardSettings) {
   const { columns, columnValuesMapping } = dashcardSettings.visualization;
-  const datasets = cards.reduce((acc, card) => {
-    if (card.card.id) {
-      acc[`card:${card.card.id}`] = card;
+  const datasets = rawSeries.reduce((acc, series) => {
+    if (series.card.id) {
+      acc[`card:${series.card.id}`] = series;
     }
     return acc;
   }, {});
 
-  const dataSources = cards.map(card =>
-    createDataSource("card", card.card.id, card.card.name),
+  const dataSources = rawSeries.map(series =>
+    createDataSource("card", series.card.id, series.card.name),
   );
 
   const mergedData = mergeVisualizerData({
@@ -76,7 +76,6 @@ function getVisualizerRawSeries(cards, dashcardSettings) {
         visualization_settings: settings,
       },
       data: mergedData,
-      started_at: new Date().toISOString(),
     },
   ];
 }
