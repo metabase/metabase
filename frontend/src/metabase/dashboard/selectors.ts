@@ -83,7 +83,7 @@ export const getDashcardDataMap = (state: State) =>
 export const getDashcardData = createSelector(
   [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
   (dashcardDataMap, dashcardId) => {
-    return dashcardDataMap[dashcardId];
+    return dashcardDataMap[dashcardId] ?? {};
   },
 );
 
