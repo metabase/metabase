@@ -10,24 +10,27 @@ const DEFAULT_PORT = 4000;
 const getHost = (port = null) =>
   `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
-const getSampleAppE2eConfig = async suite => {
-  const { appName, subAppName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
-  const { CLIENT_PORT } = env;
+const getSampleAppE2eConfig = suite => ({
+  [suite]: async () => {
+    const { appName, subAppName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
+    const { CLIENT_PORT } = env;
 
-  const defaultConfig = {
-    browser: "chrome",
-    project: ["e2e/tmp", appName, subAppName].join("/"),
-    configFile: "e2e/support/cypress.config.js",
-    config: {
-      baseUrl: getHost(CLIENT_PORT),
-    },
-    testingType: "e2e",
-    openMode: args["--open"] || process.env.OPEN_UI === "true",
-  };
+    const defaultConfig = {
+      browser: "chrome",
+      project: ["e2e/tmp", appName, subAppName].join("/"),
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost(CLIENT_PORT),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
 
-  const userArgs = await parseArguments(args);
-  return Object.assign({}, defaultConfig, userArgs);
-};
+    const userArgs = await parseArguments(args);
+
+    return Object.assign({}, defaultConfig, userArgs);
+  },
+});
 
 // This is a map of all possible Cypress configurations we can run.
 const configs = {
@@ -46,13 +49,14 @@ const configs = {
     const finalConfig = Object.assign({}, defaultConfig, userArgs);
     return finalConfig;
   },
-  "metabase-nodejs-react-sdk-embedding-sample-e2e": ({ suite }) =>
-    getSampleAppE2eConfig(suite),
-  "metabase-nextjs-sdk-embedding-sample-app-router-e2e": ({ suite }) =>
-    getSampleAppE2eConfig(suite),
-  "metabase-nextjs-sdk-embedding-sample-pages-router-e2e": ({ suite }) =>
-    getSampleAppE2eConfig(suite),
-  "shoppy-e2e": ({ suite }) => getSampleAppE2eConfig(suite),
+  ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
+  ...getSampleAppE2eConfig(
+    "metabase-nextjs-sdk-embedding-sample-app-router-e2e",
+  ),
+  ...getSampleAppE2eConfig(
+    "metabase-nextjs-sdk-embedding-sample-pages-router-e2e",
+  ),
+  ...getSampleAppE2eConfig("shoppy-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.
@@ -100,7 +104,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     await exitFunction(FAILURE_EXIT_CODE);
   }
 
-  const config = await configs[suite]({ suite });
+  const config = await configs[suite]();
 
   try {
     const { status, message, totalFailed, failures } = config.openMode
