@@ -246,8 +246,8 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.58.5"}                    ; ui for inspecting values
     dev.weavejester/hashp        {:mvn/version "0.3.0"}                     ; debugging/spying utility
+    djblue/portal                {:mvn/version "0.58.5"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:mvn/version "1.0.7"}
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
