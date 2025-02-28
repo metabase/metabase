@@ -21,6 +21,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
@@ -587,3 +588,32 @@
             (is (= [[2M "2024-11-06T13:13:13Z"]]
                    (mt/rows
                     (qp/process-query query-with-params))))))))))
+
+(deftest inline-local-date-time-test
+  (mt/test-driver
+    :oracle
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                    (lib/aggregate (lib/count)))
+          date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
+      (doseq [[x y] (partition-all 2 ["1970-01-01 00:00:00"
+                                      "to_date('1970-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
+
+                                      "1970-01-01 10:09:08"
+                                      "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
+
+                                      "1970-01-01 10:09:08.000"
+                                      "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
+
+                                      "1970-01-01 10:09:08.001"
+                                      "timestamp '1970-01-01 10:09:08.001'"
+
+                                      ;; Oracle can't resolve less than milliseconds, so cast to date since we don't lose anything
+                                      "1970-01-01 10:09:08.0001"
+                                      "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"])]
+        (testing (format "`%s` should use `%s`" x y)
+          (is (= y (sql.qp/inline-value :oracle (u.date/parse x))))
+          (let [query (-> query (lib/filter (lib/> date-field x)))
+                results (qp/process-query query)]
+            (is (str/includes? (get-in results [:data :native_form]) y))
+            (is (= [[1000]] (mt/formatted-rows [int] results)))))))))
