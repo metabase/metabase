@@ -1,4 +1,4 @@
-const BRANCH_NAME = "docker-e2e-testing";
+const BRANCH_NAME = "main";
 
 const BASE_ENV = {
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
