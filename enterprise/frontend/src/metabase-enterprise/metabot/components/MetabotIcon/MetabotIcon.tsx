@@ -4,7 +4,7 @@ import Styles from "./MetabotIcon.module.css";
 
 const COLORS = {
   brand: "var(--mb-color-brand)",
-  brandLighter: "color-brand-lighter",
+  brandLighter: "var(--mb-color-brand-lighter)",
   focus: "var(--mb-color-focus)",
   summarize: "var(--mb-color-summarize)",
 };
