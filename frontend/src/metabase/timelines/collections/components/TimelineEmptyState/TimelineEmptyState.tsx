@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
 import Link from "metabase/core/components/Link";
@@ -40,8 +40,10 @@ const TimelineEmptyState = ({
         >{t`Add context to your time series charts`}</Title>
         <Text fz="md">
           {canWrite
-            ? t`Add events to ${applicationName} to show important milestones, launches, or anything else, right alongside your data.`
-            : t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
+            ? c("{0} is the application name")
+                .t`Add events to ${applicationName} to show important milestones, launches, or anything else, right alongside your data.`
+            : c("{0} is the application name")
+                .t`Events in ${applicationName} let you see important milestones, launches, or anything else, right alongside your data.`}
         </Text>
       </Box>
       {canWrite && (
