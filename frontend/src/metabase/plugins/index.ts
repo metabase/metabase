@@ -566,10 +566,10 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 
 export const PLUGIN_DATA_EDITING = {
   isEnabled: () => false,
-  PAGE_COMPONENT: (_props: {
+  PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
     params: {
       dbId: string;
       tableName: string;
     };
-  }): React.JSX.Element | null => null,
+  }>,
 };
