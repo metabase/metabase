@@ -343,13 +343,13 @@ describe("issue 54124", () => {
   });
 });
 
-describe("issue 52811", () => {
+describe("issues 52811, 52812", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it("popovers should close when clicking outside (metabase#52811)", () => {
+  it("popovers should close when clicking outside (metabase#52811, metabase#52812)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("{{x");
     cy.findByLabelText("Variable type").click();
@@ -357,6 +357,14 @@ describe("issue 52811", () => {
     H.popover().findByText("Field Filter").click();
     clickAway();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log(
+      "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
+    );
+    H.rightSidebar()
+      .findByText("Default filter widget value")
+      .should("not.exist");
+    cy.findByLabelText("Always require a value").should("not.exist");
 
     cy.findByTestId("sidebar-content").findByText("Select...").click();
     cy.findByLabelText("Variable type").click();
