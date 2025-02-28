@@ -220,6 +220,11 @@
        (:entity-id entity)
        (u/generate-nano-id (identity-hash entity increment)))))
 
+(defn add-entity-id
+  "Given an entity with a (possibly empty) `:entity_id` field, add an entity-id (using backfill-entity-id) if it is missing."
+  [entity]
+  (assoc entity :entity_id (backfill-entity-id entity)))
+
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
   [s]
