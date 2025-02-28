@@ -83,10 +83,9 @@ export const RuleEditor = ({
     <div>
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
       <MultiSelect
-        comboboxProps={{ withinPortal: false }}
         value={rule.columns}
         onChange={handleColumnChange}
-        defaultDropdownOpened={rule.columns.length === 0}
+        initiallyOpened={rule.columns.length === 0}
         placeholder={t`Choose a column`}
         data={cols.map(col => ({
           value: col.name,
@@ -121,10 +120,11 @@ export const RuleEditor = ({
               selectedColumns.length,
             )}
           </h3>
-          <Select<ColumnFormattingOperator>
-            comboboxProps={{ withinPortal: false }}
+          <Select
             value={rule.operator}
-            onChange={operator => onChange({ ...rule, operator })}
+            onChange={(operator: ColumnFormattingOperator) =>
+              onChange({ ...rule, operator })
+            }
             data={_.pairs(operators).map(([value, label]) => ({
               value,
               label,
