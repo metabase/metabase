@@ -746,7 +746,7 @@
               "Wrong prefix or suffix value.")
       {$regexMatch {"input" (if (= :type/UUID base-type)
                               ;; TODO: Update this to use $toString once all supported
-                              ;; Mongo versions have $toString available.
+                              ;; Mongo versions have $toString available (>= 8.0)
                               {"$function" {"body" "function(uuid) { return uuid.toString().substring(6, 42) }",
                                             "args" [(->rvalue field)],
                                             "lang" "js"}}
