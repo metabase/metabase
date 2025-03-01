@@ -121,7 +121,6 @@ export const RuleEditor = ({
             )}
           </h3>
           <Select
-            comboboxProps={{ withinPortal: false }}
             value={rule.operator}
             onChange={(operator: ColumnFormattingOperator) =>
               onChange({ ...rule, operator })
