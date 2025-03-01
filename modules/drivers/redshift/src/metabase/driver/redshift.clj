@@ -292,6 +292,10 @@
                    y))
                nil)))
 
+(defmethod sql.qp/->honeysql [:redshift :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
 
