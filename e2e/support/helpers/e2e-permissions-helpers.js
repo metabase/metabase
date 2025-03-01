@@ -167,6 +167,7 @@ export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
 }
 
 export function saveChangesToPermissions() {
+  cy.intercept("PUT", "/api/permissions/graph").as("updatePermissions");
   cy.log("Save changes to permissions");
 
   cy.findByTestId("edit-bar")
@@ -178,4 +179,5 @@ export function saveChangesToPermissions() {
     cy.findByText("Are you sure you want to do this?");
     cy.button("Yes").click();
   });
+  cy.wait("@updatePermissions");
 }
