@@ -484,7 +484,8 @@
     ;; reference. `:lib/expression-name` is only set for expression references, so if it's set, we have to generate an
     ;; expression ref, otherwise we generate a normal field ref.
     (:source/fields :source/breakouts)
-    (if (:lib/expression-name metadata)
+    (if (and (:lib/expression-name metadata)
+             (:fingerprint metadata))
       (lib.expression/column-metadata->expression-ref metadata)
       (column-metadata->field-ref metadata))
 
