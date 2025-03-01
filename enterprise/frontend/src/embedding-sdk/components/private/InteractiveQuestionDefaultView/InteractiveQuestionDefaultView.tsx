@@ -147,10 +147,13 @@ export const InteractiveQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <InteractiveQuestion.EditorButton
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
+            <Group>
+              <InteractiveQuestion.EditorButton
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+              <InteractiveQuestion.DownloadWidgetDropdown />
+            </Group>
           </Group>
         </Stack>
       )}
