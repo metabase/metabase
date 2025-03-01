@@ -304,7 +304,7 @@
           metabase.models.moderation-review
           metabase.models.native-query-snippet
           metabase.models.native-query-snippet.permissions
-          metabase.models.notification
+          metabase.notification.models
           metabase.models.params
           metabase.models.params.chain-filter
           metabase.models.params.custom-values

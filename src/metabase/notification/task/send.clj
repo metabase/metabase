@@ -1,4 +1,4 @@
-(ns metabase.task.notification
+(ns metabase.notification.task.send
   (:require
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
