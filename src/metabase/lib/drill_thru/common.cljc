@@ -1,9 +1,15 @@
 (ns metabase.lib.drill-thru.common
   (:require
+   [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli :as mu]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -59,3 +65,37 @@
   (when (lib.underlying/strictly-underlying-aggregation? query column)
     (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
                         row))))
+
+(mu/defn- possible-model-mapped-breakout-column? :- :boolean
+  [query  :- ::lib.schema/query
+   column :- ::lib.schema.metadata/column]
+  (let [breakout-sourced? (= :source/breakouts (:lib/source column))
+        model-sourced? (lib.card/source-card-is-model? query)
+        has-id? (:id column)]
+    (and breakout-sourced? model-sourced? has-id?)))
+
+(mu/defn breakout->resolved-column :- ::lib.schema.metadata/column
+  "Given a breakout sourced column, return the resolved metadata for the column in this stage."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  ;; TODO: This is a hack to workaround field refs confusion that should be fixed by the field refs overhaul. Remove
+  ;; this function and possible-model-mapped-breakout-column?, above, once the field refs overhaul lands.
+  ;;
+  ;; If a breakout-sourced column comes from a model based on a native query that renames the column with an "AS"
+  ;; alias, AND where the column has been mapped to a real DB field, then we can't use the breakout column directly
+  ;; and must instead lookup the equivalent "resolved" column metadata. This results in a (hopefully) equivalent
+  ;; column where the :lib/source is no longer :source/breakouts, but rather :source/card, which allows
+  ;; column-metadata->field-ref to recognize that it needs to generate a named-based ref. This is required because an
+  ;; id-based ref will wind up generating SQL that matches the underlying mapped column's name, not the name of the
+  ;; column from the model's native query (which was renamed via "AS").
+  ;;
+  ;; https://github.com/metabase/metabase/issues/53556
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1739904084459979
+  (if-not (possible-model-mapped-breakout-column? query column)
+    column
+    (let [resolved-column  (lib.metadata.calculation/metadata query stage-number (lib.ref/ref column))
+          underlying-unit  (::lib.underlying/temporal-unit column)
+          matching-column  (some-> resolved-column
+                                   (m/assoc-some ::lib.underlying/temporal-unit underlying-unit))]
+      (or matching-column column))))
