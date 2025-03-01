@@ -121,12 +121,12 @@ Your `.env` will look something like:
 
 ```txt
 # FRONTEND
-PORT=3100
+CLIENT_PORT=3100
 VITE_METABASE_INSTANCE_URL="http://localhost:3000"
 VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
-BACKEND_PORT=9090
+AUTH_PROVIDER_PORT=9090
 METABASE_INSTANCE_URL="http://localhost:3000"
 METABASE_JWT_SHARED_SECRET="TODO"
 ```
