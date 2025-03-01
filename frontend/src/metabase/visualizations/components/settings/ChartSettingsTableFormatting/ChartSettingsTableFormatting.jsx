@@ -34,10 +34,10 @@ import {
 } from "./get-operators-for-columns";
 
 // TODO
-const COLORS = getAccentColors({ dark: false });
-const COLOR_RANGES = getStatusColorRanges();
+export const COLORS = getAccentColors({ dark: false });
+export const COLOR_RANGES = getStatusColorRanges();
 
-const DEFAULTS_BY_TYPE = {
+export const DEFAULTS_BY_TYPE = {
   single: {
     columns: [],
     type: "single",
