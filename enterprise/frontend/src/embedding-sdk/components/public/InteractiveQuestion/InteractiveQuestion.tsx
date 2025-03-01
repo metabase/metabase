@@ -7,6 +7,8 @@ import {
   BreakoutDropdown,
   ChartTypeDropdown,
   ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
   Editor,
   EditorButton,
   Filter,
@@ -119,6 +121,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -143,5 +147,6 @@ InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-
+InteractiveQuestion.DownloadWidget = DownloadWidget;
+InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
 export { InteractiveQuestion };
