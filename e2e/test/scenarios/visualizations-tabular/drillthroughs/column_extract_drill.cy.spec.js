@@ -254,6 +254,7 @@ H.describeWithSnowplow("extract action", () => {
     EMAIL_CASES.forEach(({ option, value, example }) => {
       it(option, () => {
         H.openPeopleTable({ limit: 1 });
+        // cy.pause();
         extractColumnAndCheck({
           column: "Email",
           option,
@@ -303,7 +304,7 @@ function extractColumnAndCheck({
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   H.tableHeaderClick(column);
-  // cy.findByRole("columnheader", { name: column }).click();
+
   H.popover().findByText(extraction).click();
   cy.wait(1);
 

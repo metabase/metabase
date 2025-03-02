@@ -19,7 +19,9 @@ import { useForceUpdate } from "metabase/hooks/use-force-update";
 
 import S from "./DataGrid.module.css";
 
-export type DataGridProps<TData> = DataGridInstance<TData>;
+export type DataGridProps<TData> = DataGridInstance<TData> & {
+  emptyState?: React.ReactNode;
+};
 
 export const DataGrid = function DataGrid<TData>({
   table,
@@ -27,6 +29,7 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  emptyState,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -79,12 +82,15 @@ export const DataGrid = function DataGrid<TData>({
     [hasAddColumnButton, isAddColumnButtonSticky, onAddColumnClick],
   );
 
+  const isEmpty = table.getRowModel().rows.length === 0;
+
   return (
     <DndContext {...dndContextProps}>
       <div className={S.table} data-testid="table-root">
         <div
           data-testid="table-scroll-container"
           className={S.tableGrid}
+          role="grid"
           ref={gridRef}
           style={{
             paddingRight: isAddColumnButtonSticky
@@ -141,6 +147,7 @@ export const DataGrid = function DataGrid<TData>({
               </div>
             ))}
           </div>
+          {isEmpty && emptyState}
           <div
             data-testid="table-body"
             className={S.bodyContainer}

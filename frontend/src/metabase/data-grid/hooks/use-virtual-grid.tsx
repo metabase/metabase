@@ -20,6 +20,7 @@ export interface VirtualGrid {
   virtualPaddingLeft: number | undefined;
   virtualPaddingRight: number | undefined;
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+  columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
 }
 
@@ -80,12 +81,14 @@ export const useVirtualGrid = <TData,>({
         columnVirtualizer.getTotalSize() -
         (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
     }
+
     return {
       virtualColumns,
       virtualRows,
       virtualPaddingLeft,
       virtualPaddingRight,
       rowVirtualizer,
+      columnVirtualizer,
       measureGrid,
     };
   }, [

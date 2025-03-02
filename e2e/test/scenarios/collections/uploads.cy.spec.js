@@ -380,7 +380,7 @@ function uploadFileToCollection(testFile) {
     cy.wait("@dataset");
 
     cy.url().should("include", "/model/");
-    cy.findByTestId("TableInteractive-root");
+    H.tableInteractive();
   }
 }
 
