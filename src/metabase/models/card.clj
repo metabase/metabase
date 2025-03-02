@@ -138,6 +138,19 @@
   [card]
   (= (keyword (:type card)) :model))
 
+(defn lib-query
+  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
+
+  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
+  ([{:keys [database_id dataset_query] :as card}]
+   (when dataset_query
+     (let [db-id (or database_id (:database dataset_query))
+           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
+       (lib-query mp card))))
+  ([metadata-providerable {:keys [dataset_query] :as _card}]
+   (when dataset_query
+     (lib/query metadata-providerable dataset_query))))
+
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
@@ -495,7 +508,7 @@
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info
-              (tru "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards.")
+              (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
               {:status-code 400
                :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]

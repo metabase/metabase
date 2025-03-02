@@ -139,7 +139,7 @@
   --vertical-padding: var(--mantine-spacing-xs);
 
   .cell {
-    &[data-with-spacing] {
+    &:where([data-with-spacing]) {
       padding: 0;
 
       &:not(:first-of-type) {
@@ -158,7 +158,7 @@
     }
 
     &:not(:last-of-type) .cell {
-      padding-bottom: var(--vertical-padding);
+      padding-bottom: 0;
     }
   }
 }
@@ -180,7 +180,7 @@
   }
 
   &[data-selected]:hover,
-  &:hover {
+  &:hover:not(:disabled) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
   }
@@ -198,7 +198,7 @@
   }
 
   &[data-selected]:hover,
-  &:hover {
+  &:hover:not(:disabled) {
     color: var(--mb-color-text-hover);
     background-color: var(--mb-color-background-hover);
   }
@@ -216,5 +216,21 @@
 .error {
   &::first-letter {
     text-transform: capitalize;
+  }
+}
+
+.monthsListControl {
+  color: var(--mb-color-text-primary);
+  height: 2rem;
+  width: 5rem;
+
+  &[data-selected] {
+    color: var(--mb-color-text-selected);
+  }
+
+  &:hover:not([data-selected]),
+  &:hover:not(:disabled) {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
   }
 }

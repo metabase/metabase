@@ -8,10 +8,12 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -106,6 +108,11 @@
       true                 lib.schema.util/remove-randomized-idents
       true                 walk-query-sort-maps)))
 
+(defn- ->metadata-provider [legacy-query]
+  (if (qp.store/initialized?)
+    (qp.store/metadata-provider)
+    (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))))
+
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   ^bytes [query :- [:maybe :map]]
@@ -114,10 +121,12 @@
                 ;; Expression type check supression is necessary because coerced fields in `query` may not have
                 ;; `:effective-type` populated. That's the case during call to this function in
                 ;; `process-userland-query-middleware` that occurs before normalization.
+                ;; TODO: This is an unfortunate leak of lib internals but I can't see a clean way to fix it.
                 (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                  (cond-> query
-                    (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
-                    (#{:query :native} (:type query))   lib.convert/->pMBQL))
+                  (case (:type query)
+                    ("query" "native") (lib/query (->metadata-provider query) (mbql.normalize/normalize query))
+                    (:query :native)   (lib/query (->metadata-provider query) query)
+                    query))
                 (catch Throwable e
                   (throw (ex-info "Error hashing query. Is this a valid query?"
                                   {:query query}

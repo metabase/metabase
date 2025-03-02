@@ -14,7 +14,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private non-existant-account-message
-  (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
+  (deferred-tru "You''ll need an administrator to create a Metabase account before you can use Google to log in."))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
