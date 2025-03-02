@@ -1329,7 +1329,20 @@
                                                                              10))
                                                         (lib/aggregate $ (lib/count))
                                                         (lib/aggregate $ (lib.metadata/metric mp mid-cnt))
-                                                        (lib/aggregate $ (lib.metadata/metric mp mid-sum)))))))))))))
+                                                        (lib/aggregate $ (lib.metadata/metric mp mid-sum)))))))
+            (testing (str "Processing of query with stage with aggregation expression using offset and non-aggregating "
+                          "oprators referencing metrics with filters completes")
+              (is (=? {:status :completed}
+                      (qp/process-query (as-> (lib/query mp query-base) $
+                                          (lib/filter $ (lib/> (m/find-first (comp #{"Total"} :display-name)
+                                                                             (lib/filterable-columns $))
+                                                               10))
+                                          (lib/aggregate $ (lib/+ (lib/offset (lib.metadata/metric mp mid-cnt) 1)
+                                                                  (lib.metadata/metric mp mid-sum)))
+                                          (lib/breakout $ (lib/with-temporal-bucket
+                                                            (m/find-first (comp #{"Created At"} :display-name)
+                                                                          (lib/breakoutable-columns $))
+                                                            :month)))))))))))))
 
 (deftest filter-less-metrics-aggregation-on-stage-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
