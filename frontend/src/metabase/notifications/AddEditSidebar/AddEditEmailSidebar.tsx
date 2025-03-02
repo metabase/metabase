@@ -1,10 +1,11 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import SendTestPulse from "metabase/components/SendTestPulse";
-import SchedulePicker from "metabase/containers/SchedulePicker";
+import SchedulePicker, {
+  type ScheduleChangeProp,
+} from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
@@ -13,6 +14,17 @@ import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker"
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Channel,
+  ChannelApiResponse,
+  ChannelSpec,
+  Dashboard,
+  DashboardSubscription,
+  Pulse,
+  ScheduleSettings,
+  User,
+} from "metabase-types/api";
 
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
@@ -20,13 +32,37 @@ import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
-function _AddEditEmailSidebar({
+interface AddEditEmailSidebarProps {
+  pulse: DashboardSubscription;
+  formInput: ChannelApiResponse;
+  channel: Channel;
+  channelSpec: ChannelSpec;
+  users: User[];
+  parameters: FieldFilterUiParameter[];
+  hiddenParameters?: string;
+  dashboard: Dashboard;
+  handleSave: () => void;
+  onCancel: () => void;
+  onChannelPropertyChange: (property: string, value: unknown) => void;
+  onChannelScheduleChange: (
+    schedule: ScheduleSettings,
+    changedProp: ScheduleChangeProp,
+  ) => void;
+  testPulse: () => void;
+  toggleSkipIfEmpty: () => void;
+  setPulse: (pulse: Pulse) => void;
+  handleArchive: () => void;
+  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
+}
+
+export const AddEditEmailSidebar = ({
   pulse,
   formInput,
   channel,
   channelSpec,
   users,
   parameters,
+  hiddenParameters,
   dashboard,
 
   // form callbacks
@@ -39,7 +75,7 @@ function _AddEditEmailSidebar({
   setPulse,
   handleArchive,
   setPulseParameters,
-}) {
+}: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -61,7 +97,6 @@ function _AddEditEmailSidebar({
           <RecipientPicker
             autoFocus={false}
             recipients={channel.recipients}
-            recipientTypes={channelSpec.recipients}
             users={users}
             onRecipientsChange={recipients =>
               onChannelPropertyChange("recipients", recipients)
@@ -82,13 +117,14 @@ function _AddEditEmailSidebar({
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
           textBeforeSendTime={t`${
-            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
+            t`Messages`
           } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }
         />
-        <div className={cx(CS.pt2, CS.pb1)}>
+        <div className={cx(CS.py2)}>
           <SendTestPulse
             channel={channel}
             channelSpecs={formInput.channels}
@@ -103,6 +139,7 @@ function _AddEditEmailSidebar({
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className={cx(CS.py3, CS.mt2, CS.borderTop)}
             parameters={parameters}
+            hiddenParameters={hiddenParameters}
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
@@ -146,25 +183,4 @@ function _AddEditEmailSidebar({
       </div>
     </Sidebar>
   );
-}
-
-_AddEditEmailSidebar.propTypes = {
-  pulse: PropTypes.object,
-  formInput: PropTypes.object.isRequired,
-  channel: PropTypes.object.isRequired,
-  channelSpec: PropTypes.object.isRequired,
-  users: PropTypes.array,
-  parameters: PropTypes.array.isRequired,
-  dashboard: PropTypes.object.isRequired,
-  handleSave: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  onChannelPropertyChange: PropTypes.func.isRequired,
-  onChannelScheduleChange: PropTypes.func.isRequired,
-  testPulse: PropTypes.func.isRequired,
-  toggleSkipIfEmpty: PropTypes.func.isRequired,
-  setPulse: PropTypes.func.isRequired,
-  handleArchive: PropTypes.func.isRequired,
-  setPulseParameters: PropTypes.func.isRequired,
 };
-
-export default _AddEditEmailSidebar;
