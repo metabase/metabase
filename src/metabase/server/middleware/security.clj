@@ -119,6 +119,9 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
+                                  "https://api.openai.com"
+                                  "https://www.openai.com"
+                                  "https://openai.com"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
@@ -135,7 +138,10 @@
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
-                                 "https://accounts.google.com"]
+                                 "https://accounts.google.com"
+                                 "https://api.openai.com"
+                                 "https://www.openai.com"
+                                 "https://openai.com"]
                   :style-src    ["'self'"
                                  ;; See [[generate-nonce]]
                                  (when nonce
@@ -156,6 +162,9 @@
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 "https://api.openai.com"
+                                 "https://www.openai.com"
+                                 "https://openai.com"
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
