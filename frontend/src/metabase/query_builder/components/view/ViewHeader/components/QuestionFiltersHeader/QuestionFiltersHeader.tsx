@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from "react";
+
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -7,12 +9,27 @@ interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
   updateQuestion: (question: Question, opts: { run: boolean }) => void;
+
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
+  setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
+  setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
+
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function QuestionFiltersHeader({
   question,
   expanded,
   updateQuestion,
+  dirtyAddedFilters,
+  dirtyRemovedFilters,
+  setDirtyAddedFilters,
+  setDirtyRemovedFilters,
 }: FilterHeaderProps) {
   const query = question.query();
 
@@ -24,7 +41,16 @@ export function QuestionFiltersHeader({
     return null;
   }
 
-  return <FilterPanel query={query} onChange={handleChange} />;
+  return (
+    <FilterPanel
+      query={query}
+      onChange={handleChange}
+      dirtyAddedFilters={dirtyAddedFilters}
+      dirtyRemovedFilters={dirtyRemovedFilters}
+      setDirtyAddedFilters={setDirtyAddedFilters}
+      setDirtyRemovedFilters={setDirtyRemovedFilters}
+    />
+  );
 }
 
 type RenderCheckOpts = {

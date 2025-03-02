@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - poc/enhanced-filter-row
       - metabot-v3-second-try
       - feature-visualizer
     paths-ignore:

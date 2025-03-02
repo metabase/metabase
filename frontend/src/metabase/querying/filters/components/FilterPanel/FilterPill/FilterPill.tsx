@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
@@ -11,7 +12,7 @@ interface FilterPillProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const FilterPill = forwardRef(function FilterPill(
-  { children, onRemoveClick, ...props }: FilterPillProps,
+  { children, onRemoveClick, className, ...props }: FilterPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const handleRemoveClick = (event: MouseEvent) => {
@@ -21,15 +22,15 @@ export const FilterPill = forwardRef(function FilterPill(
 
   return (
     <Flex
-      {...props}
       ref={ref}
-      className={S.root}
+      className={cx(S.root, className)}
       align="center"
       gap="sm"
       px="sm"
       lh="1.5rem"
       fw="bold"
       data-testid="filter-pill"
+      {...props}
     >
       {children}
       {onRemoveClick && (

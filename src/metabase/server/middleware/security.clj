@@ -118,6 +118,7 @@
                   :script-src   (concat
                                  ["'self'"
                                   "https://maps.google.com"
+                                  "https://*.maze.co"
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
@@ -146,14 +147,16 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
-                                 "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                                 "https://accounts.google.com"
+                                 "https://*.maze.co"]
+                  :frame-src    (conj (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts)) "https://*.maze.co")
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
+                                 "https://*.maze.co"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics

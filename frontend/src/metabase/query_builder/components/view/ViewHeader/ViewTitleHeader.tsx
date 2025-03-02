@@ -1,9 +1,11 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { type Dispatch, type SetStateAction, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -74,6 +76,12 @@ interface ViewTitleHeaderProps {
   style?: React.CSSProperties;
 }
 
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+}
+
 export function ViewTitleHeader({
   question,
   isObjectDetail,
@@ -111,6 +119,42 @@ export function ViewTitleHeader({
   ] = useToggle(!question?.isSaved());
 
   const previousQuestion = usePrevious(question);
+  const dirtyAddedFilters = useSelector(
+    state => state.qb.uiControls.dirtyAddedFilters,
+  );
+  const dirtyRemovedFilters = useSelector(
+    state => state.qb.uiControls.dirtyRemovedFilters,
+  );
+
+  const dispatch = useDispatch();
+
+  const setDirtyAddedFilters: Dispatch<
+    SetStateAction<Filter[]>
+  > = newDirtyAddedFilters => {
+    if (typeof newDirtyAddedFilters === "function") {
+      dispatch(
+        setUIControls({
+          dirtyAddedFilters: newDirtyAddedFilters(dirtyAddedFilters),
+        }),
+      );
+    } else {
+      dispatch(setUIControls({ dirtyAddedFilters: newDirtyAddedFilters }));
+    }
+  };
+
+  const setDirtyRemovedFilters: Dispatch<
+    SetStateAction<Filter[]>
+  > = newDirtyRemovedFilters => {
+    if (typeof newDirtyRemovedFilters === "function") {
+      dispatch(
+        setUIControls({
+          dirtyRemovedFilters: newDirtyRemovedFilters(dirtyRemovedFilters),
+        }),
+      );
+    } else {
+      dispatch(setUIControls({ dirtyRemovedFilters: newDirtyRemovedFilters }));
+    }
+  };
 
   const query = question.query();
   const previousQuery = usePrevious(query);
@@ -201,6 +245,10 @@ export function ViewTitleHeader({
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       </ViewSection>
 
@@ -213,6 +261,10 @@ export function ViewTitleHeader({
           expanded={areFiltersExpanded}
           question={question}
           updateQuestion={updateQuestion}
+          dirtyAddedFilters={dirtyAddedFilters}
+          dirtyRemovedFilters={dirtyRemovedFilters}
+          setDirtyAddedFilters={setDirtyAddedFilters}
+          setDirtyRemovedFilters={setDirtyRemovedFilters}
         />
       )}
     </>

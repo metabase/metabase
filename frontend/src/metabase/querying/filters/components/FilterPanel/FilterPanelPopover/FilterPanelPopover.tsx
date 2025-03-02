@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
+import _ from "underscore";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -11,13 +12,27 @@ interface FilterPanelPopoverProps {
   stageIndex: number;
   filter: Lib.FilterClause;
   onChange: (query: Lib.Query) => void;
+
+  dirtyAddedFilters: Filter[];
+  dirtyRemovedFilters: Filter[];
+  setDirtyAddedFilters: Dispatch<SetStateAction<Filter[]>>;
+  setDirtyRemovedFilters: Dispatch<SetStateAction<Filter[]>>;
 }
+
+type Filter = {
+  id: number;
+  filter: Lib.Clause | Lib.SegmentMetadata;
+  stageIndex: number;
+};
 
 export function FilterPanelPopover({
   query,
   stageIndex,
   filter,
   onChange,
+  dirtyAddedFilters,
+  setDirtyAddedFilters,
+  setDirtyRemovedFilters,
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
@@ -32,7 +47,28 @@ export function FilterPanelPopover({
   };
 
   const handleRemove = () => {
-    onChange(Lib.removeClause(query, stageIndex, filter));
+    const isClauseInQuery = !dirtyAddedFilters.some(entry => {
+      //hack
+      const a = Lib.displayInfo(query, entry.stageIndex, entry.filter);
+      const b = Lib.displayInfo(query, stageIndex, filter);
+      return _.isEqual(a, b);
+    });
+
+    if (isClauseInQuery) {
+      // onChange(Lib.removeClause(query, stageIndex, filter));
+      setDirtyRemovedFilters(filters => {
+        return [...filters, { stageIndex, filter }];
+      });
+    } else {
+      setDirtyAddedFilters(filters =>
+        filters.filter(entry => {
+          //hack
+          const a = Lib.displayInfo(query, entry.stageIndex, entry.filter);
+          const b = Lib.displayInfo(query, stageIndex, filter);
+          return !_.isEqual(a, b);
+        }),
+      );
+    }
     setIsOpened(false);
   };
 

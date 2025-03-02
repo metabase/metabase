@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type * as Lib from "metabase-lib";
 
 export function getGroupName(

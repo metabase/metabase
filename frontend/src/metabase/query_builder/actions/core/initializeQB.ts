@@ -346,6 +346,9 @@ async function handleQBInit(
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 
+  uiControls.dirtyAddedFilters = [];
+  uiControls.dirtyRemovedFilters = [];
+
   dispatch({
     type: INITIALIZE_QB,
     payload: {
