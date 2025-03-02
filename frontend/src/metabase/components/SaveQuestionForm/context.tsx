@@ -16,7 +16,7 @@ import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -32,6 +32,7 @@ type SaveQuestionContextType = {
   showSaveType: boolean;
   multiStep: boolean;
   saveToCollection?: CollectionId;
+  saveToDashboard?: DashboardId;
 };
 
 export const SaveQuestionContext =
@@ -160,6 +161,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
+  const saveToDashboard = originalQuestion
+    ? undefined
+    : (question.dashboardId() ?? undefined);
+
   return (
     <FormProvider
       initialValues={{ ...initialValues }}
@@ -179,6 +184,7 @@ export const SaveQuestionProvider = ({
             showSaveType,
             multiStep,
             saveToCollection,
+            saveToDashboard,
           }}
         >
           {children}
