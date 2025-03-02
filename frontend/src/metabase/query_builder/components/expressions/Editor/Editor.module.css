@@ -16,7 +16,7 @@
 
 .toolbar {
   position: absolute;
-  top: 0;
+  bottom: 0.25rem;
   right: 0;
 }
 
