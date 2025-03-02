@@ -875,7 +875,7 @@
                                (lib/aggregate (lib/count))
                                (lib.convert/->legacy-MBQL))}]
           (testing (format "Incompatible join in metric provokes an exception (joining %s)" joined-type)
-            (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
+            (is (thrown-with-msg? Throwable #"Incompatible join in the metric \S+"
                                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                                                         (lib/aggregate (lib.metadata/metric mp offending-id)))))))
           (testing (format "Incompatible join in referencing stage provokes an exception (joining %s)" joined-type)
@@ -973,7 +973,7 @@
                                (lib.convert/->legacy-MBQL $))}]
             (testing (format "Referencing stage with fk join with different target provokes an exception (joining %s)"
                              joined-type)
-              (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
+              (is (thrown-with-msg? Throwable #"Incompatible join in the metric \S+"
                                     (qp/process-query
                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                          (lib/aggregate (lib.metadata/metric mp with-join-id)))))))
@@ -1007,7 +1007,7 @@
         :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/count)))}]
       (testing "Processing of query referencing a metric with join with non-:= condition provokes an exception"
-        (is (thrown-with-msg? Throwable #"Incompatible join in the metric \d+"
+        (is (thrown-with-msg? Throwable #"Incompatible join in the metric \S+"
                               (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                                     (lib/aggregate (lib.metadata/metric mp incompatible-id)))))))
       (testing "Processing of query with join with non-:= condition referencing a metric provokes an exception"
@@ -1100,7 +1100,7 @@
             (testing (format "Processing of query (%s based) referencing metrics with conflicting filters throws"
                              query-base-type)
               (is (thrown-with-msg?
-                   Throwable #"Metrics \d+ and \d+ have incompatible filters"
+                   Throwable #"Metrics \S+ and \S+ have incompatible filters"
                    (qp/process-query (-> (lib/query mp query-base)
                                          (lib/aggregate (lib.metadata/metric mp mid-gt))
                                          (lib/aggregate (lib.metadata/metric mp mid-lt)))))))))))))
@@ -1135,7 +1135,7 @@
           (testing (format "Processing of query (%s based) referencing metrics with incompatible filters provokes an excpetion"
                            query-base-type)
             (is (thrown-with-msg?
-                 Throwable #"Metrics \d+ and \d+ have incompatible filters"
+                 Throwable #"Metrics \S+ and \S+ have incompatible filters"
                  (qp/process-query (-> (lib/query mp query-base)
                                        (lib/aggregate (lib.metadata/metric mp no-filter-id))
                                        (lib/aggregate (lib.metadata/metric mp with-filter-id))))))))))))
@@ -1176,7 +1176,7 @@
           (testing (format "Processing of query (%s based) referencing metrics one filter more strict provokes an excpetion"
                            query-base-type)
             (is (thrown-with-msg?
-                 Throwable #"Metrics \d+ and \d+ have incompatible filters"
+                 Throwable #"Metrics \S+ and \S+ have incompatible filters"
                  (qp/process-query (-> (lib/query mp query-base)
                                        (lib/aggregate (lib.metadata/metric mp no-filter-id))
                                        (lib/aggregate (lib.metadata/metric mp with-filter-id))))))))))))
@@ -1210,8 +1210,6 @@
                                       (lib/aggregate (lib.metadata/metric mp mid-lt))))))))))
 
 ;; stage filters vs metrics
-
-;; all of those tests should be testing for identity
 
 (deftest only-referencing-stage-has-filter-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
@@ -1366,7 +1364,7 @@
           (testing (format (str "Processing of query (%s based) with stage with filter compatible with one metric "
                                 "but not other should throw")
                            query-base-type)
-            (is (thrown-with-msg? Throwable #"Metrics \d+ and \d+ have incompatible filters"
+            (is (thrown-with-msg? Throwable #"Metrics \S+ and \S+ have incompatible filters"
                                   (qp/process-query (as-> (lib/query mp query-base-metadata) $
                                                       (lib/filter $ (lib/> (m/find-first (comp #{"Product ID"}
                                                                                                :display-name)
