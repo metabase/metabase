@@ -32,8 +32,9 @@ export const ColorSelector = ({
   return (
     <Popover
       withinPortal={withinPortal}
+      floatingStrategy="fixed"
       opened={opened}
-      onClose={close}
+      onChange={toggle}
       position="bottom-start"
     >
       <Popover.Target>
