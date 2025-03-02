@@ -39,7 +39,7 @@
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
 (defn- part->attachment-data
-  [part channel-id]
+  [part]
   (case (:type part)
     :card
     (let [{:keys [card dashcard result]}         part
@@ -49,7 +49,6 @@
        :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
-       :channel-id      channel-id
        :fallback        card-name})
 
     :text
@@ -70,19 +69,26 @@
 
   Nested `blocks` lists containing text cards are passed through unmodified."
   [attachments]
-  (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-    (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-              (conj processed (if (:blocks attachment-data)
-                                attachment-data
-                                (if (:render/text rendered-info)
-                                  (-> (f attachment-data)
-                                      (assoc :text (:render/text rendered-info)))
-                                  (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
-                                        {:keys [url]} (slack/upload-file! image-bytes attachment-name channel-id)]
-                                    (-> (f attachment-data)
-                                        (assoc :image_url url)))))))
-            []
-            attachments)))
+  (reduce (fn [processed {:keys [title title_link attachment-name rendered-info] :as attachment-data}]
+            (conj processed (if (:blocks attachment-data)
+                              attachment-data
+                              (if (:render/text rendered-info)
+                                {:blocks [{:type "section"
+                                           :text {:type "mrkdwn"
+                                                  :text (format "<%s|%s>" title_link title)}}
+                                          {:type "section"
+                                           :text {:type "plain_text"
+                                                  :text (:render/text rendered-info)}}]}
+                                (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
+                                      {file-id :id} (slack/upload-file! image-bytes attachment-name)]
+                                  {:blocks [{:type "section"
+                                             :text {:type "mrkdwn"
+                                                    :text (format "<%s|%s>" title_link title)}}
+                                            {:type "image"
+                                             :slack_file {:id file-id}
+                                             :alt_text title}]})))))
+          []
+          attachments))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -106,7 +112,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (:card_part payload) (slack/files-channel))]]
+                     (part->attachment-data (:card_part payload))]]
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -146,11 +152,10 @@
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [parts]
-  (let [channel-id (slack/files-channel)]
-    (for [part  parts
-          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
-          :when attachment]
-      attachment)))
+  (for [part  parts
+        :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part))]
+        :when attachment]
+    attachment))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload creator]} _template recipients]

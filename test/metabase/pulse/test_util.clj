@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.integrations.slack :as slack]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -64,8 +63,7 @@
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (constantly :noop)
-                 slack/files-channel (constantly "FOO")]
+  `(with-redefs [channel/send!       (constantly :noop)]
      (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!
