@@ -1,11 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion } from "e2e/support/helpers";
 import {
-  mockAuthProviderAndJwtSignIn,
   mountStaticQuestion,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  getSdkRoot,
+  mockAuthProviderAndJwtSignIn,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

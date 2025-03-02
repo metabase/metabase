@@ -1,12 +1,14 @@
+import { METABASE_INSTANCE_URL } from "e2e/support/constants/embedding-sdk";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, mapPinIcon } from "e2e/support/helpers";
 import {
-  METABASE_INSTANCE_URL,
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  getSdkRoot,
+  mockAuthProviderAndJwtSignIn,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 

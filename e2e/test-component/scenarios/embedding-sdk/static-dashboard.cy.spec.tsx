@@ -6,11 +6,13 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
 import {
-  mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  getSdkRoot,
+  mockAuthProviderAndJwtSignIn,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {

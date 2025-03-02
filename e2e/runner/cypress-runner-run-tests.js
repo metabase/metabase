@@ -1,5 +1,6 @@
 const cypress = require("cypress");
 
+const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const { parseArguments, args } = require("./cypress-runner-utils");
 
 const DEFAULT_PORT = 4000;
@@ -12,6 +13,21 @@ const configs = {
     const defaultConfig = {
       browser: "chrome",
       configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost(),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+    const finalConfig = Object.assign({}, defaultConfig, userArgs);
+    return finalConfig;
+  },
+  "sample-apps-embedding-sdk-e2e": async () => {
+    const defaultConfig = {
+      browser: "chrome",
+      configFile: "e2e/support/cypress-sample-apps-embedding-sdk-e2e.config.js",
       config: {
         baseUrl: getHost(),
       },
@@ -67,7 +83,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     console.error(
       `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
     );
-    await exitFunction(1);
+    await exitFunction(FAILURE_EXIT_CODE);
   }
 
   const config = await configs[suite]();
@@ -79,7 +95,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
 
     // At least one test failed
     if (totalFailed > 0) {
-      await exitFunction(1);
+      await exitFunction(FAILURE_EXIT_CODE);
     }
 
     // Something went wrong and Cypress failed to even run tests
@@ -91,7 +107,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
   } catch (e) {
     console.error("Failed to run Cypress!\n", e);
 
-    await exitFunction(1);
+    await exitFunction(FAILURE_EXIT_CODE);
   }
 };
 

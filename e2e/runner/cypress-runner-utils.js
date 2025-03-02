@@ -5,7 +5,7 @@ const chalk = require("chalk");
 const cypress = require("cypress");
 
 function printBold(message) {
-  console.log(`\n${chalk.bold(chalk.magenta(message))}\n`);
+  console.log(`\n${chalk.bold(chalk.magenta(message.trim()))}\n`);
 }
 
 const args = arg(
