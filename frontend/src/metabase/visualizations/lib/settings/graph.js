@@ -351,8 +351,10 @@ export const GRAPH_TREND_SETTINGS = {
     widget: "toggle",
     default: false,
     getHidden: (series, vizSettings) => {
-      const { insights } = series[0].data;
-      return !insights || insights.length === 0;
+      const { data } = series[0];
+      return (
+        !data.insights || data.insights.length === 0 || data.cols.length > 1
+      );
     },
     useRawSeries: true,
     inline: true,
