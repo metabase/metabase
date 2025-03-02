@@ -2604,6 +2604,14 @@
     "@lezer/highlight" "^1.0.0"
     "@lezer/lr" "^1.0.0"
 
+"@lezer/generator@^1.7.2":
+  version "1.7.2"
+  resolved "https://registry.yarnpkg.com/@lezer/generator/-/generator-1.7.2.tgz#a491c91eb9f117ea803e748fa97574514156a2a3"
+  integrity sha512-CwgULPOPPmH54tv4gki18bElLCdJ1+FBC+nGVSVD08vFWDsMjS7KEjNTph9JOypDnet90ujN3LzQiW3CyVODNQ==
+  dependencies:
+    "@lezer/common" "^1.1.0"
+    "@lezer/lr" "^1.3.0"
+
 "@lezer/highlight@^1.0.0", "@lezer/highlight@^1.1.3", "@lezer/highlight@^1.2.1":
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/@lezer/highlight/-/highlight-1.2.1.tgz#596fa8f9aeb58a608be0a563e960c373cbf23f8b"
@@ -2638,7 +2646,7 @@
     "@lezer/highlight" "^1.0.0"
     "@lezer/lr" "^1.0.0"
 
-"@lezer/lr@^1.0.0", "@lezer/lr@^1.3.0":
+"@lezer/lr@^1.0.0", "@lezer/lr@^1.3.0", "@lezer/lr@^1.4.2":
   version "1.4.2"
   resolved "https://registry.yarnpkg.com/@lezer/lr/-/lr-1.4.2.tgz#931ea3dea8e9de84e90781001dae30dea9ff1727"
   integrity sha512-pu0K1jCIdnQ12aWNaAVU5bzi7Bd1w54J3ECgANPmYLtQKP0HBj2cE/5coBD66MT10xbtIuUr7tg0Shbsvk0mDA==

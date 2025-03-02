@@ -1,0 +1,34 @@
+.dropdown {
+  display: flex;
+}
+
+.target {
+  /**
+   * The target needs to have a size for Mantine to be able to position the
+   * popover correctly.
+   */
+  width: 2px;
+  height: 2px;
+}
+
+.tooltip {
+  background: var(--mb-color-background);
+  z-index: 1000;
+  width: 400px;
+  flex-grow: 1;
+  flex-direction: column;
+  font-size: 14px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.hasHelpText {
+  height: calc(100% - 5rem);
+}
+
+.isHelpTextOpen {
+  height: calc(50% - 2.5rem);
+  flex-grow: 0;
+}

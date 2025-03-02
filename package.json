@@ -26,6 +26,7 @@
     "@emotion/styled": "^11.11.0",
     "@juggle/resize-observer": "^3.4.0",
     "@lezer/highlight": "^1.2.1",
+    "@lezer/lr": "^1.4.2",
     "@mantine/core": "^7.17.0",
     "@mantine/dates": "^7.17.0",
     "@mantine/hooks": "^7.17.0",
@@ -155,6 +156,7 @@
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@inquirer/prompts": "^5.3.8",
+    "@lezer/generator": "^1.7.2",
     "@loki/create-async-callback": "^0.35.0",
     "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
@@ -457,7 +459,8 @@
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
-    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
+    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
+    "generate:expression-parser": "lezer-generator frontend/src/metabase-lib/v1/expressions/tokenizer/grammar.lezer -o frontend/src/metabase-lib/v1/expressions/tokenizer/lezer.js"
   },
   "lint-staged": {
     "+(frontend|enterprise)/**/*.styled.tsx": [
