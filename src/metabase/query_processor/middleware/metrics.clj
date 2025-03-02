@@ -265,6 +265,7 @@
   [f1 f2]
   (every? #(m/find-first (partial equal-filter? %) f1) f2))
 
+;; Later will decide whether to go with this implementation
 (defn- assert-compatible-stage-filters
   "Assert that stage filteres are compatible with filterse of every referenced metric. Returns nil."
   [query stage-number metrics]
@@ -276,8 +277,8 @@
                 metric-query (get metrics metric-id)
                 metric-filters (lib/filters metric-query)]
             (when-not (filters-for-subset? query-filters metric-filters)
-              (throw (ex-info (format "Stage filter is not compatible with metric %d filter."
-                                      metric-id)
+              (throw (ex-info (tru "Stage filter is not compatible with metric {0} filter."
+                                   metric-id)
                               {:stage-filters query-filters
                                :metric-filters metric-filters}))))
           (recur (rest metric-ids))))))
@@ -359,9 +360,9 @@
               metric-query (get metrics metric-id)
               metric-filters (lib/filters metric-query)]
           (when-not (filters-map-1-1? base-filters metric-filters)
-            (throw (ex-info (format "Metrics %d and %d have incompatible filters."
-                                    base-metric-id
-                                    metric-id)
+            (throw (ex-info (tru "Metrics {0} and {1} have incompatible filters."
+                                 base-metric-id
+                                 metric-id)
                             {:base-filters base-filters
                              :metric-filters metric-filters}))))
         (recur (rest other-metric-ids)))))
@@ -402,7 +403,7 @@
     (when (seq stage-joins)
       (let [join (first stage-joins)]
         (when-not (is-join-compatible? query stage-number join)
-          (throw (ex-info "Incompatible join in a stage referencing a metric"
+          (throw (ex-info (tru "Incompatible join in a stage referencing a metric")
                           {:join join}))))
       (recur (rest stage-joins))))
   ;; check the metrics' joins
@@ -414,7 +415,7 @@
           (when (seq metric-joins)
             (let [metric-join (first metric-joins)]
               (when-not (is-join-compatible? metric-query -1 metric-join)
-                (throw (ex-info (format "Incompatible join in the metric %d" metric-id)
+                (throw (ex-info (tru "Incompatible join in the metric {0}" metric-id)
                                 {:join metric-join}))))
             (recur (rest metric-joins)))))
       (recur (rest metric-ids))))
