@@ -71,6 +71,7 @@ describe("scenarios > custom column > boolean functions", () => {
         formula: newExpression,
         name: expressionName,
         allowFastSet: true,
+        format: true,
       });
       H.popover().button("Done").click();
       H.visualize();

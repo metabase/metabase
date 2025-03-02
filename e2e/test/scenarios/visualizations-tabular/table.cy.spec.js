@@ -118,14 +118,14 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByLabelText("Custom column").click();
 
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "concat([Name], [Name])",
-        name: ccName,
-      });
-
-      cy.button("Done").click();
+    H.enterCustomColumnDetails({
+      formula: "concat([Name], [Name])",
+      name: ccName,
     });
+    H.expressionEditorWidget()
+
+      .button("Done")
+      .click();
 
     cy.findByTestId("fields-picker").click();
     H.popover().within(() => {

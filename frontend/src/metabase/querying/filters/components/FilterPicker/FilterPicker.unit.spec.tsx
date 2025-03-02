@@ -412,8 +412,8 @@ describe("FilterPicker", () => {
       text: string,
       { delay }: { delay: number } = { delay: 0 },
     ) {
-      const input = screen.getByLabelText("Expression");
-      const button = screen.getByRole("button", { name: "Done" });
+      const input = screen.getByTestId("custom-expression-query-editor");
+      const button = screen.getByRole("button", { name: /(Done|Update)/ });
 
       // The expression editor applies changes on blur,
       // but for some reason it doesn't work without `act`.
@@ -442,7 +442,9 @@ describe("FilterPicker", () => {
 
     it("should open the expression editor for unsupported expressions", async () => {
       setup(createQueryWithNullStringFilter());
-      expect(screen.getByLabelText("Expression")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("custom-expression-query-editor"),
+      ).toBeInTheDocument();
     });
 
     it("should update a filter with a numeric custom expression", async () => {
