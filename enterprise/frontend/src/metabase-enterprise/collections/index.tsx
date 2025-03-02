@@ -25,7 +25,7 @@ import {
   getIcon,
   isRegularCollection,
 } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
 
@@ -90,3 +90,5 @@ if (hasPremiumFeature("audit_app")) {
 
   PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
 }
+
+};

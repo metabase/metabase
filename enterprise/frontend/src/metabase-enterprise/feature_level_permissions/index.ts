@@ -14,7 +14,7 @@ import {
   databaseManagementPermissionAllowedPathGetter,
   getDataColumns,
 } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(dataModelPermissionAllowedPathGetter);
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
@@ -37,3 +37,5 @@ if (hasPremiumFeature("advanced_permissions")) {
     exclude_uneditable_details: true,
   };
 }
+
+};

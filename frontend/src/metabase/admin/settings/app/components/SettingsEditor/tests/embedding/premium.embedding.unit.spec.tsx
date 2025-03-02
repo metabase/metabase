@@ -527,6 +527,7 @@ describe("[EE, with token] embedding settings", () => {
     await setup({
       settings: [createMockSettingDefinition({ key: "enable-embedding" })],
       settingValues: createMockSettings({ "enable-embedding": false }),
+      // This test was supposed to be broken, it's CHANGING the token features in a test that was using other token features
       tokenFeatures: createMockTokenFeatures({
         embedding: false,
         embedding_sdk: false,

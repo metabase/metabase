@@ -5,7 +5,7 @@ import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors"
 import type { SettingElement } from "metabase/admin/settings/types";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-
+export const activate = () => {
 if (hasPremiumFeature("email_allow_list")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(
     (sections: typeof ADMIN_SETTINGS_SECTIONS) =>
@@ -23,3 +23,5 @@ if (hasPremiumFeature("email_allow_list")) {
       ),
   );
 }
+
+};

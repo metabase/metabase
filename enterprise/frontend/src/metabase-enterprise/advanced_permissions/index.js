@@ -41,7 +41,7 @@ const BLOCK_PERMISSION_OPTION = {
   icon: "close",
   iconColor: "danger",
 };
-
+export const activate = () => {
 if (hasPremiumFeature("advanced_permissions")) {
   const addSelectedAdvancedPermission = (options, value) => {
     if (value === IMPERSONATED_PERMISSION_OPTION.value) {
@@ -162,3 +162,5 @@ const getEditImpersonationUrl = (entityId, groupId, view) =>
   view === "database"
     ? getDatabaseViewImpersonationModalUrl(entityId, groupId)
     : getGroupViewImpersonationModalUrl(entityId, groupId);
+
+};

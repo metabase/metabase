@@ -10,7 +10,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { QueryValidator } from "./components/QueryValidator";
-
+export const activate = () => {
 if (hasPremiumFeature("query_reference_validation")) {
   PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES = [
     <Route
@@ -39,3 +39,5 @@ if (hasPremiumFeature("query_reference_validation")) {
     ]),
   );
 }
+
+};

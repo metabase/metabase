@@ -12,7 +12,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 import { getDateFilterValue } from "./CleanupCollectionModal/utils";
 import { canCleanUp } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
@@ -67,3 +67,5 @@ if (hasPremiumFeature("collection_cleanup")) {
     <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
   );
 }
+
+};
