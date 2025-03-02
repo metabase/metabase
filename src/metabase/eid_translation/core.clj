@@ -1,4 +1,4 @@
-(ns metabase.eid-translation)
+(ns metabase.eid-translation.core)
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:
