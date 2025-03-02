@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen } from "__support__/ui";
+import { getIcon, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -124,19 +124,16 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 10,
       });
 
-      expect(
-        fetchMock.called(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
-          { method: "PUT" },
-        ),
-      ).toBe(false);
-
-      expect(await screen.findByTestId("indicator")).toBeInTheDocument();
+      await waitFor(async () =>
+        expect(
+          await screen.findByTestId("menu-indicator-root"),
+        ).toHaveAttribute("data-show-indicator", "true"),
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
         fetchMock.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(1);
@@ -151,10 +148,12 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: true,
         numberOfStaleItems: 10,
-        collectionMenu: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -174,7 +173,6 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: false,
         numberOfStaleItems: 10,
-        collectionMenu: true,
       });
 
       await userEvent.click(getIcon("ellipsis"));
@@ -191,7 +189,10 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1);
@@ -217,7 +218,10 @@ describe("CollectionMenu", () => {
         isAdmin: false,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("path:/api/collection/1/items")).toHaveLength(0);
@@ -236,7 +240,10 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
