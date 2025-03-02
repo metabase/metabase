@@ -1,0 +1,35 @@
+#! /usr/bin/env bb
+
+;; Getting env: bb: No such file or directory ?
+;; Install bb with: brew install borkdude/brew/babashka
+
+;; you may want to set an alias for mage:
+;; alias mage='cd ~/your/repo/metabase && ./bin/mage'
+
+(ns mage
+  (:require
+   [mage.color :as c]
+   [mage.shell :as sh]
+   [mage.util :as u]))
+
+(defn invalid-task? []
+  (let [task-name (first *command-line-args*)]
+    (when-not (contains? (set (u/all-bb-tasks-list)) task-name)
+      (println (c/red (str "Unknown task: " task-name)))
+      true)))
+
+(defn -main [& _]
+  (if (or (nil? *command-line-args*) ;; forgot to pass args
+          (= *command-line-args* ["-h"]) ;; trying to get help
+          (= *command-line-args* ["--help"])
+          (invalid-task?))
+    (do
+      (print (slurp "./mage/resource.txt"))
+      (flush)
+      (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
+      (println "")
+      (println (u/sh "bb tasks")))
+    (apply sh/sh (into ["bb"] *command-line-args*))))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (-main))
