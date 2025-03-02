@@ -34,23 +34,53 @@
                 :same-site :lax
                 :http-only true
                 :path      "/"}
-               (-> (request.cookies/set-session-cookies {} {} {:id uuid, :type :normal} request-time)
+               (-> (request.cookies/set-session-cookies {} {} {:id uuid, :type :normal} {:request-time request-time})
                    (get-in [:cookies "metabase.SESSION"])))))
-      (testing "should set `Max-Age` if `remember` is true in request"
+      (testing "should default to not set `Max-Age` if set-permanent arg unset"
+        (is (= {:value     (str uuid)
+                :same-site :lax
+                :http-only true
+                :path      "/"}
+               (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal}
+                                                        {:request-time request-time})
+                   (get-in [:cookies "metabase.SESSION"])))))
+      (testing "should set `Max-Age` if set-permanent arg is true"
         (is (= {:value     (str uuid)
                 :same-site :lax
                 :http-only true
                 :path      "/"
                 :max-age   1209600}
-               (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
+               (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal}
+                                                        {:request-time request-time
+                                                         :set-permanent true})
                    (get-in [:cookies "metabase.SESSION"])))))
-      (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`, even if `remember` is true"
+      (testing "should not set `Max-Age` if set-permanent is false"
+        (is (= {:value     (str uuid)
+                :same-site :lax
+                :http-only true
+                :path      "/"}
+               (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal}
+                                                        {:request-time request-time
+                                                         :set-permanent false})
+                   (get-in [:cookies "metabase.SESSION"])))))
+      (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`, even if set-permanent is passed"
         (is (= {:value     (str uuid)
                 :same-site :lax
                 :http-only true
                 :path      "/"}
                (mt/with-temporary-setting-values [session-cookies true]
-                 (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal} request-time)
+                 (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal}
+                                                          {:request-time request-time
+                                                           :set-permanent true})
+                     (get-in [:cookies "metabase.SESSION"]))))))
+      (testing "if `MB_SESSION_COOKIES=true` we shouldn't set a `Max-Age`, even if set-permanent is unset"
+        (is (= {:value     (str uuid)
+                :same-site :lax
+                :http-only true
+                :path      "/"}
+               (mt/with-temporary-setting-values [session-cookies true]
+                 (-> (request.cookies/set-session-cookies {:body {:remember true}} {} {:id uuid, :type :normal}
+                                                          {:request-time request-time})
                      (get-in [:cookies "metabase.SESSION"])))))))))
 
 (deftest samesite-none-log-warning-test
@@ -60,7 +90,7 @@
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
       (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
         (mt/with-log-messages-for-level [messages :warn]
-          (request.cookies/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)
+          (request.cookies/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session {:request-time request-time})
           (is (contains? (into #{}
                                (map :message)
                                (messages))
@@ -69,7 +99,7 @@
                               " https://www.chromestatus.com/feature/5633521622188032")))))
       (testing "should not log a warning over a secure connection."
         (mt/with-log-messages-for-level [messages :warn]
-          (request.cookies/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)
+          (request.cookies/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session {:request-time request-time})
           (is (not (contains? (into #{}
                                     (map :message)
                                     (messages))
@@ -96,7 +126,7 @@
                      (pr-str headers) (if expected "SHOULD" "SHOULD NOT"))
       (let [session {:id   (random-uuid)
                      :type :normal}
-            actual  (-> (request.cookies/set-session-cookies {:headers headers} {} session (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))
+            actual  (-> (request.cookies/set-session-cookies {:headers headers} {} session {:request-time  (t/zoned-date-time "2022-07-06T02:01Z[UTC]")})
                         (get-in [:cookies "metabase.SESSION" :secure])
                         boolean)]
         (is (= expected actual))))))
@@ -131,7 +161,8 @@
                (request.cookies/set-session-cookies {}
                                                     {}
                                                     test-full-app-embed-session
-                                                    (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
+                                                    {:request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")
+                                                     :set-permanent false}))))
       (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
         (is (= {:body    {}
                 :status  200
@@ -152,7 +183,8 @@
                (request.cookies/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
                                                     {}
                                                     test-full-app-embed-session
-                                                    (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
+                                                    {:request-time (t/zoned-date-time "2022-07-06T02:01Z[UTC]")
+                                                     :set-permanent false})))))))
 
 (deftest session-timeout-validation-test
   (testing "Setting the session timeout should fail if the timeout isn't positive"
@@ -231,7 +263,7 @@
         session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
-    (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
+    (testing "If [[public-settings/session-cookies]] is false and the `:set-permanent` flag is set, then the session cookie
               should have a max age attribute."
       (mt/with-temp-env-var-value! [:max-session-age "1"]
         (mt/with-temporary-setting-values [session-timeout nil
@@ -253,7 +285,8 @@
                                                   :path      "/"
                                                   :max-age   60
                                                   :http-only true}}}
-                   (request/set-session-cookies request response session request-time)))))))))
+                   (request/set-session-cookies request response session {:request-time request-time
+                                                                          :set-permanent true})))))))))
 
 (deftest session-timeout-test-4
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
@@ -281,4 +314,4 @@
                                                   :same-site :lax
                                                   :path      "/"
                                                   :http-only true}}}
-                   (request/set-session-cookies request response session request-time)))))))))
+                   (request/set-session-cookies request response session {:request-time request-time})))))))))
