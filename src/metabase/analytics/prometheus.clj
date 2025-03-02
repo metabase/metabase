@@ -12,6 +12,7 @@
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.analytics.settings :refer [prometheus-server-port]]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -130,10 +131,18 @@
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  (let [bean-id   (.getCanonicalName jmx-bean)
-        props     [:numConnections :numIdleConnections :numBusyConnections
-                   :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-    (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
+  ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
+  ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
+  ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
+  ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
+  ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `database-id->connection-pool` is)
+  ;; to prevent the deadlock. Hopefully.
+  ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
+  (locking @#'sql-jdbc.conn/database-id->connection-pool
+    (let [bean-id   (.getCanonicalName jmx-bean)
+          props     [:numConnections :numIdleConnections :numBusyConnections
+                     :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
