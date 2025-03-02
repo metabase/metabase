@@ -1,7 +1,5 @@
 global.ga = () => {};
 global.snowplow = () => {};
-global.ace.define = () => {};
-global.ace.require = () => {};
 
 global.window.matchMedia = () => ({
   addEventListener: () => {},
