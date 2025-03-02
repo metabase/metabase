@@ -1246,7 +1246,7 @@
                                         (lib/aggregate $ (lib.metadata/metric mp mid-1))
                                         (lib/aggregate $ (lib.metadata/metric mp mid-2))))))))))))
 
-(deftest same-filters-in-metrics-compatible-no-ag-and-filter-on-stage-test
+(deftest same-filters-in-metrics-no-ag-but-filter-on-stage-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
       [:model/Card
@@ -1331,7 +1331,40 @@
                                                         (lib/aggregate $ (lib.metadata/metric mp mid-cnt))
                                                         (lib/aggregate $ (lib.metadata/metric mp mid-sum)))))))))))))
 
-(deftest incompatible-filters-in-metrics-with-filters-on-stage-test
+(deftest filter-less-metrics-aggregation-on-stage-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (mt/with-temp
+      [:model/Card
+       {model-id :id}
+       {:type :model
+        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib.convert/->legacy-MBQL))}]
+      (doseq [[query-base-type query-base] [[:table (lib.metadata/table mp (mt/id :orders))]
+                                            [:model (lib.metadata/card mp model-id)]]]
+        (mt/with-temp
+          [:model/Card
+           {mid-cnt :id}
+           {:type :metric
+            :dataset_query (-> (lib/query mp query-base)
+                               (lib/aggregate (lib/count))
+                               (lib.convert/->legacy-MBQL))}
+
+           :model/Card
+           {mid-sum :id}
+           {:type :metric
+            :dataset_query (-> (lib/query mp query-base)
+                               (lib/aggregate (lib/sum (->> (lib/visible-columns (lib/query mp query-base))
+                                                            (m/find-first (comp #{"Total"} :display-name)))))
+                               (lib.convert/->legacy-MBQL))}]
+          (testing (str "Processing of query (based on " query-base-type ") with stage with aggregation referencing "
+                        "metrics without filters completes")
+            (is (=? {:status :completed}
+                    (qp/process-query (-> (lib/query mp query-base)
+                                          (lib/aggregate (lib/count))
+                                          (lib/aggregate (lib.metadata/metric mp mid-cnt))
+                                          (lib/aggregate (lib.metadata/metric mp mid-sum))))))))))))
+
+(deftest incompatible-filters-in-metrics-with-filters-and-aggregation-on-stage-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (mt/with-temp
       [:model/Card
