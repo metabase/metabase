@@ -1,18 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  setupDatabasesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import {
-  fireEvent,
-  getIcon,
-  renderWithProviders,
-  screen,
-  within,
-} from "__support__/ui";
+import { fireEvent, getIcon, screen, within } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -28,16 +17,10 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
-import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
-import type { NotebookStep } from "../../types";
-import { NotebookProvider } from "../Notebook/context";
+import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
-import { DataStep } from "./DataStep";
+import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
@@ -61,65 +44,12 @@ const createQueryWithBreakout = () => {
   return Lib.breakout(query, 0, column);
 };
 
-interface SetupOpts {
-  step?: NotebookStep;
-  readOnly?: boolean;
-  isEmbeddingSdk?: boolean;
-}
-
-const setup = ({
-  step = createMockNotebookStep(),
-  readOnly = false,
-  isEmbeddingSdk = false,
-}: SetupOpts = {}) => {
-  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
-
-  const updateQuery = jest.fn();
-  setupDatabasesEndpoints([createSampleDatabase()]);
-  setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
-
-  const storeInitialState = createMockState({
-    embed: createMockEmbedState({ isEmbeddingSdk }),
+function setup(opts: SetupOpts = {}) {
+  return baseSetup({
+    hasEnterprisePlugins: false,
+    ...opts,
   });
-
-  renderWithProviders(
-    <NotebookProvider>
-      <DataStep
-        step={step}
-        query={step.query}
-        stageIndex={step.stageIndex}
-        readOnly={readOnly}
-        color="brand"
-        isLastOpened={false}
-        reportTimezone="UTC"
-        updateQuery={updateQuery}
-      />
-    </NotebookProvider>,
-    { storeInitialState },
-  );
-
-  const getNextQuery = (): Lib.Query => {
-    const [lastCall] = updateQuery.mock.calls.slice(-1);
-    return lastCall[0];
-  };
-
-  const getNextTableName = () => {
-    const query = getNextQuery();
-    const [sampleColumn] = Lib.visibleColumns(query, 0);
-    return Lib.displayInfo(query, 0, sampleColumn).table?.displayName;
-  };
-
-  const getNextColumn = (columnName: string) => {
-    const nextQuery = getNextQuery();
-    const nextFields = Lib.fieldableColumns(nextQuery, 0);
-    const findColumn = columnFinder(nextQuery, nextFields);
-    const column = findColumn("ORDERS", columnName);
-    return Lib.displayInfo(nextQuery, 0, column);
-  };
-
-  return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
-};
+}
 
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
@@ -388,47 +318,6 @@ describe("DataStep", () => {
         await screen.findByTestId("entity-picker-modal"),
       ).toBeInTheDocument();
       expect(mockWindowOpen).not.toHaveBeenCalled();
-    });
-
-    describe("embedding SDK context", () => {
-      it("should not show the tooltip", async () => {
-        setup({ isEmbeddingSdk: true });
-
-        await userEvent.hover(screen.getByText("Orders"));
-        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-      });
-
-      it.each([{ metaKey: true }, { ctrlKey: true }])(
-        "meta/ctrl click should not open the data source",
-        async clickConfig => {
-          const { mockWindowOpen } = setup({
-            isEmbeddingSdk: true,
-          });
-
-          const dataSource = screen.getByText("Orders");
-          fireEvent.click(dataSource, clickConfig);
-
-          expect(await screen.findByText("Products")).toBeInTheDocument();
-          expect(mockWindowOpen).not.toHaveBeenCalled();
-          mockWindowOpen.mockClear();
-        },
-      );
-
-      it("middle click should not open the data source", async () => {
-        const { mockWindowOpen } = setup({
-          isEmbeddingSdk: true,
-        });
-
-        const dataSource = screen.getByText("Orders");
-        const middleClick = new MouseEvent("auxclick", {
-          bubbles: true,
-          button: 1,
-        });
-        fireEvent(dataSource, middleClick);
-
-        expect(mockWindowOpen).not.toHaveBeenCalled();
-        mockWindowOpen.mockClear();
-      });
     });
   });
 
