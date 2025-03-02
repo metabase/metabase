@@ -17,6 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.init]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
@@ -411,7 +412,9 @@
     (testing "should clear out all existing Sessions"
       (mt/with-temp [:model/User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! :model/Session {:id (str (random-uuid)), :user_id user-id}))
+          (t2/insert! :model/Session {:id (session/generate-session-id)
+                                      :key_hashed (session/hash-session-key (session/generate-session-key)),
+                                      :user_id user-id}))
         (letfn [(session-count [] (t2/count :model/Session :user_id user-id))]
           (is (= 2
                  (session-count)))
