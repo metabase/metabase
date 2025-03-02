@@ -93,6 +93,11 @@
   (pretty [_]
     (cons (pretty/qualify-symbol-for-*ns* `->Optional) args)))
 
+(p.types/defrecord+ DataBaseType [database-type value]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->DataBaseType) (into {} this))))
+
 ;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
 ;; cause problems if the ns isn't loaded first
 (defn Param?
