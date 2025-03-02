@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
@@ -14,6 +15,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
@@ -27,8 +30,13 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
+   [metabase.server.streaming-response]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -41,7 +49,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -712,6 +723,87 @@
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
+
+;;; ----------------------------------------- GET /api/database/:id/table/:fqn ---------------------------------------
+
+(defn- check-unique [tables]
+  (when (seq tables)
+    (let [unique-combos (distinct (map (juxt :schema :name) tables))]
+      (when (> (count unique-combos) 1)
+        (throw (ex-info "Ambiguous table identifier"
+                        {:status-code       300
+                         :potential-matches (for [[schema table-name] unique-combos]
+                                              (if schema
+                                                (str schema "." table-name)
+                                                table-name))})))
+      (first tables))))
+
+(defn- resolve-table [db-id table-identifier]
+  (let [[schema table-name] (let [parts (str/split table-identifier #"\.")]
+                              (case (count parts)
+                                1 [nil (first parts)]
+                                2 parts
+                                nil))]
+    (api/check table-name 400 "Invalid table identifier")
+    (api/check-404
+     (or (check-unique (t2/select :model/Table
+                                  :db_id db-id
+                                  :name table-name
+                                  (cond-> {}
+                                    schema (assoc :where {:schema schema}))))
+         (check-unique (t2/select :model/Table
+                                  :db_id db-id
+                                  :%lower.name (u/lower-case-en table-name)
+                                  (cond-> {}
+                                    schema (assoc :where {:%lower.schema (u/lower-case-en schema)}))))))))
+
+(defn- remap-202->200 [response]
+  (cond
+    ;; Well, this is pretty intrusive. Unfortunately, there's no way to set it correctly in the first place, yet.
+    (and (instance? StreamingResponse response) (contains? #{202 nil} (:status (.-options response))))
+    (metabase.server.streaming-response/->StreamingResponse
+     (.-f response)
+     (assoc (.-options response) :status 200)
+     (.-donechan response))
+
+    (and (map? response) (contains? #{202 nil} :status-code response))
+    (assoc response :status-code 200)
+
+    ;; ¯\\_(ツ)_/¯
+    :else
+    response))
+
+(api.macros/defendpoint :get "/:db-id/table/:table-identifier"
+  "Get the data for the given table"
+  [{:keys [db-id table-identifier]} :- [:map
+                                        [:db-id ms/PositiveInt]
+                                        [:table-identifier ms/NonBlankString]]]
+  (api/read-check (t2/select-one :model/Database :id db-id))
+  (qp.store/with-metadata-provider db-id
+    (let [mp    (qp.store/metadata-provider)
+          table (resolve-table db-id table-identifier)
+          query (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                    (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                    qp/userland-query-with-default-constraints
+                    (update :info merge {:executed-by api/*current-user-id*
+                                         :context     :table-grid
+                                         :card-id     nil}))]
+      ;; TODO Discuss whether we want these analytics
+      #_(events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+                                                  :user-id api/*current-user-id*})
+      (remap-202->200
+       (span/with-span!
+         {:name "query-table-async"}
+        ;; Introduce a custom export-format for "grid" to replace the remapping hack?
+         (qp.streaming/streaming-response [rff :api]
+           (-> (qp/process-query query (fn [metadata]
+                                         (let [rf (rff metadata)]
+                                           (completing
+                                            rf
+                                            #(-> (rf %)
+                                                 (dissoc :json_query :context :cached :average_execution_time)
+                                                 (assoc :table_id (:id table))))))))))))))
+completing
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
