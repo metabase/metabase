@@ -22,7 +22,7 @@ const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const VIEW_DATA_PERMISSION_INDEX = 0;
 
-describe("formatting > sandboxes", () => {
+describe("admin > permissions > sandboxes (tested via the API)", () => {
   describe("admin", () => {
     beforeEach(() => {
       H.restore();
