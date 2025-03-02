@@ -2,7 +2,11 @@ import { useCallback, useState } from "react";
 
 type ToggleHookResult = [
   boolean,
-  { turnOn: () => void; turnOff: () => void; toggle: () => void },
+  {
+    turnOn: () => void;
+    turnOff: () => void;
+    toggle: () => void;
+  },
 ];
 
 export function useToggle(initialValue = false): ToggleHookResult {
