@@ -65,25 +65,45 @@
       "")))
 
 (defn- translated-interval
-  [interval n]
-  (case interval
-    "minutes"  (trsn "Minute" "Minutes" n)
-    "hours"    (trsn "Hour" "Hours" n)
-    "days"     (trsn "Day" "Days" n)
-    "weeks"    (trsn "Week" "Weeks" n)
-    "months"   (trsn "Month" "Months" n)
-    "quarters" (trsn "Quarter" "Quarters" n)
-    "years"    (trsn "Year" "Years" n)))
+  [interval n capitalize]
+  (case [interval capitalize]
+    ["minutes" true]   (trsn "Minute" "Minutes" n)
+    ["minutes" false]  (trsn "minute" "minutes" n)
+    ["hours" true]     (trsn "Hour" "Hours" n)
+    ["hours" false]    (trsn "hour" "hours" n)
+    ["days" true]      (trsn "Day" "Days" n)
+    ["days" false]     (trsn "day" "days" n)
+    ["weeks" true]     (trsn "Week" "Weeks" n)
+    ["weeks" false]    (trsn "week" "weeks" n)
+    ["months" true]    (trsn "Month" "Months" n)
+    ["months" false]   (trsn "month" "months" n)
+    ["quarters" true]  (trsn "Quarter" "Quarters" n)
+    ["quarters" false] (trsn "quarter" "quarters" n)
+    ["years" true]     (trsn "Year" "Years" n)
+    ["years" false]    (trsn "year" "years" n)))
 
 (defn- format-relative-date
-  [prefix n interval]
-  (let [n        #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
-        interval (translated-interval interval n)]
-    (case [prefix (= n 1)]
-      ["past" true]  (trs "Previous {0}" interval)
-      ["past" false] (trs "Previous {0} {1}" n interval)
-      ["next" true]  (trs "Next {0}" interval)
-      ["next" false] (trs "Next {0} {1}" n interval))))
+  ([prefix n interval]
+   (let [n        #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
+         interval (translated-interval interval n true)]
+     (case [prefix (= n 1)]
+       ["past" true]  (trs "Previous {0}" interval)
+       ["past" false] (trs "Previous {0} {1}" n interval)
+       ["next" true]  (trs "Next {0}" interval)
+       ["next" false] (trs "Next {0} {1}" n interval))))
+  ([prefix n1 interval1 n2 interval2]
+   (let [n1           #?(:clj (Integer/valueOf ^String n1) :cljs (js/parseInt n1))
+         is-yesterday (and (= n1 1) (= interval1 "days"))
+         interval1    (translated-interval interval1 n1 true)
+         n2           #?(:clj (Integer/valueOf ^String n2) :cljs (js/parseInt n2))
+         interval2    (translated-interval interval2 n2 false)]
+     (if is-yesterday
+       (trs "Yesterday, starting {0} {1} ago" n2 interval2)
+       (case [prefix (= n1 1)]
+         ["past" true]  (trs "Previous {0}, starting {1} {2} ago" interval1 n2 interval2)
+         ["past" false] (trs "Previous {0} {1}, starting {2} {3} ago" n1 interval1 n2 interval2)
+         ["next" true]  (trs "Next {0}, starting {1} {2} from now" interval1 n2 interval2)
+         ["next" false] (trs "Next {0} {1}, starting {2} {3} from now" n1 interval1 n2 interval2))))))
 
 (defmethod formatted-value :date/relative
   [_ value _]
@@ -96,7 +116,8 @@
     #"^thisyear$"                          (trs "This Year")
     #"^past1days$"                         (trs "Yesterday")
     #"^next1days$"                         (trs "Tomorrow")
-    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [matches] (apply format-relative-date matches))))
+    #"^(past|next)([0-9]+)([a-z]+)~?$" :>> (fn [matches] (apply format-relative-date matches))
+    #"^(past|next)([0-9]+)([a-z]+)\-from\-([0-9]+)([a-z]+)" :>> (fn [matches] (apply format-relative-date matches))))
 
 (defmethod formatted-value :date/all-options
   [_ value locale]
