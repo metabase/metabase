@@ -10,6 +10,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
@@ -17,24 +18,24 @@
     (let [columns (lib/visible-columns query stage-number)]
       (assoc-in query [:stages stage-number :aggregation]
                 (lib.util.match/replace aggregations
-                  [:metric _ metric-id]
-                  (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
+                                        [:metric _ metric-id]
+                                        (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
-                    (let [replacement (lib.util.match/replace replacement
-                                        [(tag :guard #{:expression :field :aggregation}) _ _]
-                                        (if-let [col (lib/find-matching-column &match columns)]
-                                          (lib/ref col)
+                                          (let [replacement (lib.util.match/replace replacement
+                                                                                    [(tag :guard #{:expression :field :aggregation}) _ _]
+                                                                                    (if-let [col (lib/find-matching-column &match columns)]
+                                                                                      (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
-                                          &match))]
-                      (update (lib.util/fresh-uuids replacement)
-                              1
-                              #(merge
-                                %
-                                {:name metric-name}
-                                (select-keys % [:name :display-name])
-                                (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
-                    (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
+                                                                                      &match))]
+                                            (update (lib.util/fresh-uuids replacement)
+                                                    1
+                                                    #(merge
+                                                      %
+                                                      {:name metric-name}
+                                                      (select-keys % [:name :display-name])
+                                                      (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
+                                          (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
 (defn- find-metric-ids
@@ -100,8 +101,8 @@
 (defn- add-join-aliases
   [x source-field->join-alias]
   (lib.util.match/replace x
-    [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
-    (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
+                          [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
+                          (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
 
 (defn- include-implicit-joins
   [query agg-stage-index metric-query]
@@ -183,28 +184,28 @@
    replaced with the actual aggregation of the metric."
   [query stage-path expanded-stages last-metric-stage-number metric-metadata]
   (mu/disable-enforcement
-    (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
-          metric-name (:name metric-metadata)
-          metric-aggregation (-> last-metric-stage :aggregation first)
-          stage-query (temp-query-at-stage-path query stage-path)
-          stage-query (update-in stage-query
-                                 [:stages last-metric-stage-number]
-                                 (fn [stage]
-                                   (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
+   (let [[pre-transition-stages [last-metric-stage _following-stage & following-stages]] (split-at last-metric-stage-number expanded-stages)
+         metric-name (:name metric-metadata)
+         metric-aggregation (-> last-metric-stage :aggregation first)
+         stage-query (temp-query-at-stage-path query stage-path)
+         stage-query (update-in stage-query
+                                [:stages last-metric-stage-number]
+                                (fn [stage]
+                                  (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
-          stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
-          new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
-          lookup {(:id metric-metadata)
-                  {:name metric-name :aggregation metric-aggregation}}
-          stage-query (replace-metric-aggregation-refs
-                       stage-query
-                       (inc last-metric-stage-number)
-                       lookup)
-          new-following-stage (lib.util/query-stage stage-query (inc last-metric-stage-number))
-          combined-stages (vec (remove nil? (concat pre-transition-stages
-                                                    [new-metric-stage new-following-stage]
-                                                    following-stages)))]
-      combined-stages)))
+         stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
+         new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
+         lookup {(:id metric-metadata)
+                 {:name metric-name :aggregation metric-aggregation}}
+         stage-query (replace-metric-aggregation-refs
+                      stage-query
+                      (inc last-metric-stage-number)
+                      lookup)
+         new-following-stage (lib.util/query-stage stage-query (inc last-metric-stage-number))
+         combined-stages (vec (remove nil? (concat pre-transition-stages
+                                                   [new-metric-stage new-following-stage]
+                                                   following-stages)))]
+     combined-stages)))
 
 (defn- adjust-metric-stages
   "`expanded-stages` are the result of :stages from fetch-source-query.
@@ -235,7 +236,7 @@
 (defn- find-first-metric
   [query]
   (lib.util.match/match-one query
-    [:metric _ _] &match))
+                            [:metric _ _] &match))
 
 ;;;; Rejection of incompatible metrics ===============================================================================
 
@@ -280,6 +281,49 @@
                               {:stage-filters query-filters
                                :metric-filters metric-filters}))))
           (recur (rest metric-ids))))))
+  nil)
+
+;; list of aggregation operators
+
+;; (disj (set (metabase.lib.hierarchy/descendants :metabase.lib.schema.aggregation/aggregation-clause-tag)) 
+;;                                                :metric :offset)
+;; =>
+(def ^:private forbidden-aggregations #{:min
+                                        :stddev
+                                        :count-where
+                                        :cum-count
+                                        :sum-where
+                                        :cum-sum
+                                        :distinct
+                                        :percentile
+                                        :var
+                                        :median
+                                        :share
+                                        :max
+                                        :count
+                                        :avg
+                                        :sum})
+
+(defn- non-metric-aggregation
+  [aggregation]
+  (when-let [[tag _opts & args] (and (vector? aggregation) aggregation)]
+    (or (and (forbidden-aggregations tag) aggregation)
+        (some non-metric-aggregation args))))
+
+(defn- assert-compatible-stage-filters-NUKE-THOSE-AGS
+  "Assert that stage filteres are compatible with filterse of every referenced metric. Returns nil."
+  [query stage-number metrics]
+  (when-some [non-metric-ag (m/find-first non-metric-aggregation (lib/aggregations query stage-number))]
+    (when-some [metric-id  (some (fn [[id metric-query]]
+                                   (when (seq (lib/filters metric-query))
+                                     id))
+                                 ;; assuming all those metrics are present in the `query`'s `stage-number`
+                                 metrics)]
+      (throw (ex-info (tru "It''s not allowed to combine metrics having filters with other aggregations")
+                      {:meric-id metric-id
+                       :metric-filter (lib/filters (metrics metric-id))
+                       :non-metric-aggregation non-metric-ag}))))
+
   nil)
 
 ;; Following fn operates on filter's vectors (as returned from lib/filters)
@@ -395,7 +439,8 @@
                                              (lib/query query))))]
           (assert-compatible-joins refq refq-stage-number metrics)
           (assert-compatible-filters-in-metrics metrics)
-          (assert-compatible-stage-filters refq refq-stage-number metrics)))))
+          (assert-compatible-stage-filters-NUKE-THOSE-AGS refq refq-stage-number metrics)
+          #_(assert-compatible-stage-filters refq refq-stage-number metrics)))))
   nil)
 
 (defn- assert-compatible-metrics
@@ -431,9 +476,9 @@
                        (when (= path-type :lib.walk/join)
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
-            (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric (:stages <>))]
-              (throw (ex-info "Failed to replace metric" {:metric metric})))))
+           (update query :stages #(adjust-metric-stages query nil %))
+           (when-let [metric (find-first-metric (:stages <>))]
+             (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
           (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
           (throw e))))))
