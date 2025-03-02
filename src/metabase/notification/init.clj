@@ -4,4 +4,5 @@
   (:require
    [metabase.notification.payload.impl.card]
    [metabase.notification.payload.impl.dashboard]
-   [metabase.notification.payload.impl.system-event]))
+   [metabase.notification.payload.impl.system-event]
+   [metabase.notification.task.send]))

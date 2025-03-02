@@ -1,4 +1,4 @@
-(ns metabase.api.notification.unsubscribe-test
+(ns metabase.notification.api.unsubscribe-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]

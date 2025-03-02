@@ -8,11 +8,11 @@
    [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.task.send :as task.notification]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

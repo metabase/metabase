@@ -476,7 +476,7 @@ redirect_from:
         "type" : "string",
         "enum" : [ "quarter", "day", "hour", "week", "second", "default", "day-of-week", "hour-of-day", "month", "month-of-year", "day-of-month", "year", "day-of-year", "millisecond", "year-of-era", "second-of-minute", "week-of-year", "quarter-of-year", "minute-of-hour", "minute" ]
       },
-      "metabase.models.notification/FullyHydratedNotification" : {
+      "metabase.notification.models/FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
         "oneOf" : [ {
           "oneOf" : [ {
@@ -511,7 +511,7 @@ redirect_from:
                     "recipients" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                        "$ref" : "#/components/schemas/metabase.notification.models~1NotificationRecipient"
                       }
                     },
                     "template" : {
@@ -527,7 +527,7 @@ redirect_from:
                 }
               },
               "payload" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+                "$ref" : "#/components/schemas/metabase.notification.models~1NotificationCard"
               },
               "payload_id" : {
                 "type" : "null"
@@ -539,7 +539,7 @@ redirect_from:
               "subscriptions" : {
                 "type" : "array",
                 "items" : {
-                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                  "$ref" : "#/components/schemas/metabase.notification.models~1NotificationSubscription"
                 }
               }
             },
@@ -581,7 +581,7 @@ redirect_from:
                     "recipients" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                        "$ref" : "#/components/schemas/metabase.notification.models~1NotificationRecipient"
                       }
                     },
                     "template" : {
@@ -597,7 +597,7 @@ redirect_from:
                 }
               },
               "payload" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+                "$ref" : "#/components/schemas/metabase.notification.models~1NotificationCard"
               },
               "payload_id" : {
                 "type" : "integer"
@@ -609,7 +609,7 @@ redirect_from:
               "subscriptions" : {
                 "type" : "array",
                 "items" : {
-                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                  "$ref" : "#/components/schemas/metabase.notification.models~1NotificationSubscription"
                 }
               }
             },
@@ -648,7 +648,7 @@ redirect_from:
                     "recipients" : {
                       "type" : "array",
                       "items" : {
-                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                        "$ref" : "#/components/schemas/metabase.notification.models~1NotificationRecipient"
                       }
                     },
                     "template" : {
@@ -664,12 +664,12 @@ redirect_from:
                 }
               },
               "payload" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+                "$ref" : "#/components/schemas/metabase.notification.models~1NotificationCard"
               },
               "subscriptions" : {
                 "type" : "array",
                 "items" : {
-                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                  "$ref" : "#/components/schemas/metabase.notification.models~1NotificationSubscription"
                 }
               }
             },
@@ -677,7 +677,7 @@ redirect_from:
           }, { } ]
         } ]
       },
-      "metabase.models.notification/Notification" : {
+      "metabase.notification.models/Notification" : {
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -707,7 +707,7 @@ redirect_from:
           "required" : [ "payload_type" ]
         }, { } ]
       },
-      "metabase.models.notification/NotificationCard" : {
+      "metabase.notification.models/NotificationCard" : {
         "description" : "Schema for :model/NotificationCard.",
         "type" : "object",
         "properties" : {
@@ -730,7 +730,7 @@ redirect_from:
         },
         "required" : [ "card_id" ]
       },
-      "metabase.models.notification/NotificationHandler" : {
+      "metabase.notification.models/NotificationHandler" : {
         "type" : "object",
         "properties" : {
           "active" : {
@@ -755,7 +755,7 @@ redirect_from:
         },
         "required" : [ "channel_type" ]
       },
-      "metabase.models.notification/NotificationRecipient" : {
+      "metabase.notification.models/NotificationRecipient" : {
         "description" : "Schema for :model/NotificationRecipient.",
         "oneOf" : [ {
           "type" : "object",
@@ -854,7 +854,7 @@ redirect_from:
           "required" : [ "type", "details" ]
         } ]
       },
-      "metabase.models.notification/NotificationSubscription" : {
+      "metabase.notification.models/NotificationSubscription" : {
         "description" : "Schema for :model/NotificationSubscription.",
         "oneOf" : [ {
           "type" : "object",
@@ -8214,7 +8214,7 @@ redirect_from:
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.models~1FullyHydratedNotification"
               }
             }
           }
@@ -8231,7 +8231,7 @@ redirect_from:
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.models~1FullyHydratedNotification"
               }
             }
           }
@@ -8334,7 +8334,7 @@ redirect_from:
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.models~1FullyHydratedNotification"
               }
             }
           }

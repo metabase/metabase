@@ -1,7 +1,7 @@
 (ns metabase.notification.payload.core
   (:require
    [metabase.channel.render.core :as channel.render]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]
