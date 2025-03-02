@@ -9,7 +9,7 @@ import { UNIT_GROUPS } from "./constants";
 export function getCurrentValue(
   unit: DatePickerTruncationUnit,
 ): RelativeDatePickerValue {
-  return { type: "relative", value: "current", unit };
+  return { type: "relative", value: 0, unit };
 }
 
 export function getUnitGroups(availableUnits: DatePickerUnit[]) {

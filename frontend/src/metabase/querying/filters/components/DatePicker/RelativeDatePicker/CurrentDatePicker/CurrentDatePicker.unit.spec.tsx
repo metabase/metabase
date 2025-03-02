@@ -11,7 +11,7 @@ import { CurrentDatePicker } from "./CurrentDatePicker";
 
 const DEFAULT_VALUE: RelativeDatePickerValue = {
   type: "relative",
-  value: "current",
+  value: 0,
   unit: "hour",
 };
 
@@ -54,7 +54,7 @@ describe("CurrentDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "week",
     });
   });
