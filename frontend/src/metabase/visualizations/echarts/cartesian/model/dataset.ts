@@ -1,7 +1,7 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
@@ -614,9 +614,9 @@ const interpolateTimeSeriesData = (
       break;
     }
 
-    const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
+    const end = dayjs(String(dataset[i + 1][X_AXIS_DATA_KEY]));
 
-    let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
+    let start = dayjs(String(datum[X_AXIS_DATA_KEY]));
     while (start.add(count, unit).isBefore(end, unit)) {
       const interpolatedValue = start.add(count, unit);
       result.push({
