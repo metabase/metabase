@@ -3,7 +3,8 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorRangeSelector, {
+import {
+  ColorRangeSelector,
   type ColorRangeSelectorProps,
 } from "./ColorRangeSelector";
 
