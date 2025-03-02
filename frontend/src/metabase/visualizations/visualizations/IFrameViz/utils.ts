@@ -204,8 +204,8 @@ export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
 
   try {
     const rawAllowedDomains = allowedIframesSetting
-      .replaceAll(",", "")
-      .split("\n")
+      .replaceAll(/\r\n/g, "\n") // Handle Windows carriage return
+      .split(/[\n,]+/g)
       .map(host => host.trim());
 
     const parsedUrl = new URL(normalizeUrl(url));
