@@ -1,0 +1,111 @@
+import { Indicator, Badge, Code } from "@mantine/core"
+import { Button, Icon, Menu } from "metabase/ui"
+import { useState } from "react"
+
+# For your consideration
+
+
+When
+
+
+## Example
+
+```jsx
+function MyNewFeature () {
+  // this will be replaced with the K,V store
+  const [seen, setSeen] = React.useState(false)
+  const [isNew, setIsNew] = React.useState(true)
+  const [isReccomended, setIsReccomended] = React.useState(true)
+
+  // pretend feature modals
+  const [showTransmogrifyModal, setShowTransmogrifyModal] = React.useState(false)
+  const [showCalvinballModal, setShowCalvinballModal] = React.useState(false)
+
+  return (
+    <>
+      <Box>
+        <Menu>
+          <Menu.Target>
+            { /* we use disabled to react to seen state */}
+            <Indicator inline disabled={seen}>
+              { /* clearing */}
+              <Button onClick={() => setSeen(true)}>Menu</Button>
+            </Indicator>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item>Edit</Menu.Item>
+            <Menu.Item
+              onClick={() => {
+                setShowTransmogrifyModal(true)
+                setIsNew(false)
+              }}
+              rightSection={
+              isNew && <Badge variant="light">
+                {/* callout reason - new */}
+                New
+              </Badge>
+            }>Transmogrify</Menu.Item>
+            <Menu.Item onClick={() => {
+              setShowCalvinballModal(true)
+            }}
+            rightSection={
+              isReccomended && <Badge variant="light">
+                {/* callout reason - recommended */}
+                Recommended
+              </Badge>
+            }>Calvinball</Menu.Item>
+            <Menu.Item>Trash</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Box>
+      { /* everything here is just for demo purposes */ }
+      <Box mt="3">
+        <table>
+          <tr>
+            <td>Seen:</td>
+            <td>{seen.toString()}</td>
+          </tr>
+          <tr>
+            <td>New:</td>
+            <td>{isNew.toString()}</td>
+          </tr>
+          <tr>
+            <td>Reccomended:</td>
+            <td>{isReccomended.toString()}</td>
+          </tr>
+        </table>
+      </Box>
+      <Modal title="Transmogrify" opened={showTransmogrifyModal} onClose={() => setShowTransmogrifyModal(false)}>
+        <Text>Hobbes appears worried, but you can go ahead if you're sure.</Text>
+      </Modal>
+      <Modal title="Calvinball" opened={showCalvinballModal} onClose={() => setShowCalvinballModal(false)}>
+        <img href="https://en.wikipedia.org/wiki/Calvin_and_Hobbes#/media/File:Calvin_and_Hobbes.png" />
+        <Text>There are no rules, and the outcome will be determined in real time, but you knew that already.</Text>
+
+        <Box>
+          <Button onClick={() => {
+            setShowCalvinballModal(false)
+          }}>Opposite Pole</Button>
+          <Button variant="filled" onClick={() => {
+            setIsReccomended(false)
+            setShowCalvinballModal(false)
+          }}>Wickets</Button>
+        </Box>
+      </Modal>
+  </>
+  )
+}
+```
+
+## Terms
+
+- **Feature trigger** - The element the user interacts with that would start the first part of a new or recommended feature flow.
+- **Eligible** - A boolean for whether the feature trigger should be called out.
+- **Clearing** - An action the user performs that removes a callout or indicator.
+- **Indicator** - A UI element that draws the user’s attention to a parent element containing feature triggers and callouts. For our purposes this will be a little blue dot that can be affixed to other elements. The indicator never contains text or other content, it just indicates.
+    - See below for one case where an indicator might be used in place of a callout.
+- **Callout reason** - A visual element, with text that is affixed to a feature trigger to describe why the element is being called out for the user’s attention.
+    - **New** - A feature or flow that a user wouldn’t have seen before. Note this can mean that if someone version skips, many things may be “new”
+    - **Recommended** - This feature meets a condition to where we believe its use would make Metabase better. E.x. collection cleanup.
+
+    Text is used because we want it to be clear to the user why their focus is being mined.
