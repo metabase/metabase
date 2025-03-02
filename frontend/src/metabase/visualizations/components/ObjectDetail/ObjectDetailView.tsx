@@ -122,14 +122,20 @@ export function ObjectDetailView({
     [passedData],
   );
 
-  const zoomedRow = useMemo(
-    () =>
+  const zoomedRow = useMemo(() => {
+    const zoomedRowIDNumber =
+      typeof zoomedRowID === "string" ? parseInt(zoomedRowID) : zoomedRowID;
+
+    return (
       passedZoomedRow ||
       (pkIndex !== undefined &&
-        data.rows.find(row => row[pkIndex] === zoomedRowID)) ||
-      undefined,
-    [passedZoomedRow, pkIndex, data, zoomedRowID],
-  );
+        data.rows.find(
+          row =>
+            row[pkIndex] === zoomedRowID || row[pkIndex] === zoomedRowIDNumber,
+        )) ||
+      undefined
+    );
+  }, [passedZoomedRow, pkIndex, data, zoomedRowID]);
 
   const loadFKReferences = useCallback(() => {
     if (zoomedRowID) {

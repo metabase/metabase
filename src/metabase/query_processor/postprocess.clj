@@ -10,7 +10,7 @@
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.format-rows :as format-rows]
-   [metabase.query-processor.middleware.large-int-id :as large-int-id]
+   [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
@@ -37,7 +37,7 @@
    #'qp.middleware.enterprise/merge-sandboxing-metadata
    #'qp.add-dimension-projections/remap-results
    #'pivot-export/add-data-for-pivot-export
-   #'large-int-id/convert-id-to-string
+   #'large-int/convert-large-int-to-string
    #'viz-settings/update-viz-settings
    #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns
    #'annotate/add-column-info

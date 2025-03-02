@@ -124,7 +124,7 @@
                      :status-code 400})))
 
   (when (and (= type :full) hash_key)
-    (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
+    (throw (ex-info (tru "Full FieldValues shouldn''t have hash_key.")
                     {:type        type
                      :hash_key    hash_key
                      :status-code 400})))
@@ -136,7 +136,7 @@
 
 (defn- assert-no-identity-changes [id changes]
   (when (some #(contains? changes %) [:field_id :type :hash_key])
-    (throw (ex-info (tru "Can't update field_id, type, or hash_key for a FieldValues.")
+    (throw (ex-info (tru "Can''t update field_id, type, or hash_key for a FieldValues.")
                     {:id          id
                      :field_id    (:field_id changes)
                      :type        (:type changes)

@@ -431,6 +431,14 @@
              :row_count 137}
             (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
+(defn- clean-pivot-results [results]
+  (let [no-uuid #(dissoc % :lib/source_uuid)]
+    (-> results
+        (dissoc :running_time :started_at :json_query)
+        (m/dissoc-in [:data :results_metadata :checksum])
+        (m/dissoc-in [:data :native_form])
+        (update-in [:data :cols] #(mapv no-uuid %)))))
+
 (deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
@@ -441,13 +449,9 @@
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
         (is (= (-> (qp.pivot/run-pivot-query query)
-                   (dissoc :running_time :started_at :json_query)
-                   (m/dissoc-in [:data :results_metadata :checksum])
-                   (m/dissoc-in [:data :native_form]))
+                   clean-pivot-results)
                (-> (qp.pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
-                   (dissoc :running_time :started_at :json_query)
-                   (m/dissoc-in [:data :results_metadata :checksum])
-                   (m/dissoc-in [:data :native_form]))))))))
+                   clean-pivot-results)))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data

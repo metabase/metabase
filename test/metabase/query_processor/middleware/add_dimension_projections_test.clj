@@ -246,9 +246,9 @@
            (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123] false)
                 [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text])))
     (testing "and stringified if necessary"
-      (is (= (map list ["123" "123.0" "123" "123" "123"])
-             (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [123] true)
-                  [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text]))))))
+      (is (= (map list ["9007199254740992" "9007199254740992" "9007199254740992"])
+             (map #(#'qp.add-dimension-projections/transform-values-for-col {:base-type %} [9007199254740992] true)
+                  [:type/Integer :type/BigInteger :type/Decimal]))))))
 
 (deftest ^:parallel external-remappings-metadata-test
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
@@ -519,12 +519,12 @@
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
                   [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
                  (mt/rows results)))))
-      (testing "with stringified IDs"
+      (testing "with stringified large integers"
         (let [results (qp/process-query (assoc-in query [:middleware :js-int-to-string?] true))]
           (is (= exp-names
                  (mapv :display_name (get-in results [:data :cols]))))
-          (is (= [["1" "Red Medicine" "4" 10.0646 -165.374 3 "Asian"]
-                  ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2 "Burger"]]
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
                  (mt/rows results))))))))
 
 (deftest ^:parallel different-id-types-test

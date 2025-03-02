@@ -42,7 +42,7 @@
    "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
     application database.
 
-    Turn off by default since we haven't had an user-facing feature that uses this data yet.")
+    Turn off by default since we haven''t had an user-facing feature that uses this data yet.")
   :type    :boolean
   :export? false
   :audit   :never

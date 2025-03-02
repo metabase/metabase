@@ -87,10 +87,11 @@ export function fuzzyMatcher(options: Completion[]) {
         .search(word)
         // .filter(result => (result.score ?? 0) <= 1)
         .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-        .map(result => ({
-          ...result.item,
-          matches: result.matches?.flatMap(match => match.indices) ?? [],
-        }))
+        .map(result => {
+          result.item.matches =
+            result.matches?.flatMap(match => match.indices) ?? [];
+          return result.item;
+        })
     );
   };
 }

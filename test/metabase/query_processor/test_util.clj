@@ -130,7 +130,10 @@
 
 (defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
   (cond-> col
-    (and (nil? effective_type) base_type) (assoc :effective_type base_type)))
+    ;; If the :effective_type is missing, or the :base_type is more specific, copy it to the `:effective_type`.
+    ;; Some driver extensions set a specialized `:base_type` but not `:effective_type`.
+    (or (and (nil? effective_type) base_type)
+        (isa? base_type effective_type))      (assoc :effective_type base_type)))
 
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to

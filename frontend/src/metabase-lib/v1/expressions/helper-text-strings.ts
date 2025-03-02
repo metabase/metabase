@@ -101,12 +101,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "offset",
     structure: "Offset",
-    description: () => t`Returns the value of an expression in a different row`,
+    description: () =>
+      t`Returns the value of an aggregation expression in a different row`,
     args: [
       {
         name: t`expression`,
         description: t`The value to get from a different row.`,
-        example: formatIdentifier(t`Total`),
+        example: `Sum(${formatIdentifier(t`Total`)})`,
       },
       {
         name: t`rowOffset`,

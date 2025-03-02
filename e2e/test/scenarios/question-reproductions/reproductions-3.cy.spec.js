@@ -1467,7 +1467,7 @@ describe("issue 44637", () => {
     });
 
     H.queryBuilderFooter().icon("calendar").click();
-    H.rightSidebar().findByText("Add an event");
+    H.rightSidebar().findByText("Create event");
   });
 });
 
@@ -2458,5 +2458,47 @@ describe("issue 47940", () => {
       "contain",
       "December 31, 1969, 4:00 PM",
     );
+  });
+});
+
+describe("issue 53036", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const questionDetails = {
+    name: "Issue 53036",
+    query: {
+      "source-table": PRODUCTS_ID,
+      limit: 5,
+      joins: [
+        {
+          fields: "all",
+          alias: "Orders",
+          "source-table": ORDERS_ID,
+          strategy: "left-join",
+          condition: [
+            "=",
+            ["field", PRODUCTS.ID, null],
+            ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+          ],
+        },
+      ],
+    },
+  };
+
+  it("should keep buttons usable on mid size screen (metabase#53036)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+
+    cy.viewport(650, 800);
+
+    cy.log("try to click on add button - it fails is there is an overlap");
+
+    H.getNotebookStep("join").within(() => {
+      cy.icon("play").should("be.visible");
+      cy.icon("add").click();
+    });
   });
 });
