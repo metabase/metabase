@@ -5,13 +5,8 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { Box, Space, Tabs } from "metabase/ui";
 
+import type { Widget } from "./ChartSettings";
 import ChartSettingsWidget from "./ChartSettingsWidget";
-
-interface Widget {
-  id: string;
-  section: string;
-  props: Record<string, unknown>;
-}
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
@@ -28,7 +23,9 @@ export const ChartSettingsWidgetPopover = ({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    sections.current = _.chain(widgets).pluck("section").unique().value();
+    sections.current = Array.from(
+      new Set(widgets.map(widget => widget.section)),
+    );
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState("");

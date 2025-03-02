@@ -12,10 +12,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, Series } from "metabase-types/api";
 
@@ -211,5 +208,5 @@ export const SANKEY_CHART_DEFINITION = {
   },
   settings: {
     ...SETTINGS_DEFINITIONS,
-  } as any as VisualizationSettingsDefinitions,
+  },
 };
