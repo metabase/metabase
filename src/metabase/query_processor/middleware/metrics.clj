@@ -286,7 +286,7 @@
 
 ;; list of aggregation operators
 
-;; (disj (set (metabase.lib.hierarchy/descendants :metabase.lib.schema.aggregation/aggregation-clause-tag)) 
+;; (disj (set (metabase.lib.hierarchy/descendants :metabase.lib.schema.aggregation/aggregation-clause-tag))
 ;;                                                :metric :offset)
 ;; =>
 (def ^:private forbidden-aggregations #{:min
