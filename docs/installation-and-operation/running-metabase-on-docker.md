@@ -281,7 +281,6 @@ These files should be in the same directory as the `docker-compose.yml`. Put the
 Notice the "\_FILE" on the environment variables that have a secret:
 
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -342,6 +341,8 @@ We currently support the following [environment variables](../configuring-metaba
 - `MB_LDAP_BIND_DN`
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
+
+NOTE: this is just an example compose file, it's not meant to be used to run Metabase in a production environment, for that, please refer to our guide about [how to do that](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
 
 ## Troubleshooting
 
