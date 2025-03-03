@@ -67,10 +67,7 @@
 
 (defn- start-ai-loop
   [e]
-  (metabot-v3.client/request-v2
-   (-> e
-       (update :context dissoc :user_is_viewing)
-       (assoc :messages (envelope/llm-history e)))))
+  (metabot-v3.client/request-v2 (assoc e :messages (envelope/llm-history e))))
 
 (defn handle-envelope-v2
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
