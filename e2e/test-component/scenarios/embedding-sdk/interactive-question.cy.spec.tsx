@@ -5,6 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import type { ComponentProps } from "react";
 
+import { METABASE_INSTANCE_URL } from "e2e/support/constants/embedding-sdk";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -18,14 +19,15 @@ import {
   tableInteractive,
 } from "e2e/support/helpers";
 import {
-  METABASE_INSTANCE_URL,
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
   mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  getSdkRoot,
+  mockAuthProviderAndJwtSignIn,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
 import { Box, Button, Modal } from "metabase/ui";
 

@@ -4,10 +4,10 @@ import {
   tableInteractiveBody,
 } from "e2e/support/helpers";
 import {
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import type { DatasetColumn } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

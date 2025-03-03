@@ -11,6 +11,7 @@ import {
 import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
+import { getSampleAppsEmbeddingSdkSpecFiles } from "./helpers/e2e-sample-apps-helpers";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -168,7 +169,7 @@ const defaultConfig = {
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
+  specPattern: "e2e/test/scenarios/**/*.cy.spec.{js,ts}",
   viewportHeight: 800,
   viewportWidth: 1280,
   // enable video recording in run mode
@@ -243,6 +244,7 @@ const stressTestConfig = {
 
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
+
   video: false,
   specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
   indexHtmlFile: "e2e/support/component-index.html",
@@ -259,6 +261,13 @@ const embeddingSdkComponentTestConfig = {
   },
 };
 
+const sampleAppsEmbeddingSdkE2eTestConfig = {
+  ...defaultConfig,
+  specPattern: getSampleAppsEmbeddingSdkSpecFiles(
+    "e2e/test/sample-apps-embedding-sdk-scenarios",
+  ),
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
@@ -266,4 +275,5 @@ module.exports = {
   crossVersionSourceConfig,
   crossVersionTargetConfig,
   embeddingSdkComponentTestConfig,
+  sampleAppsEmbeddingSdkE2eTestConfig,
 };
