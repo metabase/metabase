@@ -7,7 +7,7 @@ export const ChartSettingToggle = ({
 }: {
   value: boolean;
   onChange: (value: boolean) => void;
-  id: string;
+  id?: string;
 }) => (
   <Switch
     labelPosition="left"

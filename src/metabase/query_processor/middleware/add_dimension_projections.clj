@@ -101,7 +101,7 @@
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
     ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
-    (let [name-generator (lib.util/unique-name-generator (qp.store/metadata-provider))
+    (let [name-generator (lib.util/unique-name-generator)
           unique-name    (fn [field-id]
                            (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                            (let [field (lib.metadata/field (qp.store/metadata-provider) field-id)]

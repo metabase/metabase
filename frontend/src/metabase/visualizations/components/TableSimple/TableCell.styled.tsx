@@ -16,6 +16,7 @@ export const CellRoot = styled.td<{
   text-align: ${props => (props.isRightAligned ? "right" : "unset")};
   white-space: nowrap;
   border-bottom: 1px solid var(--mb-color-border);
+  box-sizing: content-box;
   background-color: ${props =>
     props.backgroundColor ??
     props.theme.other.table.cell.backgroundColor ??

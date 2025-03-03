@@ -107,6 +107,8 @@
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (init-status/set-progress! 0.2)
+  ;; Ensure the classloader is installed as soon as possible.
+  (classloader/the-classloader)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
@@ -152,11 +154,11 @@
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
+
   (init-status/set-progress! 0.9)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
-   ;; start scheduler at end of init!
   (task/start-scheduler!)
    ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
   (database/check-health-and-schedule-tasks!)
