@@ -1801,7 +1801,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Dell Adams");
+        cy.findByPlaceholderText("Search by name").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
