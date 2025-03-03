@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { explainCronExpression as _explainCronExpression } from "metabase/lib/cron";
 
-import { Description } from "./ModelCachingScheduleWidget.styled";
+import S from "./CronExpressionInput.module.css";
 
 function lowerCaseFirstLetter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
@@ -13,7 +13,7 @@ function explainCronExpression(cronExpression: string) {
   return lowerCaseFirstLetter(_explainCronExpression(cronExpression));
 }
 
-function CustomScheduleExplainer({
+export function CustomScheduleExplainer({
   cronExpression,
 }: {
   cronExpression: string;
@@ -33,8 +33,5 @@ function CustomScheduleExplainer({
     return null;
   }
 
-  return <Description>{explanation}</Description>;
+  return <span className={S.explanation}>{explanation}</span>;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomScheduleExplainer;
