@@ -63,10 +63,6 @@ const staticTextMeasurer: TextWidthMeasurer = (
   );
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
-
-  console.log("TSP StaticRowChart data: ", JSON.stringify(data, null, 2));
-  console.log("TSP StaticRowChart settings: ", JSON.stringify(settings, null, 2));
-
   const remappedColumnsData = extractRemappedColumns(
     data,
   ) as RemappingHydratedChartData;

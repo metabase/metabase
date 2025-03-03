@@ -93,6 +93,7 @@
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
+    (println "TSP display-type:" display-type)
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -112,7 +113,8 @@
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not (contains? #{:progress :gauge} display-type))
+        (and (= false (is-visualizer-dashcard? maybe-dashcard))
+             (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
