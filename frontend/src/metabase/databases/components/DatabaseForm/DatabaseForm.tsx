@@ -178,14 +178,14 @@ const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <div>
+      <FormFooter>
         <FormSubmitButton
           disabled={!isDirty}
           title={isNew ? t`Save` : t`Save changes`}
           primary
         />
         <FormErrorMessage />
-      </div>
+      </FormFooter>
     );
   } else if (values.engine) {
     return (

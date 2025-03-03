@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -20,11 +21,9 @@ import S from "./DatabaseConnectionInfoSectionContent.module.css";
 export const DatabaseConnectionInfoSectionContent = ({
   database,
   dismissSyncSpinner,
-  openDbDetailsModal,
 }: {
   database: Database;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
-  openDbDetailsModal: () => void;
 }) => {
   const isSynced = isSyncCompleted(database);
 
@@ -42,6 +41,10 @@ export const DatabaseConnectionInfoSectionContent = ({
     () => dismissSyncSpinner(database.id),
     [database.id, dismissSyncSpinner],
   );
+
+  const openDbDetailsModal = useCallback(() => {
+    dispatch(push(`/admin/databases/${database.id}/edit`));
+  }, [database.id, dispatch]);
 
   // TODO: handle fetching connection status info once endpoint exists
 
