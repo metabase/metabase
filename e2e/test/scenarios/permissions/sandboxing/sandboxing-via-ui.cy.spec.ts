@@ -112,7 +112,7 @@ describe(
           rowsContainOnlyGizmos(apiResponses);
 
           cy.log("/api/card/$id/query endpoints are not sandboxed");
-          cypressWaitAll(
+          H.cypressWaitAll(
             apiResponses.map(({ response }) => {
               const url = (response as any)?.url;
               const cardId = parseInt(url.match(/\d+/g).at(-1));
