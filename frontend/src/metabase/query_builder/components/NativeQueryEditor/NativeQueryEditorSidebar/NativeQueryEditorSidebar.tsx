@@ -101,7 +101,7 @@ export const NativeQueryEditorSidebar = (
             className={NativeQueryEditorSidebarS.SidebarButton}
             aria-label={t`Format query`}
             onClick={onFormatQuery}
-            icon="document"
+            icon="format_code"
             iconSize={20}
             onlyIcon
           />
