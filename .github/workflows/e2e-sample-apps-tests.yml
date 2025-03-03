@@ -14,6 +14,14 @@ on:
 env:
   # we must support last two stable releases
   SUPPORTED_RELEASES_COUNT: 2
+  TEST_SUITES: |
+    [
+      "metabase-nodejs-react-sdk-embedding-sample-e2e"
+    ]
+  TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
+    [
+      "shoppy-e2e"
+    ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -80,46 +88,47 @@ jobs:
       matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
       - name: Build sample app compatibility data
         uses: actions/github-script@v7
         id: build-sample-apps-data
         with:
           script: | # js
-            const ref = process.env.GITHUB_BASE_REF || process.env.GITHUB_REF || "";
+            const {
+              isReleaseBranch,
+              getMajorVersionNumberFromReleaseBranch,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const testSuites = JSON.parse(process.env.TEST_SUITES);
+            const testSuitesToRunInMasterOnly = JSON.parse(process.env.TEST_SUITES_TO_RUN_IN_MASTER_ONLY);
+
+            const ref = '${{ github.base_ref || github.ref }}';
             const branchName = ref.replace(/^refs\/heads\//, "");
 
             const isMainBranchRef = branchName === 'master';
-            const isReleaseBranchRef = branchName.includes('release-x');
-
-            const testSuites = [
-              "metabase-nodejs-react-sdk-embedding-sample-e2e",
-              // "metabase-nextjs-sdk-embedding-sample-app-router-e2e",
-              // "metabase-nextjs-sdk-embedding-sample-pages-router-e2e",
-              // "shoppy-e2e",
-            ];
+            const isReleaseBranchRef = isReleaseBranch(branchName);
 
             if (isMainBranchRef) {
               return {
-                branch_name: 'docker-e2e-testing',
+                branch_name: 'main',
                 matrix: testSuites,
               };
             }
 
             if (isReleaseBranchRef) {
-              const currentLatestVersion = Number(${{ vars.CURRENT_VERSION }});
-              const versionRegexp = /release-x\.([0-9]+)\.x/;
-
-              const versionMatch = branchName.match(versionRegexp);
-              const currentBranchVersion = versionMatch ? versionMatch[1] : null;
-
               const supportedReleasesCount = Number(${{env.SUPPORTED_RELEASES_COUNT}});
 
-              const shouldRunTestsForVersion = (currentLatestVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
+              const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
+              const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
+
+              const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
+              const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
 
               return {
                 branch_name: branchName,
                 matrix: shouldRunTestsForVersion
-                  ? testSuites.filter(testSuite => testSuite !== "shoppy-e2e")
+                  ? releaseBranchTestSuites
                   : []
               };
             }
@@ -163,6 +172,19 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
   e2e-tests:
     needs: [get-build-requirements, get-sample-apps-data, build]
     strategy:
@@ -200,37 +222,24 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 21 }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ needs.get-build-requirements.outputs.java_version || 21 }}
-          distribution: "temurin"
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-
-      - name: Compile CLJS
-        run: yarn build-pure:cljs
-        shell: bash
-
-      - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
 
       - name: Prepare and launch Sample Apps
         run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts
 
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
-        continue-on-error: true
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }} --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Cypress Artifacts upon failure
