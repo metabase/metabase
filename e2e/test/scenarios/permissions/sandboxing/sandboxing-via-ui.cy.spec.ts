@@ -1,4 +1,5 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { cypressWaitAll } from "e2e/support/helpers";
 
 import {
   adhocQuestionData,
@@ -51,26 +52,40 @@ describe(
     });
 
     beforeEach(() => {
-      cy.intercept("POST", "/api/card").as("saveQuestion");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashboardQuery",
+      cy.intercept("/api/card/*/query").as("cardQuery");
+      cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
       );
-      cy.intercept("POST", "/api/dataset").as("cardQuery");
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       H.restore("sandboxing-on-postgres-12" as any);
       cy.signInAsAdmin();
     });
 
     it("shows all data to an admin", () => {
-      // we can do this once for all of these tests - see that all the data is visible
       H.visitDashboard(sandboxingData.dashboard.id);
+
+      expect(sandboxingData.questions.length).to.be.greaterThan(0);
       cy.wait(
-        new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+        new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
       ).then(apiResponses => {
         rowsContainGizmosAndWidgets(apiResponses);
+
+        cy.log("/api/card/$id/query endpoints are not sandboxed");
+        cypressWaitAll(
+          apiResponses.map(({ response }) => {
+            const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+            expect(cardId).to.be.a("number");
+            return cy.request("POST", `/api/card/${cardId}/query`);
+          }),
+        ).then(apiResponses => {
+          rowsContainGizmosAndWidgets(
+            apiResponses.map(response => ({ response })),
+          );
+        });
       });
 
       H.visitQuestionAdhoc(adhocQuestionData);
-      cy.wait("@cardQuery").then(apiResponse =>
+      cy.wait("@datasetQuery").then(apiResponse =>
         rowsContainGizmosAndWidgets([apiResponse]),
       );
     });
@@ -86,14 +101,28 @@ describe(
         signInAsSandboxedUser();
 
         H.visitDashboard(sandboxingData.dashboard.id);
+
+        expect(sandboxingData.questions.length).to.be.greaterThan(0);
         cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
-        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
+        ).then(apiResponses => {
+          rowsContainOnlyGizmos(apiResponses);
+          cy.log("/api/card/$id/query endpoints are not sandboxed");
+          cypressWaitAll(
+            apiResponses.map(({ response }) => {
+              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+              expect(cardId).to.be.a("number");
+              return cy.request("POST", `/api/card/${cardId}/query`);
+            }),
+          ).then(apiResponses => {
+            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
+          });
+        });
 
         H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@cardQuery").then(apiResponse =>
-          rowsContainOnlyGizmos([apiResponse]),
-        );
+        cy.wait("@datasetQuery").then(apiResponse => {
+          rowsContainOnlyGizmos([apiResponse]);
+        });
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -107,12 +136,25 @@ describe(
 
         H.visitDashboard(sandboxingData.dashboard.id);
 
+        expect(sandboxingData.questions.length).to.be.greaterThan(0);
         cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
-        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
+        ).then(apiResponses => {
+          rowsContainOnlyGizmos(apiResponses);
+          cy.log("/api/card/$id/query endpoints are not sandboxed");
+          cypressWaitAll(
+            apiResponses.map(({ response }) => {
+              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+              expect(cardId).to.be.a("number");
+              return cy.request("POST", `/api/card/${cardId}/query`);
+            }),
+          ).then(apiResponses => {
+            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
+          });
+        });
 
         H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@cardQuery").then(apiResponse =>
+        cy.wait("@datasetQuery").then(apiResponse =>
           rowsContainOnlyGizmos([apiResponse]),
         );
       });
@@ -129,12 +171,26 @@ describe(
 
         H.visitDashboard(sandboxingData.dashboard.id);
 
+        expect(sandboxingData.questions.length).to.be.greaterThan(0);
         cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
-        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
+        ).then(apiResponses => {
+          rowsContainOnlyGizmos(apiResponses);
+
+          cy.log("/api/card/$id/query endpoints are not sandboxed");
+          cypressWaitAll(
+            apiResponses.map(({ response }) => {
+              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+              expect(cardId).to.be.a("number");
+              return cy.request("POST", `/api/card/${cardId}/query`);
+            }),
+          ).then(apiResponses => {
+            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
+          });
+        });
 
         H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@cardQuery").then(apiResponse =>
+        cy.wait("@dataset").then(apiResponse =>
           rowsContainOnlyGizmos([apiResponse]),
         );
       });
@@ -165,7 +221,7 @@ describe(
 
           cy.log("Should not return any data, and return an error");
           cy.wait(
-            new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+            new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
           ).then(apiResponses => {
             apiResponses.forEach(({ response }) => {
               expect(response?.body.data.rows).to.have.length(0);

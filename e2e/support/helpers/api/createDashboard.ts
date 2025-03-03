@@ -64,19 +64,11 @@ export const createDashboard = (
         auto_apply_filters != null ||
         Array.isArray(dashcards)
       ) {
-        cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
+        return cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
           auto_apply_filters,
           enable_embedding,
           embedding_params,
           dashcards,
-        }).then(({ body }) => {
-          const dashboard = body as Dashboard;
-          dashcardIdAliases?.forEach((alias: string, index: number) => {
-            const dashcard = dashboard.dashcards[index];
-            if (dashcard) {
-              cy.wrap(dashcard.id).as(alias);
-            }
-          });
         });
       }
     });
