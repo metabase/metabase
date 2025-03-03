@@ -60,6 +60,20 @@
       border-left-width: 1.6px;
     }
 
+    .cm-matchingBracket {
+      background: none !important;
+      outline: 0.5px solid var(--mb-color-text-light);
+      border-radius: 2px;
+    }
+
+    .cm-tag {
+      color: var(--mb-color-brand);
+
+      & * {
+        color: inherit;
+      }
+    }
+
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
@@ -177,12 +191,6 @@
     .cm-token-brace,
     .cm-token-squareBracket {
       color: var(--mb-color-brand);
-    }
-
-    .cm-matchingBracket {
-      background: none !important;
-      outline: 0.5px solid var(--mb-color-text-light);
-      border-radius: 2px;
     }
 
     .cm-token-propertyName,

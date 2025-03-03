@@ -1,18 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
-import type { Expression } from "metabase-types/api";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import type { StartRule } from "./types";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
     setup();
-
     expect(screen.getByText("Expression")).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
@@ -49,34 +48,13 @@ describe("ExpressionWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("should trigger onChangeExpression if expression is valid", async () => {
-    const { onChangeExpression } = setup();
-
-    const doneButton = screen.getByRole("button", { name: "Done" });
-    expect(doneButton).toBeDisabled();
-
-    const expressionInput = screen.getByRole("textbox");
-    expect(expressionInput).toHaveClass("ace_text-input");
-
-    await userEvent.type(expressionInput, "1 + 1");
-    await userEvent.tab();
-
-    expect(doneButton).toBeEnabled();
-
-    await userEvent.click(doneButton);
-
-    expect(onChangeExpression).toHaveBeenCalledTimes(1);
-    expect(onChangeExpression).toHaveBeenCalledWith("", ["+", 1, 1]);
-  });
-
   it("should trigger onChangeClause if expression is valid", async () => {
-    const { getRecentExpressionClauseInfo, onChangeClause } = setup();
+    const { getRecentExpressionClauseInfo, onChangeClause } = await setup();
 
     const doneButton = screen.getByRole("button", { name: "Done" });
     expect(doneButton).toBeDisabled();
 
     const expressionInput = screen.getByRole("textbox");
-    expect(expressionInput).toHaveClass("ace_text-input");
 
     await userEvent.type(expressionInput, "1 + 1");
     await userEvent.tab();
@@ -114,14 +92,10 @@ describe("ExpressionWidget", () => {
     });
 
     it("should validate name value", async () => {
-      const expression: Expression = ["+", 1, 1];
-      const {
-        getRecentExpressionClauseInfo,
-        onChangeExpression,
-        onChangeClause,
-      } = setup({
-        expression,
+      const clause = Lib.expressionClause("+", [1, 1]);
+      const { getRecentExpressionClauseInfo, onChangeClause } = await setup({
         withName: true,
+        clause,
       });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
@@ -131,12 +105,12 @@ describe("ExpressionWidget", () => {
 
       expect(doneButton).toBeDisabled();
 
-      await userEvent.type(screen.getByDisplayValue("1 + 1"), "{enter}");
+      const input = await screen.findByDisplayValue("1 + 1");
+      await userEvent.type(input, "{enter}");
 
-      // enter in expression editor should not trigger "onChangeClause" or "onChangeExpression"
+      // enter in expression editor should not trigger "onChangeClause"
       // as popover is not valid with empty "name"
       expect(onChangeClause).toHaveBeenCalledTimes(0);
-      expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
       // The name must not be empty
       await userEvent.clear(expressionNameInput);
@@ -161,11 +135,6 @@ describe("ExpressionWidget", () => {
 
       await userEvent.click(doneButton);
 
-      expect(onChangeExpression).toHaveBeenCalledTimes(1);
-      expect(onChangeExpression).toHaveBeenCalledWith(
-        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
-        expression,
-      );
       expect(onChangeClause).toHaveBeenCalledTimes(1);
       expect(onChangeClause).toHaveBeenCalledWith(
         "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
@@ -177,7 +146,7 @@ describe("ExpressionWidget", () => {
 
   describe("startRule = 'aggregation'", () => {
     it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-      setup({ startRule: "aggregation" });
+      await setup({ startRule: "aggregation" });
 
       await userEvent.paste("[Imaginary]");
       await userEvent.tab();
@@ -189,7 +158,7 @@ describe("ExpressionWidget", () => {
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-      setup({ startRule: "aggregation" });
+      await setup({ startRule: "aggregation" });
 
       await userEvent.paste("[Total] / [Subtotal]");
       await userEvent.tab();
@@ -207,7 +176,7 @@ describe("ExpressionWidget", () => {
 
   describe("startRule = 'expression'", () => {
     it("should show a detailed error when comma is missing (metabase#15892)", async () => {
-      setup({ startRule: "expression" });
+      await setup({ startRule: "expression" });
 
       await userEvent.paste('concat([Tax] "test")');
       await userEvent.tab();
@@ -222,10 +191,11 @@ describe("ExpressionWidget", () => {
   });
 });
 
-function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
+async function setup<S extends StartRule = "expression">(
+  additionalProps?: Partial<ExpressionWidgetProps<S>>,
+) {
   const query = createQuery();
   const stageIndex = 0;
-  const onChangeExpression = jest.fn();
   const onChangeClause = jest.fn();
   const onClose = jest.fn();
 
@@ -241,22 +211,26 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
 
   renderWithProviders(
     <ExpressionWidget
-      expression={undefined}
       clause={undefined}
       name={undefined}
       query={query}
       reportTimezone="UTC"
       stageIndex={stageIndex}
-      onChangeExpression={onChangeExpression}
       onChangeClause={onChangeClause}
       onClose={onClose}
       {...additionalProps}
     />,
   );
+  await waitFor(() =>
+    expect(screen.getByTestId("custom-expression-query-editor")).toHaveProperty(
+      "readOnly",
+      false,
+    ),
+  );
+  screen.getByTestId("custom-expression-query-editor").focus();
 
   return {
     getRecentExpressionClauseInfo,
-    onChangeExpression,
     onChangeClause,
     onClose,
   };
