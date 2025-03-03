@@ -3,13 +3,11 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- checked-card-dataset-query
@@ -88,7 +86,3 @@
                                   (metabot-v3.client/find-outliers-request))})
        (catch Exception e
          (metabot-v3.tools.u/handle-agent-error e))))))
-
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/find-outliers
-  [_tool-name arguments env]
-  (find-outliers arguments env))
