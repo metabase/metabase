@@ -75,17 +75,19 @@
                (deref (promise)))}
 
   jar-download
-  {:doc      "Given a version, downloads a metabase jar"
-   :examples [["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
-              ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
-              ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
-   :requires [[mage.jar-download :as jar-download]]
+  {:doc        "Given a version, downloads a metabase jar"
+   :examples   [["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
+                ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
+                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
+   :requires   [[mage.jar-download :as jar-download]]
    :arg-schema [:or
-                [:tuple {:desc "version"} :string]
-                [:tuple :string :string]]
-   :task     (do
-               (cli/parse! (current-task))
-               (jar-download/jar-download *command-line-args*))}
+                [:tuple [:string {:desc "version"}]]
+                [:tuple
+                 [:string {:desc "version"}]
+                 [:string {:desc "path"}]]]
+   :task       (do
+                 (cli/parse! (current-task))
+                 (jar-download/jar-download *command-line-args*))}
 
   setup-autocomplete
   {:doc      "Prints instructions to setup autocomplete"
@@ -102,36 +104,39 @@
 
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
-   :doc      "The sample task docstring"
-
+   :doc        "The sample task docstring"
    ;; examples get printed out when you pass -h or --help.
-   :examples [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
-              ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
-
+   :examples   [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
+                ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
    ;; The task is the actual code that runs when you run the task.
-   :task     (let [{[a op b] :arguments} (cli/parse! (current-task))]
-               (println "Example:" a (name op) b "=" (({:+ + :- -} op) a b)))
-
-   ;; `:require` (optional) lazily libraries for just your task:
-   :requires []
-
-   ;; `:options` (optional) are passed to [[clojure.tools.cli/parse-opts]].
+   :task       (let [{:keys [arguments data]} (cli/parse! (current-task))
+                     [a op b] arguments]
+                 (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b))))
+   ;; (optional) `:require` lazily libraries for just your task:
+   :requires   [[mage.color :as c]]
+   ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
    ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
-   :options  [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
-              ["-p" "--port PORT" "Some port we care about in -example (not actually used)"]]
-
-   ;; `:arg-schema` (optional) is a malli schema for the arguments passed to the task, after the options
+   :options    [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
+                ["-p" "--port PORT" "Some port we care about in -example (not actually used)"]]
+   ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
    :arg-schema [:tuple :int [:enum :+ :-] :int]
-
-   ;; `:usage-fn` (optional) is a function called with the current-task map
+   ;; (optional) `:usage-fn` is a function called with the current-task map
    ;; and returns a string containing extra-detailed usage information.
-   :usage-fn (fn [{:keys [doc]}]
-               (println "Optional extra usage information, if you want.")
-               (println "Reversed docstring:" (apply str (reverse doc))))
+   :usage-fn   (fn [{:keys [doc]}]
+                 (println "Optional extra usage information, if you want.")
+                 (println "Reversed docstring:" (apply str (reverse doc))))
+   ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
+   ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
+   ;; map of ports.
+   :data       {:a [:b :c] :b [:d]}}
 
-   ;; (optional) Any other keys are completely allowed. These will be returned from `(current-task)`.
-   :some-data-for-my-task {:a [:b :c] :b [:d]}}
-
+  -x {:requires [[mage.util :as u]]
+      :task     (let [done (u/wait "Please wait")
+                      _    (println "hi")]
+                  (Thread/sleep 1000)
+                  (println "Done waiting!")
+                  (done))}
+  
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
