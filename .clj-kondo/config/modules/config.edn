@@ -197,7 +197,7 @@
 
   embed
   {:api  #{metabase.embed.settings}
-   :uses #{analytics models premium-features util}}
+   :uses #{analytics models premium-features tiles util}}
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
@@ -227,7 +227,6 @@
   {:api #{metabase.lib.binning
           metabase.lib.binning.util
           metabase.lib.card
-          metabase.lib.convert
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
@@ -393,7 +392,7 @@
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
            metabase.public-sharing.init}
-   :uses #{actions analytics api db events lib models query-processor request util}}
+   :uses #{actions analytics api db events lib models query-processor request tiles util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -592,10 +591,9 @@
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
-           metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
+   :uses #{api audit driver enterprise/impersonation lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}
@@ -650,6 +648,11 @@
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
 
+  enterprise/impersonation
+  {:api #{metabase-enterprise.impersonation.core
+          metabase-enterprise.impersonation.api}
+   :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
@@ -673,7 +676,7 @@
            query-processor
            request
            util
-           enterprise/advanced-permissions
+           enterprise/impersonation
            enterprise/api}}
 
   enterprise/scim

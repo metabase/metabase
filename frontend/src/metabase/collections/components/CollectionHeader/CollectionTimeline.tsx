@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link/Link";
-import Tooltip from "metabase/core/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
+import { Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
@@ -17,7 +17,7 @@ const CollectionTimeline = ({
   const url = Urls.timelinesInCollection(collection);
 
   return (
-    <Tooltip tooltip={t`Events`} placement="bottom">
+    <Tooltip label={t`Events`} position="bottom">
       <div>
         <CollectionHeaderButton as={Link} to={url} icon="calendar" />
       </div>

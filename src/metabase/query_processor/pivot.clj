@@ -5,10 +5,8 @@
   instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -360,7 +358,7 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator (lib.metadata/->metadata-provider query))
+        unique-name-fn     (lib.util/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
@@ -575,7 +573,7 @@
   results -- "
   [query :- ::lib.schema/query]
   (let [remapped-query          (->> query
-                                     lib.convert/->legacy-MBQL
+                                     lib/->legacy-MBQL
                                      qp.add-dimension-projections/add-remapped-columns
                                      (lib.query/query (qp.store/metadata-provider)))
         remap                   (remapped-indexes (lib/breakouts remapped-query))

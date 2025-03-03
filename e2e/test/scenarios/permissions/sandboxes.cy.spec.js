@@ -127,7 +127,7 @@ describe("formatting > sandboxes", () => {
         cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: ATTRIBUTE_VALUE,
+          columnAssertion: Number(ATTRIBUTE_VALUE),
         });
       });
     });
@@ -171,7 +171,7 @@ describe("formatting > sandboxes", () => {
         H.openPeopleTable();
         H.assertDatasetReqIsSandboxed({
           columnId: PEOPLE.ID,
-          columnAssertion: ATTRIBUTE_VALUE,
+          columnAssertion: Number(ATTRIBUTE_VALUE),
         });
         cy.get(".test-TableInteractive-headerCellData").should(
           "have.length",
@@ -333,7 +333,7 @@ describe("formatting > sandboxes", () => {
       cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
       H.assertDatasetReqIsSandboxed({
         columnId: PEOPLE.USER_ID,
-        columnAssertion: ATTRIBUTE_VALUE,
+        columnAssertion: Number(ATTRIBUTE_VALUE),
       });
     });
 
@@ -440,7 +440,7 @@ describe("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
           requestAlias: `@cardQuery${QUESTION_ID}`,
         });
       });
@@ -533,7 +533,7 @@ describe("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });
@@ -618,7 +618,7 @@ describe("formatting > sandboxes", () => {
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed({
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -685,7 +685,7 @@ describe("formatting > sandboxes", () => {
         H.assertDatasetReqIsSandboxed({
           requestAlias: "@datasetQuery",
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         cy.findByTestId("TableInteractive-root")
@@ -818,7 +818,7 @@ describe("formatting > sandboxes", () => {
         H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         // Title of the first order for User ID = 1
@@ -1024,7 +1024,7 @@ describe("formatting > sandboxes", () => {
       H.assertDatasetReqIsSandboxed({
         requestAlias: "@cardQuery",
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -1123,7 +1123,7 @@ describe("formatting > sandboxes", () => {
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
-        columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
     });
 
@@ -1229,7 +1229,7 @@ describe("formatting > sandboxes", () => {
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
 
         H.openSharingMenu("Subscriptions");
