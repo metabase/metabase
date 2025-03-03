@@ -365,9 +365,6 @@
                                       :catalog (tx/db-test-env-var :databricks :catalog)
                                       :http-path (tx/db-test-env-var :databricks :http-path)
                                       :token (tx/db-test-env-var :databricks :token)}
-                         :druid {:host (tx/db-test-env-var :druid :host)
-                                 :port (read-string (tx/db-test-env-var :druid :port))}
-                         :druid-jdbc {:host (tx/db-test-env-var :druid-jdbc :host)}
                          :mongo {:host (tx/db-test-env-var :mongo :host)
                                  :dbname "test-data"}
                          :mysql {:host (tx/db-test-env-var :mysql :host)
@@ -377,16 +374,10 @@
                                   :password (tx/db-test-env-var :oracle :password)}
                          :postgres {:user (tx/db-test-env-var :postgresql :user)
                                     :password (tx/db-test-env-var :postgresql :password)}
-                        ;;  :presto-jdbc {:user (tx/db-test-env-var :presto-jdbc :user)
-                        ;;                :host (tx/db-test-env-var :presto-jdbc :host)
-                        ;;                :catalog "system"
-                        ;;                :port (read-string (tx/db-test-env-var :presto-jdbc :port))
-                        ;;                :ssl false}
                          :snowflake {:account (tx/db-test-env-var :snowflake :account)
                                      :user (tx/db-test-env-var :snowflake :user)
                                      :password (tx/db-test-env-var :snowflake :password)
                                      :db (tx/db-test-env-var :snowflake :db)}
-                        ;;  :sparksql {}
                          :sqlserver {:user (tx/db-test-env-var :sqlserver :user)
                                      :password (tx/db-test-env-var :sqlserver :password)
                                      :port (tx/db-test-env-var :sqlserver :port)}
