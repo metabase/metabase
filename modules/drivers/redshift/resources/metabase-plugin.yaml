@@ -23,8 +23,7 @@ driver:
       type: schema-filters
       display-name: Schemas
     - user
-    - merge:
-      - password
+    - password
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
