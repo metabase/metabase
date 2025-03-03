@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { Dataset, Field, RowValues } from "metabase-types/api";
+import type { Dataset, DatasetColumn, RowValues } from "metabase-types/api";
 import type {
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -11,7 +11,7 @@ import { extractReferencedColumns } from "./column";
 import { getDataSourceIdFromNameRef, isDataSourceNameRef } from "./data-source";
 
 type MergeVisualizerSeries = {
-  columns: Field[];
+  columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   datasets: Record<VisualizerDataSourceId, Dataset | null | undefined>;
   dataSources: VisualizerDataSource[];

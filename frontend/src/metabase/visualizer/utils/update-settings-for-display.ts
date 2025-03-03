@@ -1,6 +1,6 @@
 import { isCartesianChart } from "metabase/visualizations";
 import type {
-  Field,
+  DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -8,13 +8,13 @@ import type { VisualizerColumnValueSource } from "metabase-types/store/visualize
 
 export function updateSettingsForDisplay(
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
-  columns: Field[],
+  columns: DatasetColumn[],
   settings: VisualizationSettings,
   sourceDisplay: VisualizationDisplay | null,
   targetDisplay: VisualizationDisplay | null,
 ): {
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
-  columns: Field[];
+  columns: DatasetColumn[];
   settings: VisualizationSettings;
 } {
   if (!sourceDisplay || !targetDisplay) {

@@ -1,5 +1,5 @@
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Field } from "metabase-types/api";
+import type { DatasetColumn, FieldLiteral } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerColumnValueSource,
@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 export function isReferenceToColumn(
-  column: Field,
+  column: DatasetColumn,
   dataSourceId: VisualizerDataSourceId,
   ref: VisualizerColumnReference,
 ) {
@@ -39,7 +39,7 @@ function checkColumnMappingExists(
 
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
-  column: Field,
+  column: DatasetColumn,
   otherReferencedColumns: VisualizerColumnReference[],
 ): VisualizerColumnReference {
   const existingRef = otherReferencedColumns.find(ref =>
@@ -67,11 +67,15 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function copyColumn(name: string, column: Field): Field {
-  const copy: Field = {
+export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
+  const copy: DatasetColumn = {
     ...column,
     name,
-    field_ref: ["field", name, { "base-type": column.base_type }],
+    field_ref: [
+      "field",
+      name,
+      { "base-type": column.base_type },
+    ] as FieldLiteral,
   };
 
   // TODO Remove manual MBQL manipulation
@@ -110,7 +114,7 @@ export function extractReferencedColumns(
   );
 }
 
-function maybeGetTemporalUnit(col: Field) {
+function maybeGetTemporalUnit(col: DatasetColumn) {
   const maybeOpts = col.field_ref?.[2];
   if (maybeOpts && "temporal-unit" in maybeOpts) {
     return maybeOpts["temporal-unit"];

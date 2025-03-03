@@ -17,7 +17,7 @@ import type {
   Card,
   CardId,
   Dataset,
-  Field,
+  DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -211,7 +211,7 @@ const visualizerHistoryItemSlice = createSlice({
       state,
       action: PayloadAction<{
         dataSource: VisualizerDataSource;
-        column: Field;
+        column: DatasetColumn;
       }>,
     ) => {
       const { dataSource, column } = action.payload;
@@ -496,11 +496,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    // TODO fix this as unknown as Field[] cast
-    return getInitialStateForCardDataSource(
-      card,
-      dataset.data.cols as unknown as Field[],
-    );
+    return getInitialStateForCardDataSource(card, dataset.data.cols);
   }
 
   if (
@@ -512,8 +508,7 @@ function maybeCombineDataset(
     columns.forEach(column => {
       const columnRef = createVisualizerColumnReference(
         source,
-        // TODO fix this as unknown as Field[] cast
-        column as unknown as Field,
+        column,
         extractReferencedColumns(state.columnValuesMapping),
       );
       addMetricColumnToCartesianChart(state, column, columnRef);

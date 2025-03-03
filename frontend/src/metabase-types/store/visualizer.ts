@@ -2,7 +2,6 @@ import type {
   Card,
   Dataset,
   DatasetColumn,
-  Field,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -54,7 +53,7 @@ export type VisualizerColumnValueSource =
 
 export type VisualizerHistoryItem = {
   display: VisualizationDisplay | null;
-  columns: Field[];
+  columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
 };

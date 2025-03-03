@@ -58,23 +58,6 @@ export function QuestionList({
   const [visualizerModalCardId, setVisualizerModalCardId] =
     useState<CardId | null>(null);
   const isVisualizerModalOpen = !!visualizerModalCardId;
-  // const [selectedCard, setSelectedCard] = useState<Card<DatasetQuery>>();
-
-  // const loadCard = useCallback(async () => {
-  //   if (!visualizerModalCardId) {
-  //     return;
-  //   }
-
-  //   const { data } = await dispatch(
-  //     cardApi.endpoints.getCard.initiate({ id: visualizerModalCardId }),
-  //   );
-
-  //   setSelectedCard(data);
-  // }, [dispatch, visualizerModalCardId]);
-
-  // useEffect(() => {
-  //   loadCard();
-  // }, [visualizerModalCardId, loadCard]);
 
   useEffect(() => {
     setQueryOffset(0);

@@ -5,23 +5,30 @@ import {
 } from "metabase/visualizer/utils";
 import type {
   Card,
+  DatasetColumn,
   DatasetQuery,
   VisualizationDisplay,
 } from "metabase-types/api";
+import type {
+  VisualizerDataSourceId,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
 
-export function convertCardToInitialState(card: Card<DatasetQuery>) {
+export function convertCardToInitialState(card: Card<DatasetQuery>): {
+  state: Partial<VisualizerHistoryItem>;
+  extraDataSources: [VisualizerDataSourceId];
+} {
   if (isVisualizerDashboardCard(card)) {
     return {
-      state: {
-        visualization_settings: card.visualization_settings,
-      },
+      state: {},
       extraDataSources: [`card:${card.id}` as const],
     };
   }
 
   const initialState = getInitialStateForCardDataSource(
     card,
-    card.result_metadata,
+    // TODO fix that
+    card.result_metadata as unknown as DatasetColumn[],
   );
 
   // if the visualization doesn't support the visualizer, default to bar chart

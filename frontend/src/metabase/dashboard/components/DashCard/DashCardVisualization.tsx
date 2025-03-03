@@ -35,6 +35,7 @@ import type {
   Dashboard,
   DashboardCard,
   Dataset,
+  RawSeries,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
@@ -261,8 +262,9 @@ export function DashCardVisualization({
 
   const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
-      const disableClickBehavior =
-        getVisualizationRaw(series)?.disableClickBehavior;
+      const disableClickBehavior = getVisualizationRaw(
+        series as RawSeries,
+      )?.disableClickBehavior;
       if (isVirtualDashCard(dashcard) || disableClickBehavior) {
         const virtualDashcardType = getVirtualCardType(
           dashcard,

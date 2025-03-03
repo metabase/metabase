@@ -5,8 +5,8 @@ import { getColumnVizSettings } from "metabase/visualizations";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
+  DatasetColumn,
   DatasetQuery,
-  Field,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -27,7 +27,7 @@ const areaBarLine = ["area", "bar", "line"];
 
 export function canCombineCard(
   display: VisualizationDisplay,
-  columns: Field[],
+  columns: DatasetColumn[],
   settings: VisualizationSettings,
   card: Card,
 ) {
@@ -49,7 +49,7 @@ export function canCombineCard(
 // Mimics the `area-bar-line-series-are-compatible?` fn from `GET /api/card/:id/series`
 // https://github.com/metabase/metabase/blob/5cfc079d1db6e69bf42705f0eeba431a6e39c6b5/src/metabase/api/card.clj#L219
 function areAreaBarLineSeriesCompatible(
-  columns: Field[],
+  columns: DatasetColumn[],
   settings: VisualizationSettings,
   card: Card,
 ) {
@@ -88,7 +88,7 @@ function areAreaBarLineSeriesCompatible(
 
 export function getInitialStateForCardDataSource(
   card: Card<DatasetQuery>,
-  columns: Field[],
+  columns: DatasetColumn[],
 ): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
     display: card.display,
