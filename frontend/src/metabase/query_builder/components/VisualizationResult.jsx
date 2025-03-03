@@ -20,7 +20,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hasMetadataPopovers",
   "tableHeaderHeight",
   "scrollToColumn",
-  "renderTableHeaderWrapper",
+  "renderTableHeader",
   "mode",
   "renderEmptyMessage",
 ];

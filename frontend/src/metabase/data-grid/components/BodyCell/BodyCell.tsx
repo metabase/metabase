@@ -12,6 +12,7 @@ import S from "./BodyCell.module.css";
 
 export interface BodyCellProps<TValue> extends BodyCellBaseProps<TValue> {
   variant?: "text" | "pill";
+  contentTestId?: string;
 }
 
 export const BodyCell = memo(function BodyCell<TValue>({
@@ -25,6 +26,8 @@ export const BodyCell = memo(function BodyCell<TValue>({
   columnId,
   rowIndex,
   className,
+  style,
+  contentTestId = "cell-data",
   onExpand,
 }: BodyCellProps<TValue>) {
   const formattedValue = formatter
@@ -52,11 +55,12 @@ export const BodyCell = memo(function BodyCell<TValue>({
     >
       {formattedValue != null ? (
         <div
+          style={style}
           data-grid-cell-content
           className={cx(S.content, {
             [S.noWrap]: !wrap,
           })}
-          data-testid="cell-data"
+          data-testid={contentTestId}
         >
           {formattedValue}
         </div>

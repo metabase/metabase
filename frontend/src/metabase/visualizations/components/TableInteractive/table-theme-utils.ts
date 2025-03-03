@@ -1,4 +1,4 @@
-import { alpha, isDark, lighten } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
 /**
@@ -12,7 +12,7 @@ export function getCellDataTheme({
 }: {
   theme: MantineTheme;
   isIDColumn: boolean;
-}) {
+}): React.CSSProperties {
   const cellTheme = theme.other?.table?.cell;
   const idTheme = theme.other?.table?.idColumn;
 
@@ -33,18 +33,3 @@ export function getCellDataTheme({
 
   return { color: cellTheme?.textColor, fontSize };
 }
-
-export const getCellHoverBackground = ({
-  theme,
-}: {
-  theme: MantineTheme;
-}): string => {
-  const brand = theme.fn.themeColor("brand");
-  const background = theme.other?.table?.cell?.backgroundColor;
-
-  if (background && isDark(background)) {
-    return lighten(background, 0.1);
-  }
-
-  return alpha(brand, 0.1);
-};
