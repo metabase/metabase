@@ -72,11 +72,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <ModalRoute path="create" modal={DatabaseEditConnectionModal} />
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
-          {/* need to create a modal component for this database edit form */}
-          {/* it also needs to take into account 404 not found */}
-          {/* same with the main page */}
-          {/* also i need a route for adding a database for the first time */}
-          {/* also check if I have broken the setup page at all */}
           <ModalRoute path="edit" modal={DatabaseEditConnectionModal} />
         </Route>
       </Route>

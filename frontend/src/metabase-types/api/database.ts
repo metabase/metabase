@@ -82,6 +82,7 @@ export interface DatabaseData {
   is_full_sync: boolean;
   is_on_demand: boolean;
   settings?: DatabaseSettings | null;
+  dbms_version: unknown;
 }
 
 export interface DatabaseSchedules {

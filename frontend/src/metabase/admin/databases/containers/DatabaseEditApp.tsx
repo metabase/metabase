@@ -21,10 +21,9 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { DatabaseConnectionInfoSectionContent } from "../components/DatabaseConnectionInfoSectionContent";
-import { DatabaseDangerZoneSectionContent } from "../components/DatabaseDangerZoneSectionContent";
-import { DatabaseInfoSection } from "../components/DatabaseInfoSection";
-import { DatabaseModelFeaturesSectionContent } from "../components/DatabaseModelFeaturesSectionContent";
+import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
+import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
+import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
   dismissSyncSpinner,
@@ -104,10 +103,6 @@ function DatabaseEditAppInner({
     );
   }
 
-  // TODO: && a check for if any section in the models section should be shown
-  const shouldShowModelFeaturesSection = !database.is_attached_dwh;
-  const shouldShowDangerZone = !database.is_attached_dwh;
-
   return (
     <>
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
@@ -118,41 +113,18 @@ function DatabaseEditAppInner({
 
           <Divider mb="3.25rem" />
 
-          <DatabaseInfoSection
-            name={t`Connection and sync`}
-            description={t`Manage details about the database connection and when Metabase ingests new data.`}
-            condensed
-          >
-            <DatabaseConnectionInfoSectionContent
-              database={database}
-              dismissSyncSpinner={dismissSyncSpinner}
-            />
-          </DatabaseInfoSection>
+          <DatabaseConnectionInfoSection
+            database={database}
+            dismissSyncSpinner={dismissSyncSpinner}
+          />
 
-          {shouldShowModelFeaturesSection && (
-            <DatabaseInfoSection
-              name={t`Model features`}
-              description={t`Choose whether to enable features related to Metabase models. These will often require a write connection.`}
-            >
-              <DatabaseModelFeaturesSectionContent
-                database={database}
-                isModelPersistenceEnabled={isModelPersistenceEnabled}
-                updateDatabase={updateDatabase}
-              />
-            </DatabaseInfoSection>
-          )}
+          <DatabaseModelFeaturesSection
+            database={database}
+            isModelPersistenceEnabled={isModelPersistenceEnabled}
+            updateDatabase={updateDatabase}
+          />
 
-          {shouldShowDangerZone && (
-            <DatabaseInfoSection
-              name={t`Danger zone`}
-              description={t`Remove this database and other destructive actions`}
-            >
-              <DatabaseDangerZoneSectionContent
-                isAdmin={isAdmin}
-                database={database}
-              />
-            </DatabaseInfoSection>
-          )}
+          <DatabaseDangerZoneSection isAdmin={isAdmin} database={database} />
         </Box>
       </ErrorBoundary>
       {children}
