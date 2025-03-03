@@ -4345,7 +4345,7 @@ describe("issue 48824", () => {
     name: "Date filter",
     slug: "filter-date",
     type: "date/all-options",
-    default: "past30days",
+    default: "past30days-from-7days",
   };
 
   beforeEach(() => {
@@ -4380,7 +4380,17 @@ describe("issue 48824", () => {
     });
 
     cy.log("check translations");
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible"); // Previous 30 days
+    H.visitDashboard(ORDERS_DASHBOARD_ID, {
+      params: { [dateParameter.slug]: "past30days" },
+    });
+
+    cy.log("Previous 30 days");
+    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
+    H.filterWidget().icon("revert").click();
+
+    cy.log("Previous 30 days, starting 7 days ago");
+    H.filterWidget()
+      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
+      .should("be.visible");
   });
 });
