@@ -95,10 +95,7 @@
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-
-  ; set updated_at if there are no changes because this is triggerd from models.dashboard/define-after-update when there are possibly no changes to this model,
-  ; and we don't want to update that field if there is not actually any changes
-  (u/prog1 (or (t2/changes notification) {:updated_at :updated_at})
+  (u/prog1 (t2/changes notification)
     (assert-valid-parameters notification)
     (collection/check-collection-namespace :model/Pulse (:collection_id notification))))
 
