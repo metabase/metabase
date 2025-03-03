@@ -125,7 +125,6 @@
                          (fetch-referenced-metrics query))]
       (let [temp-query (temp-query-at-stage-path query path)
             unique-name-fn (lib.util/unique-name-generator
-                            (:lib/metadata query)
                             (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))

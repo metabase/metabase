@@ -521,7 +521,6 @@
            util}}
   sync
   {:api #{metabase.sync.api
-          metabase.sync.concurrent
           metabase.sync.core
           metabase.sync.init
           metabase.sync.schedules
