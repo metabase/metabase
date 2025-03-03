@@ -1798,7 +1798,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
@@ -2634,7 +2634,7 @@ const onNextAnchorClick = callback => {
   cy.window().then(window => {
     const originalClick = window.HTMLAnchorElement.prototype.click;
 
-    window.HTMLAnchorElement.prototype.click = function () {
+    window.HTMLAnchorElement.prototype.click = function() {
       callback(this);
       window.HTMLAnchorElement.prototype.click = originalClick;
     };
