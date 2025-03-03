@@ -172,6 +172,7 @@ export interface DataGridInstance<TData> {
     event: React.MouseEvent<HTMLDivElement>,
     rowIndex: number,
     columnId: string,
+    value: any,
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;

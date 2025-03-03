@@ -6,6 +6,7 @@ import {
   useGetTableDataQuery,
   useGetTableQuery,
 } from "metabase/api";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 
@@ -30,9 +31,6 @@ export const TableDataContainer = ({
     dbId,
     tableId: tableName,
   });
-  const { data: table } = useGetTableQuery(
-    datasetData ? { id: datasetData.table_id } : skipToken,
-  );
 
   const dispatch = useDispatch();
 
@@ -55,7 +53,7 @@ export const TableDataContainer = ({
       {database && (
         <TableDataViewHeader
           database={database}
-          tableName={table?.display_name}
+          tableName={capitalize(tableName, { lowercase: true })}
         />
       )}
       <TableDataView data={datasetData} />
