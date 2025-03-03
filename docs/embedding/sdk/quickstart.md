@@ -9,8 +9,11 @@ This guide walks you through how to set up the Embedded analytics SDK in your ap
 
 This setup:
 
-- Is only for evaluation and local development (so you can see how the SDK works).
-- Works on both the Enterprise and Open Source editions of Metabase, but it only works on localhost. If you want to use the SDK in production, you'll also need to [set up JWT SSO authentication](./authentication.md), which requires a license token and either the Enterprise Edition Docker image or JAR. You can get a license with a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+- Is only for evaluation (so you can see how the SDK works).
+- Only works on localhost when developing your app (though your Metabase doesn't need to be running locally).
+- Works with both the Enterprise and Open Source editions of Metabase, both self-hosted and on Metabase Cloud.
+
+If you want to use the SDK in production, however, you'll also need to [set up JWT SSO authentication](./authentication.md), which requires a [Pro or Enterprise plan](https://www.metabase.com/pricing/). To enable JWT SSO when you're self-hosting Metabase, you'll need to run the Enterprise Edition Docker image or JAR, and [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Prerequisites
 
