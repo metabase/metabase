@@ -32,10 +32,9 @@ export const createDashboardWithQuestions = ({
           ),
         ),
       ).then(dashcardResponses => {
-        const questions = dashcardResponses.map(dashcardResponse => ({
-          ...dashcardResponse.body.card,
-          dashcardId: dashcardResponse.body.id,
-        }));
+        const questions = dashcardResponses.map(
+          dashcardResponse => dashcardResponse.body.card,
+        );
 
         return {
           questions,
