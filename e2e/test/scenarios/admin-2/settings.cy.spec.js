@@ -210,7 +210,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     // Open the orders table
     H.openOrdersTable({ limit: 2 });
 
-    cy.get("#main-data-grid").within(() => {
+    H.tableInteractiveBody().within(() => {
       // Items in the total column should have a leading dollar sign
       cy.findByText("$39.72");
       cy.findByText("$117.03");
@@ -855,7 +855,7 @@ describe("scenarios > admin > localization", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("TableInteractive-root").as("resultTable");
+    H.tableInteractive().as("resultTable");
 
     cy.get("@resultTable").within(() => {
       // The third cell in the first row (CREATED_AT_DAY)
@@ -967,7 +967,7 @@ describe("scenarios > admin > localization", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
 
     // verify that the correct row is displayed
-    cy.findByTestId("TableInteractive-root").within(() => {
+    H.tableInteractive().within(() => {
       cy.findByText("2024/5/15, 19:56");
       cy.findByText("127.52");
     });

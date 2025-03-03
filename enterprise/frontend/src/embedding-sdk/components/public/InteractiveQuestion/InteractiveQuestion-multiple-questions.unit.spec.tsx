@@ -1,4 +1,4 @@
-import { waitForElementToBeRemoved, within } from "@testing-library/react";
+import { act, waitForElementToBeRemoved, within } from "@testing-library/react";
 
 import {
   setupAlertsEndpoints,
@@ -8,7 +8,7 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { mockGetBoundingClientRect, screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -95,6 +95,21 @@ const setup = ({
 };
 
 describe("InteractiveQuestion - multiple interactive questions", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    act(() => {
+      jest.runAllTimers();
+    });
+    jest.useRealTimers();
+  });
+
   it("should render multiple valid questions", async () => {
     const rows = ["A", "B"];
 
@@ -104,13 +119,16 @@ describe("InteractiveQuestion - multiple interactive questions", () => {
     }));
 
     setup({ mocks });
+    act(() => {
+      jest.runAllTimers();
+    });
 
     // Both loading indicators should be removed
     await waitForElementToBeRemoved(() =>
       screen.queryAllByTestId("loading-indicator"),
     );
 
-    const tables = screen.getAllByTestId("TableInteractive-root");
+    const tables = screen.getAllByTestId("table-root");
     const gridcells = screen.getAllByRole("gridcell");
 
     expect(tables).toHaveLength(rows.length);

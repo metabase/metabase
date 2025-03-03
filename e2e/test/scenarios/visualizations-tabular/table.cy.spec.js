@@ -39,10 +39,34 @@ describe("scenarios > visualizations > table", () => {
       // This defocuses the input, which triggers the update
       cy.findByText("Column title").click();
     });
-    // click somewhere else to close the popover
-    // eslint-disable-next-line no-unsafe-element-filtering
-    headerCells().last().click();
+
+    cy.realPress("Escape");
     headerCells().findAllByText("ID updated").should("have.length", 1);
+  });
+
+  it("should allow enabling row index column", () => {
+    H.openOrdersTable();
+    H.openVizSettingsSidebar();
+    H.sidebar().findByText("Show row index").click();
+
+    H.tableInteractive()
+      .findAllByTestId("detail-shortcut")
+      .eq(5)
+      .should("have.text", "6")
+      .click();
+
+    // Ensure click on row index opens the object detail
+    H.modal().findByText("Order");
+
+    // Close object detail modal
+    cy.realType("{esc}");
+
+    H.sidebar().findByText("Show row index").click();
+
+    H.tableInteractive()
+      .findAllByTestId("detail-shortcut")
+      .eq(5)
+      .should("not.have.text", "6");
   });
 
   it("should allow you to reorder and hide columns in the table header", () => {
