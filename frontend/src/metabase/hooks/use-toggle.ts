@@ -9,6 +9,9 @@ type ToggleHookResult = [
   },
 ];
 
+/**
+ * @deprecated use `import { useDisclosure } from "@mantine/hooks";` instead
+ */
 export function useToggle(initialValue = false): ToggleHookResult {
   const [value, setValue] = useState(initialValue);
 
