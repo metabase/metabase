@@ -192,6 +192,7 @@ export const RuleEditor = ({
               }}
               colors={COLORS}
               colorRanges={COLOR_RANGES}
+              withinPortal={false}
             />
           </Stack>
           <Stack gap="sm">
