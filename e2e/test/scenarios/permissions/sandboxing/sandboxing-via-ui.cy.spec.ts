@@ -1,13 +1,12 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 import {
-  type SandboxPolicy,
-  cardsShouldOnlyShowGizmos,
-  cardsShouldShowGizmosAndWidgets,
-  cardsShouldThrowErrors,
+  adhocQuestionData,
+  assignAttributeToUser,
   configureSandboxPolicy,
-  configureUser,
-  createCardsShowingGizmosAndWidgets,
+  createSandboxingDashboardAndQuestions,
+  rowsContainGizmosAndWidgets,
+  rowsContainOnlyGizmos,
   signInAsSandboxedUser,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
@@ -24,56 +23,120 @@ describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
   () => {
-    beforeEach(() => {
+    let sandboxingData = {
+      dashboard: {} as any,
+      questions: [] as any[],
+    };
+
+    before(() => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
-      cy.intercept("POST", "/api/card").as("saveQuestion");
+      createSandboxingDashboardAndQuestions().then(result => {
+        const items = result.body.data;
+        sandboxingData = {
+          dashboard: items.find(
+            (item: { model: string }) => item.model === "dashboard",
+          ),
+          questions: items.filter(
+            (item: { model: string }) => item.model !== "dashboard",
+          ),
+        };
+      });
+      // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
+      // this setup is a bit heavy, so let's just do it once
+      H.snapshot("sandboxing-on-postgres-12");
+    });
+
+    beforeEach(() => {
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashboardQuery",
+      );
+      cy.intercept("POST", "/api/dataset").as("cardQuery");
+      H.restore("sandboxing-on-postgres-12" as any);
+      cy.signInAsAdmin();
+    });
+
+    it("shows all data to an admin", () => {
+      // we can do this once for all of these tests - see that all the data is visible
+      H.visitDashboard(sandboxingData.dashboard.id);
+      cy.wait(
+        new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+      ).then(apiResponses => {
+        rowsContainGizmosAndWidgets(apiResponses);
+      });
+
+      H.visitQuestionAdhoc(adhocQuestionData);
+      cy.wait("@cardQuery").then(apiResponse =>
+        rowsContainGizmosAndWidgets([apiResponse]),
+      );
     });
 
     describe("we can apply a sandbox policy", () => {
       it("to a table filtered using a question as a custom view", () => {
-        const policy: SandboxPolicy = {
+        configureSandboxPolicy({
           filterTableBy: "custom_view",
-          columnType: "regular",
-          customViewType: "question",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
+          customViewType: "Question" as const,
+          customViewName: "sandbox - Question with only gizmos",
+        });
+
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets();
-        configureSandboxPolicy(policy);
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos();
+
+        H.visitDashboard(sandboxingData.dashboard.id);
+        cy.wait(
+          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+
+        H.visitQuestionAdhoc(adhocQuestionData);
+        cy.wait("@cardQuery").then(apiResponse =>
+          rowsContainOnlyGizmos([apiResponse]),
+        );
       });
 
       it("to a table filtered using a model as a custom view", () => {
-        const policy: SandboxPolicy = {
+        configureSandboxPolicy({
           filterTableBy: "custom_view",
-          columnType: "regular",
-          customViewType: "model",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
+          customViewType: "Model" as const,
+          customViewName: "sandbox - Model with only gizmos",
+        });
+
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets();
-        configureSandboxPolicy(policy);
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos();
+
+        H.visitDashboard(sandboxingData.dashboard.id);
+
+        cy.wait(
+          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+
+        H.visitQuestionAdhoc(adhocQuestionData);
+        cy.wait("@cardQuery").then(apiResponse =>
+          rowsContainOnlyGizmos([apiResponse]),
+        );
       });
 
       it("to a table filtered by a regular column", () => {
-        const policy: SandboxPolicy = {
+        assignAttributeToUser({ attributeValue: "Gizmo" });
+
+        configureSandboxPolicy({
           filterTableBy: "column",
-          columnType: "regular",
-        };
-        createCardsShowingGizmosAndWidgets(policy);
+          filterColumn: "Category",
+        });
+
         signInAsSandboxedUser();
-        cardsShouldShowGizmosAndWidgets();
-        const { attributeKey } = configureUser(policy);
-        configureSandboxPolicy({ ...policy, attributeKey });
-        signInAsSandboxedUser();
-        cardsShouldOnlyShowGizmos();
+
+        H.visitDashboard(sandboxingData.dashboard.id);
+
+        cy.wait(
+          new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+        ).then(apiResponses => rowsContainOnlyGizmos(apiResponses));
+
+        H.visitQuestionAdhoc(adhocQuestionData);
+        cy.wait("@cardQuery").then(apiResponse =>
+          rowsContainOnlyGizmos([apiResponse]),
+        );
       });
     });
 
@@ -81,28 +144,34 @@ describe(
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
       (
         [
-          ["question", "boolean"],
-          ["question", "string"],
-          ["question", "number"],
-          ["model", "boolean"],
-          ["model", "string"],
-          ["model", "number"],
+          ["Question", "boolean", "true"],
+          ["Question", "string", "Category is Gizmo"],
+          ["Question", "number", "11"],
+          ["Model", "boolean", "true"],
+          ["Model", "string", "Category is Gizmo"],
+          ["Model", "number", "11"],
         ] as const
-      ).forEach(([customViewType, customColumnType]) => {
+      ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
-          const policy: SandboxPolicy = {
+          assignAttributeToUser({ attributeValue: customColumnValue });
+          configureSandboxPolicy({
             filterTableBy: "custom_view",
-            columnType: "custom",
-            customViewType,
-            customColumnType,
-          };
-          createCardsShowingGizmosAndWidgets(policy);
+            customViewType: customViewType,
+            customViewName: `sandbox - ${customViewType} with custom columns`,
+            filterColumn: `my_${customColumnType}`,
+          });
           signInAsSandboxedUser();
-          cardsShouldShowGizmosAndWidgets();
-          const { attributeKey } = configureUser(policy);
-          configureSandboxPolicy({ ...policy, attributeKey });
-          signInAsSandboxedUser();
-          cardsShouldThrowErrors();
+          H.visitDashboard(sandboxingData.dashboard.id);
+
+          cy.log("Should not return any data, and return an error");
+          cy.wait(
+            new Array(sandboxingData.questions.length).fill("@dashboardQuery"),
+          ).then(apiResponses => {
+            apiResponses.forEach(({ response }) => {
+              expect(response?.body.data.rows).to.have.length(0);
+              expect(response?.body.error_type).to.contain("invalid-query");
+            });
+          });
         });
       });
     });
