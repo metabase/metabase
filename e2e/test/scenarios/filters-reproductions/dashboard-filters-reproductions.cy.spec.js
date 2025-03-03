@@ -4277,3 +4277,64 @@ describe("issue 54236", () => {
     });
   });
 });
+
+describe("issue 17061", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PEOPLE_ID,
+      "order-by": [["asc", ["field", PEOPLE.ID, null]]],
+      limit: 1,
+    },
+  };
+
+  const parameterDetails = {
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  const getParameterMapping = cardId => ({
+    parameter_id: parameterDetails.id,
+    card_id: cardId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashcardData",
+    );
+  });
+
+  it("should not send multiple query requests for the same dashcards when opening a public dashboard with parameters (metabase#17061)", () => {
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard, questionId }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashcard.dashboard_id,
+        cards: [
+          {
+            card_id: questionId,
+            parameter_mappings: [getParameterMapping(questionId)],
+          },
+        ],
+      });
+      H.visitPublicDashboard(dashcard.dashboard_id);
+    });
+
+    H.getDashboardCard().findByText("1").should("be.visible");
+    cy.get("@publicDashcardData.all").should("have.length", 1);
+  });
+});
