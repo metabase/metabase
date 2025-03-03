@@ -186,6 +186,8 @@ const visualizerHistoryItemSlice = createSlice({
       state.settings["card.title"] = action.payload;
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      state.columnValuesMapping = {};
+      state.columns = [];
       state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
