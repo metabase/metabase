@@ -62,6 +62,14 @@ describe("getHelpText", () => {
       expect(helpText?.structure).toBe("Offset");
       expect(helpText?.example).toBe("Offset(Sum([Total]), -1)");
     });
+
+    it("datetimeDiff", () => {
+      const { database } = setup();
+      const helpText = getHelpText("datetime-diff", database, reportTimezone);
+      const unitArg = helpText?.args?.find(arg => arg.name === "unit");
+      expect(unitArg?.description).toContain("second");
+      expect(unitArg?.description).not.toContain("millisecond");
+    });
   });
 
   describe("help texts customized per database engine", () => {
