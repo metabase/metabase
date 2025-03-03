@@ -141,6 +141,9 @@ export function visitQuestionAdhoc(
   if (mode !== "notebook" && !skipWaiting) {
     return cy.wait("@" + alias).then(xhr => callback && callback(xhr));
   }
+
+  // Ensure chainability
+  return cy.wrap(null);
 }
 
 /**

@@ -8,8 +8,8 @@ import {
   getCardResponses,
   getDashcardResponses,
   getFieldValues,
-  rowsContainGizmosAndWidgets,
-  rowsContainOnlyGizmos,
+  rowsShouldContainGizmosAndWidgets,
+  rowsShouldContainOnlyGizmos,
   signInAsNormalUser,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
@@ -63,11 +63,11 @@ describe(
     it("shows all data before sandboxing policy is applied", () => {
       signInAsNormalUser();
 
-      getDashcardResponses(items).then(rowsContainGizmosAndWidgets);
-      getCardResponses(items).then(rowsContainGizmosAndWidgets);
+      getDashcardResponses(items).then(rowsShouldContainGizmosAndWidgets);
+      getCardResponses(items).then(rowsShouldContainGizmosAndWidgets);
 
       H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-        rowsContainGizmosAndWidgets([response]),
+        rowsShouldContainGizmosAndWidgets([response]),
       );
 
       getFieldValues().then(response => {
@@ -91,10 +91,10 @@ describe(
           customViewType: "Question" as const,
           customViewName: "sandbox - Question with only gizmos",
         });
-        getDashcardResponses(items).then(rowsContainOnlyGizmos);
-        getCardResponses(items).then(rowsContainOnlyGizmos);
+        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
+        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsContainOnlyGizmos([response as DatasetResponse]),
+          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
         getFieldValues().then(response => {
           expect(response.body.values).to.deep.equal([["Gizmo"]]);
@@ -107,10 +107,10 @@ describe(
           customViewType: "Model" as const,
           customViewName: "sandbox - Model with only gizmos",
         });
-        getDashcardResponses(items).then(rowsContainOnlyGizmos);
-        getCardResponses(items).then(rowsContainOnlyGizmos);
+        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
+        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsContainOnlyGizmos([response as DatasetResponse]),
+          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
         getFieldValues().then(response => {
           expect(response.body.values).to.deep.equal([["Gizmo"]]);
@@ -123,10 +123,10 @@ describe(
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        getDashcardResponses(items).then(rowsContainOnlyGizmos);
-        getCardResponses(items).then(rowsContainOnlyGizmos);
+        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
+        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsContainOnlyGizmos([response as DatasetResponse]),
+          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
         getFieldValues().then(response => {
           expect(response.body.values).to.deep.equal([["Gizmo"]]);

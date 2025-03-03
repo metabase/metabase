@@ -283,7 +283,9 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
   H.saveChangesToPermissions();
 };
 
-export function rowsContainGizmosAndWidgets(responses: DatasetResponse[]) {
+export function rowsShouldContainGizmosAndWidgets(
+  responses: DatasetResponse[],
+) {
   responses.forEach(response => {
     expect(response.body.data.is_sandboxed).to.be.false;
   });
@@ -299,7 +301,7 @@ export function rowsContainGizmosAndWidgets(responses: DatasetResponse[]) {
   ).to.be.true;
 }
 
-export function rowsContainOnlyGizmos(responses: DatasetResponse[]) {
+export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
   responses.forEach(response => {
     expect(response?.body.data.is_sandboxed).to.be.true;
   });
