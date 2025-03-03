@@ -18,7 +18,6 @@ driver:
     - merge:
         - port
         - placeholder: 1521
-          required: true
     - name: sid
       display-name: Oracle system ID (SID)
       placeholder: Usually something like ORCL or XE. Optional if using service name
