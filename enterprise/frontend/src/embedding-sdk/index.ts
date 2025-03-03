@@ -1,3 +1,8 @@
+// Mantine styles need to be imported before any of our components so that our styles win over
+// the default mantine styles
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+
 // polyfills useSyncExternalStore for React 17
 import "./lib/polyfill/use-sync-external-store";
 
