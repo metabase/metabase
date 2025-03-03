@@ -71,7 +71,7 @@
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                                     :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (pos? (t2/update! :model/Table id changes))))
+    (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?

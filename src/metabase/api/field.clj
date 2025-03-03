@@ -306,8 +306,7 @@
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
           updated-pk             (mdb.query/update-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                                              (constantly update-map))]
-      (api/check-500 (pos? updated-pk))))
+                                                              (constantly update-map))]))
   {:status :success})
 
 (api.macros/defendpoint :post "/:id/rescan_values"
