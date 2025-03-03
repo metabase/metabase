@@ -157,43 +157,6 @@ describe(
             filterColumn: `my_${customColumnType}`,
           });
           signInAsNormalUser();
-          H.visitDashboard(sandboxingData.dashboard.id);
-
-          cy.log("Should not return any data, and return an error");
-          cy.wait(
-            new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-          ).then(apiResponses => {
-            apiResponses.forEach(({ response }) => {
-              expect(response?.body.data.rows).to.have.length(0);
-              expect(response?.body.error_type).to.contain("invalid-query");
-            });
-          });
-        });
-      });
-    });
-
-    // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
-    describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
-      (
-        [
-          ["Question", "boolean", "true"],
-          ["Question", "string", "Category is Gizmo"],
-          ["Question", "number", "11"],
-          ["Model", "boolean", "true"],
-          ["Model", "string", "Category is Gizmo"],
-          ["Model", "number", "11"],
-        ] as const
-      ).forEach(([customViewType, customColumnType, customColumnValue]) => {
-        it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
-          cy.signInAsAdmin();
-          assignAttributeToUser({ attributeValue: customColumnValue });
-          configureSandboxPolicy({
-            filterTableBy: "custom_view",
-            customViewType: customViewType,
-            customViewName: `sandbox - ${customViewType} with custom columns`,
-            filterColumn: `my_${customColumnType}`,
-          });
-          signInAsNormalUser();
           H.visitDashboard(items.dashboard.id);
 
           cy.log("Should not return any data, and return an error");
