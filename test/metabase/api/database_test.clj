@@ -2239,7 +2239,7 @@
                                       :query "flozzlebarger"))))))))
 
 (deftest healthcheck-works
-  (testing "GET /api/:id/healthcheck"
+  (testing "GET /api/database/:id/healthcheck"
     (mt/with-temp [:model/Database {id :id} {}]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
