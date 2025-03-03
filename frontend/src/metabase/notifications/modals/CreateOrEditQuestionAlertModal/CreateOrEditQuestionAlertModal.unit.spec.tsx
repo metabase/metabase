@@ -1,18 +1,21 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type {
   ChannelApiResponse,
   NotificationChannel,
+  UserWithApplicationPermissions,
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockTokenFeatures,
   createMockUser,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -106,6 +109,14 @@ function setup({
   isHttpSetup?: boolean;
   webhooksResult?: NotificationChannel[];
 }) {
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      advanced_permissions: true,
+    }),
+  });
+
+  setupEnterprisePlugins();
+
   const mockCard = createMockCard({
     display: "line",
     visualization_settings: createMockVisualizationSettings({
@@ -123,18 +134,17 @@ function setup({
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
 
-  /**
-   * Technically this is a dirty hack to avoid loading enterprise packages
-   * and rely on typings from enterprise package to mock the user:
-   * - import { UserWithApplicationPermissions } from "metabase-enterprise/application_permissions/types/user";
-   * - createMockUser({ ... } as UserWithApplicationPermissions);
-   *
-   * However the trade-off is worth it, because 4 LOC keeps the test clean,
-   * avoids loading unnecessary code or writing e2e tests for this.
-   */
-  jest
-    .spyOn(PLUGIN_APPLICATION_PERMISSIONS.selectors, "canAccessSettings")
-    .mockReturnValue(userCanAccessSettings);
+  const currentUser = createMockUser(
+    isAdmin ? { is_superuser: true } : undefined,
+  );
+
+  if (userCanAccessSettings) {
+    (currentUser as UserWithApplicationPermissions).permissions = {
+      can_access_setting: true,
+      can_access_monitoring: false,
+      can_access_subscription: false,
+    };
+  }
 
   renderWithProviders(
     <CreateOrEditQuestionAlertModal
@@ -144,9 +154,7 @@ function setup({
     />,
     {
       storeInitialState: {
-        currentUser: createMockUser(
-          isAdmin ? { is_superuser: true } : undefined,
-        ),
+        currentUser,
         qb: createMockQueryBuilderState({
           card: mockCard,
         }),
@@ -154,6 +162,7 @@ function setup({
           databases: [createSampleDatabase()],
           questions: [mockCard],
         }),
+        settings,
       },
     },
   );
