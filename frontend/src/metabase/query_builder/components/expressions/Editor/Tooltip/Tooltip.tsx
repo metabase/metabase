@@ -70,15 +70,13 @@ export function Tooltip({
   );
 
   useEffect(() => {
+    if (completions.length === 0) {
+      setIsHelpTextOpen(true);
+    }
     if (!canShowBoth && enclosingFn && completions.length > 0) {
       setIsHelpTextOpen(false);
-      return;
     }
   }, [canShowBoth, enclosingFn, completions.length]);
-
-  useEffect(() => {
-    setIsHelpTextOpen(completions.length === 0);
-  }, [completions.length]);
 
   return (
     <Popover
