@@ -339,7 +339,12 @@ export function tableAllFieldsHiddenImage() {
 }
 
 export function tableHeaderColumn(headerString) {
-  tableInteractiveHeader().findByText(headerString).scrollIntoView();
+  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+  // from obscuring the target column in the viewport
+  const objectDetailOffset = 50;
+  tableInteractiveHeader()
+    .findByText(headerString)
+    .scrollIntoView({ offset: { left: -objectDetailOffset } });
   return tableInteractiveHeader().findByText(headerString);
 }
 
