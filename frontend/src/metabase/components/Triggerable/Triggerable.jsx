@@ -4,9 +4,9 @@ import styled from "@emotion/styled";
 import cx from "classnames";
 import { Children, Component, cloneElement, createRef } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
+import { Tooltip } from "metabase/ui";
 
 const Trigger = styled.a``;
 
@@ -125,7 +125,7 @@ const Triggerable = ComposedComponent =>
       if (triggerElement && triggerElement.type === Tooltip) {
         // Disables tooltip when open:
         triggerElement = cloneElement(triggerElement, {
-          isEnabled: triggerElement.props.isEnabled && !isOpen,
+          disabled: !triggerElement.props.isEnabled || isOpen,
         });
       }
 

@@ -7,7 +7,6 @@ import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -15,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
@@ -61,12 +60,12 @@ const PeopleListRow = ({
       </td>
       <td>
         {user.google_auth ? (
-          <Tooltip tooltip={t`Signed up via Google`}>
+          <Tooltip label={t`Signed up via Google`}>
             <Icon name="google" />
           </Tooltip>
         ) : null}
         {user.ldap_auth ? (
-          <Tooltip tooltip={t`Signed up via LDAP`}>
+          <Tooltip label={t`Signed up via LDAP`}>
             <Icon name="ldap" />
           </Tooltip>
         ) : null}
@@ -76,10 +75,12 @@ const PeopleListRow = ({
         <Fragment>
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
-            <Tooltip tooltip={t`Reactivate this account`}>
-              <RefreshLink to={Urls.reactivateUser(user.id)}>
-                <Icon name="refresh" size={20} />
-              </RefreshLink>
+            <Tooltip label={t`Reactivate this account`}>
+              <span>
+                <RefreshLink to={Urls.reactivateUser(user.id)}>
+                  <Icon name="refresh" size={20} />
+                </RefreshLink>
+              </span>
             </Tooltip>
           </td>
         </Fragment>

@@ -1943,3 +1943,46 @@
                 ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
                 ;; of things working as described.
                 (is (= 1 @call-count))))))))))
+
+;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
+
+(defn- png? [s]
+  (= [\P \N \G] (drop 1 (take 4 s))))
+
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
+(deftest card-tile-query-test
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
+                                          :public_uuid uuid}]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "public/tiles/card/%s/1/1/1/%d/%d"
+                                                 uuid
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))
+
+(deftest dashcard-tile-query-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+                                                 uuid
+                                                 dashcard-id
+                                                 card-id
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))

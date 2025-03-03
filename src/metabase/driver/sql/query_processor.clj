@@ -13,9 +13,8 @@
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.debug :as qp.debug]
@@ -1809,9 +1808,9 @@
   [inner-query :- mbql.s/MBQLQuery]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]
-    (-> (lib.query/query-from-legacy-inner-query metadata-provider database-id inner-query)
+    (-> (lib/query-from-legacy-inner-query metadata-provider database-id inner-query)
         qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
-        lib.convert/->legacy-MBQL
+        lib/->legacy-MBQL
         :query)))
 
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does

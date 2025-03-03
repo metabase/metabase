@@ -72,12 +72,12 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in custom columns");
-      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+      H.CustomExpressionEditor.completions().should("not.exist");
 
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom columns").should(
           "exist",
@@ -220,12 +220,12 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
-      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+      H.CustomExpressionEditor.completions().should("not.exist");
 
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
@@ -254,14 +254,13 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix, blur: false });
 
       cy.log("suggests offset() in aggregation expressions");
-      cy.findByTestId("expression-suggestions-list-item")
-        .should("exist")
-        .and("have.text", "Offset");
+      H.CustomExpressionEditor.completions().should("be.visible");
+      H.CustomExpressionEditor.completion("Offset").should("exist");
 
       H.enterCustomColumnDetails({ formula: expression, blur: false });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
@@ -522,7 +521,7 @@ describe("scenarios > question > offset", () => {
       addCustomAggregation({ formula, name, isFirst: true });
 
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
-      cy.findByTestId("expression-editor-textfield").should("contain", formula);
+      H.CustomExpressionEditor.value().should("equal", formula);
 
       cy.on("uncaught:exception", error => {
         // this check is intended to catch possible normalization errors if BE or FE code changes

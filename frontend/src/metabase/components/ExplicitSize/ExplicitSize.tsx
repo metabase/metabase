@@ -33,7 +33,7 @@ interface ExplicitSizeProps<T> {
   refreshMode?: RefreshMode | ((props: T) => RefreshMode);
 }
 
-type SizeState = {
+type ExplicitSizeState = {
   width: number | null;
   height: number | null;
 };
@@ -55,13 +55,13 @@ function ExplicitSize<T>({
   wrapped = false,
   refreshMode = "throttle",
 }: ExplicitSizeProps<T> = {}) {
-  return (ComposedComponent: ComponentType<T & SizeState>) => {
+  return (ComposedComponent: ComponentType<T & ExplicitSizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T & InnerProps> {
       static displayName = `ExplicitSize[${displayName}]`;
 
-      state: SizeState = {
+      state: ExplicitSizeState = {
         width: null,
         height: null,
       };
