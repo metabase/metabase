@@ -8,7 +8,7 @@ import {
   createSandboxingDashboardAndQuestions,
   rowsContainGizmosAndWidgets,
   rowsContainOnlyGizmos,
-  signInAsSandboxedUser,
+  signInAsNormalUser,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
 
@@ -58,10 +58,12 @@ describe(
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
       H.restore("sandboxing-on-postgres-12" as any);
-      cy.signInAsAdmin();
     });
 
-    it("shows all data to an admin", () => {
+    it("shows all data before sandboxing policy is applied", () => {
+      signInAsNormalUser();
+
+      // we can do this once for all of these tests
       H.visitDashboard(sandboxingData.dashboard.id);
 
       expect(sandboxingData.questions.length).to.be.greaterThan(0);
@@ -91,6 +93,10 @@ describe(
     });
 
     describe("we can apply a sandbox policy", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+      });
+
       it("to a table filtered using a question as a custom view", () => {
         configureSandboxPolicy({
           filterTableBy: "custom_view",
@@ -98,7 +104,7 @@ describe(
           customViewName: "sandbox - Question with only gizmos",
         });
 
-        signInAsSandboxedUser();
+        signInAsNormalUser();
 
         H.visitDashboard(sandboxingData.dashboard.id);
 
@@ -132,7 +138,7 @@ describe(
           customViewName: "sandbox - Model with only gizmos",
         });
 
-        signInAsSandboxedUser();
+        signInAsNormalUser();
 
         H.visitDashboard(sandboxingData.dashboard.id);
 
@@ -160,6 +166,7 @@ describe(
       });
 
       it("to a table filtered by a regular column", () => {
+        cy.signInAsAdmin();
         assignAttributeToUser({ attributeValue: "Gizmo" });
 
         configureSandboxPolicy({
@@ -167,7 +174,7 @@ describe(
           filterColumn: "Category",
         });
 
-        signInAsSandboxedUser();
+        signInAsNormalUser();
 
         H.visitDashboard(sandboxingData.dashboard.id);
 
@@ -209,6 +216,7 @@ describe(
         ] as const
       ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
+          cy.signInAsAdmin();
           assignAttributeToUser({ attributeValue: customColumnValue });
           configureSandboxPolicy({
             filterTableBy: "custom_view",
@@ -216,7 +224,7 @@ describe(
             customViewName: `sandbox - ${customViewType} with custom columns`,
             filterColumn: `my_${customColumnType}`,
           });
-          signInAsSandboxedUser();
+          signInAsNormalUser();
           H.visitDashboard(sandboxingData.dashboard.id);
 
           cy.log("Should not return any data, and return an error");

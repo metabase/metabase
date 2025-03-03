@@ -169,7 +169,7 @@ export const sandboxingUser = {
   ],
 };
 
-export const signInAsSandboxedUser = () => {
+export const signInAsNormalUser = () => {
   cy.log(`Sign in as user via an API call: ${sandboxingUser.email}`);
   return cy.request("POST", "/api/session", {
     username: sandboxingUser.email,
