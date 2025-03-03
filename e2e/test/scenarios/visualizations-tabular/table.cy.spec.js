@@ -49,11 +49,7 @@ describe("scenarios > visualizations > table", () => {
     H.openVizSettingsSidebar();
     H.sidebar().findByText("Show row index").click();
 
-    H.tableInteractive()
-      .findAllByTestId("detail-shortcut")
-      .eq(5)
-      .should("have.text", "6")
-      .click();
+    H.openObjectDetail(5);
 
     // Ensure click on row index opens the object detail
     H.modal().findByText("Order");
@@ -64,7 +60,7 @@ describe("scenarios > visualizations > table", () => {
     H.sidebar().findByText("Show row index").click();
 
     H.tableInteractive()
-      .findAllByTestId("detail-shortcut")
+      .findAllByTestId("row-id-cell")
       .eq(5)
       .should("not.have.text", "6");
   });
@@ -79,17 +75,8 @@ describe("scenarios > visualizations > table", () => {
     cy.findByTestId(/tax-hide-button/i).click();
     cy.findByTestId("sidebar-left").findByText("Done").click();
 
-    headerCells().eq(3).should("contain.text", "TOTAL").as("total");
-
-    cy.get("@total")
-      .trigger("mousedown", 0, 0, { force: true })
-      .wait(200)
-      .trigger("mousemove", 5, 5, { force: true })
-      .wait(200)
-      .trigger("mousemove", -220, 0, { force: true })
-      .wait(200)
-      .trigger("mouseup", -220, 0, { force: true });
-
+    headerCells().eq(3).should("contain.text", "TOTAL");
+    H.moveDnDKitElement(H.tableHeaderColumn("TOTAL"), { horizontal: -220 });
     headerCells().eq(1).should("contain.text", "TOTAL");
 
     H.tableHeaderClick("QUANTITY");

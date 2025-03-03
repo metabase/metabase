@@ -28,7 +28,7 @@ describe("scenarios > question > null", () => {
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
-    cy.findByTestId("detail-shortcut").click();
+    H.openObjectDetail(0);
     cy.findByRole("dialog").within(() => {
       cy.findByText(/Discount/i);
       cy.findByText("Empty");

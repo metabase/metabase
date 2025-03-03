@@ -24,6 +24,7 @@ export const RowIdCell = memo(function RowIdCell({
     <Tooltip label={t`View details`}>
       <span>
         <BaseCell
+          data-testid="row-id-cell"
           className={S.root}
           backgroundColor={hasValue ? backgroundColor : undefined}
           style={
