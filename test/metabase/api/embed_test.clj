@@ -1387,7 +1387,8 @@
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
 (defn- do-with-chain-filter-fixtures! [f]
-  (mt/with-additional-premium-features #{:sandboxes}
+  ;; Enable perms-related EE features to ensure changes to perms code don't break embedded chain filters (#54601)
+  (mt/with-additional-premium-features #{:sandboxes :advanced-permissions :impersonation}
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
         (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
