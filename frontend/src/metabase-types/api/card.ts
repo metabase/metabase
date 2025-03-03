@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { GraphMetricName } from "metabase/visualizations/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -220,19 +221,21 @@ export interface ColumnSettings {
   [key: string]: any;
 }
 
+export type OtherCategoryAggregationFn =
+  | "sum"
+  | "avg"
+  | "min"
+  | "max"
+  | "stddev"
+  | "median";
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
   "graph.max_categories_enabled"?: boolean;
   "graph.max_categories"?: number;
-  "graph.other_category_aggregation_fn"?:
-    | "sum"
-    | "avg"
-    | "min"
-    | "max"
-    | "stddev"
-    | "median";
+  "graph.other_category_aggregation_fn"?: OtherCategoryAggregationFn;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -268,7 +271,7 @@ export type VisualizationSettings = {
 
   // Series
   "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
+  "graph.metrics"?: GraphMetricName[];
 
   // Series settings
   series_settings?: Record<string, SeriesSettings>;
@@ -319,9 +322,8 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
-
-  [key: string]: any;
-} & EmbedVisualizationSettings;
+} & EmbedVisualizationSettings &
+  Record<string, any>;
 
 export type EmbedVisualizationSettings = {
   iframe?: string;

@@ -16,10 +16,7 @@ import {
   GRAPH_TREND_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationProps } from "../../types";
 
 Object.assign(
   ScatterPlot,
@@ -38,7 +35,7 @@ Object.assign(
       ...GRAPH_AXIS_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
       ...TOOLTIP_SETTINGS,
-    } as any as VisualizationSettingsDefinitions,
+    },
   }),
 );
 
