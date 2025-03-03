@@ -124,7 +124,7 @@ driver:
         kerberos: true
     - name: additional-options
       display-name: Additional JDBC options
-      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=whatever
+      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=password
       required: false
       visible-if:
         advanced-options: true
