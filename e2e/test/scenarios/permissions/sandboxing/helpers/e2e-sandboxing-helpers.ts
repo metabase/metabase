@@ -104,7 +104,7 @@ export const createSandboxingDashboardAndQuestions = () => {
   H.createCollection({ name: "Sandboxing", alias: "sandboxingCollectionId" });
 
   return cy.get("@sandboxingCollectionId").then((collectionId: any) => {
-    return H.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardName: "Sandboxing Dashboard",
       dashboardDetails: { collection_id: collectionId },
       questions: questionData.map(questionDetails => ({
@@ -124,6 +124,7 @@ export const createSandboxingDashboardAndQuestions = () => {
         },
         dashboard.id,
       );
+
       H.createQuestionAndAddToDashboard(
         {
           name: "sandbox - Question with custom columns",
@@ -151,10 +152,10 @@ export const createSandboxingDashboardAndQuestions = () => {
           },
         );
       });
-
-      // return the collection items
-      return cy.request(`/api/collection/${collectionId}/items`);
     });
+
+    // return the collection items
+    return cy.request(`/api/collection/${collectionId}/items`);
   });
 };
 
