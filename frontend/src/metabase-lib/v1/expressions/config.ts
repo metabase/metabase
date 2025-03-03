@@ -2,11 +2,6 @@ import { t } from "ttag";
 
 import type { MBQLClauseMap } from "./types";
 
-export const DISPLAY_QUOTES = {
-  identifierQuoteDefault: "",
-  literalQuoteDefault: "",
-};
-
 export const EDITOR_QUOTES = {
   // specifies where different quoting is used:
   characters: {

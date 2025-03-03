@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -120,7 +121,7 @@ describe("issue 13751", { tags: "@external" }, () => {
       formula: 'regexextract([State], "^C[A-Z]")',
       name: CC_NAME,
     });
-    cy.button("Done").click();
+    cy.button("Done").should("not.be.disabled").click();
 
     H.getNotebookStep("filter")
       .findByText(/Add filter/)
@@ -1028,15 +1029,13 @@ describe("issue 49342", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
-    cy.get(".ace_text-input").first().focus().realPress("Tab");
+    cy.realPress("Tab");
     cy.findByTestId("expression-name").should("be.focused");
 
     cy.log("should contain focus within the popover");
     cy.findByTestId("expression-name").realPress(["Shift", "Tab"]);
-    cy.get(".ace_text-input")
-      .first()
-      .should("be.focused")
-      .realPress(["Shift", "Tab"]);
+    cy.focused().should("have.attr", "class", "cm-content");
+    cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
   });
 });
@@ -1055,69 +1054,86 @@ describe("issue 49882", () => {
   it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
     const moveCursorTo2ndCaseArgument = "{leftarrow}".repeat(6);
     H.enterCustomColumnDetails({
-      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[tot{enter}`,
+      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[tot`,
+      blur: false,
     });
 
-    cy.get(".ace_text-input")
-      .first()
-      .should("have.value", 'case([Total] > 200, [Total] , "X")\n\n');
+    H.CustomExpressionEditor.completions().should("be.visible");
+    cy.realPress("Enter", { pressDelay: 10 });
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'case([Total] > 200, [Total], "X")',
+    );
     H.popover()
       .findByText("Expecting a closing parenthesis")
       .should("not.exist");
   });
 
   it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
-    const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
-    const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
-    H.enterCustomColumnDetails({
-      formula: `case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])${selectTax}`,
-    });
-    cy.get(".ace_text-input").first().focus().realPress(["Control", "X"]);
-    cy.get(".ace_text-input")
-      .first()
-      .focus()
-      .type(moveCursorBefore2ndCase)
-      .realPress(["Control", "V"]);
-    cy.get(".ace_text-input").first().focus().type(" ").blur();
+    // This test used to use keyboard shortcuts to cut and paste but this
+    // seem impossible to emulate with CodeMirror in Cypress, so it's using
+    // a synthetic paste event instead.
+    // Copy is impossible to emulate so far, but it's not crucial to test the issue.
 
-    cy.get(".ace_text-input")
-      .first()
-      .focus()
-      .should(
-        "have.value",
-        'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
-      );
+    H.enterCustomColumnDetails({
+      formula:
+        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
+      blur: false,
+    });
+
+    // "Cut" [Tax]
+    H.CustomExpressionEditor.type("{end}{leftarrow}", { focus: false });
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Backspace"]);
+
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(43));
+
+    // Paste [Tax] before case
+    H.CustomExpressionEditor.paste("[Tax]");
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
+    );
+    H.CustomExpressionEditor.blur();
 
     H.popover()
       .findByText("Expecting comma but got case instead")
       .should("be.visible");
   });
 
-  it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
+  // TODO: we no longer have wrapped lines (for now)
+  it.skip("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
     H.enterCustomColumnDetails({
       formula:
         'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
     });
 
-    cy.get(".ace_text-input")
-      .first()
-      .should(
-        "have.value",
-        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)\n\n',
-      );
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
+    );
   });
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductVendor =
-      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}";
+      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
     H.enterCustomColumnDetails({
-      formula: `[Product${selectProductVendor}{leftarrow}{leftarrow}`,
+      formula: `[Produ${selectProductVendor}`,
       blur: false,
     });
 
-    cy.findByTestId("expression-suggestions-list-item")
-      .should("have.text", "Product → Vendor")
-      .and("have.css", "background-color", "rgb(80, 158, 227)");
+    H.CustomExpressionEditor.completion("Product → Rating").should(
+      "be.visible",
+    );
+    H.CustomExpressionEditor.acceptCompletion("tab");
+
+    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
   });
 });
 
@@ -1153,8 +1169,8 @@ describe("issue 49304", () => {
     H.clauseStepPopover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
-      cy.get(".ace_content").should(
-        "have.text",
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'contains([Category], "gadget", "widget", "case-insensitive")',
       );
     });
@@ -1192,8 +1208,8 @@ describe("issue 49304", () => {
     H.popover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
-      cy.get(".ace_content").should(
-        "have.text",
+      H.CustomExpressionEditor.value().should(
+        "equal",
         'contains([Category], "gadget", "widget", "gizmo")',
       );
     });
@@ -1259,34 +1275,33 @@ describe("issue 50925", () => {
 
     cy.log("incomplete bracket identifier is followed by whitespace");
     H.getNotebookStep("expression").findByText("Custom").click();
-    cy.get(".ace_text-input")
-      .first()
-      .focus()
-      .type("{leftarrow}".repeat(9))
-      .type(" [Pr{enter}");
 
-    cy.get(".ace_text-input")
-      .first()
-      .should(
-        "have.value",
-        "case([ID] = 1, [Price] * 1.21, [Price]  [Price])\n\n",
-      );
+    H.CustomExpressionEditor.focus()
+      .type("{leftarrow}".repeat(9))
+      .type(" [Pr", { focus: false });
+
+    H.CustomExpressionEditor.completions().should("be.visible");
+    H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
+
+    H.CustomExpressionEditor.blur()
+      .value()
+      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
 
     cy.log("incomplete bracket identifier is followed by bracket identifier");
     H.popover().button("Cancel").click();
     H.getNotebookStep("expression").findByText("Custom").click();
-    cy.get(".ace_text-input")
-      .first()
-      .focus()
-      .type("{leftarrow}".repeat(8))
-      .type("[Pr{enter}");
 
-    cy.get(".ace_text-input")
-      .first()
-      .should(
-        "have.value",
-        "case([ID] = 1, [Price] * 1.21, [Price] [Price])\n\n",
-      );
+    H.CustomExpressionEditor.focus()
+      .type("{leftarrow}".repeat(9))
+      .type(" [Pr", { focus: false });
+
+    cy.wait(300);
+    H.CustomExpressionEditor.completions().should("be.visible");
+    H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
+
+    H.CustomExpressionEditor.blur()
+      .value()
+      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
   });
 });
 

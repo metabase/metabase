@@ -171,7 +171,7 @@ export function FormCollectionAndDashboardPicker({
       const dashboardId = model === "dashboard" ? id : undefined;
       dashboardIdHelpers.setValue(dashboardId);
 
-      // preload dashboard tab before close if tab field is tracked
+      // preload dashboard tabs before the picker closes for better UX, but only if tab field is tracked
       if (dashboardTabIdFieldName) {
         try {
           const dashboard = dashboardId

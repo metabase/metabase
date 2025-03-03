@@ -240,6 +240,55 @@ describe("GRAPH_AXIS_SETTINGS", () => {
 });
 
 describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
+  describe("graph.label_value_formatting", () => {
+    const getDefault =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_formatting"].getDefault;
+
+    it("should default to an adapted value if there are currency styled columns", () => {
+      expect(getDefault([], {})).toBe("auto");
+
+      expect(
+        getDefault([], {
+          column_settings: {
+            foo: { currency_style: "USD" },
+          },
+        }),
+      ).toBe("auto");
+
+      expect(
+        getDefault([], {
+          column_settings: {
+            foo: { number_style: "currency", currency_style: "symbol" },
+          },
+        }),
+      ).toBe("auto");
+
+      expect(
+        getDefault([], {
+          column_settings: {
+            foo: { number_style: "currency", currency_style: "name" },
+          },
+        }),
+      ).toBe("full");
+
+      expect(
+        getDefault([], {
+          column_settings: {
+            foo: {
+              number_style: "currency",
+              currency: "AED",
+              number_separators: ".",
+              decimals: 5,
+              scale: 1.235,
+              prefix: "$",
+              suffix: " units",
+            },
+          },
+        }),
+      ).toBe("auto");
+    });
+  });
+
   describe("graph.show_values", () => {
     const getHidden =
       GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"].getHidden;

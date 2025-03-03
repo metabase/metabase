@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
-   [metabase-enterprise.advanced-permissions.api.util
-    :as advanced-perms.api.u]
+   [metabase-enterprise.impersonation.core :as impersonation]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
@@ -112,7 +111,7 @@
     ;; Impersonation can have row-level security enforced by the database, so we still need to store field values per-user.
     ;; TODO: only do this for DBs with impersonation in effect
     (and api/*current-user-id*
-         (advanced-perms.api.u/impersonated-user?))
+         (impersonation/impersonated-user?))
     (params.field-values/get-or-create-advanced-field-values! :impersonation field)
 
     :else
