@@ -160,13 +160,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula")
-      .invoke("val", "") // this is a more reliable .clear()
-      .type("[Price] > 1 AND [Price] < 5{enter}");
+    H.CustomExpressionEditor.clear().type("[Price] > 1 AND [Price] < 5");
+    cy.realPress("Enter");
 
     // In case it does exist, it usually is an error in expression (caused by not clearing
     // the input properly before typing), and this check helps to highlight that.
-    cy.findByTestId("expression-editor-textfield").should("not.exist");
+    H.CustomExpressionEditor.get().should("not.exist");
 
     H.getNotebookStep("filter")
       .contains("Price is greater than 1")
@@ -226,13 +225,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.popover().contains("Custom Expression").click();
 
-    cy.findByTestId("expression-editor-textfield").within(() => {
-      cy.get(".ace_text-input").focus().type("[");
-    });
+    H.CustomExpressionEditor.type("[Cre");
 
     // hover over option in the suggestion list
-    cy.findByTestId("expression-suggestions-list")
-      .findByText("Created At")
+    H.CustomExpressionEditor.completion("Created At")
       .parents("li")
       .findByLabelText("More info")
       .realHover();
@@ -850,9 +846,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.getNotebookStep("summarize").contains("Revenue").click();
 
-      H.popover()
-        .findByTestId("expression-editor-textfield")
-        .contains("[Revenue]");
+      H.CustomExpressionEditor.value().should("equal", "[Revenue]");
     });
   });
 
@@ -1174,8 +1168,7 @@ function assertTableRowCount(expectedCount) {
 }
 
 function addSimpleCustomColumn(name) {
-  H.enterCustomColumnDetails({ formula: "C", blur: false });
-  cy.findByText("ategory").click();
+  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();
 }

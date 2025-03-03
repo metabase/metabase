@@ -96,7 +96,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.173"
+  metabase/saml20-clj                       {:mvn/version "3.0.0.175"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -132,7 +132,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.0"}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.14.0"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.15.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.1.0"}
@@ -391,7 +391,7 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.52.0"}
+    cider/cider-nrepl                  {:mvn/version "0.52.1"}
     cider/piggieback                   {:mvn/version "0.6.0"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}

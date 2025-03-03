@@ -17,40 +17,37 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should correctly accept the chosen field suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
+      formula:
+        "[Rating]{leftarrow}{leftarrow}{leftarrow}{backspace}{backspace}t",
       blur: false,
     });
 
     // accept the only suggested item, i.e. "[Rating]"
-    cy.get("@formula").type("{enter}");
+    H.CustomExpressionEditor.acceptCompletion();
 
     // if the replacement is correct -> "[Rating]"
     // if the replacement is wrong -> "[Rating] ng"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("[Rating] ng").should("not.exist");
+    H.CustomExpressionEditor.value().should("equal", "[Rating]");
   });
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
+    H.enterCustomColumnDetails({ formula: "le", blur: false });
 
-    // Place the cursor between "is" and "empty"
-    cy.get("@formula").type("{leftarrow}".repeat(13));
+    H.CustomExpressionEditor.acceptCompletion();
 
-    // accept the first suggested function, i.e. "length"
-    cy.get("@formula").type("{enter}");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("length([Title])");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "length([Comment])");
   });
 
-  it("should correctly insert function suggestion with the opening parenthesis", () => {
+  it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "BET{enter}" });
-
-    cy.findByTestId("expression-editor-textfield").should(
-      "contain",
-      "between(",
+    H.enterCustomColumnDetails({ formula: "bet", blur: false });
+    H.CustomExpressionEditor.acceptCompletion();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "between(column, start, end)",
     );
   });
 
@@ -58,23 +55,20 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("lower(text)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Returns the string of text in all lower case.").should(
-      "be.visible",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("lower([Status])").should("be.visible");
+    H.CustomExpressionEditor.helpTextHeader()
+      .should("be.visible")
+      .should("contain", "lower(text)");
 
-    cy.findByTestId("expression-helper-popover-arguments")
-      .findByText("text")
-      .realHover();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("The column with values to convert to lower case.").should(
-      "be.visible",
-    );
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("Returns the string of text in all lower case.").should(
+          "be.visible",
+        );
+        cy.findByText(
+          "The column with values to convert to lower case.",
+        ).should("be.visible");
+      });
   });
 
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
@@ -82,33 +76,143 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "Count{enter}" });
     H.popover().findByLabelText("Name").focus();
-    cy.findByTestId("expression-suggestions-list").should("not.exist");
+    H.CustomExpressionEditor.completions().should("not.exist");
   });
 
   it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "endsWith(", blur: false });
+    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
 
-    /* It seems like cypress considers that this popover and its contents are visible,
-     * even when it's under its parent popover because it is in a portal, so technically it's not being clipped by any element.
-     * Weirdly enough, it refuses to click `Learn more` because it's covered, but should("be.visible") passes.
+    /**
+     * It seems like cypress considers that this popover and its contents
+     * are visible, even when it's under its parent popover because it is
+     * in a portal, so technically it's not being clipped by any element.
+     * Weirdly enough, it refuses to click `Learn more` because it's covered,
+     * but should("be.visible") passes.
      *
-     * So, the (hacky) solution for now is to click all 5 elements of the popover, and we will check if the
-     * popover is still there at the end. Since the popover has onClickOutside behavior, the popover will
-     * close if the user clicks on anything outside it, so we can use that to our advantage.
-     * */
-    cy.findByTestId("expression-helper-popover").within(() => {
-      cy.findByTestId("expression-helper-popover-structure").click();
-      cy.findByTestId("expression-helper-popover-arguments").click();
-      cy.findByText("Example").click();
+     * So, the (hacky) solution for now is to click all 5 elements of the popover,
+     * and we will check if the popover is still there at the end.
+     * Since the popover has onClickOutside behavior, the popover will
+     * close if the user clicks on anything outside it, so we can use
+     * that to our advantage.
+     *
+     * This has the advantage of also testing the click behaviour of popover,
+     * which should not close when it is being clicked on.
+     */
+
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText(
+        "Combine two or more strings of text together.",
+      ).realClick();
+      cy.findByText("Example").realClick();
 
       // We want to trigger the "covered element" error if this is true without actually clicking the external link
       cy.findByText("Learn more").trigger("mousemove");
     });
-    cy.findByTestId("expression-helper-popover").should("exist");
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+
+  it("should be possible to collapse the help text popover", () => {
+    addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+    H.CustomExpressionEditor.helpTextHeader().click();
+    H.CustomExpressionEditor.helpText().should("not.exist");
+    H.CustomExpressionEditor.helpTextHeader().click();
+    H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+
+  it("the help text popover should collapse when there is not enough space to render it and the completions", () => {
+    addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
+    cy.viewport(1280, 700);
+
+    H.CustomExpressionEditor.helpText().should("be.visible");
+
+    H.CustomExpressionEditor.type("[", { focus: false });
+    H.CustomExpressionEditor.completions()
+      .get("ul[role=listbox]")
+      .should("be.visible");
+    H.CustomExpressionEditor.helpText().should("not.exist");
+
+    H.CustomExpressionEditor.helpTextHeader().click();
+    H.CustomExpressionEditor.helpText().should("be.visible");
+    H.CustomExpressionEditor.completions()
+      .get("ul[role=listbox]")
+      .should("not.be.visible");
+
+    H.CustomExpressionEditor.type("I", { focus: false });
+    H.CustomExpressionEditor.helpText().should("not.exist");
+    H.CustomExpressionEditor.completions()
+      .get("ul[role=listbox]")
+      .should("be.visible");
+  });
+
+  it("the help text popover should follow the cursor position", () => {
+    addCustomColumn();
+
+    H.CustomExpressionEditor.type('contains("foo"', { focus: false });
+    verifyHelptextPosition('"foo"');
+
+    H.CustomExpressionEditor.type(', "bar"', { focus: false });
+    verifyHelptextPosition('"bar"');
+
+    H.CustomExpressionEditor.type(', "baz"', { focus: false });
+    verifyHelptextPosition('"baz"');
+
+    cy.log("move curser into baz");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(3), { focus: false });
+    verifyHelptextPosition('"baz"');
+
+    cy.log("move cursor to bar");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(5), { focus: false });
+    verifyHelptextPosition('"bar"');
+
+    cy.log("move cursor to foo");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(10), { focus: false });
+    verifyHelptextPosition('"foo"');
+
+    cy.log("move cursor to contains(, right after (");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
+    verifyHelptextPosition("contains");
+
+    cy.log("move cursor to contains(, right before (");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(1), { focus: false });
+    verifyHelptextPosition("contains");
+
+    cy.log("move cursor into contains");
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(2), { focus: false });
+    verifyHelptextPosition("contains");
+
+    cy.log("move cursor to bar using the mouse");
+    H.CustomExpressionEditor.get().findByText('"bar"').click();
+    verifyHelptextPosition('"bar"');
+
+    cy.log("move cursor to foo using the mouse");
+    H.CustomExpressionEditor.get().findByText('"foo"').click();
+    verifyHelptextPosition('"foo"');
+
+    cy.log("move cursor to baz using the mouse");
+    H.CustomExpressionEditor.get().findByText('"baz"').click();
+    verifyHelptextPosition('"baz"');
   });
 });
 
 const addCustomColumn = () => {
   cy.findByTestId("action-buttons").findByText("Custom column").click();
 };
+
+function verifyHelptextPosition(text) {
+  H.CustomExpressionEditor.get()
+    .findByText(text)
+    .then($element => {
+      const { left: textLeft } = $element[0].getBoundingClientRect();
+
+      H.CustomExpressionEditor.helpText().then($element => {
+        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+
+        expect(helpTextLeft).to.be.closeTo(textLeft, 5);
+      });
+    });
+}

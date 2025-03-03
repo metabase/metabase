@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import type { Expression } from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -13,6 +14,8 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import type { FormatOptions } from "../formatter";
 
 const SEGMENT_ID = 1;
 
@@ -56,7 +59,7 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
-const query = createQueryWithClauses({
+export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
   expressions: [
     {
@@ -74,7 +77,7 @@ const stageIndex = -1;
 //
 // (if mbql is `null` then expression should NOT compile)
 //
-const expression = [
+const expression: TestCase[] = [
   ["1", 1, "number literal"],
   ["1 + -1", ["+", 1, -1], "negative number literal"],
   ["1 * 2 + 3", ["+", ["*", 1, 2], 3], "operators ordered by precedence"],
@@ -311,7 +314,7 @@ const expression = [
   ],
 ];
 
-const aggregation = [
+const aggregation: TestCase[] = [
   ["Count", ["count"], "aggregation with no arguments"],
   ["Sum([Total])", ["sum", total], "aggregation with one argument"],
   ["1 - Count", ["-", 1, ["count"]], "aggregation with math outside"],
@@ -357,7 +360,7 @@ const aggregation = [
   ["Count + Share((", undefined, "invalid share"],
 ];
 
-const filter = [
+const filter: TestCase[] = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
   [
     "floor([Total]) < 10",
@@ -400,13 +403,22 @@ const filter = [
   ],
   ["notnull([Tax])", ["not-null", tax], "not null"],
   ["notempty([Total])", ["not-empty", total], "not empty"],
+  ["NOT isnull([Tax])", ["not", ["is-null", tax]], "not is null"],
+  ["NOT isempty([Tax])", ["not", ["is-empty", tax]], "not is empty"],
+  [
+    'NOT doesNotContain([Tax], "John")',
+    ["not", ["does-not-contain", tax, "John"]],
+    "not does not contain",
+  ],
 ];
 
-export const dataForFormatting = [
-  ["expression", expression, { startRule: "expression", query, stageIndex }],
-  ["aggregation", aggregation, { startRule: "aggregation", query, stageIndex }],
-  ["filter", filter, { startRule: "boolean", query, stageIndex }],
-];
+type TestCase = [string, Expression | undefined, string];
+
+export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
+  ["expression", expression, { query, stageIndex }],
+  ["aggregation", aggregation, { query, stageIndex }],
+  ["filter", filter, { query, stageIndex }],
+] as const;
 
 /**
  * @type {import("metabase-lib/v1/metadata/Table").default}
