@@ -1,5 +1,4 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import { cypressWaitAll } from "e2e/support/helpers";
 
 import {
   adhocQuestionData,
@@ -73,7 +72,7 @@ describe(
         rowsContainGizmosAndWidgets(apiResponses);
 
         cy.log("/api/card/$id/query endpoints are not sandboxed");
-        cypressWaitAll(
+        H.cypressWaitAll(
           apiResponses.map(({ response }) => {
             const url = (response as any)?.url;
             const cardId = parseInt(url.match(/\d+/g).at(-1));
