@@ -10,10 +10,9 @@ import type {
 } from "metabase-types/api";
 
 export function convertCardToInitialState(card: Card<DatasetQuery>) {
-  if (isVisualizerDashboardCard(card as any)) {
+  if (isVisualizerDashboardCard(card)) {
     return {
       state: {
-        display: card.display,
         visualization_settings: card.visualization_settings,
       },
       extraDataSources: [`card:${card.id}` as const],
