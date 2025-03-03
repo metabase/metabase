@@ -9,12 +9,11 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData } from "metabase-types/api";
 
@@ -24,11 +23,13 @@ export const DatabaseEditConnectionForm = ({
   database,
   initializeError,
   onChangeLocation,
+  onSubmitted,
   route,
 }: {
   database?: Database;
   initializeError?: DatabaseEditErrorType;
   onChangeLocation: (location: LocationDescriptor) => void;
+  onSubmitted: () => void;
   route: Route;
 }) => {
   const dispatch = useDispatch();
@@ -49,11 +50,16 @@ export const DatabaseEditConnectionForm = ({
   const handleSubmit = async (database: DatabaseData) => {
     try {
       const savedDB = await dispatch(saveDatabase(database));
+      // TODO: move into onSubmitted call
       if (addingNewDatabase) {
         scheduleCallback(() => {
           onChangeLocation(
             `/admin/databases?created=true&createdDbId=${savedDB.id}`,
           );
+        });
+      } else {
+        scheduleCallback(() => {
+          onSubmitted();
         });
       }
     } catch (error) {
@@ -61,39 +67,35 @@ export const DatabaseEditConnectionForm = ({
     }
   };
 
+  // TODO: make sure connection stuff refetches once the details have been edited...
+
   // TODO: we should move the can't be modified state up somehow...
   // though if this is attached to a route, then I guess this state needs to be here as well
 
   return (
     <ErrorBoundary errorComponent={GenericError as ComponentType}>
-      <div>
-        <div className={CS.pt0}>
-          <LoadingAndErrorWrapper loading={!database} error={initializeError}>
-            {editingExistingDatabase && database.is_attached_dwh ? (
-              <div>{t`This database cannot be modified.`}</div>
-            ) : (
-              <Flex>
-                <Box w="38.5rem">
-                  <DatabaseForm
-                    initialValues={database}
-                    isAdvanced
-                    onSubmit={handleSubmit}
-                    setIsDirty={setIsDirty}
-                    autofocusFieldName={autofocusFieldName}
-                  />
-                </Box>
-                <Box maw="21rem" mt="1.25rem" ml="6.5rem">
-                  {addingNewDatabase && <DatabaseHelpCard />}
-                </Box>
-              </Flex>
-            )}
-          </LoadingAndErrorWrapper>
-        </div>
-        <LeaveConfirmationModal
-          isEnabled={isDirty && !isCallbackScheduled}
-          route={route}
-        />
-      </div>
+      <LoadingAndErrorWrapper error={initializeError}>
+        {editingExistingDatabase && database.is_attached_dwh ? (
+          <div>{t`This database cannot be modified.`}</div>
+        ) : (
+          <>
+            <Box maw="21rem" mt="1.25rem">
+              {addingNewDatabase && <DatabaseHelpCard />}
+            </Box>
+            <DatabaseForm
+              initialValues={database}
+              isAdvanced
+              onSubmit={handleSubmit}
+              setIsDirty={setIsDirty}
+              autofocusFieldName={autofocusFieldName}
+            />
+          </>
+        )}
+      </LoadingAndErrorWrapper>
+      <LeaveConfirmationModal
+        isEnabled={isDirty && !isCallbackScheduled}
+        route={route}
+      />
     </ErrorBoundary>
   );
 };
