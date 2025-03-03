@@ -1,5 +1,5 @@
 diff --git a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
-index d0006e5..49e2259 100644
+index d3390e1..6157be7 100644
 --- a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
 +++ b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
 @@ -13,7 +13,7 @@ var suppressNextjsWarning = require('./suppress-nextjs-warning.cjs');
@@ -12,7 +12,7 @@ index d0006e5..49e2259 100644
    theme,
    children,
 diff --git a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
-index e928597..08a9360 100644
+index 79fe05c..29f5854 100644
 --- a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
 +++ b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
 @@ -11,7 +11,7 @@ import { suppressNextjsWarning } from './suppress-nextjs-warning.mjs';
@@ -25,7 +25,7 @@ index e928597..08a9360 100644
    theme,
    children,
 diff --git a/node_modules/@mantine/core/styles.css b/node_modules/@mantine/core/styles.css
-index d440fbf..dc78ac1 100644
+index 2bd5e32..2a011a3 100644
 --- a/node_modules/@mantine/core/styles.css
 +++ b/node_modules/@mantine/core/styles.css
 @@ -1,34 +1,4 @@

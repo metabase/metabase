@@ -156,10 +156,10 @@ describe("[EE, no token] embedding settings", () => {
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).not.toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -368,10 +368,10 @@ describe("[EE, no token] embedding settings", () => {
         );
 
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedded analytics SDK"),
+          screen.getByLabelText("Enable Embedded analytics SDK for React"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),

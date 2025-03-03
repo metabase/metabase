@@ -155,7 +155,7 @@ export function EmbeddingSdkSettings({
           ]}
         />
         <SwitchWithSetByEnvVar
-          label={t`Enable Embedded analytics SDK`}
+          label={t`Enable Embedded analytics SDK for React`}
           settingKey="enable-embedding-sdk"
           onChange={
             !isEmbeddingSdkEnabled && showSdkEmbedTerms
