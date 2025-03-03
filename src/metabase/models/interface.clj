@@ -529,12 +529,14 @@
     (not (:created_at obj)) (assoc :created_at (now))))
 
 (defn- add-updated-at-timestamp [obj]
-  ;; don't stomp on `:updated_at` if it's already explicitly specified.
-  (let [changes-already-include-updated-at? (if (t2/instance? obj)
-                                              (:updated_at (t2/changes obj))
-                                              (:updated_at obj))]
+  (let [changed-fields (set (keys (if (t2/instance obj)
+                                    (t2/changes obj)
+                                    (:updated_at obj))))
+        ; don't stomp on `:updated_at` if it's already explicitly specified.
+        changes-already-include-updated-at? (some #{:updated_at} changed-fields)
+        has-non-ignored-fields? (seq (set/difference changed-fields (non-timestamped-fields obj)))]
     (cond-> obj
-      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
+      (and has-non-ignored-fields? (not changes-already-include-updated-at?)) (assoc :updated_at (now)))))
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
