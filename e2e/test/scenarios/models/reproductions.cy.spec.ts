@@ -40,7 +40,7 @@ describe("issue 29943", () => {
 
   function assertColumnSelected(columnIndex: number, name: string) {
     getHeaderCell(columnIndex, name)
-      .find("div")
+      .closest("[data-testid=model-column-header-content]")
       .should("have.css", "background-color")
       .and("eq", "rgb(80, 158, 227)");
 
@@ -49,10 +49,8 @@ describe("issue 29943", () => {
 
   function getHeaderCell(columnIndex: number, name: string) {
     // eslint-disable-next-line no-unsafe-element-filtering
-    return cy
-      .findAllByTestId("header-cell")
-      .eq(columnIndex)
-      .should("have.text", name);
+    cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
+    return H.tableHeaderColumn(name);
   }
 
   beforeEach(() => {
@@ -123,15 +121,13 @@ describe("issue 35711", () => {
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
 
     // drag & drop the Total column 100 px to the left to switch it with Tax column
-    cy.findAllByTestId("header-cell")
-      .contains("Total")
-      .then(totalColumn => {
-        const rect = totalColumn[0].getBoundingClientRect();
-        cy.wrap(totalColumn)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
-          .trigger("mouseup");
-      });
+    H.tableHeaderColumn("Total").then(totalColumn => {
+      const rect = totalColumn[0].getBoundingClientRect();
+      cy.wrap(totalColumn)
+        .trigger("mousedown")
+        .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
+        .trigger("mouseup");
+    });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -901,15 +897,13 @@ describe("issue 39993", () => {
   };
 
   function dragAndDrop(column: string, distance: number) {
-    cy.findAllByTestId("header-cell")
-      .contains(column)
-      .then(element => {
-        const rect = element[0].getBoundingClientRect();
-        cy.wrap(element)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
-          .trigger("mouseup");
-      });
+    H.tableHeaderColumn(column).then(element => {
+      const rect = element[0].getBoundingClientRect();
+      cy.wrap(element)
+        .trigger("mousedown")
+        .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
+        .trigger("mouseup");
+    });
   }
 
   beforeEach(() => {
@@ -1151,9 +1145,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("not.exist");
     cy.button("Save").should("be.enabled");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    cy.findByTestId("TableInteractive-root")
-      .findByText("39.72")
-      .should("be.visible");
+    H.tableInteractive().findByText("39.72").should("be.visible");
   }
 
   function assertMetadataTabState() {
@@ -1172,7 +1164,7 @@ describe("issue 34514", () => {
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
       .should("be.visible");
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
       cy.findByText("Here's where your results will appear").should(

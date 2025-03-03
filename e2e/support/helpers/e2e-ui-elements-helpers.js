@@ -311,25 +311,40 @@ export function dashboardCards() {
 }
 
 export function tableInteractive() {
-  return cy.findByTestId("TableInteractive-root");
+  return cy.findByTestId("table-root");
 }
 
 export function tableInteractiveBody() {
-  return cy.get("#main-data-grid");
+  return cy.findByTestId("table-body");
+}
+
+export function tableInteractiveHeader() {
+  return cy.findByTestId("table-header");
+}
+
+export function openObjectDetail(rowIndex) {
+  cy.get(`[data-index=${rowIndex}]`)
+    .realHover({ scrollBehavior: false })
+    .findByTestId("detail-shortcut")
+    .should("be.visible")
+    .click({ force: true });
+}
+
+export function tableInteractiveScrollContainer() {
+  return cy.findByTestId("table-scroll-container");
 }
 
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderClick(headerString) {
-  tableInteractive().within(() => {
-    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
-  });
+export function tableHeaderColumn(headerString) {
+  tableInteractiveHeader().findByText(headerString).scrollIntoView();
+  return tableInteractiveHeader().findByText(headerString);
+}
 
-  tableInteractive().within(() => {
-    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
-  });
+export function tableHeaderClick(headerString) {
+  tableHeaderColumn(headerString).click();
 }
 
 export function clickActionsPopover() {

@@ -874,18 +874,13 @@ describe("issue 32032", () => {
   });
 
   it("should allow quick filter drills on custom columns", () => {
-    cy.findByTestId("TableInteractive-root")
-      .findAllByText("xavier")
-      .eq(1)
-      .click();
+    H.tableInteractive().findAllByText("xavier").eq(1).click();
     H.popover().findByText("Is xavier").click();
     cy.wait("@dataset");
     H.main()
       .findByText(/There was a problem/i)
       .should("not.exist");
-    cy.findByTestId("TableInteractive-root")
-      .findAllByText("xavier")
-      .should("have.length", 2);
+    H.tableInteractive().findAllByText("xavier").should("have.length", 2);
   });
 });
 
