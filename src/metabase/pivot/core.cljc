@@ -20,14 +20,24 @@
   (= (:name col) "pivot-grouping"))
 
 (defn columns-without-pivot-group
-  "Removes the pivot-grouping column from a list of columns."
+  "Removes the pivot-grouping column from a list of columns, identifying it by name."
   [columns]
   (filter #(not (is-pivot-group-column %)) columns))
 
+(defn column-split->indexes
+  "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
+    e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
+    ->   {:rows [1] :columns [0] :values [2]}"
+  [column-split columns-without-pivot-group]
+  (let [find-index (fn [col-name] (u/index-of #(= (:name %) col-name) columns-without-pivot-group))]
+    (update-vals
+     column-split
+     (fn [column-names] (into [] (keep find-index column-names))))))
+
 (defn- get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
-   The pivot group value is a bitmask where each bit represents a breakout.
-   If a bit is 0, the corresponding breakout is active for this group."
+  The pivot group value is a bitmask where each bit represents a breakout. If a
+  bit is 0, the corresponding breakout is active for this group."
   [pivot-group num-breakouts]
   (let [breakout-indexes (range num-breakouts)]
     (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))
@@ -61,20 +71,20 @@
      :primary-rows-key (into [] (range num-breakouts))
      :columns columns}))
 
-(defn get-subtotal-values
-  "Returns subtotal values"
-  [pivot-data value-column-indexes]
+;; TODO: This can omit the primary rows from the result
+(defn- get-subtotal-values
+  "For each split of the pivot data returned by `split-pivot-data`, returns a maping from the column values in each row to the measure values."
+  [pivot-data val-indexes]
   (m/map-kv-vals
-   (fn [subtotalName subtotal]
-     (let [indexes subtotalName]
-       (reduce
-        (fn [acc row]
-          (let [value-key (map #(nth row %) indexes)]
-            (assoc acc
-                   value-key
-                   (map #(nth row %) value-column-indexes))))
-        {}
-        subtotal)))
+   (fn [column-indexes rows]
+     (reduce
+      (fn [acc row]
+        (let [grouping-key (map #(nth row %) column-indexes)]
+          (assoc acc
+                 grouping-key
+                 (map #(nth row %) val-indexes))))
+      {}
+      rows))
    pivot-data))
 
 (defn- collapse-level
@@ -220,16 +230,6 @@
      (assoc tree-node
             :value value
             :children (postprocess-tree (:children tree-node))))))
-
-(defn column-split->indexes
-  "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
-    e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
-    ->   {:rows [1] :columns [0] :values [2]}"
-  [column-split columns-without-pivot-group]
-  (let [find-index (fn [col-name] (u/index-of #(= (:name %) col-name) columns-without-pivot-group))]
-    (update-vals
-     column-split
-     (fn [column-names] (into [] (keep find-index column-names))))))
 
 (defn- get-rows-from-pivot-data
   [pivot-data row-indexes col-indexes]
@@ -395,6 +395,9 @@
     (repeat (count value-formatters) {:value nil})))
 
 (defn- sort-by-indexed
+  "Variant of `sort-by` which sorts the items in `coll` based on a `key-fn`
+  which takes the arguments `idx` (the index of `val` in `coll`) and `val`
+  itself."
   [key-fn coll]
   (->> coll
        (map-indexed vector)
@@ -402,47 +405,51 @@
        (map second)))
 
 (defn- get-subtotals
+  "Returns a map representing formatted subtotal values for a single position in the pivot table."
   [subtotal-values breakout-indexes values other-attrs value-formatters]
-  (map (fn [value] (merge value
-                          {:isSubtotal true}
-                          other-attrs))
-       (format-values
-        (get-in subtotal-values
-                [(sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes)
-                 (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values)])
-        value-formatters)))
+  (let [value-key  (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values)
+        raw-values (get-in subtotal-values [breakout-indexes value-key])]
+    (map #(merge % {:isSubtotal true} other-attrs)
+         (format-values raw-values value-formatters))))
 
 ;; TODO - memoize the getter
 (defn- create-row-section-getter
+  "Returns a function that retrieves and formats values for a specific cell
+  position in the pivot table."
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
   ;; The getter returned from this function returns the value(s) at given (column, row) location
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
           index-values (concat col-values row-values)
-          result (if (or (< (count row-values) (count row-indexes))
-                         (< (count col-values) (count col-indexes)))
-                   (let [row-idxs (take (count row-values) row-indexes)
-                         col-idxs (take (count col-values) col-indexes)
-                         indexes (concat col-idxs row-idxs)
-                         other-attrs (if (zero? (count row-values))
-                                       {:isGrandTotal true}
-                                       {})]
-                     (get-subtotals subtotal-values indexes index-values other-attrs value-formatters))
-                   (let [{:keys [values valueColumns data dimensions]}
-                         (get values-by-key index-values)]
-                     (map-indexed
-                      (fn [index o]
-                        (if-not data
-                          o
-                          (assoc o
-                                 :clicked {:data data :dimensions dimensions}
-                                 :backgroundColor
-                                 (color-getter
-                                  (get values index)
-                                  (:rowIndex o)
-                                  (:name (get valueColumns index))))))
-                      (format-values values value-formatters))))]
+          is-subtotal? (or (< (count row-values) (count row-indexes))
+                           (< (count col-values) (count col-indexes)))
+          result
+          (if is-subtotal?
+            ;; Handle subtotal rows/columns
+            (let [row-idxs (take (count row-values) row-indexes)
+                  col-idxs (take (count col-values) col-indexes)
+                  indexes (concat col-idxs row-idxs)
+                  other-attrs (if (zero? (count row-values))
+                                {:isGrandTotal true}
+                                {})]
+              (get-subtotals subtotal-values indexes index-values other-attrs value-formatters))
+            ;; Handle regular data cells
+            (let [{:keys [values valueColumns data dimensions]} (get values-by-key index-values)
+                  formatted-values (format-values values value-formatters)]
+              (if-not data
+                formatted-values
+                (map-indexed
+                 (fn [index value]
+                   (assoc value
+                          :clicked {:data data :dimensions dimensions}
+                          :backgroundColor (color-getter
+                                            (get values index)
+                                            (:rowIndex value)
+                                            (:name (get valueColumns index)))))
+                 formatted-values))))]
+      ;; Convert to JavaScript object if in ClojureScript context, since this
+      ;; is a callback that might be invoked on the BE or the FE
       #?(:cljs (clj->js result)
          :clj result))))
 

@@ -3,6 +3,13 @@
   (:require
    [metabase.pivot.core :as pivot]))
 
+(defn ^:export columns-without-pivot-group
+  "Removes the pivot-grouping column from a list of columns, identifying it by name."
+  [cols]
+  (let [cols (js->clj cols :keywordize-keys true)]
+    (clj->js
+     (pivot/columns-without-pivot-group cols))))
+
 (defn ^:export column-split-indexes
   "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
     e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
@@ -13,14 +20,10 @@
     (clj->js
      (pivot/column-split->indexes column-split cols))))
 
-(defn ^:export columns-without-pivot-group
-  [cols]
-  (let [cols (js->clj cols :keywordize-keys true)]
-    (clj->js
-     (pivot/columns-without-pivot-group cols))))
-
 (defn ^:export split-pivot-data
-  ""
+  "Pulls apart different aggregations that were packed into one result set returned from the QP.
+  The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
+  to split apart the data and convert field refs to indices"
   [data]
   (let [{:keys [pivot-data primary-rows-key columns]}
         (pivot/split-pivot-data (js->clj data :keywordize-keys true))]
