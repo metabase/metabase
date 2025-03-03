@@ -97,72 +97,44 @@ describe(
         cy.signInAsAdmin();
       });
 
-      it("to a table filtered using a question as a custom view", () => {
-        configureSandboxPolicy({
-          filterTableBy: "custom_view",
-          customViewType: "Question" as const,
-          customViewName: "sandbox - Question with only gizmos",
-        });
+      describe("to a table filtered using a custom view", () => {
+        (["Question", "Model"] as const).forEach(customViewType => {
+          it(`where the custom view is a ${customViewType}`, () => {
+            configureSandboxPolicy({
+              filterTableBy: "custom_view",
+              customViewType,
+              customViewName: "sandbox - Question with only gizmos",
+            });
 
-        signInAsNormalUser();
+            signInAsNormalUser();
 
-        H.visitDashboard(sandboxingData.dashboard.id);
+            H.visitDashboard(sandboxingData.dashboard.id);
 
-        expect(sandboxingData.questions.length).to.be.greaterThan(0);
-        cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-        ).then(apiResponses => {
-          rowsContainOnlyGizmos(apiResponses);
-          cy.log("/api/card/$id/query endpoints are not sandboxed");
-          cypressWaitAll(
-            apiResponses.map(({ response }) => {
-              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
-              expect(cardId).to.be.a("number");
-              return cy.request("POST", `/api/card/${cardId}/query`);
-            }),
-          ).then(apiResponses => {
-            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
+            expect(sandboxingData.questions.length).to.be.greaterThan(0);
+            cy.wait(
+              new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
+            ).then(apiResponses => {
+              rowsContainOnlyGizmos(apiResponses);
+              cy.log("/api/card/$id/query endpoints are not sandboxed");
+              cypressWaitAll(
+                apiResponses.map(({ response }) => {
+                  const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+                  expect(cardId).to.be.a("number");
+                  return cy.request("POST", `/api/card/${cardId}/query`);
+                }),
+              ).then(apiResponses => {
+                rowsContainOnlyGizmos(
+                  apiResponses.map(response => ({ response })),
+                );
+              });
+            });
+
+            H.visitQuestionAdhoc(adhocQuestionData);
+            cy.wait("@datasetQuery").then(apiResponse => {
+              rowsContainOnlyGizmos([apiResponse]);
+            });
           });
         });
-
-        H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@datasetQuery").then(apiResponse => {
-          rowsContainOnlyGizmos([apiResponse]);
-        });
-      });
-
-      it("to a table filtered using a model as a custom view", () => {
-        configureSandboxPolicy({
-          filterTableBy: "custom_view",
-          customViewType: "Model" as const,
-          customViewName: "sandbox - Model with only gizmos",
-        });
-
-        signInAsNormalUser();
-
-        H.visitDashboard(sandboxingData.dashboard.id);
-
-        expect(sandboxingData.questions.length).to.be.greaterThan(0);
-        cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-        ).then(apiResponses => {
-          rowsContainOnlyGizmos(apiResponses);
-          cy.log("/api/card/$id/query endpoints are not sandboxed");
-          cypressWaitAll(
-            apiResponses.map(({ response }) => {
-              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
-              expect(cardId).to.be.a("number");
-              return cy.request("POST", `/api/card/${cardId}/query`);
-            }),
-          ).then(apiResponses => {
-            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
-          });
-        });
-
-        H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@datasetQuery").then(apiResponse =>
-          rowsContainOnlyGizmos([apiResponse]),
-        );
       });
 
       it("to a table filtered by a regular column", () => {
