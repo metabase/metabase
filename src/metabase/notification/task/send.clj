@@ -100,7 +100,7 @@
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
-        notification (t2/select-one :model/Notification notification-id)]
+        notification    (t2/select-one :model/Notification notification-id)]
     (cond
       (:active notification)
       (try
