@@ -104,7 +104,7 @@ export const createSandboxingDashboardAndQuestions = () => {
   H.createCollection({ name: "Sandboxing", alias: "sandboxingCollectionId" });
 
   return cy.get("@sandboxingCollectionId").then((collectionId: any) => {
-    H.createDashboardWithQuestions({
+    return H.createDashboardWithQuestions({
       dashboardName: "Sandboxing Dashboard",
       dashboardDetails: { collection_id: collectionId },
       questions: questionData.map(questionDetails => ({
@@ -124,7 +124,6 @@ export const createSandboxingDashboardAndQuestions = () => {
         },
         dashboard.id,
       );
-
       H.createQuestionAndAddToDashboard(
         {
           name: "sandbox - Question with custom columns",
@@ -152,10 +151,10 @@ export const createSandboxingDashboardAndQuestions = () => {
           },
         );
       });
-    });
 
-    // return the collection items
-    return cy.request(`/api/collection/${collectionId}/items`);
+      // return the collection items
+      return cy.request(`/api/collection/${collectionId}/items`);
+    });
   });
 };
 
@@ -284,6 +283,10 @@ const flattenQueryRows = (apiResponses: any[]) => {
 };
 
 export function rowsContainGizmosAndWidgets(apiResponses: any[]) {
+  apiResponses.forEach(({ response }) => {
+    expect(response?.body.data.is_sandboxed).to.be.false;
+  });
+
   const rows = flattenQueryRows(apiResponses);
   expect(
     rows.some(row => row.includes("Gizmo")),
@@ -296,6 +299,10 @@ export function rowsContainGizmosAndWidgets(apiResponses: any[]) {
 }
 
 export function rowsContainOnlyGizmos(apiResponses: any[]) {
+  apiResponses.forEach(({ response }) => {
+    expect(response?.body.data.is_sandboxed).to.be.true;
+  });
+
   const rows = flattenQueryRows(apiResponses);
   expect(
     rows.every(row => row.includes("Gizmo")),
