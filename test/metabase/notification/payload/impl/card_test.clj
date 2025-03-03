@@ -6,6 +6,7 @@
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.limit :as limit]
@@ -17,7 +18,7 @@
 (use-fixtures
   :each
   (fn [thunk]
-    (binding [notification/*default-options* {:notification/sync? true}]
+    (binding [notification.send/*default-options* {:notification/sync? true}]
       (thunk))))
 
 (defn- construct-email

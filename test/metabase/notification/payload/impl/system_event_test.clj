@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]

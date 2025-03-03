@@ -4,9 +4,9 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
-   [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -135,7 +135,7 @@
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
-(mu/defn send-notification-sync!
+(mu/defn ^:private send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{:keys [id payload_type] :as notification-info} :- ::notification.payload/Notification]
   (u/with-timer-ms
@@ -188,10 +188,28 @@
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
-(mu/defn send-notification-async!
+(mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
   [notification :- ::notification.payload/Notification]
   (.submit ^ExecutorService @pool ^Callable
            (fn []
              (send-notification-sync! notification)))
   nil)
+
+(def ^:private Options
+  [:map
+   [:notification/sync? :boolean]])
+
+(def ^:dynamic *default-options*
+  "The default options for sending a notification."
+  {:notification/sync? false})
+
+(mu/defn send-notification!
+  "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
+  [notification & {:keys [] :as options} :- [:maybe Options]]
+  (let [options      (merge *default-options* options)
+        notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+    (log/debugf "Sending notification: %s %s" (:id notification) (if (:notification/sync? options) "synchronously" "asynchronously"))
+    (if (:notification/sync? options)
+      (send-notification-sync! notification)
+      (send-notification-async! notification))))

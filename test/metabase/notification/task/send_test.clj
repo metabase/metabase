@@ -1,11 +1,11 @@
-(ns metabase.task.notification-test
+(ns metabase.notification.task.send-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
+   [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

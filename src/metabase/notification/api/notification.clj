@@ -1,4 +1,4 @@
-(ns metabase.api.notification
+(ns metabase.notification.api.notification
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
@@ -10,8 +10,8 @@
    [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]

@@ -1,12 +1,12 @@
-(ns metabase.api.notification-test
+(ns metabase.notification.api.notification-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
