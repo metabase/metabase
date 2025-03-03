@@ -102,7 +102,7 @@ type InputProps = {
 function Input({ value = "", hasError, onChange, onBlurChange }: InputProps) {
   return (
     <input
-      placeholder="For example 5   0   *   Aug   *"
+      placeholder="For example 5   0   *   Aug   ?"
       className={cx(FormS.FormInput, S.styledInput, {
         [cx(CS.borderError, CS.bgErrorInput)]: hasError,
       })}
