@@ -51,7 +51,7 @@
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
                       (notification.tu/with-captured-channel-send!
-                        (notification.send/send-notification-sync! notification-info)))))
+                        (#'notification.send/send-notification-sync! notification-info)))))
 
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
@@ -74,7 +74,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (t2/delete! :model/TaskHistory)
-        (notification.send/send-notification-sync! n)
+        (#'notification.send/send-notification-sync! n)
         (is (=? [{:task         "notification-send"
                   :task_details {:notification_id (:id n)
                                  :notification_handlers [{:id           (mt/malli=? :int)
@@ -112,7 +112,7 @@
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
               (mt/with-dynamic-fn-redefs [channel/send! send!]
-                (notification.send/send-notification-sync! n))
+                (#'notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
                        :task_details {:attempted_retries 1
@@ -162,7 +162,7 @@
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
           (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
                                                                                   (throw (Exception. "test-exception")))]
-            (is (thrown? Exception (notification.send/send-notification-sync! n)))
+            (is (thrown? Exception (#'notification.send/send-notification-sync! n)))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
                                                             {:payload-type "notification/testing"})))))))))
 
@@ -180,7 +180,7 @@
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-attempts 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
-              (notification.send/send-notification-sync! n)
+              (#'notification.send/send-notification-sync! n)
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))

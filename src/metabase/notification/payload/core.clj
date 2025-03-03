@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.core
   (:require
-   [metabase.channel.render.core :as channel.render]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
@@ -128,7 +127,7 @@
    :site_name            (public-settings/site-name)
    :site_url             (public-settings/site-url)
    :admin_email          (public-settings/admin-email)
-   :style                {:button (button-style (channel.render/primary-color))}})
+   :style                {:button (button-style (public-settings/application-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."
