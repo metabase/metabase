@@ -6,7 +6,12 @@ import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import { getInitialStateForCardDataSource } from "metabase/visualizer/utils";
-import type { Card, DashboardCard, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  DashboardCard,
+  DatasetColumn,
+  DatasetQuery,
+} from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { DashCardActionButton } from "../DashCardActionButton";
@@ -14,9 +19,14 @@ import { DashCardActionButton } from "../DashCardActionButton";
 interface VisualizerButtonProps {
   card: Card<DatasetQuery>;
   dashcard: DashboardCard;
+  columns: DatasetColumn[];
 }
 
-export function VisualizerButton({ card, dashcard }: VisualizerButtonProps) {
+export function VisualizerButton({
+  card,
+  dashcard,
+  columns,
+}: VisualizerButtonProps) {
   const [isOpen, { open, close }] = useDisclosure(false);
   const dispatch = useDispatch();
 
@@ -28,11 +38,11 @@ export function VisualizerButton({ card, dashcard }: VisualizerButtonProps) {
         };
       } else {
         return {
-          state: getInitialStateForCardDataSource(card, card.result_metadata),
+          state: getInitialStateForCardDataSource(card, columns),
         };
       }
     }
-  }, [isOpen, dashcard, card]);
+  }, [isOpen, dashcard, card, columns]);
 
   const handleChangeVisualization = (visualization: VisualizerHistoryItem) => {
     dispatch(

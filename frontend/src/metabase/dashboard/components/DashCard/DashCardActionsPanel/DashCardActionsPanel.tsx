@@ -162,6 +162,7 @@ function DashCardActionsPanelInner({
           key="visualizer-button"
           card={series[0].card}
           dashcard={dashcard}
+          columns={series[0].data.cols}
         />,
       );
     }
