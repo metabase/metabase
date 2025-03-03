@@ -747,7 +747,7 @@ describe("issue 40064", () => {
     cy.log("update the expression and check the value");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({ formula: "[Tax] * 3" });
+    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
     H.popover().button("Update").click();
     H.visualize();
     H.tableInteractive().findByText("6.21").should("be.visible");
@@ -755,10 +755,18 @@ describe("issue 40064", () => {
     cy.log("rename the expression and make sure you cannot create a cycle");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({ formula: "[Tax] * 3", name: "Tax3" });
-    H.popover().button("Update").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
     H.getNotebookStep("expression").findByText("Tax3").click();
-    H.enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
+    H.enterCustomColumnDetails({
+      formula: "[Tax3] * 3",
+      name: "Tax3",
+      blur: true,
+    });
     H.popover().within(() => {
       cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
@@ -1459,7 +1467,7 @@ describe("issue 44637", () => {
     });
 
     H.queryBuilderFooter().icon("calendar").click();
-    H.rightSidebar().findByText("Add an event");
+    H.rightSidebar().findByText("Create event");
   });
 });
 

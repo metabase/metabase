@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { Button, MultiSelect, Select, TextInputBlurChange } from "metabase/ui";
@@ -175,6 +175,7 @@ export const RuleEditor = ({
             }}
             colors={COLORS}
             colorRanges={COLOR_RANGES}
+            withinPortal={false}
           />
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Start the range at`}</h3>
           <ChartSettingRadio
