@@ -791,6 +791,11 @@
       {:clause [:time-interval created-at :current :quarter],
        :name "Created At is this quarter"}
       {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
+      {:clause [:time-interval created-at 0 :day], :name "Created At is today"}
+      {:clause [:time-interval created-at 0 :week], :name "Created At is this week"}
+      {:clause [:time-interval created-at 0 :month], :name "Created At is this month"}
+      {:clause [:time-interval created-at 0 :quarter], :name "Created At is this quarter"}
+      {:clause [:time-interval created-at 0 :year], :name "Created At is this year"}
       {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
       {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
       {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}
