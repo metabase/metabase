@@ -34,7 +34,7 @@
 
 (t2/define-before-update :model/ParameterCard
   [pc]
-  (u/prog1 (t2/changes pc)
+  (u/prog1 (or (t2/changes pc) {})
     (when (:parameterized_object_type <>)
       (validate-parameterized-object-type <>))))
 

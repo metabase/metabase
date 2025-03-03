@@ -38,7 +38,7 @@
 
 (t2/define-before-update :model/LegacyMetric
   [{:keys [id], :as metric}]
-  (u/prog1 #p (or (t2/changes metric) {})
+  (u/prog1 (or (t2/changes metric) {})
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
       (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/LegacyMetric :id id))
