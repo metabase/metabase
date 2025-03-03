@@ -4,9 +4,8 @@ import { t } from "ttag";
 import { MappingEditor } from "metabase/core/components/MappingEditor";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import type {
@@ -45,7 +44,7 @@ const AttributeMappingEditor = ({
       >
         {t`User attribute`}
         <Tooltip
-          tooltip={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}
+          label={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}
         >
           <Icon className={CS.ml1} name="info_outline" />
         </Tooltip>

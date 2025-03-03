@@ -44,10 +44,10 @@ export const EmbeddingSdkLegaleseModal = ({
         {t`When using the Embedded analytics SDK, each end user should have their own Metabase account.`}
       </Text>
       <List mt="xs">
-        <List.Item>
+        <List.Item mr="md">
           <Text>{t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}</Text>
         </List.Item>
-        <List.Item>
+        <List.Item mr="md">
           <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
         </List.Item>
       </List>

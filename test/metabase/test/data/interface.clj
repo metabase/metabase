@@ -459,15 +459,16 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (merge
-    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
-                                                :type     :query
-                                                :query    {:source-table table-id
-                                                           :aggregation  [[aggregation-type [:field-id field-id]]]
-                                                           :aggregation-idents {0 (u/generate-nano-id)}}}))
-    (when (= aggregation-type :cum-count)
-      {:base_type     :type/Decimal
-       :semantic_type :type/Quantity}))))
+   (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
+                                            :type     :query
+                                            :query    {:source-table table-id
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]
+                                                       :aggregation-idents {0 (u/generate-nano-id)}}})
+       first
+       (merge (when (= aggregation-type :cum-count)
+                {:base_type     :type/Decimal
+                 :semantic_type :type/Quantity}))
+       (dissoc :ident :lib/source-uuid :lib/source_uuid))))
 
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to

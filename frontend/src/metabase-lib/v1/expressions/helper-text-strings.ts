@@ -7,7 +7,9 @@ import type {
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { formatIdentifier, formatStringLiteral } from "./";
+import { formatStringLiteral } from "./string";
+
+import { formatIdentifier } from "./";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -99,12 +101,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "offset",
     structure: "Offset",
-    description: () => t`Returns the value of an expression in a different row`,
+    description: () =>
+      t`Returns the value of an aggregation expression in a different row`,
     args: [
       {
         name: t`expression`,
         description: t`The value to get from a different row.`,
-        example: formatIdentifier(t`Total`),
+        example: `Sum(${formatIdentifier(t`Total`)})`,
       },
       {
         name: t`rowOffset`,
@@ -1215,3 +1218,8 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
     ? `questions/query-builder/expressions/${docsPage}`
     : "questions/query-builder/expressions";
 };
+
+export const getFunctionByStructure = (structure: string) =>
+  HELPER_TEXT_STRINGS.find(
+    h => h.structure.toLowerCase() === structure.toLowerCase(),
+  )?.name;
