@@ -75,7 +75,8 @@ describe(
         cy.log("/api/card/$id/query endpoints are not sandboxed");
         cypressWaitAll(
           apiResponses.map(({ response }) => {
-            const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+            const url = (response as any)?.url;
+            const cardId = parseInt(url.match(/\d+/g).at(-1));
             expect(cardId).to.be.a("number");
             return cy.request("POST", `/api/card/${cardId}/query`);
           }),
@@ -97,55 +98,10 @@ describe(
         cy.signInAsAdmin();
       });
 
-      describe("to a table filtered using a custom view", () => {
-        (["Question", "Model"] as const).forEach(customViewType => {
-          it(`where the custom view is a ${customViewType}`, () => {
-            configureSandboxPolicy({
-              filterTableBy: "custom_view",
-              customViewType,
-              customViewName: "sandbox - Question with only gizmos",
-            });
-
-            signInAsNormalUser();
-
-            H.visitDashboard(sandboxingData.dashboard.id);
-
-            expect(sandboxingData.questions.length).to.be.greaterThan(0);
-            cy.wait(
-              new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-            ).then(apiResponses => {
-              rowsContainOnlyGizmos(apiResponses);
-              cy.log("/api/card/$id/query endpoints are not sandboxed");
-              cypressWaitAll(
-                apiResponses.map(({ response }) => {
-                  const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
-                  expect(cardId).to.be.a("number");
-                  return cy.request("POST", `/api/card/${cardId}/query`);
-                }),
-              ).then(apiResponses => {
-                rowsContainOnlyGizmos(
-                  apiResponses.map(response => ({ response })),
-                );
-              });
-            });
-
-            H.visitQuestionAdhoc(adhocQuestionData);
-            cy.wait("@datasetQuery").then(apiResponse => {
-              rowsContainOnlyGizmos([apiResponse]);
-            });
-          });
-        });
-      });
-
-      it("to a table filtered by a regular column", () => {
-        cy.signInAsAdmin();
-        assignAttributeToUser({ attributeValue: "Gizmo" });
-
-        configureSandboxPolicy({
-          filterTableBy: "column",
-          filterColumn: "Category",
-        });
-
+      // Each test configures the sandboxing policy, but the logic for checking
+      // the results is the same in each test, so let's do this in an
+      // afterEach.
+      afterEach(function sandboxingPolicyShouldBeApplied() {
         signInAsNormalUser();
 
         H.visitDashboard(sandboxingData.dashboard.id);
@@ -159,7 +115,8 @@ describe(
           cy.log("/api/card/$id/query endpoints are not sandboxed");
           cypressWaitAll(
             apiResponses.map(({ response }) => {
-              const cardId = parseInt(response?.url.match(/\d+/g).at(-1));
+              const url = (response as any)?.url;
+              const cardId = parseInt(url.match(/\d+/g).at(-1));
               expect(cardId).to.be.a("number");
               return cy.request("POST", `/api/card/${cardId}/query`);
             }),
@@ -169,9 +126,33 @@ describe(
         });
 
         H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@dataset").then(apiResponse =>
-          rowsContainOnlyGizmos([apiResponse]),
-        );
+        cy.wait("@datasetQuery").then(apiResponse => {
+          rowsContainOnlyGizmos([apiResponse]);
+        });
+      });
+
+      it("to a table filtered using a question as a custom view", () => {
+        configureSandboxPolicy({
+          filterTableBy: "custom_view",
+          customViewType: "Question" as const,
+          customViewName: "sandbox - Question with only gizmos",
+        });
+      });
+
+      it("to a table filtered using a model as a custom view", () => {
+        configureSandboxPolicy({
+          filterTableBy: "custom_view",
+          customViewType: "Question" as const,
+          customViewName: "sandbox - Question with only gizmos",
+        });
+      });
+
+      it("to a table filtered by a regular column", () => {
+        assignAttributeToUser({ attributeValue: "Gizmo" });
+        configureSandboxPolicy({
+          filterTableBy: "column",
+          filterColumn: "Category",
+        });
       });
     });
 
