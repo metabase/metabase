@@ -1,12 +1,15 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
+import { DatabaseInfoSection } from "../DatabaseInfoSection";
+
 import ModelActionsSection from "./ModelActionsSection";
 import ModelCachingControl from "./ModelCachingControl";
 
-export const DatabaseModelFeaturesSectionContent = ({
+export const DatabaseModelFeaturesSection = ({
   database,
   isModelPersistenceEnabled,
   updateDatabase,
@@ -24,6 +27,10 @@ export const DatabaseModelFeaturesSectionContent = ({
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
 
+  const hasNoContent = [hasModelActionsSection, hasModelCachingSection].every(
+    bool => bool === false,
+  );
+
   const handleToggleModelActionsEnabled = useCallback(
     (nextValue: boolean) =>
       updateDatabase({
@@ -33,8 +40,17 @@ export const DatabaseModelFeaturesSectionContent = ({
     [database.id, updateDatabase],
   );
 
+  const shouldHideSection = database.is_attached_dwh || hasNoContent;
+
+  if (shouldHideSection) {
+    return null;
+  }
+
   return (
-    <>
+    <DatabaseInfoSection
+      name={t`Model features`}
+      description={t`Choose whether to enable features related to Metabase models. These will often require a write connection.`}
+    >
       {hasModelActionsSection && (
         <ModelActionsSection
           hasModelActionsEnabled={database.hasActionsEnabled()}
@@ -43,6 +59,6 @@ export const DatabaseModelFeaturesSectionContent = ({
       )}
 
       {hasModelCachingSection && <ModelCachingControl database={database} />}
-    </>
+    </DatabaseInfoSection>
   );
 };

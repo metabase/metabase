@@ -14,11 +14,14 @@ import { Box, Button, Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 
-import { DatabaseInfoSectionDivider } from "../DatabaseInfoSection";
+import {
+  DatabaseInfoSection,
+  DatabaseInfoSectionDivider,
+} from "../DatabaseInfoSection";
 
-import S from "./DatabaseConnectionInfoSectionContent.module.css";
+import S from "./DatabaseConnectionInfoSection.module.css";
 
-export const DatabaseConnectionInfoSectionContent = ({
+export const DatabaseConnectionInfoSection = ({
   database,
   dismissSyncSpinner,
 }: {
@@ -49,7 +52,11 @@ export const DatabaseConnectionInfoSectionContent = ({
   // TODO: handle fetching connection status info once endpoint exists
 
   return (
-    <>
+    <DatabaseInfoSection
+      name={t`Connection and sync`}
+      description={t`Manage details about the database connection and when Metabase ingests new data.`}
+      condensed
+    >
       <Flex align="center" justify="space-between">
         <Flex align="center" gap="xs">
           <Box
@@ -96,6 +103,6 @@ export const DatabaseConnectionInfoSectionContent = ({
           />
         )}
       </Flex>
-    </>
+    </DatabaseInfoSection>
   );
 };
