@@ -1,8 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
+   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
+    :as metabot-v3.tools.create-dashboard-subscription]
    [metabase.api.common :as api]
    [metabase.test :as mt]))
 
@@ -31,16 +31,13 @@
                                                             :dashboard_tab_id dashboard-tab-id-0
                                                             :row 0
                                                             :col 0}]
-      (let [base-data {:dashboard-id dashboard-id
+      (let [invoke-tool #(binding [api/*current-user-id* user-id]
+                           (metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription %))
+            base-data {:dashboard-id dashboard-id
                        :email email
                        :schedule {:frequency "monthly"
                                   :day_of_month "last-sunday"
-                                  :hour 7}}
-            invoke-tool #(binding [api/*current-user-id* user-id]
-                           (metabot-v3.tools.interface/*invoke-tool*
-                            :metabot.tool/create-dashboard-subscription
-                            %
-                            {}))]
+                                  :hour 7}}]
         (testing "Subscription can be created"
           (is (= {:output "success"}
                  (invoke-tool base-data))))

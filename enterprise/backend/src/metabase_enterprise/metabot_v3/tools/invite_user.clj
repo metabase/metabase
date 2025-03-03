@@ -1,11 +1,10 @@
 (ns metabase-enterprise.metabot-v3.tools.invite-user
   (:require
-   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
-   [metabase.api.user :as api.user]
-   [metabase.util.malli :as mu]))
+   [metabase.api.user :as api.user]))
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/invite-user
-  [_tool-name {:keys [email]} _env]
+(defn invite-user
+  "Send a Metabase invitation to the address `email`."
+  [{:keys [email]}]
   (try
     (api.user/invite-user {:email email})
     {:output (format "%s has been invited to Metabase." email)}
@@ -15,7 +14,3 @@
                            (-> d :errors :email))]
           {:output message}
           (throw e))))))
-
-(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/invite-user
-  [_tool-name _context]
-  false)
