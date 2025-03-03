@@ -69,6 +69,7 @@ export default class InputWithSelectPrefix extends Component {
     return (
       <Flex w="400px" p={0} className={FormS.FormInput}>
         <Select
+          aria-label="input-prefix"
           classNames={{
             root: CS.borderRight,
             input: CS.borderless,
@@ -77,6 +78,10 @@ export default class InputWithSelectPrefix extends Component {
           onChange={val => this.setState({ prefix: val })}
           w="6.5rem"
           styles={{
+            root: {
+              borderTopLeftRadius: "0.5rem",
+              borderBottomLeftRadius: "0.5rem",
+            },
             wrapper: {
               height: "100%",
             },
