@@ -1,5 +1,5 @@
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerColumnValueSource,
@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 export function isReferenceToColumn(
-  column: DatasetColumn,
+  column: Field,
   dataSourceId: VisualizerDataSourceId,
   ref: VisualizerColumnReference,
 ) {
@@ -39,7 +39,7 @@ function checkColumnMappingExists(
 
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
-  column: DatasetColumn,
+  column: Field,
   otherReferencedColumns: VisualizerColumnReference[],
 ): VisualizerColumnReference {
   const existingRef = otherReferencedColumns.find(ref =>
@@ -67,11 +67,10 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
-  const copy: DatasetColumn = {
+export function copyColumn(name: string, column: Field): Field {
+  const copy: Field = {
     ...column,
     name,
-    // @ts-expect-error TODO name is supposed to be a number (FieldId) but here it's a string?
     field_ref: ["field", name, { "base-type": column.base_type }],
   };
 
@@ -80,9 +79,11 @@ export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
     const opts = copy.field_ref?.[2];
     const temporalUnit = maybeGetTemporalUnit(column);
     if (temporalUnit && opts) {
-      opts["temporal-unit"] = temporalUnit;
+      // TODO fix type
+      (opts as any)["temporal-unit"] = temporalUnit;
     }
-    copy.field_ref = ["field", name, opts];
+    // TODO fix type
+    copy.field_ref = ["field", name, opts as any];
   }
 
   return copy;
@@ -109,7 +110,7 @@ export function extractReferencedColumns(
   );
 }
 
-function maybeGetTemporalUnit(col: DatasetColumn) {
+function maybeGetTemporalUnit(col: Field) {
   const maybeOpts = col.field_ref?.[2];
   if (maybeOpts && "temporal-unit" in maybeOpts) {
     return maybeOpts["temporal-unit"];

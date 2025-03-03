@@ -5,8 +5,8 @@ import { getColumnVizSettings } from "metabase/visualizations";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
-  DatasetColumn,
-  SingleSeries,
+  DatasetQuery,
+  Field,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -27,7 +27,7 @@ const areaBarLine = ["area", "bar", "line"];
 
 export function canCombineCard(
   display: VisualizationDisplay,
-  columns: DatasetColumn[],
+  columns: Field[],
   settings: VisualizationSettings,
   card: Card,
 ) {
@@ -49,7 +49,7 @@ export function canCombineCard(
 // Mimics the `area-bar-line-series-are-compatible?` fn from `GET /api/card/:id/series`
 // https://github.com/metabase/metabase/blob/5cfc079d1db6e69bf42705f0eeba431a6e39c6b5/src/metabase/api/card.clj#L219
 function areAreaBarLineSeriesCompatible(
-  columns: DatasetColumn[],
+  columns: Field[],
   settings: VisualizationSettings,
   card: Card,
 ) {
@@ -86,10 +86,10 @@ function areAreaBarLineSeriesCompatible(
   );
 }
 
-export function getInitialStateForCardDataSource({
-  card,
-  data,
-}: SingleSeries): VisualizerHistoryItem {
+export function getInitialStateForCardDataSource(
+  card: Card<DatasetQuery>,
+  columns: Field[],
+): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
     display: card.display,
     columns: [],
@@ -98,7 +98,7 @@ export function getInitialStateForCardDataSource({
   };
   const dataSource = createDataSource("card", card.id, card.name);
 
-  data.cols.forEach(column => {
+  columns.forEach(column => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -120,14 +120,14 @@ export function getInitialStateForCardDataSource({
         return [
           setting,
           originalValue.map(originalColumnName => {
-            const index = data.cols.findIndex(
+            const index = columns.findIndex(
               col => col.name === originalColumnName,
             );
             return state.columns[index].name;
           }),
         ];
       } else {
-        const index = data.cols.findIndex(col => col.name === originalValue);
+        const index = columns.findIndex(col => col.name === originalValue);
         return [setting, state.columns[index].name];
       }
     })

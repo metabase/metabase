@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import {
+  cardApi,
   skipToken,
   useListCollectionItemsQuery,
   useSearchQuery,
@@ -20,9 +27,15 @@ import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type { CardId, CollectionId } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  CollectionId,
+  DatasetQuery,
+} from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
+import { convertCardToInitialState } from "./convert-question-to-initial-state";
 
 interface QuestionListProps {
   searchText: string;
@@ -45,6 +58,23 @@ export function QuestionList({
   const [visualizerModalCardId, setVisualizerModalCardId] =
     useState<CardId | null>(null);
   const isVisualizerModalOpen = !!visualizerModalCardId;
+  // const [selectedCard, setSelectedCard] = useState<Card<DatasetQuery>>();
+
+  // const loadCard = useCallback(async () => {
+  //   if (!visualizerModalCardId) {
+  //     return;
+  //   }
+
+  //   const { data } = await dispatch(
+  //     cardApi.endpoints.getCard.initiate({ id: visualizerModalCardId }),
+  //   );
+
+  //   setSelectedCard(data);
+  // }, [dispatch, visualizerModalCardId]);
+
+  // useEffect(() => {
+  //   loadCard();
+  // }, [visualizerModalCardId, loadCard]);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -169,14 +199,8 @@ export function QuestionList({
         />
       </Flex>
       {isVisualizerModalOpen && (
-        <VisualizerModal
-          initialState={{
-            state: {
-              display: list.find(item => item.id === visualizerModalCardId)
-                ?.display,
-            },
-            extraDataSources: [`card:${visualizerModalCardId}`],
-          }}
+        <VisualizerModalWithCardId
+          cardId={visualizerModalCardId}
           onSave={visualization => {
             dispatch(addCardWithVisualization({ visualization }));
             setVisualizerModalCardId(null);
@@ -187,3 +211,35 @@ export function QuestionList({
     </>
   );
 }
+
+const VisualizerModalWithCardId = (
+  props: { cardId: CardId } & ComponentProps<typeof VisualizerModal>,
+) => {
+  const { cardId, ...otherProps } = props;
+  const [selectedCard, setSelectedCard] = useState<Card<DatasetQuery>>();
+  const dispatch = useDispatch();
+
+  const loadCard = useCallback(async () => {
+    const { data } = await dispatch(
+      cardApi.endpoints.getCard.initiate({ id: cardId }),
+    );
+
+    setSelectedCard(data);
+  }, [dispatch, cardId]);
+
+  useEffect(() => {
+    loadCard();
+  }, [loadCard]);
+
+  // TODO improve loading state?
+  if (!selectedCard) {
+    return null;
+  }
+
+  return (
+    <VisualizerModal
+      initialState={convertCardToInitialState(selectedCard)}
+      {...otherProps}
+    />
+  );
+};

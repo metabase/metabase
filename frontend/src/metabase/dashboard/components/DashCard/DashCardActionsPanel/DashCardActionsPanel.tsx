@@ -160,7 +160,7 @@ function DashCardActionsPanelInner({
       buttons.push(
         <VisualizerButton
           key="visualizer-button"
-          series={series}
+          card={series[0].card}
           dashcard={dashcard}
         />,
       );
