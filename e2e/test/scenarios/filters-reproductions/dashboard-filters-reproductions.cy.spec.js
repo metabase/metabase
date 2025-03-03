@@ -4338,3 +4338,49 @@ describe("issue 17061", () => {
     cy.get("@publicDashcardData.all").should("have.length", 1);
   });
 });
+
+describe("issue 48824", () => {
+  const dateParameter = {
+    id: "abc",
+    name: "Date filter",
+    slug: "filter-date",
+    type: "date/all-options",
+    default: "past30days",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should correctly translate relative filters in dashboards (metabase#48824)", () => {
+    cy.log("set locale");
+    cy.request("GET", "/api/user/current").then(({ body: user }) => {
+      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+    });
+
+    cy.log("add a date parameter with a relative default value to a dashboard");
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      parameters: [dateParameter],
+    });
+    H.updateDashboardCards({
+      dashboard_id: ORDERS_DASHBOARD_ID,
+      cards: [
+        {
+          card_id: ORDERS_QUESTION_ID,
+          parameter_mappings: [
+            {
+              card_id: ORDERS_QUESTION_ID,
+              parameter_id: dateParameter.id,
+              target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            },
+          ],
+        },
+      ],
+    });
+
+    cy.log("check translations");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible"); // Previous 30 days
+  });
+});
