@@ -10,10 +10,8 @@ import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
-import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData } from "metabase-types/api";
 
@@ -36,6 +34,14 @@ export const DatabaseEditConnectionForm = ({
 
   const editingExistingDatabase = database?.id != null;
   const addingNewDatabase = !editingExistingDatabase;
+  // import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
+  // import { Box } from "metabase/ui";
+  //
+  //         <>
+  //           <Box maw="21rem" mt="1.25rem">
+  //             {addingNewDatabase && <DatabaseHelpCard />}
+  //           </Box>
+  //         </>
 
   const [isDirty, setIsDirty] = useState(false);
 
@@ -78,18 +84,13 @@ export const DatabaseEditConnectionForm = ({
         {editingExistingDatabase && database.is_attached_dwh ? (
           <div>{t`This database cannot be modified.`}</div>
         ) : (
-          <>
-            <Box maw="21rem" mt="1.25rem">
-              {addingNewDatabase && <DatabaseHelpCard />}
-            </Box>
-            <DatabaseForm
-              initialValues={database}
-              isAdvanced
-              onSubmit={handleSubmit}
-              setIsDirty={setIsDirty}
-              autofocusFieldName={autofocusFieldName}
-            />
-          </>
+          <DatabaseForm
+            initialValues={database}
+            isAdvanced
+            onSubmit={handleSubmit}
+            setIsDirty={setIsDirty}
+            autofocusFieldName={autofocusFieldName}
+          />
         )}
       </LoadingAndErrorWrapper>
       <LeaveConfirmationModal
