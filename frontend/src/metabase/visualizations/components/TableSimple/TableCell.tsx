@@ -6,7 +6,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import TableS from "metabase/visualizations/components/TableInteractive/TableInteractive.module.css";
+import TableS from "metabase/visualizations/components/TableRoot/TableRoot.module.css";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,

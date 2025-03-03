@@ -34,9 +34,12 @@
   width: 100%;
 }
 
+.headerCell {
+  position: relative;
+}
+
 .bodyCell {
   position: relative;
-  background-color: var(--mb-color-bg-white);
   cursor: pointer;
 }
 

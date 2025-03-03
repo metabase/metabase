@@ -5,6 +5,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
+import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
@@ -13,13 +14,16 @@ import { SortableHeader } from "metabase/data-grid/components/SortableHeader/Sor
 import {
   ADD_COLUMN_BUTTON_WIDTH,
   HEADER_HEIGHT,
+  PINNED_COLUMN_Z_INDEX,
 } from "metabase/data-grid/constants";
 import type { DataGridInstance } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 
 import S from "./DataGrid.module.css";
 
-export type DataGridProps<TData> = DataGridInstance<TData>;
+export type DataGridProps<TData> = DataGridInstance<TData> & {
+  emptyState?: React.ReactNode;
+};
 
 export const DataGrid = function DataGrid<TData>({
   table,
@@ -27,6 +31,7 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  emptyState,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -79,12 +84,15 @@ export const DataGrid = function DataGrid<TData>({
     [hasAddColumnButton, isAddColumnButtonSticky, onAddColumnClick],
   );
 
+  const isEmpty = table.getRowModel().rows.length === 0;
+
   return (
     <DndContext {...dndContextProps}>
       <div className={S.table} data-testid="table-root">
         <div
           data-testid="table-scroll-container"
           className={S.tableGrid}
+          role="grid"
           ref={gridRef}
           style={{
             paddingRight: isAddColumnButtonSticky
@@ -114,22 +122,36 @@ export const DataGrid = function DataGrid<TData>({
                       header.column.columnDef.header,
                       header.getContext(),
                     );
+                    const width = header.column.getSize();
+
+                    const isPinned = header.column.getIsPinned();
+
+                    const style: React.CSSProperties = isPinned
+                      ? {
+                          width,
+                          position: "sticky",
+                          left: `${virtualColumn.start}px`,
+                          zIndex: PINNED_COLUMN_Z_INDEX,
+                        }
+                      : {
+                          width,
+                        };
+
+                    const headerContent = isPinned ? (
+                      headerCell
+                    ) : (
+                      <SortableHeader
+                        className={S.headerCell}
+                        header={header}
+                        onClick={onHeaderCellClick}
+                      >
+                        {headerCell}
+                      </SortableHeader>
+                    );
 
                     return (
-                      <div
-                        key={header.id}
-                        style={{
-                          width: header.getSize(),
-                          position: "relative",
-                        }}
-                      >
-                        <SortableHeader
-                          className={S.headerCell}
-                          header={header}
-                          onClick={onHeaderCellClick}
-                        >
-                          {headerCell}
-                        </SortableHeader>
+                      <div key={header.id} style={style}>
+                        {headerContent}
                       </div>
                     );
                   })}
@@ -141,6 +163,7 @@ export const DataGrid = function DataGrid<TData>({
               </div>
             ))}
           </div>
+          {isEmpty && emptyState}
           <div
             data-testid="table-body"
             className={S.bodyContainer}
@@ -175,6 +198,19 @@ export const DataGrid = function DataGrid<TData>({
 
                   {virtualColumns.map(virtualColumn => {
                     const cell = row.getVisibleCells()[virtualColumn.index];
+                    const isPinned = cell.column.getIsPinned();
+                    const width = cell.column.getSize();
+
+                    const style: React.CSSProperties = isPinned
+                      ? {
+                          width,
+                          position: "sticky",
+                          left: `${virtualColumn.start}px`,
+                          zIndex: PINNED_COLUMN_Z_INDEX,
+                        }
+                      : {
+                          width,
+                        };
                     return (
                       <div
                         key={cell.id}
@@ -182,10 +218,7 @@ export const DataGrid = function DataGrid<TData>({
                         onClick={e =>
                           onBodyCellClick?.(e, cell.row.index, cell.column.id)
                         }
-                        style={{
-                          position: "relative",
-                          width: cell.column.getSize(),
-                        }}
+                        style={style}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

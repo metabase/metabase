@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 
 import S from "./RowIdCell.module.css";
 
@@ -24,10 +24,14 @@ export const RowIdCell = memo(function RowIdCell({
     <Tooltip label={t`View details`}>
       <span>
         <BaseCell
-          className={cx(S.root)}
-          backgroundColor={backgroundColor}
+          className={S.root}
+          backgroundColor={hasValue ? backgroundColor : undefined}
+          style={
+            !hasValue && !backgroundColor
+              ? { backgroundColor: "var(--mb-color-bg-white)" }
+              : undefined
+          }
           align="right"
-          data-testid="detail-shortcut"
         >
           {hasValue ? (
             <span className={cx(S.rowNumber, DataGridS.rowHoverHidden)}>
@@ -35,10 +39,13 @@ export const RowIdCell = memo(function RowIdCell({
             </span>
           ) : null}
 
-          <Icon
-            className={cx(DataGridS.rowHoverVisible, {})}
-            name="expand"
-            size={14}
+          <Button
+            data-testid="detail-shortcut"
+            w={24}
+            h={24}
+            className={cx(DataGridS.rowHoverVisible, S.expandButton)}
+            size="compact-md"
+            leftSection={<Icon name="expand" size={14} />}
           />
         </BaseCell>
       </span>

@@ -40,3 +40,7 @@
 .outline .content {
   border: 1px solid var(--mb-base-color-brand-20);
 }
+
+.sortIndicator {
+  flex-shrink: 0;
+}

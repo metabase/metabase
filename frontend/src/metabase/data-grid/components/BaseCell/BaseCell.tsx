@@ -12,6 +12,7 @@ export type BaseCellProps = {
   children?: React.ReactNode;
   className?: string;
   backgroundColor?: string;
+  style?: React.CSSProperties;
 } & React.HTMLProps<HTMLDivElement>;
 
 export const BaseCell = memo(function BaseCell({
@@ -19,11 +20,12 @@ export const BaseCell = memo(function BaseCell({
   backgroundColor,
   className,
   children,
+  style,
   ...rest
 }: BaseCellProps) {
-  const style = useMemo(() => {
+  const cellStyle = useMemo(() => {
     if (!backgroundColor) {
-      return undefined;
+      return style;
     }
 
     // For dark colors, create a lighter hover for light colors, create a darker hover
@@ -33,10 +35,11 @@ export const BaseCell = memo(function BaseCell({
       : `color-mix(in srgb, ${backgroundColor} 97%, black)`;
 
     return {
+      ...style,
       "--cell-bg-color": backgroundColor,
       "--cell-hover-bg-color": hoverColor,
     } as React.CSSProperties;
-  }, [backgroundColor]);
+  }, [backgroundColor, style]);
 
   return (
     <div
@@ -49,7 +52,7 @@ export const BaseCell = memo(function BaseCell({
         },
         className,
       )}
-      style={style}
+      style={cellStyle}
       {...rest}
     >
       {children}
