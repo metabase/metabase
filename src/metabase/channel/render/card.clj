@@ -143,6 +143,10 @@
    card
    dashcard
    {:keys [data error] :as results}]
+  (def data data)
+  (def card card)
+  (def dashcard dashcard)
+  (println "TSP in render-pulse-card-body")
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
@@ -169,7 +173,7 @@
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
   ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
