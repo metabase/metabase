@@ -130,10 +130,10 @@
                     (:data (mt/user-http-request :crowberto :get 200 "database/"))))
       (testing "If we pass the `include_mirror_databases` param it is included"
         (is (some #(= (:id %) mirror-db-id)
-                  (:data (mt/user-http-request :crowberto :get 200 "database/?include_mirror_databases=true")))))
+                  (:data (mt/user-http-request :crowberto :get 200 (str "database/?include_mirror_databases=" db-id))))))
       (testing "Regular users can't do this"
         (is (not-any? #(= (:id %) mirror-db-id)
-                      (:data (mt/user-http-request :rasta :get 200 "database/?include_mirror_databases=true"))))))
+                      (:data (mt/user-http-request :rasta :get 200 (str "database/?include_mirror_databases=" db-id)))))))
     (testing "PUT /database/:id should work normally"
       (mt/user-http-request :crowberto :put 200 (str "database/" mirror-db-id)))
     (testing "GET /database/:id/usage_info"

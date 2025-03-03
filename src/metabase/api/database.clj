@@ -253,12 +253,13 @@
              include-analytics?
              exclude-uneditable-details?
              include-only-uploadable?
-             include-mirror-databases?]}]
+             include-mirror-databases]}]
   (let [dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where [:and
                                                 (when-not include-analytics?
                                                   [:= :is_audit false])
-                                                (when-not (and include-mirror-databases? api/*is-superuser?*)
+                                                (if (and api/*is-superuser?* include-mirror-databases)
+                                                  [:= :router_database_id include-mirror-databases]
                                                   [:= :router_database_id nil])]})
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
@@ -303,7 +304,7 @@
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
-       [:include_mirror_databases    {:default false} [:maybe :boolean]]]]
+       [:include_mirror_databases    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -314,7 +315,7 @@
                                                       :exclude-uneditable-details?     only-editable?
                                                       :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable
-                                                      :include-mirror-databases?       include_mirror_databases)
+                                                      :include-mirror-databases        include_mirror_databases)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
