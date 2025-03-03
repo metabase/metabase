@@ -14,9 +14,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { isNullOrUndefined } from "metabase/lib/types";
 import { Button, Radio, Stack, rem } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
@@ -31,14 +29,18 @@ const labelStyles = {
 export const SaveQuestionForm = ({
   onCancel,
   onSaveSuccess,
-  saveToDashboard,
 }: {
   onCancel?: () => void;
   onSaveSuccess?: () => void;
-  saveToDashboard?: Dashboard | null | undefined;
 }) => {
-  const { question, originalQuestion, showSaveType, values, saveToCollection } =
-    useSaveQuestionContext();
+  const {
+    question,
+    originalQuestion,
+    showSaveType,
+    values,
+    saveToCollection,
+    saveToDashboard,
+  } = useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
   const isDashboardQuestion = !!question.dashboardId();
@@ -50,13 +52,13 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollection);
   const models: CollectionPickerModel[] =
     question.type() === "question"
       ? ["collection", "dashboard"]
       : ["collection"];
 
-  const showPickerInput = values.saveType === "create" && !saveToDashboard;
+  const showPickerInput =
+    values.saveType === "create" && !saveToCollection && !saveToDashboard;
 
   return (
     <Form>
@@ -116,7 +118,7 @@ export const SaveQuestionForm = ({
           />
 
           <div>
-            {isCollectionPickerEnabled && showPickerInput && (
+            {showPickerInput && (
               <FormCollectionAndDashboardPicker
                 collectionIdFieldName="collection_id"
                 dashboardIdFieldName="dashboard_id"
@@ -133,19 +135,17 @@ export const SaveQuestionForm = ({
               />
             )}
 
-            {values.saveType === "create" && (
-              <FormDashboardTabSelect
-                name="dashboard_tab_id"
-                label="Which tab should this go on?"
-                dashboardId={values.dashboard_id}
-                styles={{
-                  label: {
-                    ...labelStyles,
-                    marginBottom: rem("3px"),
-                  },
-                }}
-              />
-            )}
+            <FormDashboardTabSelect
+              name="dashboard_tab_id"
+              label="Which tab should this go on?"
+              dashboardId={values.dashboard_id}
+              styles={{
+                label: {
+                  ...labelStyles,
+                  marginBottom: rem("3px"),
+                },
+              }}
+            />
           </div>
         </Stack>
       )}
