@@ -9,10 +9,13 @@
 
 (comment metabase.lib.schema/keep-me)
 
+(def ^:private default-options
+  {:lib/uuid "00000000-0000-0000-0000-000000000000"})
+
 (deftest ^:parallel absolute-datetime-type-of-test
   (are [literal expected] (= expected
                              (expression/type-of [:absolute-datetime
-                                                  {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                  default-options
                                                   literal
                                                   :day]))
     "2023-03-08"          :type/Date
