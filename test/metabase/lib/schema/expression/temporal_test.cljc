@@ -71,6 +71,21 @@
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current :minute]
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current]))
 
+(deftest ^:parallel datetime-diff-test
+  (are [clause] (not (mr/explain :mbql.clause/datetime-diff clause))
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01" "2024-01-02" :year]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01" "2024-01-02" :quarter]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01" "2024-01-02" :month]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01" "2024-01-02" :week]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01" "2024-01-02" :day]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01T10:20:30" "2024-01-02T20:30:40" :hour]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01T10:20:30" "2024-01-02T20:30:40" :minute]
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01T10:20:30" "2024-01-02T20:30:40" :second]))
+
+(deftest ^:parallel invalid-datetime-diff-test
+  (are [clause] (mr/explain :mbql.clause/datetime-diff clause)
+    [:datetime-diff {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2024-01-01T10:20:30" "2024-01-02T20:30:40" :millisecond]))
+
 (deftest ^:parallel timezone-id-test
   (are [input error] (= error
                         (me/humanize (mr/explain ::temporal/timezone-id input)))

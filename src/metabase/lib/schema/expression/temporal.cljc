@@ -55,7 +55,7 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
     [:schema [:ref ::expression/temporal]]))
 
-;; unlike `::temporal-bucketing/unit.date-time.truncate`, it doesn't contain `:millisecond`
+;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
   [:enum
    {:error/message    "Valid datetime-diff unit"
