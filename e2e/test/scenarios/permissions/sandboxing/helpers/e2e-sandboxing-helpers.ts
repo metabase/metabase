@@ -331,12 +331,14 @@ export const getDashcardResponses = (items: SandboxableItems) => {
     });
 };
 
-export const getCardResponses = (items: SandboxableItems) =>
-  H.cypressWaitAll(
+export const getCardResponses = (items: SandboxableItems) => {
+  expect(items.questions.length).to.be.greaterThan(0);
+  return H.cypressWaitAll(
     items.questions.map(question =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
     ),
   ) as Cypress.Chainable<DatasetResponse[]>;
+};
 
 export const getFieldValues = () =>
   cy.request<GetFieldValuesResponse>(
