@@ -36,15 +36,6 @@ export interface User extends BaseUser {
   } | null;
 }
 
-// Enterprise-only with PLUGIN_APPLICATION_PERMISSIONS
-export interface UserWithApplicationPermissions extends User {
-  permissions?: {
-    can_access_monitoring: boolean;
-    can_access_setting: boolean;
-    can_access_subscription: boolean;
-  };
-}
-
 export interface UserListResult {
   id: UserId;
   first_name: string | null;

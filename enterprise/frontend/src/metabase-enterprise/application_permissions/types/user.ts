@@ -1,1 +1,1 @@
-export type { UserWithApplicationPermissions } from "metabase-types/api";
+export type { UserWithApplicationPermissions } from "metabase/plugins";

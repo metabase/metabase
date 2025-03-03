@@ -8,10 +8,10 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
   ChannelApiResponse,
   NotificationChannel,
-  UserWithApplicationPermissions,
 } from "metabase-types/api";
 import {
   createMockCard,
