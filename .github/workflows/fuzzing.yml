@@ -4,43 +4,43 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
     paths:
-      - 'frontend/src/metabase-lib/expressions/**'
+      - "frontend/src/metabase-lib/expressions/**"
   pull_request:
     paths:
-      - 'frontend/src/metabase-lib/expressions/**'
+      - "frontend/src/metabase-lib/expressions/**"
 
 jobs:
   fe-fuzz-tokenizer:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.tokenizer.unit.spec.js
-      env:
-        MB_FUZZ: 1
-      name: Run fuzz testing on the tokenizer
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/tokenizer/fuzz.unit.spec.ts
+        env:
+          MB_FUZZ: 1
+        name: Run fuzz testing on the tokenizer
 
   fe-fuzz-recursive-parser:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.recursive-parser.unit.spec.js
-      env:
-        MB_FUZZ: 1
-      name: Run fuzz testing on the recursive parser
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.recursive-parser.unit.spec.ts
+        env:
+          MB_FUZZ: 1
+        name: Run fuzz testing on the recursive parser

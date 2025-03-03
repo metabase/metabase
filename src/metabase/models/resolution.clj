@@ -26,7 +26,7 @@
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
-    :model/ConnectionImpersonation           metabase-enterprise.advanced-permissions.models.connection-impersonation
+    :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/Dashboard                         metabase.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.models.dashboard-card
