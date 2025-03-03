@@ -45,7 +45,12 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
       >
         <Ellipsified tooltip={name}>{name}</Ellipsified>
         {sort != null ? (
-          <Icon name={sort === "asc" ? "chevronup" : "chevrondown"} size={10} />
+          <Icon
+            className={S.sortIndicator}
+            data-testid="header-sort-indicator"
+            name={sort === "asc" ? "chevronup" : "chevrondown"}
+            size={10}
+          />
         ) : null}
       </div>
     );
@@ -53,17 +58,19 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
 );
 
 export interface HeaderCellWrapperProp extends HeaderCellProps {
+  className?: string;
   children: ReactNode;
 }
 
 export const HeaderCellWrapper = ({
+  className,
   variant,
   align,
   children,
 }: HeaderCellWrapperProp) => {
   return (
     <BaseCell
-      className={cx(S.root, {
+      className={cx(S.root, className, {
         [S.light]: variant === "light",
         [S.outline]: variant === "outline",
       })}

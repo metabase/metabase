@@ -37,6 +37,7 @@ export type BodyCellBaseProps<TValue> = {
   columnId: string;
   rowIndex: number;
   className?: string;
+  style?: React.CSSProperties;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
 };
 
@@ -66,6 +67,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to determine CSS class names for cells */
   getCellClassName?: (value: TValue, rowIndex: number) => string;
+
+  /** Function to determine CSS styles for cells */
+  getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
