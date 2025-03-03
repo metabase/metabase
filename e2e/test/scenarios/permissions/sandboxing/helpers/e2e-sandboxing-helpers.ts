@@ -1,6 +1,13 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { GetFieldValuesResponse } from "metabase-types/api";
+
+import type {
+  DashcardQueryResponse,
+  DatasetResponse,
+  SandboxableItems,
+} from "./types";
 
 const { H } = cy;
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
@@ -276,19 +283,12 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
   H.saveChangesToPermissions();
 };
 
-/** given an array of api responses, returns a flat map of all the rows */
-const flattenQueryRows = (apiResponses: any[]) => {
-  return apiResponses.flatMap(({ response }) => {
-    return response.body.data.rows;
-  });
-};
-
-export function rowsContainGizmosAndWidgets(apiResponses: any[]) {
-  apiResponses.forEach(({ response }) => {
-    expect(response?.body.data.is_sandboxed).to.be.false;
+export function rowsContainGizmosAndWidgets(responses: DatasetResponse[]) {
+  responses.forEach(response => {
+    expect(response.body.data.is_sandboxed).to.be.false;
   });
 
-  const rows = flattenQueryRows(apiResponses);
+  const rows = responses.flatMap(response => response.body.data.rows);
   expect(
     rows.some(row => row.includes("Gizmo")),
     "at least one row should have a gizmo",
@@ -299,12 +299,12 @@ export function rowsContainGizmosAndWidgets(apiResponses: any[]) {
   ).to.be.true;
 }
 
-export function rowsContainOnlyGizmos(apiResponses: any[]) {
-  apiResponses.forEach(({ response }) => {
+export function rowsContainOnlyGizmos(responses: DatasetResponse[]) {
+  responses.forEach(response => {
     expect(response?.body.data.is_sandboxed).to.be.true;
   });
 
-  const rows = flattenQueryRows(apiResponses);
+  const rows = responses.flatMap(response => response.body.data.rows);
   expect(
     rows.every(row => row.includes("Gizmo")),
     "every row should have a gizmo",
@@ -314,3 +314,32 @@ export function rowsContainOnlyGizmos(apiResponses: any[]) {
     "no rows should have widgets",
   ).to.be.true;
 }
+
+export const getDashcardResponses = (items: SandboxableItems) => {
+  signInAsNormalUser();
+
+  H.visitDashboard(items.dashboard.id);
+
+  expect(items.questions.length).to.be.greaterThan(0);
+  return cy
+    .wait(new Array(items.questions.length).fill("@dashcardQuery"))
+    .then(interceptions => {
+      const responses: DashcardQueryResponse[] = interceptions.map(
+        i => i.response,
+      );
+      return responses;
+    });
+};
+
+export const getCardResponses = (items: SandboxableItems) =>
+  H.cypressWaitAll(
+    items.questions.map(question =>
+      cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
+    ),
+  ) as Cypress.Chainable<DatasetResponse[]>;
+
+export const getFieldValues = () =>
+  cy.request<GetFieldValuesResponse>(
+    "GET",
+    `/api/field/${SAMPLE_DATABASE.PRODUCTS.CATEGORY}/values`,
+  );

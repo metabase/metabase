@@ -5,11 +5,15 @@ import {
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
+  getCardResponses,
+  getDashcardResponses,
+  getFieldValues,
   rowsContainGizmosAndWidgets,
   rowsContainOnlyGizmos,
   signInAsNormalUser,
   sandboxingUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
+import type { DatasetResponse, SandboxableItems } from "./helpers/types";
 
 const { H } = cy;
 
@@ -23,10 +27,7 @@ describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
   () => {
-    let sandboxingData = {
-      dashboard: {} as any,
-      questions: [] as any[],
-    };
+    let items = {} as SandboxableItems;
 
     before(() => {
       H.restore("postgres-12");
@@ -34,12 +35,12 @@ describe(
       H.setTokenFeatures("all");
       preparePermissions();
       createSandboxingDashboardAndQuestions().then(result => {
-        const items = result.body.data;
-        sandboxingData = {
-          dashboard: items.find(
+        const { data } = result.body;
+        items = {
+          dashboard: data.find(
             (item: { model: string }) => item.model === "dashboard",
           ),
-          questions: items.filter(
+          questions: data.filter(
             (item: { model: string }) => item.model !== "dashboard",
           ),
         };
@@ -62,72 +63,26 @@ describe(
     it("shows all data before sandboxing policy is applied", () => {
       signInAsNormalUser();
 
-      // we can do this once for all of these tests
-      H.visitDashboard(sandboxingData.dashboard.id);
+      getDashcardResponses(items).then(rowsContainGizmosAndWidgets);
+      getCardResponses(items).then(rowsContainGizmosAndWidgets);
 
-      expect(sandboxingData.questions.length).to.be.greaterThan(0);
-      cy.wait(
-        new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-      ).then(apiResponses => {
-        rowsContainGizmosAndWidgets(apiResponses);
-
-        cy.log("/api/card/$id/query endpoints are not sandboxed");
-        H.cypressWaitAll(
-          apiResponses.map(({ response }) => {
-            const url = (response as any)?.url;
-            const cardId = parseInt(url.match(/\d+/g).at(-1));
-            expect(cardId).to.be.a("number");
-            return cy.request("POST", `/api/card/${cardId}/query`);
-          }),
-        ).then(apiResponses => {
-          rowsContainGizmosAndWidgets(
-            apiResponses.map(response => ({ response })),
-          );
-        });
-      });
-
-      H.visitQuestionAdhoc(adhocQuestionData);
-      cy.wait("@datasetQuery").then(apiResponse =>
-        rowsContainGizmosAndWidgets([apiResponse]),
+      H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+        rowsContainGizmosAndWidgets([response]),
       );
+
+      getFieldValues().then(response => {
+        const values = response.body.values.map(val => val[0]);
+        expect(values.length).to.equal(4);
+        expect(values).to.contain("Doohickey");
+        expect(values).to.contain("Gizmo");
+        expect(values).to.contain("Gadget");
+        expect(values).to.contain("Widget");
+      });
     });
 
     describe("we can apply a sandbox policy", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-      });
-
-      // Each test configures the sandboxing policy, but the logic for checking
-      // the results is the same in each test, so let's do this in an
-      // afterEach.
-      afterEach(function sandboxingPolicyShouldBeApplied() {
-        signInAsNormalUser();
-
-        H.visitDashboard(sandboxingData.dashboard.id);
-
-        expect(sandboxingData.questions.length).to.be.greaterThan(0);
-        cy.wait(
-          new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
-        ).then(apiResponses => {
-          rowsContainOnlyGizmos(apiResponses);
-
-          cy.log("/api/card/$id/query endpoints are not sandboxed");
-          H.cypressWaitAll(
-            apiResponses.map(({ response }) => {
-              const url = (response as any)?.url;
-              const cardId = parseInt(url.match(/\d+/g).at(-1));
-              expect(cardId).to.be.a("number");
-              return cy.request("POST", `/api/card/${cardId}/query`);
-            }),
-          ).then(apiResponses => {
-            rowsContainOnlyGizmos(apiResponses.map(response => ({ response })));
-          });
-        });
-
-        H.visitQuestionAdhoc(adhocQuestionData);
-        cy.wait("@datasetQuery").then(apiResponse => {
-          rowsContainOnlyGizmos([apiResponse]);
-        });
       });
 
       it("to a table filtered using a question as a custom view", () => {
@@ -136,13 +91,29 @@ describe(
           customViewType: "Question" as const,
           customViewName: "sandbox - Question with only gizmos",
         });
+        getDashcardResponses(items).then(rowsContainOnlyGizmos);
+        getCardResponses(items).then(rowsContainOnlyGizmos);
+        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+          rowsContainOnlyGizmos([response as DatasetResponse]),
+        );
+        getFieldValues().then(response => {
+          expect(response.body.values).to.deep.equal([["Gizmo"]]);
+        });
       });
 
       it("to a table filtered using a model as a custom view", () => {
         configureSandboxPolicy({
           filterTableBy: "custom_view",
-          customViewType: "Question" as const,
-          customViewName: "sandbox - Question with only gizmos",
+          customViewType: "Model" as const,
+          customViewName: "sandbox - Model with only gizmos",
+        });
+        getDashcardResponses(items).then(rowsContainOnlyGizmos);
+        getCardResponses(items).then(rowsContainOnlyGizmos);
+        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+          rowsContainOnlyGizmos([response as DatasetResponse]),
+        );
+        getFieldValues().then(response => {
+          expect(response.body.values).to.deep.equal([["Gizmo"]]);
         });
       });
 
@@ -151,6 +122,14 @@ describe(
         configureSandboxPolicy({
           filterTableBy: "column",
           filterColumn: "Category",
+        });
+        getDashcardResponses(items).then(rowsContainOnlyGizmos);
+        getCardResponses(items).then(rowsContainOnlyGizmos);
+        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+          rowsContainOnlyGizmos([response as DatasetResponse]),
+        );
+        getFieldValues().then(response => {
+          expect(response.body.values).to.deep.equal([["Gizmo"]]);
         });
       });
     });
@@ -177,11 +156,11 @@ describe(
             filterColumn: `my_${customColumnType}`,
           });
           signInAsNormalUser();
-          H.visitDashboard(sandboxingData.dashboard.id);
+          H.visitDashboard(items.dashboard.id);
 
           cy.log("Should not return any data, and return an error");
           cy.wait(
-            new Array(sandboxingData.questions.length).fill("@dashcardQuery"),
+            new Array(items.questions.length).fill("@dashcardQuery"),
           ).then(apiResponses => {
             apiResponses.forEach(({ response }) => {
               expect(response?.body.data.rows).to.have.length(0);
