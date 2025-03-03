@@ -112,7 +112,8 @@
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not (contains? #{:progress :gauge} display-type))
+        (and (= false (is-visualizer-dashcard? maybe-dashcard))
+             (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -175,7 +176,7 @@
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
   ([render-type timezone-id  card dashcard results]
-   (render-pulse-card render-type timezone-id  card dashcard results nil))
+   (render-pulse-card render-type timezone-id card dashcard results nil))
 
   ([render-type
     timezone-id :- [:maybe :string]
