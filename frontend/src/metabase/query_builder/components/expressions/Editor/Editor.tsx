@@ -129,7 +129,7 @@ export function Editor<S extends StartRule = "expression">(
             aria-label={t`Format`}
             onClick={formatExpression}
             variant="subtle"
-            leftSection={<Icon name="snippet" />}
+            leftSection={<Icon name="format_code" />}
             size="xs"
             disabled={isFormatting || error != null}
           />
