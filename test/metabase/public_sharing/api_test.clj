@@ -12,6 +12,7 @@
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -924,6 +925,8 @@
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 (deftest double-check-that-the-field-has-fieldvalues
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (is (= [1 2 3 4]
          (t2/select-one-fn :values :model/FieldValues :field_id (mt/id :venues :price)))))
 
@@ -940,6 +943,8 @@
                                                                               :target  ["dimension" dimension]}]}))
 
 (defn- GET-param-values! [dashboard]
+  ;; Manually activate Field values since they are not created during sync (#53387)
+  (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (:param_values (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))
 
@@ -1915,6 +1920,7 @@
                                       :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
         (let [call-count (volatile! 0)
               orig-filterable-columns-for-query params/filterable-columns-for-query]
+          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
           (with-redefs [params/filterable-columns-for-query
                         (fn [& args]
                           (vswap! call-count inc)
@@ -1937,3 +1943,46 @@
                 ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
                 ;; of things working as described.
                 (is (= 1 @call-count))))))))))
+
+;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
+
+(defn- png? [s]
+  (= [\P \N \G] (drop 1 (take 4 s))))
+
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
+(deftest card-tile-query-test
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
+                                          :public_uuid uuid}]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "public/tiles/card/%s/1/1/1/%d/%d"
+                                                 uuid
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))
+
+(deftest dashcard-tile-query-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+                                                 uuid
+                                                 dashcard-id
+                                                 card-id
+                                                 (mt/id :people :latitude)
+                                                 (mt/id :people :longitude))))))))))

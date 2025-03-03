@@ -5,6 +5,7 @@ import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Table from "metabase/visualizations/visualizations/Table";
+import type { Series } from "metabase-types/api";
 
 import RAW_SERIES from "../TableSimple/stories-data/table-simple-orders-with-people.json";
 
@@ -21,7 +22,7 @@ export default {
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
     <Box h={500}>
-      <Visualization rawSeries={RAW_SERIES} />,
+      <Visualization rawSeries={RAW_SERIES as unknown as Series} />,
     </Box>
   </VisualizationWrapper>
 );

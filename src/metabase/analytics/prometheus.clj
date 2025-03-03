@@ -183,7 +183,10 @@
 (defn- product-collectors
   []
   ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
-  [(prometheus/counter :metabase-csv-upload/failed
+  [(prometheus/gauge :metabase-info/build
+                     {:description "An info metric used to attach build info like version, which is high cardinality."
+                      :labels [:tag :hash :date :version :major-version]})
+   (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
@@ -237,11 +240,21 @@
    (prometheus/counter :metabase-notification/send-error
                        {:description "Number of errors when sending notifications."
                         :labels [:payload-type]})
-   (prometheus/histogram :metabase-notification/send-duration-ms
-                         {:description "Duration of notification sends in milliseconds."
+   (prometheus/histogram :metabase-notification/wait-duration-ms
+                         {:description "Duration in milliseconds that notifications wait in the processing queue before being picked up for delivery."
                           :labels [:payload-type]
                           ;; 1ms -> 10minutes
-                          :buckets [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-notification/send-duration-ms
+                         {:description "Duration in milliseconds spent actively sending/delivering the notification after being picked up from the queue."
+                          :labels [:payload-type]
+                          ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-notification/total-duration-ms
+                         {:description "Total duration in milliseconds from when notification was queued until delivery completion (sum of wait and send durations)."
+                          :labels [:payload-type]
+                          ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-notification/channel-send-ok
                        {:description "Number of successful channel sends."
                         :labels [:payload-type :channel-type]})

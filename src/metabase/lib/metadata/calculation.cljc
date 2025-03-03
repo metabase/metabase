@@ -449,8 +449,8 @@
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
 (mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
-  [metadata-providerable]
-  {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
+  []
+  {:unique-name-fn (lib.util/unique-name-generator)})
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
@@ -504,7 +504,7 @@
     stage-number   :- :int
     x
     options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options query) options)]
+   (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
        (returned-columns-method query stage-number x options)))))
 
@@ -520,9 +520,9 @@
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn- default-visible-columns-options :- VisibleColumnsOptions
-  [metadata-providerable]
+  []
   (merge
-   (default-returned-columns-options metadata-providerable)
+   (default-returned-columns-options)
    {:include-joined?                              true
     :include-expressions?                         true
     :include-implicitly-joinable?                 true
@@ -589,7 +589,7 @@
     stage-number   :- :int
     x
     options        :- [:maybe VisibleColumnsOptions]]
-   (let [options (merge (default-visible-columns-options query) options)]
+   (let [options (merge (default-visible-columns-options) options)]
      (visible-columns-method query stage-number x options))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
@@ -629,7 +629,7 @@
                                 options        {:unique-name-fn               unique-name-fn
                                                 :include-implicitly-joinable? false}]
                             (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident fk-ident (:ident field))
+                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
                                          field (assoc field
                                                       :ident                    ident
                                                       :fk-field-id              source-field-id

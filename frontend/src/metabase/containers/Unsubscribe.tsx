@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
@@ -18,9 +18,11 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/validate";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { PulseUnsubscribeApi } from "metabase/services";
+import {
+  NotificationUnsubscribeApi,
+  PulseUnsubscribeApi,
+} from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
@@ -44,16 +46,18 @@ export const UnsubscribePage = ({
   const hash = location?.query?.hash;
   const email = location?.query?.email;
   const pulseId = location?.query?.["pulse-id"];
+  const notificationHandlerId = location?.query?.["notification-handler-id"];
 
   const { data, isLoading, error } = useUnsubscribeRequest({
     hash,
     email,
     pulseId,
+    notificationHandlerId,
     subscriptionChange,
   });
 
-  if (error) {
-    if (error.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
+  if (error || !email) {
+    if (error?.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
       return <NotFound />;
     }
 
@@ -149,36 +153,53 @@ function useUnsubscribeRequest({
   hash,
   email,
   pulseId,
+  notificationHandlerId,
   subscriptionChange,
 }: UseUnsubscribeProps): UseUnsubscribeResult {
-  const hasRequiredParameters =
-    !isEmpty(hash) && !isEmpty(email) && !isEmpty(pulseId);
+  const params = useMemo(() => {
+    if (!hash || !email) {
+      return undefined;
+    }
+
+    if (pulseId) {
+      return {
+        hash,
+        email,
+        "pulse-id": pulseId,
+      };
+    }
+
+    if (notificationHandlerId) {
+      return {
+        hash,
+        email,
+        "notification-handler-id": notificationHandlerId,
+      };
+    }
+
+    return undefined;
+  }, [hash, email, pulseId, notificationHandlerId]);
 
   const {
     value: data,
     loading: isLoading,
     error,
   } = useAsync(async () => {
-    if (!hasRequiredParameters) {
+    if (!params) {
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
-    if (subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE) {
-      return await PulseUnsubscribeApi.unsubscribe({
-        hash,
-        email,
-        "pulse-id": pulseId,
-      });
-    }
+    const api = notificationHandlerId
+      ? NotificationUnsubscribeApi
+      : PulseUnsubscribeApi;
 
-    if (subscriptionChange === SUBSCRIPTION.RESUBSCRIBE) {
-      return await PulseUnsubscribeApi.undo_unsubscribe({
-        hash,
-        email,
-        "pulse-id": pulseId,
-      });
-    }
-  }, [subscriptionChange]);
+    const method =
+      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
+        ? api.unsubscribe
+        : api.undo_unsubscribe;
+
+    return await method(params);
+  }, [params, subscriptionChange]);
 
   return { data, isLoading, error };
 }
@@ -220,11 +241,12 @@ function ErrorDisplay() {
   );
 }
 
-interface UnsubscribeQueryString {
+type UnsubscribeQueryString = Partial<{
   hash: string;
   email: string;
   "pulse-id": string;
-}
+  "notification-handler-id": string;
+}>;
 
 interface UnsubscribeProps {
   location: Location<UnsubscribeQueryString>;
@@ -246,7 +268,8 @@ interface UseUnsubscribeProps {
   hash: string | undefined;
   email: string | undefined;
   pulseId: string | undefined;
-  subscriptionChange: string;
+  notificationHandlerId: string | undefined;
+  subscriptionChange: Subscription;
 }
 
 interface UseUnsubscribeResult {

@@ -1071,7 +1071,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
 
@@ -1629,7 +1629,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         H.dashboardParametersPopover().within(() => {
           H.removeFieldValuesValue(0);
-          cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+          cy.findByPlaceholderText("Search the list").type("Dell Adams");
           cy.button("Update filter").click();
         });
         onNextAnchorClick(anchor => {
@@ -1801,7 +1801,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {

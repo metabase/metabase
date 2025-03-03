@@ -23,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
+               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +36,7 @@
   *quartz-scheduler*
   (atom nil))
 
-(defn- scheduler
+(defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
@@ -209,6 +210,12 @@
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
 
+(mu/defn delete-all-triggers-of-job!
+  "Delete all triggers for a given job key."
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (when-let [scheduler (scheduler)]
+    (qs/delete-triggers scheduler (map #(.getKey ^Trigger %) (qs/get-triggers-of-job scheduler job-key)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -305,3 +312,14 @@
   []
   {:scheduler (some-> (scheduler) .getMetaData .getSummary str/split-lines)
    :jobs      (jobs-info)})
+
+(defmacro rerun-on-error
+  "Retry the current Job if an exception is thrown by the enclosed code."
+  {:style/indent 1}
+  [^JobExecutionContext ctx & body]
+  `(let [msg# (str (.getName (.getKey (.getJobDetail ~ctx))) " failed, but we will try it again.")]
+     (try
+       ~@body
+       (catch Exception e#
+         (log/error e# msg#)
+         (throw (JobExecutionException. msg# e# true))))))

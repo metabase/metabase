@@ -947,7 +947,7 @@ describe("issue 34794", () => {
       cy.findByText("Created At").click();
       cy.icon("chevronleft").click(); // go back to the main filter popover
       cy.findByText("Custom Expression").click();
-      cy.findByLabelText("Expression").type("[Total] > 10").blur();
+      H.CustomExpressionEditor.type("[Total] > 10").blur();
       cy.button("Done").click();
     });
 
@@ -1569,11 +1569,11 @@ describe("issue 49642", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search by Name").type("Zackery");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
       cy.findByText("Zackery Kuhn").should("be.visible").click();
 
-      cy.findByPlaceholderText("Search by Name").should(
+      cy.findByPlaceholderText("Search the list").should(
         "have.value",
         "Zackery Kuhn",
       );

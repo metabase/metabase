@@ -2,8 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Button, Flex, Radio, Stack } from "metabase/ui";
+import { Box, Button, Flex, Radio, Stack, Tooltip } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
   Parameter,
@@ -13,8 +12,6 @@ import type {
 } from "metabase-types/api";
 
 import ValuesSourceModal from "../ValuesSourceModal";
-
-import { ClickAreaExpander } from "./ValuesSourceSettings.styled";
 
 interface ValuesSourceSettingsProps {
   parameter: Parameter;
@@ -107,9 +104,9 @@ function RadioContainer({
       <Radio checked={isChecked} label={label} value={ownValue} />
       {isChecked && !hideEdit && (
         <Tooltip
-          tooltip={t`You can’t customize selectable values for this filter because it is linked to another one.`}
-          placement="top"
-          isEnabled={disableEdit}
+          label={t`You can’t customize selectable values for this filter because it is linked to another one.`}
+          position="top"
+          disabled={!disableEdit}
         >
           {/* This div is needed to make the tooltip work when the button is disabled */}
           <div data-testid="values-source-settings-edit-btn">
@@ -119,8 +116,13 @@ function RadioContainer({
               variant="subtle"
               p={0}
               size="compact-md"
+              h="100%"
             >
-              <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
+              <Box
+                component="span"
+                display="inline-block"
+                p="0 5px"
+              >{t`Edit`}</Box>
             </Button>
           </div>
         </Tooltip>

@@ -1,3 +1,5 @@
+import type { IconName } from "metabase/ui";
+
 declare global {
   namespace Cypress {
     interface Chainable {
@@ -9,7 +11,7 @@ declare global {
        * cy.icon("bolt_filled").should("have.length", 4);
        * cy.findByTestId("app-bar").icon("add").click()
        */
-      icon(iconName: string): Cypress.Chainable<JQuery<HTMLElement>>;
+      icon(iconName: IconName): Cypress.Chainable<JQuery<HTMLElement>>;
     }
   }
 }

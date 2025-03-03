@@ -1,14 +1,9 @@
 import { t } from "ttag";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import { unescapeString } from "./string";
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  isCaseOrIfOperator,
-  isOptionsObject,
-  unescapeString,
-} from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -270,7 +265,7 @@ export const adjustOptions = tree =>
       if (operands.length > 0) {
         const clause = MBQL_CLAUSES[operator];
         if (clause && clause.hasOptions) {
-          if (operands.length === clause.args.length + 1 || clause.multiple) {
+          if (operands.length > clause.args.length) {
             // the last one holds the function options
             const options = operands[operands.length - 1];
 

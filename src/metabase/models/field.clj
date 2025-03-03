@@ -180,7 +180,7 @@
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
-  [:name (serdes/hydrated-hash :table)])
+  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -344,6 +344,15 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (t2/select-one 'Table, :id table_id))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :parent]
+  [_model k fields]
+  (mi/instances-with-hydrated-data
+   fields k
+   #(t2/select-fn->fn :id identity
+                      :model/Field
+                      :id [:in (map :parent_id fields)])
+   :parent_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

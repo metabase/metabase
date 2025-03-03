@@ -9,7 +9,7 @@ const IGNORED_PACKAGES = [
   "react-dom",
   "@types/react",
   "@types/react-dom",
-  "@types/react-router#",
+  "@types/react-router",
   "@types/redux-auth-wrapper",
   "@visx/axis",
   "@visx/clip-path",

@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
+import { UpsellMetabaseBanner } from "metabase/admin/upsells";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";

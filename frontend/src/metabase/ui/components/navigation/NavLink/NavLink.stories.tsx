@@ -42,7 +42,7 @@ const argTypes = {
 };
 
 export default {
-  title: "Core/NavLink",
+  title: "Components/Navigation/NavLink",
   component: NavLink,
   args,
   argTypes,

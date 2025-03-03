@@ -11,8 +11,12 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.3",
+    "@codemirror/lang-html": "^6.4.9",
+    "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-python": "^6.1.7",
     "@codemirror/lang-sql": "^6.8.0",
+    "@codemirror/legacy-modes": "^6.4.2",
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^8.0.0",
@@ -22,13 +26,15 @@
     "@emotion/styled": "^11.11.0",
     "@juggle/resize-observer": "^3.4.0",
     "@lezer/highlight": "^1.2.1",
-    "@mantine/core": "^7.16.3",
-    "@mantine/dates": "^7.16.3",
-    "@mantine/hooks": "^7.16.3",
+    "@lezer/lr": "^1.4.2",
+    "@mantine/core": "^7.17.0",
+    "@mantine/dates": "^7.17.0",
+    "@mantine/hooks": "^7.17.0",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.5.0",
     "@snowplow/browser-tracker": "^3.1.6",
-    "@tanstack/react-virtual": "^3.1.2",
+    "@tanstack/react-table": "^8.21.2",
+    "@tanstack/react-virtual": "^3.13.2",
     "@tippyjs/react": "^4.2.6",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
@@ -40,7 +46,7 @@
     "@visx/scale": "^3.5.0",
     "@visx/shape": "^3.5.0",
     "@visx/text": "^3.3.0",
-    "ace-builds": "^1.4.14",
+    "@xiechao/codemirror-lang-handlebars": "^1.0.4",
     "bowser": "^2.11.0",
     "buffer": "^6.0.3",
     "classnames": "^2.1.3",
@@ -90,7 +96,6 @@
     "prop-types": "^15.5.7",
     "re-reselect": "^4.0.1",
     "react": "^18.2.0",
-    "react-ace": "^10.1.0",
     "react-ansi-style": "^1.0.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-color": "^2.14.1",
@@ -149,6 +154,7 @@
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@inquirer/prompts": "^5.3.8",
+    "@lezer/generator": "^1.7.2",
     "@loki/create-async-callback": "^0.35.0",
     "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
@@ -324,7 +330,7 @@
     "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.9",
     "ts-morph": "^25.0.0",
-    "tsx": "^4.19.2",
+    "tsx": "^4.19.3",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
     "webpack-cli": "^5.1.1",
@@ -451,7 +457,8 @@
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
-    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
+    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
+    "generate:expression-parser": "lezer-generator frontend/src/metabase-lib/v1/expressions/tokenizer/grammar.lezer -o frontend/src/metabase-lib/v1/expressions/tokenizer/lezer.js"
   },
   "lint-staged": {
     "+(frontend|enterprise)/**/*.styled.tsx": [
@@ -469,6 +476,9 @@
     "e2e/**/*.{js,jsx,ts,jsx}": [
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0 --fix",
       "prettier --write"
+    ],
+    "**/*.{clj,cljc,cljs,bb}": [
+      "./bin/cljfmt_staged.sh"
     ],
     "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
       "node e2e/validate-e2e-test-files.js"

@@ -5,4 +5,4 @@
  {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}}
 
  :deps
- {com.metabase/athena-jdbc {:mvn/version "3.3.0"}}}
+ {com.metabase/athena-jdbc {:mvn/version "3.4.0"}}}

@@ -745,6 +745,21 @@
       {:clause [:is-null tax], :name "Tax is empty"}
       {:clause [:not-null tax], :name "Tax is not empty"}])))
 
+(deftest ^:parallel bigint-frontend-filter-display-names-test
+  (let [id        (meta/field-metadata :orders :id)
+        pos-value "9223372036854775808"
+        neg-value "-9223372036854775809"]
+    (check-display-names
+     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
+
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
@@ -776,6 +791,11 @@
       {:clause [:time-interval created-at :current :quarter],
        :name "Created At is this quarter"}
       {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
+      {:clause [:time-interval created-at 0 :day], :name "Created At is today"}
+      {:clause [:time-interval created-at 0 :week], :name "Created At is this week"}
+      {:clause [:time-interval created-at 0 :month], :name "Created At is this month"}
+      {:clause [:time-interval created-at 0 :quarter], :name "Created At is this quarter"}
+      {:clause [:time-interval created-at 0 :year], :name "Created At is this year"}
       {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
       {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
       {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}

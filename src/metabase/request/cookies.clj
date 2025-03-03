@@ -57,7 +57,7 @@
   (contains? possible-session-cookie-samesite-values normalized-value))
 
 (defsetting session-cookie-samesite
-  (deferred-tru "Value for the session cookie's `SameSite` directive.")
+  (deferred-tru "Value for the session cookie''s `SameSite` directive.")
   :type :keyword
   :visibility :settings-manager
   :default :lax

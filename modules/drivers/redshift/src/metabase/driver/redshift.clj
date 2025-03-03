@@ -292,6 +292,10 @@
                    y))
                nil)))
 
+(defmethod sql.qp/->honeysql [:redshift :avg]
+  [driver [_ field]]
+  [:avg [:cast (sql.qp/->honeysql driver field) :float]])
+
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
 
@@ -475,6 +479,8 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/allowed-promotions :redshift [_] {})
+
 (defmethod driver/table-name-length-limit :redshift
   [_driver]
   ;; https://docs.aws.amazon.com/redshift/latest/dg/r_names.html
@@ -540,6 +546,7 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.

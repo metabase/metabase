@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Radio from "metabase/core/components/Radio";
@@ -24,12 +25,6 @@ export const SectionContainer = styled.div`
       margin-right: 0;
     }
   }
-`;
-
-export const ChartSettingsMenu = styled.div`
-  flex: 1 0 0;
-  display: flex;
-  flex-direction: column;
 `;
 
 export const ChartSettingsListContainer = styled.div`

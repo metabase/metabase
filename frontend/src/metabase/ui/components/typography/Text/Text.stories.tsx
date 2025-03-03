@@ -70,7 +70,7 @@ const SizeTemplate = (args: TextProps) => (
 );
 
 export default {
-  title: "Typography/Text",
+  title: "Design System/Typography/Text",
   component: Text,
   args,
   argTypes,

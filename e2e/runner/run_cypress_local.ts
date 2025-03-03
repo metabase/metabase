@@ -1,3 +1,4 @@
+import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import CypressBackend from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
 import {
@@ -6,6 +7,7 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
+import { startSampleAppContainers } from "./start-sample-app-containers/start-sample-app-containers";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -26,6 +28,7 @@ const derivedOptions = {
   CYPRESS_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
   BUILD_JAR: userOptions.BACKEND_PORT === 4000,
+  START_BACKEND: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: userOptions.TEST_SUITE === "component",
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
@@ -42,7 +45,7 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
   printBold(
     "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
   );
-  process.exit(1);
+  process.exit(FAILURE_EXIT_CODE);
 }
 
 printBold(`Running Cypress with options:
@@ -54,6 +57,7 @@ printBold(`Running Cypress with options:
   - BUILD_JAR          : ${options.BUILD_JAR}
   - GENERATE_SNAPSHOTS : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT       : ${options.BACKEND_PORT}
+  - START_BACKEND      : ${options.START_BACKEND}
   - OPEN_UI            : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
 `);
@@ -68,20 +72,22 @@ const init = async () => {
     printBold("⏳ Building backend");
     shell("./bin/build-for-test");
 
-    const isBackendRunning = shell(
-      `lsof -ti:${options.BACKEND_PORT} || echo ""`,
-      { quiet: true },
-    );
-    if (isBackendRunning) {
-      printBold(
-        "⚠️ Your backend is already running, you may want to kill pid " +
-          isBackendRunning,
+    if (options.START_BACKEND) {
+      const isBackendRunning = shell(
+        `lsof -ti:${options.BACKEND_PORT} || echo ""`,
+        { quiet: true },
       );
-      process.exit(1);
-    }
+      if (isBackendRunning) {
+        printBold(
+          "⚠️ Your backend is already running, you may want to kill pid " +
+            isBackendRunning,
+        );
+        process.exit(FAILURE_EXIT_CODE);
+      }
 
-    printBold("⏳ Starting backend");
-    await CypressBackend.start();
+      printBold("⏳ Starting backend");
+      await CypressBackend.start();
+    }
   } else {
     printBold(
       `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
@@ -97,6 +103,9 @@ const init = async () => {
 
     printBold("⏳ Generating snapshots");
     await runCypress("snapshot", cleanup);
+  } else {
+    printBold("Skipping snapshot generation, beware of stale snapshot caches");
+    shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
   const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
@@ -106,11 +115,20 @@ const init = async () => {
     );
   }
 
+  switch (options.TEST_SUITE) {
+    case "metabase-nodejs-react-sdk-embedding-sample-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
+    case "shoppy-e2e":
+      await startSampleAppContainers(options.TEST_SUITE);
+      break;
+  }
+
   printBold("⏳ Starting Cypress");
   await runCypress(options.TEST_SUITE, cleanup);
 };
 
-const cleanup = async (exitCode: string | number = 0) => {
+const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
@@ -121,15 +139,18 @@ const cleanup = async (exitCode: string | number = 0) => {
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
   }
 
-  typeof exitCode === "number" ? process.exit(exitCode) : process.exit(0);
+  typeof exitCode === "number"
+    ? process.exit(exitCode)
+    : process.exit(SUCCESS_EXIT_CODE);
 };
 
 init()
-  .then(() => cleanup(0))
+  .then(() => cleanup(SUCCESS_EXIT_CODE))
   .catch(e => {
     console.error(e);
-    cleanup(1);
+    cleanup(FAILURE_EXIT_CODE);
   });
 
+process.on("exit", cleanup);
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);

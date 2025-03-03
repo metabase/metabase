@@ -18,6 +18,19 @@
       false 10
       false "9007199254740993")))
 
+(deftest integer?-test
+  (testing "should check if the value is an integer"
+    (are [exp value] (= exp (u.number/integer? value))
+      true  0
+      true  10
+      true  -10
+      true  (u.number/bigint 10)
+      true  (u.number/bigint "9223372036854775808")
+      true  (u.number/bigint "-9223372036854775808")
+      false 10.1
+      false -10.1
+      false "9223372036854775808")))
+
 (deftest parse-bigint-test
   (testing "should parse the value as a bigint"
     (are [exp value] (= exp (u.number/parse-bigint value))
