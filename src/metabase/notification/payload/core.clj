@@ -12,6 +12,7 @@
 
 (p/import-vars
  [notification.payload.execute
+  execute-dashboard
   process-virtual-dashcard])
 
 (mr/def ::Notification

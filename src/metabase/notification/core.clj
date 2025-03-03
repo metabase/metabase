@@ -4,6 +4,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.seed :as notification.seed]
    [metabase.notification.send :as notification.send]
+   [metabase.notification.task.send :as notification.task.send]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -16,6 +17,8 @@
 (p/import-vars
  [notification.payload
   notification-payload]
+ [notification.task.send
+  update-send-notification-triggers-timezone!]
  [notification.seed
   seed-notification!])
 

@@ -413,6 +413,7 @@
     metabase.models.interface                                     mi
     metabase.models.setting                                       setting
     metabase.notification.core                                    notification
+    metabase.notification.payload.core                            notification.payload
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init

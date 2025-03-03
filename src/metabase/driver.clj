@@ -62,7 +62,7 @@
 
 (defn- update-send-notification-triggers-timezone!
   []
-  ((requiring-resolve 'metabase.notification.task.send/update-send-notification-triggers-timezone!)))
+  ((requiring-resolve 'metabase.notification.core/update-send-notification-triggers-timezone!)))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
