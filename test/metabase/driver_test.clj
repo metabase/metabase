@@ -365,9 +365,9 @@
                                       :catalog (tx/db-test-env-var :databricks :catalog)
                                       :http-path (tx/db-test-env-var :databricks :http-path)
                                       :token (tx/db-test-env-var :databricks :token)}
-                         :mongo {:host (tx/db-test-env-var :mongo :host)
+                         :mongo {:host (tx/db-test-env-var :mongo :host "localhost")
                                  :dbname "test-data"}
-                         :mysql {:host (tx/db-test-env-var :mysql :host)
+                         :mysql {:host (tx/db-test-env-var :mysql :host "localhost")
                                  :user (tx/db-test-env-var :mysql :user)}
                          :oracle {:service-name (tx/db-test-env-var :oracle :service-name)
                                   :user (tx/db-test-env-var :oracle :user)
@@ -380,9 +380,9 @@
                                      :db (tx/db-test-env-var :snowflake :db)}
                          :sqlserver {:user (tx/db-test-env-var :sqlserver :user)
                                      :password (tx/db-test-env-var :sqlserver :password)
-                                     :port (tx/db-test-env-var :sqlserver :port)}
+                                     :port (tx/db-test-env-var :sqlserver :port 1433)}
                          :sqlite {:db "test-data.sqlite"}
-                         :vertica {:user (tx/db-test-env-var :vertica :user)}}]
+                         :vertica {:user (tx/db-test-env-var :vertica :user "dbadmin")}}]
     (mt/test-drivers (set/intersection (mt/normal-drivers) (set (keys min-conn-params)))
       (mt/db)
       (let [params (driver/*driver* min-conn-params)
