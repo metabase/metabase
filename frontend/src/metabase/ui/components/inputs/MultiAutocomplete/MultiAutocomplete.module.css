@@ -2,6 +2,10 @@
   --multiselect-pill-font-size: 0.875rem;
 }
 
+.pillList {
+  padding-right: var(--input-right-section-width);
+}
+
 .input {
   --input-fz: 0.875rem;
 

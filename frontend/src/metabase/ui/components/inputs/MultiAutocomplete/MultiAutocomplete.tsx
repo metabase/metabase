@@ -140,6 +140,7 @@ export function MultiAutocomplete({
       {...props}
       classNames={{
         pill: Styles.pill,
+        pillsList: Styles.pillList,
         input: Styles.input,
         empty: Styles.empty,
         option: Styles.option,
