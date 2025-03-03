@@ -93,7 +93,6 @@
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
         display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
-    (println "TSP display-type:" display-type)
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -151,10 +150,6 @@
    card
    dashcard
    {:keys [data error] :as results}]
-  (def data data)
-  (def card card)
-  (def dashcard dashcard)
-  (println "TSP in render-pulse-card-body")
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
