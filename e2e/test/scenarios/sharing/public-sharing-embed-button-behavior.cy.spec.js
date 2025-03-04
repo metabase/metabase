@@ -26,7 +26,12 @@ const { H } = cy;
           H.sharingMenu()
             .findByRole("menuitem", { name: "Embed" })
             .should("be.visible")
-            .and("be.enabled");
+            .and("be.enabled")
+            .click();
+          H.modal().within(() => {
+            cy.button("Get embedding code").click();
+          });
+          H.popover().findByTestId("copy-button").should("be.visible");
         });
       });
 
