@@ -210,13 +210,14 @@ jobs:
         run: |
           cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
           mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          rm changelog-diff
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           echo 'pushing origin with branch name'
-          git push origin update-sdk-version-${{ env.sdk_version }}
+          git push origin HEAD
           echo 'create PR'
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
