@@ -46,7 +46,7 @@
 (defsetting slack-token-valid?
   (deferred-tru
    (str "Whether the current Slack app token, if set, is valid. "
-        "Set to 'false' if a Slack API request returns an auth error."))
+        "Set to ''false'' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
   :doc        false

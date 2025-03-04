@@ -687,7 +687,7 @@ describe("issue 29076", () => {
     H.assertDatasetReqIsSandboxed({
       requestAlias: "@cardQuery",
       columnId: ORDERS.USER_ID,
-      columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+      columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
     });
   });
 });

@@ -497,7 +497,7 @@
                                   [:field
                                    "strange count"
                                    outer-count-opts]
-                                  [:value 10 {:base_type :type/Integer}]]
+                                  [:value 10 {:base_type :type/Integer, :effective_type :type/Integer}]]
                          :limit 1}))
                     (-> (lib.tu.macros/mbql-query venues
                           {:source-query {:source-table $$venues
