@@ -10,7 +10,10 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
@@ -184,3 +187,61 @@
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
+
+(deftest notification-dispatcher-test
+  (testing "notification dispatcher"
+    (let [sent-notifications  (atom [])
+          wait-for-processing #(u/poll {:thunk       (fn [] (count @sent-notifications))
+                                        :done?       (fn [cnt] (= cnt %))
+                                        :interval-ms 10
+                                        :timeout-ms  1000})]
+      (with-redefs [notification.send/send-notification-sync! (fn [notification]
+                                                                ;; fake latency
+                                                                (Thread/sleep 20)
+                                                                (swap! sent-notifications conj notification))]
+        (let [test-dispatcher (#'notification.send/create-notification-dispatcher 2)]
+          (testing "basic processing"
+            (reset! sent-notifications [])
+            (let [notification {:id 1 :test-value "A"}]
+              (test-dispatcher notification)
+              (wait-for-processing 1)
+              (is (= [notification] @sent-notifications))))
+
+          (testing "notifications without IDs are all processed"
+            (reset! sent-notifications [])
+            (test-dispatcher {:test-value "B"})
+            (test-dispatcher {:test-value "C"})
+            (wait-for-processing 2)
+            (is (= 2 (count @sent-notifications)))
+            (is (= #{"B" "C"} (into #{} (map :test-value @sent-notifications)))))
+
+          (testing "notifications with same ID are replaced in queue"
+            (reset! sent-notifications [])
+            ;; make the queue busy
+            (test-dispatcher {:id 40 :test-value "D"})
+            (test-dispatcher {:id 41 :test-value "D"})
+            (test-dispatcher {:id 42 :test-value "D"})
+            (test-dispatcher {:id 42 :test-value "E"})
+            (u/poll {:thunk       (fn [] (->> @sent-notifications
+                                              (filter #(= 42 (:id %)))
+                                              first :test-value))
+                     :done?       (fn [value] (= "E" value))
+                     :interval-ms 10
+                     :timeout-ms  1000}))
+
+          (testing "error handling - worker errors don't crash the dispatcher"
+            (reset! sent-notifications [])
+            (let [error-thrown (atom false)]
+              (with-redefs [notification.send/send-notification-sync!
+                            (fn [notification]
+                              (if (= "F" (:test-value notification))
+                                (do
+                                  (reset! error-thrown true)
+                                  (throw (Exception. "Test exception")))
+                                (swap! sent-notifications conj notification)))]
+                (test-dispatcher {:id 1 :test-value "F"})
+                (test-dispatcher {:id 2 :test-value "G"})
+                (wait-for-processing 1)
+                (is @error-thrown)
+                (is (= 1 (count @sent-notifications)))
+                (is (= "G" (:test-value (first @sent-notifications))))))))))))
