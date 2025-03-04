@@ -15,11 +15,13 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
+import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,
   ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
   ConditionalFormattingBooleanOperator,
   ConditionalFormattingComparisonOperator,
   DatasetColumn,
