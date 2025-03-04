@@ -45,7 +45,7 @@ export default class AccordionList extends Component {
       minHeight: 10,
     });
 
-    this.containerRef = createRef();
+    this.listRootRef = createRef();
   }
 
   static propTypes = {
@@ -136,6 +136,10 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
+    const container = this.isVirtualized()
+      ? this._list?.Grid?._scrollingContainer
+      : this.listRootRef.current;
+
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
     this._forceUpdateList();
@@ -143,11 +147,9 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
-      const hasFocusedChildren = this.containerRef.current?.contains(
-        document.activeElement,
-      );
+      const hasFocusedChildren = container?.contains(document.activeElement);
       if (!hasFocusedChildren && this.props.hasInitialFocus) {
-        this.containerRef.current?.focus();
+        container?.focus();
       }
 
       const index = this._initialSelectedRowIndex;
@@ -602,7 +604,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this.containerRef.current?.focus();
+    this.listRootRef.current?.focus();
   };
 
   render() {
@@ -636,7 +638,7 @@ export default class AccordionList extends Component {
             ...style,
           }}
           data-testid={testId}
-          ref={this.containerRef}
+          ref={this.listRootRef}
         >
           {rows.map((row, index) => (
             <AccordionListCell
