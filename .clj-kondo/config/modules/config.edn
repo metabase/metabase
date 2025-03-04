@@ -395,7 +395,7 @@
 
   pivot
   {:api #{metabase.pivot.core}
-   :uses #{util}}
+   :uses #{util models}}
 
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
