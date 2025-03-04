@@ -197,7 +197,10 @@
 (defn- product-collectors
   []
   ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
-  [(prometheus/counter :metabase-csv-upload/failed
+  [(prometheus/gauge :metabase-info/build
+                     {:description "An info metric used to attach build info like version, which is high cardinality."
+                      :labels [:tag :hash :date :version :major-version]})
+   (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
