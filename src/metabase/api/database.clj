@@ -747,6 +747,7 @@
     (api/check table-name 400 "Invalid table identifier")
     (api/check-404
      (or (if schema
+           ;; Sometimes we get duplicate records, but bypass that if we have a fully qualified exact match.
            (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
            (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
          (check-unique (t2/select :model/Table
