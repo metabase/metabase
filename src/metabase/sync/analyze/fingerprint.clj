@@ -205,7 +205,8 @@
                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
                     (fingerprint-table! table fields))]
         (if (instance? Exception stats)
-          (empty-stats-map 0)
+          (assoc (empty-stats-map 0)
+                 :throwable stats)
           stats)))
     (empty-stats-map 0)))
 
@@ -228,7 +229,7 @@
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
                  (let [new-acc (merge-with + acc (fingerprint-fields! table))]
-                   (if (continue? new-acc)
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? new-acc)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)
