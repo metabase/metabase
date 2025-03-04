@@ -1,11 +1,7 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import type {
-  FieldValue,
-  GetFieldValuesResponse,
-  ParameterValue,
-} from "metabase-types/api";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 
 import type {
   DashcardQueryResponse,
@@ -324,21 +320,6 @@ export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
 
   return cy.wrap(responses);
 }
-
-export const valuesShouldContainGizmosAndWidgets = (
-  valuesArray: (FieldValue | ParameterValue)[],
-) => {
-  const values = valuesArray.map(val => val[0]);
-  expect(values).to.contain("Gizmo");
-  expect(values).to.contain("Widget");
-};
-
-export const valuesShouldContainOnlyGizmos = (
-  valuesArray: (FieldValue | ParameterValue)[],
-) => {
-  const values = valuesArray.map(val => val[0]);
-  expect(values).to.deep.equal(["Gizmo"]);
-};
 
 export const getDashcardResponses = (items: SandboxableItems) => {
   H.visitDashboard(items.dashboard.id);
