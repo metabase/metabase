@@ -33,7 +33,8 @@
    :embedded-question
    :embedded-csv-download
    :embedded-xlsx-download
-   :embedded-json-download])
+   :embedded-json-download
+   :table-grid])
 
 (mr/def ::hash
   #?(:clj bytes?
