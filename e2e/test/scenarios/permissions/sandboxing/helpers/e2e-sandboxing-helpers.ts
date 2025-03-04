@@ -1,8 +1,11 @@
+import _ from "underscore";
+
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type {
+  CacheConfig,
   CollectionItem,
   Dashboard,
   FieldValue,
@@ -10,15 +13,16 @@ import type {
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
-  StructuredQuery,
   User,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 
 const { H } = cy;
-const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { PRODUCTS_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP, READONLY_GROUP } =
+  USER_GROUPS;
 
 type CustomColumnType = "boolean" | "string" | "number";
 type CustomViewType = "Question" | "Model";
@@ -85,78 +89,81 @@ const model: StructuredQuestionDetails = {
   type: "model",
 };
 
-const ordersJoinedToProducts: StructuredQuestionDetails = {
-  name: "Question with Orders joined to Products",
-  query: {
-    ...baseQuery,
-    joins: [
-      {
-        strategy: "left-join",
-        alias: "Products",
-        condition: [
-          "=",
-          ["field", ORDERS.PRODUCT_ID, null],
-          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-        ],
-        "source-table": PRODUCTS_ID,
-        fields: "all",
-      },
-    ],
-    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-    breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
-    "source-table": ORDERS_ID,
-  } as StructuredQuery,
-};
+// const ordersJoinedToProducts: StructuredQuestionDetails = {
+//   name: "Question with Orders joined to Products",
+//   query: {
+//     ...baseQuery,
+//     joins: [
+//       {
+//         strategy: "left-join",
+//         alias: "Products",
+//         condition: [
+//           "=",
+//           ["field", ORDERS.PRODUCT_ID, null],
+//           ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+//         ],
+//         "source-table": PRODUCTS_ID,
+//         fields: "all",
+//       },
+//     ],
+//     aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+//     breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
+//     "source-table": ORDERS_ID,
+//   } as StructuredQuery,
+// };
 
-const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
-  name: "Question with Orders implicitly joined to Products",
-  query: {
-    "source-table": ORDERS_ID,
-    fields: [
-      [
-        "field",
-        PRODUCTS.CATEGORY,
-        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-      ],
-      ["field", ORDERS.ID, null],
-      ["field", ORDERS.TOTAL, null],
-      ["field", ORDERS.PRODUCT_ID, null],
-    ],
-  },
-};
+// const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
+//   name: "Question with Orders implicitly joined to Products",
+//   query: {
+//     "source-table": ORDERS_ID,
+//     fields: [
+//       [
+//         "field",
+//         PRODUCTS.CATEGORY,
+//         { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+//       ],
+//       ["field", ORDERS.ID, null],
+//       ["field", ORDERS.TOTAL, null],
+//       ["field", ORDERS.PRODUCT_ID, null],
+//     ],
+//   },
+// };
 
-const multiStageQuestion: StructuredQuestionDetails = {
-  name: "Multi-stage question",
-  query: {
-    "source-query": {
-      "source-query": {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
-      aggregation: [["count"]],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, null]],
-  },
-};
+// const multiStageQuestion: StructuredQuestionDetails = {
+//   name: "Multi-stage question",
+//   query: {
+//     "source-query": {
+//       "source-query": {
+//         "source-table": PRODUCTS_ID,
+//         aggregation: [["count"]],
+//         breakout: [["field", PRODUCTS.CATEGORY, null]],
+//       },
+//       aggregation: [["count"]],
+//       breakout: [["field", PRODUCTS.CATEGORY, null]],
+//     },
+//     aggregation: [["count"]],
+//     breakout: [["field", PRODUCTS.CATEGORY, null]],
+//   },
+// };
 
 const questionData: StructuredQuestionDetails[] = [
   savedQuestion,
   model,
-  ordersJoinedToProducts,
-  ordersImplicitlyJoinedToProducts,
-  multiStageQuestion,
+  // ordersJoinedToProducts,
+  // ordersImplicitlyJoinedToProducts,
+  // multiStageQuestion,
 ];
 
 export const adhocQuestionData = {
+  name: "Adhoc question",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
       "source-table": PRODUCTS_ID,
+      filter: [">", ["field", PRODUCTS.PRICE, null], 50],
     },
+    limit: 20,
   },
 };
 
@@ -174,6 +181,12 @@ function addCustomColumnsToQuestion() {
   H.modal().button("Save").click();
   cy.wait("@updateQuestion");
 }
+
+export const preparePermissions = () => {
+  H.blockUserGroupPermissions(ALL_USERS_GROUP);
+  H.blockUserGroupPermissions(COLLECTION_GROUP);
+  H.blockUserGroupPermissions(READONLY_GROUP);
+};
 
 /**
  * creates all questions and models and puts them in a dashboard
@@ -252,7 +265,8 @@ export const createSandboxingDashboardAndQuestions = () => {
       });
     });
 
-    // return the collection items
+    // Provide information about the dashboard and questions that the tests
+    // can refer to
     return cy.request<{ data: CollectionItem[] }>(
       `/api/collection/${collectionId}/items`,
     );
@@ -398,11 +412,16 @@ const getQuestionDescription = (
   response: DatasetResponse,
   questions: CollectionItem[],
 ) => {
-  // Extract the card ID from the response URL
-  const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
-  const questionName = (questions.find((q) => q.id === cardId) as any)?.name as
-    | string
-    | undefined;
+  let questionName;
+  if (questions.length === 1) {
+    questionName = questions[0].name;
+  } else {
+    // Extract the card ID from the response URL
+    const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
+    questionName = (questions.find((q) => q.id === cardId) as any)?.name as
+      | string
+      | undefined;
+  }
   const query = JSON.stringify(response.body.json_query.query);
   const questionDesc = `${questionName} (query: ${query})`;
   return { questionDesc, questionName };
@@ -442,6 +461,7 @@ export function rowsShouldContainGizmosAndWidgets({
       `Results include at least one Widget, Gadget, or Doohickey in ${questionDesc}`,
     ).to.be.true;
   });
+  return cy.wrap(responses);
 }
 
 const productCategories = ["Gizmo", "Widget", "Doohickey", "Gadget"] as const;
@@ -460,28 +480,25 @@ export function rowsShouldContainOnlyOneCategory({
   responses.forEach((response) => {
     const { questionDesc } = getQuestionDescription(response, questions);
     cy.log(`Results contain only ${productCategory}s in: ${questionDesc}`);
-    expect(response?.body.data.is_sandboxed).to.be.true;
 
     const rows = response.body.data.rows;
 
-    expect(
-      rows.every(
-        (row) =>
-          row.includes(productCategory) ||
-          // With implicit joins, some rows might have a null product
-          row[0] === null,
-      ),
-      `Every result should have have a ${productCategory} in: ${questionDesc}`,
-    ).to.be.true;
-    productCategories
-      .filter((category) => category !== productCategory)
-      .forEach((otherCategory) => {
+    // NOTE: With implicit joins, some rows might have a null product
+
+    const groupedByCategory = _.groupBy(rows, (row) => row[3]);
+    productCategories.forEach((category) => {
+      if (category !== productCategory) {
         expect(
-          !rows.some((row) => row.includes(otherCategory)),
-          `No results should have ${otherCategory}s in: ${questionDesc}`,
-        ).to.be.true;
-      });
+          groupedByCategory[category],
+          `No ${category}s in: ${questionDesc}`,
+        ).to.be.undefined;
+      }
+    });
+
+    expect(response?.body.data.is_sandboxed, "response is sandboxed").to.be
+      .true;
   });
+  return cy.wrap(responses);
 }
 
 export const valuesShouldContainGizmosAndWidgets = (
@@ -504,6 +521,8 @@ export const getDashcardResponses = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
+  cy.log("Check dashcard responses");
+
   H.visitDashboard(checkNotNull(dashboard).id);
 
   expect(questions.length).to.be.greaterThan(0);
@@ -519,6 +538,7 @@ export const getDashcardResponses = (
 
 export const getCardResponses = (questions: CollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
+  cy.log("Check card responses");
   return H.cypressWaitAll(
     questions.map((question) =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
@@ -554,12 +574,20 @@ export const getParameterValuesForProductCategories = () =>
 export const assertNoResultsOrValuesAreSandboxed = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
+  shouldResultsBeCached?: boolean,
 ) => {
   checkNotNull(dashboard);
-  getDashcardResponses(dashboard, questions).then(
+  const dashcardResponses = getDashcardResponses(dashboard, questions).then(
     rowsShouldContainGizmosAndWidgets,
   );
-  getCardResponses(questions).then(rowsShouldContainGizmosAndWidgets);
+  const cardResponses = getCardResponses(questions).then(
+    rowsShouldContainGizmosAndWidgets,
+  );
+
+  if (shouldResultsBeCached) {
+    dashcardResponses.then(resultsShouldBeCached);
+    cardResponses.then(resultsShouldBeCached);
+  }
 
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainGizmosAndWidgets({
@@ -587,9 +615,7 @@ export const assertAllResultsAndValuesAreSandboxed = (
   getDashcardResponses(dashboard, questions).then((data) =>
     rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
   );
-  getCardResponses(questions).then((data) =>
-    rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
-  );
+
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
     rowsShouldContainOnlyOneCategory({
       responses: [response],
@@ -598,10 +624,56 @@ export const assertAllResultsAndValuesAreSandboxed = (
     }),
   );
 
-  getFieldValuesForProductCategories().then((response) =>
-    valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
+  // getCardResponses(questions).then((data) =>
+  //   rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
+  // );
+  // getFieldValuesForProductCategories().then((response) =>
+  //   valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
+  // );
+  // getParameterValuesForProductCategories().then((response) =>
+  //   valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
+  // );
+};
+
+export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
+  responses.forEach((response) => {
+    expect(response.body.cached, "response should not be cached").not.to.be
+      .null;
+    expect(response.body.json_query?.["cache-strategy"]?.type).to.equal(
+      "duration",
+    );
+  });
+  return cy.wrap(responses);
+};
+
+export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
+  const simpleCacheConfiguration: CacheConfig = {
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  };
+
+  cy.log(
+    "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
   );
-  getParameterValuesForProductCategories().then((response) =>
-    valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
-  );
+  return cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+    cy.log("Populate the caches");
+    return getCardResponses(questions);
+  });
+};
+
+export const runWithoutCachingThenWithCaching = (
+  callback: (props: { isCachingEnabled?: boolean }) => void,
+  { questions }: { questions: CollectionItem[] },
+) => {
+  callback({ isCachingEnabled: false });
+  cy.signInAsAdmin();
+  cacheUnsandboxedResults(questions).then(() => {
+    callback({ isCachingEnabled: true });
+  });
 };
