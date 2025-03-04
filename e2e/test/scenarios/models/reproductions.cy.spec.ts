@@ -15,24 +15,7 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    // drag & drop the Total column 10 px to the right of the Custom column to swap their positions
-    cy.findAllByTestId("header-cell")
-      .contains("Custom")
-      .then(customColumn => {
-        const customColumnRect = customColumn[0].getBoundingClientRect();
-        cy.findAllByTestId("header-cell")
-          .contains("Total")
-          .then(totalColumn => {
-            const totalColumnRect = totalColumn[0].getBoundingClientRect();
-            cy.wrap(totalColumn)
-              .trigger("mousedown")
-              .trigger("mousemove", {
-                clientX: customColumnRect.right + 10,
-                clientY: totalColumnRect.y,
-              })
-              .trigger("mouseup");
-          });
-      });
+    H.moveDnDKitElement(H.tableHeaderColumn("Custom"), { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
     getHeaderCell(2, "Total").should("exist");
@@ -40,7 +23,7 @@ describe("issue 29943", () => {
 
   function assertColumnSelected(columnIndex: number, name: string) {
     getHeaderCell(columnIndex, name)
-      .find("div")
+      .closest("[data-testid=model-column-header-content]")
       .should("have.css", "background-color")
       .and("eq", "rgb(80, 158, 227)");
 
@@ -49,10 +32,8 @@ describe("issue 29943", () => {
 
   function getHeaderCell(columnIndex: number, name: string) {
     // eslint-disable-next-line no-unsafe-element-filtering
-    return cy
-      .findAllByTestId("header-cell")
-      .eq(columnIndex)
-      .should("have.text", name);
+    cy.findAllByTestId("header-cell").eq(columnIndex).should("have.text", name);
+    return H.tableHeaderColumn(name);
   }
 
   beforeEach(() => {
@@ -122,16 +103,8 @@ describe("issue 35711", () => {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
 
-    // drag & drop the Total column 100 px to the left to switch it with Tax column
-    cy.findAllByTestId("header-cell")
-      .contains("Total")
-      .then(totalColumn => {
-        const rect = totalColumn[0].getBoundingClientRect();
-        cy.wrap(totalColumn)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x - 100, clientY: rect.y })
-          .trigger("mouseup");
-      });
+    // drag & drop the Total column 80 px to the left to switch it with Tax column
+    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -777,7 +750,7 @@ describe("issue 33844", () => {
 
   function testModelMetadata(isNew: boolean) {
     cy.log("make a column visible only in detail views");
-    cy.findByTestId("detail-shortcut").should("not.exist");
+    cy.findAllByTestId("detail-shortcut").should("not.exist");
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").click();
     cy.button(isNew ? "Save" : "Save changes").click();
@@ -790,7 +763,7 @@ describe("issue 33844", () => {
     }
     H.tableInteractive().findByText("User ID").should("be.visible");
     H.tableInteractive().findByText("ID").should("not.exist");
-    cy.findAllByTestId("detail-shortcut").first().click();
+    H.openObjectDetail(0);
     H.modal().within(() => {
       cy.findByText("Order").should("be.visible");
       cy.findByText("ID").should("be.visible");
@@ -900,18 +873,6 @@ describe("issue 39993", () => {
     },
   };
 
-  function dragAndDrop(column: string, distance: number) {
-    cy.findAllByTestId("header-cell")
-      .contains(column)
-      .then(element => {
-        const rect = element[0].getBoundingClientRect();
-        cy.wrap(element)
-          .trigger("mousedown")
-          .trigger("mousemove", { clientX: rect.x + distance, clientY: rect.y })
-          .trigger("mouseup");
-      });
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -925,7 +886,7 @@ describe("issue 39993", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     cy.log("drag & drop the custom column 100 px to the left");
-    dragAndDrop(columnName, -100);
+    H.moveDnDKitElement(H.tableHeaderColumn(columnName), { horizontal: -100 });
     cy.button("Save changes").click();
     cy.wait("@updateModel");
     cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
@@ -1151,9 +1112,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("not.exist");
     cy.button("Save").should("be.enabled");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    cy.findByTestId("TableInteractive-root")
-      .findByText("39.72")
-      .should("be.visible");
+    H.tableInteractive().findByText("39.72").should("be.visible");
   }
 
   function assertMetadataTabState() {
@@ -1172,7 +1131,7 @@ describe("issue 34514", () => {
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
       .should("be.visible");
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
       cy.findByText("Here's where your results will appear").should(

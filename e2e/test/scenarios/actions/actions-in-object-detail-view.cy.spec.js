@@ -233,11 +233,11 @@ function asNormalUser(callback) {
 function visitObjectDetail(modelId, objectId) {
   H.visitModel(modelId);
   cy.get("main").findByText("Loading...").should("not.exist");
-  cy.findByTestId("TableInteractive-root").findByText(objectId).click();
+  H.tableInteractive().findByText(objectId).click();
 }
 
 function openObjectDetailModal(objectId) {
-  cy.findByTestId("TableInteractive-root").findByText(objectId).click();
+  H.tableInteractive().findByText(objectId).click();
 }
 
 function openUpdateObjectModal() {
@@ -287,16 +287,12 @@ function assertDateInputValue(labelText, value) {
 
 function assertUpdatedScoreInTable() {
   cy.log("updated quantity should be present in the table");
-  cy.findByTestId("TableInteractive-root")
-    .findByText(UPDATED_SCORE_FORMATTED)
-    .should("exist");
+  H.tableInteractive().findByText(UPDATED_SCORE_FORMATTED).should("exist");
 }
 
 function assertUpdatedScoreNotInTable() {
   cy.log("updated quantity should not be present in the table");
-  cy.findByTestId("TableInteractive-root")
-    .findByText(UPDATED_SCORE_FORMATTED)
-    .should("not.exist");
+  H.tableInteractive().findByText(UPDATED_SCORE_FORMATTED).should("not.exist");
 }
 
 function assertSuccessfullUpdateToast() {

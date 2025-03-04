@@ -14,7 +14,7 @@ import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,

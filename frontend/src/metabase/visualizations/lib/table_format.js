@@ -35,7 +35,6 @@ export function makeCellBackgroundGetter(
   } else {
     return function (value, rowIndex, colName) {
       if (formatters[colName]) {
-        // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
           const formatter = formatters[colName][i];
           const color = formatter(value);

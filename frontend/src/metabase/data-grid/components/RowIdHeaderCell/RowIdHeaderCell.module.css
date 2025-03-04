@@ -6,3 +6,7 @@
   color: var(--mb-color-text-light);
   cursor: default;
 }
+
+.withName {
+  background-color: var(--mb-color-bg-white);
+}

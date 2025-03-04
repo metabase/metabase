@@ -196,16 +196,16 @@ describe("scenarios > question > new", () => {
     H.openOrdersTable();
 
     cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
-      .eq(1) // first table body cell
+      .eq(0) // first table body cell
       .should("contain", "2"); // quantity for order ID#1
 
     // Test was flaky due to long chain.
-    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(1).click();
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(0).click();
     cy.wait("@dataset");
 
-    cy.get(
-      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
-    ).should("have.length.gt", 1);
+    H.tableInteractiveBody()
+      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length.gt", 1);
 
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -213,18 +213,18 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.get(".test-TableInteractive");
+    H.tableInteractive();
 
     cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
-      .eq(1) // first table body cell
+      .eq(0) // first table body cell
       .should("contain", 1)
       .click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");
-    cy.get(
-      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
-    ).should("have.length", 1);
+    H.tableInteractiveBody()
+      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length", 1);
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -725,7 +725,7 @@ describe(
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
     });
@@ -741,7 +741,7 @@ describe(
       // strange: we get different behavior when we go to question/new
       cy.findAllByTestId("run-button").first().click();
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText(39.72).should("be.visible");
       });
     });

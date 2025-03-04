@@ -9,7 +9,7 @@ import type {
 } from "metabase/data-grid/types";
 
 export const getRowIdColumnSize = (variant: RowIdVariant) =>
-  variant === "expandButton" ? 36 : 46;
+  variant === "expandButton" ? 40 : 46;
 
 export const getRowIdColumn = <TRow, TValue>({
   variant,

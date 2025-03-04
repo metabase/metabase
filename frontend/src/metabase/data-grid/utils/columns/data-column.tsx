@@ -23,6 +23,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
     cellVariant,
     wrap,
     getCellClassName,
+    getCellStyle,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
@@ -44,6 +45,7 @@ const getDefaultCellTemplate = <TRow, TValue>(
         variant={cellVariant}
         wrap={wrap}
         className={getCellClassName?.(value, row.index)}
+        style={getCellStyle?.(value, row.index)}
       />
     );
   };

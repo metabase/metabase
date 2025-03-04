@@ -1,6 +1,7 @@
 module.exports = {
   diffingEngine: "looks-same",
   storiesFilter: [
+    "DataGrid",
     "static-viz",
     "viz",
     "^visualizations/shared",
