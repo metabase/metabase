@@ -176,9 +176,9 @@
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
 
-(define-premium-feature has-internal-tools?
-  "Should Internal Tools, for example Editable Tables, be available on this instance?"
-  :internal-tools)
+(define-premium-feature table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
 
 (define-premium-feature has-attached-dwh?
   "Does the Metabase Cloud instance have an internal data warehouse attached?"

@@ -1,21 +1,15 @@
-(ns metabase-enterprise.internal-tools.api
+(ns metabase-enterprise.data-editing.api
   (:require
    [metabase.actions.actions :as actions]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- database-for-table-id [table-id]
-  (t2/select-one :model/Database
-                 {:select [:d.*]
-                  :from   [[:metabase_table :t]]
-                  :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
-                  :where  [:= :t.id table-id]}))
-
 (defn- perform-bulk-action! [action-kw table-id rows]
   (actions/perform-action! action-kw
-                           {:database (:id (database-for-table-id table-id))
+                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
                             :table-id table-id
                             :arg      rows}))
 
@@ -41,6 +35,5 @@
   (perform-bulk-action! :bulk/delete table-id rows))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/internal-tools routes."
+  "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
-

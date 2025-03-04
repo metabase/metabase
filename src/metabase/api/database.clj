@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
@@ -31,7 +30,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -50,9 +48,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2])
-  (:import
-   (metabase.server.streaming_response StreamingResponse)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -746,34 +742,17 @@
                                 nil))]
     (api/check table-name 400 "Invalid table identifier")
     (api/check-404
-     (or (check-unique (t2/select :model/Table
-                                  :db_id db-id
-                                  :name table-name
-                                  (cond-> {}
-                                    schema (assoc :where {:schema schema}))))
+     (or (if schema
+           ;; Sometimes we get duplicate records, but bypass that if we have a fully qualified exact match.
+           (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
+           (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
          (check-unique (t2/select :model/Table
                                   :db_id db-id
                                   :%lower.name (u/lower-case-en table-name)
                                   (cond-> {}
                                     schema (assoc :where {:%lower.schema (u/lower-case-en schema)}))))))))
 
-(defn- remap-202->200 [response]
-  (cond
-    ;; Well, this is pretty intrusive. Unfortunately, there's no way to set it correctly in the first place, yet.
-    (and (instance? StreamingResponse response) (contains? #{202 nil} (:status (.-options response))))
-    (metabase.server.streaming-response/->StreamingResponse
-     (.-f response)
-     (assoc (.-options response) :status 200)
-     (.-donechan response))
-
-    (and (map? response) (contains? #{202 nil} :status-code response))
-    (assoc response :status-code 200)
-
-    ;; ¯\\_(ツ)_/¯
-    :else
-    response))
-
-(api.macros/defendpoint :get "/:db-id/table/:table-identifier"
+(api.macros/defendpoint :get "/:db-id/table/:table-identifier/data"
   "Get the data for the given table"
   [{:keys [db-id table-identifier]} :- [:map
                                         [:db-id ms/PositiveInt]
@@ -781,29 +760,27 @@
   (api/read-check (t2/select-one :model/Database :id db-id))
   (qp.store/with-metadata-provider db-id
     (let [mp    (qp.store/metadata-provider)
-          table (resolve-table db-id table-identifier)
-          query (-> (lib/query mp (lib.metadata/table mp (:id table)))
+          table-id (:id (resolve-table db-id table-identifier))
+          query (-> (lib/query mp (lib.metadata/table mp table-id))
                     (update-in [:middleware :js-int-to-string?] (fnil identity true))
                     qp/userland-query-with-default-constraints
                     (update :info merge {:executed-by api/*current-user-id*
                                          :context     :table-grid
                                          :card-id     nil}))]
-      ;; TODO Discuss whether we want these analytics
-      #_(events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
-                                                  :user-id api/*current-user-id*})
-      (remap-202->200
-       (span/with-span!
-         {:name "query-table-async"}
-        ;; Introduce a custom export-format for "grid" to replace the remapping hack?
-         (qp.streaming/streaming-response [rff :api]
-           (-> (qp/process-query query (fn [metadata]
-                                         (let [rf (rff metadata)]
-                                           (completing
-                                            rf
-                                            #(-> (rf %)
-                                                 (dissoc :json_query :context :cached :average_execution_time)
-                                                 (assoc :table_id (:id table))))))))))))))
-completing
+      (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+                                                :user-id api/*current-user-id*})
+      (span/with-span!
+        {:name "query-table-async"}
+        (qp.streaming/streaming-response [rff :api]
+          (qp/process-query query
+                           ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+                           ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+                           ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                            (qp.streaming/transforming-query-response
+                             rff
+                             (fn [response]
+                               (-> (assoc response :table_id table-id)
+                                   (dissoc :json_query :context :cached :average_execution_time))))))))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
