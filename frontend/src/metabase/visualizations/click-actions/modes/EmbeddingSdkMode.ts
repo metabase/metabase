@@ -33,3 +33,9 @@ export const EmbeddingSdkMode: QueryClickActionsMode = {
   ],
   fallback: NativeQueryClickFallback,
 };
+
+export const StaticQuestionSdkMode: QueryClickActionsMode = {
+  name: "static-question-sdk",
+  hasDrills: false,
+  clickActions: [],
+};
