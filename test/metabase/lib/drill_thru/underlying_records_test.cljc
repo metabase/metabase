@@ -44,7 +44,7 @@
     :query-type  :aggregated
     :query-kinds [:mbql]
     :column-name "count"
-    :expected    {:type :drill-thru/underlying-records, :row-count 77, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 77}}))
 
 (deftest ^:parallel returns-underlying-records-test-2
   (lib.drill-thru.tu/test-returns-drill
@@ -53,7 +53,7 @@
     :query-type  :aggregated
     :query-kinds [:mbql]
     :column-name "sum"
-    :expected    {:type :drill-thru/underlying-records, :row-count 1, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 1}}))
 
 (deftest ^:parallel returns-underlying-records-test-3
   (lib.drill-thru.tu/test-returns-drill
@@ -62,7 +62,7 @@
     :query-type  :aggregated
     :query-kinds [:mbql]
     :column-name "max"
-    :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 2}}))
 
 (deftest ^:parallel returns-underlying-records-test-4-table-name-correct-for-nested-query
   (lib.drill-thru.tu/test-returns-drill
@@ -77,7 +77,7 @@
                                                         (meta/id :orders :created-at))))
     :custom-row   {"CREATED_AT" "2023-12-01"
                    "count"      9}
-    :expected     {:type :drill-thru/underlying-records, :row-count 9, :table-name "Mock orders card"}}))
+    :expected     {:type :drill-thru/underlying-records, :row-count 9}}))
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
@@ -98,7 +98,6 @@
     :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
     :expected     {:type       :drill-thru/underlying-records
                    :row-count  77
-                   :table-name "Orders"
                    ;; the "underlying" aggregation ref is reconstructed.
                    :column-ref [:aggregation {:lib/source-name "count"} string?]
                    ;; the "underlying" dimensions are reconstructed from the row.
@@ -321,7 +320,6 @@
                                  drills)]
       (is (=? {:type       :drill-thru/underlying-records
                :row-count  2
-               :table-name "Orders"
                :dimensions [{}]}
               drill))
       (is (=? {:lib/type :mbql/query
@@ -397,7 +395,6 @@
       (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
                :type       :drill-thru/underlying-records
                :row-count  2
-               :table-name "Orders"
                :dimensions [{:column     {:name "CREATED_AT"}
                              :column-ref [:field {} (meta/id :orders :created-at)]
                              :value      "2020-01-01"}]
@@ -406,8 +403,7 @@
       ;; display info currently doesn't include a `display-name` for drill thrus... we can fix this later.
       (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
         (is (=? {:type       :drill-thru/underlying-records
-                 :row-count  2
-                 :table-name "Orders"}
+                 :row-count  2}
                 (lib/display-info query -1 drill)))))))
 
 (deftest ^:parallel nil-aggregation-value-binned-test
@@ -503,7 +499,6 @@
       (is (=? {:lib/type   :metabase.lib.drill-thru/drill-thru
                :type       :drill-thru/underlying-records
                :row-count  16845
-               :table-name "Orders"
                :dimensions [{:column     {:name "CREATED_AT"}
                              :column-ref [:field {} "CREATED_AT"]
                              :value      "2023-12-01"}]

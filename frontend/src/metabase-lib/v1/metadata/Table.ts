@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import { singularize } from "metabase/lib/formatting";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/v1/operators/utils";
 import type { NormalizedTable } from "metabase-types/api";
@@ -97,7 +96,7 @@ class Table {
    * See also `field.targetObjectName()`
    */
   objectName() {
-    return singularize(this.displayName());
+    return this.displayName();
   }
 
   dateFields() {

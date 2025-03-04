@@ -1,4 +1,3 @@
-import { humanize, titleize } from "metabase/lib/formatting";
 import type { NormalizedSchema } from "metabase-types/api";
 
 import type Database from "./Database";
@@ -27,7 +26,7 @@ class Schema {
   }
 
   displayName() {
-    return this.name ? titleize(humanize(this.name)) : null;
+    return this.name ?? null;
   }
 
   getTables() {

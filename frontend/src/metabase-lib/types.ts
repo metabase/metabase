@@ -567,7 +567,6 @@ export type ColumnFilterDrillThruInfo =
 export type UnderlyingRecordsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/underlying-records"> & {
     rowCount: number;
-    tableName: string;
   };
 
 export type ZoomTimeseriesDrillThruInfo =
