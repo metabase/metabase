@@ -204,6 +204,45 @@
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
 
+(deftest create-row-section-getter-test
+  (testing "Returns a function that correctly retrieves cell values"
+    (let [values-by-key {["A" 1] {:values [10 20]
+                                  :valueColumns [{:name "count"} {:name "sum"}]
+                                  :data [{:value 1 :colIdx 0}
+                                         {:value "A" :colIdx 1}
+                                         {:value 10 :colIdx 2}
+                                         {:value 20 :colIdx 3}]
+                                  :dimensions [{:value 1 :colIdx 0}
+                                               {:value "A" :colIdx 1}]}}
+          subtotal-values {[1] {[1] [100 200]}}
+          value-formatters [#(str "$" %) #(str % "%")]
+          col-indexes [1]
+          row-indexes [0]
+          col-paths [["A"]]
+          row-paths [[1]]
+          color-getter (constantly "blue")
+          getter (#'pivot/create-row-section-getter values-by-key subtotal-values value-formatters
+                                                    col-indexes row-indexes col-paths row-paths color-getter)
+          result (getter 0 0)]
+      (is (= [{:value "$10"
+               :backgroundColor "blue"
+               :clicked {:data [{:value 1 :colIdx 0}
+                                {:value "A" :colIdx 1}
+                                {:value 10 :colIdx 2}
+                                {:value 20 :colIdx 3}]
+                         :dimensions [{:value 1 :colIdx 0}
+                                      {:value "A" :colIdx 1}]}}
+              {:value "20%"
+               :backgroundColor "blue"
+               :clicked {:data [{:value 1 :colIdx 0}
+                                {:value "A" :colIdx 1}
+                                {:value 10 :colIdx 2}
+                                {:value 20 :colIdx 3}]
+                         :dimensions [{:value 1 :colIdx 0}
+                                      {:value "A" :colIdx 1}]}}]
+             #?(:cljs (js->clj result :keywordize-keys true)
+                :clj result))))))
+
 (deftest tree-to-array-test
   (testing "Correctly flattens a tree to array with position information"
     (let [tree [{:value "A" :rawValue "A"
