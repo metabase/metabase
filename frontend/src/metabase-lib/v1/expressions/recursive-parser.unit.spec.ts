@@ -166,7 +166,7 @@ describe("recursive-parser", () => {
       expression: ["time-interval", B, -1, "days", { "include-current": true }],
     },
     {
-      source: "relativeInterval(B, -1, 'days', -5, 'years')",
+      source: "offsetInterval(B, -1, 'days', -5, 'years')",
       expression: ["relative-time-interval", B, -1, "days", -5, "years"],
     },
   ])("should handle function options: $source", ({ source, expression }) => {

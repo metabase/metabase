@@ -385,7 +385,7 @@ const filter: TestCase[] = [
     "time interval filter",
   ],
   [
-    'relativeInterval([Created At], -1, "month", -2, "years")',
+    'offsetInterval([Created At], -1, "month", -2, "years")',
     ["relative-time-interval", created, -1, "month", -2, "years"],
     "relative time interval filter",
   ],

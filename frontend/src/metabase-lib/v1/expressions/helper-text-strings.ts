@@ -795,19 +795,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "relative-time-interval",
-    structure: "relativeInterval",
+    structure: "offsetInterval",
     description: () =>
-      t`Checks a date column's values to see if they're within the relative range.`,
+      t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
     args: [
       {
         name: t`column`,
-        description: t`The date column to return interval of.`,
+        description: t`The date column to check.`,
         example: formatIdentifier(t`Created At`),
       },
       {
         name: t`value`,
-        description: t`Period of interval, where negative values are back in time.`,
-        example: "-1",
+        description: t`Period of the interval, where negative numbers go back in time.`,
+        example: "-20",
       },
       {
         name: t`unit`,
@@ -816,13 +816,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`offsetValue`,
-        description: t`Period of interval, where negative values are back in time.`,
-        example: "-1",
+        description: t`The initial interval period to start from, where negative values are back in time.`,
+        example: "-10",
       },
       {
         name: t`offsetUnit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("month"),
+        example: formatStringLiteral("year"),
       },
     ],
   },
