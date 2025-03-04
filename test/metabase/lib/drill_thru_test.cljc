@@ -426,8 +426,7 @@
                                                                 {:name "≠"}]}
                                :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
                                                     :type       :drill-thru/underlying-records
-                                                    :row-count  pos-int?
-                                                    :table-name "Orders"}
+                                                    :row-count  pos-int?}
                                :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
                                                     :display-name "See this month by week"
                                                     :type         :drill-thru/zoom-in.timeseries
@@ -481,7 +480,6 @@
                    {:lib/type   :metabase.lib.drill-thru/drill-thru
                     :type       :drill-thru/underlying-records
                     :row-count  pos-int?
-                    :table-name "Orders"
                     :dimensions nil
                     :column-ref [:aggregation {} #_uuid string?]}]
                   (lib/available-drill-thrus query -1 context)))
@@ -604,8 +602,7 @@
                                            87]})}
                    {:lib/type   :metabase.lib.drill-thru/drill-thru
                     :type       :drill-thru/underlying-records
-                    :row-count  87
-                    :table-name "People"}
+                    :row-count  87}
                    {:lib/type  :metabase.lib.drill-thru/drill-thru
                     :type      :drill-thru/zoom
                     :column    (meta/field-metadata :people :state)
@@ -748,8 +745,7 @@
                                {:name "="}
                                {:name "≠"}]}
                   {:type       :drill-thru/underlying-records
-                   :row-count  77
-                   :table-name "Orders"}
+                   :row-count  77}
                   {:display-name "See this month by week"
                    :type         :drill-thru/zoom-in.timeseries}]
     ;; Underlying records and automatic insights are not supported for native.
@@ -777,7 +773,7 @@
                                   {:column {:name "CREATED_AT"}}]}
                     {:type :drill-thru/quick-filter, :operators [{:name "="}
                                                                  {:name "≠"}]}
-                    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
+                    {:type :drill-thru/underlying-records, :row-count 2}
                     {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]
       :native-drills #{:drill-thru/quick-filter}})))
 
@@ -789,7 +785,7 @@
       :column-name "PRODUCT_ID"
       :expected    [{:type :drill-thru/fk-filter}
                     {:type :drill-thru/fk-details, :object-id 3, :many-pks? false}
-                    {:row-count 2, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:row-count 2, :type :drill-thru/underlying-records}]}))
 
 ;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-12
@@ -801,7 +797,7 @@
                                                                  {:name ">"}
                                                                  {:name "="}
                                                                  {:name "≠"}]}
-                    {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:row-count 3, :type :drill-thru/underlying-records}]}))
 
 ;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-13
@@ -853,8 +849,7 @@
                                  {:name "="}
                                  {:name "≠"}]}
                     {:type       :drill-thru/underlying-records
-                     :row-count  77
-                     :table-name "Orders"}]
+                     :row-count  77}]
       ;; Underlying records and automatic insights are not supported for native.
       :native-drills #{:drill-thru/quick-filter}})))
 
