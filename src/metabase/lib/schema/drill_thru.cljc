@@ -185,8 +185,8 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type       [:= :drill-thru/underlying-records]]
-    [:row-count  number?]]])
+    [:type      [:= :drill-thru/underlying-records]]
+    [:row-count number?]]])
 
 (mr/def ::drill-thru.automatic-insights
   [:merge
