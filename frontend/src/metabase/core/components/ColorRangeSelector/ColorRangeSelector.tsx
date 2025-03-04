@@ -42,6 +42,7 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
       onChange={toggle}
       floatingStrategy="fixed"
       withinPortal={withinPortal}
+      position="bottom-start"
     >
       <Popover.Target>
         <ColorRange
