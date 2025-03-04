@@ -179,6 +179,8 @@ jobs:
     needs: [build-sdk, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    permissions:
+      contents: write
     env:
       sdk_version: ${{ needs.determine-version.outputs.sdk_version }}
     steps:
