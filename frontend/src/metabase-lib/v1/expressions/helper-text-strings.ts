@@ -192,6 +192,26 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "distinct-where",
+    structure: "DistinctIf",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`column`,
+        description: t`Żółty żółw żuje źdźbło.`,
+        example: formatIdentifier(t`Subtotal`),
+      },
+      {
+        name: t`condition`,
+        description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
+          t`Valid`,
+        )}`,
+      },
+    ],
+  },
+  {
     name: "sum-where",
     structure: "SumIf",
     description: () =>
