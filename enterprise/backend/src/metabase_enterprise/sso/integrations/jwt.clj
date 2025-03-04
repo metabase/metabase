@@ -147,7 +147,9 @@
   [{:keys [session redirect-url jwt-data]} token request]
   (if token
     (generate-response-token session jwt-data)
-    (request/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT")))))
+    (request/set-session-cookies request (response/redirect redirect-url) session
+                                 {:request-time (t/zoned-date-time (t/zone-id "GMT"))
+                                  :set-permanent true})))
 
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect token] :or {token nil}} :params, :as request}]
