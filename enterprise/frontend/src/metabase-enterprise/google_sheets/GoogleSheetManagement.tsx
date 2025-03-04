@@ -292,7 +292,7 @@ function GoogleSheetsConnectModal({
         <Box>
           <Text>
             3.{" "}
-            {jt`Select ${(<strong>${t`Viewer`}</strong>)} permissions, and click on ${(<strong>${t`Send`}</strong>)}`}
+            {jt`Select ${(<strong>{t`Viewer`}</strong>)} permissions, and click on ${(<strong>{t`Send`}</strong>)}`}
           </Text>
         </Box>
       </Flex>
