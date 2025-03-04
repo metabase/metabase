@@ -5,9 +5,9 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { getColorScale } from "metabase/lib/colors/scales";
-import { Box, Group, type GroupProps } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 
-export interface ColorRangeProps extends Omit<GroupProps, "onSelect"> {
+export interface ColorRangeProps extends Omit<FlexProps, "onSelect"> {
   colors: string[];
   sections?: number;
   isQuantile?: boolean;
@@ -38,7 +38,7 @@ export const ColorRange = forwardRef(function ColorRange(
   );
 
   return (
-    <Group
+    <Flex
       {...props}
       ref={ref}
       onClick={handleClick}
@@ -52,8 +52,8 @@ export const ColorRange = forwardRef(function ColorRange(
       )}
     >
       {_.range(0, sections).map(section => (
-        <Box key={section} flex="1 0 auto" bg={scale(section)} />
+        <Box key={section} flex="1" bg={scale(section)} />
       ))}
-    </Group>
+    </Flex>
   );
 });
