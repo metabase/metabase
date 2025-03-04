@@ -44,6 +44,7 @@ const DatabaseCacheScheduleField = ({
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
   const { values, setFieldValue } = useFormikContext<DatabaseData>();
   const [{ value }, , { setValue }] = useField(name);
+  console.log({ values });
 
   const handleScheduleChange = useCallback(
     (value: ScheduleSettings) => {

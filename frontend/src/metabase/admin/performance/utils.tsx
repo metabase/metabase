@@ -90,6 +90,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
 ): ScheduleSettings | null => {
+  debugger;
   if (!cron) {
     return defaultSchedule;
   }
@@ -155,10 +156,13 @@ export const cronToScheduleSettings_unmemoized = (
       schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }
+
+  const scheduleHour = parseInt(hour);
+  const scheduleMinute = parseInt(minute);
   return {
     schedule_type,
-    schedule_minute: parseInt(minute),
-    schedule_hour: parseInt(hour),
+    schedule_minute: isNaN(scheduleMinute) ? null : scheduleMinute,
+    schedule_hour: isNaN(scheduleHour) ? null : scheduleHour,
     schedule_day,
     schedule_frame,
   };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
@@ -36,7 +36,17 @@ import {
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Modal,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  rem,
+} from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
   Notification,
@@ -53,6 +63,8 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 import { AlertModalSettingsBlock } from "./AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import type { NotificationTriggerOption } from "./types";
+import { Schedule } from "metabase/components/Schedule/Schedule";
+import { getSetting } from "metabase/selectors/settings";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
   NotificationCardSendCondition,
@@ -105,6 +117,9 @@ export const CreateOrEditQuestionAlertModal = ({
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
+  const timezone = useSelector(state =>
+    getSetting(state, "report-timezone-short"),
+  );
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
@@ -226,6 +241,16 @@ export const CreateOrEditQuestionAlertModal = ({
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
+  // Temp state for finding a workaround for rendering.
+  const [shouldRenderScheduleSettings, setShouldRenderScheduleSettings] =
+    useState(true);
+  // This works, but we should find a better way to do it.
+  // useEffect(() => {
+  // setTimeout(() => {
+  // setShouldRenderScheduleSettings(true);
+  // }, 500);
+  // }, []);
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return <ChannelSetupModal isAdmin={isAdmin} onClose={onClose} />;
   }
@@ -276,7 +301,7 @@ export const CreateOrEditQuestionAlertModal = ({
               </Flex>
             </AlertModalSettingsBlock>
             <AlertModalSettingsBlock title={t`When do you want to check this?`}>
-              <SchedulePicker
+              {/* <SchedulePicker
                 mt={0}
                 schedule={
                   cronToScheduleSettings(subscription.cron_schedule) ||
@@ -297,7 +322,34 @@ export const CreateOrEditQuestionAlertModal = ({
                   }
                 }}
                 textBeforeInterval={t`Check`}
-              />
+                minutesOnHourPicker
+              /> */}
+              {shouldRenderScheduleSettings && (
+                <Schedule
+                  schedule={
+                    cronToScheduleSettings(subscription.cron_schedule) ||
+                    DEFAULT_ALERT_SCHEDULE // default is just for typechecking
+                  }
+                  scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+                  minutesOnHourPicker
+                  onScheduleChange={(nextSchedule: ScheduleSettings) => {
+                    if (nextSchedule.schedule_type) {
+                      setNotification({
+                        ...notification,
+                        subscriptions: [
+                          {
+                            ...subscription,
+                            cron_schedule: scheduleSettingsToCron(nextSchedule),
+                          },
+                        ],
+                      });
+                    }
+                  }}
+                  verb={c("A verb in the imperative mood").t`Check`}
+                  timezone={timezone}
+                  // aria-label={t`Describe how often the cache should be invalidated`}
+                />
+              )}
             </AlertModalSettingsBlock>
             <AlertModalSettingsBlock
               title={t`Where do you want to send the results?`}

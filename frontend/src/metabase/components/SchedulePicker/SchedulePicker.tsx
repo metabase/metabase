@@ -66,6 +66,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
     name: ScheduleProperty,
     value: ScheduleSettings[typeof name],
   ) {
+    debugger;
     let newSchedule: ScheduleSettings = {
       ...this.props.schedule,
       [name]: value,
@@ -259,6 +260,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
     } = this.props;
 
     const scheduleType = schedule.schedule_type;
+    console.log({ schedule }, "this.proops");
 
     return (
       <Box mt={mt} className={className} style={style}>
