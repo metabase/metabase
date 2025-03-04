@@ -53,9 +53,9 @@ driver:
             use-m2m: true
       - name: catalog
         display-name: Catalog
-        default: default
-        required: true
+        placeholder: default
         helper-text: Specify the catalog to connect to.
+        required: true
       - name: schema-filters
         type: schema-filters
         display-name: Schemas
