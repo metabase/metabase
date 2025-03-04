@@ -156,7 +156,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             cy.log("The first series line");
             H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
+            cy.findByText("See these records");
 
             // Click anywhere else to close the first action panel
             cy.findByText("11442D").click();
@@ -165,7 +165,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             cy.log("The second series line");
             H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
             cy.findByText("See this year by quarter");
-            cy.findByText("See these Products");
+            cy.findByText("See these records");
           },
         );
       });
@@ -219,7 +219,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             cy.log("The first series line");
             H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
             cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
+            cy.findByText("See these records");
 
             // Click anywhere else to close the first action panel
             cy.findByText("13457D").click();
@@ -228,7 +228,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
             cy.log("The third series line");
             H.cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
             cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
+            cy.findByText("See these records");
           },
         );
       });
@@ -296,7 +296,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.get(".dot").eq(-4).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("See these Orders").click();
+    cy.contains("See these records").click();
 
     // check that filter is applied and rows displayed
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -350,7 +350,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .eq(10) // random dot
       .click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    cy.findByText("See these records").click();
 
     cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
     // when the bug is present, filter is missing a name (showing only "is 256")
@@ -534,7 +534,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .contains("85")
       .click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    cy.findByText("See these records").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than or equal to 10");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -564,7 +564,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16,845").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    cy.findByText("See these records").click();
 
     // count number of distinct values in the Discount column
     H.tableHeaderClick("Discount ($)");
@@ -668,7 +668,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       // Drill-through the last bar (Widget)
       // eslint-disable-next-line no-unsafe-element-filtering
       H.chartPathWithFillColor("#509EE3").last().click();
-      H.popover().findByTextEnsureVisible("See these Products").click();
+      H.popover().findByTextEnsureVisible("See these records").click();
     });
 
     it("should result in a correct query result", () => {
@@ -713,7 +713,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.cartesianChartCircle().eq(2).click();
     H.popover().within(() => {
-      cy.findByText("See these Orders").should("be.visible");
+      cy.findByText("See these records").should("be.visible");
 
       cy.findByText("See this month by week").should("be.visible");
 
@@ -758,13 +758,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findAllByTestId("legend-item").first().click();
 
     H.popover().within(() => {
-      cy.findByText("See these Orders").should("be.visible");
+      cy.findByText("See these records").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
     });
 
     H.chartPathWithFillColor("#A989C5").first().click();
     H.popover().within(() => {
-      cy.findByText("See these Orders").should("be.visible");
+      cy.findByText("See these records").should("be.visible");
 
       cy.findByText("See this month by week").should("be.visible");
 

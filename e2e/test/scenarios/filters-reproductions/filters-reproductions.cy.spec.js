@@ -78,7 +78,7 @@ describe.skip("issue 12496", () => {
   it("should display correct day range in filter pill when drilling into a week", () => {
     setup("week");
     H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
+    H.popover().contains("See this record").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 24–30, 2022")
       .click();
@@ -93,7 +93,7 @@ describe.skip("issue 12496", () => {
   it("should display correct day range in filter pill when drilling into a month", () => {
     setup("month");
     H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
+    H.popover().contains("See this record").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 2022")
       .click();
@@ -108,7 +108,7 @@ describe.skip("issue 12496", () => {
   it("should display correct day range in filter pill when drilling into a hour", () => {
     setup("hour");
     H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
+    H.popover().contains("See this record").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022, 6:00–59 PM")
       .click();
@@ -127,7 +127,7 @@ describe.skip("issue 12496", () => {
   it("should display correct minute in filter pill when drilling into a minute", () => {
     setup("minute");
     H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
+    H.popover().contains("See this record").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022, 6:56 PM")
       .click();
@@ -141,7 +141,7 @@ describe.skip("issue 12496", () => {
   it("should display correct minute in filter pill when drilling into a day", () => {
     setup("day");
     H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
+    H.popover().contains("See this record").click();
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is April 30, 2022")
       .click();
@@ -222,7 +222,7 @@ describe("issue 18770", () => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
         .should("have.length", 6)
-        .and("contain", "See these Orders")
+        .and("contain", "See these records")
         .and("contain", "Break out by")
         .and("contain", "<")
         .and("contain", ">")

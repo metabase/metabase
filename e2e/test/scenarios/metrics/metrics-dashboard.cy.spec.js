@@ -182,7 +182,7 @@ describe("scenarios > metrics > dashboard", () => {
         .eq(23) // random dot
         .click({ force: true });
     });
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
     H.assertQueryBuilderRowCount(445);
   });
 

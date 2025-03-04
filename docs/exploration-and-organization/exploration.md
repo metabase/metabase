@@ -84,7 +84,7 @@ If you click on a part of a chart, such as a bar in a bar chart, or a dot on a l
 
 In this example of orders by product category per month, clicking on a data point on this line chart gives us the ability to:
 
-- **See these Orders**: See a list of the orders for a particular month.
+- **See these records**: See a list of the orders for a particular month.
 - **See this month by week**.
 - **Break out by ...**: See things like the Gizmo orders in June 2023 broken out by the status of the customer (e.g., `new` or `VIP`). Different charts will have different breakout options, such as **Location** and **Time**.
 - **Automatic insights**: See orders for a particular category over a shorter time range.

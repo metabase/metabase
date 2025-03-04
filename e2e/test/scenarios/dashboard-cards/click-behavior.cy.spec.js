@@ -2798,7 +2798,7 @@ const createNumberFilterMapping = ({ card_id }) => {
 
 const assertDrillThroughMenuOpen = () => {
   H.popover()
-    .should("contain", "See these Orders")
+    .should("contain", "See these records")
     .and("contain", "See this month by week")
     .and("contain", "Break out by…")
     .and("contain", "Automatic insights…")

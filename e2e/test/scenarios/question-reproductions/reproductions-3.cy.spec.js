@@ -132,7 +132,7 @@ describe("issue 33079", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.cartesianChartCircle().eq(1).click({ force: true });
     H.popover()
-      .findByText(/Order/) // See these Orders
+      .findByText(/Order/) // See these records
       .click();
     cy.wait("@dataset");
     cy.findByTestId("question-row-count").should("contain", "19");
@@ -1189,7 +1189,7 @@ describe("issue 31960", () => {
       H.cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
 
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
     cy.findByTestId("qb-filters-panel")
       .findByText("Created At is Jul 10–16, 2022")
       .should("be.visible");

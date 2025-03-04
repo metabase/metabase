@@ -49,7 +49,7 @@ describe("issue 6010", () => {
 
     H.cartesianChartCircle().eq(0).click();
 
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
@@ -912,7 +912,7 @@ describe.skip("issue 25415", () => {
 
     cy.get(".dc-tooltip-list").get(".dot").first().click({ force: true });
 
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
 
     // filter gets applied
     cy.findByTestId("qb-filters-panel").should("contain", "Product ID is 1");
