@@ -195,11 +195,11 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "distinct-where",
     structure: "DistinctIf",
     description: () =>
-      t`One should not expect a valid copy in a hackathon project.`,
+      t`The number of distinct values in this column, limited to rows where the condition is true.`,
     args: [
       {
         name: t`column`,
-        description: t`Żółty żółw żuje źdźbło.`,
+        description: t`The column whose distinct values to count.`,
         example: formatIdentifier(t`Subtotal`),
       },
       {
