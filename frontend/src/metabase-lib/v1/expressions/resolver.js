@@ -2,14 +2,9 @@ import { msgid, ngettext, t } from "ttag";
 
 import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  isCaseOrIfOperator,
-  isOptionsObject,
-} from "./index";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
@@ -192,7 +187,21 @@ export function resolve({
         throw new ResolverError(validationError, expression.node);
       }
     }
-    if (!multiple) {
+    if (multiple) {
+      const argCount = operands.filter(arg => !isOptionsObject(arg)).length;
+      const minArgCount = args.length;
+
+      if (argCount < minArgCount) {
+        throw new ResolverError(
+          ngettext(
+            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            minArgCount,
+          ),
+          expression.node,
+        );
+      }
+    } else {
       const expectedArgsLength = args.length;
       const maxArgCount = hasOptions
         ? expectedArgsLength + 1

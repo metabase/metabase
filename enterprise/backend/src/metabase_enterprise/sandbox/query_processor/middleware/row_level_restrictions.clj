@@ -5,13 +5,15 @@
   (:require
    [clojure.core.memoize :as memoize]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.api.util :as mt.api.u]
+   [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   ;; TODO: Why use the lib.metadata.protocols functions directly, instead of the lib.metadata wrappers?
+   ;; This should probably be enforced at the modules level.
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -66,7 +68,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
+    (let [enforced-sandboxes (sandbox.api.util/enforced-sandboxes-for-tables table-ids)]
       (when (seq enforced-sandboxes)
         (assert-one-gtap-per-table enforced-sandboxes)
         enforced-sandboxes))))
@@ -125,9 +127,10 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (binding [lib.convert/*clean-query* false]
-                         (request/as-admin
-                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))]
+          preprocessed (lib/without-cleaning
+                        (fn []
+                          (request/as-admin
+                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))

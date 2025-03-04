@@ -104,10 +104,7 @@ function newNativeCardHash(
  */
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
-
   cy.visit("/question#" + hash);
-
-  return NativeEditor.get();
 }
 
 /**
@@ -142,8 +139,11 @@ export function visitQuestionAdhoc(
   runQueryIfNeeded(question, autorun);
 
   if (mode !== "notebook" && !skipWaiting) {
-    cy.wait("@" + alias).then(xhr => callback && callback(xhr));
+    return cy.wait("@" + alias).then(xhr => callback && callback(xhr));
   }
+
+  // Ensure chainability
+  return cy.wrap(null);
 }
 
 /**

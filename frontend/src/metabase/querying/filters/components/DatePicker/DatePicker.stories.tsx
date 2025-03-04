@@ -11,7 +11,7 @@ import { DatePicker } from "./DatePicker";
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export default {
-  title: "Parameters/DatePicker",
+  title: "Components/Parameters/DatePicker",
   component: DatePicker,
 } as Meta<typeof DatePicker>;
 
@@ -134,7 +134,7 @@ export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
 export const RelativeCurrent = {
   render: Template,
   args: {
-    value: { type: "relative", unit: "day", value: "current" },
+    value: { type: "relative", unit: "day", value: 0 },
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);

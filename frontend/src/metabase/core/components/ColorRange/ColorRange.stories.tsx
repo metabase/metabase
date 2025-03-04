@@ -2,10 +2,10 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorRange, { type ColorRangeProps } from "./ColorRange";
+import { ColorRange, type ColorRangeProps } from "./ColorRange";
 
 export default {
-  title: "Core/ColorRange",
+  title: "Components/Ask Before Using/ColorRange",
   component: ColorRange,
 };
 

@@ -1,5 +1,7 @@
 ---
 layout: docs-api
+title: Metabase API documentation
+description: The official API documentation for Metabase.
 redirect_from:
 - /docs/latest/api-documentation
 - /docs/latest/api/action
@@ -63,11 +65,7 @@ redirect_from:
 
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Metabase API doc</title>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet" />
-  </head>
+    {% include head.html %}
   <style>
     :root {
       --scalar-font: 'Lato', sans-serif;
@@ -328,7 +326,7 @@ redirect_from:
         "type" : "object",
         "properties" : {
           "min_duration_ms" : {
-            "description" : "value must be an integer greater than zero.",
+            "description" : "value must be an integer greater or equal to than zero.",
             "type" : "integer",
             "minimum" : 0
           },
@@ -363,6 +361,79 @@ redirect_from:
           }
         },
         "required" : [ "id" ]
+      },
+      "metabase.channel.models.channel/Channel" : {
+        "description" : "Channel schema.",
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "type", "details" ]
+      },
+      "metabase.channel.models.channel/ChannelTemplate" : {
+        "description" : "Channel Template schema.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { },
+            "details" : {
+              "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplateEmailDetails"
+            }
+          },
+          "required" : [ "channel_type", "details" ]
+        }, { } ]
+      },
+      "metabase.channel.models.channel/ChannelTemplateEmailDetails" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "path" : {
+              "type" : "string"
+            },
+            "recipient-type" : {
+              "enum" : [ "cc", "bcc", "cc", "bcc" ]
+            },
+            "subject" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "email/handlebars-resource", "email/handlebars-text", "email/handlebars-resource", "email/handlebars-text" ]
+            }
+          },
+          "required" : [ "type", "subject", "path" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "body" : {
+              "type" : "string"
+            },
+            "recipient-type" : {
+              "enum" : [ "cc", "bcc", "cc", "bcc" ]
+            },
+            "subject" : {
+              "type" : "string"
+            },
+            "type" : {
+              "enum" : [ "email/handlebars-resource", "email/handlebars-text", "email/handlebars-resource", "email/handlebars-text" ]
+            }
+          },
+          "required" : [ "type", "subject", "body" ]
+        } ]
       },
       "metabase.lib.schema.common/non-blank-string" : {
         "type" : "string",
@@ -405,6 +476,422 @@ redirect_from:
         "type" : "string",
         "enum" : [ "quarter", "day", "hour", "week", "second", "default", "day-of-week", "hour-of-day", "month", "month-of-year", "day-of-month", "year", "day-of-year", "millisecond", "year-of-era", "second-of-minute", "week-of-year", "quarter-of-year", "minute-of-hour", "minute" ]
       },
+      "metabase.models.notification/FullyHydratedNotification" : {
+        "description" : "Fully hydrated notification.",
+        "oneOf" : [ {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, { } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, { } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "type" : "object",
+                "properties" : { }
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "type" : "boolean"
+                    },
+                    "channel" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1Channel"
+                    },
+                    "channel_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.models.notification~1NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel~1ChannelTemplate"
+                    },
+                    "template_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1NotificationCard"
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.models.notification~1NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload" ]
+          }, { } ]
+        } ]
+      },
+      "metabase.models.notification/Notification" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "payload_id" : {
+              "type" : "null"
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            }
+          },
+          "required" : [ "payload_type" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "creator_id" : {
+              "type" : "integer"
+            },
+            "payload_id" : {
+              "type" : "integer"
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            }
+          },
+          "required" : [ "payload_type" ]
+        }, { } ]
+      },
+      "metabase.models.notification/NotificationCard" : {
+        "description" : "Schema for :model/NotificationCard.",
+        "type" : "object",
+        "properties" : {
+          "card" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "send_condition" : {
+            "type" : "string",
+            "enum" : [ "goal_below", "has_result", "goal_above" ]
+          },
+          "send_once" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "card_id" ]
+      },
+      "metabase.models.notification/NotificationHandler" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "channel_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "channel_type" : { },
+          "notification_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "template_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "channel_type" ]
+      },
+      "metabase.models.notification/NotificationRecipient" : {
+        "description" : "Schema for :model/NotificationRecipient.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "details" : { },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          },
+          "required" : [ "type", "user_id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : { },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "permissions_group_id" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : {
+              "type" : "object",
+              "properties" : {
+                "value" : { }
+              },
+              "required" : [ "value" ],
+              "additionalProperties" : false
+            },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "details" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "details" : {
+              "type" : "object",
+              "properties" : {
+                "is_optional" : {
+                  "type" : "boolean"
+                },
+                "pattern" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "pattern" ],
+              "additionalProperties" : false
+            },
+            "notification_handler_id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "permissions_group_id" : { },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-recipient/raw-value", "notification-recipient/user", "notification-recipient/template", "notification-recipient/group" ]
+            },
+            "user_id" : { }
+          },
+          "required" : [ "type", "details" ]
+        } ]
+      },
+      "metabase.models.notification/NotificationSubscription" : {
+        "description" : "Schema for :model/NotificationSubscription.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "cron_schedule" : {
+              "type" : "null"
+            },
+            "event_name" : {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            }
+          },
+          "required" : [ "type", "event_name" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "cron_schedule" : {
+              "type" : "string"
+            },
+            "event_name" : {
+              "type" : "null"
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            }
+          },
+          "required" : [ "type", "cron_schedule" ]
+        } ]
+      },
       "metabase.sync.schedules/ExpandedSchedulesMap" : {
         "description" : "value must be a valid map of schedule maps for a DB.",
         "type" : "object",
@@ -416,6 +903,9 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.util.cron~1ScheduleMap"
           }
         }
+      },
+      "metabase.tiles.api/field-id-or-name" : {
+        "type" : "string"
       },
       "metabase.timeline.api.timeline/include" : {
         "type" : "string",
@@ -928,89 +1418,6 @@ redirect_from:
           "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "/api/alert" ]
-      },
-      "post" : {
-        "summary" : "POST /api/alert/",
-        "description" : "Create a new Alert.",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "alert_above_goal" : {
-                    "type" : "boolean"
-                  },
-                  "alert_condition" : {
-                    "type" : "string",
-                    "enum" : [ "rows", "goal" ]
-                  },
-                  "alert_first_only" : {
-                    "type" : "boolean"
-                  },
-                  "card" : {
-                    "description" : "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                    "type" : "object",
-                    "properties" : {
-                      "dashboard_card_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "format_rows" : {
-                        "type" : "boolean"
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "include_csv" : {
-                        "type" : "boolean"
-                      },
-                      "include_xls" : {
-                        "type" : "boolean"
-                      },
-                      "pivot_results" : {
-                        "type" : "boolean"
-                      }
-                    },
-                    "required" : [ "include_csv", "include_xls", "id" ]
-                  },
-                  "channels" : { }
-                },
-                "required" : [ "alert_condition", "alert_first_only", "card", "channels" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/alert" ]
-      }
-    },
-    "/api/alert/question/{id}" : {
-      "get" : {
-        "summary" : "GET /api/alert/question/{id}",
-        "description" : "Fetch all alerts for the given question (`Card`) id",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          }
-        } ],
-        "tags" : [ "/api/alert" ]
       }
     },
     "/api/alert/{id}" : {
@@ -1027,75 +1434,6 @@ redirect_from:
           },
           "description" : "value must be an integer greater than zero."
         } ],
-        "tags" : [ "/api/alert" ]
-      },
-      "put" : {
-        "summary" : "PUT /api/alert/{id}",
-        "description" : "Update a `Alert` with ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "alert_above_goal" : {
-                    "type" : "boolean"
-                  },
-                  "alert_condition" : {
-                    "type" : "string",
-                    "enum" : [ "rows", "goal" ]
-                  },
-                  "alert_first_only" : {
-                    "type" : "boolean"
-                  },
-                  "archived" : {
-                    "type" : "boolean"
-                  },
-                  "card" : {
-                    "description" : "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                    "type" : "object",
-                    "properties" : {
-                      "dashboard_card_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "format_rows" : {
-                        "type" : "boolean"
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "include_csv" : {
-                        "type" : "boolean"
-                      },
-                      "include_xls" : {
-                        "type" : "boolean"
-                      },
-                      "pivot_results" : {
-                        "type" : "boolean"
-                      }
-                    },
-                    "required" : [ "include_csv", "include_xls", "id" ]
-                  },
-                  "channels" : { }
-                }
-              }
-            }
-          }
-        },
         "tags" : [ "/api/alert" ]
       }
     },
@@ -1278,8 +1616,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -1299,7 +1636,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}",
-        "description" : "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`\n   defined by\n   query `cell-query`.",
+        "description" : "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query\n  `cell-query`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1307,8 +1644,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1322,7 +1658,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "query",
           "name" : "show",
@@ -1352,8 +1688,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1367,7 +1702,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1398,7 +1733,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}",
-        "description" : "Return an automagic dashboard analyzing cell in question  with id `id` defined by\n   query `cell-query` using dashboard-template `dashboard-template`.",
+        "description" : "Return an automagic dashboard analyzing cell in question with id `id` defined by query `cell-query` using\n  dashboard-template `dashboard-template`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1406,8 +1741,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1420,8 +1754,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1433,7 +1766,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "query",
           "name" : "show",
@@ -1463,8 +1796,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1477,8 +1809,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1490,7 +1821,7 @@ redirect_from:
           "name" : "cell-query",
           "required" : true,
           "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
+          "description" : "form-encoded base-64-encoded JSON"
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1521,7 +1852,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
-        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity\n   `comparison-entity` with id `comparison-entity-id-or-query.`",
+        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity `comparison-entity`\n  with id `comparison-entity-id-or-query.`",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1537,8 +1868,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "comparison-entity",
@@ -1577,8 +1907,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         } ],
         "tags" : [ "/api/automagic-dashboards" ]
       }
@@ -1594,8 +1923,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1608,8 +1936,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1637,7 +1964,7 @@ redirect_from:
     "/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}" : {
       "get" : {
         "summary" : "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
-        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;\n   compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.",
+        "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template\n  `dashboard-template`; compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "entity",
@@ -1645,8 +1972,7 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
+          }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
@@ -1659,8 +1985,7 @@ redirect_from:
           "in" : "path",
           "name" : "prefix",
           "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
+          "schema" : { }
         }, {
           "in" : "path",
           "name" : "dashboard-template",
@@ -1841,7 +2166,7 @@ redirect_from:
                     "enum" : [ "root", "database", "dashboard", "question" ]
                   },
                   "model_id" : {
-                    "description" : "value must be an integer greater than zero.",
+                    "description" : "value must be an integer greater or equal to than zero.",
                     "type" : "integer",
                     "minimum" : 0
                   },
@@ -1873,7 +2198,7 @@ redirect_from:
                   "model_id" : {
                     "type" : "array",
                     "items" : {
-                      "description" : "value must be an integer greater than zero.",
+                      "description" : "value must be an integer greater or equal to than zero.",
                       "type" : "integer",
                       "minimum" : 0
                     }
@@ -1906,7 +2231,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -1919,7 +2244,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -1932,7 +2257,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
+              "description" : "value must be an integer greater or equal to than zero.",
               "type" : "integer",
               "minimum" : 0
             }
@@ -1981,6 +2306,11 @@ redirect_from:
                     "description" : "Value must be a map.",
                     "type" : "object",
                     "properties" : { }
+                  },
+                  "dashboard_tab_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   },
                   "entity_id" : {
                     "description" : "value must be a non-blank string.",
@@ -2285,23 +2615,6 @@ redirect_from:
         "tags" : [ "/api/card" ]
       }
     },
-    "/api/card/{card-id}/persist" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/persist",
-        "description" : "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this\n  query in place of the model's query.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
     "/api/card/{card-id}/public_link" : {
       "post" : {
         "summary" : "POST /api/card/{card-id}/public_link",
@@ -2427,40 +2740,6 @@ redirect_from:
         "tags" : [ "/api/card" ]
       }
     },
-    "/api/card/{card-id}/refresh" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/refresh",
-        "description" : "Refresh the persisted model caching `card-id`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
-    "/api/card/{card-id}/unpersist" : {
-      "post" : {
-        "summary" : "POST /api/card/{card-id}/unpersist",
-        "description" : "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's\n  query rather than the saved version of the query.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/card" ]
-      }
-    },
     "/api/card/{id}" : {
       "get" : {
         "summary" : "GET /api/card/{id}",
@@ -2525,6 +2804,11 @@ redirect_from:
                     "description" : "Value must be a map.",
                     "type" : "object",
                     "properties" : { }
+                  },
+                  "dashboard_tab_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   },
                   "collection_preview" : {
                     "type" : "boolean"
@@ -3635,7 +3919,7 @@ redirect_from:
             "items" : {
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
-              "minimum" : 0
+              "minimum" : 1
             }
           }
         }, {
@@ -3647,7 +3931,7 @@ redirect_from:
             "items" : {
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
-              "minimum" : 0
+              "minimum" : 1
             }
           }
         } ],
@@ -4244,7 +4528,7 @@ redirect_from:
                       "type" : "object",
                       "properties" : {
                         "col" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4266,7 +4550,7 @@ redirect_from:
                           }
                         },
                         "row" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4328,7 +4612,7 @@ redirect_from:
                       "type" : "object",
                       "properties" : {
                         "col" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4350,7 +4634,7 @@ redirect_from:
                           }
                         },
                         "row" : {
-                          "description" : "value must be an integer greater than zero.",
+                          "description" : "value must be an integer greater or equal to than zero.",
                           "type" : "integer",
                           "minimum" : 0
                         },
@@ -4481,57 +4765,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/dashboard/{id}/related",
         "description" : "Return related entities.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/dashboard" ]
-      }
-    },
-    "/api/dashboard/{id}/revert" : {
-      "post" : {
-        "summary" : "POST /api/dashboard/{id}/revert",
-        "description" : "Revert a Dashboard to a prior `Revision`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "revision_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  }
-                },
-                "required" : [ "revision_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/dashboard" ]
-      }
-    },
-    "/api/dashboard/{id}/revisions" : {
-      "get" : {
-        "summary" : "GET /api/dashboard/{id}/revisions",
-        "description" : "Fetch `Revisions` for Dashboard with ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -4987,23 +5220,6 @@ redirect_from:
         "tags" : [ "/api/database" ]
       }
     },
-    "/api/database/{id}/persist" : {
-      "post" : {
-        "summary" : "POST /api/database/{id}/persist",
-        "description" : "Attempt to enable model persistence for a database. If already enabled returns a generic 204.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/database" ]
-      }
-    },
     "/api/database/{id}/rescan_values" : {
       "post" : {
         "summary" : "POST /api/database/{id}/rescan_values",
@@ -5141,23 +5357,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/database/{id}/syncable_schemas",
         "description" : "Returns a list of all syncable schemas found for the database `id`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/database" ]
-      }
-    },
-    "/api/database/{id}/unpersist" : {
-      "post" : {
-        "summary" : "POST /api/database/{id}/unpersist",
-        "description" : "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -7754,7 +7953,7 @@ redirect_from:
       },
       "put" : {
         "summary" : "PUT /api/mt/gtap/{id}",
-        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
+        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -7947,6 +8146,253 @@ redirect_from:
           }
         },
         "tags" : [ "/api/native-query-snippet" ]
+      }
+    },
+    "/api/notification/" : {
+      "get" : {
+        "summary" : "GET /api/notification/",
+        "description" : "List notifications.\n  - `creator_id`: if provided returns only notifications created by this user\n  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient\n  - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient\n  - `card_id`: if provided returns only notification that has card_id as payload",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "creator_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "recipient_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_or_recipient_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "card_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_inactive",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pyaload_type",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+          }
+        } ],
+        "tags" : [ "/api/notification" ]
+      },
+      "post" : {
+        "summary" : "POST /api/notification/",
+        "description" : "Create a new notification, return the created notification.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/send" : {
+      "post" : {
+        "summary" : "POST /api/notification/send",
+        "description" : "Send an unsaved notification.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/unsubscribe/" : {
+      "post" : {
+        "summary" : "POST /api/notification/unsubscribe/",
+        "description" : "Allow non-users to unsubscribe from notifications, with the hash given through email.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "email" : {
+                    "type" : "string"
+                  },
+                  "hash" : {
+                    "type" : "string"
+                  },
+                  "notification-handler-id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "notification-handler-id", "email", "hash" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/unsubscribe" ]
+      }
+    },
+    "/api/notification/unsubscribe/undo" : {
+      "post" : {
+        "summary" : "POST /api/notification/unsubscribe/undo",
+        "description" : "Allow non-users to undo an unsubscribe from notifications, with the hash given through email.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "email" : {
+                    "type" : "string"
+                  },
+                  "hash" : {
+                    "type" : "string"
+                  },
+                  "notification-handler-id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "notification-handler-id", "email", "hash" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/unsubscribe" ]
+      }
+    },
+    "/api/notification/{id}" : {
+      "get" : {
+        "summary" : "GET /api/notification/{id}",
+        "description" : "Get a notification by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/notification" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/notification/{id}",
+        "description" : "Update a notification, can also update its subscriptions, handlers.\n  Return the updated notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.models.notification~1FullyHydratedNotification"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/{id}/send" : {
+      "post" : {
+        "summary" : "POST /api/notification/{id}/send",
+        "description" : "Send a notification by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "handler_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/{id}/unsubscribe" : {
+      "post" : {
+        "summary" : "POST /api/notification/{id}/unsubscribe",
+        "description" : "Unsubscribe current user from a notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/notification" ]
       }
     },
     "/api/notify/db/attached_datawarehouse" : {
@@ -8346,6 +8792,91 @@ redirect_from:
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/card/{card-id}/persist" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/persist",
+        "description" : "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this\n  query in place of the model's query.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/card/{card-id}/refresh" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/refresh",
+        "description" : "Refresh the persisted model caching `card-id`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/card/{card-id}/unpersist" : {
+      "post" : {
+        "summary" : "POST /api/persist/card/{card-id}/unpersist",
+        "description" : "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's\n  query rather than the saved version of the query.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/database/{id}/persist" : {
+      "post" : {
+        "summary" : "POST /api/persist/database/{id}/persist",
+        "description" : "Attempt to enable model persistence for a database. If already enabled returns a generic 204.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "/api/persist" ]
+      }
+    },
+    "/api/persist/database/{id}/unpersist" : {
+      "post" : {
+        "summary" : "POST /api/persist/database/{id}/unpersist",
+        "description" : "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
           "required" : true,
           "schema" : {
             "type" : "integer",
@@ -9746,7 +10277,7 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard" ]
+            "enum" : [ "card", "dashboard", "segment" ]
           }
         } ],
         "tags" : [ "/api/revision" ]
@@ -9765,7 +10296,7 @@ redirect_from:
                 "properties" : {
                   "entity" : {
                     "type" : "string",
-                    "enum" : [ "card", "dashboard" ]
+                    "enum" : [ "card", "dashboard", "segment" ]
                   },
                   "id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -9783,6 +10314,31 @@ redirect_from:
             }
           }
         },
+        "tags" : [ "/api/revision" ]
+      }
+    },
+    "/api/revision/{entity}/{id}" : {
+      "get" : {
+        "summary" : "GET /api/revision/{entity}/{id}",
+        "description" : "Fetch `Revisions` for an object with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entity",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "card", "dashboard", "segment" ]
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "tags" : [ "/api/revision" ]
       }
     },
@@ -10138,57 +10694,6 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/segment/{id}/related",
         "description" : "Return related entities.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/segment" ]
-      }
-    },
-    "/api/segment/{id}/revert" : {
-      "post" : {
-        "summary" : "POST /api/segment/{id}/revert",
-        "description" : "Revert a `Segement` to a prior `Revision`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "revision_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  }
-                },
-                "required" : [ "revision_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/segment" ]
-      }
-    },
-    "/api/segment/{id}/revisions" : {
-      "get" : {
-        "summary" : "GET /api/segment/{id}/revisions",
-        "description" : "Fetch `Revisions` for `Segment` with ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -10994,14 +11499,14 @@ redirect_from:
           "name" : "lat-field",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
           }
         }, {
           "in" : "path",
           "name" : "lon-field",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api~1field-id-or-name"
           }
         }, {
           "in" : "query",
@@ -11848,7 +12353,7 @@ redirect_from:
     }
   },
   "servers" : [ {
-    "url" : "http://localhost:3000/api",
+    "url" : "http://localhost:3000",
     "description" : "Localhost"
   } ]
 }

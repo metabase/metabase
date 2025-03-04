@@ -91,7 +91,7 @@ describe("ChartCaption", () => {
 
     await userEvent.hover(getIcon("info"));
 
-    const tooltipContent = screen.getByRole("link");
+    const tooltipContent = await screen.findByRole("link");
     expect(tooltipContent).toBeInTheDocument();
     expect(tooltipContent).toHaveTextContent("link");
   });

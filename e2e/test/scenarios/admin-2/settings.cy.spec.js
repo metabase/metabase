@@ -113,13 +113,10 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.contains("Redirect to HTTPS").should("not.exist");
 
     // switch site url to use https
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Site URL")
-      .parent()
-      .parent()
-      .findByTestId("select-button")
+    cy.findByTestId("site-url-setting")
+      .findByRole("textbox", { name: "input-prefix" })
       .click();
-    H.popover().contains("https://").click({ force: true });
+    H.popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -135,13 +132,10 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       req.reply({ forceNetworkError: true });
     }).as("httpsCheck");
     // switch site url to use https
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Site URL")
-      .parent()
-      .parent()
-      .findByTestId("select-button")
+    cy.findByTestId("site-url-setting")
+      .findByRole("textbox", { name: "input-prefix" })
       .click();
-    H.popover().contains("https://").click({ force: true });
+    H.popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -448,8 +442,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.startNewNativeQuestion().as("editor");
-        cy.get("@editor").type(nativeQuery);
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {

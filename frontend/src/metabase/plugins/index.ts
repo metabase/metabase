@@ -87,9 +87,7 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
 ) => AdminPathKey[])[] = [];
 
 export const PLUGIN_ADMIN_TOOLS = {
-  INDEX_ROUTE: "model-caching",
-  EXTRA_ROUTES_INFO: [],
-  EXTRA_ROUTES: [],
+  COMPONENT: null,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -510,6 +508,7 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  SimpleDataPicker: (_props: any) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

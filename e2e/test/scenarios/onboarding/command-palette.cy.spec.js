@@ -13,7 +13,7 @@ describe("command palette", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render a searchable command palette", { tags: "@flaky" }, () => {
+  it("should render a searchable command palette", () => {
     // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
@@ -24,7 +24,14 @@ describe("command palette", () => {
     cy.visit("/");
 
     cy.findByRole("button", { name: /Search/ }).click();
+    H.commandPalette().should("be.visible");
+    cy.findByRole("option", { name: "Orders in a dashboard" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
     H.closeCommandPalette();
+    H.commandPalette().should("not.exist");
 
     cy.log("open the command palette with keybinding");
     H.openCommandPalette();
@@ -222,13 +229,7 @@ describe("command palette", () => {
         H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
         H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
 
-        cy.button("Save changes").click();
-
-        H.modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.findByText("Are you sure you want to do this?");
-          cy.button("Yes").click();
-        });
+        H.saveChangesToPermissions();
 
         cy.findByRole("radiogroup").findByText("Data").click();
         cy.findByRole("menuitem", { name: "All Users" }).click();
@@ -239,13 +240,7 @@ describe("command palette", () => {
         H.modifyPermission("Sample Database", TABLE_METADATA_INDEX, "Yes");
         H.modifyPermission("Sample Database", DATABASE_INDEX, "Yes");
 
-        cy.button("Save changes").click();
-
-        H.modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.findByText("Are you sure you want to do this?");
-          cy.button("Yes").click();
-        });
+        H.saveChangesToPermissions();
 
         cy.signInAsNormalUser();
 

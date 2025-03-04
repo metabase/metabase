@@ -134,6 +134,7 @@ const PublicOrEmbeddedDashboardInner = ({
   bordered,
   titled,
   theme,
+  getClickActionMode,
   downloadsEnabled = true,
   hideParameters,
   withFooter,
@@ -158,7 +159,8 @@ const PublicOrEmbeddedDashboardInner = ({
   const previousDashboardId = usePrevious(dashboardId);
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
-
+  const isDashboardLoaded = dashboard != null;
+  const wasDashboardLoaded = usePrevious(isDashboardLoaded);
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
@@ -191,7 +193,12 @@ const PublicOrEmbeddedDashboardInner = ({
       return;
     }
 
-    if (!_.isEqual(parameterValues, previousParameterValues)) {
+    // `initializeData` changes `parameterValues`. We should not re-run queries
+    // in this case.
+    if (
+      wasDashboardLoaded &&
+      !_.isEqual(parameterValues, previousParameterValues)
+    ) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }, [
@@ -204,6 +211,7 @@ const PublicOrEmbeddedDashboardInner = ({
     previousDashboardId,
     previousParameterValues,
     previousSelectedTabId,
+    wasDashboardLoaded,
     selectedTabId,
     shouldFetchCardData,
   ]);
@@ -235,6 +243,7 @@ const PublicOrEmbeddedDashboardInner = ({
         bordered={bordered}
         titled={titled}
         theme={theme}
+        getClickActionMode={getClickActionMode}
         hideParameters={hideParameters}
         navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
         slowCards={slowCards}

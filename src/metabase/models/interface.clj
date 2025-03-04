@@ -682,6 +682,11 @@
   [& _]
   @(requiring-resolve 'metabase.api.common/*is-superuser?*))
 
+(defn current-user-id
+  "Return the ID of the current user."
+  []
+  @(requiring-resolve 'metabase.api.common/*current-user-id*))
+
 (defn- current-user-permissions-set []
   @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
 

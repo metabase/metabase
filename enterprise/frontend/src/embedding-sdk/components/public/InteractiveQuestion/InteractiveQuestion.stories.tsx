@@ -52,7 +52,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    saveToCollection: undefined,
     title: true,
     withResetButton: true,
   },
@@ -72,6 +72,17 @@ export const EditorOnly = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollectionId: undefined,
+    saveToCollection: undefined,
   },
+};
+
+export const CreateQuestion = {
+  render(args: InteractiveQuestionComponentProps) {
+    return (
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <InteractiveQuestion {...args} />
+      </Box>
+    );
+  },
+  args: { questionId: "new" },
 };

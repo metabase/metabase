@@ -600,30 +600,30 @@
             db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
                                                                                        :engine  (u/qualified-name driver/*driver*)
                                                                                        :details connection-details}))
-            _                  (sync/sync-database! db)]
-        (let [;; 2. start a long running process on another thread that uses a connection
-              connections-stay-open? (future
-                                       (sql-jdbc.execute/do-with-connection-with-options
-                                        driver/*driver*
-                                        db
-                                        nil
-                                        (fn [^Connection conn]
-                                          ;; sleep long enough to make sure the PUT request below finishes processing,
-                                          ;; including any async operations that it might trigger
-                                          (Thread/sleep 1000)
-                                          ;; test the connection is open by executing a query
-                                          (try
-                                            (let [stmt      (.createStatement conn)
-                                                  resultset (.executeQuery stmt "SELECT 1")]
-                                              (.next resultset))
-                                            (catch Exception _e
-                                              false)))))]
-          ;; 3. update the database's `database-enable-actions` setting
-          (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                {:settings {:database-enable-actions true}})
-          ;; 4. test the connection was still open at the end of it of the long running process
-          (is (true? @connections-stay-open?))
-          (tx/destroy-db! driver/*driver* empty-dbdef))))))
+            _                  (sync/sync-database! db)
+            ;; 2. start a long running process on another thread that uses a connection
+            connections-stay-open? (future
+                                     (sql-jdbc.execute/do-with-connection-with-options
+                                      driver/*driver*
+                                      db
+                                      nil
+                                      (fn [^Connection conn]
+                                        ;; sleep long enough to make sure the PUT request below finishes processing,
+                                        ;; including any async operations that it might trigger
+                                        (Thread/sleep 1000)
+                                        ;; test the connection is open by executing a query
+                                        (try
+                                          (let [stmt      (.createStatement conn)
+                                                resultset (.executeQuery stmt "SELECT 1")]
+                                            (.next resultset))
+                                          (catch Exception _e
+                                            false)))))]
+        ;; 3. update the database's `database-enable-actions` setting
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                              {:settings {:database-enable-actions true}})
+        ;; 4. test the connection was still open at the end of it of the long running process
+        (is (true? @connections-stay-open?))
+        (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -2237,3 +2237,24 @@
                 (mt/user-http-request :rasta :get 200
                                       (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                       :query "flozzlebarger"))))))))
+
+(deftest healthcheck-works
+  (testing "GET /api/database/:id/healthcheck"
+    (mt/with-temp [:model/Database {id :id} {}]
+      (with-redefs [driver/available?   (constantly true)
+                    driver/can-connect? (constantly true)]
+        (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
+    (mt/with-temp [:model/Database {id :id} {}]
+      (testing "connection throws"
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (fn [& _args]
+                                            (throw (Exception. "oh no")))]
+          (is (= {:status "error"
+                  :message "oh no"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
+      (testing "connection just fails, doesn't throw"
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (constantly false)]
+          (is (= {:status "error"
+                  :message "Failed to connect to Database"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))

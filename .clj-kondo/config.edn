@@ -341,6 +341,7 @@
     medley.core                                                   m
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
+    metabase-enterprise.sandbox.api.util                          sandbox.api.util
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
@@ -530,7 +531,7 @@
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
-  metabase.db.data-migrations/defmigration                                              clojure.core/def
+  metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
   metabase.db.liquibase/with-liquibase                                                  clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
@@ -542,6 +543,13 @@
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
+  metabase.models.util.spec-update/define-spec                                          clojure.core/def
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.notification.test-util/with-card-notification                                clojure.core/let
+  metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
+  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
@@ -707,6 +715,10 @@
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.util.i18n/tru                                                                                                    hooks.metabase.util.i18n/tru
+   metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
+   metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
+   metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/debugf                                                                                                  hooks.metabase.util.log/infof
@@ -730,7 +742,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                        macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                      macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                macros.quartz/build-trigger
-   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!          macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.impersonation.util-test/with-impersonations!                     macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!             macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -821,7 +833,9 @@
 
   source-namespaces
   {:linters
-   {:discouraged-var
+   {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
 

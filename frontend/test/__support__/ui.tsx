@@ -1,5 +1,4 @@
 import { Global } from "@emotion/react";
-import type { MantineThemeOverride } from "@mantine/core";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
@@ -24,6 +23,7 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";

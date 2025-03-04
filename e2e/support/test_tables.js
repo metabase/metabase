@@ -167,6 +167,44 @@ export const no_pk_table = async dbClient => {
   return null;
 };
 
+export const bigint_pk_table = async dbClient => {
+  const tableName = "bigint_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.bigInteger("id").primary();
+    table.string("name");
+  });
+
+  await dbClient(tableName).insert([
+    { id: "-9223372036854775808", name: "Negative" },
+    { id: "0", name: "Zero" },
+    { id: "9223372036854775807", name: "Positive" },
+  ]);
+
+  return null;
+};
+
+export const decimal_pk_table = async dbClient => {
+  const tableName = "decimal_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.decimal("id", 38, 10).primary();
+    table.string("name");
+  });
+
+  await dbClient(tableName).insert([
+    { id: "-9223372036854775809", name: "Negative" },
+    { id: "0", name: "Zero" },
+    { id: "9223372036854775808", name: "Positive" },
+  ]);
+
+  return null;
+};
+
 export const multi_schema = async dbClient => {
   const schemas = {
     Domestic: {

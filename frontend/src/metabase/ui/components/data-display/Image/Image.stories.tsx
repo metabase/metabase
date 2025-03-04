@@ -35,7 +35,7 @@ const DefaultTemplate = (args: ImageProps) => (
 );
 
 export default {
-  title: "Data display/Image",
+  title: "Components/Data display/Image",
   component: Image,
   args,
   argTypes,

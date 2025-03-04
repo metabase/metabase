@@ -58,18 +58,11 @@ export const SharingPaneButton = ({
           w="100%"
           bg="var(--mb-color-background-disabled)"
         >
-          <Text
-            c="var(--mb-color-text-secondary)"
-            fw="bold"
-            ta="center"
-            py="sm"
-            lh="1"
-          >
-            {t`Disabled.`}
+          <Text c="text-secondary" fw="bold" ta="center" py="sm" lh="normal">
+            {t`Disabled.`}{" "}
             <Box
-              ml="xs"
               component={Link}
-              variant="brand"
+              c="brand"
               to={disabledLink}
             >{t`Enable in admin settings`}</Box>
           </Text>

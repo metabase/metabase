@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";

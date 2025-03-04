@@ -1,22 +1,23 @@
 (ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.common-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util-test
-    :as advanced-perms.api.tu]
    [metabase-enterprise.advanced-permissions.common
     :as advanced-permissions.common]
+   [metabase-enterprise.impersonation.util-test
+    :as advanced-perms.api.tu]
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
+   [metabase.models.field-values :as field-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -586,6 +587,8 @@
 (deftest table-rescan-values-test
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/rescan_values"
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/rescan_values" table-id)))
@@ -594,9 +597,9 @@
           (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
 
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
-        (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+        (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+        (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
@@ -720,6 +723,8 @@
                    :model/Table       {table-id :id}  {:db_id db-id}
                    :model/Field       {field-id :id}  {:table_id table-id}
                    :model/FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (with-redefs [api.database/*rescan-values-async* false]
         (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
           (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
@@ -744,8 +749,8 @@
             (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
 
         (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
-          (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
-          (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
+          (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+          (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :details        :yes}}

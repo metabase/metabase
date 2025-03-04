@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
@@ -13,6 +14,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
+      --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
       --mb-color-brand: ${theme.colors.brand[0]};

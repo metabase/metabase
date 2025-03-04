@@ -185,6 +185,7 @@
  [premium-features.test-util
   with-premium-features
   with-additional-premium-features
+  when-ee-evailable
   assert-has-premium-feature-error]
 
  [perms.test-util
@@ -266,6 +267,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  transitive
   repeat-concurrently
   with-all-users-permission
   with-column-remappings

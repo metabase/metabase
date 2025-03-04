@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
@@ -40,11 +41,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   );
 
   return tooltip ? (
-    <Tooltip
-      style={{ whiteSpace: "unset" }}
-      label={tooltip}
-      data-testid="wrapped-tooltip"
-    >
+    <Tooltip label={tooltip} data-testid="icon-tooltip">
       {icon}
     </Tooltip>
   ) : (

@@ -493,25 +493,25 @@
                        (remove (fn [dimension] (= "Lat" (ffirst dimension))) dimensions))}
                      candidate-bindings)))))))
       (testing "A table with a more specific entity-type will match to more specific binding definitions."
-        (let [table (t2/select-one :model/Table (mt/id :people))]
-          (let [{{:keys [entity_type]} :source :as root} (#'magic/->root table)
-                base-context       (#'magic/make-base-context root)
-                dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}
-                                    {"GenericNumber" {:field_type [:type/Number], :score 70}}
-                                    {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
-                                    {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
-                                    {"Lat" {:field_type [:type/Latitude], :score 90}}
-                                    {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 95}}
-                                    {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
-            (testing "For a model, the entity_type is :entity/UserTable"
-              (is (= :entity/UserTable entity_type)))
-            (testing "A table of type :entity/UserTable will match on all 6 of the above dimension definitions."
-              (is (= (count dimensions)
-                     (-> (mt/id :people :latitude)
-                         candidate-bindings
-                         count))))
-            (testing "The return shape of candidate bindings is a map of bound field id to sequence of dimension
+        (let [table (t2/select-one :model/Table (mt/id :people))
+              {{:keys [entity_type]} :source :as root} (#'magic/->root table)
+              base-context       (#'magic/make-base-context root)
+              dimensions         [{"Loc" {:field_type [:type/Location], :score 60}}
+                                  {"GenericNumber" {:field_type [:type/Number], :score 70}}
+                                  {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
+                                  {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                                  {"Lat" {:field_type [:type/Latitude], :score 90}}
+                                  {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 95}}
+                                  {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
+              candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
+          (testing "For a model, the entity_type is :entity/UserTable"
+            (is (= :entity/UserTable entity_type)))
+          (testing "A table of type :entity/UserTable will match on all 6 of the above dimension definitions."
+            (is (= (count dimensions)
+                   (-> (mt/id :people :latitude)
+                       candidate-bindings
+                       count))))
+          (testing "The return shape of candidate bindings is a map of bound field id to sequence of dimension
                       definitions, each of which has been associated a matches vector containing a single element --
                       the field whose id is the id of the key in this map entry. E.g. if your field id is 1, the result
                       will look like {1 [(assoc matched-dimension-definition-1 :matches [field 1])
@@ -520,14 +520,14 @@
 
                       While this looks super weird, it groups a single field to every potential binding in the
                       dimension definition list."
-              (is (=?
-                   {(mt/id :people :latitude)
-                    (map
-                     (fn [m]
-                       (update-vals m (fn [v]
-                                        (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                     dimensions)}
-                   (select-keys candidate-bindings [(mt/id :people :latitude)]))))))))))
+            (is (=?
+                 {(mt/id :people :latitude)
+                  (map
+                   (fn [m]
+                     (update-vals m (fn [v]
+                                      (assoc v :matches [{:id (mt/id :people :latitude)}]))))
+                   dimensions)}
+                 (select-keys candidate-bindings [(mt/id :people :latitude)])))))))))
 
 (deftest ^:parallel grounded-metrics-test
   (mt/dataset test-data

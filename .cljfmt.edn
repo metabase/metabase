@@ -81,7 +81,7 @@
   throttle.core/with-throttling                                                        [[:block 1]]
   ;; the rest of the stuff in this list is generated automatically based on `:style/indent` specs
   ;; by running [[dev.generate-cljfmt-config/specs]]... use that code to update this list
-  metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!          [[:inner 0]]
+  metabase-enterprise.impersonation.util-test/with-impersonations!                     [[:inner 0]]
   metabase-enterprise.cache.config-test/with-temp-persist-models                       [[:block 1]]
   metabase-enterprise.sandbox.test-util/with-gtaps!                                    [[:inner 0]]
   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                           [[:inner 0]]
@@ -213,6 +213,7 @@
   metabase.sync.util/with-start-and-finish-logging                                     [[:default]]
   metabase.sync.util/with-start-and-finish-logging*                                    [[:default]]
   metabase.sync.util/with-sync-events                                                  [[:default]]
+  metabase.task/rerun-on-error                                                         [[:block 1]]
   metabase.test/$ids                                                                   [[:inner 0]]
   metabase.test/as-admin                                                               [[:inner 0]]
   metabase.test/dataset                                                                [[:inner 0]]

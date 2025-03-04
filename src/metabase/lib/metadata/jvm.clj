@@ -1,21 +1,20 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
+   [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -32,18 +31,12 @@
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
-;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
-;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
-(let [cache      (java.util.concurrent.ConcurrentHashMap.)
-      mapping-fn (reify java.util.function.Function
-                   (apply [_this k]
-                     (u/->kebab-case-en k)))]
-  (defn- memoized-kebab-key
-    "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
-  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
+(def ^{:private true
+       :arglists '([k])} memoized-kebab-key
+  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
+  [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-    [k]
-    (.computeIfAbsent cache k mapping-fn)))
+  (u.memo/fast-memo u/->kebab-case-en))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
@@ -76,8 +69,7 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)
-        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
+  (let [database (instance->metadata database :metadata/database)]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 
@@ -108,8 +100,6 @@
 ;;;
 
 (derive :metadata/column :model/Field)
-
-(def ^:private ^:dynamic *table-idents* nil)
 
 (methodical/defmethod t2.model/resolve-model :metadata/column
   [model]
@@ -180,14 +170,15 @@
 
 (t2/define-after-select :metadata/column
   [field]
-  (let [field          (instance->metadata field :metadata/column)
+  (let [entity-id      (serdes/backfill-entity-id field)
+        field          (instance->metadata field :metadata/column)
         dimension-type (some-> (:dimension/type field) keyword)]
     (merge
      (dissoc field
+             :table
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
-     (when-let [prefix (get *table-idents* (:table-id field))]
-       {:ident (lib.metadata.ident/ident-for-field prefix field)})
+     {:ident entity-id}
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -357,11 +348,10 @@
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
     :metadata/column
-    (into [] (lib.metadata.ident/attach-idents #(get *table-idents* %))
-          (t2/select :metadata/column
-                     :table_id        table-id
-                     :active          true
-                     :visibility_type [:not-in #{"sensitive" "retired"}]))
+    (t2/select :metadata/column
+               :table_id        table-id
+               :active          true
+               :visibility_type [:not-in #{"sensitive" "retired"}])
 
     :metadata/metric
     (t2/select :metadata/metric :table_id table-id, :source_card_id [:= nil], :type :metric, :archived false)
@@ -374,47 +364,16 @@
     :metadata/metric
     (t2/select :metadata/metric :source_card_id card-id, :type :metric, :archived false)))
 
-(defn- database-name [database-id atom-db-name]
-  (if-let [db-name @atom-db-name]
-    db-name
-    (reset! atom-db-name (:name (database database-id)))))
-
-(defn- table-idents [db-name tbls]
-  (into {} (comp (filter identity)
-                 (map (juxt :id #(lib.metadata.ident/table-prefix db-name %))))
-        tbls))
-
-(defn- ensure-table-idents [table-idents-atom db-name table-ids]
-  (let [id->ident (or @table-idents-atom {})]
-    (or (when-let [missing-ids (not-empty (into #{} (remove id->ident) table-ids))]
-          (log/debugf "Fetching tables for their idents: %s" (pr-str missing-ids))
-          (let [tbls (t2/select :metadata/table :id [:in missing-ids])]
-            (swap! table-idents-atom merge (table-idents db-name tbls))))
-        id->ident)))
-
-(defn- attach-idents [table-idents-atom db-name columns]
-  (let [table-ids (into #{} (map :table-id) columns)
-        id->ident (ensure-table-idents table-idents-atom db-name table-ids)]
-    (lib.metadata.ident/attach-idents id->ident columns)))
-
-(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id db-name-atom table-idents-atom]
+(p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (let [db (database database-id)]
-      (reset! db-name-atom (:name db))
-      db))
+    (database database-id))
   (metadatas [_this metadata-type ids]
-    (let [ms (metadatas database-id metadata-type ids)]
-      (cond->> ms
-        (= metadata-type :metadata/column) (attach-idents table-idents-atom (database-name database-id db-name-atom)))))
+    (metadatas database-id metadata-type ids))
   (tables [_this]
-    (let [tbls (tables database-id)]
-      (swap! table-idents-atom merge (table-idents (database-name database-id db-name-atom) tbls))
-      tbls))
+    (tables database-id))
   (metadatas-for-table [_this metadata-type table-id]
-    (ensure-table-idents table-idents-atom (database-name database-id db-name-atom) [table-id])
-    (binding [*table-idents* @table-idents-atom]
-      (metadatas-for-table metadata-type table-id)))
+    (metadatas-for-table metadata-type table-id))
   (metadatas-for-card [_this metadata-type card-id]
     (metadatas-for-card metadata-type card-id))
   (setting [_this setting-name]
@@ -436,7 +395,7 @@
   Call [[application-database-metadata-provider]] instead, which wraps this inner function with optional, dynamically
   scoped caching, to allow reuse of `MetadataProvider`s across the life of an API request."
   [database-id]
-  (-> (->UncachedApplicationDatabaseMetadataProvider database-id (atom nil) (atom {}))
+  (-> (->UncachedApplicationDatabaseMetadataProvider database-id)
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 
@@ -447,6 +406,15 @@
 
   This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
   nil)
+
+(defmacro with-metadata-provider-cache
+  "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
+
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  [& body]
+  `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
+                                           (atom (cache/basic-cache-factory {})))]
+     ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

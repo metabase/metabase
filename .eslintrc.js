@@ -22,6 +22,9 @@ module.exports = {
       },
     ],
     "no-empty": [1, { allowEmptyCatch: true }],
+    // Note: adding this rule to a eslint config file in a subfolder will remove
+    // *not* carry over the restricted imports from parent folders, you will
+    // need to copy them over
     "no-restricted-imports": [
       "error",
       {
@@ -168,6 +171,7 @@ module.exports = {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
         "no-unconditional-metabase-links-render": "error",
+        "no-color-literals": "error",
         "no-literal-metabase-strings": "error",
         "depend/ban-dependencies": [
           "error",
@@ -189,11 +193,13 @@ module.exports = {
         "frontend/src/metabase/setup/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
+        "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
       ],
       rules: {
+        "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
       },

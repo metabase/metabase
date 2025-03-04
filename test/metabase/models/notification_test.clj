@@ -14,6 +14,18 @@
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
+(def default-system-event-notification
+  {:payload_type :notification/system-event
+   :active       true})
+
+(def default-user-invited-subscription
+  {:type       :notification-subscription/system-event
+   :event_name :event/user-invited})
+
+(def default-card-created-subscription
+  {:type       :notification-subscription/system-event
+   :event_name :event/card-create})
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Life cycle test                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -28,8 +40,45 @@
                                                                 :updated_at   :%now})))))
 
     (testing "failed if payload_type is invalid"
-      (is (thrown-with-msg? Exception #"Invalid value :notification/not-existed\. Must be one of .*"
+      (is (thrown-with-msg? Exception #"Value does not match schema*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
+
+(deftest disallow-update-notification-type-test
+  (testing "can't change notification payload"
+    (mt/with-temp [:model/Notification {noti-id :id} default-system-event-notification]
+      (is (thrown-with-msg?
+           java.lang.Exception
+           #"Update payload_type is not allowed."
+           (t2/update! :model/Notification noti-id {:payload_type :notification/card
+                                                    :payload_id   1337
+                                                    :creator_id   (mt/user->id :crowberto)})))))
+  (testing "can't change payload id"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (is (thrown-with-msg?
+           java.lang.Exception
+           #"Update payload_id is not allowed."
+           (t2/update! :model/Notification noti-id {:payload_id 1338})))))
+
+  (testing "can't change creator id"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (is (thrown-with-msg?
+           java.lang.Exception
+           #"Update creator_id is not allowed."
+           (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))))))
+
+(deftest delete-notification-clean-up-payload-test
+  (testing "cleanup :model/NotificationCard on delete"
+    (notification.tu/with-card-notification [notification {}]
+      (let [notification-card-id (-> notification :payload :id)]
+        (testing "sanity check"
+          (is (t2/exists? :model/NotificationCard notification-card-id)))
+        (testing "delete notification will delete notification card"
+          (t2/delete! :model/Notification (:id notification))
+          (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
@@ -67,18 +116,6 @@
                             (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
                                                                          :event_name     :user-join
                                                                          :notification_id n-id}))))))
-
-(def default-system-event-notification
-  {:payload_type :notification/system-event
-   :active       true})
-
-(def default-user-invited-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/user-invited})
-
-(def default-card-created-subscription
-  {:type       :notification-subscription/system-event
-   :event_name :event/card-create})
 
 (deftest create-notification!+hydration-keys-test
   (mt/with-model-cleanup [:model/Notification]
@@ -145,7 +182,7 @@
                                                           :email "lucky@metabase.com"}
                                                          {:id    (mt/user->id :rasta)
                                                           :email "rasta@metabase.com"}]}}]
-                      (:recipients (t2/hydrate noti-handler :recipients)))))))))))
+                      (:recipients (t2/hydrate noti-handler [:recipients :recipients-detail])))))))))))
 
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"
@@ -226,45 +263,29 @@
                                 (insert! {:type                 :notification-recipient/group
                                           :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
                                           :details              {:something :new}})))))
-      (testing "notifciation-recipient/external-email"
-        (testing "success with email"
-          (is (some? (insert! {:type    :notification-recipient/external-email
-                               :details {:email "ngoc@metabase.com"}}))))
+      (testing "notifciation-recipient/raw-value"
+        (testing "success with value"
+          (is (some? (insert! {:type    :notification-recipient/raw-value
+                               :details {:value "ngoc@metabase.com"}}))))
 
         (testing "fail if details does not match schema"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type    :notification-recipient/external-email
-                                          :details {:email     "ngoc@metabase.com"
-                                                    :not-email true}}))))
-        (testing "fail without email"
+                                (insert! {:type    :notification-recipient/raw-value
+                                          :details {:value "ngoc@metabase.com"
+                                                    :extra true}}))))
+        (testing "fail without value"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type :notification-recipient/external-email}))))
+                                (insert! {:type :notification-recipient/raw-value}))))
         (testing "if has user_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type    :notification-recipient/external-email
+                                (insert! {:type    :notification-recipient/raw-value
                                           :user_id 1
-                                          :details {:email "ngoc@metabase.com"}}))))
+                                          :details {:value "ngoc@metabase.com"}}))))
         (testing "if has permissions_group_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
-                                (insert! {:type                 :notification-recipient/external-email
+                                (insert! {:type                 :notification-recipient/raw-value
                                           :permissions_group_id 1
-                                          :details              {:email "ngoc@metabase.com"}}))))))))
-
-(defn- send-notification-triggers
-  [subscription-id]
-  (map
-   #(select-keys % [:key :schedule :data :timezone])
-   (task/existing-triggers @#'task.notification/send-notification-job-key
-                           (#'task.notification/send-notification-trigger-key subscription-id))))
-
-(defn- subscription->trigger-info
-  ([subscription-id cron-schedule]
-   (subscription->trigger-info subscription-id cron-schedule "UTC"))
-  ([subscription-id cron-schedule timezone]
-   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
-    :schedule cron-schedule
-    :data     {"subscription-id" subscription-id}
-    :timezone timezone}))
+                                          :details              {:value "ngoc@metabase.com"}}))))))))
 
 (deftest update-subscription-trigger-test
   (mt/with-temp-scheduler!
@@ -274,38 +295,38 @@
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (= [(subscription->trigger-info
+          (is (= [(notification.tu/subscription->trigger-info
                    sub-id
                    "0 * * * * ? *")]
-                 (send-notification-triggers sub-id)))
+                 (notification.tu/send-notification-triggers sub-id)))
           (testing "update trigger when cron schedule is changed"
             (t2/update! :model/NotificationSubscription sub-id {:cron_schedule "1 * * * * ? *"})
-            (is (= [(subscription->trigger-info
+            (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
-                   (send-notification-triggers sub-id))))
+                   (notification.tu/send-notification-triggers sub-id))))
 
           (testing "delete the trigger when type changes"
             (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
                                                                 :cron_schedule nil
                                                                 :event_name :event/card-create})
-            (is (empty? (send-notification-triggers sub-id))))))
+            (is (empty? (notification.tu/send-notification-triggers sub-id))))))
 
       (testing "delete the trigger when delete subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (not-empty (send-notification-triggers sub-id)))
+          (is (not-empty (notification.tu/send-notification-triggers sub-id)))
           (t2/delete! :model/NotificationSubscription sub-id)
-          (is (empty? (send-notification-triggers sub-id)))))
+          (is (empty? (notification.tu/send-notification-triggers sub-id)))))
 
       (testing "delete notification will delete all subscription triggers"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
-          (is (not-empty (send-notification-triggers sub-id)))
+          (is (not-empty (notification.tu/send-notification-triggers sub-id)))
           (t2/delete! :model/Notification noti-id)
-          (is (empty? (send-notification-triggers sub-id))))))))
+          (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
   (mt/with-temp-scheduler!
@@ -316,8 +337,28 @@
           (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                  :cron_schedule   "0 * * * * ? *"
                                                                                  :notification_id noti-id})]
-            (is (= [(subscription->trigger-info
+            (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "0 * * * * ? *"
                      "Asia/Ho_Chi_Minh")]
-                   (send-notification-triggers sub-id)))))))))
+                   (notification.tu/send-notification-triggers sub-id)))))))))
+
+(deftest archive-notification-triggers-test
+  (mt/with-temp-scheduler!
+    (task/init! ::task.notification/SendNotifications)
+    (notification.tu/with-temp-notification
+      [{id :id} {:notification  {:active true :payload_type :notification/testing}
+                 :subscriptions [{:type          :notification-subscription/cron
+                                  :cron_schedule "0 * * * * ? *"}
+                                 {:type          :notification-subscription/cron
+                                  :cron_schedule "1 * * * * ? *"}]}]
+      (testing "sanity check that it has a trigger to begin with"
+        (is (= 2 (count (notification.tu/notification-triggers id)))))
+
+      (testing "disabled notification should remove triggers"
+        (t2/update! :model/Notification id {:active false})
+        (is (empty? (notification.tu/notification-triggers id))))
+
+      (testing "activate notification should restore triggers"
+        (t2/update! :model/Notification id {:active true})
+        (is (= 2 (count (notification.tu/notification-triggers id))))))))

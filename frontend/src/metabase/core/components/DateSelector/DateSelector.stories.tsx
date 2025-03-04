@@ -5,7 +5,7 @@ import { useState } from "react";
 import DateSelector, { type DateSelectorProps } from "./DateSelector";
 
 export default {
-  title: "Core/DateSelector",
+  title: "Components/Ask Before Using/DateSelector",
   component: DateSelector,
 };
 

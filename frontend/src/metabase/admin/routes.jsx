@@ -1,7 +1,5 @@
 import { Fragment } from "react";
 import { IndexRedirect, IndexRoute } from "react-router";
-import { routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -44,7 +42,6 @@ import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { MetabaseReduxContext } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
@@ -52,29 +49,10 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
 } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
 
 import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
-
-const UserCanAccessTools = connectedReduxRedirect({
-  wrapperDisplayName: "UserCanAccessTools",
-  redirectPath: "/admin",
-  allowRedirectBack: false,
-  authenticatedSelector: state => {
-    if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
-      return true;
-    }
-    const isModelPersistenceEnabled = getSetting(
-      state,
-      "persisted-models-enabled",
-    );
-    const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
-    return !hasLoadedSettings || isModelPersistenceEnabled;
-  },
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
+import { ToolsUpsell } from "./tools/components/ToolsUpsell";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -183,12 +161,17 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           ))}
         </Route>
       </Route>
-      <Route
-        path="tools"
-        component={UserCanAccessTools(createAdminRouteGuard("tools"))}
-      >
+      <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={Tools}>
-          <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
+          <IndexRedirect to="errors" />
+          <Route
+            key="error-overview"
+            path="errors"
+            title={t`Erroring Questions`}
+            // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
+            // appropriate enterprise component. The upsell component is shown in all other cases.
+            component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
+          />
           <Route
             path="model-caching"
             title={t`Model Caching Log`}
@@ -196,7 +179,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
-          {PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES}
         </Route>
       </Route>
       {/* PLUGINS */}

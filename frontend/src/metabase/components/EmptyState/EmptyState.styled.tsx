@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { breakpointMinSmall } from "metabase/styled-components/theme";
@@ -8,11 +9,6 @@ export const EmptyStateHeader = styled.div`
   align-items: center;
   justify-content: center;
   text-align: center;
-`;
-
-export const EmptyStateFooter = styled.div`
-  display: flex;
-  margin-top: 1rem;
 `;
 
 export const EmptyStateActions = styled.div`

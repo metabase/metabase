@@ -459,15 +459,16 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (merge
-    (first (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
-                                                :type     :query
-                                                :query    {:source-table table-id
-                                                           :aggregation  [[aggregation-type [:field-id field-id]]]
-                                                           :aggregation-idents {0 (u/generate-nano-id)}}}))
-    (when (= aggregation-type :cum-count)
-      {:base_type     :type/Decimal
-       :semantic_type :type/Quantity}))))
+   (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
+                                            :type     :query
+                                            :query    {:source-table table-id
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]
+                                                       :aggregation-idents {0 (u/generate-nano-id)}}})
+       first
+       (merge (when (= aggregation-type :cum-count)
+                {:base_type     :type/Decimal
+                 :semantic_type :type/Quantity}))
+       (dissoc :ident :lib/source-uuid :lib/source_uuid))))
 
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
@@ -876,7 +877,7 @@
     [_driver]
     {:access_key (u.random/random-name)}))
 
-(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite]]
+(doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/arrays]
     [_driver _feature _database]
     true))
@@ -903,3 +904,73 @@
 (defmethod native-array-query :snowflake
   [_driver]
   "select array_construct('a', 'b', 'c')")
+
+(defmethod native-array-query :oracle
+  [_driver]
+  "select cast(collect(1) as sys.odcinumberlist) from dual")
+
+(doseq [driver [:postgres :vertica :athena :oracle]]
+  (defmethod driver/database-supports? [driver :test/null-arrays]
+    [_driver _feature _database]
+    true))
+
+;; redshift doesn't have a way to to return null as an array
+(defmethod driver/database-supports? [:redshift :test/null-arrays]
+  [_driver _feature _database]
+  false)
+
+(defmulti native-null-array-query
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-null-array-query :default
+  [_driver]
+  "select cast(null as integer[])")
+
+(defmethod native-null-array-query :athena
+  [_driver]
+  "select cast(null as array<integer>)")
+
+(defmethod native-null-array-query :oracle
+  [_driver]
+  "select cast(null as sys.odcinumberlist) from dual")
+
+(doseq [driver [:postgres :athena :oracle]]
+  (defmethod driver/database-supports? [driver :test/array-aggregation]
+    [_driver _feature _database]
+    true))
+
+;; redshift only supports listagg which returns a string
+(defmethod driver/database-supports? [:redshift :test/array-aggregation]
+  [_driver _feature _database]
+  false)
+
+(defmulti agg-venues-by-category-id
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod agg-venues-by-category-id :postgres
+  [_driver]
+  "select category_id, array_agg(name)
+   from public.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")
+
+(defmethod agg-venues-by-category-id :oracle
+  [_driver]
+  "select \"category_id\", cast(collect(\"name\") AS sys.odcivarchar2list)
+   from \"mb_test\".\"test_data_venues\"
+   group by \"category_id\"
+   order by \"category_id\" asc
+   fetch first 2 rows only")
+
+(defmethod agg-venues-by-category-id :athena
+  [_driver]
+  "select category_id, array_agg(name)
+   from test_data.venues
+   group by category_id
+   order by 1 asc
+   limit 2;")

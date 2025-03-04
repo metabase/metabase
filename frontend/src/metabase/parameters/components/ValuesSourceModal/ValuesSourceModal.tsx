@@ -70,7 +70,7 @@ const ValuesSourceModal = ({
 
 /**
  * after using this function to initialize sourceType, we know that:
- * (intial sourceType === null) => hasFields(parameter)
+ * (initial sourceType === null) => hasFields(parameter)
  */
 const getInitialSourceType = (parameter: UiParameter) => {
   const sourceType = getSourceType(parameter);

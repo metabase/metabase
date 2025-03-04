@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -19,6 +20,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.card :as card]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -702,6 +704,13 @@
    {:added {}, :updated {}}
    (map vector field-names existing-types new-types)))
 
+(defn- old-column-types
+  [driver field-names existing-types]
+  (->> (for [[field-name col-type] (map vector field-names existing-types)
+             :when col-type]
+         [(keyword field-name) (database-type driver col-type)])
+       (into {})))
+
 (defn- field->db-type [driver field->col-type]
   (m/map-kv
    (fn [field-name col-type]
@@ -717,7 +726,7 @@
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-columns! driver (:id database) (table-identifier table)
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
            args)))
 
@@ -737,12 +746,12 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+  (when-let [query (card/lib-query model)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
 (defn- invalidate-cached-models!
-  "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
+  "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
   (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
@@ -753,7 +762,23 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (model-persistence/invalidate! {:card_id [:in model-ids]})))
+    (model-persistence/invalidate! {:card_id [:in model-ids]})
+    ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
+    (doseq [id model-ids]
+      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
+            ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
+            ;; the initial upload.
+            fix-name #(update % :display_name humanization/name->human-readable-name)
+            metadata (card.metadata/refresh-metadata card {:update-fn fix-name})]
+        (t2/update! :model/Card id {:result_metadata metadata})))))
+
+(defn- translate-type-keywords [m]
+  (walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
+       (keyword "metabase.upload.types" (name x))
+       x))
+   m))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
@@ -780,15 +805,17 @@
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
               detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              new-types          (map upload-types/new-type old-types detected-types)
+              allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
+              new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
               ;; avoid any schema modification unless all the promotions required by the file are supported,
               ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [changes (field-changes column-names old-types new-types)]
+                                   (let [changes   (field-changes column-names old-types new-types)
+                                         old-types (old-column-types driver column-names old-types)]
                                      (add-columns! driver database table (:added changes))
-                                     (alter-columns! driver database table (:updated changes))))
+                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
               ;; this will fail if any of our required relaxations were rejected.
               parsed-rows        (parse-rows settings new-types rows)
               row-count          (count parsed-rows)
