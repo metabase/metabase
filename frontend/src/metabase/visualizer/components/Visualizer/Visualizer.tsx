@@ -143,7 +143,6 @@ export const Visualizer = (props: VisualizerProps) => {
           <Box
             w="100%"
             m={10}
-            px="xl"
             bg="white"
             style={{
               borderRadius: "var(--default-border-radius)",
@@ -153,14 +152,19 @@ export const Visualizer = (props: VisualizerProps) => {
             }}
           >
             {hasDatasets && (
-              <Flex direction="row" align="center" justify="space-between">
+              <Flex
+                direction="row"
+                align="center"
+                justify="space-between"
+                px="xl"
+              >
                 <EditableText
                   initialValue={title}
                   onChange={handleChangeTitle}
                 />
               </Flex>
             )}
-            <Box h="90%">
+            <Box h="87%" px="xl" mb="lg">
               <VisualizationCanvas />
             </Box>
             {hasDatasets && <Footer />}

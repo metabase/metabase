@@ -12,6 +12,8 @@ import type { VisualizationDisplay } from "metabase-types/api";
 
 import { VisualizationPicker } from "../VisualizationPicker";
 
+import S from "./Footer.module.css";
+
 export function Footer() {
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
@@ -23,7 +25,7 @@ export function Footer() {
     [dispatch],
   );
   return (
-    <Flex>
+    <Flex className={S.footer} px="xl" py="md">
       <VisualizationPicker value={display} onChange={handleChangeDisplay} />
       <Button
         ml="auto"
