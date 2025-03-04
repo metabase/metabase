@@ -202,7 +202,7 @@
                 :folder_url url
                 :folder-upload-time (seconds-from-epoch-now)
                 :gdrive/conn-id (-> response :body :id)}
-        (analytics/inc! :metabase-gsheets/sync-creation-begin)
+        (analytics/inc! :metabase-gsheets/connection-creation-began)
         (gsheets! <>))
       (do
         (reset-gsheets-status!)
@@ -254,10 +254,11 @@
                 (snowplow/track-event! :snowplow/simple_event
                                        {:event "sheets_connected" :event_detail "success"}))
 
+              ;; Timeout check
               (when-let [upload-time (:folder-upload-time (gsheets))]
                 (> (seconds-from-epoch-now) (+ upload-time *folder-setup-timeout-seconds*)))
               (do (reset-gsheets-status!)
-                  (analytics/inc! :metabase-gsheets/connection-creation-error {:failure-reason "timeout"})
+                  (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "timeout"})
                   (error-response-in-body (tru "Timeout syncing google drive folder, please try again.")
                                           {:status-code 408}))
 
@@ -265,7 +266,7 @@
               (= "error" status)
               (do
                 (reset-gsheets-status!)
-                (analytics/inc! :metabase-gsheets/connection-creation-error {:failure-reason "status_error"})
+                (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
                 (error-response-in-body (tru "Problem syncing google drive folder, please try again..")))
 
               ;; Continue waiting

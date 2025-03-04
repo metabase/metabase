@@ -1,7 +1,7 @@
 (ns metabase-enterprise.api.gsheets-test
   (:require
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
@@ -128,9 +128,9 @@
      (finally (t2/update! :model/Database :id 1 {:is_attached_dwh false}))))
 
 (deftest post-folder-test
-  (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-      (with-sample-db-as-dwh
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (partial=
              {:status "loading", :folder_url gdrive-link}
              (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})))))))
@@ -144,26 +144,26 @@
 (deftest get-folder-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-      ;; puts us into loading state
+      ;; This puts us into loading state:
       (with-redefs [hm.client/make-request (partial mock-make-request (+syncing happy-responses))]
         (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))
       (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (dotimes [_ 10]
           (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)]
-            ;; when the dwh has never been synced, we should be status=loading.
-            ;; calling it over and over will return the same result.
+            (testing (str "when the dwh has never been synced, we should be status=loading.\n"
+                          "calling it over and over will return the same result.")
+              (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1}
+                            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))
+            (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
+        (testing "when the local sync time is before the last gdrive connection sync time, we should be status=loading."
+          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
             (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1}
                           (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
             (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
-        ;; when the local sync time is before the last gdrive connection sync time, we should be status=loading.
-        (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
-          (is (partial= {:status "loading", :folder_url gdrive-link :db_id 1}
-                        (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
-          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))
-        ;; when the local sync time is after the last gdrive connection sync time, then we should be status=complete.
-        (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
-          (is (partial= {:status "complete" :folder_url gdrive-link :db_id 1}
-                        (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder"))))))))
+        (testing "when the local sync time is after the last gdrive connection sync time, then we should be status=complete."
+          (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
+            (is (partial= {:status "complete" :folder_url gdrive-link :db_id 1}
+                          (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))))))))
 
 (deftest get-folder-timeout-test
   (with-sample-db-as-dwh
@@ -180,9 +180,9 @@
                 "When we timeout, we should return an error.")))))))
 
 (deftest delete-folder-test
-  (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-      (with-sample-db-as-dwh
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
         (is (= {:status "not-connected"}
                (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
 
@@ -192,9 +192,9 @@
                :body []}]))
 
 (deftest delete-folder-cannot-find
-  (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing happy-responses))]
-      (with-sample-db-as-dwh
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing happy-responses))]
         (is (= {:status "not-connected"}
                (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder")))))))
 
@@ -204,8 +204,8 @@
          [:error {}]))
 
 (deftest delete-folder-fail
-  (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
-    (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
-      (with-sample-db-as-dwh
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
         (= {:status "not-connected"}
            (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))

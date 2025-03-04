@@ -263,13 +263,13 @@
                         :labels [:payload-type :channel-type]})
    (prometheus/gauge :metabase-notification/concurrent-tasks
                      {:description "Number of concurrent notification sends."})
-   (prometheus/counter :metabase-gsheets/sync-creation-begin
+   (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/sync-creation-ok
+   (prometheus/counter :metabase-gsheets/connection-creation-ok
                        {:description "How many times the instance has created a Google Sheets connection."})
-   (prometheus/counter :metabase-gsheets/sync-creation-error
+   (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
-                        :labels [:failure-reason]})
+                        :labels [:reason]})
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})])
 
@@ -413,5 +413,15 @@
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
 (comment
+  ;; want to see what's in the registry?
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (:registry system))))
+  (spit "metrics" (iapetos.export/text-format (:registry system)))
+
+  ;; need to restart the server to see the metrics? use:
+  (shutdown!)
+
+  ;; get the value of a metric:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-began)
+
+  ;; w/ a label:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-error [[:reason "timeout"]]))

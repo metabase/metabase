@@ -652,7 +652,7 @@
 
   enterprise/gsheets
   {:api  #{metabase-enterprise.gsheets.api}
-   :uses #{api analytics enterprise/harbormaster models premium-features util}}
+   :uses #{api analytics enterprise/harbormaster models premium-features server util}}
 
   enterprise/harbormaster
   {:api #{metabase-enterprise.harbormaster.client}
