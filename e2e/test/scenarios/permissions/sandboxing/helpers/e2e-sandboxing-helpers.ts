@@ -10,7 +10,9 @@ import type {
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
+  CacheConfig,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 
@@ -110,6 +112,12 @@ function addCustomColumnsToQuestion() {
   cy.wait("@updateQuestion");
 }
 
+const preparePermissions = () => {
+  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
+};
+
 /**
  * creates all questions and models and puts them in a dashboard
  * all of them reside in a single collection
@@ -187,7 +195,8 @@ export const createSandboxingDashboardAndQuestions = () => {
       });
     });
 
-    // return the collection items
+    // Provide information about the dashboard and questions that the tests
+    // can refer to
     return cy.request<{ data: CollectionItem[] }>(
       `/api/collection/${collectionId}/items`,
     );
@@ -359,6 +368,7 @@ export function rowsShouldContainGizmosAndWidgets({
       `Results include at least one Widget, Gadget, or Doohickey in ${questionDesc}`,
     ).to.be.true;
   });
+  return cy.wrap(responses);
 }
 
 export function rowsShouldContainOnlyGizmos({
@@ -369,11 +379,11 @@ export function rowsShouldContainOnlyGizmos({
   questions: CollectionItem[];
 }) {
   expect(responses.length).to.equal(questions.length);
-
   responses.forEach(response => {
     const { questionDesc } = getQuestionDescription(response, questions);
     cy.log(`Results contain only Gizmos in: ${questionDesc}`);
-    expect(response?.body.data.is_sandboxed).to.be.true;
+    expect(response?.body.data.is_sandboxed, "response is sandboxed").to.be
+      .true;
 
     const rows = response.body.data.rows;
 
@@ -386,6 +396,7 @@ export function rowsShouldContainOnlyGizmos({
       `No results should have Widgets in: ${questionDesc}`,
     ).to.be.true;
   });
+  return cy.wrap(responses);
 }
 
 export const valuesShouldContainGizmosAndWidgets = (
@@ -407,6 +418,7 @@ export const getDashcardResponses = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
+  cy.log("Check dashcard responses");
   signInAsNormalUser();
 
   H.visitDashboard(checkNotNull(dashboard).id);
@@ -424,6 +436,7 @@ export const getDashcardResponses = (
 
 export const getCardResponses = (questions: CollectionItem[]) => {
   expect(questions.length).to.be.greaterThan(0);
+  cy.log("Check card responses");
   return H.cypressWaitAll(
     questions.map(question =>
       cy.request<DatasetResponse>("POST", `/api/card/${question.id}/query`),
@@ -455,3 +468,45 @@ export const getParameterValuesForProductCategories = () =>
     },
     field_ids: [SAMPLE_DATABASE.PRODUCTS.CATEGORY],
   });
+
+export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
+  responses.forEach(response => {
+    expect(response.body.cached, "response should not be cached").not.to.be
+      .null;
+    expect(response.body.json_query?.["cache-strategy"]?.type).to.equal(
+      "duration",
+    );
+  });
+  return cy.wrap(responses);
+};
+
+export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
+  cy.signIn("admin", { skipCache: true });
+  const simpleCacheConfiguration: CacheConfig = {
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  };
+
+  cy.log(
+    "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
+  );
+  cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+    cy.log("Populate the caches");
+    getCardResponses(questions);
+  });
+};
+
+export const runWithoutCachingThenWithCaching = (
+  callback: (props: { isCachingEnabled?: boolean }) => void,
+  { questions }: { questions: CollectionItem[] },
+) => {
+  callback({ isCachingEnabled: false });
+  cacheUnsandboxedResults(questions);
+  callback({ isCachingEnabled: true });
+};
