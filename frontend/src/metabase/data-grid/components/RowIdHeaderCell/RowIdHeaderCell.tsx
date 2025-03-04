@@ -13,6 +13,7 @@ export const RowIdHeaderCell = ({ name = "" }: RowIdHeaderCellProps) => {
   return (
     <BaseCell
       className={cx(S.root, { [S.withName]: !_.isEmpty(name) })}
+      hasHover={false}
       align="right"
     >
       {name}

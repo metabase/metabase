@@ -107,6 +107,27 @@ export interface RowIdColumnOptions {
   getBackgroundColor?: (rowIndex: number) => string;
 }
 
+export interface DataGridTheme {
+  /** Table font size, defaults to ~12.5px */
+  fontSize?: string;
+
+  cell?: {
+    /** Text color default body cells, defaults to `text-primary`. */
+    textColor?: string;
+
+    /** Default background color of cells, defaults to `background` */
+    backgroundColor?: string;
+  };
+
+  pillCell?: {
+    /** Text color of pill cell, defaults to `brand`. */
+    textColor?: string;
+
+    /** Pill background color of ID column, defaults to `lighten(brand)`  */
+    backgroundColor?: string;
+  };
+}
+
 /**
  * Configuration options for the table
  */
@@ -131,6 +152,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Width in pixels at which to truncate long cell content */
   truncateLongCellWidth?: number;
+
+  /** Data grid theme */
+  theme?: DataGridTheme;
 
   /** Callback when a column is resized */
   onColumnResize?: (columnSizingMap: ColumnSizingState) => void;

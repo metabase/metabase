@@ -1,10 +1,12 @@
 import cx from "classnames";
 import type React from "react";
-import { type MouseEventHandler, memo, useCallback } from "react";
+import { type MouseEventHandler, memo, useCallback, useMemo } from "react";
 
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
+import { useDataGridTheme } from "metabase/data-grid/hooks";
 import type { BodyCellBaseProps } from "metabase/data-grid/types";
+import { alpha } from "metabase/lib/colors";
 
 import { ExpandButton } from "../ExpandButton/ExpandButton";
 
@@ -30,6 +32,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   contentTestId = "cell-data",
   onExpand,
 }: BodyCellProps<TValue>) {
+  const theme = useDataGridTheme();
   const formattedValue = formatter
     ? formatter(value, rowIndex, columnId)
     : String(value);
@@ -44,6 +47,23 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
   const hasExpandButton = variant === "text" && canExpand;
 
+  const contentStyle = useMemo(() => {
+    if (theme?.pillCell && variant === "pill") {
+      const backgroundColor = theme?.pillCell?.backgroundColor;
+      const borderColor = backgroundColor
+        ? alpha(backgroundColor, 0.14)
+        : undefined;
+
+      return {
+        ...style,
+        color: theme?.pillCell?.textColor,
+        backgroundColor,
+        borderColor,
+      };
+    }
+    return style;
+  }, [theme, style, variant]);
+
   return (
     <BaseCell
       role="gridcell"
@@ -55,7 +75,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
     >
       {formattedValue != null ? (
         <div
-          style={style}
+          style={contentStyle}
           data-grid-cell-content
           className={cx(S.content, {
             [S.noWrap]: !wrap,
