@@ -9,7 +9,6 @@ import CS from "metabase/css/core/index.css";
 import {
   Box,
   Button,
-  Flex,
   MultiSelect,
   Select,
   Stack,
@@ -155,15 +154,13 @@ export const RuleEditor = ({
           <Stack gap="xs" align="flex-start">
             <Text fw="bold" fz="lg">{t`…turn its background this color:`}</Text>
 
-            <Flex align="left">
-              <ColorSelector
-                data-testid="conditional-formatting-color-selector"
-                value={rule.color}
-                colors={COLORS}
-                onChange={color => onChange({ ...rule, color })}
-                withinPortal={false}
-              />
-            </Flex>
+            <ColorSelector
+              data-testid="conditional-formatting-color-selector"
+              value={rule.color}
+              colors={COLORS}
+              onChange={color => onChange({ ...rule, color })}
+              withinPortal={false}
+            />
           </Stack>
           {canHighlightRow && (
             <Stack gap="xs">
