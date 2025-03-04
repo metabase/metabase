@@ -55,7 +55,7 @@ function setAttributes(...syntaxRules: [Partial<NodeType>, NodeType[]][]) {
   }
 }
 
-const ALL_NODES = [
+const ALL_NODES = {
   ADD,
   LOGICAL_AND,
   ARG_LIST,
@@ -79,7 +79,7 @@ const ALL_NODES = [
   FIELD,
   IDENTIFIER,
   WS,
-];
+};
 
 // Set default values for AST node attributes
 setAttributes([
@@ -100,7 +100,7 @@ setAttributes([
     expectedTypes: null,
   },
 
-  ALL_NODES,
+  Object.values(ALL_NODES),
 ]);
 
 setAttributes(
@@ -256,7 +256,6 @@ ROOT.checkChildConstraints = anyChildConstraint(
   }
 });
 
-// Give each node
 for (const [key, value] of Object.entries(ALL_NODES)) {
   value.name = key;
 }

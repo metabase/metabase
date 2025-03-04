@@ -595,10 +595,9 @@
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
-           metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
+   :uses #{api audit driver enterprise/impersonation lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}
@@ -653,6 +652,11 @@
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
 
+  enterprise/impersonation
+  {:api #{metabase-enterprise.impersonation.core
+          metabase-enterprise.impersonation.api}
+   :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
@@ -676,7 +680,7 @@
            query-processor
            request
            util
-           enterprise/advanced-permissions
+           enterprise/impersonation
            enterprise/api}}
 
   enterprise/scim
