@@ -13,16 +13,19 @@ import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/A
 import { SortableHeader } from "metabase/data-grid/components/SortableHeader/SortableHeader";
 import {
   ADD_COLUMN_BUTTON_WIDTH,
+  DEFAULT_FONT_SIZE,
   HEADER_HEIGHT,
   PINNED_COLUMN_Z_INDEX,
 } from "metabase/data-grid/constants";
-import type { DataGridInstance } from "metabase/data-grid/types";
+import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
+import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 
 import S from "./DataGrid.module.css";
 
 export type DataGridProps<TData> = DataGridInstance<TData> & {
   emptyState?: React.ReactNode;
+  theme?: DataGridTheme;
 };
 
 export const DataGrid = function DataGrid<TData>({
@@ -32,6 +35,7 @@ export const DataGrid = function DataGrid<TData>({
   measureRoot,
   columnsReordering,
   emptyState,
+  theme,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -87,160 +91,168 @@ export const DataGrid = function DataGrid<TData>({
   const isEmpty = table.getRowModel().rows.length === 0;
 
   return (
-    <DndContext {...dndContextProps}>
-      <div className={S.table} data-testid="table-root">
+    <DataGridThemeProvider theme={theme}>
+      <DndContext {...dndContextProps}>
         <div
-          data-testid="table-scroll-container"
-          className={S.tableGrid}
-          role="grid"
-          ref={gridRef}
-          style={{
-            paddingRight: isAddColumnButtonSticky
-              ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-              : 0,
-          }}
-          onScroll={onScroll}
+          className={S.table}
+          data-testid="table-root"
+          style={{ fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE }}
         >
-          <div data-testid="table-header" className={S.headerContainer}>
-            {table.getHeaderGroups().map(headerGroup => (
-              <div
-                key={headerGroup.id}
-                className={S.row}
-                style={{ height: `${HEADER_HEIGHT}px` }}
-              >
-                {virtualPaddingLeft ? (
-                  <div style={{ width: virtualPaddingLeft }} />
-                ) : null}
-                <SortableContext
-                  items={table.getState().columnOrder}
-                  strategy={horizontalListSortingStrategy}
-                >
-                  {virtualColumns.map(virtualColumn => {
-                    const header = headerGroup.headers[virtualColumn.index];
-
-                    const headerCell = flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    );
-                    const width = header.column.getSize();
-
-                    const isPinned = header.column.getIsPinned();
-
-                    const style: React.CSSProperties = isPinned
-                      ? {
-                          width,
-                          position: "sticky",
-                          left: `${virtualColumn.start}px`,
-                          zIndex: PINNED_COLUMN_Z_INDEX,
-                        }
-                      : {
-                          width,
-                        };
-
-                    const headerContent = isPinned ? (
-                      headerCell
-                    ) : (
-                      <SortableHeader
-                        className={S.headerCell}
-                        header={header}
-                        onClick={onHeaderCellClick}
-                      >
-                        {headerCell}
-                      </SortableHeader>
-                    );
-
-                    return (
-                      <div key={header.id} style={style}>
-                        {headerContent}
-                      </div>
-                    );
-                  })}
-                </SortableContext>
-                {!isAddColumnButtonSticky ? addColumnButton : null}
-                {virtualPaddingRight ? (
-                  <div style={{ width: virtualPaddingRight }} />
-                ) : null}
-              </div>
-            ))}
-          </div>
-          {isEmpty && emptyState}
           <div
-            data-testid="table-body"
-            className={S.bodyContainer}
+            data-testid="table-scroll-container"
+            className={S.tableGrid}
+            role="grid"
+            ref={gridRef}
             style={{
-              display: "grid",
-              position: "relative",
-              height: `${rowVirtualizer.getTotalSize()}px`,
+              paddingRight: isAddColumnButtonSticky
+                ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                : 0,
             }}
+            onScroll={onScroll}
           >
-            {virtualRows.map(virtualRow => {
-              const row = table.getRowModel().rows[virtualRow.index];
-              return (
+            <div data-testid="table-header" className={S.headerContainer}>
+              {table.getHeaderGroups().map(headerGroup => (
                 <div
-                  role="row"
-                  key={row.id}
-                  ref={rowMeasureRef}
-                  data-index={virtualRow.index}
+                  key={headerGroup.id}
                   className={S.row}
-                  style={{
-                    position: "absolute",
-                    width: "100%",
-                    minHeight: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
+                  style={{ height: `${HEADER_HEIGHT}px` }}
                 >
                   {virtualPaddingLeft ? (
-                    <div
-                      className={S.bodyCell}
-                      style={{ width: virtualPaddingLeft }}
-                    />
+                    <div style={{ width: virtualPaddingLeft }} />
                   ) : null}
+                  <SortableContext
+                    items={table.getState().columnOrder}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    {virtualColumns.map(virtualColumn => {
+                      const header = headerGroup.headers[virtualColumn.index];
 
-                  {virtualColumns.map(virtualColumn => {
-                    const cell = row.getVisibleCells()[virtualColumn.index];
-                    const isPinned = cell.column.getIsPinned();
-                    const width = cell.column.getSize();
+                      const headerCell = flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      );
+                      const width = header.column.getSize();
 
-                    const style: React.CSSProperties = isPinned
-                      ? {
-                          width,
-                          position: "sticky",
-                          left: `${virtualColumn.start}px`,
-                          zIndex: PINNED_COLUMN_Z_INDEX,
-                        }
-                      : {
-                          width,
-                        };
-                    return (
-                      <div
-                        key={cell.id}
-                        className={S.bodyCell}
-                        onClick={e =>
-                          onBodyCellClick?.(e, cell.row.index, cell.column.id)
-                        }
-                        style={style}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </div>
-                    );
-                  })}
+                      const isPinned = header.column.getIsPinned();
+
+                      const style: React.CSSProperties = isPinned
+                        ? {
+                            width,
+                            position: "sticky",
+                            left: `${virtualColumn.start}px`,
+                            zIndex: PINNED_COLUMN_Z_INDEX,
+                          }
+                        : {
+                            width,
+                          };
+
+                      const headerContent = isPinned ? (
+                        headerCell
+                      ) : (
+                        <SortableHeader
+                          className={S.headerCell}
+                          header={header}
+                          onClick={onHeaderCellClick}
+                        >
+                          {headerCell}
+                        </SortableHeader>
+                      );
+
+                      return (
+                        <div key={header.id} style={style}>
+                          {headerContent}
+                        </div>
+                      );
+                    })}
+                  </SortableContext>
+                  {!isAddColumnButtonSticky ? addColumnButton : null}
                   {virtualPaddingRight ? (
-                    <div
-                      className={S.bodyCell}
-                      style={{ width: virtualPaddingRight }}
-                    />
+                    <div style={{ width: virtualPaddingRight }} />
                   ) : null}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            {isEmpty && emptyState}
+            <div
+              data-testid="table-body"
+              className={S.bodyContainer}
+              style={{
+                display: "grid",
+                position: "relative",
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                backgroundColor: theme?.cell?.backgroundColor,
+                color: theme?.cell?.textColor,
+              }}
+            >
+              {virtualRows.map(virtualRow => {
+                const row = table.getRowModel().rows[virtualRow.index];
+                return (
+                  <div
+                    role="row"
+                    key={row.id}
+                    ref={rowMeasureRef}
+                    data-index={virtualRow.index}
+                    className={S.row}
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      minHeight: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {virtualPaddingLeft ? (
+                      <div
+                        className={S.bodyCell}
+                        style={{ width: virtualPaddingLeft }}
+                      />
+                    ) : null}
+
+                    {virtualColumns.map(virtualColumn => {
+                      const cell = row.getVisibleCells()[virtualColumn.index];
+                      const isPinned = cell.column.getIsPinned();
+                      const width = cell.column.getSize();
+
+                      const style: React.CSSProperties = isPinned
+                        ? {
+                            width,
+                            position: "sticky",
+                            left: `${virtualColumn.start}px`,
+                            zIndex: PINNED_COLUMN_Z_INDEX,
+                          }
+                        : {
+                            width,
+                          };
+                      return (
+                        <div
+                          key={cell.id}
+                          className={S.bodyCell}
+                          onClick={e =>
+                            onBodyCellClick?.(e, cell.row.index, cell.column.id)
+                          }
+                          style={style}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </div>
+                      );
+                    })}
+                    {virtualPaddingRight ? (
+                      <div
+                        className={S.bodyCell}
+                        style={{ width: virtualPaddingRight }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+          {isAddColumnButtonSticky ? addColumnButton : null}
         </div>
-        {isAddColumnButtonSticky ? addColumnButton : null}
-      </div>
-      {measureRoot}
-    </DndContext>
+        {measureRoot}
+      </DndContext>
+    </DataGridThemeProvider>
   );
 };
