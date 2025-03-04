@@ -2634,7 +2634,7 @@ const onNextAnchorClick = callback => {
   cy.window().then(window => {
     const originalClick = window.HTMLAnchorElement.prototype.click;
 
-    window.HTMLAnchorElement.prototype.click = function() {
+    window.HTMLAnchorElement.prototype.click = function () {
       callback(this);
       window.HTMLAnchorElement.prototype.click = originalClick;
     };
