@@ -117,6 +117,7 @@ type VisualizationOwnProps = {
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject) => void;
   headerIcon?: IconProps;
+  width?: number | null;
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
@@ -134,7 +135,8 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
-  width?: number | null;
+  uuid?: string;
+  token?: string;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -553,7 +555,9 @@ class Visualization extends PureComponent<
       showTitle,
       tableHeaderHeight,
       timelineEvents,
+      token,
       totalNumGridCols,
+      uuid,
       width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
@@ -789,6 +793,8 @@ class Visualization extends PureComponent<
                   totalNumGridCols={totalNumGridCols}
                   visualizationIsClickable={this.visualizationIsClickable}
                   width={rawWidth}
+                  uuid={uuid}
+                  token={token}
                   onActionDismissal={this.hideActions}
                   onChangeCardAndRun={
                     this.props.onChangeCardAndRun
