@@ -215,7 +215,9 @@ jobs:
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
+          echo 'pushing origin head'
           git push origin HEAD
+          echo 'create PR'
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
                        --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
