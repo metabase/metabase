@@ -12,8 +12,9 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (java.text SimpleDateFormat)
+   (java.util TimeZone Date)
+   (org.quartz CronTrigger TriggerKey CronExpression)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +101,7 @@
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
-        notification (t2/select-one :model/Notification notification-id)]
+        notification    (t2/select-one :model/Notification notification-id)]
     (cond
       (:active notification)
       (try
@@ -110,7 +111,7 @@
                                                         :notification_subscription_id subscription-id
                                                         :cron_schedule                (:cron_schedule subscription)
                                                         :notification_ids             [notification-id]}}
-          (notification/send-notification! notification :notification/sync? true))
+          (notification/send-notification! (assoc notification :triggering_subscription subscription) :notification/sync? true))
         (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
         (catch Exception e
           (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
