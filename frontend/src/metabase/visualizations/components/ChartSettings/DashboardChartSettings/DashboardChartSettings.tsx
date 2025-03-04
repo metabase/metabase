@@ -73,7 +73,7 @@ export const DashboardChartSettings = ({
   );
 
   return (
-    <Flex justify="unset" align="unset" wrap="nowrap">
+    <Flex justify="unset" align="unset" wrap="nowrap" h="100%">
       <BaseChartSettings
         className={cx(CS.overflowHidden, DashboardChartSettingsS.Sidebar)}
         series={series}
