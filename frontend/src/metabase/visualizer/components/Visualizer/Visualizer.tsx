@@ -117,7 +117,6 @@ export const Visualizer = (props: VisualizerProps) => {
       onDragEnd={handleDragEnd}
     >
       <Flex className={className} direction="column">
-        <Header onSave={onSave} saveLabel={saveLabel} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (
             <Flex direction="column" miw={320}>
@@ -129,30 +128,28 @@ export const Visualizer = (props: VisualizerProps) => {
               </Box>
             </Flex>
           )}
-          <Flex
-            w="100%"
-            direction="column"
-            m={10}
-            bg="white"
-            style={{
-              borderRadius: "var(--default-border-radius)",
-              overflowY: "hidden",
-              border: `1px solid var(--mb-color-border)`,
-              boxShadow: "0 1px 2px 2px var(--mb-color-border)",
-            }}
-          >
-            {hasDatasets && (
-              <Flex
-                direction="row"
-                align="center"
-                justify="space-between"
-                px="xl"
-              ></Flex>
-            )}
-            <Box px="xl" mb="lg" flex={1}>
-              <VisualizationCanvas />
-            </Box>
-            {hasDatasets && <Footer />}
+
+          <Flex direction="column" w="100%">
+            <Header onSave={onSave} saveLabel={saveLabel} />
+            <Flex
+              ml="lg"
+              mr="lg"
+              mb="md"
+              flex={1}
+              direction="column"
+              bg="white"
+              style={{
+                borderRadius: "var(--default-border-radius)",
+                overflowY: "hidden",
+                border: `1px solid var(--mb-color-border)`,
+                boxShadow: "0 1px 2px 2px var(--mb-color-border)",
+              }}
+            >
+              <Box px="xl" mb="lg" flex={1}>
+                <VisualizationCanvas />
+              </Box>
+              {hasDatasets && <Footer />}
+            </Flex>
           </Flex>
           {!isFullscreen && isVizSettingsSidebarOpen && (
             <Flex direction="column" miw={320}>
