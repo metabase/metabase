@@ -115,7 +115,7 @@
     "react-router-redux": "^4.0.8",
     "react-transition-group": "^4.4.5",
     "react-use": "^17.5.1",
-    "react-virtualized": "^9.22.3",
+    "react-virtualized": "^9.22.6",
     "reduce-reducers": "^1.0.4",
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^2.1.0",
