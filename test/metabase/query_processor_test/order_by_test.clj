@@ -2,7 +2,6 @@
   "Tests for the `:order-by` clause."
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
    [metabase.test :as mt]))
 
 (deftest ^:parallel order-by-test
@@ -92,29 +91,19 @@
                  :breakout    [$price]
                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
-(defmethod driver/database-supports? [::driver/driver ::floors-average]
-  [_driver _feature _database]
-  false)
-
-(doseq [driver [:redshift :sqlserver]]
-  (defmethod driver/database-supports? [driver ::floors-average]
-    [_driver _feature _database]
-    true))
-
 (deftest ^:parallel order-by-aggregate-fields-test-4
   (mt/test-drivers (mt/normal-drivers)
     (testing :avg
-      (let [driver-floors-average? (driver/database-supports? driver/*driver* ::floors-average (mt/db))]
-        (is (= [[3 22.0]
-                [2 (if driver-floors-average? 28.0 28.3)]
-                [1 (if driver-floors-average? 32.0 32.8)]
-                [4 (if driver-floors-average? 53.0 53.5)]]
-               (mt/formatted-rows
-                [int 1.0]
-                (mt/run-mbql-query venues
-                  {:aggregation [[:avg $category_id]]
-                   :breakout    [$price]
-                   :order-by    [[:asc [:aggregation 0]]]}))))))))
+      (is (= [[3 22.0]
+              [2 28.3]
+              [1 32.8]
+              [4 53.5]]
+             (mt/formatted-rows
+              [int 1.0]
+              (mt/run-mbql-query venues
+                {:aggregation [[:avg $category_id]]
+                 :breakout    [$price]
+                 :order-by    [[:asc [:aggregation 0]]]})))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test-5
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)

@@ -4,11 +4,10 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Icon, Menu } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 type DashboardActionMenuProps = {
@@ -58,7 +57,7 @@ const DashboardActionMenuInner = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip tooltip={t`Move, trash, and more…`} isEnabled={!opened}>
+          <Tooltip label={t`Move, trash, and more…`} disabled={opened}>
             <Button
               onlyIcon
               icon="ellipsis"

@@ -2237,3 +2237,24 @@
                 (mt/user-http-request :rasta :get 200
                                       (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                       :query "flozzlebarger"))))))))
+
+(deftest healthcheck-works
+  (testing "GET /api/database/:id/healthcheck"
+    (mt/with-temp [:model/Database {id :id} {}]
+      (with-redefs [driver/available?   (constantly true)
+                    driver/can-connect? (constantly true)]
+        (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
+    (mt/with-temp [:model/Database {id :id} {}]
+      (testing "connection throws"
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (fn [& _args]
+                                            (throw (Exception. "oh no")))]
+          (is (= {:status "error"
+                  :message "oh no"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
+      (testing "connection just fails, doesn't throw"
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (constantly false)]
+          (is (= {:status "error"
+                  :message "Failed to connect to Database"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))

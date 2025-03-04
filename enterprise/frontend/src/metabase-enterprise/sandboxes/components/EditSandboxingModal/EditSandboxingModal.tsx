@@ -165,7 +165,7 @@ const EditSandboxingModal = ({
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
             <Button
-              data-testid="collection-picker-button"
+              data-testid="custom-view-picker-button"
               onClick={showModal}
               fullWidth
               rightSection={<Icon name="ellipsis" />}
@@ -282,9 +282,13 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const headingId = _.uniqueId();
   return (
-    <div>
-      <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
+    <div aria-labelledby={headingId}>
+      <div
+        id={headingId}
+        className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}
+      >
         {t`Summary`}
       </div>
       <SummaryRow

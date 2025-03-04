@@ -3,8 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Flex, Icon } from "metabase/ui";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 
 import NativeCodePanelS from "./NativeCodePanel.module.css";
 
@@ -31,7 +30,7 @@ export const NativeCodePanel = ({
         <code className={NativeCodePanelS.CodeText}>{value}</code>
       </pre>
       {isCopyEnabled && (
-        <Tooltip tooltip={t`Copied!`} isOpen={isCopied}>
+        <Tooltip label={t`Copied!`} opened={isCopied}>
           <IconButtonWrapper
             className={cx(NativeCodePanelS.CodeCopyButton, {
               [NativeCodePanelS.isHighlighted]: isHighlighted,

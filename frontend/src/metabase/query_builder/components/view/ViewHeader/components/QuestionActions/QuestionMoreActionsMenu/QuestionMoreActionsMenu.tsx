@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -20,7 +19,7 @@ import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
-import { Icon, Menu } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
@@ -214,7 +213,7 @@ export const QuestionMoreActionsMenu = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip tooltip={label} isEnabled={!opened}>
+          <Tooltip label={label} disabled={opened}>
             <Button onlyIcon icon="ellipsis" aria-label={label} />
           </Tooltip>
         </div>
