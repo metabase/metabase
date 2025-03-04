@@ -55,6 +55,7 @@ export const InteractiveQuestionProvider = ({
   entityTypeFilter,
   saveToCollection,
   initialSqlParameters,
+  mode: modeProp = undefined,
 }: InteractiveQuestionProviderProps) => {
   const {
     id: cardId,
@@ -132,10 +133,11 @@ export const InteractiveQuestionProvider = ({
       question &&
       getEmbeddingMode({
         question,
+        queryMode: modeProp,
         plugins: combinedPlugins ?? undefined,
       })
     );
-  }, [question, combinedPlugins]);
+  }, [modeProp, question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: initialQuestionId,

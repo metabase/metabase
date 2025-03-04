@@ -7,6 +7,7 @@ import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/typ
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardId, ParameterId } from "metabase-types/api";
 
@@ -50,6 +51,7 @@ export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
     Omit<LoadSdkQuestionParams, "cardId"> & {
       cardId: InteractiveQuestionId;
+      mode?: QueryClickActionsMode;
     }
 >;
 
