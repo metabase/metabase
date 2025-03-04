@@ -652,7 +652,7 @@
      ;; so let them cache response to make autocomplete feel fast. 60 seconds
      ;; is not enough to be a nuisance when schema or permissions change. Cache
      ;; is user-specific since we're checking for permissions.
-     :headers {"Cache-Control" "public, max-age=60"
+     :headers {"Cache-Control" "public, max-age=70, stale-while-revalidate=60"
                "Vary"          "Cookie"}
      :body    (cond
                 substring (autocomplete-suggestions id (str "%" substring "%"))
