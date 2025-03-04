@@ -60,12 +60,12 @@ export function usePreventClosePopover({
    */
   onEscape?: boolean;
 }) {
-  const ctx = useContext(context);
+  const { setPreventClose } = useContext(context) ?? {};
   useEffect(() => {
-    ctx?.setPreventClose({
+    setPreventClose?.({
       onClickOutside,
       onEscape,
     });
-    return () => ctx?.setPreventClose(null);
-  }, [ctx, onEscape, onClickOutside]);
+    return () => setPreventClose?.(null);
+  }, [setPreventClose, onEscape, onClickOutside]);
 }
