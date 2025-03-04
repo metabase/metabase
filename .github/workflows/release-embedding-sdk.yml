@@ -187,6 +187,7 @@ jobs:
         with:
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: ${{ inputs.branch}}
+          fetch-depth: 0
 
       - name: Setup git user
         run: |
@@ -281,6 +282,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+          fetch-depth: 0
 
       # Lightweight tags don't need committer name and email
       - name: Create a new git tag
