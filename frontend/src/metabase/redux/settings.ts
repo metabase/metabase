@@ -9,11 +9,12 @@ export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 export const refreshSiteSettings = createAsyncThunk(
   REFRESH_SITE_SETTINGS,
   async (_, { dispatch }) => {
-    await dispatch(
+    const response = await dispatch(
       sessionApi.endpoints.getSessionProperties.initiate(undefined, {
         forceRefetch: true,
       }),
     );
+    return response.data;
   },
 );
 

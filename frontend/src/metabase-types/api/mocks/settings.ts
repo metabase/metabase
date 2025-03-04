@@ -260,6 +260,7 @@ export const createMockSettings = (
   "show-updated-permission-modal": false,
   "show-updated-permission-banner": false,
   "site-locale": "en",
+  "site-name": "Metabae",
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",
   "slack-app-token": null,
