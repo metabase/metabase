@@ -6,7 +6,13 @@ import _ from "underscore";
 import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { Button, MultiSelect, Select, TextInputBlurChange } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  MultiSelect,
+  Select,
+  TextInputBlurChange,
+} from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -122,6 +128,7 @@ export const RuleEditor = ({
             )}
           </h3>
           <Select<ColumnFormattingOperator>
+            disabled={selectedColumns.length === 0}
             comboboxProps={{ withinPortal: false }}
             value={rule.operator}
             onChange={operator => onChange({ ...rule, operator })}
@@ -132,6 +139,7 @@ export const RuleEditor = ({
             data-testid="conditional-formatting-value-operator-button"
           />
           <RuleEditorValueInput
+            disabled={selectedColumns.length === 0}
             hasOperand={hasOperand}
             isNumericRule={isNumericRule}
             isKeyRule={isKeyRule}
@@ -141,13 +149,15 @@ export const RuleEditor = ({
           <h3
             className={cx(CS.mt3, CS.mb1)}
           >{t`…turn its background this color:`}</h3>
-          <ColorSelector
-            data-testid="conditional-formatting-color-selector"
-            value={rule.color}
-            colors={COLORS}
-            onChange={color => onChange({ ...rule, color })}
-            withinPortal={false}
-          />
+          <Flex align="left">
+            <ColorSelector
+              data-testid="conditional-formatting-color-selector"
+              value={rule.color}
+              colors={COLORS}
+              onChange={color => onChange({ ...rule, color })}
+              withinPortal={false}
+            />
+          </Flex>
           {canHighlightRow && (
             <>
               <h3
@@ -259,12 +269,14 @@ const RuleEditorValueInput = ({
   isKeyRule,
   rule,
   onChange,
+  disabled,
 }: {
   hasOperand: boolean;
   isNumericRule: boolean;
   isKeyRule: boolean;
   rule: ColumnSingleFormattingSetting;
   onChange: (rule: ColumnFormattingSetting) => void;
+  disabled?: boolean;
 }) => {
   if (!hasOperand) {
     return null;
@@ -286,6 +298,7 @@ const RuleEditorValueInput = ({
   return (
     <TextInputBlurChange
       data-testid="conditional-formatting-value-input"
+      disabled={disabled}
       className={INPUT_CLASSNAME}
       value={rule.value}
       onBlurChange={e => onChange({ ...rule, value: e.target.value })}
