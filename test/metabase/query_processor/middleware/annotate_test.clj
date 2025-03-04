@@ -297,7 +297,6 @@
       (is (= {:base_type       :type/Float
               :name            "double-price"
               :display_name    "double-price"
-              :expression_name "double-price"
               :field_ref       [:expression "double-price"]}
              (lib.tu.macros/$ids venues
                (#'annotate/col-info-for-field-clause
@@ -338,7 +337,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
                (#'annotate/col-info-for-field-clause
@@ -348,7 +346,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
                (#'annotate/col-info-for-field-clause
@@ -533,7 +530,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :source :fields,
                   :field_ref [:expression "expr"],
                   :effective_type :type/Text,
@@ -547,7 +543,6 @@
           (is (= {:base_type :type/Text,
                   :name "expr",
                   :display_name "expr",
-                  :expression_name "expr",
                   :field_ref [:expression "expr"],
                   :source :fields}
                  (infer [:coalesce "bar" [:field (meta/id :venues :name) nil]]))))))
@@ -557,7 +552,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :source :fields,
                   :field_ref [:expression "expr"],
                   :effective_type :type/Text,
@@ -669,7 +663,6 @@
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
             :base_type       :type/Float
-            :expression_name "discount_price"
             :source          :fields
             :field_ref       [:expression "discount_price"]}
            (-> (add-column-info
@@ -692,7 +685,7 @@
                          :limit       10})
                       {})))))
     (testing "named :expressions"
-      (is (=? [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :expression_name "prev_month", :source :fields, :field_ref [:expression "prev_month"]}]
+      (is (=? [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :source :fields, :field_ref [:expression "prev_month"]}]
               (:cols (add-column-info
                       (lib.tu.macros/mbql-query users
                         {:expressions {:prev_month [:+ $last-login [:interval -1 :month]]}
