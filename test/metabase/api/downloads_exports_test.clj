@@ -281,6 +281,8 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
+                                               :pivot.show_row_totals    true
+                                               :pivot.show_column_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -466,7 +468,7 @@
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["C"]
-                                                  :columns ["A", "B"]
+                                                  :columns ["A" "B"]
                                                   :values  ["MEASURE"]}
                                                  :pivot.show_row_totals    false
                                                  :pivot.show_column_totals false}
