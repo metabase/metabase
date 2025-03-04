@@ -11,6 +11,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.internal-tools.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
