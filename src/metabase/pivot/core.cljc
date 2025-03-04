@@ -222,8 +222,10 @@
                 (nth column-is-collapsible? (dec length) false)))
             all-collapsed-subtotals)))
 
-;; TODO: See if we can elide this step?
 (defn- postprocess-tree
+  "Converts a tree of sorted maps to a tree of vectors. This allows the tree to
+  make a round trip to JavaScript and back to CLJS in `process-pivot-table`
+  without losing ordering information."
   [tree]
   (vec
    (for [[value tree-node] tree]
@@ -239,7 +241,10 @@
     (get pivot-data primary-rows-key)))
 
 (defn build-pivot-trees
-  "TODO"
+  "Constructs the pivot table's tree structures for rows and columns.
+
+  Takes raw pivot data and generates hierarchical tree structures for both rows
+  and columns, along with a lookup map for cell values."
   [pivot-data cols row-indexes col-indexes val-indexes settings col-settings]
   (let [collapsed-subtotals (filter-collapsed-subtotals row-indexes settings col-settings)
         rows (get-rows-from-pivot-data pivot-data row-indexes col-indexes)
@@ -302,47 +307,79 @@
       :isGrandTotal true})
     row-tree))
 
+(defn- create-subtotal-node
+  "Creates a subtotal node for the given row item."
+  [row-item]
+  {:value (i18n/tru "Totals for {0}" (:value row-item))
+   :rawValue (:rawValue row-item)
+   :span 1
+   :isSubtotal true
+   :children []})
+
+(defn- should-create-subtotal?
+  "Determines if a subtotal should be created based on settings and row structure."
+  [is-subtotal-enabled should-show-subtotal]
+  (and is-subtotal-enabled should-show-subtotal))
+
+(declare add-subtotal)
+
+(defn- process-children
+  "Recursively processes children nodes to add subtotals."
+  [children rest-subtotal-settings should-show-fn]
+  (mapcat (fn [child]
+            (if (not-empty (:children child))
+              (add-subtotal child
+                            rest-subtotal-settings
+                            (should-show-fn child))
+              [child]))
+          children))
+
 (defn- add-subtotal
-  [row-item show-subs-by-col should-show-subtotal]
-  (let [is-subtotal-enabled (first show-subs-by-col)
-        rest-subs-by-col    (rest show-subs-by-col)
-        has-subtotal        (and is-subtotal-enabled should-show-subtotal)
-        subtotal            (if has-subtotal
-                              [{:value (i18n/tru "Totals for {0}" (:value row-item))
-                                :rawValue (:rawValue row-item)
-                                :span 1
-                                :isSubtotal true
-                                :children []}]
-                              [])]
+  "Adds subtotal nodes to a row item based on subtotal settings.
+   Returns a sequence of nodes (the original node and possibly a subtotal node)."
+  [row-item subtotal-settings-by-col should-show-subtotal]
+  (let [current-col-setting    (first subtotal-settings-by-col)
+        remaining-col-settings (rest subtotal-settings-by-col)
+        subtotal-enabled?      (should-create-subtotal? current-col-setting should-show-subtotal)
+        subtotal-nodes         (if subtotal-enabled?
+                                 [(create-subtotal-node row-item)]
+                                 [])]
     (if (:isCollapsed row-item)
-      subtotal
-      (let [node (merge row-item
-                        {:hasSubtotal has-subtotal
-                         :children (mapcat (fn [child] (if (not-empty (:children child))
-                                                         (add-subtotal child
-                                                                       rest-subs-by-col
-                                                                       (or (> (count (:children child)) 1)
-                                                                           (:isCollapsed child)))
-                                                         [child]))
-                                           (:children row-item))})]
-        (if (not-empty subtotal)
-          [node (first subtotal)]
-          [node])))))
+      ;; For collapsed items, just return subtotal if applicable
+      subtotal-nodes
+      ;; For expanded items, process children recursively
+      (let [should-show-fn     (fn [child]
+                                 (or (> (count (:children child)) 1)
+                                     (:isCollapsed child)))
+            processed-children (process-children (:children row-item)
+                                                 remaining-col-settings
+                                                 should-show-fn)
+            updated-node       (merge row-item
+                                      {:hasSubtotal subtotal-enabled?
+                                       :children processed-children})]
+        (if (not-empty subtotal-nodes)
+          [updated-node (first subtotal-nodes)]
+          [updated-node])))))
 
 (defn- add-subtotals
+  "Adds subtotal rows to the pivot table based on settings.
+   Returns the tree with subtotals added where appropriate."
   [row-tree row-indexes settings col-settings]
-  (if (:pivot.show_column_totals settings)
-    (let [show-subs-by-col (map (fn [idx]
-                                  (not= ((nth col-settings idx) :pivot_table.column_show_totals) false))
-                                row-indexes)
-          not-flat         (some #(> (count (:children %)) 1) row-tree)
-          res              (mapcat (fn [row-item]
-                                     (add-subtotal row-item show-subs-by-col
-                                                   (or not-flat
-                                                       (> (count (:children row-item)) 1))))
-                                   row-tree)]
-      res)
-    row-tree))
+  (if-not (:pivot.show_column_totals settings)
+    row-tree
+    (let [subtotal-settings-by-col (map (fn [idx]
+                                          (not= ((nth col-settings idx) :pivot_table.column_show_totals)
+                                                false))
+                                        row-indexes)
+          has-multiple-children    (some #(> (count (:children %)) 1) row-tree)
+          should-show-root-total   (fn [row-item]
+                                     (or has-multiple-children
+                                         (> (count (:children row-item)) 1)))]
+      (mapcat (fn [row-item]
+                (add-subtotal row-item
+                              subtotal-settings-by-col
+                              (should-show-root-total row-item)))
+              row-tree))))
 
 (defn- display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
@@ -404,52 +441,77 @@
        (sort-by (fn [[idx val]] (key-fn val idx)))
        (map second)))
 
-(defn- get-subtotals
-  "Returns a map representing formatted subtotal values for a single position in the pivot table."
-  [subtotal-values breakout-indexes values other-attrs value-formatters]
-  (let [value-key  (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values)
-        raw-values (get-in subtotal-values [breakout-indexes value-key])]
-    (map #(merge % {:isSubtotal true} other-attrs)
-         (format-values raw-values value-formatters))))
+(defn- format-subtotal-values
+  "Formats subtotal values and adds additional attributes."
+  [raw-values value-formatters other-attrs]
+  (map #(merge % {:isSubtotal true} other-attrs)
+       (format-values raw-values value-formatters)))
 
-;; TODO - memoize the getter
+(defn- get-subtotals
+  "Returns formatted subtotal values for a position in the pivot table.
+   Handles both regular subtotals and grand totals."
+  [subtotal-values breakout-indexes values other-attrs value-formatters]
+  (let [breakout-key (vec (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes))
+        value-key (vec (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values))
+        raw-values (get-in subtotal-values [breakout-key value-key])]
+    (format-subtotal-values raw-values value-formatters other-attrs)))
+
+(defn- get-grand-total
+  "Special case handler for grand total cells."
+  [subtotal-values indexes index-values value-formatters]
+  (get-subtotals subtotal-values indexes index-values {:isGrandTotal true} value-formatters))
+
+(defn- get-regular-subtotal
+  "Handler for regular subtotal cells (not grand totals)."
+  [subtotal-values indexes index-values value-formatters]
+  (get-subtotals subtotal-values indexes index-values {} value-formatters))
+
+(defn- get-normal-cell-values
+  "Processes and formats values for normal data cells (non-subtotal)."
+  [values-by-key index-values value-formatters color-getter]
+  (let [{:keys [values valueColumns data dimensions]} (get values-by-key index-values)
+        formatted-values (format-values values value-formatters)]
+    (if-not data
+      formatted-values
+      (map-indexed
+       (fn [index value]
+         (assoc value
+                :clicked {:data data :dimensions dimensions}
+                :backgroundColor (color-getter
+                                  (get values index)
+                                  (:rowIndex value)
+                                  (:name (get valueColumns index)))))
+       formatted-values))))
+
+(defn- is-subtotal?
+  "Determines if a cell is a subtotal based on its position."
+  [row-values col-values row-indexes col-indexes]
+  (or (< (count row-values) (count row-indexes))
+      (< (count col-values) (count col-indexes))))
+
+(defn- handle-subtotal-cell
+  "Processes subtotal cells, including grand totals."
+  [subtotal-values row-values col-values row-indexes col-indexes value-formatters]
+  (let [row-idxs (take (count row-values) row-indexes)
+        col-idxs (take (count col-values) col-indexes)
+        indexes (concat col-idxs row-idxs)
+        index-values (concat col-values row-values)]
+    (if (zero? (count row-values))
+      (get-grand-total subtotal-values indexes index-values value-formatters)
+      (get-regular-subtotal subtotal-values indexes index-values value-formatters))))
+
 (defn- create-row-section-getter
-  "Returns a function that retrieves and formats values for a specific cell
+  "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
-  ;; The getter returned from this function returns the value(s) at given (column, row) location
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
           index-values (concat col-values row-values)
-          is-subtotal? (or (< (count row-values) (count row-indexes))
-                           (< (count col-values) (count col-indexes)))
-          result
-          (if is-subtotal?
-            ;; Handle subtotal rows/columns
-            (let [row-idxs (take (count row-values) row-indexes)
-                  col-idxs (take (count col-values) col-indexes)
-                  indexes (concat col-idxs row-idxs)
-                  other-attrs (if (zero? (count row-values))
-                                {:isGrandTotal true}
-                                {})]
-              (get-subtotals subtotal-values indexes index-values other-attrs value-formatters))
-            ;; Handle regular data cells
-            (let [{:keys [values valueColumns data dimensions]} (get values-by-key index-values)
-                  formatted-values (format-values values value-formatters)]
-              (if-not data
-                formatted-values
-                (map-indexed
-                 (fn [index value]
-                   (assoc value
-                          :clicked {:data data :dimensions dimensions}
-                          :backgroundColor (color-getter
-                                            (get values index)
-                                            (:rowIndex value)
-                                            (:name (get valueColumns index)))))
-                 formatted-values))))]
-      ;; Convert to JavaScript object if in ClojureScript context, since this
-      ;; is a callback that might be invoked on the BE or the FE
+          result (if (is-subtotal? row-values col-values row-indexes col-indexes)
+                   (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
+                   (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
+      ;; Convert to JavaScript object if in ClojureScript context
       #?(:cljs (clj->js result)
          :clj result))))
 
@@ -476,20 +538,20 @@
                     {:span total-span :maxDepth (inc max-depth)}
                     (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (first remaining)
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
-                          item (-> (dissoc node :children)
-                                   (assoc :depth depth
-                                          :offset current-offset
-                                          :hasChildren (boolean (seq children))
-                                          :path path-with-value))
-                          item-index (count @a)
-                          _ (swap! a conj item)
-                          result (process-tree children (inc depth) current-offset path-with-value)
-                          _ (swap! a update-in [item-index] assoc
-                                   :span (:span result)
-                                   :maxDepthBelow (:maxDepth result))]
+                          item            (-> (dissoc node :children)
+                                              (assoc :depth depth
+                                                     :offset current-offset
+                                                     :hasChildren (boolean (seq children))
+                                                     :path path-with-value))
+                          item-index      (count @a)
+                          _               (swap! a conj item)
+                          result          (process-tree children (inc depth) current-offset path-with-value)
+                          _               (swap! a update-in [item-index] assoc
+                                                 :span (:span result)
+                                                 :maxDepthBelow (:maxDepth result))]
                       (recur (rest remaining)
-                             (+ total-span (:span result))
-                             (max max-depth (:maxDepth result))
+                             (long (+ total-span (:span result)))
+                             (long (max max-depth (:maxDepth result)))
                              (+ current-offset (:span result))))))))]
       (process-tree tree 0 0 [])
       @a)))
@@ -505,7 +567,6 @@
         {:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
         left-index-columns (select-indexes columns row-indexes)
         formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
-        ;; TODO condense the below functions
         formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
         formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
                                          (maybe-add-grand-totals-row formatted-row-tree settings)

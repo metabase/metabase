@@ -281,6 +281,8 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
+                                               :pivot.show_row_totals    true
+                                               :pivot.show_column_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -343,6 +345,7 @@
                     :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+                   (def card card)
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -466,7 +469,7 @@
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["C"]
-                                                  :columns ["A", "B"]
+                                                  :columns ["A" "B"]
                                                   :values  ["MEASURE"]}
                                                  :pivot.show_row_totals    false
                                                  :pivot.show_column_totals false}
