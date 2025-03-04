@@ -164,7 +164,8 @@
                                                        (json/encode cards-with-data)
                                                        (json/encode dashcard-viz-settings)
                                                        (json/encode {:applicationColors (public-settings/application-colors)
-                                                                     :startOfWeek (public-settings/start-of-week)})))]
+                                                                     :startOfWeek (public-settings/start-of-week)
+                                                                     :customFormatting (public-settings/custom-formatting)})))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
