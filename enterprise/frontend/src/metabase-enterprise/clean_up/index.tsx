@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { IndicatorMenu } from "metabase/core/components/IndicatorMenu";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { Badge, Icon, Menu } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -51,13 +52,15 @@ if (hasPremiumFeature("collection_cleanup")) {
 
     return {
       menuItems: [
-        <Menu.Item
+        <IndicatorMenu.ItemWithBadge
           key="collections-cleanup"
           leftSection={<Icon name="archive" />}
           component={ForwardRefLink}
           to={`${Urls.collection(collection)}/cleanup`}
-          rightSection={hasStaleItems && <Badge>Recommended</Badge>}
-        >{t`Clear out unused items`}</Menu.Item>,
+          badgeLabel={t`Recommended`}
+          showBadge={() => hasStaleItems}
+          userAckKey="clean-stale-items"
+        >{t`Clear out unused items`}</IndicatorMenu.ItemWithBadge>,
       ],
       showIndicator: hasStaleItems,
     };
