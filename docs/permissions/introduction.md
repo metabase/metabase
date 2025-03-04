@@ -1,5 +1,6 @@
 ---
 title: Permissions introduction
+description: Learn how Metabase manages access control through group-based permissions for data, collections, application features, and snippet folders.
 redirect_from:
   - /docs/latest/administration-guide/05-setting-permissions
 ---
@@ -61,6 +62,10 @@ Whenever you change permissions for a group, make sure you:
 
 - Save your changes.
 - Click yes to confirm your choices.
+
+## Verifying permissions
+
+When configuring permissions, you should always check to make sure your permissions are set up the way you intended. See [Verifying permissions](./verifying-permissions.md).
 
 ## Further reading
 

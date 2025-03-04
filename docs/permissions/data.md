@@ -102,7 +102,7 @@ See [impersonated view data permissions](./impersonation.md)
 
 {% include plans-blockquote.html feature="Blocked view data permission" %}
 
-**Blocked** ensures people in a group can’t see the data from this database, schema, or table, regardless of their permissions at the collection level.
+**Blocked** ensures people in a group can't see the data from this database, schema, or table, regardless of their permissions at the collection level.
 
 The Blocked view data permission can be set at the database, schema, or table level. Essentially, what Blocked does is make collections permissions _insufficient_ to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is Blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the data permissions to that data source.
 
@@ -172,6 +172,10 @@ If you see this modal pop-up, Metabase is telling you that the people in the All
 ## Upload permissions
 
 See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
+
+## Verifying permissions
+
+After setting up your permissions, make sure to [verify your permissions setup](./verifying-permissions.md) to ensure everything is working as intended.
 
 ## Further reading
 
