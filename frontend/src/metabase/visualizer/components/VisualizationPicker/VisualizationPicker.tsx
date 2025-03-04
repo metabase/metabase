@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { useSelector } from "metabase/lib/redux";
-import { Flex, Icon, Menu, Text } from "metabase/ui";
+import { Center, Flex, Icon, Menu, SegmentedControl, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import { getVisualizerRawSeries } from "metabase/visualizer/selectors";
 import type { VisualizationDisplay } from "metabase-types/api";
@@ -15,7 +14,6 @@ interface VisualizationPickerProps {
   value: VisualizationDisplay | null;
   onChange: (vizType: string) => void;
 }
-
 export function VisualizationPicker({
   value,
   onChange,
@@ -48,51 +46,45 @@ export function VisualizationPicker({
   );
 
   return (
-    <Menu>
-      <Menu.Target>
-        <IconButtonWrapper style={{ marginRight: "4px" }}>
-          <Icon name={selectedOption?.icon ?? "empty"} />
-          <Icon name="chevrondown" size={8} />
-        </IconButtonWrapper>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {sensibleOptions.map(({ label, value, icon }) => (
-          <Menu.Item
-            key={value}
-            className={S.ListItem}
-            aria-selected={value === selectedOption?.value}
-            onClick={() => onChange(value)}
-          >
-            <Flex align="center">
-              <Icon name={icon} />
-              <Text className={S.ListItemLabel} ml="sm">
-                {label}
-              </Text>
-            </Flex>
-          </Menu.Item>
-        ))}
-        {nonsensibleOptions.length > 0 && (
-          <>
-            <Menu.Divider />
-            <Menu.Label>{t`Other charts`}</Menu.Label>
-          </>
-        )}
-        {nonsensibleOptions.map(({ label, value, icon }) => (
-          <Menu.Item
-            key={value}
-            className={S.ListItem}
-            aria-selected={value === selectedOption?.value}
-            onClick={() => onChange(value)}
-          >
-            <Flex align="center">
-              <Icon name={icon} />
-              <Text className={S.ListItemLabel} ml="sm">
-                {label}
-              </Text>
-            </Flex>
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+    <>
+      <SegmentedControl
+        value={selectedOption?.value}
+        data={sensibleOptions.map((o, i) => ({
+          value: o.value,
+          label: (
+            <Center key={i} onClick={() => onChange(o.value)}>
+              <Icon name={o.icon} />
+            </Center>
+          ),
+        }))}
+      />
+      {nonsensibleOptions.length > 0 && (
+        <Menu>
+          <Menu.Target>
+            <IconButtonWrapper style={{ marginLeft: "4px" }}>
+              <Icon name="ellipsis" />
+              <Icon name="chevrondown" size={8} />
+            </IconButtonWrapper>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {nonsensibleOptions.map(({ label, value, icon }) => (
+              <Menu.Item
+                key={value}
+                className={S.ListItem}
+                aria-selected={value === selectedOption?.value}
+                onClick={() => onChange(value)}
+              >
+                <Flex align="center">
+                  <Icon name={icon} />
+                  <Text className={S.ListItemLabel} ml="sm">
+                    {label}
+                  </Text>
+                </Flex>
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
+      )}
+    </>
   );
 }
