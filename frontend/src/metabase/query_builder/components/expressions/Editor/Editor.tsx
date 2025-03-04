@@ -119,7 +119,7 @@ export function Editor<S extends StartRule = "expression">(
       />
       <Errors error={error} />
 
-      {source.trim() === "" && !isFormatting && (
+      {source.trim() === "" && !isFormatting && error == null && (
         <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
       )}
 
