@@ -746,11 +746,9 @@
                                 nil))]
     (api/check table-name 400 "Invalid table identifier")
     (api/check-404
-     (or (check-unique (t2/select :model/Table
-                                  :db_id db-id
-                                  :name table-name
-                                  (cond-> {}
-                                    schema (assoc :where {:schema schema}))))
+     (or (if schema
+           (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
+           (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
          (check-unique (t2/select :model/Table
                                   :db_id db-id
                                   :%lower.name (u/lower-case-en table-name)
@@ -765,8 +763,8 @@
   (api/read-check (t2/select-one :model/Database :id db-id))
   (qp.store/with-metadata-provider db-id
     (let [mp    (qp.store/metadata-provider)
-          table (resolve-table db-id table-identifier)
-          query (-> (lib/query mp (lib.metadata/table mp (:id table)))
+          table-id (:id (resolve-table db-id table-identifier))
+          query (-> (lib/query mp (lib.metadata/table mp table-id))
                     (update-in [:middleware :js-int-to-string?] (fnil identity true))
                     qp/userland-query-with-default-constraints
                     (update :info merge {:executed-by api/*current-user-id*
@@ -784,9 +782,8 @@
                             (qp.streaming/transforming-query-response
                              rff
                              (fn [response]
-                               (-> (assoc response :table_id (:id table))
+                               (-> (assoc response :table_id table-id)
                                    (dissoc :json_query :context :cached :average_execution_time))))))))))
-completing
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
