@@ -349,7 +349,6 @@
                                        :content     true}
                      :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
-                     :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results))))
          (testing "attached-results-text should be invoked exactly once"
@@ -398,7 +397,6 @@
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
-                   :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
@@ -444,7 +442,6 @@
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
                    :attachment-name "image.png"
-                   :channel-id      "FOO"
                    :fallback        pulse.test-util/card-name}
                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}]}
                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
@@ -492,7 +489,6 @@
                      :rendered-info   {:attachments false, :content true, :render/text true},
                      :title_link      (str "https://testmb.com/question/" card-id)
                      :attachment-name "image.png"
-                     :channel-id      "FOO"
                      :fallback        pulse.test-util/card-name}]}
                   (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
@@ -561,7 +557,6 @@
                   :rendered-info {:attachments false, :content true, :render/text true},
                   :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
-                  :channel-id "FOO",
                   :fallback "Test card"}
                  {:blocks
                   [{:type "section",
@@ -972,7 +967,6 @@
                   :rendered-info {:attachments false, :content true, :render/text true},
                   :title_link #"https://testmb.com/question/.+",
                   :attachment-name "image.png",
-                  :channel-id "FOO",
                   :fallback "Test card"}
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-1"}}]}
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-1"}}]}
