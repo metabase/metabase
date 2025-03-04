@@ -188,9 +188,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
-          # ref: ${{ inputs.branch}}
-          ref: master
-          fetch-depth: 0
+          ref: ${{ inputs.branch}}
 
       - name: Setup git user
         run: |
@@ -228,7 +226,7 @@ jobs:
           git remote -v
           git branch -vv
           git log -1
-          git push origin HEAD:some-random-branch-name
+          git push origin HEAD
           echo 'create PR'
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
@@ -284,18 +282,15 @@ jobs:
     needs: [publish-npm, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    permissions:
+      contents: write
     env:
       tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
-          # ref: ${{ inputs.branch }}
-          ref: master
-          fetch-depth: 0
-
-      # - name: Checkout the correct branch
-      #   run: git checkout ${{ inputs.branch }}
+          ref: ${{ inputs.branch }}
 
       # Lightweight tags don't need committer name and email
       - name: Create a new git tag
