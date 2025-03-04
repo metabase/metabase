@@ -21,9 +21,9 @@
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
     (let [url (table-url 1)]
-      (mt/assert-has-premium-feature-error "Internal Tools" (mt/user-http-request :crowberto :post 402 url))
-      (mt/assert-has-premium-feature-error "Internal Tools" (mt/user-http-request :crowberto :put 402 url))
-      (mt/assert-has-premium-feature-error "Internal Tools" (mt/user-http-request :crowberto :delete 402 url)))))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 url))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
 
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
