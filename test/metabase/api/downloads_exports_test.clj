@@ -282,8 +282,6 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
-                                               :pivot.show_row_totals    true
-                                               :pivot.show_column_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -305,34 +303,31 @@
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))
-
-        ;; TODO: fix this one
-        #_(testing "unformatted"
-            (is (= [[["Category"
-                      "2016-01-01T00:00:00Z"
-                      "2017-01-01T00:00:00Z"
-                      "2018-01-01T00:00:00Z"
-                      "2019-01-01T00:00:00Z"
-                      "Row totals"]
-                     ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
-                     ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
-                     ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
-                     ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
-                     ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
-                    #{:unsaved-card-download
-                      :card-download
-                      :dashcard-download
-                      :subscription-attachment
-                      :public-question-download
-                      :public-dashcard-download}]
-                   (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true
-                                            :ignore-cached-results? false
-                                            :skip-results-metadata? true
-                                            :format-rows? true})
-                        (group-by second)
-                        ((fn [m] (update-vals m #(into #{} (mapv first %)))))
-                        (apply concat)))))
-
+        (testing "unformatted"
+          (is (= [[["Category"
+                    "2016-01-01T00:00:00Z"
+                    "2017-01-01T00:00:00Z"
+                    "2018-01-01T00:00:00Z"
+                    "2019-01-01T00:00:00Z"
+                    "Row totals"]
+                   ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
+                   ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
+                   ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
+                   ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
+                   ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
+                  #{:unsaved-card-download
+                    :card-download
+                    :dashcard-download
+                    :subscription-attachment
+                    :public-question-download
+                    :public-dashcard-download}]
+                 (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true
+                                          :ignore-cached-results? false
+                                          :skip-results-metadata? true
+                                          :format-rows? true})
+                      (group-by second)
+                      ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                      (apply concat)))))
         (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
           (is (= [[["Category" "Created At: Year" "Sum of Price"]
                    ["Doohickey" "2016" "$632.14"]
@@ -369,8 +364,6 @@
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum" "avg"]}
-                                               :pivot.show_row_totals    true
-                                               :pivot.show_column_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -517,8 +510,6 @@
                                                    {:rows    ["CATEGORY"]
                                                     :columns ["CREATED_AT"]
                                                     :values  ["sum"]}
-                                                   :pivot.show_row_totals    true
-                                                   :pivot.show_column_totals true
                                                    :column_settings
                                                    {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                           :currency_in_header false}}}
@@ -564,9 +555,7 @@
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    ["C" "D"]
                                               :columns ["A" "B"]
-                                              :values  ["sum"]}
-                                             :pivot.show_row_totals    true
-                                             :pivot.show_column_totals true}
+                                              :values  ["sum"]}}
                     :dataset_query          (mt/mbql-query nil
                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                :breakout
@@ -663,7 +652,7 @@
                                                 {:format_rows   true
                                                  :pivot_results true})
                           csv/read-csv)]
-          (is (= [["Created At: Year"
+          (is (= [[""
                    "Doohickey" "Doohickey"
                    "Gadget" "Gadget"
                    "Gizmo" "Gizmo"
@@ -674,7 +663,7 @@
                    "Sum of Price" "Average of Rating"
                    "Sum of Price" "Average of Rating"
                    "Sum of Price" "Average of Rating"
-                   "" ""]]
+                   "Sum of Price" "Average of Rating"]]
                  (take 2 result))))))))
 
 (deftest ^:parallel pivot-export-aggregations-test
@@ -703,7 +692,7 @@
                           :visualization_settings {:pivot_table.column_split
                                                    {:rows    ["B" "C"]
                                                     :columns ["A"]
-                                                    :values  ["MEASURE"]}}
+                                                    :values  ["sum"]}}
                           :dataset_query          (mt/mbql-query nil
                                                     {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                      :breakout
@@ -716,8 +705,7 @@
                (= [["B" "C" "3" "4" "Row totals"]
                    ["BA" "3" "1" "1" "2"]
                    ["BA" "4" "1" "1" "2"]
-                   ["Totals for BA"  "" "2" "2" "4"]
-                   ["Grand totals" "" "2" "2" "4"]]
+                   ["Totals for BA"  "" "2" "2" "4"]]
                   result)))))))))
 
 (deftest ^:parallel zero-column-pivot-tables-test

@@ -285,10 +285,18 @@
                                 :col col}]}))
      tree)))
 
+(defn- should-show-row-totals?
+  [settings]
+  (get settings :pivot.show_row_totals true))
+
+(defn- should-show-column-totals?
+  [settings]
+  (get settings :pivot.show_column_totals true))
+
 (defn- maybe-add-row-totals-column
   [col-tree settings]
   (if (and (> (count col-tree) 1)
-           (:pivot.show_row_totals settings))
+           (should-show-row-totals? settings))
     (conj
      col-tree
      {:value (i18n/tru "Row totals")
@@ -299,7 +307,7 @@
 
 (defn- maybe-add-grand-totals-row
   [row-tree settings]
-  (if (:pivot.show_column_totals settings)
+  (if (should-show-column-totals? settings)
     (conj
      row-tree
      {:value (i18n/tru "Grand totals")
@@ -366,7 +374,7 @@
   "Adds subtotal rows to the pivot table based on settings.
    Returns the tree with subtotals added where appropriate."
   [row-tree row-indexes settings col-settings]
-  (if-not (:pivot.show_column_totals settings)
+  (if-not (should-show-column-totals? settings)
     row-tree
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
