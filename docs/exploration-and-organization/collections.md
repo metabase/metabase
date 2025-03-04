@@ -6,7 +6,7 @@ redirect_from:
 
 # Collections
 
-After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
+After your team has been using Metabase for a while, you’ll probably end up with lots of questions and dashboards.
 
 ![Our analytics](./images/our-analytics-page.png)
 
@@ -36,7 +36,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 
 ## Collection permissions
 
-[Administrators can give you different kinds of access](../permissions/collections.md) to each collection:
+[Administrators can give you different kinds of access](../permissions/collections.md) to each collection. After setting up collection permissions, it's recommended to [verify the permissions setup](../permissions/verifying-permissions.md) to ensure everything works as expected.
 
 - **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
 - **Curate access:** you can edit, move, or delete the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
