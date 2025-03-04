@@ -735,11 +735,11 @@
             (is (= 400 (:status-code (ex-data ex))))))))))
 
 (deftest api-database-table-endpoint-test
-  (testing "GET /api/database/:id/table/:table-identifier"
+  (testing "GET /api/database/:id/table/:table-identifier/data"
     (mt/dataset test-data
       (let [db-id (mt/id)]
         (testing "returns dataset in same format as POST /api/dataset"
-          (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/table/public.orders" db-id))]
+          (let [response (mt/user-http-request :rasta :get 202 (format "database/%d/table/public.orders/data" db-id))]
             (is (contains? response :data))
             (is (contains? response :row_count))
             (is (contains? response :status))
@@ -758,22 +758,22 @@
             (is (=  (mt/id :orders) (:table_id response)))))
 
         (testing "resolves case-insensitive table references"
-          (mt/user-http-request :rasta :get 200 (format "database/%d/table/PUBLIC.ORDERS" db-id))
-          (mt/user-http-request :rasta :get 200 (format "database/%d/table/public.orders" db-id)))
+          (mt/user-http-request :rasta :get 202 (format "database/%d/table/PUBLIC.ORDERS/data" db-id))
+          (mt/user-http-request :rasta :get 202 (format "database/%d/table/public.orders/data" db-id)))
 
         (testing "handles ambiguous references"
           (mt/with-temp [:model/Table _ {:db_id db-id :schema "app" :name "ORDERS"}]
             (mt/with-test-user :rasta
-              (let [response (mt/user-http-request :rasta :get 300 (format "database/%d/table/orders" db-id))]
+              (let [response (mt/user-http-request :rasta :get 300 (format "database/%d/table/orders/data" db-id))]
                 (is (contains? response :potential-matches))
                 (is (= #{"PUBLIC.ORDERS" "app.ORDERS"}
                        (set (:potential-matches response))))))))
 
         (testing "returns 404 for tables that don't exist"
-          (mt/user-http-request :rasta :get 404 (format "database/%d/table/nonexistent" db-id)))
+          (mt/user-http-request :rasta :get 404 (format "database/%d/table/nonexistent/data" db-id)))
 
         (testing "validates table identifier format"
-          (mt/user-http-request :rasta :get 400 (format "database/%d/table/a.b.c" db-id)))))))
+          (mt/user-http-request :rasta :get 400 (format "database/%d/table/a.b.c/data" db-id)))))))
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test

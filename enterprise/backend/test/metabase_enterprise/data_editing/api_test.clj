@@ -1,4 +1,4 @@
-(ns metabase-enterprise.internal-tools.api-test
+(ns metabase-enterprise.data-editing.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -16,7 +16,7 @@
      :query    {:source-table table-id}})))
 
 (defn- table-url [table-id]
-  (format "ee/internal-tools/table/%d" table-id))
+  (format "ee/data-editing/table/%d" table-id))
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
@@ -26,7 +26,7 @@
       (mt/assert-has-premium-feature-error "Internal Tools" (mt/user-http-request :crowberto :delete 402 url)))))
 
 (deftest table-operations-test
-  (mt/with-premium-features #{:internal-tools}
+  (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
       (let [db         (t2/select-one :model/Database (mt/id))
             driver     :h2

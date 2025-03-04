@@ -757,23 +757,7 @@
                                   (cond-> {}
                                     schema (assoc :where {:%lower.schema (u/lower-case-en schema)}))))))))
 
-(defn- remap-202->200 [response]
-  (cond
-    ;; Well, this is pretty intrusive. Unfortunately, there's no way to set it correctly in the first place, yet.
-    (and (instance? StreamingResponse response) (contains? #{202 nil} (:status (.-options response))))
-    (metabase.server.streaming-response/->StreamingResponse
-     (.-f response)
-     (assoc (.-options response) :status 200)
-     (.-donechan response))
-
-    (and (map? response) (contains? #{202 nil} :status-code response))
-    (assoc response :status-code 200)
-
-    ;; ¯\\_(ツ)_/¯
-    :else
-    response))
-
-(api.macros/defendpoint :get "/:db-id/table/:table-identifier"
+(api.macros/defendpoint :get "/:db-id/table/:table-identifier/data"
   "Get the data for the given table"
   [{:keys [db-id table-identifier]} :- [:map
                                         [:db-id ms/PositiveInt]
@@ -791,18 +775,18 @@
       ;; TODO Discuss whether we want these analytics
       #_(events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})
-      (remap-202->200
-       (span/with-span!
-         {:name "query-table-async"}
-        ;; Introduce a custom export-format for "grid" to replace the remapping hack?
-         (qp.streaming/streaming-response [rff :api]
-           (-> (qp/process-query query (fn [metadata]
-                                         (let [rf (rff metadata)]
-                                           (completing
-                                            rf
-                                            #(-> (rf %)
-                                                 (dissoc :json_query :context :cached :average_execution_time)
-                                                 (assoc :table_id (:id table))))))))))))))
+      (span/with-span!
+        {:name "query-table-async"}
+        (qp.streaming/streaming-response [rff :api]
+          (qp/process-query query
+                           ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+                           ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+                           ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                            (qp.streaming/transforming-query-response
+                             rff
+                             (fn [response]
+                               (-> (assoc response :table_id (:id table))
+                                   (dissoc :json_query :context :cached :average_execution_time))))))))))
 completing
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

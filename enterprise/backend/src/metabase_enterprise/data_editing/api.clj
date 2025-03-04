@@ -1,4 +1,4 @@
-(ns metabase-enterprise.internal-tools.api
+(ns metabase-enterprise.data-editing.api
   (:require
    [metabase.actions.actions :as actions]
    [metabase.api.macros :as api.macros]
@@ -41,6 +41,6 @@
   (perform-bulk-action! :bulk/delete table-id rows))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/internal-tools routes."
+  "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
 

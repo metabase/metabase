@@ -11,7 +11,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
-   [metabase-enterprise.internal-tools.api]
+   [metabase-enterprise.data-editing.api.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
@@ -30,7 +30,7 @@
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
-   :internal-tools             (deferred-tru "Internal Tools")
+   :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
@@ -60,7 +60,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/internal-tools"             (premium-handler metabase-enterprise.internal-tools.api/routes :internal-tools)
+   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
