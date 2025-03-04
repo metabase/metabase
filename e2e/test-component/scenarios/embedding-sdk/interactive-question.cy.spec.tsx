@@ -82,7 +82,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       ).to.be.false;
     });
 
-    popover().findByText("See these Orders").click();
+    popover().findByText("See these records").click();
 
     cy.icon("warning").should("not.exist");
   });

@@ -143,7 +143,7 @@ describe("scenarios > metrics > question", () => {
     H.cartesianChartCircle()
       .eq(23) // random dot
       .click({ force: true });
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
     cy.wait("@dataset");
     cy.findByTestId("qb-filters-panel")
       .findByText("Created At is Mar 1–31, 2024")

@@ -85,7 +85,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("783").click();
     // drill through to orders list
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    cy.findByText("See these records").click();
     // filters are applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → Source is Affiliate");

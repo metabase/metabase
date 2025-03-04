@@ -37,7 +37,7 @@ describe("issue 23851", () => {
 
     H.chartPathWithFillColor("#509EE3").should("have.length", 7);
     H.chartPathWithFillColor("#509EE3").eq(5).click();
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
 
     cy.wait("@dataset");
 

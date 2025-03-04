@@ -520,7 +520,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           H.chartPathWithFillColor("#509EE3").eq(0).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("See these Orders").click();
+        cy.findByText("See these records").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then(xhr => {
@@ -607,7 +607,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.chartPathWithFillColor("#509EE3").eq(0).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Orders").click();
+      cy.findByText("See these records").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
@@ -905,7 +905,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           H.chartPathWithFillColor("#509EE3").eq(1).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("See these Orders").click();
+        cy.findByText("See these records").click();
 
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;

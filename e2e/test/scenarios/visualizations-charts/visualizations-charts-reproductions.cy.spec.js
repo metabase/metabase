@@ -37,7 +37,7 @@ describe("issue 13504", () => {
 
     H.cartesianChartCircle().eq(0).click({ force: true });
 
-    H.popover().findByText("See these Orders").click();
+    H.popover().findByText("See these records").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {

@@ -792,7 +792,7 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     cy.findAllByTestId("detail-shortcut").first().click();
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
       cy.findByText("ID").should("be.visible");
       cy.findByTestId("object-detail-close-button").click();
     });

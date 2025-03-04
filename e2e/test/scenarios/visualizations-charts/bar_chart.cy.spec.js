@@ -167,7 +167,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#A989C5").should("be.visible");
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
-      H.popover().findByText("See these Orders").click();
+      H.popover().findByText("See these records").click();
       cy.findByTestId("qb-filters-panel")
         .findByText("Product → Category is Gadget")
         .should("exist");
@@ -319,7 +319,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
       cy.findAllByTestId("legend-item").findByText("Doohickey").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See these Products").click();
+      cy.findByText("See these records").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");

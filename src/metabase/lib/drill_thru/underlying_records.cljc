@@ -35,8 +35,6 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -98,9 +96,6 @@
                           (not (neg? value)))
                    value
                    2)
-     :table-name (when-let [table-or-card (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                                              (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
-                   (lib.metadata.calculation/display-name query stage-number table-or-card))
      :dimensions dimensions
      ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
      ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by

@@ -124,7 +124,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
 
     cy.get("[data-testid=cell-data]").contains("1").first().click();
     H.popover().within(() => {
-      cy.findByText("See this Review").should("be.visible");
+      cy.findByText("See this record").should("be.visible");
 
       cy.findByText("Automatic insights…").should("be.visible");
 
