@@ -253,7 +253,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     hasOptions: true,
   },
   "relative-time-interval": {
-    displayName: "relativeTimeInterval",
+    displayName: "relativeInterval",
     type: "boolean",
     args: ["expression", "number", "string", "number", "string"],
   },
