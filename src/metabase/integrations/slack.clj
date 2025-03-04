@@ -360,10 +360,9 @@
           (complete!)
           (catch Throwable e
             (throw (ex-info (ex-message e) (assoc (ex-data e) :filename filename)))))
-        uploaded? (fn [file] (seq (:filetype file)))
-        thunk     (fn [] (:file (GET "files.info" {:file file-id})))
-        _ (when-not (or (uploaded? (first (:files complete-response)))
-                        (u/poll {:thunk thunk
+        uploaded? (fn [complete-response] (seq (get-in complete-response [:files 0 :filetype])))
+        _ (when-not (or (uploaded? complete-response)
+                        (u/poll {:thunk complete!
                                  :done? uploaded?
                                  ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
                                  ;; If it takes more than 20 seconds, something else is wrong and we should abort.
