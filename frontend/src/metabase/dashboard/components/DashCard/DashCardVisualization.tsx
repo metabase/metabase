@@ -35,6 +35,7 @@ import type {
   Dashboard,
   DashboardCard,
   Dataset,
+  RawSeries,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
@@ -136,9 +137,7 @@ export function DashCardVisualization({
   downloadsEnabled,
   editDashboard,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(
-    state => getDashcardData(state, dashcard.id) ?? {},
-  );
+  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
   const [
     isVisualizerModalOpen,
     { open: openVisualizerModal, close: closeVisualizerModal },
@@ -219,7 +218,7 @@ export function DashCardVisualization({
     );
 
     const dataSourceDatasets = Object.fromEntries(
-      Object.entries(datasets).map(([cardId, dataset]) => [
+      Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
         `card:${cardId}`,
         dataset,
       ]),
@@ -263,8 +262,9 @@ export function DashCardVisualization({
 
   const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
-      const disableClickBehavior =
-        getVisualizationRaw(series)?.disableClickBehavior;
+      const disableClickBehavior = getVisualizationRaw(
+        series as RawSeries,
+      )?.disableClickBehavior;
       if (isVirtualDashCard(dashcard) || disableClickBehavior) {
         const virtualDashcardType = getVirtualCardType(
           dashcard,

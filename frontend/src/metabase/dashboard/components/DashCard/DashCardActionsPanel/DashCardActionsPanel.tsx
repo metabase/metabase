@@ -153,21 +153,16 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (
-      dashcard &&
-      !isVirtualDashCard(dashcard) &&
-      dashboardCardSupportsVisualizer(dashcard)
-    ) {
+    if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
       buttons.push(
         <VisualizerButton
           key="visualizer-button"
-          series={series}
+          card={series[0].card}
           dashcard={dashcard}
+          columns={series[0].data.cols}
         />,
       );
-    }
-
-    if (!disableSettingsConfig) {
+    } else if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
