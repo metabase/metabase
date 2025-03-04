@@ -23,11 +23,10 @@ import { Errors } from "./Errors";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
+import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { diagnoseAndCompileExpression } from "./utils";
-
-const DEBOUNCE_VALIDATION_MS = 2000;
 
 type EditorProps<S extends StartRule> = {
   id?: string;
@@ -71,6 +70,7 @@ export function Editor<S extends StartRule = "expression">(
     useExpression({
       ...props,
       metadata,
+      error,
     });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -150,6 +150,7 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
+  error: prevError,
 }: EditorProps<S> & {
   metadata: Metadata;
 }) {
@@ -205,7 +206,7 @@ function useExpression<S extends StartRule = "expression">({
         metadata,
         name,
       });
-      if (immediate) {
+      if (immediate || prevError) {
         debouncedOnChange.cancel();
         onChange(clause, error);
       } else {
@@ -221,6 +222,7 @@ function useExpression<S extends StartRule = "expression">({
       expressionIndex,
       onChange,
       debouncedOnChange,
+      prevError,
     ],
   );
 

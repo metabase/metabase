@@ -9,6 +9,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import type { StartRule } from "../types";
 
+import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { diagnoseAndCompileExpression } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
@@ -49,6 +50,7 @@ const lint = (options: LintOptions) =>
       ];
     },
     {
+      delay: DEBOUNCE_VALIDATION_MS,
       tooltipFilter: () => [],
     },
   );
