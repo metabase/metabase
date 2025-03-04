@@ -16,7 +16,8 @@ env:
   SUPPORTED_RELEASES_COUNT: 2
   TEST_SUITES: |
     [
-      "metabase-nodejs-react-sdk-embedding-sample-e2e"
+      "metabase-nodejs-react-sdk-embedding-sample-e2e",
+      "metabase-nextjs-sdk-embedding-sample-e2e"
     ]
   TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
     [
