@@ -98,7 +98,6 @@ const migrateDatabaseToNewSchedulingSettings = database => {
   };
 };
 
-// initializeDatabase
 export const initializeDatabase = function (databaseId) {
   return async function (dispatch, getState) {
     dispatch({ type: CLEAR_INITIALIZE_DATABASE_ERROR });

@@ -22,7 +22,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import DatabaseEditApp from "./DatabaseEditApp";
+import { DatabaseEditApp } from "./DatabaseEditApp";
 
 const ENGINES_MOCK: Record<string, Engine> = {
   H2: {
