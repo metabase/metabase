@@ -405,29 +405,6 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
-    name: "split",
-    structure: "split",
-    description: () =>
-      t`Split a string by a delimiter and return the part at index.`,
-    args: [
-      {
-        name: t`text`,
-        description: t`The string to split into parts.`,
-        example: formatIdentifier(t`Name`),
-      },
-      {
-        name: t`delimiter`,
-        description: t`The string that delimits the parts.`,
-        example: formatStringLiteral(" "),
-      },
-      {
-        name: t`position`,
-        description: t`The position of the part; the first position is 1`,
-        example: "1",
-      },
-    ],
-  },
-  {
     name: "length",
     structure: "length",
     description: () => t`Returns the number of characters in text.`,
