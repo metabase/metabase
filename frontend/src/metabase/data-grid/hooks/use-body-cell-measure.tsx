@@ -4,6 +4,9 @@ import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
+import { DEFAULT_FONT_SIZE } from "../constants";
+import type { DataGridTheme } from "../types";
+
 export type CellMeasurer = (content: string, width?: number) => CellSize;
 
 export interface CellSize {
@@ -28,6 +31,7 @@ export const useCellMeasure = (
           visibility: "hidden",
           pointerEvents: "none",
           zIndex: -999,
+          fontSize: DEFAULT_FONT_SIZE,
         }}
       >
         {cell}
@@ -63,7 +67,7 @@ export const useCellMeasure = (
   };
 };
 
-export const useBodyCellMeasure = () => {
+export const useBodyCellMeasure = (theme?: DataGridTheme) => {
   const bodyCellToMeasure = useMemo(
     () => (
       <BodyCell
@@ -72,9 +76,10 @@ export const useBodyCellMeasure = () => {
         wrap={true}
         value=""
         contentTestId=""
+        style={{ fontSize: theme?.fontSize }}
       />
     ),
-    [],
+    [theme?.fontSize],
   );
   const {
     measureDimensions: measureBodyCellDimensions,

@@ -21,6 +21,7 @@ import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-inst
 import type {
   BodyCellVariant,
   ColumnOptions,
+  DataGridTheme,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
@@ -37,7 +38,6 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { Flex, type MantineTheme } from "metabase/ui";
-import { getCellDataTheme } from "metabase/visualizations/components/TableInteractive/table-theme-utils";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -359,15 +359,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           ) ?? tableTheme?.cell?.backgroundColor,
       );
 
-      const getCellStyle =
-        theme != null
-          ? memoize((value: RowValue) => {
-              const isIDColumn =
-                value != null && (isPK(col) || isID(col) || isFK(col));
-              return getCellDataTheme({ theme, isIDColumn });
-            })
-          : undefined;
-
       const formatter = columnFormatters[columnIndex];
       const columnName = getColumnTitle(columnIndex);
 
@@ -388,7 +379,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
-        getCellStyle,
         getCellClassName: value =>
           cx("test-TableInteractive-cellWrapper", {
             [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
@@ -504,12 +494,27 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [cols, isEmbeddingSdk, isPivoted, queryBuilderMode, settings]);
 
+  const dataGridTheme: DataGridTheme = useMemo(() => {
+    return {
+      fontSize: tableTheme.cell.fontSize,
+      cell: {
+        backgroundColor: tableTheme.cell.backgroundColor,
+        textColor: tableTheme.cell.textColor,
+      },
+      pillCell: {
+        backgroundColor: tableTheme.idColumn?.backgroundColor,
+        textColor: tableTheme.idColumn?.textColor,
+      },
+    };
+  }, [tableTheme]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
   });

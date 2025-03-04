@@ -6,12 +6,16 @@ import {
 import React, { useCallback, useEffect, useRef } from "react";
 import type { Root } from "react-dom/client";
 
-import type { ColumnOptions } from "metabase/data-grid/types";
+import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
+
+import { DEFAULT_FONT_SIZE } from "../constants";
+
+import { DataGridThemeProvider } from "./use-table-theme";
 
 const HEADER_SPACING = 16;
 const BODY_SPACING = 2;
@@ -31,8 +35,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
   table: ReactTable<TData>,
   data: TData[],
   columnsOptions: ColumnOptions<TData, TValue>[],
-  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
   truncateLongCellWidth: number,
+  theme: DataGridTheme | undefined,
+  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement,
@@ -158,7 +163,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       const wrappedContent = (
         <EmotionCacheProvider>
-          <ThemeProvider>{measureContent}</ThemeProvider>
+          <ThemeProvider>
+            <DataGridThemeProvider theme={theme}>
+              {measureContent}
+            </DataGridThemeProvider>
+          </ThemeProvider>
         </EmotionCacheProvider>
       );
 
@@ -182,6 +191,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       data,
       setMeasuredColumnSizing,
       table,
+      theme,
       truncateLongCellWidth,
       measurementRenderWrapper,
     ],
@@ -196,7 +206,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.visibility = "hidden";
       measureRoot.style.pointerEvents = "none";
       measureRoot.style.zIndex = "-999";
-
+      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
       document.body.appendChild(measureRoot);
       measureRootRef.current = measureRoot;
     }

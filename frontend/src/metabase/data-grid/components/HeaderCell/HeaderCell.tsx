@@ -74,6 +74,7 @@ export const HeaderCellWrapper = ({
         [S.light]: variant === "light",
         [S.outline]: variant === "outline",
       })}
+      hasHover={false}
       align={align}
       role="columnheader"
       data-testid="header-cell"
