@@ -933,10 +933,7 @@ export const getIsVisualized = createSelector(
     question &&
     // table is the default
     ((question.display() !== "table" && question.display() !== "pivot") ||
-      // reordering columns via `table.columns` doesn't trigger the raw data view, but formatting settings do
-      question.setting("table.column_formatting") != null ||
-      // "table.pivot" setting has been implicitly set to true
-      (settings && settings["table.pivot"])),
+      (settings != null && settings["table.pivot"])),
 );
 
 export const getIsLiveResizable = createSelector(
