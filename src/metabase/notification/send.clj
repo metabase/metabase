@@ -13,10 +13,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
-
   (:import
    (java.util.concurrent Callable Executors ExecutorService)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
@@ -181,13 +181,63 @@
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
-(defn create-notification-dispatcher
+(defn- cron->next-execution-times
+  "Returns the next n fired times for a given cron schedule."
+  [cron-schedule n]
+  (let [cron-expression (CronExpression. ^String cron-schedule)
+        now             (t/java-date)]
+    (loop [times     []
+           next-time now
+           remaining n]
+      (if (zero? remaining)
+        times
+        (let [next-execution (.getNextValidTimeAfter cron-expression next-time)]
+          (recur (conj times (t/instant next-execution))
+                 next-execution
+                 (dec remaining)))))))
+
+(defn- avg-interval-seconds
+  "Returns the average seconds between executions for a given cron schedule by sampling future execution times."
+  [cron-schedule n]
+  (assert (>= n 2) "Need at least 2 execution times to calculate average")
+  (let [times (cron->next-execution-times cron-schedule n)]
+    (/ (t/as (t/duration (first times) (last times)) :seconds)
+       (dec n))))
+
+(defn- subscription->deadline
+  "Calculates a deadline for notification execution with priority based on frequency.
+
+  More frequent notifications (based on cron schedule) receive shorter deadlines,
+  which results in higher priority when multiple notifications are scheduled at
+  the same time.
+  "
+  [{:keys [type cron_schedule]}]
+  (let [deadline-bonus (case type
+                         :notification-subscription/cron
+                         (let [avg-interval-seconds (avg-interval-seconds cron_schedule 10)
+                               interval-less-than   (fn [duration] (< avg-interval-seconds (t/as duration :seconds)))]
+                           (cond
+                             (interval-less-than (t/minutes 1))  (t/seconds 5)
+                             (interval-less-than (t/minutes 5))  (t/seconds 10)
+                             (interval-less-than (t/minutes 30)) (t/seconds 15)
+                             (interval-less-than (t/hours 1))    (t/seconds 30)
+                             :else                               (t/seconds 60)))
+                         ;; default to 30 seconds for non-cron subscriptions
+                         (t/seconds 30))]
+    (t/plus (t/local-date-time) deadline-bonus)))
+
+(defn- deadline-comparator
+  "Comparator for sorting notifications by deadline."
+  [a b]
+  (compare (:deadline a) (:deadline b)))
+
+(defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
   - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
   [pool-size]
-  (let [ids-queue        (java.util.concurrent.LinkedBlockingQueue.)
+  (let [queue            (java.util.concurrent.PriorityBlockingQueue. 11 deadline-comparator)
         id->notification (atom {})
         executor         (Executors/newFixedThreadPool
                           pool-size
@@ -200,22 +250,26 @@
                ^Callable (fn []
                            (while true
                              (try
-                               (when-let [id (.take ids-queue)]
-                                 (let [notification (get @id->notification id)]
-                                   (swap! id->notification dissoc id)
-                                   (send-notification-sync! notification)))
+                               (when-let [id (:id (.take queue))]
+                                 (if-let [notification (get @id->notification id)]
+                                   (do
+                                     (log/debugf "[Notification %s] Worker started processing" id)
+                                     (send-notification-sync! notification)
+                                     (swap! id->notification dissoc id))
+                                   (log/warnf "[Notification %s] not found in the queue" id)))
                                (catch Exception e
                                  (log/error e "Error in notification worker")))))))
     (fn [notification]
       (let [id (or (:id notification) (random-uuid))]
         (locking queue-lock
-          (swap! id->notification assoc id notification)
           ;; ensure there is only one notification with the same id in the queue
-          (if (.contains ids-queue id)
-            (log/infof "Notification %s is already in the queue, replacing" id)
+          (if (contains? @id->notification id)
+            (log/debugf "[Notification %s] is already in the queue, replacing" id)
             (do
-              (log/infof "Adding notification %s to the queue" id)
-              (.put ids-queue id))))))))
+              (log/debugf "[Notification %s] Added to the queue" id)
+              (.put queue {:id       id
+                           :deadline (subscription->deadline (:triggering_subscription notification))})))
+          (swap! id->notification assoc id notification))))))
 
 (def ^:private dispatcher
   (delay (create-notification-dispatcher (notification-thread-pool-size))))

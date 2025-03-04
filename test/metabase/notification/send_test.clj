@@ -1,6 +1,7 @@
 (ns metabase.notification.send-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
@@ -11,7 +12,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch PriorityBlockingQueue CountDownLatch)))
 
 (set! *warn-on-reflection* true)
 
@@ -188,6 +191,66 @@
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
 
+(deftest cron->next-execution-times-test
+  (t/with-clock (t/mock-clock (t/instant "2023-01-01T10:00:00Z"))
+    (let [cron-schedule "0 0 12 * * ? *"] ; noon every day
+      (is (= [(t/instant "2023-01-01T12:00:00Z")
+              (t/instant "2023-01-02T12:00:00Z")
+              (t/instant "2023-01-03T12:00:00Z")]
+             (#'notification.send/cron->next-execution-times cron-schedule 3))))))
+
+(deftest avg-interval-seconds-test
+  (testing "avg-interval-seconds calculates correct average"
+    (let [hourly-cron "0 0 * * * ? *"
+          daily-cron "0 0 12 * * ? *"
+          minutely-cron "0 * * * * ? *"]
+
+      (testing "hourly schedule"
+        (is (= 3600 (#'notification.send/avg-interval-seconds hourly-cron 5))))
+
+      (testing "daily schedule"
+        (is (= 86400 (#'notification.send/avg-interval-seconds daily-cron 5))))
+
+      (testing "minutely schedule"
+        (is (= 60 (#'notification.send/avg-interval-seconds minutely-cron 5))))))
+
+  (testing "throws assertion error when n < 2"
+    (is (thrown? AssertionError (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 1)))))
+
+(deftest subscription->deadline-test
+  (t/with-clock (t/mock-clock (t/instant))
+    (let [now (t/local-date-time)]
+      (testing "subscription->deadline returns appropriate deadlines based on frequency"
+        (let [deadline (#'notification.send/subscription->deadline
+                        {:type :notification-subscription/cron
+                         :cron_schedule "* * * * * ? *"})]
+          (is (t/before? now deadline))
+          (is (t/before? deadline (t/plus now (t/seconds 10))))))
+
+      (testing "non-cron subscription types get default deadline"
+        (let [deadline (#'notification.send/subscription->deadline {:type :some-other-type})]
+          (is (t/before? now deadline))
+          (is (t/before? deadline (t/plus now (t/seconds 35)))))))))
+
+(deftest deadline-comparator-test
+  (testing "deadline-comparator sorts notifications by deadline"
+    (let [now        (t/instant)
+          later      (t/plus now (t/minutes 5))
+          even-later (t/plus now (t/minutes 10))
+          items      [{:id "3" :deadline even-later}
+                      {:id "1" :deadline now}
+                      {:id "2" :deadline later}]
+          queue (PriorityBlockingQueue. 10 @#'notification.send/deadline-comparator)]
+
+      ;; Add items to queue in random order
+      (doseq [item items]
+        (.put queue item))
+
+      ;; Items should come out in deadline order
+      (is (= "1" (:id (.take queue))))
+      (is (= "2" (:id (.take queue))))
+      (is (= "3" (:id (.take queue)))))))
+
 (deftest notification-dispatcher-test
   (testing "notification dispatcher"
     (let [sent-notifications  (atom [])
@@ -245,3 +308,94 @@
                 (is @error-thrown)
                 (is (= 1 (count @sent-notifications)))
                 (is (= "G" (:test-value (first @sent-notifications))))))))))))
+
+(deftest notification-priority-test
+  (testing "notifications are processed in priority order (by deadline)"
+    (let [processed-notifications (atom [])
+          first-job-latch (CountDownLatch. 1)
+          processing-started-latch (CountDownLatch. 1)]
+      (with-redefs [notification.send/send-notification-sync! (fn [notification]
+                                                                (when (= (:id notification) "blocking-job")
+                                                                  (.countDown processing-started-latch)
+                                                                  (.await first-job-latch 5 java.util.concurrent.TimeUnit/SECONDS))
+                                                                (swap! processed-notifications conj (:id notification)))]
+
+        (let [dispatcher (#'notification.send/create-notification-dispatcher 1)
+              blocking-job {:id "blocking-job"
+                            :triggering_subscription {:type :notification-subscription/cron
+                                                      :cron_schedule "0 0 0 * * ? *"}}
+              low-priority {:id "low-priority"
+                            :triggering_subscription {:type :notification-subscription/cron
+                                                      :cron_schedule "0 0 0 * * ? *"}}
+              high-priority {:id "high-priority"
+                             :triggering_subscription {:type :notification-subscription/cron
+                                                       :cron_schedule "0 * * * * ? *"}}]
+          (dispatcher blocking-job)
+          ;; blocking to have time to put other notifications in the queue
+          (.await processing-started-latch 5 java.util.concurrent.TimeUnit/SECONDS)
+          (dispatcher low-priority)
+          (dispatcher high-priority)
+          (.countDown first-job-latch)
+          (u/poll {:thunk       (fn [] (count @processed-notifications))
+                   :done?       (fn [cnt] (= 3 cnt))
+                   :interval-ms 10
+                   :timeout-ms 1000})
+          (is (= ["blocking-job" "high-priority" "low-priority"] @processed-notifications)))))))
+
+(deftest notification-replacement-test
+  (testing "notifications with same ID are replaced in queue while preserving original deadline"
+    ;; This test verifies that when a notification with the same ID is added to the queue:
+    ;; 1. The content is updated to the latest version
+    ;; 2. The original deadline is preserved (not recalculated)
+    ;; 3. The processing order based on priority is maintained
+    ;;
+    ;; Testing approach:
+    ;; - We use different cron schedules (daily vs minutely) to create different priorities
+    ;; - We replace a notification with a version that has a higher priority schedule
+    ;; - If the deadline was recalculated on replacement, the order would change
+    ;; - By observing the processing order, we can verify deadline preservation
+    (let [processed-notifications (atom [])
+          blocking-job-latch (CountDownLatch. 1)
+          processing-started-latch (CountDownLatch. 1)]
+      (with-redefs [notification.send/send-notification-sync! (fn [notification]
+                                                                (when (= (:id notification) "blocking-job")
+                                                                  (.countDown processing-started-latch)
+                                                                  (.await blocking-job-latch 5 java.util.concurrent.TimeUnit/SECONDS))
+                                                                (swap! processed-notifications conj notification))]
+        (let [dispatcher (#'notification.send/create-notification-dispatcher 1)
+              blocking-job    {:id "blocking-job"
+                               :triggering_subscription {:type :notification-subscription/cron
+                                                         :cron_schedule "0 0 0 * * ? *"}}
+              high-priority   {:id "high-priority"
+                               :triggering_subscription {:type :notification-subscription/cron
+                                                         :cron_schedule "0 * * * * ? *"}}
+              notification-v1 {:id "same-id"
+                               :version 1
+                               :triggering_subscription {:type :notification-subscription/cron
+                                                         :cron_schedule "0 0 0 * * ? *"}}
+              notification-v2 {:id "same-id"
+                               :version 2
+                               :triggering_subscription {:type :notification-subscription/cron
+                                                         :cron_schedule "0 * * * * ? *"}}]
+          (dispatcher blocking-job)
+          (.await processing-started-latch 5 java.util.concurrent.TimeUnit/SECONDS)
+
+          (dispatcher high-priority)
+          (dispatcher notification-v1)
+          ;; notification-v2 here will have a lower deadline to high-priority, but since we preserve
+          ;; the original deadline, it should be processed after high-priority
+          (dispatcher notification-v2)
+
+          (.countDown blocking-job-latch)
+          (u/poll {:thunk       (fn [] (count @processed-notifications))
+                   :done?       (fn [cnt] (= 3 cnt))
+                   :interval-ms 10
+                   :timeout-ms 1000})
+
+          ;; Verify that high-priority was processed before same-id,
+          ;; proving that the deadline of same-id wasn't updated when replaced
+          (is (= ["blocking-job" "high-priority" "same-id"]
+                 (map :id @processed-notifications)))
+
+          ;; Verify that the content was updated to v2 even though deadline wasn't
+          (is (= 2 (:version (last @processed-notifications)))))))))
