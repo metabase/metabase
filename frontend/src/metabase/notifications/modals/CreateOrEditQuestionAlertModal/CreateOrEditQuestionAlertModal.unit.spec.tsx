@@ -92,6 +92,25 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(screen.queryByTestId("alert-create")).not.toBeInTheDocument();
   });
+
+  it("should show set up channels model for non-admin users with access setting permission", async () => {
+    setup({
+      isEmailSetup: false,
+      isSlackSetup: false,
+      isHttpSetup: false,
+      userCanAccessSettings: true,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("alerts-channel-setup-modal"),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByTestId("alerts-channel-create-webhook"),
+    ).toBeInTheDocument();
+  });
 });
 
 function setup({
