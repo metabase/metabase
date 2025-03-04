@@ -304,7 +304,10 @@
   ;; 1. Runs (dev) (start!) for you
   ;; 2. This starts the repl too: just like the :nrepl alias below. (see [[user/-main]])
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
-  :dev-start {:main-opts ["-m" "user"]}
+  :dev-start {:main-opts ["-m" "user"]
+              :jvm-opts ["-Dmb.run.mode=dev"
+                         "-Dmacaw.run.mode=dev"
+                         "-Djava.awt.headless=true"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
