@@ -568,5 +568,5 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
+    (t2/update! :model/User id {:type :personal} {k false}))
   {:success true})

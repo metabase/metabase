@@ -25,7 +25,7 @@
              (t2/update! :model/Segment id {:creator_id nil}))))
 
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= 1
+        (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest identity-hash-test

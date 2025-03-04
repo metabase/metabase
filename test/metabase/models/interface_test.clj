@@ -108,6 +108,22 @@
                    :updated_at expected-timestamp}
                   field)))))))
 
+(defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
+  #{:non_timestamped :other})
+
+(deftest timestamped-property-skips-non-timestamped-fields-test
+  (testing "Does not add a timestamp if it only includes non-timestamped fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil})
+                       (assoc :non_timestamped 1))]
+      (is (= {:non_timestamped 1}
+             (#'mi/add-updated-at-timestamp instance)))))
+  (testing "Adds a timestamp if it includes other fields"
+    (let [instance (-> (t2/instance :test-model/updated-at-tester {:non_timestamped nil :included nil})
+                       (assoc :non_timestamped 1)
+                       (assoc :included 2))]
+      (is (= {:non_timestamped 1 :included 2 :updated_at (mi/now)}
+             (#'mi/add-updated-at-timestamp instance))))))
+
 (deftest ^:parallel upgrade-to-v2-viz-settings-test
   (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
                               [:version :pie.percent_visibility])]
