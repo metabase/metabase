@@ -345,7 +345,6 @@
                     :subscription-attachment
                     :public-question-download :public-dashcard-download}]
                  (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
-                   (def card card)
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
