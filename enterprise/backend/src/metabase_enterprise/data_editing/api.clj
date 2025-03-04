@@ -37,4 +37,3 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
-
