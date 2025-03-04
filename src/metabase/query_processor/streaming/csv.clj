@@ -1,7 +1,6 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv]
-   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -63,18 +62,6 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn- col->aggregation-fn-key
-  [{agg-name :name source :source}]
-  (when (= :aggregation source)
-    (let [agg-name (u/lower-case-en agg-name)]
-      (cond
-        (str/starts-with? agg-name "sum")    :sum
-        (str/starts-with? agg-name "avg")    :avg
-        (str/starts-with? agg-name "min")    :min
-        (str/starts-with? agg-name "max")    :max
-        (str/starts-with? agg-name "count")  :count
-        (str/starts-with? agg-name "stddev") :stddev))))
-
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -86,14 +73,19 @@
                           pivot?       false}} :data} viz-settings]
         (let [col-names          (vec (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
-          (when (and pivot? pivot-export-options)
+          (cond
+            (and pivot? pivot-export-options)
             (reset! pivot-data
                     {:settings viz-settings
                      :data {:cols ordered-cols
                             :rows []}
                      :timezone results_timezone
                      :format-rows? format-rows?
-                     :pivot-grouping-key pivot-grouping-key}))
+                     :pivot-grouping-key pivot-grouping-key})
+            ;; Non-pivoted export of pivot table: sore the pivot-grouping-key so that the pivot group can be
+            ;; removed from the exported data
+            pivot-export-options
+            (reset! pivot-data {:pivot-grouping-key pivot-grouping-key}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
@@ -110,10 +102,10 @@
                               (into [] (for [i output-order] (row-v i))))
                             row)
               {:keys [pivot-grouping-key]} @pivot-data
-              group (get ordered-row pivot-grouping-key)]
+              group                    (get ordered-row pivot-grouping-key)]
+          (def pivot-grouping-key pivot-grouping-key)
           (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
             (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
-
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
