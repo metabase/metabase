@@ -7,6 +7,7 @@
     :as gsheets.settings
     :refer [gsheets gsheets!]]
    [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -201,6 +202,7 @@
                 :folder_url url
                 :folder-upload-time (seconds-from-epoch-now)
                 :gdrive/conn-id (-> response :body :id)}
+        (analytics/inc! :metabase-gsheets/sync-creation-begin)
         (gsheets! <>))
       (do
         (reset-gsheets-status!)
@@ -248,12 +250,14 @@
               (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
               (u/prog1 (assoc (gsheets) :status "complete")
                 (gsheets! <>)
+                (analytics/inc! :metabase-gsheets/connection-creation-ok)
                 (snowplow/track-event! :snowplow/simple_event
                                        {:event "sheets_connected" :event_detail "success"}))
 
               (when-let [upload-time (:folder-upload-time (gsheets))]
                 (> (seconds-from-epoch-now) (+ upload-time *folder-setup-timeout-seconds*)))
               (do (reset-gsheets-status!)
+                  (analytics/inc! :metabase-gsheets/connection-creation-error {:failure-reason "timeout"})
                   (error-response-in-body (tru "Timeout syncing google drive folder, please try again.")
                                           {:status-code 408}))
 
@@ -261,6 +265,7 @@
               (= "error" status)
               (do
                 (reset-gsheets-status!)
+                (analytics/inc! :metabase-gsheets/connection-creation-error {:failure-reason "status_error"})
                 (error-response-in-body (tru "Problem syncing google drive folder, please try again..")))
 
               ;; Continue waiting
@@ -294,6 +299,7 @@
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (snowplow/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
+  (analytics/inc! :metabase-gsheets/connection-deleted)
   (reset-gsheets-status!))
 
 (def ^{:arglists '([request respond raise])} routes
