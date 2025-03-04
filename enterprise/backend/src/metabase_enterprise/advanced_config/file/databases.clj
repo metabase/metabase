@@ -41,7 +41,8 @@
    (fn cruft-patterns-are-valid? [settings]
      (->> [(:auto-cruft-tables settings
                                ;; we access auto.cruft.* with _'s here. Because we may expect to see underscores from
-                               ;; the yaml file, this is validated first then normalized later
+                               ;; the yaml file, this is validated first then normalized into kebab-case after
+                               ;; validation in [[normalize-settings]].
                                (:auto_cruft_tables settings))
            (:auto-cruft-columns settings
                                 (:auto_cruft_columns settings))]
