@@ -118,6 +118,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `urlPart`,
     type: "string",
     args: ["string", "string"],
+    validator: function (_arg: any, part: string) {
+      if (!["host", "domain", "path"].includes(part)) {
+        return t`Part can only be "host", "domain" or "path"`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,
