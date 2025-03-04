@@ -41,11 +41,13 @@ export async function startContainers({
     shell(dockerDownCommand, { cwd, env });
   }
 
-  ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
-    process.on(signal, () => {
-      console.log(`Parent received ${signal}, killing stopping app...`);
+  if (!process.env.CI) {
+    ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
+      process.on(signal, () => {
+        console.log(`Parent received ${signal}, killing stopping app...`);
 
-      shell(dockerDownCommand, { cwd, env });
+        shell(dockerDownCommand, { cwd, env });
+      });
     });
-  });
+  }
 }
