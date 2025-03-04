@@ -225,6 +225,9 @@ jobs:
           git add .
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           echo 'pushing origin with branch name'
+          git remote -v
+          git branch -vv
+          git log -1
           git push origin HEAD:some-random-branch-name
           echo 'create PR'
           gh pr create --base ${{ inputs.branch }}\
