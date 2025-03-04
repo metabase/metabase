@@ -12,7 +12,8 @@
    [metabase.pivot.core :as pivot]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,6 +30,16 @@
 ;; [ "AA"  "BA"  "CA"  "DA"              0              1]
 
 ;; The 'pivot-grouping' is the giveaway. If you ever see that column, you know you're dealing with raw pivot rows.
+
+(mr/def ::pivot-spec
+  [:map
+   [:column-titles  [:sequential [:string]]]
+   [:pivot-rows     [:sequential [:int {:min 0}]]]
+   [:pivot-cols     [:sequential [:int {:min 0}]]]
+   [:pivot-grouping-key {:optional true}
+    [:int {:min 0}]]
+   [:pivot-measures {:optional true}
+    [:sequential [:int {:min 0}]]]])
 
 (def NON_PIVOT_ROW_GROUP
   "Pivot query results have a 'pivot-grouping' column. Rows whose pivot-grouping value is 0 are expected results.
@@ -149,9 +160,7 @@
      (fn [acc item]
        (let [{:keys [depth value span offset]} item
              new-acc (reduce (fn [grid row-idx]
-                               (if (= row-idx offset)
-                                 (assoc-in grid [row-idx depth] value)
-                                 grid))
+                               (assoc-in grid [row-idx depth] value))
                              acc
                              (range offset (+ offset span)))]
          new-acc))
