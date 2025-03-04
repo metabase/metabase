@@ -11,6 +11,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.database-routing.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
@@ -33,7 +34,8 @@
    :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
-   :upload-management          (deferred-tru "Upload Management")})
+   :upload-management          (deferred-tru "Upload Management")
+   :database-routing           (deferred-tru "Database Routing")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -58,6 +60,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
+   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
