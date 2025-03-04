@@ -130,13 +130,6 @@
    ;; map of ports.
    :data       {:a [:b :c] :b [:d]}}
 
-  -x {:requires [[mage.util :as u]]
-      :task     (let [done (u/wait "Please wait")
-                      _    (println "hi")]
-                  (Thread/sleep 1000)
-                  (println "Done waiting!")
-                  (done))}
-  
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
