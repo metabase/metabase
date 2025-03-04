@@ -3,7 +3,7 @@ import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
 import { ColorRange } from "metabase/core/components/ColorRange";
-import { Popover, type PopoverProps } from "metabase/ui";
+import { Popover, type PopoverProps, rem } from "metabase/ui";
 
 import ColorRangePopover from "./ColorRangePopover";
 
@@ -55,6 +55,7 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
       </Popover.Target>
       <Popover.Dropdown>
         <ColorRangePopover
+          maw={rem(360)}
           initialValue={value}
           colors={colors}
           colorRanges={colorRanges}
