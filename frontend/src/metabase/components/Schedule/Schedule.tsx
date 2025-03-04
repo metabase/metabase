@@ -1,10 +1,18 @@
-import { type HTMLAttributes, type ReactNode, useCallback } from "react";
+import {
+  Children,
+  type HTMLAttributes,
+  type ReactNode,
+  isValidElement,
+  useCallback,
+} from "react";
+import { match } from "ts-pattern";
 import { c } from "ttag";
 
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, type BoxProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
+import S from "./Schedule.module.css";
 import {
   SelectFrame,
   SelectFrequency,
@@ -13,15 +21,9 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { defaultDay, defaultHour, getScheduleStrings } from "./constants";
-import type {
-  ScheduleChangeProp,
-  ScheduleDefaults,
-  UpdateSchedule,
-} from "./types";
-import { fillScheduleTemplate, getLongestSelectLabel } from "./utils";
-
-type ScheduleProperty = keyof ScheduleSettings;
+import { defaultDay, defaults } from "./constants";
+import type { ScheduleChangeProp, UpdateSchedule } from "./types";
+import { combineConsecutiveStrings } from "./utils";
 
 export interface ScheduleProps {
   schedule: ScheduleSettings;
@@ -35,33 +37,6 @@ export interface ScheduleProps {
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
 }
-
-const defaults: ScheduleDefaults = {
-  hourly: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_minute: 0,
-  },
-  daily: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-  weekly: {
-    schedule_day: defaultDay,
-    schedule_frame: null,
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-  monthly: {
-    schedule_day: defaultDay,
-    schedule_frame: "first",
-    schedule_hour: defaultHour,
-    schedule_minute: 0,
-  },
-};
 
 export const Schedule = ({
   schedule,
@@ -84,7 +59,7 @@ export const Schedule = ({
 } & BoxProps &
   HTMLAttributes<HTMLDivElement>) => {
   const updateSchedule: UpdateSchedule = useCallback(
-    (field: ScheduleProperty, value: ScheduleSettings[typeof field]) => {
+    (field: keyof ScheduleSettings, value: ScheduleSettings[typeof field]) => {
       let newSchedule: ScheduleSettings = {
         ...schedule,
         [field]: value,
@@ -115,159 +90,146 @@ export const Schedule = ({
     [onScheduleChange, schedule],
   );
 
+  const selectFrequency = (
+    <SelectFrequency
+      key="frequency"
+      updateSchedule={updateSchedule}
+      scheduleType={schedule.schedule_type}
+      scheduleOptions={scheduleOptions}
+    />
+  );
+
+  const selectMinute = (
+    <SelectMinute
+      key="minute"
+      schedule={schedule}
+      updateSchedule={updateSchedule}
+    />
+  );
+
+  const selectTime = (
+    <SelectTime
+      key="time"
+      schedule={schedule}
+      updateSchedule={updateSchedule}
+      timezone={timezone}
+    />
+  );
+
+  const selectWeekday = (
+    <SelectWeekday
+      key="weekday"
+      schedule={schedule}
+      updateSchedule={updateSchedule}
+    />
+  );
+
+  const selectFrame = (
+    <SelectFrame
+      key="frame"
+      schedule={schedule}
+      updateSchedule={updateSchedule}
+    />
+  );
+
+  const selectWeekdayOfMonth = (
+    <SelectWeekdayOfMonth
+      key="wom"
+      schedule={schedule}
+      updateSchedule={updateSchedule}
+    />
+  );
+
+  const { schedule_type, schedule_frame } = schedule;
+
   return (
-    <Box
-      lh="40px"
-      display="grid"
-      style={{
-        gridTemplateColumns: "fit-content(100%) auto",
-        gap: ".5rem",
-        rowGap: ".35rem",
-      }}
-      {...boxProps}
-    >
-      {renderSchedule({
-        fillScheduleTemplate,
-        schedule,
-        updateSchedule,
-        scheduleOptions,
-        timezone,
-        verb,
-        minutesOnHourPicker,
-      })}
+    <Box className={S.Schedule} {...boxProps}>
+      <GroupControlsTogether>
+        {match(schedule_type)
+          .with("hourly", () =>
+            minutesOnHourPicker
+              ? // For example, "Send hourly at 15 minutes past the hour"
+                c(
+                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+                )
+                  .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
+              : // For example, "Send hourly"
+                c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+                  .jt`${verb} ${selectFrequency}`,
+          )
+          .with(
+            "daily",
+            () =>
+              // For example, "Send daily at 12:00pm"
+              c(
+                "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+              ).jt`${verb} ${selectFrequency} at ${selectTime}`,
+          )
+          .with(
+            "weekly",
+            () =>
+              // For example, "Send weekly on Tuesday at 12:00pm"
+              c(
+                "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+              )
+                .jt`${verb} ${selectFrequency} on ${selectWeekday} at ${selectTime}`,
+          )
+          .with("monthly", () =>
+            schedule_frame === "mid"
+              ? // For example, "Send monthly on the 15th at 12:00pm"
+                c(
+                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
+                )
+                  .jt`${verb} ${selectFrequency} on the ${selectFrame} at ${selectTime}`
+              : // For example, "Send monthly on the first Tuesday at 12:00pm"
+                c(
+                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+                ).jt`${verb} ${selectFrequency} on the ${selectFrame} ${
+                  selectWeekdayOfMonth
+                } at ${selectTime}`,
+          )
+          .otherwise(() => null)}
+      </GroupControlsTogether>
     </Box>
   );
 };
 
-const renderSchedule = ({
-  fillScheduleTemplate,
-  schedule,
-  updateSchedule,
-  scheduleOptions,
-  timezone,
-  verb,
-  minutesOnHourPicker,
-}: Omit<ScheduleProps, "onScheduleChange"> & {
-  updateSchedule: UpdateSchedule;
-  fillScheduleTemplate: (
-    template: string,
-    components: ReactNode[],
-  ) => ReactNode;
-}) => {
-  const { frames, weekdayOfMonthOptions } = getScheduleStrings();
+const GroupControlsTogether = ({ children }: { children: ReactNode }) => {
+  const childNodes: ReactNode[] = Children.toArray(children);
+  const groupedNodes: ReactNode[] = [];
+  let currentGroup: ReactNode[] = [];
 
-  const itemProps = {
-    schedule,
-    updateSchedule,
-  };
-  const frequencyProps = {
-    ...itemProps,
-    scheduleType: schedule.schedule_type,
-    scheduleOptions,
-  };
-  const timeProps = {
-    ...itemProps,
-    timezone,
-  };
-  const minuteProps = itemProps;
-  const weekdayProps = itemProps;
-  const frameProps = {
-    ...itemProps,
-    longestLabel: getLongestSelectLabel(frames),
-  };
-  const weekdayOfMonthProps = {
-    ...itemProps,
-    longestLabel: getLongestSelectLabel(weekdayOfMonthOptions),
-  };
+  const compactChildren = combineConsecutiveStrings(childNodes);
 
-  const scheduleType = schedule.schedule_type;
-  if (scheduleType === "hourly") {
-    if (minutesOnHourPicker) {
-      // e.g. "Send hourly at 15 minutes past the hour"
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-        ).t`${"{0}"} ${"{1}"} at ${"{2}"} minutes past the hour`,
-        // NOTE: Expressions like ${"{0}"} do two things: they put a placeholder
-        // into the string shown to translators (a.k.a. the "msgid" string), and
-        // they put a placeholder in the translated string (a.k.a. the "msgstr" string),
-        // so that we can insert components into the translated string in the right places
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectMinute key="minute" {...minuteProps} />,
-        ],
-      );
+  compactChildren.forEach((child, index) => {
+    if (isValidElement(child)) {
+      // Child is element
+      currentGroup.push(child);
+
+      if (!isValidElement(compactChildren[index + 1])) {
+        // Flush current group
+        groupedNodes.push(<div className={S.ControlGroup}>{currentGroup}</div>);
+        currentGroup = [];
+      }
     } else {
-      // e.g. "Send hourly"
-      return fillScheduleTemplate(
-        // We cannot use "{0} {1}" as an argument to the t function, since it only has placeholders.
-        // So, as a workaround, we include square brackets in the string, and then remove them.
-        c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-          .t`[${"{0}"} ${"{1}"}]`
-          .replace(/^\[/, "")
-          .replace(/\]$/, ""),
-        [verb, <SelectFrequency key="frequency" {...frequencyProps} />],
-      );
+      // Child should be a string
+      if (typeof child !== "string") {
+        throw new TypeError();
+      }
+
+      if (!child.trim()) {
+        return;
+      }
+
+      const isTextLong = child.length > 20;
+      const isTextNodeLast = index === compactChildren.length - 1;
+      const className =
+        isTextLong || isTextNodeLast
+          ? S.TextInSecondColumn
+          : S.TextInFirstColumn;
+      groupedNodes.push(<div className={className}>{child}</div>);
     }
-  } else if (scheduleType === "daily") {
-    // e.g. "Send daily at 12:00pm"
-    return fillScheduleTemplate(
-      c(
-        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-      ).t`${"{0}"} ${"{1}"} at ${"{2}"}`,
-      [
-        verb,
-        <SelectFrequency key="frequency" {...frequencyProps} />,
-        <SelectTime key="time" {...timeProps} />,
-      ],
-    );
-  } else if (scheduleType === "weekly") {
-    // e.g. "Send weekly on Tuesday at 12:00pm"
-    return fillScheduleTemplate(
-      c(
-        "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-      ).t`${"{0}"} ${"{1}"} on ${"{2}"} at ${"{3}"}`,
-      [
-        verb,
-        <SelectFrequency key="frequency" {...frequencyProps} />,
-        <SelectWeekday key="weekday" {...weekdayProps} />,
-        <SelectTime key="time" {...timeProps} />,
-      ],
-    );
-  } else if (scheduleType === "monthly") {
-    // e.g. "Send monthly on the 15th at 12:00pm"
-    if (schedule.schedule_frame === "mid") {
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
-        ).t`${"{0}"} ${"{1}"} on the ${"{2}"} at ${"{3}"}`,
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectFrame key="frame" {...frameProps} />,
-          <SelectTime key="time" {...timeProps} />,
-        ],
-      );
-    } else {
-      // e.g. "Send monthly on the first Tuesday at 12:00pm"
-      return fillScheduleTemplate(
-        c(
-          "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-        ).t`${"{0}"} ${"{1}"} on the ${"{2}"} ${"{3}"} at ${"{4}"}`,
-        [
-          verb,
-          <SelectFrequency key="frequency" {...frequencyProps} />,
-          <SelectFrame key="frame" {...frameProps} />,
-          <SelectWeekdayOfMonth
-            key="weekday-of-month"
-            {...weekdayOfMonthProps}
-          />,
-          <SelectTime key="time" {...timeProps} />,
-        ],
-      );
-    }
-  } else {
-    return null;
-  }
+  });
+
+  return <>{groupedNodes}</>;
 };

@@ -1,0 +1,23 @@
+.Schedule {
+  line-height: 40px;
+  display: grid;
+  grid-template-columns: fit-content(100%) auto;
+  gap: 0.5rem;
+  row-gap: 0.35rem;
+}
+
+.ControlGroup {
+  display: flex;
+  gap: 0.25rem;
+  flex-flow: row wrap;
+  grid-column: 2;
+}
+
+.TextInFirstColumn {
+  text-align: right;
+}
+
+.TextInSecondColumn {
+  line-height: 1.5rem;
+  grid-column: 2;
+}

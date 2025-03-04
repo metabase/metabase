@@ -140,6 +140,7 @@ export const SelectTime = ({
       <Group gap="sm">
         {isClock12Hour && (
           <SegmentedControl
+            lh="1rem"
             radius="sm"
             value={amPm.toString()}
             onChange={value =>
@@ -156,6 +157,7 @@ export const SelectTime = ({
         {timezone && (
           <Tooltip label={timezoneTooltipText}>
             <Box
+              role="note"
               aria-label={timezoneTooltipText}
               tabIndex={0} // Ensure tooltip can be triggered by the keyboard
             >
@@ -247,6 +249,7 @@ export const SelectMinute = ({
   );
 };
 
+/** A Select that is automatically sized to fit its largest option name */
 export const AutoWidthSelect = <Value extends string>({
   style,
   value,
@@ -255,30 +258,44 @@ export const AutoWidthSelect = <Value extends string>({
   const fontFamily = useSelector(state =>
     getSetting(state, "application-font"),
   );
-  const maxWidth = useMemo(() => {
-    const longestLabel = getLongestSelectLabel(props.data);
-    const maxWidth = `${
+  const width = useMemo(() => {
+    const longestLabel = getLongestSelectLabel(props.data, fontFamily);
+
+    const width = `${
       measureTextWidthSafely(longestLabel, 50, {
         family: fontFamily,
         ...style,
       }) + 60
     }px`;
-    return maxWidth;
+
+    return width;
   }, [props.data, style, fontFamily]);
   return (
     <Select
-      miw="5rem"
-      w={maxWidth}
       styles={{
         wrapper: {
           paddingInlineEnd: 0,
           marginTop: 0,
+          width,
         },
         label: {
           marginBottom: 0,
         },
-        input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
+        input: {
+          paddingInlineEnd: 0,
+          lineHeight: "2.5rem",
+        },
       }}
+      renderOption={item => (
+        <Box
+          p="sm"
+          style={{
+            whiteSpace: "nowrap",
+          }}
+        >
+          {item.option.label}
+        </Box>
+      )}
       value={value}
       {...props}
     />
