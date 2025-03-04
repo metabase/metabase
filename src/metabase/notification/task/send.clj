@@ -1,5 +1,6 @@
 (ns metabase.notification.task.send
   (:require
+   [clojure.data :refer [diff]]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -151,8 +152,17 @@
   Called when starting the instance."
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (task/delete-all-triggers-of-job! send-notification-job-key)
-  (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription :type :notification-subscription/cron)))
+
+  ;; Get all existing triggers and subscription IDs
+  (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
+        existing-triggers-subscription-ids (map #(get-in % [:data "subscription-id"]) existing-triggers)
+        subscription-id->cron              (t2/select-pk->fn identity :model/NotificationSubscription :type :notification-subscription/cron)
+        db-subscription-ids                (keys subscription-id->cron)
+        [to-delete to-create _to-skip]     (diff existing-triggers-subscription-ids db-subscription-ids)]
+    (doseq [subscription-id to-delete]
+      (delete-trigger-for-subscription! subscription-id))
+    (doseq [subscription-id to-create]
+      (create-new-trigger! (get subscription-id->cron subscription-id)))))
 
 (jobs/defjob
   ^{:doc

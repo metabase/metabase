@@ -25,7 +25,7 @@ describe("DatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "day",
     });
   });

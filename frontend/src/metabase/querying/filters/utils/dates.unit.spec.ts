@@ -63,7 +63,7 @@ describe("getDateFilterClause", () => {
       displayName: "Created At is Feb 2 – Dec 20, 2024",
     },
     {
-      value: { type: "relative", value: "current", unit: "day" },
+      value: { type: "relative", value: 0, unit: "day" },
       displayName: "Created At is today",
     },
     {
@@ -212,11 +212,11 @@ describe("getDateFilterDisplayName", () => {
       displayName: "January 1, 2024 10:20 AM - December 31, 2024 11:15 PM",
     },
     {
-      value: { type: "relative", value: "current", unit: "day" },
+      value: { type: "relative", value: 0, unit: "day" },
       displayName: "Today",
     },
     {
-      value: { type: "relative", value: "current", unit: "year" },
+      value: { type: "relative", value: 0, unit: "year" },
       displayName: "This Year",
     },
     {

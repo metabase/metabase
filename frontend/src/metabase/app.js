@@ -1,3 +1,6 @@
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+
 import "regenerator-runtime/runtime";
 
 // This is conditionally aliased in the webpack config.

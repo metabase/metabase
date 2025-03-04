@@ -271,11 +271,12 @@
                               (recur (conj! acc (conj formatted (get column-titles (.next it)))))
                               (persistent! acc))))))
            col-combos))
-   (repeat (count pivot-measures)
-           (perf/concat
-            (when (and row-totals? (> (count pivot-cols) 0)) ["Row totals"])
-            (repeat (dec (count pivot-cols)) nil)
-            (when (and (seq pivot-cols) (> (count pivot-measures) 1)) [nil])))))
+   (when row-totals?
+     (repeat (count pivot-measures)
+             (perf/concat
+              (when (and row-totals? (> (count pivot-cols) 0)) ["Row totals"])
+              (repeat (dec (count pivot-cols)) nil)
+              (when (and (seq pivot-cols) (> (count pivot-measures) 1)) [nil]))))))
 
 (defn- build-headers
   "Combine row keys with column headers."

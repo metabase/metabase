@@ -1126,7 +1126,7 @@
    created expression with [[relative-date-filter-parts]]."
   [column value unit offset-value offset-unit options]
   (lib.core/relative-date-filter-clause column
-                                        (if (string? value) (keyword value) value)
+                                        value
                                         (keyword unit)
                                         offset-value
                                         (some-> offset-unit keyword)
@@ -1139,7 +1139,7 @@
   (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
       #js {:column      column
-           :value       (if (keyword? value) (name value) value)
+           :value       value
            :unit        (name unit)
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)

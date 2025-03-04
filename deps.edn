@@ -176,7 +176,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
-  org.slf4j/slf4j-api                       {:mvn/version "2.0.16"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+  org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
@@ -399,7 +399,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.10.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "2.28.20"}}}
+    thheller/shadow-cljs               {:mvn/version "2.28.21"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -785,7 +785,7 @@
   ;;
   ;;    clojure -M:liquibase dbDoc target/liquibase
   :liquibase
-  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.16"}}
+  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.17"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
@@ -849,7 +849,7 @@
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
           {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
-           io.github.tonsky/clj-reload {:mvn/version "0.8.0"}} ;; reloader
+           io.github.tonsky/clj-reload {:mvn/version "0.9.0"}} ;; reloader
           :extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}}}
 
