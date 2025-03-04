@@ -30,6 +30,7 @@ landing-page-illustration-custom: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null
+metabot-ai-service-token-ttl: nil
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null
