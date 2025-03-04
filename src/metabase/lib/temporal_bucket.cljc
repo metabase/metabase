@@ -62,24 +62,31 @@
       :last    -1
       0)))
 
+(defmacro ^:private temporal-interval-tru [n a b c d e f g]
+  `(cond
+     (zero? n) (i18n/tru a)
+     (= n 1)   (i18n/tru b)
+     (= n -1)  (i18n/tru c)
+     (neg? n)  (i18n/trun d e (abs n))
+     (pos? n)  (i18n/trun f g n)))
+
 (mu/defn describe-temporal-interval :- ::lib.schema.common/non-blank-string
   "Get a translated description of a temporal bucketing interval. If unit is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
    unit :- [:maybe :keyword]]
   (let [n    (interval-n->int n)
         unit (or unit :day)]
-    (cond
-      (zero? n) (if (= unit :day)
-                  (i18n/tru "Today")
-                  (i18n/tru "This {0}" (describe-temporal-unit unit)))
-      (= n 1)   (if (= unit :day)
-                  (i18n/tru "Tomorrow")
-                  (i18n/tru "Next {0}" (describe-temporal-unit unit)))
-      (= n -1)  (if (= unit :day)
-                  (i18n/tru "Yesterday")
-                  (i18n/tru "Previous {0}" (describe-temporal-unit unit)))
-      (neg? n)  (i18n/tru "Previous {0} {1}" (abs n) (describe-temporal-unit (abs n) unit))
-      (pos? n)  (i18n/tru "Next {0} {1}" n (describe-temporal-unit n unit)))))
+    (case (keyword unit)
+      :millisecond
+      (temporal-interval-tru
+       n
+       "This millisecond"
+       "Next millisecond"
+       "Previous millisecond"
+       "Previous {0} millisecond"
+       "Previous {0} milliseconds"
+       "Next {0} millisecond"
+       "Next {0} milliseconds"))))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of a relative datetime interval, ported from
