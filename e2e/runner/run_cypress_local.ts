@@ -7,7 +7,7 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-import { start as startSampleAppContainers } from "./start-sample-app-containers/start";
+import { startSampleAppContainers } from "./start-sample-app-containers/startSampleAppContainers";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {

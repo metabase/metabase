@@ -77,7 +77,7 @@ export const getMajorVersion = (versionString: string) =>
     .split(".")[0];
 
 export const isReleaseBranch = (branchName: string) => {
-  return branchName.includes("release-x");
+  return branchName.startsWith("release-x.");
 };
 
 export const getReleaseBranch = (versionString: string) => {

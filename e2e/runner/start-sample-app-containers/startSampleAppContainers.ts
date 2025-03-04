@@ -24,7 +24,9 @@ printBold(`Running Cypress Sample App Tests with options:
   - SAMPLE_APP_BRANCH_NAME     : ${userOptions.SAMPLE_APP_BRANCH_NAME}
 `);
 
-export async function start(testSuite: SampleAppTestSuiteName) {
+export async function startSampleAppContainers(
+  testSuite: SampleAppTestSuiteName,
+) {
   const embeddingSdkVersion =
     userOptions.EMBEDDING_SDK_VERSION as EmbeddingSdkVersion;
   const setupConfig = SAMPLE_APP_SETUP_CONFIGS[testSuite];
