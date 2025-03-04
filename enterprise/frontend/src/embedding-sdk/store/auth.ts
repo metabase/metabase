@@ -45,7 +45,7 @@ export const initAuth = createAsyncThunk(
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings({})),
+      dispatch(refreshSiteSettings()),
     ]);
 
     const mbVersion = siteSettings.payload?.version?.tag;
