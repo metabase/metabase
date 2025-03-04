@@ -12,6 +12,7 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
+import { Flex } from "metabase/ui";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
@@ -130,6 +131,7 @@ export const RuleEditor = ({
             )}
           </h3>
           <Select
+            disabled={selectedColumns.length === 0}
             value={rule.operator}
             onChange={(e: { target: { value: ColumnFormattingOperator } }) =>
               onChange({ ...rule, operator: e.target.value })
@@ -146,6 +148,7 @@ export const RuleEditor = ({
           </Select>
           {hasOperand && isNumericRule && !isKeyRule ? (
             <NumericInput
+              disabled={selectedColumns.length === 0}
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
@@ -157,6 +160,7 @@ export const RuleEditor = ({
             />
           ) : hasOperand ? (
             <Input
+              disabled={selectedColumns.length === 0}
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}
@@ -167,12 +171,14 @@ export const RuleEditor = ({
           <h3
             className={cx(CS.mt3, CS.mb1)}
           >{t`…turn its background this color:`}</h3>
-          <ColorSelector
-            data-testid="conditional-formatting-color-selector"
-            value={rule.color}
-            colors={COLORS}
-            onChange={color => onChange({ ...rule, color })}
-          />
+          <Flex align="left">
+            <ColorSelector
+              data-testid="conditional-formatting-color-selector"
+              value={rule.color}
+              colors={COLORS}
+              onChange={color => onChange({ ...rule, color })}
+            />
+          </Flex>
           {canHighlightRow && (
             <>
               <h3
