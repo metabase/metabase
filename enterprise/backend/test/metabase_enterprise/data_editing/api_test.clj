@@ -39,7 +39,7 @@
                                                  table-name
                                                  {:id   (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
                                                   :name [:text]
-                                                  :age  [:integer]}
+                                                  :song  [:text]}
                                                  {:primary-key [:id]})
                   table    (sync/create-table! db
                                                {:name         table-name
@@ -53,28 +53,28 @@
                 (is (= [] (table-rows table-id))))
 
               (testing "POST should insert new rows"
-                (is (= {:created-rows [{:id 1, :name "Baby Sanya", :age 10}
-                                       {:id 2, :name "Young Sanya", :age 20}
-                                       {:id 3, :name "Peak Sanya", :age 30}]}
+                (is (= {:created-rows [{:id 1 :name "Pidgey"     :song "Car alarms"}
+                                       {:id 2 :name "Spearow"    :song "Hold music"}
+                                       {:id 3 :name "Farfetch'd" :song "The land of lisp"}]}
                        (mt/user-http-request :crowberto :post 200 url
-                                             {:rows [{:name "Baby Sanya" :age 10}
-                                                     {:name "Young Sanya" :age 20}
-                                                     {:name "Peak Sanya" :age 30}]})))
+                                             {:rows [{:name "Pidgey"     :song "Car alarms"}
+                                                     {:name "Spearow"    :song "Hold music"}
+                                                     {:name "Farfetch'd" :song "The land of lisp"}]})))
 
-                (is (= [[1 "Baby Sanya" 10]
-                        [2 "Young Sanya" 20]
-                        [3 "Peak Sanya" 30]]
+                (is (= [[1 "Pidgey"     "Car alarms"]
+                        [2 "Spearow"    "Hold music"]
+                        [3 "Farfetch'd" "The land of lisp"]]
                        (table-rows table-id))))
 
               (testing "PUT should update the relevant rows and columns"
                 (is (= {:rows-updated 2}
                        (mt/user-http-request :crowberto :put 200 url
-                                             {:rows [{:id 1 :name "Infantile Sanya"}
-                                                     {:id 2 :age 25}]})))
+                                             {:rows [{:id 1 :song "Join us now and share the software"}
+                                                     {:id 2 :name "Speacolumn"}]})))
 
-                (is (= [[1 "Infantile Sanya" 10]
-                        [2 "Young Sanya" 25]
-                        [3 "Peak Sanya" 30]]
+                (is (= [[1 "Pidgey"     "Join us now and share the software"]
+                        [2 "Speacolumn" "Hold music"]
+                        [3 "Farfetch'd" "The land of lisp"]]
                        (table-rows table-id))))
 
               (testing "DELETE should remove the corresponding rows"
@@ -82,7 +82,7 @@
                        (mt/user-http-request :crowberto :delete 200 url
                                              {:rows [{:id 1}
                                                      {:id 2}]})))
-                (is (= [[3 "Peak Sanya" 30]]
+                (is (= [[3 "Farfetch'd" "The land of lisp"]]
                        (table-rows table-id)))))
 
             (finally
