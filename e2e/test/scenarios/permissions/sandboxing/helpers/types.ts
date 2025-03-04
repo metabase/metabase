@@ -1,16 +1,12 @@
 import type Question from "metabase-lib/v1/Question";
-import type { Dashboard, DatasetData } from "metabase-types/api";
+import type { Dashboard, Dataset } from "metabase-types/api";
 
 export type DatasetResponse = {
-  body: {
-    data: DatasetData;
-  };
+  body: Dataset;
 };
 
 export type DashcardQueryResponse = {
-  body: {
-    data: DatasetData;
-  };
+  body: Dataset;
 };
 
 export type SandboxableItems = {
