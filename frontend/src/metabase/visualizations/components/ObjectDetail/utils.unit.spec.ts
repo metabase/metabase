@@ -132,7 +132,7 @@ describe("ObjectDetail utils", () => {
       expect(name).toBe("Giant Sprocket");
     });
 
-    it("should get a singularized table name if no entity name is present", () => {
+    it("should get a table name if no entity name is present", () => {
       const name = getObjectName({
         table: table as any,
         question: question,
@@ -140,7 +140,7 @@ describe("ObjectDetail utils", () => {
         zoomedRow: [22, 33],
       });
 
-      expect(name).toBe("Order");
+      expect(name).toBe("Orders");
     });
 
     it("should get a singularized question name if neither table nor entity names are present", () => {
