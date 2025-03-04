@@ -28,6 +28,9 @@ export function titleize(str: string) {
   return inflection.titleize(str);
 }
 
+/**
+ * @deprecated: do not use since it changes most non-English words incorrectly
+ */
 export function humanize(str: string, lowFirstLetter?: boolean) {
   return inflection.humanize(str, lowFirstLetter);
 }
