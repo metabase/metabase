@@ -1,4 +1,3 @@
-import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import cx from "classnames";
@@ -16,7 +15,7 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
-import { Listbox } from "../Listbox";
+import { Listbox, useCompletions } from "../Listbox";
 import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
@@ -58,7 +57,7 @@ export function Tooltip({
     );
   }, [state.selection.main.head]);
 
-  const completions = useMemo(() => currentCompletions(state), [state]);
+  const { options: completions } = useCompletions(state);
 
   const maxHeight = usePopoverHeight(tooltipRef);
   const canShowBoth = maxHeight > HEIGHT_THRESHOLD;
