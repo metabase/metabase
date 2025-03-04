@@ -87,7 +87,7 @@ const defaultStyleValue = {
   fontWeight: 700,
 };
 
-export class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
+class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
   inputRef = createRef<HTMLInputElement>();
   scrollElementRef = createRef<HTMLDivElement>();
 
