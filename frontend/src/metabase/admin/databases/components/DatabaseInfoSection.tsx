@@ -12,8 +12,9 @@ export const DatabaseInfoSection = ({
   description,
   children,
   condensed = false,
+  ...props
 }: DatabaseInfoSectionProps) => (
-  <Flex gap="5.5rem" mb="5.5rem">
+  <Flex gap="5.5rem" mb="5.5rem" {...props}>
     <Flex gap="lg" w="100%">
       <Flex
         direction="column"

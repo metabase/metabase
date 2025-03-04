@@ -12,7 +12,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Box, Button, Flex, Text } from "metabase/ui";
+import { Box, Button, Flex, Text, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -95,6 +95,7 @@ export const DatabaseConnectionInfoSection = ({
       name={t`Connection and sync`}
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       condensed
+      data-testid="database-connection-info-section"
     >
       <Flex align="center" justify="space-between" gap="lg">
         <Flex align="center" gap="sm">
@@ -109,11 +110,16 @@ export const DatabaseConnectionInfoSection = ({
           />
           <Text lh="1.4">{health.message}</Text>
         </Flex>
-        <Button
-          onClick={openDbDetailsModal}
-          style={{ flexShrink: 0 }}
-          disabled={!isDbModifiable(database)}
-        >{t`Edit`}</Button>
+        <Tooltip
+          disabled={isDbModifiable(database)}
+          label={t`This database cannot be modified.`}
+        >
+          <Button
+            onClick={openDbDetailsModal}
+            style={{ flexShrink: 0 }}
+            disabled={!isDbModifiable(database)}
+          >{t`Edit`}</Button>
+        </Tooltip>
       </Flex>
 
       <DatabaseInfoSectionDivider />
