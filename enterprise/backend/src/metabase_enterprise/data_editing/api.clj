@@ -6,16 +6,9 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- database-for-table-id [table-id]
-  (t2/select-one :model/Database
-                 {:select [:d.*]
-                  :from   [[:metabase_table :t]]
-                  :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
-                  :where  [:= :t.id table-id]}))
-
 (defn- perform-bulk-action! [action-kw table-id rows]
   (actions/perform-action! action-kw
-                           {:database (:id (database-for-table-id table-id))
+                           {:database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
                             :table-id table-id
                             :arg      rows}))
 
