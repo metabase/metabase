@@ -1,7 +1,6 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv]
-   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
@@ -10,7 +9,6 @@
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.performance :as perf])
   (:import

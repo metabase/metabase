@@ -207,10 +207,12 @@
                                                            col-formatters
                                                            row-formatters
                                                            val-formatters
+                                                           format-rows?
                                                            settings
                                                            col-settings
                                                            nil)
-        top-left-header (map (fn [i] (get-column-title (nth col-settings i))) row-indexes)
+        top-left-header (map (fn [i] (pivot/display-name-for-col (nth columns i) (nth col-settings i) format-rows?))
+                             row-indexes)
         top-headers (build-top-headers top-left-header topHeaderItems)
         left-headers (build-left-headers leftHeaderItems)]
     (build-full-pivot getRowSection left-headers top-headers (count (:values column-split)))))
