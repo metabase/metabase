@@ -89,7 +89,6 @@ const defaultStyleValue = {
 
 class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
   inputRef = createRef<HTMLInputElement>();
-  scrollElementRef = createRef<HTMLDivElement>();
 
   constructor(props: TokenFieldProps) {
     super(props);
@@ -441,18 +440,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps: TokenFieldProps, prevState: TokenFieldState) {
+  componentDidUpdate(prevProps: TokenFieldProps) {
     const input = this.inputRef.current;
-    const scrollElement = this.scrollElementRef.current;
-
-    if (
-      prevState.selectedOptionValue !== this.state.selectedOptionValue &&
-      scrollElement != null
-    ) {
-      if (scrollElement && isObscured(scrollElement)) {
-        scrollElement.scrollIntoView({ block: "nearest" });
-      }
-    }
 
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
@@ -617,7 +606,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           {filteredOptions.map(option => (
             <li className={CS.mr1} key={this._key(option)}>
               <div
-                ref={this.scrollElementRef}
                 className={cx(
                   CS.py1,
                   CS.pl1,
