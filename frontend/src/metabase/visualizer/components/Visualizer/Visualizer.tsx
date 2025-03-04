@@ -37,6 +37,8 @@ import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
+import S from "./Visualizer.module.css";
+
 interface VisualizerProps {
   className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
@@ -119,7 +121,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Flex className={className} direction="column">
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (
-            <Flex direction="column" miw={320}>
+            <Flex direction="column" miw={320} p="md" className={S.sidebar}>
               <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
                 <DataImporter />
               </Box>
