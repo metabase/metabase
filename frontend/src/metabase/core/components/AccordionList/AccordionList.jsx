@@ -136,9 +136,7 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
-    const container = this.isVirtualized()
-      ? this._list?.Grid?._scrollingContainer
-      : this.listRootRef.current;
+    const container = this._getRootContainer();
 
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
@@ -180,6 +178,12 @@ export default class AccordionList extends Component {
       clearTimeout(this._forceUpdateTimeout);
       this._forceUpdateTimeout = null;
     }
+  }
+
+  _getRootContainer() {
+    return this.isVirtualized()
+      ? this._list?.Grid?._scrollingContainer
+      : this.listRootRef.current;
   }
 
   // resets the row height cache when the displayed rows change
@@ -604,7 +608,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this.listRootRef.current?.focus();
+    this._getRootContainer()?.focus();
   };
 
   render() {
