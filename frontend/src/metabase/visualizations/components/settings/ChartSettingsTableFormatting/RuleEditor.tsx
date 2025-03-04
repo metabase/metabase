@@ -152,7 +152,7 @@ export const RuleEditor = ({
               />
             </Box>
           </Stack>
-          <Stack gap="xs">
+          <Stack gap="xs" align="flex-start">
             <Text fw="bold" fz="lg">{t`…turn its background this color:`}</Text>
 
             <Flex align="left">
