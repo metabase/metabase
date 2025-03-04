@@ -73,7 +73,9 @@ In case you need to route outbound Metabase traffic through a proxy on your netw
 ```
 java -Dhttps.proxyHost=[your proxy's hostname or ip] -Dhttps.proxyPort=[your proxy's port] -jar metabase.jar
 ```
+
 or if you're using containers, then you need to use the `JAVA_TOOL_OPTIONS` environment variable:
+
 ```
 JAVA_TOOL_OPTIONS=-Dhttps.proxyHost=[your proxy's hostname or ip] -Dhttps.proxyPort=[your proxy's port]
 ```
