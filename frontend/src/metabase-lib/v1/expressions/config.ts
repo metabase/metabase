@@ -119,8 +119,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "string",
     args: ["string", "string"],
     validator: function (_arg: any, part: string) {
-      if (!["host", "domain", "path"].includes(part)) {
-        return t`Part can only be "host", "domain" or "path"`;
+      if (!["host", "domain", "subdomain", "path"].includes(part)) {
+        return t`Part can only be "host", "domain", "subdomain" or "path"`;
       }
     },
   },

@@ -334,7 +334,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`part`,
-        description: t`"host" or "domain" or "path".`,
+        description: t`"host", "domain", "subdomain", or "path".`,
         example: `"host"`,
       },
     ],
