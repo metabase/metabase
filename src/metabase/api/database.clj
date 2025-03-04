@@ -744,6 +744,7 @@
     (api/check-404
      (or (if schema
            ;; Sometimes we get duplicate records, but bypass that if we have a fully qualified exact match.
+           ;; See: https://github.com/metabase/metabase/issues/53868
            (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
            (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
          (check-unique (t2/select :model/Table
