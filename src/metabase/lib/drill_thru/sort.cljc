@@ -80,10 +80,11 @@
     stage-number                 :- :int
     {:keys [column], :as _drill} :- ::lib.schema.drill-thru/drill-thru.sort
     direction                    :- ::lib.schema.order-by/direction]
-   (-> query
-       ;; remove all existing order bys (see #37633), then add the new one.
-       (lib.order-by/remove-all-order-bys stage-number)
-       (lib.order-by/order-by stage-number column (keyword direction)))))
+   (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+     (-> query
+         ;; remove all existing order bys (see #37633), then add the new one.
+         (lib.order-by/remove-all-order-bys stage-number)
+         (lib.order-by/order-by stage-number resolved-column (keyword direction))))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/sort
   [_query _stage-number {directions :sort-directions}]
