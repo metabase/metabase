@@ -376,6 +376,7 @@ const RuleEditor = ({
             )}
           </h3>
           <Select
+            disabled={selectedColumns.length === 0}
             value={rule.operator}
             onChange={e => onChange({ ...rule, operator: e.target.value })}
             buttonProps={{
@@ -390,6 +391,7 @@ const RuleEditor = ({
           </Select>
           {hasOperand && isNumericRule && !isKeyRule ? (
             <NumericInput
+              disabled={selectedColumns.length === 0}
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
@@ -399,6 +401,7 @@ const RuleEditor = ({
             />
           ) : hasOperand ? (
             <Input
+              disabled={selectedColumns.length === 0}
               data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}
@@ -409,12 +412,14 @@ const RuleEditor = ({
           <h3
             className={cx(CS.mt3, CS.mb1)}
           >{t`…turn its background this color:`}</h3>
-          <ColorSelector
-            data-testid="conditional-formatting-color-selector"
-            value={rule.color}
-            colors={COLORS}
-            onChange={color => onChange({ ...rule, color })}
-          />
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <ColorSelector
+              data-testid="conditional-formatting-color-selector"
+              value={rule.color}
+              colors={COLORS}
+              onChange={color => onChange({ ...rule, color })}
+            />
+          </div>
           {canHighlightRow && (
             <>
               <h3
