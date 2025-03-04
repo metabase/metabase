@@ -266,7 +266,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.chartPathWithFillColor("#509EE3").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("See this CA Person").click();
+    cy.contains("See this record").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("City is Beaver Dams");
@@ -500,7 +500,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           .get(".bar")
           .eq(4)
           .click({ force: true });
-        cy.findByText("See these People").click();
+        cy.findByText("See these records").click();
 
         // We should see the resulting dataset of that drill-through
         cy.wait("@dataset").then(xhr => {
@@ -802,7 +802,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findAllByTestId("choropleth-feature").first().click();
 
     cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
-      cy.findByText("See these People").should("be.visible");
+      cy.findByText("See these records").should("be.visible");
       cy.findByText("Zoom in").should("be.visible");
 
       cy.findByText("Break out by…").should("be.visible");

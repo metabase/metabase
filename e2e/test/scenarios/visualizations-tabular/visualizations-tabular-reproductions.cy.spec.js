@@ -1041,7 +1041,7 @@ describe("issue 12368", () => {
     cy.log("drill thru from a pivot table");
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.findAllByTestId("cell-data").contains("1").first().click();
-    H.popover().findByText("See this Product").click();
+    H.popover().findByText("See this record").click();
 
     cy.log("pivot flag should be cleared but other viz settings are preserved");
     H.tableInteractive().within(() => {
