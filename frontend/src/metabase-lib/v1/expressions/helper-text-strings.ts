@@ -319,7 +319,26 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "1",
       },
     ],
-    docsPage: "substring",
+    docsPage: "split",
+  },
+  {
+    name: "url-part",
+    structure: "urlPart",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: formatIdentifier(t`Url`),
+      },
+      {
+        name: t`part`,
+        description: t`"host" or "domain" or "path".`,
+        example: `"host"`,
+      },
+    ],
+    docsPage: "url-part",
   },
   {
     name: "regex-match-first",

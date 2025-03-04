@@ -114,6 +114,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  "url-part": {
+    displayName: `urlPart`,
+    type: "string",
+    args: ["string", "string"],
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
@@ -528,6 +533,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower",
   "upper",
   "substring",
+  "url-part",
   "split",
   "regex-match-first",
   "concat",
