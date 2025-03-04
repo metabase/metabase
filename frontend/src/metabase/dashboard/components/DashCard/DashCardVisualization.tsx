@@ -218,7 +218,7 @@ export function DashCardVisualization({
     );
 
     const dataSourceDatasets = Object.fromEntries(
-      Object.entries(datasets).map(([cardId, dataset]) => [
+      Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
         `card:${cardId}`,
         dataset,
       ]),

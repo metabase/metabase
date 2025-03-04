@@ -6,7 +6,6 @@ import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
-  DatasetQuery,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -87,7 +86,7 @@ function areAreaBarLineSeriesCompatible(
 }
 
 export function getInitialStateForCardDataSource(
-  card: Card<DatasetQuery>,
+  card: Card,
   columns: DatasetColumn[],
 ): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {

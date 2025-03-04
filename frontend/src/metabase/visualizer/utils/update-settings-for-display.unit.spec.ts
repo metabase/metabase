@@ -1,5 +1,5 @@
 import registerVisualizations from "metabase/visualizations/register";
-import type { Field } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
 import { updateSettingsForDisplay } from "./update-settings-for-display";
@@ -17,7 +17,7 @@ describe("updateSettingsForDisplay", () => {
   } as Record<string, VisualizerColumnValueSource[]>;
 
   const columns = [
-    {
+    createMockColumn({
       semantic_type: "type/CreationTimestamp",
       name: "COLUMN_1",
       field_ref: [
@@ -29,16 +29,16 @@ describe("updateSettingsForDisplay", () => {
       id: 13,
       display_name: "Created At: Month",
       base_type: "type/DateTime",
-    },
-    {
+    }),
+    createMockColumn({
       display_name: "Count",
       semantic_type: "type/Quantity",
       field_ref: ["field", "COLUMN_2", { "base-type": "type/BigInteger" }],
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       name: "COLUMN_2",
-    },
-  ] as Field[];
+    }),
+  ];
 
   it("should return the same settings if sourceDisplay or targetDisplay is null", () => {
     const settings = {};

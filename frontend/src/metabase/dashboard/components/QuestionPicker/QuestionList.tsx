@@ -1,15 +1,9 @@
-import {
-  type ComponentProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  cardApi,
   skipToken,
+  useGetCardQuery,
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
@@ -27,12 +21,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type {
-  Card,
-  CardId,
-  CollectionId,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { CardId, CollectionId } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
 import { convertCardToInitialState } from "./convert-question-to-initial-state";
@@ -199,29 +188,19 @@ const VisualizerModalWithCardId = (
   props: { cardId: CardId } & ComponentProps<typeof VisualizerModal>,
 ) => {
   const { cardId, ...otherProps } = props;
-  const [selectedCard, setSelectedCard] = useState<Card<DatasetQuery>>();
-  const dispatch = useDispatch();
 
-  const loadCard = useCallback(async () => {
-    const { data } = await dispatch(
-      cardApi.endpoints.getCard.initiate({ id: cardId }),
-    );
-
-    setSelectedCard(data);
-  }, [dispatch, cardId]);
-
-  useEffect(() => {
-    loadCard();
-  }, [loadCard]);
+  const { data: card, isLoading: isQuestionLoading } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
 
   // TODO improve loading state?
-  if (!selectedCard) {
+  if (isQuestionLoading || !card) {
     return null;
   }
 
   return (
     <VisualizerModal
-      initialState={convertCardToInitialState(selectedCard)}
+      initialState={convertCardToInitialState(card)}
       {...otherProps}
     />
   );

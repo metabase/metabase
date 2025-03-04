@@ -1,6 +1,5 @@
 import registerVisualizations from "metabase/visualizations/register";
-import type { Field } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 
 import { convertCardToInitialState } from "./convert-question-to-initial-state";
 
@@ -40,22 +39,22 @@ describe("convertQuestionToInitialState", () => {
             "graph.metrics": ["count"],
           },
           result_metadata: [
-            {
+            createMockField({
               semantic_type: "type/CreationTimestamp",
               name: "CREATED_AT",
               effective_type: "type/DateTime",
               id: 13,
               display_name: "Created At: Month",
               base_type: "type/DateTime",
-            },
-            {
+            }),
+            createMockField({
               display_name: "Count",
               semantic_type: "type/Quantity",
               base_type: "type/BigInteger",
               effective_type: "type/BigInteger",
               name: "count",
-            },
-          ] as Field[],
+            }),
+          ],
         }),
       ),
     ).toEqual({

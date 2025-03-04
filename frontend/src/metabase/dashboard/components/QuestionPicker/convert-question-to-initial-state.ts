@@ -6,7 +6,6 @@ import {
 import type {
   Card,
   DatasetColumn,
-  DatasetQuery,
   VisualizationDisplay,
 } from "metabase-types/api";
 import type {
@@ -14,7 +13,7 @@ import type {
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
-export function convertCardToInitialState(card: Card<DatasetQuery>): {
+export function convertCardToInitialState(card: Card): {
   state: Partial<VisualizerHistoryItem>;
   extraDataSources: [VisualizerDataSourceId];
 } {

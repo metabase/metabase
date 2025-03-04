@@ -153,10 +153,7 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    const supportsVisualizer =
-      dashcard && dashboardCardSupportsVisualizer(dashcard);
-
-    if (dashcard && !isVirtualDashCard(dashcard) && supportsVisualizer) {
+    if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
       buttons.push(
         <VisualizerButton
           key="visualizer-button"
@@ -165,9 +162,7 @@ function DashCardActionsPanelInner({
           columns={series[0].data.cols}
         />,
       );
-    }
-
-    if (!disableSettingsConfig && !supportsVisualizer) {
+    } else if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
