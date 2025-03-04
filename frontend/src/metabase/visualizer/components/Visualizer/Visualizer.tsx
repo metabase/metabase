@@ -20,27 +20,24 @@ import {
   getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
   getVisualizationTitle,
-  getVisualizationType,
 } from "metabase/visualizer/selectors";
 import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
   closeVizSettingsSidebar,
   handleDrop,
   resetVisualizer,
-  setDisplay,
   setDraggedItem,
   setTitle,
   turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizationDisplay } from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
+import { Footer } from "../Footer";
 import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
-import { VisualizationPicker } from "../VisualizationPicker";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 interface VisualizerProps {
@@ -54,7 +51,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const title = useSelector(getVisualizationTitle);
-  const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const datasets = useSelector(getDatasets);
   const isFullscreen = useSelector(getIsFullscreenModeEnabled);
@@ -125,13 +121,6 @@ export const Visualizer = (props: VisualizerProps) => {
     [dispatch],
   );
 
-  const handleChangeDisplay = useCallback(
-    (nextDisplay: string) => {
-      dispatch(setDisplay(nextDisplay as VisualizationDisplay));
-    },
-    [dispatch],
-  );
-
   return (
     <DndContext
       sensors={[canvasSensor]}
@@ -169,15 +158,12 @@ export const Visualizer = (props: VisualizerProps) => {
                   initialValue={title}
                   onChange={handleChangeTitle}
                 />
-                <VisualizationPicker
-                  value={display}
-                  onChange={handleChangeDisplay}
-                />
               </Flex>
             )}
             <Box h="90%">
               <VisualizationCanvas />
             </Box>
+            {hasDatasets && <Footer />}
           </Box>
           {!isFullscreen && isVizSettingsSidebarOpen && (
             <Flex direction="column" miw={320}>
