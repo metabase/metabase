@@ -6,7 +6,6 @@ import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
-// FIXME: setup an enterprise plugin
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
