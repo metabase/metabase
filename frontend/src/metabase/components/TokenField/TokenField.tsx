@@ -90,7 +90,6 @@ const defaultStyleValue = {
 export class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
   inputRef = createRef<HTMLInputElement>();
   scrollElementRef = createRef<HTMLDivElement>();
-  scrollElement = null;
 
   constructor(props: TokenFieldProps) {
     super(props);
