@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
@@ -61,6 +62,20 @@ describe("getHelpText", () => {
 
       expect(helpText?.structure).toBe("Offset");
       expect(helpText?.example).toBe("Offset(Sum([Total]), -1)");
+    });
+
+    describe("datetimeDiff", () => {
+      it("should not mention milliseconds in the unit description", () => {
+        const { database } = setup();
+        const helpText = checkNotNull(
+          getHelpText("datetime-diff", database, reportTimezone),
+        );
+        const unitArg = checkNotNull(
+          helpText.args?.find(arg => arg.name === "unit"),
+        );
+        expect(unitArg.description).toContain("second");
+        expect(unitArg.description).not.toContain("millisecond");
+      });
     });
   });
 
