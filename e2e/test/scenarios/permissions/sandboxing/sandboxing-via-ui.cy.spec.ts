@@ -14,18 +14,14 @@ import {
   getParameterValuesForProductCategories,
   gizmoViewer,
   modelCustomView,
+  preparePermissions,
   questionCustomView,
+  runWithoutCachingThenWithCaching,
   signInAs,
   widgetViewer,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
-
-const preparePermissions = () => {
-  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
-};
 
 describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
@@ -82,15 +78,28 @@ describe(
     });
 
     it("shows all data before sandboxing policy is applied", () => {
-      signInAs(gizmoViewer);
-      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-      signInAs(widgetViewer);
-      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+      runWithoutCachingThenWithCaching(
+        ({ isCachingEnabled }) => {
+          signInAs(gizmoViewer);
+          assertNoResultsOrValuesAreSandboxed(
+            dashboard,
+            sandboxableQuestions,
+            isCachingEnabled,
+          );
+          signInAs(widgetViewer);
+          assertNoResultsOrValuesAreSandboxed(
+            dashboard,
+            sandboxableQuestions,
+            isCachingEnabled,
+          );
+        },
+        { questions: sandboxableQuestions },
+      );
     });
 
     describe("we can apply a sandbox policy", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
+        cy.signIn("admin", { skipCache: true });
       });
 
       it("to a table filtered using a question as a custom view", () => {
@@ -102,17 +111,27 @@ describe(
         cy.log(
           "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
         );
-        signInAs(gizmoViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Gizmo",
-        );
-        signInAs(widgetViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Gizmo",
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAs(gizmoViewer)
+              .then(() => {
+                assertAllResultsAndValuesAreSandboxed(
+                  dashboard,
+                  sandboxableQuestions,
+                  "Gizmo",
+                );
+              })
+              .then(() => {
+                signInAs(widgetViewer).then(() => {
+                  assertAllResultsAndValuesAreSandboxed(
+                    dashboard,
+                    sandboxableQuestions,
+                    "Gizmo", // This user will see Gizmos too
+                  );
+                });
+              });
+          },
+          { questions: sandboxableQuestions },
         );
       });
 
@@ -125,17 +144,22 @@ describe(
         cy.log(
           "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
         );
-        signInAs(gizmoViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Gizmo",
-        );
-        signInAs(widgetViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Gizmo",
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAs(gizmoViewer);
+            assertAllResultsAndValuesAreSandboxed(
+              dashboard,
+              sandboxableQuestions,
+              "Gizmo",
+            );
+            signInAs(widgetViewer);
+            assertAllResultsAndValuesAreSandboxed(
+              dashboard,
+              sandboxableQuestions,
+              "Gizmo", // This user will see Gizmos too
+            );
+          },
+          { questions: sandboxableQuestions },
         );
       });
 
@@ -146,23 +170,32 @@ describe(
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        signInAs(gizmoViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Gizmo",
-        );
-        signInAs(widgetViewer);
-        assertAllResultsAndValuesAreSandboxed(
-          dashboard,
-          sandboxableQuestions,
-          "Widget",
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAs(gizmoViewer);
+            assertAllResultsAndValuesAreSandboxed(
+              dashboard,
+              sandboxableQuestions,
+              "Gizmo",
+            );
+            signInAs(widgetViewer);
+            assertAllResultsAndValuesAreSandboxed(
+              dashboard,
+              sandboxableQuestions,
+              "Widget",
+            );
+          },
+          { questions: sandboxableQuestions },
         );
       });
     });
 
     // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
+      before(() => {
+        H.restore("sandboxing-snapshot" as any);
+      });
+
       (
         [
           ["Question", "booleanExpr", "true"],

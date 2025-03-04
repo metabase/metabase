@@ -139,6 +139,7 @@ export function visitQuestionAdhoc(
 
   cy.intercept(url).as(alias);
 
+  cy.log("Visit ad hoc question");
   cy.visit(`/question${questionMode}#` + adhocQuestionHash(question));
 
   runQueryIfNeeded(question, autorun);
