@@ -57,6 +57,7 @@ describe(
           }
         }
       });
+
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
 
