@@ -99,13 +99,10 @@
   (delay (liquibase-latest-major-version)))
 
 (defn- migrate-down-then-up-and-create-dump!
-  [db-name h2-filename version]
+  [db-def h2-filename version]
   (let [db-type driver/*driver*
-        db-def {:database-name db-name}
         current-version @current-major-version
         data-source (get-data-source db-type db-def)]
-    (log/info "creating database")
-    (create-current-database! db-type db-def data-source)
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset bird-flocks
         ;; make sure the data is there
@@ -158,7 +155,14 @@
             current-version (or @current-major-version
                                 (throw (ex-info "Couldn't determine current major version" {})))
             supported-downgrades 4
-            versions (range current-version (- current-version supported-downgrades) -1)]
+            versions (range current-version (- current-version supported-downgrades) -1)
+            db-type driver/*driver*
+            source-db-def {:database-name "load-test-source"}
+            data-source (get-data-source db-type source-db-def)]
+        ;; Create "load-test-source" once and then reuse it because creating it for each supported version, running all
+        ;; migrations and populating with data takes a lot of time.
+        (log/info "creating database")
+        (create-current-database! db-type source-db-def data-source)
         (doseq [version versions]
-          (migrate-down-then-up-and-create-dump! "load-test-source" h2-filename version)
+          (migrate-down-then-up-and-create-dump! source-db-def h2-filename version)
           (load-dump! "load-test-target" h2-filename version))))))
