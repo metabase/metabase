@@ -14,7 +14,7 @@ import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker"
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
@@ -38,7 +38,7 @@ interface AddEditEmailSidebarProps {
   channel: Channel;
   channelSpec: ChannelSpec;
   users: User[];
-  parameters: FieldFilterUiParameter[];
+  parameters: UiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
   handleSave: () => void;
@@ -52,7 +52,7 @@ interface AddEditEmailSidebarProps {
   toggleSkipIfEmpty: () => void;
   setPulse: (pulse: Pulse) => void;
   handleArchive: () => void;
-  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
+  setPulseParameters: (parameters: UiParameter[]) => void;
 }
 
 export const AddEditEmailSidebar = ({

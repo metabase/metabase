@@ -13,7 +13,7 @@ import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
   ChannelApiResponse,
@@ -34,7 +34,7 @@ interface AddEditSlackSidebarProps {
   formInput: ChannelApiResponse;
   channel: Channel;
   channelSpec: ChannelSpec;
-  parameters: FieldFilterUiParameter[];
+  parameters: UiParameter[];
   hiddenParameters?: string;
   dashboard: Dashboard;
   handleSave: () => void;
@@ -47,7 +47,7 @@ interface AddEditSlackSidebarProps {
   testPulse: () => void;
   toggleSkipIfEmpty: () => void;
   handleArchive: () => void;
-  setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
+  setPulseParameters: (parameters: UiParameter[]) => void;
 }
 
 export const AddEditSlackSidebar = ({

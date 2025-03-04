@@ -154,7 +154,7 @@ export function setup(
   );
 }
 
-export const hasAdvancedFilterOptions = (screen: Screen) => {
+export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
   expect(
     screen.queryByText(
       /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
@@ -163,6 +163,10 @@ export const hasAdvancedFilterOptions = (screen: Screen) => {
 
   expect(
     screen.queryByText(/set filter values for when this gets sent/i),
+  ).not.toBeInTheDocument();
+
+  expect(
+    screen.queryByTestId("subscription-parameters-section"),
   ).not.toBeInTheDocument();
 
   return true;

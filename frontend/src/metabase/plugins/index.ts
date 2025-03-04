@@ -40,7 +40,7 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   BaseUser,
   Bookmark,
@@ -266,11 +266,11 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 interface PluginDashboardSubscriptionParametersSectionOverride {
   Component?: ComponentType<{
     className?: string;
-    parameters: FieldFilterUiParameter[];
+    parameters: UiParameter[];
     hiddenParameters?: string;
     dashboard: Dashboard;
     pulse: Pulse;
-    setPulseParameters: (parameters: FieldFilterUiParameter[]) => void;
+    setPulseParameters: (parameters: UiParameter[]) => void;
   }>;
 }
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
