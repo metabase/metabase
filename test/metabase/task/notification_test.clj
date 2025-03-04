@@ -61,7 +61,7 @@
                                      :cron_schedule "0 0 * 1/1 * ? *"}]
                                    [])
             subscription-id       (-> notification models.notification/hydrate-notification :subscriptions first :id)
-            notification-triggers #p (notification.tu/send-notification-triggers subscription-id)]
+            notification-triggers (notification.tu/send-notification-triggers subscription-id)]
         (testing "sanity check that it has triggers to begin with"
           (is (not-empty notification-triggers)))
         (testing "init send notification triggers are idempotent if the subscription doesn't change"
