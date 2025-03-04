@@ -493,7 +493,7 @@
                                                    :source-table (format "card__%s" pivot-data-card-id)})}]
           (let [result (card-download pivot-card {:export-format :csv :pivot true})]
             (is
-             (= [["C" "3" "4"]
+             (= [["" "3" "4"]
                  ["C" "BA" "BA"]
                  ["3" "1" "1"]
                  ["4" "1" "1"]]
@@ -517,6 +517,8 @@
                                                    {:rows    ["CATEGORY"]
                                                     :columns ["CREATED_AT"]
                                                     :values  ["sum"]}
+                                                   :pivot.show_row_totals    true
+                                                   :pivot.show_column_totals true
                                                    :column_settings
                                                    {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                           :currency_in_header false}}}
@@ -544,7 +546,6 @@
                 (is (some? pivot))))))))))
 
 (deftest ^:parallel pivot-export-test
-  []
   (mt/dataset test-data
     (mt/with-temp [:model/Card {pivot-data-card-id :id}
                    {:dataset_query {:database (mt/id)
@@ -563,7 +564,9 @@
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    ["C" "D"]
                                               :columns ["A" "B"]
-                                              :values  ["sum"]}}
+                                              :values  ["sum"]}
+                                             :pivot.show_row_totals    true
+                                             :pivot.show_column_totals true}
                     :dataset_query          (mt/mbql-query nil
                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                :breakout
@@ -575,9 +578,10 @@
       (let [result (card-download pivot-card {:export-format :csv :pivot true})]
         (testing "Pivot CSV Exports look like a Pivoted Table"
           (testing "The Headers Properly indicate the pivot rows names."
-            ;; Pivot Rows Header are Simply the Column names from the rows specified in
+            ;; Pivot rows header are simply the column names from the rows specified in
             ;; [:visualization_settings :pivot_table.column_split :rows]
-            (is (= [["C" "D"]
+            ;; Because there are two pivot columns, the pivot row headers are only in the second row of the CSV.
+            (is (= [["" ""]
                     ["C" "D"]]
                    [(take 2 (first result))
                     (take 2 (second result))])))
@@ -600,15 +604,15 @@
                       (take 4 (drop 2 (second result)))]))
               ;; This combination logic would continue for each specified Pivot Column, but we'll just stick with testing 2
               ;; To keep things relatively easy to read and understand.
-              (testing "The first Header only contains possible values from the first specified pivot column"
+              (testing "The first header only contains possible values from the first specified pivot column"
                 (is (set/subset? possible-vals-of-a header1))
                 (is (not (set/subset? possible-vals-of-b header1))))
-              (testing "The second Header only contains possible values from the second specified pivot column"
+              (testing "The second header only contains possible values from the second specified pivot column"
                 (is (set/subset? possible-vals-of-b header2))
                 (is (not (set/subset? possible-vals-of-a header2))))
-              (testing "The Headers also show the Row Totals header"
-                (is (= ["Row totals" ""]
-                       (map last (take 2 result))))))))
+              (testing "The headers also show the Row Totals header"
+                (is (= "Row totals"
+                       (last (first result))))))))
 
         (testing "The Columns Properly indicate the pivot row names."
           (let [col1               (map first result)
