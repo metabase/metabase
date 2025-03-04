@@ -100,11 +100,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   headings: {
     sizes: {
       h1: {
-        fontSize: rem(24),
+        fontSize: rem(32),
         lineHeight: rem(38),
       },
       h2: {
-        fontSize: rem(20),
+        fontSize: rem(24),
         lineHeight: rem(28),
       },
       h3: {
