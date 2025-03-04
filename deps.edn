@@ -96,7 +96,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.173"
+  metabase/saml20-clj                       {:mvn/version "3.0.0.175"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -132,7 +132,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.0"}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.14.0"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.15.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.1.0"}
@@ -176,7 +176,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
-  org.slf4j/slf4j-api                       {:mvn/version "2.0.16"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+  org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
@@ -246,14 +246,15 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
+    dev.weavejester/hashp        {:mvn/version "0.3.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.58.5"}                    ; ui for inspecting values
-    hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:mvn/version "1.0.7"}
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
+    nrepl/nrepl                  {:mvn/version "1.3.1"}                     ; nREPL server
     org.clojure/algo.generic     {:mvn/version "1.0.1"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
@@ -264,7 +265,6 @@
     rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
@@ -299,6 +299,12 @@
                  ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
                  "--add-opens"
                  "java.base/java.nio=ALL-UNNAMED"]}
+
+  ;; This is probably the best way to start the app for dev mode.
+  ;; 1. Runs (dev) (start!) for you
+  ;; 2. This starts the repl too: just like the :nrepl alias below. (see [[user/-main]])
+  ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+  :dev-start {:main-opts ["-m" "user"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -385,7 +391,7 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.52.0"}
+    cider/cider-nrepl                  {:mvn/version "0.52.1"}
     cider/piggieback                   {:mvn/version "0.6.0"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
@@ -393,7 +399,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.10.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "2.28.20"}}}
+    thheller/shadow-cljs               {:mvn/version "2.28.21"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -779,7 +785,7 @@
   ;;
   ;;    clojure -M:liquibase dbDoc target/liquibase
   :liquibase
-  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.16"}}
+  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.17"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
@@ -847,7 +853,7 @@
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
           {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
-           io.github.tonsky/clj-reload {:mvn/version "0.8.0"}} ;; reloader
+           io.github.tonsky/clj-reload {:mvn/version "0.9.0"}} ;; reloader
           :extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}}}
 
