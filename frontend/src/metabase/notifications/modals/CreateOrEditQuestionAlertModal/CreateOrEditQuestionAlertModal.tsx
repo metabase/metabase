@@ -284,7 +284,6 @@ export const CreateOrEditQuestionAlertModal = ({
                     data={triggerOptions}
                     value={notification.payload.send_condition}
                     w={276}
-                    disabled={hasSingleTriggerOption}
                     onChange={value =>
                       setNotification({
                         ...notification,
