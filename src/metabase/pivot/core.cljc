@@ -3,6 +3,7 @@
    #?(:clj [metabase.util.json :as json])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n])
   (:import
@@ -395,13 +396,16 @@
                        (map #(update-node % leaf-nodes) (:children node)))]
     (merge node {:children new-children})))
 
-(defn add-value-column-nodes
+(defn- add-value-column-nodes
   "This might add value column(s) to the bottom of the top header tree. We
   display the value column names if there are multiple or if there are no
   columns pivoted to the top header."
   [col-tree cols col-indexes col-settings]
   (let [val-cols (map (fn [idx] [(nth cols idx) (nth col-settings idx)]) col-indexes)
-        leaf-nodes (map (fn [[col col-setting]] {:value (or (:column_title col-setting) (display-name-for-col col))
+        leaf-nodes (map (fn [[col col-setting]] {:value (or
+                                                         (:column_title col-setting)
+                                                         (::mb.viz/column-title col-setting)
+                                                         (display-name-for-col col))
                                                  :children []
                                                  :isValueColumn true})
                         val-cols)]
