@@ -228,7 +228,7 @@
     "@types/react-router-redux": "^4.0.53",
     "@types/react-textarea-autosize": "^4.3.6",
     "@types/react-transition-group": "^4.4.5",
-    "@types/react-virtualized": "^9.21.13",
+    "@types/react-virtualized": "^9.22.2",
     "@types/redux-actions": "^2.6.5",
     "@types/redux-promise": "^0.5.32",
     "@types/tether": "^1.4.6",
