@@ -724,7 +724,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                 macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                               macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                         macros.quartz/build-trigger
-   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!   macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.impersonation.util-test/with-impersonations!              macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                             macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!

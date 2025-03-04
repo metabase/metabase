@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.api.impersonation
+(ns metabase-enterprise.impersonation.api
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]

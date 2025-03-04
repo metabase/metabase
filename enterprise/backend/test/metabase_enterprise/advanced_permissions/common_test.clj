@@ -1,10 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.common-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util-test
-    :as advanced-perms.api.tu]
    [metabase-enterprise.advanced-permissions.common
     :as advanced-permissions.common]
+   [metabase-enterprise.impersonation.util-test
+    :as advanced-perms.api.tu]
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.models.database :as database]

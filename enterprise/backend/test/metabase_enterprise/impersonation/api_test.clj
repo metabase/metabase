@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.api.impersonation-test
+(ns metabase-enterprise.impersonation.api-test
   "Tests for creating and updating Connection Impersonation configs via the permisisons API"
   (:require
    [clojure.test :refer :all]
