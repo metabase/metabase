@@ -772,9 +772,8 @@
                     (update :info merge {:executed-by api/*current-user-id*
                                          :context     :table-grid
                                          :card-id     nil}))]
-      ;; TODO Discuss whether we want these analytics
-      #_(events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
-                                                  :user-id api/*current-user-id*})
+      (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+                                                :user-id api/*current-user-id*})
       (span/with-span!
         {:name "query-table-async"}
         (qp.streaming/streaming-response [rff :api]
