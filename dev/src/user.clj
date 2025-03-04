@@ -58,5 +58,4 @@
   [& _args]
   (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
   ((requiring-resolve 'dev/start!))
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (deref (promise)))
