@@ -32,7 +32,6 @@
             driver     :h2
             table-name (str "temp_table_" (u/lower-case-en (random-uuid)))]
 
-        ;; Workaround - I think the grid should work even if actions aren't enabled explicitly
         (mt/with-actions-enabled
           (try
             (let [_        (driver/create-table! driver
