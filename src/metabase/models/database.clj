@@ -451,6 +451,7 @@
                                          ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
