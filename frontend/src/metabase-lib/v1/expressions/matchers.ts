@@ -11,6 +11,7 @@ import type {
   OffsetExpression,
   SegmentFilter,
   StringLiteral,
+  WrappedLiteral,
 } from "metabase-types/api";
 
 import { FUNCTIONS, OPERATORS } from "./config";
@@ -21,6 +22,7 @@ export function isExpression(expr: unknown): expr is Expression {
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
+    isWrappedLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
     isCaseOrIf(expr)
@@ -49,6 +51,10 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number";
+}
+
+export function isWrappedLiteral(expr: unknown): expr is WrappedLiteral {
+  return Array.isArray(expr) && expr[0] === "value";
 }
 
 export function isOperator(expr: unknown): expr is CallExpression {

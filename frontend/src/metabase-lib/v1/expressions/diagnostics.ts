@@ -51,6 +51,7 @@ export function diagnoseAndCompile({
   {
     const error = checkOpenParenthesisAfterFunction(source, tokens);
     if (error) {
+      console.warn("Error with checkOpenParenthesisAfterFunction", error);
       return { error };
     }
   }
@@ -58,6 +59,7 @@ export function diagnoseAndCompile({
   {
     const error = checkMatchingParentheses(tokens);
     if (error) {
+      console.warn("Error with parentheses", error);
       return { error };
     }
   }
@@ -74,6 +76,7 @@ export function diagnoseAndCompile({
   });
 
   if ("error" in result) {
+    console.warn("Error compiling the expression", result.error);
     return result;
   }
 
@@ -84,9 +87,9 @@ export function diagnoseAndCompile({
     expression: result.expression,
   });
   if (error) {
+    console.warn("Error checking the expression", error);
     return { error };
   }
-
   return result;
 }
 

@@ -11,6 +11,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiterals,
   useShorthands,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
@@ -58,6 +59,7 @@ export function compileExpression({
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
+    adjustTopLevelLiterals,
   ];
 
   if (shouldResolve) {
@@ -93,6 +95,7 @@ export function compileExpression({
       expressionClause,
     };
   } catch (error) {
+    console.warn("Error compiling the expression", error);
     if (isErrorWithMessage(error)) {
       return { error };
     }

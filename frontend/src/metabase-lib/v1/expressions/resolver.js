@@ -160,6 +160,10 @@ export function resolve({
       ];
     }
 
+    if (op === "value") {
+      return expression;
+    }
+
     const clause = findMBQL(op);
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);

@@ -206,6 +206,19 @@ function modify(node: Expression, transform: Transform): Expression {
   return withAST(transform(node), node);
 }
 
+export function adjustTopLevelLiterals(node: Expression): Expression {
+  if (typeof node === "string") {
+    return ["value", node];
+  }
+  if (typeof node === "boolean") {
+    return ["value", node];
+  }
+  if (typeof node === "number") {
+    return ["value", node];
+  }
+  return node;
+}
+
 function withAST(
   result: Expression & { node?: Node },
   expr: Expression & { node?: Node },
@@ -227,5 +240,6 @@ export const ALL_PASSES = [
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiterals,
   useShorthands,
 ];

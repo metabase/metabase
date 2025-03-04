@@ -114,6 +114,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isWrappedLiteral(path)) {
+    return formatWrappedLiteral(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -141,6 +143,10 @@ function formatNumberLiteral(node: number): Doc {
 
 function formatBooleanLiteral(node: boolean): Doc {
   return node ? "True" : "False";
+}
+
+function formatWrappedLiteral(path: AstPath<WrappedLiteral>, print: Print) {
+  return recurse(path, print, path.node[1]);
 }
 
 function formatDimension(
