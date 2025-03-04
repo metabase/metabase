@@ -120,7 +120,7 @@
              current-row (get acc depth)
              new-row (-> current-row
                          (conj value)
-                         (into (repeat (dec span) nil)))]
+                         (into (repeat (dec span) value)))]
          (assoc acc depth new-row)))
      result
      top-header-items)))

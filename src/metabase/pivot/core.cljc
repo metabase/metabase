@@ -504,6 +504,7 @@
       (get-grand-total subtotal-values indexes index-values value-formatters)
       (get-regular-subtotal subtotal-values indexes index-values value-formatters))))
 
+;; TODO re-add memoization
 (defn- create-row-section-getter
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
