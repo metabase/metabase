@@ -4777,10 +4777,10 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react-grid-layout@^1.1.3":
-  version "1.1.3"
-  resolved "https://registry.yarnpkg.com/@types/react-grid-layout/-/react-grid-layout-1.1.3.tgz#0ee38ca50ecd84e141abaccbe2a589ac20193dd5"
-  integrity sha512-4n7+78Fehtp56iavW2Yx3AxoYc34/J4AlS2/ePjZqYV26pEWbgJ9e157lH4MYdnJSUR8lbVwMVWqBWKbD9ONBg==
+"@types/react-grid-layout@^1.3.5":
+  version "1.3.5"
+  resolved "https://registry.yarnpkg.com/@types/react-grid-layout/-/react-grid-layout-1.3.5.tgz#f4b52bf27775290ee0523214be0987be14e66823"
+  integrity sha512-WH/po1gcEcoR6y857yAnPGug+ZhkF4PaTUxgAbwfeSH/QOgVSakKHBXoPGad/sEznmkiaK3pqHk+etdWisoeBQ==
   dependencies:
     "@types/react" "*"
 
