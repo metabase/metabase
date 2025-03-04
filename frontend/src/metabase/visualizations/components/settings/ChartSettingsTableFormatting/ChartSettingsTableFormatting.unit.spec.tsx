@@ -132,15 +132,15 @@ describe("ChartSettingsTableFormatting", () => {
 
     expect(
       await screen.findByRole("option", { name: "Number Column" }),
-    ).toHaveAttribute("data-disabled", "true");
+    ).toHaveAttribute("aria-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "Boolean Column" }),
-    ).toHaveAttribute("data-disabled", "true");
+    ).toHaveAttribute("aria-disabled", "true");
 
     expect(
       await screen.findByRole("option", { name: "String Column 2" }),
-    ).not.toHaveAttribute("data-disabled");
+    ).toHaveAttribute("aria-disabled", "false");
   });
 
   describe("should show appropriate operators based on column selection", () => {
