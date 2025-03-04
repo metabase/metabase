@@ -22,7 +22,6 @@ const ColorRangeToggle = ({
   return (
     <ToggleRoot>
       <ColorRange
-        bd="1px solid red"
         colors={value}
         isQuantile={isQuantile}
         onSelect={onColorRangeSelect}
