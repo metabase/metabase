@@ -7,6 +7,7 @@ const CHANNELS_CONFIG: {
   title: string;
   icon: IconName;
   link: string;
+  testId?: string;
 }[] = [
   {
     title: t`Set up SMTP`,
@@ -22,16 +23,17 @@ const CHANNELS_CONFIG: {
     title: "Add a webhook",
     icon: "webhook",
     link: "/admin/settings/notifications",
+    testId: "alerts-channel-create-webhook",
   },
 ];
 
 type ChannelSetupContentProps = {
-  isAdmin: boolean;
+  userCanAccessSettings: boolean;
   onClose: () => void;
 };
 
 export const ChannelSetupModal = ({
-  isAdmin,
+  userCanAccessSettings,
   onClose,
 }: ChannelSetupContentProps) => {
   return (
@@ -44,14 +46,15 @@ export const ChannelSetupModal = ({
     >
       <Stack gap="0.5rem">
         <Text mb="1rem">
-          {isAdmin
+          {userCanAccessSettings
             ? t`To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.`
             : t`To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.`}
         </Text>
 
-        {isAdmin &&
-          CHANNELS_CONFIG.map(({ title, icon, link }) => (
+        {userCanAccessSettings &&
+          CHANNELS_CONFIG.map(({ title, icon, link, testId }) => (
             <Button
+              data-testid={testId}
               key={title}
               leftSection={<Icon name={icon} />}
               component={Link}
