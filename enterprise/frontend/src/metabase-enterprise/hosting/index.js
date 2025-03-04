@@ -6,7 +6,7 @@ import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
-
+export const activate = () => {
 if (hasPremiumFeature("hosting")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => _.omit(sections, ["updates"]));
 
@@ -32,3 +32,5 @@ if (hasPremiumFeature("hosting")) {
     },
   }));
 }
+
+};

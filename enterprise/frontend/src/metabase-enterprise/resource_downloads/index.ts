@@ -1,1 +1,1 @@
-import "./resource_downloads_plugin";
+export * from "./resource_downloads_plugin";

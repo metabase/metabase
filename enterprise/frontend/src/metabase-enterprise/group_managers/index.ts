@@ -16,7 +16,7 @@ import {
   getRemoveMembershipConfirmation,
   groupManagerAllowedPathGetter,
 } from "./utils";
-
+export const activate = () => {
 if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(groupManagerAllowedPathGetter);
 
@@ -32,3 +32,5 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction = confirmDeleteMembership;
   PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction = confirmUpdateMembership;
 }
+
+};

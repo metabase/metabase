@@ -55,6 +55,7 @@ const getEditSegementedAccessUrl = (entityId, groupId, view) =>
 const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
   push(getEditSegementedAccessUrl(entityId, groupId, view));
 
+export const activate = () => {
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
 
@@ -96,3 +97,5 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
   PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;
 }
+
+};

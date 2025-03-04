@@ -1,3 +1,5 @@
+// eslint-disable-next-line depend/ban-dependencies
+import { cloneDeep } from "lodash";
 import type React from "react";
 import type {
   ComponentType,
@@ -562,4 +564,98 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     hide_download_button?: boolean | null;
     downloads?: boolean | null;
   }) => true,
+};
+
+// just a reference to all the plugins so we can iterate easily on them
+const PLUGINS = {
+  PLUGIN_APP_INIT_FUNCTIONS,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_REDUX_MIDDLEWARES,
+  PLUGIN_LOGO_ICON_COMPONENTS,
+  PLUGIN_ADMIN_NAV_ITEMS,
+  PLUGIN_ADMIN_ROUTES,
+  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
+  PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_TROUBLESHOOTING,
+  PLUGIN_ADMIN_SETTINGS,
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_ADMIN_USER_MENU_ITEMS,
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_LDAP_FORM_FIELDS,
+  PLUGIN_IS_PASSWORD_USER,
+  PLUGIN_SELECTORS,
+  PLUGIN_FORM_WIDGETS,
+  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
+  PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
+  PLUGIN_SNIPPET_SIDEBAR_MODALS,
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
+  PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
+  PLUGIN_LLM_AUTODESCRIPTION,
+  PLUGIN_COLLECTIONS,
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+  PLUGIN_CACHING,
+  PLUGIN_REDUCERS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_APPLICATION_PERMISSIONS,
+  PLUGIN_GROUP_MANAGERS,
+  PLUGIN_MODEL_PERSISTENCE,
+  PLUGIN_EMBEDDING,
+  PLUGIN_EMBEDDING_SDK,
+  PLUGIN_CONTENT_VERIFICATION,
+  PLUGIN_AUDIT,
+  PLUGIN_UPLOAD_MANAGEMENT,
+  PLUGIN_IS_EE_BUILD,
+  PLUGIN_RESOURCE_DOWNLOADS,
+};
+
+// initial oss plugins, needed so we can restore them
+export const INITIAL_OSS_PLUGINS = cloneDeep(PLUGINS);
+
+export const EE_PLUGINS_SYSTEM = {
+  activatePlugins: () => {
+    // noop on oss
+    // will be implemented for ee plugins
+  },
+
+  restoreOssPlugins: () => {
+    // console.log("restoring oss plugins");
+    Object.keys(INITIAL_OSS_PLUGINS).forEach(k => {
+      const key = k as keyof typeof INITIAL_OSS_PLUGINS;
+      const initialPlugin = INITIAL_OSS_PLUGINS[key];
+      const plugin = PLUGINS[key];
+
+      if (Array.isArray(plugin)) {
+        plugin.length = 0;
+        // @ts-expect-error -- 🤷
+        plugin.push(...initialPlugin);
+      } else {
+        Object.keys(plugin).forEach(k => {
+          delete (plugin as any)[k];
+        });
+        Object.assign(plugin, initialPlugin);
+      }
+    });
+  },
+
+  calculatePlugins: () => {
+    EE_PLUGINS_SYSTEM.restoreOssPlugins();
+    EE_PLUGINS_SYSTEM.activatePlugins();
+  },
 };

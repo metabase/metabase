@@ -14,7 +14,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
-
+export const activate = () => {
 if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
     icon: "folder",
@@ -82,3 +82,5 @@ if (hasPremiumFeature("snippet_collections")) {
     );
   });
 }
+
+};
