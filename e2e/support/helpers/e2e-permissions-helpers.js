@@ -168,6 +168,9 @@ export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
 
 export function saveChangesToPermissions() {
   cy.intercept("PUT", "/api/permissions/graph").as("updatePermissions");
+  cy.intercept("PUT", "/api/ee/advanced-permissions/application/graph").as(
+    "updatePermissions",
+  );
   cy.log("Save changes to permissions");
 
   cy.findByTestId("edit-bar")
