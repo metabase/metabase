@@ -1,3 +1,12 @@
+## [0.52.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.15...embedding-sdk-0.52.16) (2025-03-04)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54314](https://github.com/metabase/metabase/issues/54314)) ([4514326](https://github.com/metabase/metabase/commit/4514326c0b0996c1a4bb2a437a876157f18e0f47))
+
+
+
 ## [0.52.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.14...embedding-sdk-0.52.15) (2025-02-27)
 
 
