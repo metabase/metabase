@@ -27,7 +27,7 @@ import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { diagnoseAndCompileExpression } from "./utils";
 
-const DEBOUNCE_VALIDATION_MS = 260;
+const DEBOUNCE_VALIDATION_MS = 2000;
 
 type EditorProps<S extends StartRule> = {
   id?: string;
