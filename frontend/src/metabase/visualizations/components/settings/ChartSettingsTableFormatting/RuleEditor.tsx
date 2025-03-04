@@ -89,8 +89,8 @@ export const RuleEditor = ({
   };
 
   return (
-    <Stack gap="xl">
-      <Stack gap="sm">
+    <Stack gap="lg">
+      <Stack gap="xs">
         <Text fw="bold" fz="lg">{t`Which columns should be affected?`}</Text>
         <MultiSelect
           comboboxProps={{ withinPortal: false }}
@@ -106,7 +106,7 @@ export const RuleEditor = ({
         />
       </Stack>
       {isNumericRule && !isKeyRule && (
-        <Stack gap="sm">
+        <Stack gap="xs">
           <Text fw="bold" fz="lg">{t`Formatting style`}</Text>
           <ChartSettingRadio
             options={[
@@ -125,7 +125,7 @@ export const RuleEditor = ({
       )}
       {rule.type === "single" ? (
         <>
-          <Stack gap="sm">
+          <Stack gap="xs">
             <Text fw="bold" fz="lg">
               {ngettext(
                 msgid`When a cell in this column…`,
@@ -153,7 +153,7 @@ export const RuleEditor = ({
               />
             </Box>
           </Stack>
-          <Stack gap="sm">
+          <Stack gap="xs">
             <Text fw="bold" fz="lg">{t`…turn its background this color:`}</Text>
             <ColorSelector
               data-testid="conditional-formatting-color-selector"
@@ -163,7 +163,7 @@ export const RuleEditor = ({
             />
           </Stack>
           {canHighlightRow && (
-            <Stack gap="sm">
+            <Stack gap="xs">
               <Text fw="bold" fz="lg">{t`Highlight the whole row`}</Text>
 
               <ChartSettingToggle
@@ -180,7 +180,7 @@ export const RuleEditor = ({
         </>
       ) : rule.type === "range" ? (
         <>
-          <Stack gap="sm">
+          <Stack gap="xs">
             <Text fw="bold" fz="lg">{t`Colors`}</Text>
             <ColorRangeSelector
               value={rule.colors}
@@ -192,7 +192,7 @@ export const RuleEditor = ({
               withinPortal={false}
             />
           </Stack>
-          <Stack gap="sm">
+          <Stack gap="xs">
             <Text fw="bold" fz="lg">{t`Start the range at`}</Text>
             <ChartSettingRadio
               value={rule.min_type}
@@ -224,7 +224,7 @@ export const RuleEditor = ({
               />
             )}
           </Stack>
-          <Stack gap="sm">
+          <Stack gap="xs">
             <Text fw="bold" fz="lg">{t`End the range at`}</Text>
             <ChartSettingRadio
               value={rule.max_type}
