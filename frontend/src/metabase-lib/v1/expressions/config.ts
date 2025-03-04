@@ -104,6 +104,16 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  split: {
+    displayName: `split`,
+    type: "string",
+    args: ["string", "string", "number"],
+    validator: function (_arg: any, _delimeter: string, position: number) {
+      if (position < 1) {
+        return t`Expected positive integer but found ${position}`;
+      }
+    },
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
@@ -518,6 +528,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower",
   "upper",
   "substring",
+  "split",
   "regex-match-first",
   "concat",
   "replace",

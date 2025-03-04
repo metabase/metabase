@@ -298,6 +298,30 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "substring",
   },
   {
+    name: "split",
+    structure: "split",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: formatIdentifier(t`Title`),
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: `","`,
+      },
+      {
+        name: t`position`,
+        description: t`Which array element to return after the split. Index starts at position 1.`,
+        example: "1",
+      },
+    ],
+    docsPage: "substring",
+  },
+  {
     name: "regex-match-first",
     structure: "regexextract",
     description: () =>
