@@ -15,11 +15,13 @@ import type {
 
 const userOptions = {
   EMBEDDING_SDK_VERSION: "local",
+  SAMPLE_APP_BRANCH_NAME: "",
   ...process.env,
 } as const;
 
 printBold(`Running Cypress Sample App Tests with options:
   - EMBEDDING_SDK_VERSION      : ${userOptions.EMBEDDING_SDK_VERSION}
+  - SAMPLE_APP_BRANCH_NAME     : ${userOptions.SAMPLE_APP_BRANCH_NAME}
 `);
 
 export async function startSampleAppContainers(
@@ -28,15 +30,17 @@ export async function startSampleAppContainers(
   const embeddingSdkVersion =
     userOptions.EMBEDDING_SDK_VERSION as EmbeddingSdkVersion;
   const setupConfig = SAMPLE_APP_SETUP_CONFIGS[testSuite];
+
   const {
     appName,
-    branch,
+    defaultBranch,
     "docker-up-command": dockerUpCommand,
     "docker-down-command": dockerDownCommand,
     "docker-env-example-path": dockerEnvExamplePath,
     "docker-env-path": dockerEnvPath,
     env,
   } = setupConfig;
+  const branch = userOptions.SAMPLE_APP_BRANCH_NAME || defaultBranch;
 
   try {
     const { rootPath } = fetchApp({
@@ -58,10 +62,10 @@ export async function startSampleAppContainers(
       dockerUpCommand,
       dockerDownCommand,
     });
+
+    printBold(`All done! The ${appName} sample app is now running.`);
   } catch (err) {
     console.log("Error:", err);
     process.exit(FAILURE_EXIT_CODE);
   }
-
-  printBold(`All done! The ${appName} sample app is now running.`);
 }
