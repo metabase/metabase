@@ -26,7 +26,7 @@ Granting group access to different Metabase features.
 
 Creating data sandboxes to restrict access to rows and columns in tables.
 
-## [SQL snippet folder permissions](./snippets.md)
+## [Snippet folder permissions](./snippets.md)
 
 Organize snippets into folders that require permissions to view.
 

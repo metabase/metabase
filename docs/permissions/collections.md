@@ -118,4 +118,4 @@ A personal collection works just like any other collection except that its permi
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
-[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
+[sql-snippet-folders]: ../questions/native-editor/snippets.md
