@@ -10,7 +10,7 @@ The **Usage analytics** collection is a special collection that contains view-on
 
 ![Usage analytics collection](./images/metabase-analytics.png)
 
-You can also build your own custom reports You can find the **Usage analytics** collection under **collections** in the navigation sidebar. 
+You can find the **Usage analytics** collection under **collections** in the left navigation sidebar. You can also create custom reports.
 
 These resources are useful for:
 
@@ -18,9 +18,9 @@ These resources are useful for:
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
 - **Improving operations**: Know the slowest dashboards and questions, how your database's are performing, who's consuming the most resources, and so on.
 
-> Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
+> Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts).
 
-## Access Usage analytics
+## Access to Usage analytics
 
 You can find the **Usage analytics** collection under **collections** in the navigation sidebar. By default, only admins can see the Usage analytics collection, but admins can grant other groups view access to it. You can manage permissions for the collection in **Admin settings** > **Permissions** > **Collections**.
 
@@ -44,9 +44,9 @@ Metabase will take you to the relevant usage dashboard and plug in the item's ID
 
 ## How long Metabase keeps usage data
 
-By default, Metabase will keep the data about [activity](#activity-log-model), [views](#view-log-model), and [query execution](#query-log-model) for 720 days. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_audit_max_retention_days).
+By default, Metabase will keep the data about [activity](#activity-log-model), [views](#view-log-model), and [query execution](#query-log-model) for **720 days**. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
 
-Metabase Open Source and [Metabase Cloud Starter](https://www.metabase.com/pricing/) don't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from Open Source/Starter to a Pro or Enterprise plan, you'll only see View and Activity data in Usage Analytics starting from the time when you upgraded.
+Metabase Open Source edition, which is also used on the [Metabase Cloud Starter plan](https://www.metabase.com/pricing/), doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from the Open Source/Starter to a Pro or Enterprise plan, you'll only see View and Activity data in Usage Analytics _starting from the time when you upgraded_.
 
 ## Creating custom reports
 
