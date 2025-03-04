@@ -195,8 +195,8 @@ jobs:
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
 
-      # - name: Checkout the correct branch
-      #   run: git checkout ${{ inputs.branch }}
+      - name: Checkout the correct branch
+        run: git checkout ${{ inputs.branch }}
 
       - name: Update readme
         run: |
