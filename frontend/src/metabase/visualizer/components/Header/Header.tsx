@@ -16,6 +16,8 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
+import S from "./Header.module.css";
+
 interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
@@ -46,7 +48,11 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
       <ActionIcon onClick={() => dispatch(toggleFullscreenMode())}>
         <Icon name="sidebar_open" />
       </ActionIcon>
-      <EditableText initialValue={title} onChange={handleChangeTitle} />
+      <EditableText
+        initialValue={title}
+        onChange={handleChangeTitle}
+        className={S.title}
+      />
 
       <Flex align="center" gap="sm" ml="auto">
         <Tooltip label={t`Back`}>
