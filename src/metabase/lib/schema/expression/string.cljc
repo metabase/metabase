@@ -37,3 +37,8 @@
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+
+(mbql-clause/define-tuple-mbql-clause :split :- :type/Text
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/integer]])
