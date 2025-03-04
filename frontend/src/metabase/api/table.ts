@@ -57,7 +57,7 @@ export const tableApi = Api.injectEndpoints({
     getTableData: builder.query<TableData, GetTableDataRequest>({
       query: ({ dbId, tableId }) => ({
         method: "GET",
-        url: `/api/database/${dbId}/table/${tableId}`,
+        url: `/api/database/${dbId}/table/${tableId}/data`,
       }),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({

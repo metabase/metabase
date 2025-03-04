@@ -1,17 +1,29 @@
 import { useCallback, useState } from "react";
 
-export const useTableEditing = () => {
-  const [editingCellsMap, setEditingCellsMap] = useState({});
-  const [editingCellsValuesMap, setEditingCellsValuesMap] = useState({});
+import type { DataGridCellId } from "metabase/data-grid";
 
-  const handleCellClickToEdit = useCallback((clicked, element, cellProps) => {
+export const useTableEditing = () => {
+  const [editingCellsMap, setEditingCellsMap] = useState<
+    Record<DataGridCellId, boolean>
+  >({});
+
+  const onCellClickToEdit = useCallback((cellId: DataGridCellId) => {
     setEditingCellsMap(prevState => ({
       ...prevState,
-      [cellProps.key]: true,
+      [cellId]: true,
+    }));
+  }, []);
+
+  const onCellEditCancel = useCallback((cellId: DataGridCellId) => {
+    setEditingCellsMap(prevState => ({
+      ...prevState,
+      [cellId]: false,
     }));
   }, []);
 
   return {
-    handleCellClickToEdit,
+    onCellClickToEdit,
+    onCellEditCancel,
+    editingCellsMap,
   };
 };
