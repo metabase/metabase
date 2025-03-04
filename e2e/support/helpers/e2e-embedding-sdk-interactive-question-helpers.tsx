@@ -14,7 +14,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   cy.intercept("POST", "/api/card").as("createCard");
 
   // eslint-disable-next-line no-unsafe-element-filtering
-  cy.findAllByTestId("cell-data").scrollIntoView().last().click();
+  cy.findAllByTestId("cell-data").last().scrollIntoView().click();
   popover().findByText(`See these ${entityName}`).click();
   cy.findByRole("button", { name: "Save" }).click();
 
