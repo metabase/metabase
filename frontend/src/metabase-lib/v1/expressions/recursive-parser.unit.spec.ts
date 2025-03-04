@@ -165,6 +165,10 @@ describe("recursive-parser", () => {
       source: "interval(B, -1, 'days', 'include-current')",
       expression: ["time-interval", B, -1, "days", { "include-current": true }],
     },
+    {
+      source: "relativeTimeInterval(B, -1, 'days', -5, 'years')",
+      expression: ["relative-time-interval", B, -1, "days", -5, "years"],
+    },
   ])("should handle function options: $source", ({ source, expression }) => {
     expect(filter(source)).toEqual(expression);
   });

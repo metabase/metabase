@@ -252,6 +252,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression", "number", "string"],
     hasOptions: true,
   },
+  "relative-time-interval": {
+    displayName: "relativeTimeInterval",
+    type: "boolean",
+    args: ["expression", "number", "string", "number", "string"],
+  },
   "relative-datetime": {
     displayName: "relativeDateTime",
     type: "expression",
@@ -563,6 +568,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "relative-time-interval",
   "relative-datetime",
   "interval",
   "is-null",
@@ -597,41 +603,6 @@ export const OPERATORS = new Set([
   ...BOOLEAN_UNARY_OPERATORS,
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
-]);
-
-// "standard" filters, can be edited using UI
-export const STANDARD_FILTERS = new Set([
-  "!=",
-  "<=",
-  ">=",
-  "<",
-  ">",
-  "=",
-  "contains",
-  "does-not-contain",
-  "ends-with",
-  "starts-with",
-  "between",
-  "time-interval",
-  "is-null",
-  "not-null",
-  "is-empty",
-  "not-empty",
-  "inside",
-]);
-
-// "standard" aggregations, can be edited using UI
-export const STANDARD_AGGREGATIONS = new Set([
-  "count",
-  "cum-count",
-  "sum",
-  "cum-sum",
-  "distinct",
-  "stddev",
-  "avg",
-  "min",
-  "max",
-  "median",
 ]);
 
 export const POPULAR_FUNCTIONS = [
