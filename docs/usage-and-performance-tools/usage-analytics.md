@@ -10,27 +10,25 @@ The **Usage analytics** collection is a special collection that contains view-on
 
 ![Usage analytics collection](./images/metabase-analytics.png)
 
+You can also build your own custom reports You can find the **Usage analytics** collection under **collections** in the navigation sidebar. 
+
 These resources are useful for:
 
 - **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
 - **Improving operations**: Know the slowest dashboards and questions, how your database's are performing, who's consuming the most resources, and so on.
 
-Some things to keep in mind with this special Usage analytics collection:
+> Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
 
-- Usage analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins can view the Usage analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with monitoring access will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
-- Metabase Open Source edition (which the [Cloud Starter plan](https://www.metabase.com/pricing/) uses) doesn't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from Open Source to a Pro or Enterprise plan, you'll only see data in Usage Analytics starting from when you upgraded.
-- You can duplicate any item in the Usage analytics collection, modify the item to your liking, and save the item to another collection.
-- Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
+## Access Usage analytics
 
-## Permissions
+You can find the **Usage analytics** collection under **collections** in the navigation sidebar. By default, only admins can see the Usage analytics collection, but admins can grant other groups view access to it. You can manage permissions for the collection in **Admin settings** > **Permissions** > **Collections**.
 
-By default, only admins can see the Usage analytics collection. You can manage permissions for the collection in **Admin settings** > **Permissions** > **Collections**.
-
-There are only two access types for the Usage analytics collection: **View** and **No access**.
+There are only two access types for the Usage analytics collection: **View** and **No access**. Even admins can't curate Usage analytics.
 
 Additionally, this Usage analytics collection has a default sub-collection called "Custom reports" which you can use to save duplicated/modified questions, dashboards, and models. This sub-collection inherits the same permissions, but it's not view-only; admins have curate access by default, and can grant other groups view access.
+
+>  If you're upgrading from a version older than 48, people in groups with monitoring access will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
 
 ## Viewing usage insights for a question, dashboard, or model
 
@@ -43,6 +41,12 @@ To view usage analytics for a question, dashboard, or model:
 - Click **Insights**.
 
 Metabase will take you to the relevant usage dashboard and plug in the item's ID.
+
+## How long Metabase keeps usage data
+
+By default, Metabase will keep the data about [activity](#activity-log-model), [views](#view-log-model), and [query execution](#query-log-model) for 720 days. Twice a day, Metabase will delete rows older than this threshold. You can change this limit by adjusting the environment variable [`MB_AUDIT_MAX_RETENTION_DAYS`](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_audit_max_retention_days).
+
+Metabase Open Source and [Metabase Cloud Starter](https://www.metabase.com/pricing/) don't collect [Activity](#activity-log-model) and [View](#view-log-model) data. If you upgrade from Open Source/Starter to a Pro or Enterprise plan, you'll only see View and Activity data in Usage Analytics starting from the time when you upgraded.
 
 ## Creating custom reports
 
