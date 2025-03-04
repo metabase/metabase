@@ -380,7 +380,7 @@
                                                  :breakout    [$category
                                                                !year.created_at]})}]
         (testing "formatted"
-          (is (= [[["Category" "2016" "2016" "2017" "2017" "2018" "2018" "2019" "2019" "Row totals" "Row totals"]
+          (is (= [[["" "2016" "2016" "2017" "2017" "2018" "2018" "2019" "2019" "Row totals" "Row totals"]
                    ["Category"
                     "Sum of Price"
                     "Average of Price"

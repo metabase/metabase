@@ -605,9 +605,7 @@
                                 (pivot-options query (get-in query [:info :visualization-settings]))
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
              query             (-> query
-                                   (assoc-in [:middleware :pivot-options] pivot-opts)
-                                   (assoc-in [:middleware :process-viz-settings?] true)
-                                   (assoc-in [:middleware :process-viz-settings?] true))
+                                   (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))
