@@ -158,12 +158,12 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          forceTypeAndBlurUsingLabel("Display name", "QA Postgres12");
+          forceTypeAndBlurUsingLabel("Host", "localhost");
+          forceTypeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+          forceTypeAndBlurUsingLabel("Database name", "sample");
+          forceTypeAndBlurUsingLabel("Username", "metabase");
+          forceTypeAndBlurUsingLabel("Password", "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {
@@ -277,17 +277,21 @@ describe("admin > database > add", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("MongoDB").click({ force: true });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Additional connection string options");
 
-        H.typeAndBlurUsingLabel("Display name", "QA Mongo");
-        H.typeAndBlurUsingLabel("Host", "localhost");
-        H.typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
-        H.typeAndBlurUsingLabel("Database name", "sample");
-        H.typeAndBlurUsingLabel("Username", "metabase");
-        H.typeAndBlurUsingLabel("Password", "metasample123");
-        H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
+        forceTypeAndBlurUsingLabel("Display name", "QA Mongo");
+        forceTypeAndBlurUsingLabel("Host", "localhost");
+        forceTypeAndBlurUsingLabel("Port", QA_MONGO_PORT);
+        forceTypeAndBlurUsingLabel("Database name", "sample");
+        forceTypeAndBlurUsingLabel("Username", "metabase");
+        forceTypeAndBlurUsingLabel("Password", "metasample123");
+        forceTypeAndBlurUsingLabel(
+          "Authentication database (optional)",
+          "admin",
+        );
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Show advanced options").click();
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").should("not.be.disabled").click();
@@ -329,7 +333,7 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Paste a connection string").click();
-          H.typeAndBlurUsingLabel("Display name", "QA Mongo");
+          forceTypeAndBlurUsingLabel("Display name", "QA Mongo");
           cy.findByLabelText("Port").should("not.exist");
           cy.findByLabelText("Paste your connection string").type(badDBString, {
             delay: 0,
@@ -391,16 +395,16 @@ describe("admin > database > add", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
-      H.typeAndBlurUsingLabel("Display name", "QA MySQL8");
-      H.typeAndBlurUsingLabel("Host", "localhost");
-      H.typeAndBlurUsingLabel("Port", QA_MYSQL_PORT);
-      H.typeAndBlurUsingLabel("Database name", "sample");
-      H.typeAndBlurUsingLabel("Username", "metabase");
-      H.typeAndBlurUsingLabel("Password", "metasample123");
+      forceTypeAndBlurUsingLabel("Display name", "QA MySQL8");
+      forceTypeAndBlurUsingLabel("Host", "localhost");
+      forceTypeAndBlurUsingLabel("Port", QA_MYSQL_PORT);
+      forceTypeAndBlurUsingLabel("Database name", "sample");
+      forceTypeAndBlurUsingLabel("Username", "metabase");
+      forceTypeAndBlurUsingLabel("Password", "metasample123");
 
       // Bypass the RSA public key error for MySQL database
       // https://github.com/metabase/metabase/issues/12545
-      H.typeAndBlurUsingLabel(
+      forceTypeAndBlurUsingLabel(
         "Additional JDBC connection string options",
         "allowPublicKeyRetrieval=true",
       );
@@ -437,7 +441,7 @@ describe("admin > database > add", () => {
       cy.visit("/admin/databases/create");
 
       chooseDatabase("BigQuery");
-      H.typeAndBlurUsingLabel("Display name", "BQ");
+      forceTypeAndBlurUsingLabel("Display name", "BQ");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
@@ -491,7 +495,13 @@ describe("scenarios > admin > databases > exceptions", () => {
 
     cy.findByTestId("main-logo");
     cy.findByTestId("breadcrumbs").findByText("Sample Database");
-    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-connection-info-section")
+      .findByRole("button", { name: "Edit" })
+      .should("be.disabled");
+    cy.findByTestId("database-connection-info-section")
+      .findByRole("button", { name: "Edit" })
+      .realHover();
+    H.tooltip().findByText("This database cannot be modified.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
@@ -505,9 +515,9 @@ describe("scenarios > admin > databases > exceptions", () => {
 
     cy.visit("/admin/databases/create");
 
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
+    forceTypeAndBlurUsingLabel("Display name", "Test");
+    forceTypeAndBlurUsingLabel("Database name", "db");
+    forceTypeAndBlurUsingLabel("Username", "admin");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
@@ -582,6 +592,7 @@ describe("scenarios > admin > databases > sample database", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?").should("not.exist");
 
+    editDatabase();
     cy.log(
       "should not be possible to change database type for the Sample Database (metabase#16382)",
     );
@@ -636,18 +647,19 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.details["let-user-control-scheduling"]).to.equal(true);
       expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
       expect(body.schedules.cache_field_values.schedule_type).to.equal(
         "weekly",
       );
     });
-    cy.button("Success");
 
     // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
     cy.findByLabelText("Only when adding a new filter widget").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(true);
     });
@@ -656,6 +668,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText("Never, I'll do this manually if I need to").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
+      editDatabase();
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
     });
@@ -717,8 +730,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     // lets you discard saved field values
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Danger Zone")
-      .parent()
+    cy.findByTestId("database-danger-zone-section")
       .as("danger")
       .within(() => {
         cy.button("Discard saved field values").click();
@@ -880,3 +892,13 @@ H.describeWithSnowplow("add database card", () => {
     });
   });
 });
+
+function editDatabase() {
+  cy.findByTestId("database-connection-info-section")
+    .findByRole("button", { name: "Edit" })
+    .click();
+}
+
+function forceTypeAndBlurUsingLabel(label, value) {
+  cy.findByLabelText(label).clear().type(value, { force: true }).blur();
+}

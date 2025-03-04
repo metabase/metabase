@@ -53,8 +53,6 @@ export const DatabaseConnectionModalInner = ({
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId | undefined) => Promise<void>;
 }) => {
-  // TODO: downstream code gets way simpler if a database is always defined
-
   const addingNewDatabase = params.databaseId === undefined;
   useMount(async () => {
     if (addingNewDatabase) {
