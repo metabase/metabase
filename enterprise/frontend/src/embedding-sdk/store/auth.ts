@@ -14,6 +14,7 @@ import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "./reducer";
 import { getFetchRefreshTokenFn } from "./selectors";
@@ -48,7 +49,7 @@ export const initAuth = createAsyncThunk(
       dispatch(refreshSiteSettings()),
     ]);
 
-    const mbVersion = siteSettings.payload?.version?.tag;
+    const mbVersion = (siteSettings.payload as Settings)?.version?.tag;
     const sdkVersion = getEmbeddingSdkVersion();
 
     if (mbVersion && sdkVersion !== "unknown") {
