@@ -172,6 +172,7 @@ export const RuleEditor = ({
             value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
+            withinPortal={false}
           />
           {canHighlightRow && (
             <>
