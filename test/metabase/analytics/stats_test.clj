@@ -455,13 +455,14 @@
   "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
-    :enhancements
+    :collection-cleanup
     :embedding
     :embedding-sdk
-    :collection-cleanup
+    :enhancements
     :llm-autodescription
     :query-reference-validation
-    :session-timeout-config})
+    :session-timeout-config
+    :table-data-editing})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
