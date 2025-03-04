@@ -10,7 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]

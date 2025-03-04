@@ -399,7 +399,7 @@
     metabase.driver.sql-jdbc.test-util                            sql-jdbc.tu
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
-    metabase.eid-translation                                      eid-translation
+    metabase.eid-translation.core                                 eid-translation
     metabase.formatter                                            formatter
     metabase.http-client                                          client
     metabase.legacy-mbql.normalize                                mbql.normalize
