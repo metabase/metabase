@@ -1,7 +1,6 @@
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
-import { Component } from "react";
-import ReactDOM from "react-dom";
+import { Component, createRef } from "react";
 import { CellMeasurer, CellMeasurerCache, List } from "react-virtualized";
 import _ from "underscore";
 
@@ -45,6 +44,8 @@ export default class AccordionList extends Component {
       fixedWidth: true,
       minHeight: 10,
     });
+
+    this.listRootRef = createRef();
   }
 
   static propTypes = {
@@ -135,7 +136,7 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
-    this.container = ReactDOM.findDOMNode(this);
+    const container = this._getRootContainer();
 
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
@@ -144,11 +145,9 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
-      const hasFocusedChildren = this.container.contains(
-        document.activeElement,
-      );
+      const hasFocusedChildren = container?.contains(document.activeElement);
       if (!hasFocusedChildren && this.props.hasInitialFocus) {
-        this.container.focus();
+        container?.focus();
       }
 
       const index = this._initialSelectedRowIndex;
@@ -179,6 +178,12 @@ export default class AccordionList extends Component {
       clearTimeout(this._forceUpdateTimeout);
       this._forceUpdateTimeout = null;
     }
+  }
+
+  _getRootContainer() {
+    return this.isVirtualized()
+      ? this._list?.Grid?._scrollingContainer
+      : this.listRootRef.current;
   }
 
   // resets the row height cache when the displayed rows change
@@ -603,7 +608,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this.container?.focus();
+    this._getRootContainer()?.focus();
   };
 
   render() {
@@ -637,6 +642,7 @@ export default class AccordionList extends Component {
             ...style,
           }}
           data-testid={testId}
+          ref={this.listRootRef}
         >
           {rows.map((row, index) => (
             <AccordionListCell
