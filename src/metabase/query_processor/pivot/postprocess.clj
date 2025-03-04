@@ -111,11 +111,8 @@
   (let [max-depth (if (empty? top-header-items)
                     0
                     (apply max (map :depth top-header-items)))
-        left-width (count top-left-header)
-        init-rows (for [i (range (inc max-depth))]
-                    (if (= i max-depth)
-                      (vec top-left-header)
-                      (vec (repeat left-width nil))))
+        init-rows (repeat (inc max-depth)
+                          (vec top-left-header))
         result (vec init-rows)]
     (reduce
      (fn [acc item]
