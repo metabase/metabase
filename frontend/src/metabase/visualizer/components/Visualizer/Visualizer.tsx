@@ -9,7 +9,6 @@ import {
 import { useCallback, useEffect } from "react";
 import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
-import EditableText from "metabase/core/components/EditableText";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -19,7 +18,6 @@ import {
   getIsDirty,
   getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
-  getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
@@ -27,7 +25,6 @@ import {
   handleDrop,
   resetVisualizer,
   setDraggedItem,
-  setTitle,
   turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
@@ -50,7 +47,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const { className, onSave, saveLabel } = props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
-  const title = useSelector(getVisualizationTitle);
   const draggedItem = useSelector(getDraggedItem);
   const datasets = useSelector(getDatasets);
   const isFullscreen = useSelector(getIsFullscreenModeEnabled);
@@ -114,13 +110,6 @@ export const Visualizer = (props: VisualizerProps) => {
     [dispatch],
   );
 
-  const handleChangeTitle = useCallback(
-    (nextTitle: string) => {
-      dispatch(setTitle(nextTitle));
-    },
-    [dispatch],
-  );
-
   return (
     <DndContext
       sensors={[canvasSensor]}
@@ -158,12 +147,7 @@ export const Visualizer = (props: VisualizerProps) => {
                 align="center"
                 justify="space-between"
                 px="xl"
-              >
-                <EditableText
-                  initialValue={title}
-                  onChange={handleChangeTitle}
-                />
-              </Flex>
+              ></Flex>
             )}
             <Box px="xl" mb="lg" flex={1}>
               <VisualizationCanvas />
