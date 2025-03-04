@@ -59,7 +59,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/internal-tools"             (premium-handler 'metabase-enterprise.internal-tools.api :internal-tools)
+   "/internal-tools"             (premium-handler metabase-enterprise.internal-tools.api/routes :internal-tools)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
