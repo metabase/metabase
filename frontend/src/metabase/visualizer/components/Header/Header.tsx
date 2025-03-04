@@ -7,10 +7,7 @@ import {
   getCurrentVisualizerState,
   getIsDirty,
 } from "metabase/visualizer/selectors";
-import {
-  toggleFullscreenMode,
-  toggleVizSettingsSidebar,
-} from "metabase/visualizer/visualizer.slice";
+import { toggleFullscreenMode } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 interface HeaderProps {
@@ -46,14 +43,6 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
       </Flex>
 
       <Flex align="center" gap="sm">
-        <Tooltip label={t`Settings`}>
-          <ActionIcon
-            disabled={!isDirty}
-            onClick={() => dispatch(toggleVizSettingsSidebar())}
-          >
-            <Icon name="gear" />
-          </ActionIcon>
-        </Tooltip>
         <Tooltip label={t`Fullscreen`}>
           <ActionIcon
             disabled={!isDirty}
