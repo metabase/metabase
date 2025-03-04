@@ -334,7 +334,7 @@ export const valuesShouldContainOnlyGizmos = (
   valuesArray: (FieldValue | ParameterValue)[],
 ) => {
   const values = valuesArray.map(val => val[0]);
-  expect(values).to.deep.equal([["Gizmo"]]);
+  expect(values).to.deep.equal(["Gizmo"]);
 };
 
 export const getDashcardResponses = (items: SandboxableItems) => {
