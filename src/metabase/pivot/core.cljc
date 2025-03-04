@@ -72,7 +72,7 @@
      :primary-rows-key (into [] (range num-breakouts))
      :columns columns}))
 
-;; TODO: This can omit the primary rows from the result
+;; TODO: This can omit the primary rows from the result as a small optimization
 (defn- get-subtotal-values
   "For each split of the pivot data returned by `split-pivot-data`, returns a maping from the column values in each row to the measure values."
   [pivot-data val-indexes]
@@ -173,6 +173,8 @@
   (->> (map (into [] col-settings) indexes)
        (map :pivot_table.column_sort_order)))
 
+#?(:clj (def ^:private collator (Collator/getInstance)))
+
 (defn- compare-fn
   [sort-order]
   (let [locale-compare
@@ -182,13 +184,8 @@
             0
 
             (string? a)
-            #?(:clj
-               ;; TODO: make this a singleton collator?
-               (let [collator (Collator/getInstance)]
-                 (.compare collator (str a) (str b)))
-               :cljs
-               (.localeCompare (str a) (str b)))
-
+            #?(:clj (.compare collator (str a) (str b))
+               :cljs (.localeCompare (str a) (str b)))
             :else
             (compare a b)))]
     (case (keyword sort-order)
@@ -390,11 +387,16 @@
                               (should-show-root-total row-item)))
               row-tree))))
 
-(defn- display-name-for-col
+(defn display-name-for-col
   "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
-  [column]
-  (or (:display_name (:remapped_to_column column))
-      (:display_name column)
+  [column col-settings format-values?]
+  (or (if format-values?
+        (or
+         (:column_title col-settings)
+         (::mb.viz/column-title col-settings)
+         (:display_name (:remapped_to_column column))
+         (:display_name column))
+        (:display_name column))
       (i18n/tru "(empty)")))
 
 (defn- update-node
@@ -404,18 +406,15 @@
                        (map #(update-node % leaf-nodes) (:children node)))]
     (merge node {:children new-children})))
 
-(defn- add-value-column-nodes
+(defn add-value-column-nodes
   "This might add value column(s) to the bottom of the top header tree. We
   display the value column names if there are multiple or if there are no
   columns pivoted to the top header."
-  [col-tree cols col-indexes col-settings]
+  [col-tree cols col-indexes col-settings format-rows?]
   (let [val-cols (map (fn [idx] [(nth cols idx) (nth col-settings idx)]) col-indexes)
-        leaf-nodes (map (fn [[col col-setting]] {:value (or
-                                                         (:column_title col-setting)
-                                                         (::mb.viz/column-title col-setting)
-                                                         (display-name-for-col col))
-                                                 :children []
-                                                 :isValueColumn true})
+        leaf-nodes (map (fn [[col col-settings]] {:value (display-name-for-col col col-settings format-rows?)
+                                                  :children []
+                                                  :isValueColumn true})
                         val-cols)]
     (cond
       (empty? col-tree) leaf-nodes
@@ -512,21 +511,21 @@
       (get-grand-total subtotal-values indexes index-values value-formatters)
       (get-regular-subtotal subtotal-values indexes index-values value-formatters))))
 
-;; TODO re-add memoization
 (defn- create-row-section-getter
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
-  (fn [col-index row-index]
-    (let [col-values (nth col-paths col-index [])
-          row-values (nth row-paths row-index [])
-          index-values (concat col-values row-values)
-          result (if (is-subtotal? row-values col-values row-indexes col-indexes)
-                   (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
-                   (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
-      ;; Convert to JavaScript object if in ClojureScript context
-      #?(:cljs (clj->js result)
-         :clj result))))
+  (memoize
+   (fn [col-index row-index]
+     (let [col-values (nth col-paths col-index [])
+           row-values (nth row-paths row-index [])
+           index-values (concat col-values row-values)
+           result (if (is-subtotal? row-values col-values row-indexes col-indexes)
+                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
+                    (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
+       ;; Convert to JavaScript object if in ClojureScript context
+       #?(:cljs (clj->js result)
+          :clj result)))))
 
 (defn- tree-to-array
   "Flattens a hierarchical tree structure into an array of nodes with positioning information.
@@ -572,7 +571,7 @@
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters settings col-settings & [make-color-getter]]
+  [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings & [make-color-getter]]
   (let [pivot-data (:pivot-data (split-pivot-data data))
         color-getter (if make-color-getter
                        (make-color-getter (get-rows-from-pivot-data pivot-data row-indexes col-indexes))
@@ -593,7 +592,7 @@
         col-paths (->> formatted-col-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path)
-        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings))
+        formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
         subtotal-values (get-subtotal-values pivot-data val-indexes)]
     {:columnIndex col-paths
      :rowIndex row-paths
