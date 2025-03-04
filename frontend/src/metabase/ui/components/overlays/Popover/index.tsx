@@ -1,4 +1,4 @@
-import type { PopoverDropdownProps } from "@mantine/core";
+import type { PopoverDropdownProps, PopoverProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
 import { type Ref, forwardRef, useEffect } from "react";
@@ -6,6 +6,11 @@ import { type Ref, forwardRef, useEffect } from "react";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
+
+import {
+  PreventCloseProvider,
+  usePreventCloseState,
+} from "./PreventCloseContext";
 
 export type { PopoverProps } from "@mantine/core";
 export { popoverOverrides } from "./Popover.config";
@@ -47,10 +52,40 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
 
 // @ts-expect-error -- our types are better
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+
 // @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover = MantinePopover;
+type ExtendedPopoverProps = PopoverProps & {
+  // When set to true, allows nested components to customise the
+  // closeOnClickOutside and closeOnEscape behaviour through the
+  // usePreventClosePopover hook.
+  canPreventCloseHandlers?: boolean;
+};
 
-export { Popover };
+export function Popover({
+  canPreventCloseHandlers = false,
+  ...props
+}: ExtendedPopoverProps) {
+  const { onPreventCloseChange, closeOnEscape, closeOnClickOutside } =
+    usePreventCloseState();
+
+  return (
+    <PreventCloseProvider
+      onPreventCloseChange={onPreventCloseChange}
+      canPreventCloseHandlers={canPreventCloseHandlers}
+    >
+      <MantinePopover
+        {...props}
+        closeOnEscape={closeOnEscape}
+        closeOnClickOutside={closeOnClickOutside}
+      />
+    </PreventCloseProvider>
+  );
+}
+
+Popover.Dropdown = PopoverDropdown;
+Popover.Target = MantinePopover.Target;
+
 export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";
+export { usePreventClosePopover } from "./PreventCloseContext";
