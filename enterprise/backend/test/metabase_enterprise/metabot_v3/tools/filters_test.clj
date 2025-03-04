@@ -271,18 +271,7 @@
         query-details (#'metabot-v3.dummy-tools/execute-query query-id legacy-query)
         ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
                       (when-not <>
-                        (throw (ex-info (str "Column " % " not found") {:column %}))))
-        env {:history [{:role :tool
-                        :tool-call-id "some tool call ID"
-                        :structured-content query-details}]}]
-    (testing "Trivial query works."
-      (is  (=? {:structured-output
-                {:type :query
-                 :query_id string?
-                 :query {:database (mt/id), :type :query, :query {:source-query {:source-table table-id}}}}}
-               (metabot-v3.tools.filters/filter-records
-                {:data-source {:query_id query-id}}
-                env))))
+                        (throw (ex-info (str "Column " % " not found") {:column %}))))]
     (let [input {:data-source {:query_id query-id}
                  :filters [{:field_id (->field-id "Discount")
                             :operation "number-greater-than"
@@ -305,8 +294,4 @@
         (testing "new tool call with just query"
           (is (=? expected
                   (metabot-v3.tools.filters/filter-records
-                   (assoc input :data-source (select-keys query-details [:query]))))))))
-    (testing "Missing query results in an error."
-      (is (= {:output (str "No query found with query_id " query-id)}
-             (metabot-v3.tools.filters/filter-records
-              {:data-source {:query_id query-id}}))))))
+                   (assoc input :data-source (select-keys query-details [:query]))))))))))

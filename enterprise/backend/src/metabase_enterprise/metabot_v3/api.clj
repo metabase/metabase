@@ -3,9 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
@@ -13,9 +11,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (java.time.format DateTimeFormatter)))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn ^:private encode-reactions [reactions :- [:sequential ::metabot-v3.reactions/reaction]]
   (mc/encode [:sequential ::metabot-v3.reactions/reaction]
@@ -27,15 +23,12 @@
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [message context history conversation_id state]
-  (let [llm-context (metabot-v3.context/create-context context {:date-format DateTimeFormatter/ISO_INSTANT})
-        env (-> {:context llm-context
+  (let [env (-> {:context (metabot-v3.context/create-context context)
                  :conversation-id conversation_id
                  :history history
                  :state state}
-                metabot-v3.envelope/create
                 (metabot-v3.envelope/add-user-message message)
-                metabot-v3.dummy-tools/invoke-dummy-tools
-                metabot-v3.tools.api/handle-envelope-v2)
+                metabot-v3.tools.api/handle-envelope)
         history (into (vec (metabot-v3.envelope/history env)) (:messages env))]
     {:reactions (-> env
                     (assoc :history history)
@@ -51,19 +44,15 @@
    {:keys [message context conversation_id history state] :as body}
    :- [:map
        [:message ms/NonBlankString]
-       [:context [:map-of :keyword :any]]
+       [:context ::metabot-v3.context/context]
        [:conversation_id ms/UUIDString]
        [:history [:maybe [:sequential :map]]]
        [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
-  (let [context (mc/decode ::metabot-v3.context/context
-                           context (mtx/transformer {:name :api-request}))
-        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                           history (mtx/transformer {:name :api-request}))]
-    (doto (assoc
-           (request message context history conversation_id state)
-           :conversation_id conversation_id)
-      (metabot-v3.context/log :llm.log/be->fe))))
+  (doto (assoc
+         (request message context history conversation_id state)
+         :conversation_id conversation_id)
+    (metabot-v3.context/log :llm.log/be->fe)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."

@@ -126,11 +126,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (are [details output] (= {:output output}
                                (metabot-v3.tools.find-outliers/find-outliers
-                                {:data-source {:query_id query-id
-                                               :result_field_id result-field-id}}
-                                {:history [{:role :tool
-                                            :tool-call-id "some tool call ID"
-                                            :structured-content details}]}))
+                                {:data-source {:query (:query details)
+                                               :result_field_id result-field-id}}))
 
         (assoc-in query-details [:query :query :source-table] Integer/MAX_VALUE)
         "Unexpected error running query"
@@ -140,16 +137,12 @@
       (let [wrong-result-field-id (str result-field-id "99999")]
         (is (= {:output (str "Invalid result_field_id " wrong-result-field-id)}
                (metabot-v3.tools.find-outliers/find-outliers
-                {:data-source {:query_id query-id
-                               :result_field_id wrong-result-field-id}}
-                {:history [{:role :tool
-                            :tool-call-id "some tool call ID"
-                            :structured-content query-details}]})))))))
+                {:data-source {:query (:query query-details)
+                               :result_field_id wrong-result-field-id}})))))))
 
 (deftest ^:parallel invalid-ids-test
   (are [data-source output] (= {:output output}
-                               (metabot-v3.tools.find-outliers/find-outliers {:data-source data-source} {}))
+                               (metabot-v3.tools.find-outliers/find-outliers {:data-source data-source}))
     {:metric_id "42"} "Invalid metric_id as data_source"
     {:report_id "42"} "Invalid report_id as data_source"
-    {:query_id "42"}  "No query found with query_id 42"
     {:table_id 42}    "Invalid data_source"))

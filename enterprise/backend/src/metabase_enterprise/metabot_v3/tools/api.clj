@@ -11,6 +11,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
+   [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
@@ -65,16 +66,12 @@
       (log/error e "Bad AI service token")
       nil)))
 
-(defn- start-ai-loop
-  [e]
-  (metabot-v3.client/request-v2 (assoc e :messages (envelope/llm-history e))))
-
-(defn handle-envelope-v2
+(defn handle-envelope
   "Executes the AI loop in the context of a new session. Returns the response of the AI service."
   [e]
   (let [session-id (get-ai-service-token api/*current-user-id*)]
     (try
-      (start-ai-loop (assoc e :session-id session-id))
+      (metabot-v3.client/request (assoc e :session-id session-id))
       (catch Exception ex
         (let [d (ex-data ex)]
           (if-let [assistant-message (:assistant-message d)]

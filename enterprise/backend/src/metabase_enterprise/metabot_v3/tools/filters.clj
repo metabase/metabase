@@ -188,7 +188,7 @@
   -)
 
 (defn- base-query
-  [data-source e]
+  [data-source]
   (let [{:keys [table_id query query_id report_id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table_id)
         handle-query (fn [query query_id]
@@ -229,36 +229,28 @@
       query
       (handle-query query query_id)
 
-      query_id
-      (if-let [query (metabot-v3.envelope/find-query e query_id)]
-        (handle-query query query_id)
-        (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
-                                                                        :data_source data-source})))
-
       :else
       (throw (ex-info "Invalid data_source" {:agent-error? true
                                              :data_source data-source})))))
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"
-  ([arguments]
-   (filter-records arguments nil))
-  ([{:keys [data-source filters] :as _arguments} e]
-   (try
-     (let [[filter-field-id-prefix base] (base-query data-source e)
-           returned-cols (lib/returned-columns base)
-           query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
-           query-id (u/generate-nano-id)
-           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
-       {:structured-output
-        {:type :query
-         :query_id query-id
-         :query (lib/->legacy-MBQL query)
-         :result_columns (into []
-                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
-                               (lib/returned-columns query))}})
-     (catch Exception ex
-       (metabot-v3.tools.u/handle-agent-error ex)))))
+  [{:keys [data-source filters] :as _arguments}]
+  (try
+    (let [[filter-field-id-prefix base] (base-query data-source)
+          returned-cols (lib/returned-columns base)
+          query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
+          query-id (u/generate-nano-id)
+          query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
+      {:structured-output
+       {:type :query
+        :query_id query-id
+        :query (lib/->legacy-MBQL query)
+        :result_columns (into []
+                              (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                              (lib/returned-columns query))}})
+    (catch Exception ex
+      (metabot-v3.tools.u/handle-agent-error ex))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
