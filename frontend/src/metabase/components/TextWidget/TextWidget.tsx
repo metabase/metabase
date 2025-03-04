@@ -1,5 +1,4 @@
-import { Component } from "react";
-import ReactDOM from "react-dom";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import { forceRedraw } from "metabase/lib/dom";
@@ -27,6 +26,8 @@ export class TextWidget extends Component<TextWidgetProps, State> {
     disabled: false,
   };
 
+  elementRef = createRef<HTMLDivElement>();
+
   constructor(props: TextWidgetProps) {
     super(props);
 
@@ -44,7 +45,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
     if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
-        forceRedraw(ReactDOM.findDOMNode(this));
+        forceRedraw(this.elementRef.current);
       });
     }
   }
@@ -68,37 +69,41 @@ export class TextWidget extends Component<TextWidgetProps, State> {
       : this.state.value;
 
     return (
-      <input
-        className={className}
-        type="text"
-        value={value ?? ""}
-        onChange={e => {
-          this.setState({ value: e.target.value });
-          if (this.props.commitImmediately) {
-            this.props.setValue(e.target.value ?? null);
+      <div ref={this.elementRef}>
+        <input
+          className={className}
+          type="text"
+          value={value ?? ""}
+          onChange={e => {
+            this.setState({ value: e.target.value });
+            if (this.props.commitImmediately) {
+              this.props.setValue(e.target.value ?? null);
+            }
+          }}
+          onKeyUp={e => {
+            const target = e.target as HTMLInputElement;
+            if (e.key === "Escape") {
+              target.blur();
+            } else if (e.key === "Enter") {
+              setValue(this.state.value ?? null);
+              target.blur();
+            }
+          }}
+          onFocus={() => {
+            changeFocus(true);
+          }}
+          onBlur={() => {
+            changeFocus(false);
+            if (this.state.value !== this.props.value) {
+              setValue(this.state.value ?? null);
+            }
+          }}
+          placeholder={
+            isEditing ? t`Enter a default value…` : defaultPlaceholder
           }
-        }}
-        onKeyUp={e => {
-          const target = e.target as HTMLInputElement;
-          if (e.key === "Escape") {
-            target.blur();
-          } else if (e.key === "Enter") {
-            setValue(this.state.value ?? null);
-            target.blur();
-          }
-        }}
-        onFocus={() => {
-          changeFocus(true);
-        }}
-        onBlur={() => {
-          changeFocus(false);
-          if (this.state.value !== this.props.value) {
-            setValue(this.state.value ?? null);
-          }
-        }}
-        placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
-        disabled={disabled}
-      />
+          disabled={disabled}
+        />
+      </div>
     );
   }
 }

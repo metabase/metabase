@@ -1,7 +1,6 @@
 import cx from "classnames";
-import { Component } from "react";
-import * as React from "react";
-import { findDOMNode } from "react-dom";
+import type * as React from "react";
+import { Component, createRef } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -88,8 +87,9 @@ const defaultStyleValue = {
   fontWeight: 700,
 };
 
-class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
-  inputRef: React.RefObject<HTMLInputElement>;
+export class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
+  inputRef = createRef<HTMLInputElement>();
+  scrollElementRef = createRef<HTMLDivElement>();
   scrollElement = null;
 
   constructor(props: TokenFieldProps) {
@@ -104,8 +104,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       isAllSelected: false,
       listIsHovered: false,
     };
-
-    this.inputRef = React.createRef();
   }
 
   UNSAFE_componentWillMount() {
@@ -446,14 +444,14 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
   componentDidUpdate(prevProps: TokenFieldProps, prevState: TokenFieldState) {
     const input = this.inputRef.current;
+    const scrollElement = this.scrollElementRef.current;
 
     if (
       prevState.selectedOptionValue !== this.state.selectedOptionValue &&
-      this.scrollElement != null
+      scrollElement != null
     ) {
-      const element = findDOMNode(this.scrollElement);
-      if (element && isObscured(element) && element instanceof Element) {
-        element.scrollIntoView({ block: "nearest" });
+      if (scrollElement && isObscured(scrollElement)) {
+        scrollElement.scrollIntoView({ block: "nearest" });
       }
     }
 
@@ -620,6 +618,11 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           {filteredOptions.map(option => (
             <li className={CS.mr1} key={this._key(option)}>
               <div
+                ref={
+                  this._valueIsEqual(selectedOptionValue, this._value(option))
+                    ? this.scrollElementRef
+                    : null
+                }
                 className={cx(
                   CS.py1,
                   CS.pl1,
