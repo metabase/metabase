@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { hasAdvancedFilterOptions, setup } from "./setup";
+import { hasAdvancedFilterOptionsHidden, setup } from "./setup";
 
 describe("DashboardSubscriptionsSidebar Premium Features", () => {
   const tokenFeatures = {
@@ -22,7 +22,7 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
 
       await screen.findByText("Email this dashboard");
 
-      expect(hasAdvancedFilterOptions(screen)).toBe(true);
+      expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
     });
   });
 
@@ -39,7 +39,7 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
 
       await screen.findByText("Send this dashboard to Slack");
 
-      expect(hasAdvancedFilterOptions(screen)).toBe(true);
+      expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
     });
   });
 });
