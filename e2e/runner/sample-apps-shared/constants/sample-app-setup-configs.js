@@ -21,26 +21,14 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nodejs-react-sdk-embedding-sample",
   },
-  "metabase-nextjs-sdk-embedding-sample-app-router-e2e": {
+  "metabase-nextjs-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nextjs-sdk-embedding-sample",
-    subAppName: "next-sample-app-router",
     env: {
       PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
       MB_PORT: BASE_ENV.MB_PORT,
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
-      AUTH_PROVIDER_PORT_APP_ROUTER: BASE_ENV.AUTH_PROVIDER_PORT,
-    },
-  },
-  "metabase-nextjs-sdk-embedding-sample-pages-router-e2e": {
-    ...BASE_SETUP_CONFIG,
-    appName: "metabase-nextjs-sdk-embedding-sample",
-    subAppName: "next-sample-pages-router",
-    env: {
-      PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
-      MB_PORT: BASE_ENV.MB_PORT,
-      CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT,
-      AUTH_PROVIDER_PORT_PAGES_ROUTER: BASE_ENV.AUTH_PROVIDER_PORT,
+      CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
     },
   },
   "shoppy-e2e": {

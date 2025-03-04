@@ -117,8 +117,7 @@ const init = async () => {
 
   switch (options.TEST_SUITE) {
     case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-    case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
-    case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-e2e":
     case "shoppy-e2e":
       await startSampleAppContainers(options.TEST_SUITE);
       break;
