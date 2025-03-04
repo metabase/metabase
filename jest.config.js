@@ -42,6 +42,12 @@ const config = {
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
     "csv-stringify/browser/esm/sync":
       "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
+    /**
+     * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
+     * This isn't a problem in the core app because we seem to not import to entry file directly
+     * for any component under tests.
+     */
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
