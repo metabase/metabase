@@ -44,9 +44,7 @@ export const RulePreview = ({
       <Text flex="1" fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns
-            .map(
-              name => (_.findWhere(cols, { name }) || {}).display_name || name,
-            )
+            .map(name => _.findWhere(cols, { name })?.display_name ?? name)
             .join(", ")
         ) : (
           <Text fs="oblique">{t`No columns selected`}</Text>
@@ -58,7 +56,7 @@ export const RulePreview = ({
           onRemove();
         }}
       >
-        <Icon name="close" />{" "}
+        <Icon name="close" />
       </ActionIcon>
     </Group>
     <Divider></Divider>
