@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.api
   (:require
    [metabase.actions.actions :as actions]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
@@ -8,7 +9,7 @@
 
 (defn- perform-bulk-action! [action-kw table-id rows]
   (actions/perform-action! action-kw
-                           {:database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
+                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
                             :table-id table-id
                             :arg      rows}))
 
