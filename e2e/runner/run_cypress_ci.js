@@ -3,11 +3,10 @@ const CypressBackend = require("./cypress-runner-backend");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 
-const mode = process.argv?.[2]?.trim();
+const modeOrTestSuite = process.argv?.[2]?.trim();
 
-const availableModes = [
-  "start",
-  "snapshot",
+const availableModes = ["start", "snapshot"];
+const availableTestSuites = [
   "e2e",
   "component",
   "metabase-nodejs-react-sdk-embedding-sample-e2e",
@@ -15,8 +14,11 @@ const availableModes = [
   "shoppy-e2e",
 ];
 
-if (!availableModes.includes(mode)) {
-  console.error(`Invalid mode: ${mode}`);
+if (
+  !availableModes.includes(modeOrTestSuite) &&
+  !availableTestSuites.includes(modeOrTestSuite)
+) {
+  console.error(`Invalid mode or test suite: ${modeOrTestSuite}`);
   process.exit(FAILURE_EXIT_CODE);
 }
 
@@ -25,13 +27,13 @@ const startServer = async () => {
   await CypressBackend.start();
 };
 
-const runTests = async suite => {
-  printBold(`Running ${suite} Cypress Tests`);
-  await runCypress(suite, process.exit);
+const runTests = async testSuite => {
+  printBold(`Running ${testSuite} Cypress Tests`);
+  await runCypress(testSuite, process.exit);
 };
 
-if (mode === "start") {
+if (modeOrTestSuite === "start") {
   startServer();
 } else {
-  runTests(mode);
+  runTests(modeOrTestSuite);
 }

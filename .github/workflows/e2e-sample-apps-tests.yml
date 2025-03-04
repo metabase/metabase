@@ -117,7 +117,7 @@ jobs:
             }
 
             if (isReleaseBranchRef) {
-              const supportedReleasesCount = Number(${{env.SUPPORTED_RELEASES_COUNT}});
+              const supportedReleasesCount = Number(${{ env.SUPPORTED_RELEASES_COUNT }});
 
               const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
               const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
