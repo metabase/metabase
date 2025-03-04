@@ -55,7 +55,7 @@ CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
 And then run:
 
 ```bash
-yarn test-cypress-open-component-sdk
+TEST_SUITE="component" yarn test-cypress
 ```
 
 Cypress will use the built package, so we recommend running it together with either the watch or dev command.
