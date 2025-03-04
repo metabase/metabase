@@ -618,11 +618,7 @@ export class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
           {filteredOptions.map(option => (
             <li className={CS.mr1} key={this._key(option)}>
               <div
-                ref={
-                  this._valueIsEqual(selectedOptionValue, this._value(option))
-                    ? this.scrollElementRef
-                    : null
-                }
+                ref={this.scrollElementRef}
                 className={cx(
                   CS.py1,
                   CS.pl1,
