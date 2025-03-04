@@ -115,7 +115,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     // switch site url to use https
     cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
+      .findByRole("searchbox", { name: "input-prefix" })
       .click();
     H.popover().contains("https://").click();
 
@@ -134,7 +134,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     }).as("httpsCheck");
     // switch site url to use https
     cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
+      .findByRole("searchbox", { name: "input-prefix" })
       .click();
     H.popover().contains("https://").click();
 
