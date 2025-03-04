@@ -1,6 +1,7 @@
 import { action } from "@storybook/addon-actions";
 import type { Meta, StoryObj } from "@storybook/react";
 
+import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Popover } from "metabase/ui";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
@@ -81,6 +82,7 @@ const meta: Meta<typeof SimpleDataPickerView> = {
       </Popover>
     );
   },
+  decorators: [CommonSdkStoryWrapper],
 };
 
 export default meta;

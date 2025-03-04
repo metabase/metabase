@@ -36,7 +36,7 @@ export function SimpleDataPickerView({
 
   if (options.length === 0) {
     return (
-      <Paper w={CONTAINER_WIDTH} p="80px 60px">
+      <Paper w={CONTAINER_WIDTH} px="3.75rem" py="1rem">
         <EmptyState
           message={t`To pick some data, you'll need to add some first`}
           icon="database"
@@ -47,13 +47,7 @@ export function SimpleDataPickerView({
 
   const displayOptions = options.filter(filterSearch);
   return (
-    <Flex
-      component={Paper}
-      w={CONTAINER_WIDTH}
-      p="sm"
-      mih="200px"
-      direction="column"
-    >
+    <Flex component={Paper} w={CONTAINER_WIDTH} p="sm" direction="column">
       {shouldShowSearchBar ? (
         <TextInput
           data-autofocus
