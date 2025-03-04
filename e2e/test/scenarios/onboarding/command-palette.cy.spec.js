@@ -229,13 +229,7 @@ describe("command palette", () => {
         H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
         H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
 
-        cy.button("Save changes").click();
-
-        H.modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.findByText("Are you sure you want to do this?");
-          cy.button("Yes").click();
-        });
+        H.saveChangesToPermissions();
 
         cy.findByRole("radiogroup").findByText("Data").click();
         cy.findByRole("menuitem", { name: "All Users" }).click();
@@ -246,13 +240,7 @@ describe("command palette", () => {
         H.modifyPermission("Sample Database", TABLE_METADATA_INDEX, "Yes");
         H.modifyPermission("Sample Database", DATABASE_INDEX, "Yes");
 
-        cy.button("Save changes").click();
-
-        H.modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.findByText("Are you sure you want to do this?");
-          cy.button("Yes").click();
-        });
+        H.saveChangesToPermissions();
 
         cy.signInAsNormalUser();
 
