@@ -1,5 +1,5 @@
 .usage {
-  padding: 1rem 0 1rem 0.5rem;
+  padding-left: 0.5rem;
   background-color: white;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
@@ -7,6 +7,7 @@
   flex-shrink: 0;
   font-size: 0.75rem;
   min-height: 2.5rem;
+  line-height: 2.5rem;
   box-sizing: border-box;
 }
 
