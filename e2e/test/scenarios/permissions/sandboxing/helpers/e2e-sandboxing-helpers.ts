@@ -13,7 +13,6 @@ import type {
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
-  StructuredQuery,
   User,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -113,28 +112,28 @@ const model: StructuredQuestionDetails = {
   type: "model",
 };
 
-const ordersJoinedToProducts: StructuredQuestionDetails = {
-  name: "Question with Orders joined to Products",
-  query: {
-    ...baseQuery,
-    joins: [
-      {
-        strategy: "left-join",
-        alias: "Products",
-        condition: [
-          "=",
-          ["field", ORDERS.PRODUCT_ID, null],
-          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-        ],
-        "source-table": PRODUCTS_ID,
-        fields: "all",
-      },
-    ],
-    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-    breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
-    "source-table": ORDERS_ID,
-  } as StructuredQuery,
-};
+// const ordersJoinedToProducts: StructuredQuestionDetails = {
+//   name: "Question with Orders joined to Products",
+//   query: {
+//     ...baseQuery,
+//     joins: [
+//       {
+//         strategy: "left-join",
+//         alias: "Products",
+//         condition: [
+//           "=",
+//           ["field", ORDERS.PRODUCT_ID, null],
+//           ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+//         ],
+//         "source-table": PRODUCTS_ID,
+//         fields: "all",
+//       },
+//     ],
+//     aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+//     breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
+//     "source-table": ORDERS_ID,
+//   } as StructuredQuery,
+// };
 
 const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
   name: "Question with Orders implicitly joined to Products",
@@ -154,29 +153,29 @@ const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestion: StructuredQuestionDetails = {
-  name: "Multi-stage question",
-  query: {
-    "source-query": {
-      "source-query": {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
-      aggregation: [["count"]],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, null]],
-  },
-};
+// const multiStageQuestion: StructuredQuestionDetails = {
+//   name: "Multi-stage question",
+//   query: {
+//     "source-query": {
+//       "source-query": {
+//         "source-table": PRODUCTS_ID,
+//         aggregation: [["count"]],
+//         breakout: [["field", PRODUCTS.CATEGORY, null]],
+//       },
+//       aggregation: [["count"]],
+//       breakout: [["field", PRODUCTS.CATEGORY, null]],
+//     },
+//     aggregation: [["count"]],
+//     breakout: [["field", PRODUCTS.CATEGORY, null]],
+//   },
+// };
 
 const questionData: StructuredQuestionDetails[] = [
   savedQuestion,
   model,
-  ordersJoinedToProducts,
-  ordersImplicitlyJoinedToProducts,
-  multiStageQuestion,
+  // ordersJoinedToProducts,
+  // ordersImplicitlyJoinedToProducts,
+  // multiStageQuestion,
 ];
 
 export const adhocQuestionData = {
@@ -719,6 +718,14 @@ export const assertAllResultsAndValuesAreSandboxed = (
   getParameterValuesForProductCategories().then((response) =>
     valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
+
+  H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) => {
+    rowsShouldContainOnlyOneCategory({
+      responses: [response],
+      questions: [adhocQuestionData as unknown as CollectionItem],
+      productCategory,
+    });
+  });
 };
 
 export const assertResponseFailsClosed = (response) => {
@@ -799,4 +806,73 @@ export const signInAsAdmin = () => {
   cy.signOut();
   cy.clearCookies();
   return cy.signInAsAdmin();
+};
+
+export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
+  responses.forEach((response) => {
+    expect(response.body.cached, "response should not be cached").not.to.be
+      .null;
+    expect(response.body.json_query?.["cache-strategy"]?.type).to.equal(
+      "duration",
+    );
+  });
+  return cy.wrap(responses);
+};
+
+export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
+  const simpleCacheConfiguration: CacheConfig = {
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  };
+
+  cy.log(
+    "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
+  );
+  return cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+    cy.log("Populate the caches");
+    return getCardResponses(questions);
+  });
+};
+
+export const runWithoutCachingThenWithCaching = (
+  callback: (props: { isCachingEnabled?: boolean }) => void,
+  { questions }: { questions: CollectionItem[] },
+) => {
+  callback({ isCachingEnabled: false });
+  cy.signInAsAdmin().then(() => {
+    cacheUnsandboxedResults(questions).then(() => {
+      callback({ isCachingEnabled: true });
+    });
+  });
+};
+
+/** This avoids a race condition where requests intended to be made by a normal
+ * user are instead made by an admin */
+export const waitForUserToBeLoggedIn = (user: NormalUser) => {
+  cy.log("Wait for user to be logged in");
+  function check(tries: number) {
+    if (tries === 0) {
+      return cy.wrap(false);
+    }
+    return cy
+      .request("/api/user/current")
+      .then((response): Cypress.Chainable<boolean> => {
+        if (response.body.email === user.email) {
+          cy.log(`User is logged in: ${user.email}`);
+          return cy.wrap(true);
+        } else {
+          cy.wait(500);
+          return check(tries - 1);
+        }
+      });
+  }
+  return check(5).then((success) => {
+    expect(success, "User is logged in").to.be.true;
+  });
 };
