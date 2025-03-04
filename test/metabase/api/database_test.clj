@@ -382,7 +382,7 @@
       (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
         (is (= {:errors  {:host "check your host settings"
                           :port "check your port settings"}
-                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
+                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct."}
                (with-redefs [driver/available?   (constantly true)
                              driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
