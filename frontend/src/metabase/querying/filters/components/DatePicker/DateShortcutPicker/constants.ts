@@ -10,7 +10,7 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     shortcut: "today",
     value: {
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "day",
     },
   },
