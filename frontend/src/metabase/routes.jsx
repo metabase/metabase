@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
+import { InteractiveEmbeddingDemo } from "metabase/admin/demos/InteractiveEmbeddingDemo";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import getAdminRoutes from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
@@ -87,6 +88,12 @@ export const getRoutes = store => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+      />
+
+      {/* Proof-of-Concept: Interactive Embedding Demo */}
+      <Route
+        path="interactive-embedding-demo"
+        component={InteractiveEmbeddingDemo}
       />
 
       {/* APP */}
