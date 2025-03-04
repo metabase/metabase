@@ -140,8 +140,9 @@ export const Visualizer = (props: VisualizerProps) => {
               </Box>
             </Flex>
           )}
-          <Box
+          <Flex
             w="100%"
+            direction="column"
             m={10}
             bg="white"
             style={{
@@ -164,11 +165,11 @@ export const Visualizer = (props: VisualizerProps) => {
                 />
               </Flex>
             )}
-            <Box h="87%" px="xl" mb="lg">
+            <Box px="xl" mb="lg" flex={1}>
               <VisualizationCanvas />
             </Box>
             {hasDatasets && <Footer />}
-          </Box>
+          </Flex>
           {!isFullscreen && isVizSettingsSidebarOpen && (
             <Flex direction="column" miw={320}>
               <VizSettingsSidebar />
