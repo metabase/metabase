@@ -36,7 +36,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-export const DatabaseEditConnectionModalInner = ({
+export const DatabaseConnectionModalInner = ({
   database,
   initializeError,
   onChangeLocation,
@@ -53,6 +53,8 @@ export const DatabaseEditConnectionModalInner = ({
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId | undefined) => Promise<void>;
 }) => {
+  // TODO: downstream code gets way simpler if a database is always defined
+
   const addingNewDatabase = params.databaseId === undefined;
   useMount(async () => {
     if (addingNewDatabase) {
@@ -61,32 +63,43 @@ export const DatabaseEditConnectionModalInner = ({
     }
   });
 
-  const closeModal = () =>
-    database?.id
+  const handleCloseModal = () => {
+    return database?.id
       ? onChangeLocation(`/admin/databases/${database?.id}`)
       : onChangeLocation(`/admin/databases`);
+  };
+
+  const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
+    if (addingNewDatabase) {
+      onChangeLocation(
+        `/admin/databases?created=true&createdDbId=${savedDB.id}`,
+      );
+    } else {
+      handleCloseModal();
+    }
+  };
 
   return (
     <Modal
-      title={t`Edit connection details`}
+      title={addingNewDatabase ? t`Add a database` : t`Edit connection details`}
       opened
-      onClose={closeModal}
+      onClose={handleCloseModal}
       padding="xl"
     >
       <DatabaseEditConnectionForm
         database={database}
         initializeError={initializeError}
-        onChangeLocation={onChangeLocation}
-        onSubmitted={closeModal}
+        onSubmitted={handleOnSubmit}
+        onCancel={handleCloseModal}
         route={route}
       />
     </Modal>
   );
 };
 
-export const DatabaseEditConnectionModal = _.compose(
+export const DatabaseConnectionModal = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(
     ({ database }: { database: DatabaseData }) => database && database.name,
   ),
-)(DatabaseEditConnectionModalInner);
+)(DatabaseConnectionModalInner);

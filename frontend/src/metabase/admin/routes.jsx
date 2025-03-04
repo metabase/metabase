@@ -3,8 +3,8 @@ import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
+import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
-import { DatabaseEditConnectionModal } from "metabase/admin/databases/containers/DatabaseEditConnectionModal";
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
@@ -69,10 +69,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       >
         <IndexRoute component={DatabaseListApp} />
         <Route component={DatabaseListApp}>
-          <ModalRoute path="create" modal={DatabaseEditConnectionModal} />
+          <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
-          <ModalRoute path="edit" modal={DatabaseEditConnectionModal} />
+          <ModalRoute path="edit" modal={DatabaseConnectionModal} />
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>

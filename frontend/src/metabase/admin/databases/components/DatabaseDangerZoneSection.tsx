@@ -41,17 +41,19 @@ export const DatabaseDangerZoneSection = ({
     [dispatch, database.id],
   );
 
-  // TODO: hide the entire section is there are no actions that can be taken...
-  // or show a disabled button or something if the sync is not complete?
+  const hasCompletedSync = isSyncCompleted(database);
+  const shouldHideSection =
+    database.is_attached_dwh ||
+    [hasCompletedSync, isAdmin].every(bool => bool === false);
 
-  if (database.is_attached_dwh) {
+  if (shouldHideSection) {
     return null;
   }
 
   return (
     <DatabaseInfoSection
       name={t`Danger zone`}
-      description={t`Remove this database and other destructive actions`}
+      description={t`Remove this database and other destructive actions.`}
     >
       <Flex gap="sm">
         {isSyncCompleted(database) && (

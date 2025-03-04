@@ -3,11 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { Flex } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { getEngines, getIsHosted } from "../../selectors";
@@ -176,14 +179,36 @@ const DatabaseFormFooter = ({
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
 
+  const docsUrl = useSelector(state =>
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+    getDocsUrl(state, { page: "databases/connecting" }),
+  );
+
   if (isAdvanced) {
     return (
       <FormFooter>
-        <FormSubmitButton
-          disabled={!isDirty}
-          title={isNew ? t`Save` : t`Save changes`}
-          primary
-        />
+        <Flex justify="space-between" align="center" w="100%">
+          {isNew ? (
+            <ExternalLink
+              key="link"
+              href={docsUrl}
+              style={{ fontWeight: 500, fontSize: ".875rem" }}
+            >
+              {t`Need help connecting?`}
+            </ExternalLink>
+          ) : (
+            <div />
+          )}
+
+          <Flex gap="sm">
+            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              disabled={!isDirty}
+              title={isNew ? t`Save` : t`Save changes`}
+              primary
+            />
+          </Flex>
+        </Flex>
         <FormErrorMessage />
       </FormFooter>
     );

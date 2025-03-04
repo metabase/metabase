@@ -1,28 +1,38 @@
-import { Box, Card, Flex, Text } from "metabase/ui";
+import { Box, Card, Flex, type FlexProps, Text } from "metabase/ui";
+
+interface DatabaseInfoSectionProps extends FlexProps {
+  name: string;
+  description: string;
+  children: React.ReactNode;
+  condensed?: boolean;
+}
 
 export const DatabaseInfoSection = ({
   name,
   description,
   children,
   condensed = false,
-}: {
-  name: string;
-  description: string;
-  children: React.ReactNode;
-  condensed?: boolean;
-}) => (
+}: DatabaseInfoSectionProps) => (
   <Flex gap="5.5rem" mb="5.5rem">
     <Flex gap="lg" w="100%">
-      <Flex direction="column" w="100%" maw="17rem">
-        <Text size="lg" fw="700">
+      <Flex
+        direction="column"
+        w="100%"
+        maw="16rem"
+        mt="md"
+        style={{ flexShrink: 0 }}
+      >
+        <Text size="lg" fw="700" mb="xs" lh={1.4}>
           {name}
         </Text>
-        <Text c="text-secondary">{description}</Text>
+        <Text c="text-secondary" lh={1.4}>
+          {description}
+        </Text>
       </Flex>
       <Box w="100%">
         <Card
           withBorder
-          bg="bg-light"
+          bg="accent-gray-light"
           shadow="none"
           style={{ flexGrow: 0 }}
           px="1.5rem"
@@ -39,12 +49,6 @@ export const DatabaseInfoSection = ({
 // it's rendered within a React.Fragment: https://mantine.dev/core/card/#cardsection
 export const DatabaseInfoSectionDivider = () => {
   return (
-    <Box
-      h="1px"
-      w="calc(100% + 3rem)"
-      ml="-1.5rem"
-      my="1rem"
-      bg="var(--mb-color-border)"
-    />
+    <Box h="1px" w="calc(100% + 3rem)" ml="-1.5rem" my="1rem" bg="border" />
   );
 };
