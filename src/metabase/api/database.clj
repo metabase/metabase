@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
@@ -31,7 +30,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
@@ -50,9 +48,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2])
-  (:import
-   (metabase.server.streaming_response StreamingResponse)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
