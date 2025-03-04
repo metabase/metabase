@@ -9,7 +9,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, Collection } from "metabase-types/api";
+import type { CardType, Collection, DatabaseId } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
@@ -18,6 +18,7 @@ import { CARD_INFO } from "./constants";
 interface SavedEntityListProps {
   type: CardType;
   selectedId: string;
+  databaseId: DatabaseId;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }
@@ -25,6 +26,7 @@ interface SavedEntityListProps {
 const SavedEntityList = ({
   type,
   selectedId,
+  databaseId,
   collection,
   onSelect,
 }: SavedEntityListProps): JSX.Element => {
@@ -47,6 +49,10 @@ const SavedEntityList = ({
       : skipToken,
   );
   const list = data?.data ?? [];
+  const filteredList = databaseId
+    ? // When `databaseId` is provided, we're joining data, so we need to filter out items that don't belong to the current database
+      list.filter(collectionItem => collectionItem.database_id === databaseId)
+    : list;
 
   return (
     <Box p="sm" w="100%">
@@ -57,7 +63,7 @@ const SavedEntityList = ({
           error={error}
         >
           <Fragment>
-            {list.map(collectionItem => {
+            {filteredList.map(collectionItem => {
               const { id, name, moderated_status } = collectionItem;
               const virtualTableId = getQuestionVirtualTableId(id);
 
@@ -81,7 +87,7 @@ const SavedEntityList = ({
                 />
               );
             })}
-            {list.length === 0 ? emptyState : null}
+            {filteredList.length === 0 ? emptyState : null}
           </Fragment>
           {isVirtualCollection && emptyState}
         </LoadingAndErrorWrapper>
