@@ -5,8 +5,12 @@ import _ from "underscore";
 
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
+import {
+  default as DeprecatedSelect,
+  Option,
+} from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { Button, MultiSelect, Select, TextInputBlurChange } from "metabase/ui";
+import { Button, Select, TextInputBlurChange } from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -35,6 +39,9 @@ interface RuleEditorProps {
   onRemove: () => void;
   canHighlightRow?: boolean;
 }
+interface SelectMultipleItemsReturned extends Array<string> {
+  changedItem: string;
+}
 
 const INPUT_CLASSNAME = cx(CS.mt1, CS.full);
 
@@ -62,9 +69,9 @@ export const RuleEditor = ({
     rule.operator !== "is-true" &&
     rule.operator !== "is-false";
 
-  const handleColumnChange = (columns: ColumnFormattingSetting["columns"]) => {
-    const isFirstColumnAdd = rule.columns.length === 0 && columns.length === 1;
-
+  const handleColumnChange = (columns: SelectMultipleItemsReturned) => {
+    const isFirstColumnAdd =
+      columns.length === 1 && columns[0] === columns.changedItem;
     const operatorUpdate: {
       operator?:
         | ConditionalFormattingBooleanOperator
@@ -82,17 +89,25 @@ export const RuleEditor = ({
   return (
     <div>
       <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
-      <MultiSelect
+      <DeprecatedSelect
         value={rule.columns}
-        onChange={handleColumnChange}
-        initiallyOpened={rule.columns.length === 0}
+        onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
+          handleColumnChange(e.target.value)
+        }
+        isInitiallyOpen={rule.columns.length === 0}
         placeholder={t`Choose a column`}
-        data={cols.map(col => ({
-          value: col.name,
-          label: col.display_name,
-          disabled: isFieldDisabled(col),
-        }))}
-      />
+        multiple
+      >
+        {cols.map(col => (
+          <Option
+            key={col.name}
+            value={col.name}
+            disabled={isFieldDisabled(col)}
+          >
+            {col.display_name}
+          </Option>
+        ))}
+      </DeprecatedSelect>
       {isNumericRule && !isKeyRule && (
         <div>
           <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
