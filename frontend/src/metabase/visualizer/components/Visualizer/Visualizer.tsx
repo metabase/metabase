@@ -13,7 +13,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
-  getDatasets,
   getDraggedItem,
   getIsDirty,
   getIsFullscreenModeEnabled,
@@ -50,7 +49,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const draggedItem = useSelector(getDraggedItem);
-  const datasets = useSelector(getDatasets);
   const isFullscreen = useSelector(getIsFullscreenModeEnabled);
   const isVizSettingsSidebarOpen = useSelector(getIsVizSettingsSidebarOpen);
 
@@ -58,8 +56,6 @@ export const Visualizer = (props: VisualizerProps) => {
   const wasDirty = usePrevious(isDirty);
 
   const dispatch = useDispatch();
-
-  const hasDatasets = Object.values(datasets).length > 0;
 
   const canvasSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
@@ -121,7 +117,7 @@ export const Visualizer = (props: VisualizerProps) => {
       <Flex className={className} direction="column">
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (
-            <Flex direction="column" miw={320} p="md" className={S.sidebar}>
+            <Flex direction="column" miw={320} p="md" className={S.dataSidebar}>
               <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
                 <DataImporter />
               </Box>
@@ -134,27 +130,21 @@ export const Visualizer = (props: VisualizerProps) => {
           <Flex direction="column" w="100%">
             <Header onSave={onSave} saveLabel={saveLabel} />
             <Flex
-              ml="lg"
-              mr="lg"
-              mb="md"
               flex={1}
               direction="column"
               bg="white"
               style={{
-                borderRadius: "var(--default-border-radius)",
                 overflowY: "hidden",
-                border: `1px solid var(--mb-color-border)`,
-                boxShadow: "0 1px 2px 2px var(--mb-color-border)",
               }}
             >
               <Box px="xl" mb="lg" flex={1}>
                 <VisualizationCanvas />
               </Box>
-              {hasDatasets && <Footer />}
+              <Footer />
             </Flex>
           </Flex>
           {!isFullscreen && isVizSettingsSidebarOpen && (
-            <Flex direction="column" miw={320}>
+            <Flex direction="column" miw={320} className={S.settingsSidebar}>
               <VizSettingsSidebar />
             </Flex>
           )}
