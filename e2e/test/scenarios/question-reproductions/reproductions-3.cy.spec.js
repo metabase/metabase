@@ -132,7 +132,7 @@ describe("issue 33079", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.cartesianChartCircle().eq(1).click({ force: true });
     H.popover()
-      .findByText(/Order/) // See these records
+      .findByText(/record/) // See these records
       .click();
     cy.wait("@dataset");
     cy.findByTestId("question-row-count").should("contain", "19");
