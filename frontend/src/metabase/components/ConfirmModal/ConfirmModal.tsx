@@ -35,8 +35,8 @@ export const ConfirmModal = ({
     size="lg"
   >
     <Flex direction="column" gap="lg" mt="lg">
-      {content ? <Text lh="1.5rem">{content}</Text> : null}
-      <Text lh="1.5rem">{message}</Text>
+      {content ? <Text>{content}</Text> : null}
+      <Text>{message}</Text>
       <Flex justify="flex-end" gap="md">
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
