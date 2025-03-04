@@ -1,4 +1,3 @@
-import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   LLMSuggestionQuestionInfo,
   SaveQuestionForm,
@@ -22,11 +21,6 @@ export const SaveQuestionModal = ({
   saveToCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  const saveToDashboardId = question.dashboardId();
-  const { data: saveToDashboard } = useGetDashboardQuery(
-    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
-  );
-
   return (
     <SaveQuestionProvider
       question={question}
@@ -59,7 +53,6 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
-              saveToDashboard={saveToDashboard}
               onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
               onCancel={modalProps.onClose}
             />

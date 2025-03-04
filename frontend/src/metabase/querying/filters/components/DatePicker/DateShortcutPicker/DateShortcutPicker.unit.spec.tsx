@@ -42,7 +42,7 @@ describe("DateShortcutPicker", () => {
     await userEvent.click(screen.getByText("Today"));
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "day",
     });
   });

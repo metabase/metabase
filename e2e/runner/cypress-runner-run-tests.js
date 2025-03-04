@@ -1,10 +1,36 @@
 const cypress = require("cypress");
 
+const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const { parseArguments, args } = require("./cypress-runner-utils");
+const {
+  SAMPLE_APP_SETUP_CONFIGS,
+} = require("./sample-apps-shared/constants/sample-app-setup-configs");
 
 const DEFAULT_PORT = 4000;
-const getHost = () =>
-  `http://localhost:${process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+const getHost = (port = null) =>
+  `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+
+const getSampleAppE2eConfig = suite => ({
+  [suite]: async () => {
+    const { appName, subAppName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
+    const { CLIENT_PORT } = env;
+
+    const defaultConfig = {
+      browser: "chrome",
+      project: ["e2e/tmp", appName, subAppName].join("/"),
+      configFile: "e2e/support/cypress.config.js",
+      config: {
+        baseUrl: getHost(CLIENT_PORT),
+      },
+      testingType: "e2e",
+      openMode: args["--open"] || process.env.OPEN_UI === "true",
+    };
+
+    const userArgs = await parseArguments(args);
+
+    return Object.assign({}, defaultConfig, userArgs);
+  },
+});
 
 // This is a map of all possible Cypress configurations we can run.
 const configs = {
@@ -23,6 +49,14 @@ const configs = {
     const finalConfig = Object.assign({}, defaultConfig, userArgs);
     return finalConfig;
   },
+  ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
+  ...getSampleAppE2eConfig(
+    "metabase-nextjs-sdk-embedding-sample-app-router-e2e",
+  ),
+  ...getSampleAppE2eConfig(
+    "metabase-nextjs-sdk-embedding-sample-pages-router-e2e",
+  ),
+  ...getSampleAppE2eConfig("shoppy-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.
@@ -67,7 +101,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
     console.error(
       `Invalid suite: ${suite}, try one of: ${Object.keys(configs)}`,
     );
-    await exitFunction(1);
+    await exitFunction(FAILURE_EXIT_CODE);
   }
 
   const config = await configs[suite]();
@@ -79,7 +113,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
 
     // At least one test failed
     if (totalFailed > 0) {
-      await exitFunction(1);
+      await exitFunction(FAILURE_EXIT_CODE);
     }
 
     // Something went wrong and Cypress failed to even run tests
@@ -91,7 +125,7 @@ const runCypress = async (suite = "e2e", exitFunction) => {
   } catch (e) {
     console.error("Failed to run Cypress!\n", e);
 
-    await exitFunction(1);
+    await exitFunction(FAILURE_EXIT_CODE);
   }
 };
 

@@ -155,6 +155,79 @@ describe("syncVizSettings", () => {
         ],
       });
     });
+
+    it("should not create duplicate entries when there is a mismatch between old columns and current settings (metabase#54547)", () => {
+      const oldColumns: ColumnInfo[] = [{ name: "A", key: "__A" }];
+      const newColumns: ColumnInfo[] = [
+        { name: "A", key: "__A" },
+        { name: "B", key: "__B" },
+        { name: "C", key: "__C" },
+      ];
+      const oldSettings = createMockVisualizationSettings({
+        "table.columns": [
+          createMockTableColumnOrderSetting({
+            name: "A",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "B",
+            enabled: true,
+          }),
+        ],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "table.columns": [
+          createMockTableColumnOrderSetting({
+            name: "A",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "B",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "C",
+            enabled: true,
+          }),
+        ],
+      });
+    });
+
+    it("should not create duplicate entries when there is a mismatch between old columns and current settings and column names have changed (metabase#54547)", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
+      ];
+
+      const oldSettings = createMockVisualizationSettings({
+        "table.columns": [
+          createMockTableColumnOrderSetting({
+            name: "ID",
+            enabled: true,
+          }),
+          createMockTableColumnOrderSetting({
+            name: "ID_3",
+            enabled: false,
+          }),
+        ],
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
+        ],
+      });
+    });
   });
 
   describe("column_settings", () => {

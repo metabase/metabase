@@ -1,6 +1,8 @@
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature } from "metabase-types/api";
 
+import type { OPERATOR, TOKEN } from "./tokenizer";
+
 export interface HelpText {
   name: string;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
@@ -53,9 +55,33 @@ export type ErrorWithMessage = {
   len?: number | null;
 };
 
-export type Token = {
-  type: number;
-  op?: string;
-  start: number;
-  end: number;
-};
+export type Token =
+  | {
+      type: TOKEN.Operator;
+      start: number;
+      end: number;
+      op: OPERATOR;
+    }
+  | {
+      type: TOKEN.Number;
+      start: number;
+      end: number;
+    }
+  | {
+      type: TOKEN.String;
+      start: number;
+      end: number;
+      value: string;
+    }
+  | {
+      type: TOKEN.Identifier;
+      start: number;
+      end: number;
+      isReference: boolean;
+    }
+  | {
+      type: TOKEN.Boolean;
+      start: number;
+      end: number;
+      op: "true" | "false";
+    };

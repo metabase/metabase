@@ -1,0 +1,124 @@
+.wrapper {
+  display: flex;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  min-height: 40px;
+  align-items: center;
+  padding-left: 0.6875rem;
+  padding-right: 0.6875rem;
+  transition: border-color 100ms ease;
+
+  &:focus-within {
+    border-color: var(--mb-color-brand);
+  }
+
+  &.formatting {
+    background-color: var(--mb-color-bg-medium);
+  }
+}
+
+.prefix {
+  font-weight: bold;
+}
+
+.error {
+  color: var(--mb-color-error);
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+
+.editor {
+  width: 100%;
+  height: 100%;
+  color: var(--mb-color-text-dark);
+
+  :global {
+    .cm-editor {
+      background: none;
+    }
+
+    .cm-focused {
+      outline: none;
+    }
+
+    .cm-scroller {
+      padding-top: 4px;
+      padding-bottom: 4px;
+      background-color: none;
+    }
+
+    .cm-content {
+      color: var(--mb-color-text-dark);
+      background: none;
+    }
+
+    .cm-line {
+      background: none;
+    }
+
+    .cm-gutters {
+      display: none;
+      background-color: var(--mb-color-bg-light);
+      border: none;
+    }
+
+    .cm-gutterElement {
+      font-weight: bold;
+      font-size: 10px;
+      color: var(--mb-color-text-light);
+      vertical-align: baseline;
+      display: flex;
+      align-items: center;
+      justify-content: end;
+
+      span[title="Fold line"] {
+        position: relative;
+        top: -3px;
+      }
+    }
+
+    .cm-activeLineGutter {
+      background: none;
+    }
+
+    .cm-selectionBackground {
+      background: var(--mb-color-focus) !important;
+      border-radius: 1px;
+    }
+
+    .cm-selectionMatch {
+      background: none;
+    }
+
+    .cm-cursor {
+      border-left-width: 1.6px;
+    }
+
+    .cm-tooltip {
+      border: none !important;
+      background: none !important;
+    }
+
+    .cm-tooltip-autocomplete {
+      display: none;
+    }
+
+    .cm-snippetField {
+      font-style: italic;
+      background: none;
+    }
+  }
+}
+
+.tooltips {
+  :global {
+    .cm-tooltip {
+      border: none !important;
+      background: none !important;
+    }
+
+    .cm-tooltip-autocomplete {
+      display: none;
+    }
+  }
+}

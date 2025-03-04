@@ -3,12 +3,16 @@ import {
   OptionsDropdown,
   Pill,
   PillsInput,
+  type TagsInputFactory,
   type TagsInputProps,
   __BaseInputProps,
   __InputStylesNames,
+  extractStyleProps,
   getOptionsLockup,
   getParsedComboboxData,
   useCombobox,
+  useResolvedStylesApi,
+  useStyles,
 } from "@mantine/core";
 import { useId, useMergedRef, useUncontrolled } from "@mantine/hooks";
 import type React from "react";
@@ -118,6 +122,11 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
     },
   });
 
+  const {
+    styleProps,
+    rest: { type, autoComplete, ...rest },
+  } = extractStyleProps(others);
+
   const [_value, setValue] = useUncontrolled({
     value,
     defaultValue,
@@ -131,6 +140,18 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
     finalValue: "",
     onChange: onSearchChange,
   });
+
+  const getStyles = useStyles<TagsInputFactory>({
+    name: "TagsInput",
+    classes: {},
+    props,
+    classNames,
+    styles,
+    unstyled,
+  });
+
+  const { resolvedClassNames, resolvedStyles } =
+    useResolvedStylesApi<TagsInputFactory>({ props, styles, classNames });
 
   const handleValueSelect = (val: string) => {
     const isDuplicate = _value.some(
@@ -235,6 +256,7 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
         }}
         unstyled={unstyled}
         disabled={disabled}
+        {...getStyles("pill")}
       >
         {optionsLockup[item]?.label || item}
       </Pill>
@@ -269,6 +291,8 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
     <>
       <Combobox
         store={combobox}
+        classNames={resolvedClassNames}
+        styles={resolvedStyles}
         unstyled={unstyled}
         size={size}
         readOnly={readOnly}
@@ -286,7 +310,10 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
       >
         <Combobox.DropdownTarget>
           <PillsInput
+            {...styleProps}
             __staticSelector="TagsInput"
+            classNames={resolvedClassNames}
+            styles={resolvedStyles}
             unstyled={unstyled}
             size={size}
             className={className}
@@ -322,12 +349,18 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
             id={_id}
             mod={mod}
           >
-            <Pill.Group disabled={disabled} unstyled={unstyled} role="list">
+            <Pill.Group
+              disabled={disabled}
+              unstyled={unstyled}
+              role="list"
+              {...getStyles("pillsList")}
+            >
               {values}
-              <Combobox.EventsTarget>
-                {/* @ts-expect-error - I've removed some thing that mantine thinks is required as a library, as an end user aren't */}
+              <Combobox.EventsTarget autoComplete={autoComplete}>
                 <PillsInput.Field
+                  {...rest}
                   ref={_ref}
+                  {...getStyles("inputField")}
                   unstyled={unstyled}
                   onKeyDown={handleInputKeydown}
                   onFocus={event => {
@@ -346,8 +379,6 @@ export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
                   disabled={disabled}
                   readOnly={readOnly}
                   id={_id}
-                  // role="combobox"
-                  {...others}
                 />
               </Combobox.EventsTarget>
             </Pill.Group>

@@ -184,7 +184,7 @@ describe("date parameters", () => {
       value: "thisday",
       expectedValue: {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "day",
       },
     },
@@ -192,7 +192,7 @@ describe("date parameters", () => {
       value: "thisyear",
       expectedValue: {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "year",
       },
     },

@@ -228,19 +228,19 @@ export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
 
 export const versionRequirements: Record<
   number,
-  { java: number; node: number }
+  { java: number; node: number, platforms: string }
 > = {
-  43: { java: 8, node: 14 },
-  44: { java: 11, node: 14 },
-  45: { java: 11, node: 14 },
-  46: { java: 11, node: 16 },
-  47: { java: 11, node: 18 },
-  48: { java: 11, node: 18 },
-  49: { java: 11, node: 18 },
-  50: { java: 11, node: 18 },
-  51: { java: 11, node: 18 },
-  52: { java: 11, node: 18 },
-  53: { java: 21, node: 22 },
+  43: { java: 8, node: 14, platforms: "linux/amd64" },
+  44: { java: 11, node: 14, platforms: "linux/amd64" },
+  45: { java: 11, node: 14, platforms: "linux/amd64" },
+  46: { java: 11, node: 16, platforms: "linux/amd64" },
+  47: { java: 11, node: 18, platforms: "linux/amd64" },
+  48: { java: 11, node: 18, platforms: "linux/amd64" },
+  49: { java: 11, node: 18, platforms: "linux/amd64" },
+  50: { java: 11, node: 18, platforms: "linux/amd64" },
+  51: { java: 11, node: 18, platforms: "linux/amd64" },
+  52: { java: 11, node: 18, platforms: "linux/amd64" },
+  53: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

@@ -134,7 +134,7 @@ export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
 export const RelativeCurrent = {
   render: Template,
   args: {
-    value: { type: "relative", unit: "day", value: "current" },
+    value: { type: "relative", unit: "day", value: 0 },
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);

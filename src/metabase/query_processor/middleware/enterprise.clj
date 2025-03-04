@@ -21,6 +21,12 @@
   [query]
   query)
 
+(defenterprise apply-impersonation
+  "Pre-processing middleware. Adds a key to the query if the user will be impersonated. Currently used solely for cache."
+  metabase-enterprise.impersonation.middleware
+  [query]
+  query)
+
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `limited` download perms. This
   does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
