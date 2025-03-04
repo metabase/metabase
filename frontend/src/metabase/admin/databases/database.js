@@ -28,14 +28,8 @@ export const ADDING_SAMPLE_DATABASE =
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const PERSIST_DATABASE = "metabase/admin/databases/PERSIST_DATABASE";
 export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
-export const SYNC_DATABASE_SCHEMA =
-  "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
 export const DISMISS_SYNC_SPINNER =
   "metabase/admin/databases/DISMISS_SYNC_SPINNER";
-export const RESCAN_DATABASE_FIELDS =
-  "metabase/admin/databases/RESCAN_DATABASE_FIELDS";
-export const DISCARD_SAVED_FIELD_VALUES =
-  "metabase/admin/databases/DISCARD_SAVED_FIELD_VALUES";
 export const UPDATE_DATABASE = "metabase/admin/databases/UPDATE_DATABASE";
 export const UPDATE_DATABASE_STARTED =
   "metabase/admin/databases/UPDATE_DATABASE_STARTED";
@@ -44,12 +38,6 @@ export const UPDATE_DATABASE_FAILED =
 export const CREATE_DATABASE = "metabase/admin/databases/CREATE_DATABASE";
 export const CREATE_DATABASE_STARTED =
   "metabase/admin/databases/CREATE_DATABASE_STARTED";
-export const VALIDATE_DATABASE_STARTED =
-  "metabase/admin/databases/VALIDATE_DATABASE_STARTED";
-export const VALIDATE_DATABASE_FAILED =
-  "metabase/admin/databases/VALIDATE_DATABASE_FAILED";
-export const CREATE_DATABASE_FAILED =
-  "metabase/admin/databases/CREATE_DATABASE_FAILED";
 export const DELETE_DATABASE_STARTED =
   "metabase/admin/databases/DELETE_DATABASE_STARTED";
 export const DELETE_DATABASE_FAILED =
@@ -128,7 +116,7 @@ export const initializeDatabase = function (databaseId) {
         auto_run_queries: true,
         engine: getDefaultEngineKey(engines),
         details: {},
-        created: false,
+        created_at: new Date().toISOString(),
       };
       dispatch({ type: INITIALIZE_DATABASE, payload: newDatabase });
     }

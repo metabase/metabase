@@ -29,7 +29,7 @@ function ModelActionsSection({
 
   return (
     <div>
-      <Flex align="center" justify="space-between" mb="sm">
+      <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
         <Toggle
           id="model-actions-toggle"

@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import type { Route } from "react-router";
@@ -13,35 +12,25 @@ import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseData } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { saveDatabase } from "../database";
+import { isDbModifiable } from "../utils";
 
 export const DatabaseEditConnectionForm = ({
   database,
   initializeError,
-  onChangeLocation,
   onSubmitted,
+  onCancel,
   route,
 }: {
   database?: Database;
   initializeError?: DatabaseEditErrorType;
-  onChangeLocation: (location: LocationDescriptor) => void;
-  onSubmitted: () => void;
+  onSubmitted: (savedDB: { id: DatabaseId }) => void;
+  onCancel: () => void;
   route: Route;
 }) => {
   const dispatch = useDispatch();
-
-  const editingExistingDatabase = database?.id != null;
-  const addingNewDatabase = !editingExistingDatabase;
-  // import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
-  // import { Box } from "metabase/ui";
-  //
-  //         <>
-  //           <Box maw="21rem" mt="1.25rem">
-  //             {addingNewDatabase && <DatabaseHelpCard />}
-  //           </Box>
-  //         </>
 
   const [isDirty, setIsDirty] = useState(false);
 
@@ -56,41 +45,31 @@ export const DatabaseEditConnectionForm = ({
   const handleSubmit = async (database: DatabaseData) => {
     try {
       const savedDB = await dispatch(saveDatabase(database));
-      // TODO: move into onSubmitted call
-      if (addingNewDatabase) {
-        scheduleCallback(() => {
-          onChangeLocation(
-            `/admin/databases?created=true&createdDbId=${savedDB.id}`,
-          );
-        });
-      } else {
-        scheduleCallback(() => {
-          onSubmitted();
-        });
-      }
+      scheduleCallback(() => {
+        onSubmitted(savedDB);
+      });
     } catch (error) {
       throw getSubmitError(error as DatabaseEditErrorType);
     }
   };
 
-  // TODO: make sure connection stuff refetches once the details have been edited...
-
-  // TODO: we should move the can't be modified state up somehow...
-  // though if this is attached to a route, then I guess this state needs to be here as well
+  // TODO: we should disable the edit button if the user can't edit
+  // also this state could look better
 
   return (
     <ErrorBoundary errorComponent={GenericError as ComponentType}>
       <LoadingAndErrorWrapper error={initializeError}>
-        {editingExistingDatabase && database.is_attached_dwh ? (
-          <div>{t`This database cannot be modified.`}</div>
-        ) : (
+        {isDbModifiable(database) ? (
           <DatabaseForm
             initialValues={database}
             isAdvanced
+            onCancel={onCancel}
             onSubmit={handleSubmit}
             setIsDirty={setIsDirty}
             autofocusFieldName={autofocusFieldName}
           />
+        ) : (
+          <div>{t`This database cannot be modified.`}</div>
         )}
       </LoadingAndErrorWrapper>
       <LeaveConfirmationModal

@@ -26,10 +26,10 @@ export const DatabaseModelFeaturesSection = ({
     isEditingDatabase && database.supportsActions();
   const hasModelCachingSection =
     isModelPersistenceEnabled && database.supportsPersistence();
-
   const hasNoContent = [hasModelActionsSection, hasModelCachingSection].every(
     bool => bool === false,
   );
+  const shouldHideSection = database.is_attached_dwh || hasNoContent;
 
   const handleToggleModelActionsEnabled = useCallback(
     (nextValue: boolean) =>
@@ -39,8 +39,6 @@ export const DatabaseModelFeaturesSection = ({
       }),
     [database.id, updateDatabase],
   );
-
-  const shouldHideSection = database.is_attached_dwh || hasNoContent;
 
   if (shouldHideSection) {
     return null;

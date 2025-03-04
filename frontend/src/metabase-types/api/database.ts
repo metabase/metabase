@@ -82,7 +82,6 @@ export interface DatabaseData {
   is_full_sync: boolean;
   is_on_demand: boolean;
   settings?: DatabaseSettings | null;
-  dbms_version: unknown;
 }
 
 export interface DatabaseSchedules {
@@ -103,6 +102,10 @@ export interface GetDatabaseRequest {
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
+
+export type GetDatabaseHealthResponse =
+  | { status: "ok" }
+  | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
   include?: "table";

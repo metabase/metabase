@@ -6,7 +6,8 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { GenericError, NotFound } from "metabase/components/ErrorPages";
+import { GenericError } from "metabase/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
@@ -23,6 +24,7 @@ import type { State } from "metabase-types/store";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
+import type { DatabaseEditErrorType } from "../components/DatabaseEditConnectionForm";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
@@ -48,6 +50,7 @@ interface DatabaseEditAppProps {
   location: Location;
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
+  initializeError?: DatabaseEditErrorType;
 }
 
 const mapStateToProps = (state: State) => {
@@ -56,52 +59,41 @@ const mapStateToProps = (state: State) => {
   return {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
-    isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
+    isAdmin: getUserIsAdmin(state),
   };
 };
 
 const mapDispatchToProps = {
-  reset,
-  initializeDatabase,
-  updateDatabase,
   dismissSyncSpinner,
+  initializeDatabase,
+  reset,
   selectEngine,
+  updateDatabase,
 };
 
 function DatabaseEditAppInner({
   children,
   database,
-  updateDatabase,
   dismissSyncSpinner,
+  initializeDatabase,
+  initializeError,
   isAdmin,
   isModelPersistenceEnabled,
-  reset,
-  initializeDatabase,
   params,
+  reset,
+  updateDatabase,
 }: DatabaseEditAppProps) {
   useMount(async () => {
     reset();
     await initializeDatabase(params.databaseId);
   });
 
-  const dbNotFound = !database?.id;
-
+  const isLoading = !database && !initializeError;
   const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
-    dbNotFound ? null : [t`Add Database`],
+    database?.name && [database?.name],
   ]);
-
-  // TODO: handle this on a new page
-  if (dbNotFound) {
-    return (
-      <ErrorBoundary errorComponent={GenericError as ComponentType}>
-        <Box w="100%" maw="64.25rem" mx="auto" py="4rem">
-          <NotFound />
-        </Box>
-      </ErrorBoundary>
-    );
-  }
 
   return (
     <>
@@ -109,22 +101,31 @@ function DatabaseEditAppInner({
         <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
           <Breadcrumbs className={CS.py4} crumbs={crumbs} />
 
-          <ExistingDatabaseHeader database={database} />
+          <LoadingAndErrorWrapper loading={isLoading} error={initializeError}>
+            {database && (
+              <>
+                <ExistingDatabaseHeader database={database} />
 
-          <Divider mb="3.25rem" />
+                <Divider mb="3.25rem" />
 
-          <DatabaseConnectionInfoSection
-            database={database}
-            dismissSyncSpinner={dismissSyncSpinner}
-          />
+                <DatabaseConnectionInfoSection
+                  database={database}
+                  dismissSyncSpinner={dismissSyncSpinner}
+                />
 
-          <DatabaseModelFeaturesSection
-            database={database}
-            isModelPersistenceEnabled={isModelPersistenceEnabled}
-            updateDatabase={updateDatabase}
-          />
+                <DatabaseModelFeaturesSection
+                  database={database}
+                  isModelPersistenceEnabled={isModelPersistenceEnabled}
+                  updateDatabase={updateDatabase}
+                />
 
-          <DatabaseDangerZoneSection isAdmin={isAdmin} database={database} />
+                <DatabaseDangerZoneSection
+                  isAdmin={isAdmin}
+                  database={database}
+                />
+              </>
+            )}
+          </LoadingAndErrorWrapper>
         </Box>
       </ErrorBoundary>
       {children}

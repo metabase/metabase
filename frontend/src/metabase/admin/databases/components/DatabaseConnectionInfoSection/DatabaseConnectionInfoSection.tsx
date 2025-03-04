@@ -1,8 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
+  useGetDatabaseHealthQuery,
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
@@ -14,6 +16,7 @@ import { Box, Button, Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 
+import { isDbModifiable } from "../../utils";
 import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
@@ -49,7 +52,43 @@ export const DatabaseConnectionInfoSection = ({
     dispatch(push(`/admin/databases/${database.id}/edit`));
   }, [database.id, dispatch]);
 
-  // TODO: handle fetching connection status info once endpoint exists
+  const healthQuery = useGetDatabaseHealthQuery(database.id);
+  const health = useMemo(() => {
+    return match(healthQuery)
+      .with(
+        { currentData: { status: "ok" } },
+        () =>
+          ({
+            message: t`No connection issues`,
+            color: "var(--mb-color-success)",
+          }) as const,
+      )
+      .with(
+        { isUninitialized: true },
+        { isFetching: true },
+        { isLoading: true },
+        () => ({ message: t`Loading...`, color: "gray" }) as const,
+      )
+      .with(
+        { currentData: { status: "error" } },
+        query =>
+          ({
+            message: query.currentData.message,
+            color: "var(--mb-color-danger)",
+          }) as const,
+      )
+      .with(
+        { isError: true },
+        // @kyle: what color should represent a failure to get the health state?
+        // you can induce this state above by making `match(healthQuery)` => `match({ isError: true })`
+        () =>
+          ({
+            message: t`Was unable to preform healthcheck request.`,
+            color: "var(--mb-color-danger)",
+          }) as const,
+      )
+      .exhaustive();
+  }, [healthQuery]);
 
   return (
     <DatabaseInfoSection
@@ -57,24 +96,29 @@ export const DatabaseConnectionInfoSection = ({
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       condensed
     >
-      <Flex align="center" justify="space-between">
-        <Flex align="center" gap="xs">
+      <Flex align="center" justify="space-between" gap="lg">
+        <Flex align="center" gap="sm">
           <Box
             w=".75rem"
             h=".75rem"
             style={{
+              flexShrink: 0,
               borderRadius: "50%",
-              background: "var(--mb-color-success)",
+              background: health.color,
             }}
           />
-          <Text c="black">{t`No connection issues`}</Text>
+          <Text lh="1.4">{health.message}</Text>
         </Flex>
-        <Button onClick={openDbDetailsModal}>{t`Edit`}</Button>
+        <Button
+          onClick={openDbDetailsModal}
+          style={{ flexShrink: 0 }}
+          disabled={!isDbModifiable(database)}
+        >{t`Edit`}</Button>
       </Flex>
 
       <DatabaseInfoSectionDivider />
 
-      <Flex gap="sm">
+      <Flex gap="sm" wrap="wrap">
         {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
         <ActionButton
           className={S.actionButton}

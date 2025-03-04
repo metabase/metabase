@@ -11,13 +11,15 @@ export const ToggleContainer = styled.div`
 export const Label = styled.label`
   width: 100%;
   cursor: pointer;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
+  line-height: 1;
 `;
 
 export const Description = styled.p`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1.4;
+  margin-top: 0;
 `;
 
 export const Error = styled(Description)`
