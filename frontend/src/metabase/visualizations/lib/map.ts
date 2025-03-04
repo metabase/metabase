@@ -16,28 +16,7 @@ interface TileUrlParams {
   datasetQuery?: JsonQuery;
   uuid?: string;
   token?: string;
-  data?: Dataset;
-}
-
-export function getParametersFromData({
-  data,
-  uuid,
-  token,
-}: {
-  data?: Dataset;
-  uuid?: string;
-  token?: string;
-}): unknown[] {
-  if (uuid != null) {
-    return data?.json_query?.parameters ?? [];
-  }
-
-  if (token != null && typeof window !== "undefined") {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.size > 0 ? [Object.fromEntries(urlParams)] : [];
-  }
-
-  return data?.json_query?.parameters ?? [];
+  datasetResult?: Dataset;
 }
 
 export function getTileUrl(params: TileUrlParams): string {
@@ -52,14 +31,10 @@ export function getTileUrl(params: TileUrlParams): string {
     datasetQuery,
     uuid,
     token,
-    data,
+    datasetResult,
   } = params;
 
-  const parameters = getParametersFromData({
-    data,
-    uuid,
-    token,
-  });
+  const parameters = datasetResult?.json_query?.parameters ?? [];
 
   const isDashboard = dashboardId && dashcardId && cardId;
 

@@ -61,7 +61,7 @@ export default class LeafletTilePinMap extends LeafletMap {
       datasetQuery: dataset_query,
       uuid,
       token,
-      data,
+      datasetResult: this.props.series[0],
     });
   };
 }
