@@ -55,9 +55,9 @@ export const DatabaseConnectionModalInner = ({
 }) => {
   const addingNewDatabase = params.databaseId === undefined;
   useMount(async () => {
-    if (addingNewDatabase) {
+    if (!database || database.id !== params.databaseId) {
       reset();
-      await initializeDatabase(undefined);
+      await initializeDatabase(params.databaseId);
     }
   });
 
@@ -76,6 +76,10 @@ export const DatabaseConnectionModalInner = ({
       handleCloseModal();
     }
   };
+
+  if (!database) {
+    return null;
+  }
 
   return (
     <Modal

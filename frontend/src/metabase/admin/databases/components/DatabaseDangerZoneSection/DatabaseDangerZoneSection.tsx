@@ -5,24 +5,22 @@ import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatab
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Button, Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseId } from "metabase-types/api";
 
-import { deleteDatabase } from "../database";
-
-import { DatabaseInfoSection } from "./DatabaseInfoSection";
+import { DatabaseInfoSection } from "../DatabaseInfoSection";
 
 export const DatabaseDangerZoneSection = ({
   isAdmin,
   database,
+  deleteDatabase,
 }: {
   isAdmin: boolean;
   database: Database;
+  deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
 }) => {
-  const dispatch = useDispatch();
-
   const discardSavedFieldValuesModal = useRef<any>();
   const deleteDatabaseModal = useRef<any>();
 
@@ -37,8 +35,8 @@ export const DatabaseDangerZoneSection = ({
   }, []);
 
   const handleDeleteDatabase = useCallback(
-    () => dispatch(deleteDatabase(database.id)),
-    [dispatch, database.id],
+    () => deleteDatabase(database.id),
+    [deleteDatabase, database.id],
   );
 
   const hasCompletedSync = isSyncCompleted(database);
