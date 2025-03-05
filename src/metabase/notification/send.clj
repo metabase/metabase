@@ -186,16 +186,16 @@
   (put-notification!  [this id notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
   (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
 
+;; A thread-safe notification queue with the following properties:
+;; - Notifications are identified by unique IDs
+;; - Adding a notification with an ID already in the queue replaces the existing one
+;; - Taking from an empty queue blocks until a notification is available
+;; - Multiple threads can safely add and take from the queue concurrently
 (deftype ^:private NotificationQueue
-         "A thread-safe notification queue with the following properties:
-   - Notifications are identified by unique IDs
-   - Adding a notification with an ID already in the queue replaces the existing one
-   - Taking from an empty queue blocks until a notification is available
-   - Multiple threads can safely add and take from the queue concurrently"
-  [^java.util.LinkedList ids-list
-   ^java.util.concurrent.ConcurrentHashMap id->notification
-   ^java.util.concurrent.locks.ReentrantLock queue-lock
-   ^java.util.concurrent.locks.Condition not-empty-cond]
+         [^java.util.LinkedList ids-list
+          ^java.util.concurrent.ConcurrentHashMap id->notification
+          ^java.util.concurrent.locks.ReentrantLock queue-lock
+          ^java.util.concurrent.locks.Condition not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ id notification]
     (.lock queue-lock)
@@ -257,11 +257,8 @@
       (let [id (or (:id notification) (random-uuid))]
         (put-notification! queue id notification)))))
 
-(defonce ^:private notification-queue
-  (delay (create-notification-queue)))
-
 (defonce ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
+  (delay (create-notification-dispatcher (notification-thread-pool-size) (create-notification-queue))))
 
 (mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
