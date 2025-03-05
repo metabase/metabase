@@ -168,8 +168,8 @@
         col-count (- (count (first top-headers)) left-width)
         result (concat top-headers
                       ;; For each row in left-headers...
-                       (for [row-idx (range row-count)]
-                         (let [left-row (nth left-headers row-idx)
+                       (for [row-idx (range (max row-count 1))]
+                         (let [left-row (nth left-headers row-idx [])
                               ;; ...get cell values for this row
                                cell-values (mapcat (fn [col-idx]
                                                      (let [values (get-row-section col-idx row-idx)]

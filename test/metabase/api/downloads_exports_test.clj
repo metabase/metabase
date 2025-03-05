@@ -321,7 +321,9 @@
                     :subscription-attachment
                     :public-question-download
                     :public-dashcard-download}]
-                 (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true
+                 (->> (all-outputs! card {:export-format :csv
+                                          :format-rows false
+                                          :pivot true
                                           :ignore-cached-results? false
                                           :skip-results-metadata? true
                                           :format-rows? true})
