@@ -23,6 +23,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
+import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -168,17 +169,21 @@ export function QueryModals({
       },
     ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {
         navigateToDashboardQuestionDashboard(
           newQuestion,
           options?.dashboardTabId,
         );
+      } else if (isModel) {
+        dispatch(addUndo({ message: "Saved!" }));
+        onCloseModal();
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, navigateToDashboardQuestionDashboard],
+    [onOpenModal, navigateToDashboardQuestionDashboard, dispatch, onCloseModal],
   );
 
   switch (modal) {
