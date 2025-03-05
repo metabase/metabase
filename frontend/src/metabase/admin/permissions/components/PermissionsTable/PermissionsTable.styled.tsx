@@ -6,7 +6,7 @@ import styled from "@emotion/styled";
 import Label from "metabase/components/type/Label";
 import Link from "metabase/core/components/Link";
 import { alpha, color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 const getTableBorder = (theme: Theme) =>
   `1px solid ${alpha(theme.fn.themeColor("border"), 0.5)}`;
@@ -90,16 +90,13 @@ export const EntityNameLink = styled(Link)`
   color: ${() => color("admin-navbar")};
 `;
 
-export const HintIcon = styled(Icon)`
+export const HintIcon = styled((props: IconProps) => (
+  <Icon {...props} name={props.name ?? "info"} size={props.size ?? 16} />
+))`
   color: var(--mb-color-text-light);
   margin-left: 0.375rem;
   cursor: pointer;
 `;
-
-HintIcon.defaultProps = {
-  name: "info",
-  size: 16,
-};
 
 export const ColumnName = styled(Label)`
   display: inline;

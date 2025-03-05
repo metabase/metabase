@@ -5,7 +5,7 @@ import FormField from "metabase/core/components/FormField";
 import Radio from "metabase/core/components/Radio";
 import { darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 const DRAG_HANDLE_SIZE = 12;
 
@@ -60,12 +60,12 @@ export const Subtitle = styled.div`
   margin-top: 1.2rem;
 `;
 
-export const DragHandle = styled(Icon)`
+export const DragHandle = styled((props: IconProps) => (
+  <Icon {...props} size={props.size ?? DRAG_HANDLE_SIZE} />
+))`
   color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
-
-DragHandle.defaultProps = { size: DRAG_HANDLE_SIZE };
 
 export const PreviewContainer = styled(ContentContainer)`
   background-color: var(--mb-color-bg-light);
