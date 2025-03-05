@@ -1,13 +1,18 @@
 /* eslint-disable react/prop-types */
-/* eslint-disable react/no-string-refs */
 import cx from "classnames";
 import { Component } from "react";
-import ReactDOM from "react-dom";
 
 import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendHorizontal extends Component {
+  constructor(props) {
+    super(props);
+
+    /** @type {Record<number, LegendItem | null>} */
+    this.legendItemRefs = {};
+  }
+
   render() {
     const {
       className,
@@ -28,7 +33,7 @@ export default class LegendHorizontal extends Component {
           const handleMouseEnter = () => {
             onHoverChange?.({
               index,
-              element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
+              element: this.legendItemRefs[index],
             });
           };
 
@@ -43,7 +48,9 @@ export default class LegendHorizontal extends Component {
               {...(hovered && { "aria-current": !isMuted })}
             >
               <LegendItem
-                ref={this["legendItem" + index]}
+                ref={legendItem => {
+                  this.legendItemRefs[index] = legendItem;
+                }}
                 title={title}
                 color={colors[index % colors.length]}
                 isMuted={isMuted}
