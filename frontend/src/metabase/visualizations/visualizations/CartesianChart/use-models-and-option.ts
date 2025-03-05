@@ -85,18 +85,26 @@ export function useModelsAndOption(
     showWarning,
   ]);
 
-  const chartMeasurements = useMemo(
-    () =>
-      getChartMeasurements(
-        chartModel,
-        settings,
-        hasTimelineEvents,
-        width,
-        height,
-        renderingContext,
-      ),
-    [chartModel, settings, width, height, hasTimelineEvents, renderingContext],
-  );
+  const chartMeasurements = useMemo(() => {
+    const x = getChartMeasurements(
+      chartModel,
+      settings,
+      hasTimelineEvents,
+      width,
+      height,
+      renderingContext,
+    );
+
+    return { ...x, ...card.chartMeasurements };
+  }, [
+    card.chartMeasurements,
+    chartModel,
+    settings,
+    width,
+    height,
+    hasTimelineEvents,
+    renderingContext,
+  ]);
 
   const timelineEventsModel = useMemo(
     () =>

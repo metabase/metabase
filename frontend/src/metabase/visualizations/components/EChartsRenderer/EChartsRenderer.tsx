@@ -48,6 +48,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
       });
 
       chartRef.current?.setOption(option, notMerge);
+      debugger;
       onInit?.(chartRef.current);
     });
 

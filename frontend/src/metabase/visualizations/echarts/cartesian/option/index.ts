@@ -59,6 +59,8 @@ export const getCartesianChartOption = (
       )
     : null;
 
+    debugger;
+
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
     settings,

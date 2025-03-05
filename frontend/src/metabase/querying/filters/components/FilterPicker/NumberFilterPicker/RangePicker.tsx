@@ -46,10 +46,28 @@ export const RangePicker = ({
       return undefined;
     }
 
+    const card = question.card();
+
+    // hackathon
+    card.chartMeasurements = {
+      padding: {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      },
+      bounds: {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      },
+    };
+
     return [
       {
         data: data.data,
-        card: question.card(),
+        card,
       },
     ];
   }, [data, question]);
