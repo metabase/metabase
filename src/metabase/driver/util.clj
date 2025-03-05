@@ -500,6 +500,7 @@
   "The set of all official drivers"
   #{"athena"
     "bigquery-cloud-sdk"
+    "clickhouse"
     "databricks"
     "druid"
     "druid-jdbc"
