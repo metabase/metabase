@@ -67,19 +67,7 @@ export const cartesianDropHandler = (
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
-    const dimensions = state.settings["graph.dimensions"] ?? [];
-    const isInUse = dimensions.includes(columnRef.name);
-    if (isInUse) {
-      return;
-    }
-
-    const newDimension = copyColumn(columnRef.name, column);
-    state.columns.push(newDimension);
-    state.columnValuesMapping[newDimension.name] = [columnRef];
-    state.settings = {
-      ...state.settings,
-      "graph.dimensions": [...dimensions, newDimension.name],
-    };
+    addDimensionColumnToCartesianChart(state, column, columnRef);
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
@@ -116,6 +104,26 @@ export function addMetricColumnToCartesianChart(
   state.settings = {
     ...state.settings,
     "graph.metrics": [...metrics, newMetric.name],
+  };
+}
+
+export function addDimensionColumnToCartesianChart(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+) {
+  const dimensions = state.settings["graph.dimensions"] ?? [];
+  const isInUse = dimensions.includes(columnRef.name);
+  if (isInUse) {
+    return;
+  }
+
+  const newDimension = copyColumn(columnRef.name, column);
+  state.columns.push(newDimension);
+  state.columnValuesMapping[newDimension.name] = [columnRef];
+  state.settings = {
+    ...state.settings,
+    "graph.dimensions": [...dimensions, newDimension.name],
   };
 }
 
