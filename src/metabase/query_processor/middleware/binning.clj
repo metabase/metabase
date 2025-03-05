@@ -18,6 +18,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ^:dynamic *query*
+  nil)
+
+(def ^:private ^:dynamic *parents*
+  nil)
+
 (def ^:private FieldIDOrName->Filters
   [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
 
@@ -90,27 +96,75 @@
     ;; for field literals, we require `source-metadata` from the source query
     (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
 
+(defonce ahoj (atom []))
+(comment
+  (reset! ahoj [])
+)
+
+;; SHOULD create a query with subset of keys and new aggregations
+;; next step is to create a query for PARENTS!
+
+(def query-base-keys [:source-table :joins :filter :expressions])
+
+;; TODO: Make it work with expr, ie need query base with filters?
+;;       Question is whether we want fingerprint prior filtering, should we include joins???
+;;
+;; TODO: Could this re-use process multiple from pivoting code?
+(defn dummy-adhoc-bounds
+  [ref]
+  ;; here I must ensure there is no binning in that query!!! does that make sense?
+  (let [sanitized-ref (update ref 2 dissoc :binning)
+        query-for-minmax (-> *query*
+                             (dissoc :middleware :info :constraints)
+                             #_(update :info dissoc :query-hash)
+                             (update :query #(select-keys % query-base-keys)))
+        with-aggregation (assoc-in query-for-minmax [:query :aggregation] [[:max sanitized-ref]
+                                                                           [:min sanitized-ref]])]
+    (assert (nil? (lib.util.match/match with-aggregation [#{:field :expression} _ (_opts :guard :binning)])))
+    (def qqq with-aggregation)
+    (let [res (atom nil)]
+      (.start (Thread. (fn [] (reset! res ((requiring-resolve 'metabase.query-processor/process-query) with-aggregation)))))
+      (Thread/sleep 500)
+      (def rere @res))
+    rere
+    #_@(def rrr ((requiring-resolve 'metabase.query-processor/process-query) with-aggregation))))
+
+(defn dummy-adhoc-extract-bounds
+  [ref]
+  (zipmap [:max-value :min-value]
+          (get-in (dummy-adhoc-bounds ref)
+                  [:data :rows 0])))
+
 (mu/defn- update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
   [{:keys [source-metadata], :as _inner-query}
    field-id-or-name->filters                  :- FieldIDOrName->Filters
-   [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
-  (let [metadata                                   (matching-metadata id-or-name source-metadata)
-        {:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
-                                                                   (:fingerprint metadata)
-                                                                   field-id-or-name->filters)
-        [new-strategy resolved-options]            (lib.binning.util/resolve-options (qp.store/metadata-provider)
-                                                                                     (:strategy binning)
-                                                                                     (get binning (:strategy binning))
-                                                                                     metadata
-                                                                                     min-value max-value)
-        resolved-options                           (merge min-max resolved-options)
+   [_ id-or-name {:keys [binning], :as opts} :as fref] :- mbql.s/field]
+  
+  (let [r (let [metadata                                   (matching-metadata id-or-name source-metadata)
+                ;; this here mix max val
+                #_#_{:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
+                                                                               (:fingerprint metadata)
+                                                                               field-id-or-name->filters)
+                {:keys [min-value max-value], :as min-max} (dummy-adhoc-extract-bounds fref)
+                [new-strategy resolved-options]            (lib.binning.util/resolve-options (qp.store/metadata-provider)
+                                                                                             (:strategy binning)
+                                                                                             (get binning (:strategy binning))
+                                                                                             metadata
+                                                                                             min-value max-value)
+                resolved-options                           (merge min-max resolved-options)
         ;; Bail out and use unmodifed version if we can't converge on a nice version.
-        new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
-                        resolved-options)]
-    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
+                new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
+                                resolved-options)]
+            [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])]
+    (swap! ahoj conj {:ref fref
+                      :res r
+                      :query *query*
+                      :field-parents *parents*})
+    #_(dummy-adhoc-bounds fref)
+    r))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
@@ -119,7 +173,8 @@
     (lib.util.match/replace inner-query
       [:field _ (_ :guard :binning)]
       (try
-        (update-binned-field inner-query field-id-or-name->filters &match)
+        (binding [*parents* &parents]
+          (update-binned-field inner-query field-id-or-name->filters &match))
         (catch Throwable e
           (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
@@ -130,4 +185,5 @@
   [{query-type :type, :as query}]
   (if (= query-type :native)
     query
-    (update query :query update-binning-strategy-in-inner-query)))
+    (binding [*query* query]
+      (update query :query update-binning-strategy-in-inner-query))))
