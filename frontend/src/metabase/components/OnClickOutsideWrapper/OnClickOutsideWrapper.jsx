@@ -61,7 +61,9 @@ export default class OnClickOutsideWrapper extends Component {
 
   render() {
     return (
-      <Box ref={this.contentRef}>{Children.only(this.props.children)}</Box>
+      <Box ref={this.contentRef} display="contents">
+        {Children.only(this.props.children)}
+      </Box>
     );
   }
 }
