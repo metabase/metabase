@@ -11,16 +11,17 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { getDefaultCellTemplate } from "metabase/data-grid/utils/columns/data-column";
+import { formatValue } from "metabase/lib/formatting/value";
 import { Input } from "metabase/ui";
 import { useTableEditing } from "metabase-enterprise/data_editing/tables/use-table-editing";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./TableDataView.module.css";
-import type { CellValueUpdateHandlerParameters } from "./types";
+import type { RowCellsWithPkValue } from "./types";
 
 type TableDataViewProps = {
   data: Dataset;
-  onCellValueUpdate: (params: CellValueUpdateHandlerParameters) => void;
+  onCellValueUpdate: (params: RowCellsWithPkValue) => void;
 };
 
 export const TableDataView = ({
@@ -42,13 +43,12 @@ export const TableDataView = ({
   }, [cols]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
-    return cols.map((col, columnIndex) => {
-      const columnName = col.display_name;
-
+    return cols.map((column, columnIndex) => {
       const options: ColumnOptions<RowValues, RowValue> = {
-        id: col.name,
-        name: columnName,
+        id: column.name,
+        name: column.display_name,
         accessorFn: (row: RowValues) => row[columnIndex],
+        formatter: value => formatValue(value, { column }),
         wrap: false,
       };
 
@@ -57,6 +57,7 @@ export const TableDataView = ({
           cell,
           getValue,
           row: { index: rowIndex },
+          column: { id: columnName },
         } = props;
         const cellId = cell.id;
         const isEditing = editingCellsMap[cellId];
@@ -73,13 +74,13 @@ export const TableDataView = ({
               const pkColumnIndex = cols.findIndex(
                 ({ semantic_type }) => semantic_type === "type/PK",
               );
-              const rowPK = rows[rowIndex][pkColumnIndex];
+              const pkColumn = cols[pkColumnIndex];
+              const rowPkValue = rows[rowIndex][pkColumnIndex];
 
-              if (rowPK !== undefined) {
+              if (rowPkValue !== undefined) {
                 onCellValueUpdate({
-                  columnId: col.id,
-                  rowPK,
-                  newValue: value,
+                  [pkColumn.name]: rowPkValue,
+                  [columnName]: value,
                 });
               }
             }
@@ -89,7 +90,7 @@ export const TableDataView = ({
 
           return (
             <Input
-              value={value}
+              value={value as any} // TODO: fixup this type
               className={S.input}
               variant="unstyled"
               size="xs"
@@ -124,7 +125,7 @@ export const TableDataView = ({
     columnsOptions,
   });
 
-  const handleCellDoubleClick = useCallback(
+  const handleCellClick = useCallback(
     (
       e: React.MouseEvent<HTMLDivElement>,
       rowIndex: number,
@@ -143,7 +144,5 @@ export const TableDataView = ({
     [cols, onCellClickToEdit, rows],
   );
 
-  return (
-    <DataGrid {...tableProps} onBodyCellDoubleClick={handleCellDoubleClick} />
-  );
+  return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
 };

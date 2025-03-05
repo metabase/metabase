@@ -8,12 +8,16 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { useUpdateTableCellMutation } from "metabase-enterprise/api";
+import {
+  // useDeleteTableRowsMutation,
+  // useInsertTableRowsMutation,
+  useUpdateTableRowsMutation,
+} from "metabase-enterprise/api";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";
 import { TableDataViewHeader } from "./TableDataViewHeader";
-import type { CellValueUpdateHandlerParameters } from "./types";
+import type { RowCellsWithPkValue } from "./types";
 
 type TableDataViewProps = {
   params: {
@@ -36,21 +40,20 @@ export const TableDataContainer = ({
     tableId: tableName,
   });
 
-  const [updateTableCellValue] = useUpdateTableCellMutation();
+  const [updateTableRows] = useUpdateTableRowsMutation();
 
   useMount(() => {
     dispatch(closeNavbar());
   });
 
   const handleCellValueUpdate = useCallback(
-    ({ columnId, rowPK, newValue }: CellValueUpdateHandlerParameters) => {
-      return updateTableCellValue({
-        fieldId: columnId,
-        rowId: rowPK,
-        newValue,
+    (updatedRow: RowCellsWithPkValue) => {
+      return updateTableRows({
+        tableName, // TODO: sanitize table name - we get it from URL ???
+        rows: [updatedRow],
       });
     },
-    [updateTableCellValue],
+    [tableName, updateTableRows],
   );
 
   if (isLoading) {

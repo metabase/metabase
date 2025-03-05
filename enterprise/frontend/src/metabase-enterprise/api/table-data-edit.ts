@@ -1,25 +1,51 @@
 import type {
-  UpdateTableCellRequest,
-  UpdateTableCellResponse,
+  TableDeleteRowsRequest,
+  TableDeleteRowsResponse,
+  TableInsertRowsRequest,
+  TableInsertRowsResponse,
+  TableUpdateRowsRequest,
+  TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
 
 import { EnterpriseApi } from "./api";
 
 export const tableDataEditApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
-    updateTableCell: builder.mutation<
-      UpdateTableCellResponse,
-      UpdateTableCellRequest
+    insertTableRows: builder.mutation<
+      TableInsertRowsResponse,
+      TableInsertRowsRequest
     >({
-      query: ({ fieldId, rowId, newValue }) => ({
+      query: ({ tableName, rows }) => ({
+        method: "POST",
+        url: `/api/ee/data-editing/table/${tableName}`,
+        body: { rows },
+      }),
+    }),
+    updateTableRows: builder.mutation<
+      TableUpdateRowsResponse,
+      TableUpdateRowsRequest
+    >({
+      query: ({ tableName, rows }) => ({
         method: "PUT",
-        url: `/api/ee/data-editing/field/${fieldId}/${rowId}`,
-        body: {
-          value: newValue,
-        },
+        url: `/api/ee/data-editing/table/${tableName}`,
+        body: { rows },
+      }),
+    }),
+    deleteTableRows: builder.mutation<
+      TableDeleteRowsResponse,
+      TableDeleteRowsRequest
+    >({
+      query: ({ tableName, rows }) => ({
+        method: "DELETE",
+        url: `/api/ee/data-editing/table/${tableName}`,
+        body: { rows },
       }),
     }),
   }),
 });
 
-export const { useUpdateTableCellMutation } = tableDataEditApi;
+export const {
+  useInsertTableRowsMutation,
+  useUpdateTableRowsMutation,
+  useDeleteTableRowsMutation,
+} = tableDataEditApi;

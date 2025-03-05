@@ -28,7 +28,6 @@ export const DataGrid = function DataGrid<TData>({
   measureRoot,
   columnsReordering,
   onBodyCellClick,
-  onBodyCellDoubleClick,
   onHeaderCellClick,
   onAddColumnClick,
   onScroll,
@@ -182,15 +181,6 @@ export const DataGrid = function DataGrid<TData>({
                         className={S.bodyCell}
                         onClick={e =>
                           onBodyCellClick?.(
-                            e,
-                            cell.row.index,
-                            cell.column.id,
-                            cell.getValue(),
-                            cell.id,
-                          )
-                        }
-                        onDoubleClick={e =>
-                          onBodyCellDoubleClick?.(
                             e,
                             cell.row.index,
                             cell.column.id,

@@ -177,13 +177,6 @@ export interface DataGridInstance<TData> {
     value: any,
     cellId: string,
   ) => void;
-  onBodyCellDoubleClick?: (
-    event: React.MouseEvent<HTMLDivElement>,
-    rowIndex: number,
-    columnId: string,
-    value: any,
-    cellId: string,
-  ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }

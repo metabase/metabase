@@ -1,16 +1,24 @@
-import type { RowValue } from "metabase-types/api";
-import type { FieldId } from "metabase-types/api/field";
+import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
-export interface UpdateTableCellRequest {
-  fieldId: FieldId;
-  rowId: number;
-  newValue: RowValue;
-}
+export type RowCellsWithPkValue = Record<DatasetColumn["name"], RowValue>;
 
-export type UpdateTableCellResponse = void;
-
-export type CellValueUpdateHandlerParameters = {
-  columnId: FieldId;
-  rowPK: number;
-  newValue: RowValue;
+export type TableInsertRowsRequest = {
+  tableName: string;
+  rows: RowCellsWithPkValue[];
 };
+
+export type TableInsertRowsResponse = RowValues[];
+
+export type TableUpdateRowsRequest = {
+  tableName: string;
+  rows: RowCellsWithPkValue[];
+};
+
+export type TableUpdateRowsResponse = RowValues[];
+
+export type TableDeleteRowsRequest = {
+  tableName: string;
+  rows: RowCellsWithPkValue[];
+};
+
+export type TableDeleteRowsResponse = RowValues[];
