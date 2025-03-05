@@ -60,7 +60,7 @@ export const RulePreview = ({
       </ActionIcon>
     </Group>
     <Divider></Divider>
-    <Group noWrap p="md" gap="xs">
+    <Group noWrap p="md" spacing="xs">
       <RuleBackground
         rule={rule}
         className={cx(CS.mr2, CS.flexNoShrink, CS.rounded, {
