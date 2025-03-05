@@ -235,7 +235,7 @@ describe("getDateFilterDisplayName", () => {
         offsetValue: -1,
         offsetUnit: "year",
       },
-      displayName: "Previous 3 Months, starting 1 year ago",
+      displayName: "Previous 3 months, starting 1 year ago",
     },
     {
       value: { type: "relative", value: 2, unit: "month" },
@@ -249,7 +249,7 @@ describe("getDateFilterDisplayName", () => {
         offsetValue: 1,
         offsetUnit: "year",
       },
-      displayName: "Next 3 Months, starting 1 year from now",
+      displayName: "Next 3 months, starting 1 year from now",
     },
     {
       value: {
