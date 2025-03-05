@@ -28,9 +28,11 @@
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
   [metadata :- ::lib.schema.metadata/column]
   (let [options (merge
-                 {:lib/uuid       (str (random-uuid))
-                  :base-type      (:base-type metadata)
-                  :effective-type ((some-fn :effective-type :base-type) metadata)}
+                 {:lib/uuid                   (str (random-uuid))
+                  :base-type                  (:base-type metadata)
+                  :effective-type             ((some-fn :effective-type :base-type) metadata)}
+                 (when-let [binning (:metabase.lib.field/binning metadata)]
+                   {:binning binning})
                  (when-let [unit (:metabase.lib.field/temporal-unit metadata)]
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))

@@ -412,24 +412,19 @@
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
-  (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
-          fingerprint (get-in fingerprint [:type :type/Number])
-          existing    (lib.binning/binning field-metadata)
-          strategies  (cond
-                        ;; Abort if the database doesn't support binning, or this column does not have a defined range.
-                        (not (and binning?
-                                  (:min fingerprint)
-                                  (:max fingerprint)))               nil
-                        (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
-                        (and (isa? effective-type :type/Number)
-                             (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
-      (for [strat strategies]
-        (cond-> strat
-          (or (:was-binned field-metadata) existing) (dissoc :default)
-          (lib.binning/strategy= strat existing) (assoc :selected true))))
-    []))
+  (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
+        existing    (lib.binning/binning field-metadata)
+        strategies  (cond
+                      ;; Abort if the database doesn't support binning
+                      (not binning?)               nil
+                      (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
+                      (and (isa? effective-type :type/Number)
+                           (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
+    ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+    (for [strat strategies]
+      (cond-> strat
+        (or (:was-binned field-metadata) existing) (dissoc :default)
+        (lib.binning/strategy= strat existing) (assoc :selected true)))))
 
 (defmethod lib.ref/ref-method :field
   [field-clause]
