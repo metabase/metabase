@@ -7,7 +7,8 @@ title: Impersonation access
 {% include plans-blockquote.html feature="Impersonation access" %}
 
 > For now, impersonation access is only available for PostgreSQL, Redshift, and Snowflake.
-> Also please consider that if you're using views in PostgresSQL, the row level security policies on views will only work on versions 15+
+
+> If you're using views in PostgresSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
 
 This page covers the [View data](./data.md#view-data-permissions) permission level called Impersonation.
 
