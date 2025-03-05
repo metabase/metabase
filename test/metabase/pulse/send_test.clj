@@ -714,8 +714,7 @@
 
 (def ^:private fake-slack-notification
   {:channel-id  "#test-channel"
-   :message     "test message body"
-   :attachments []})
+   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync

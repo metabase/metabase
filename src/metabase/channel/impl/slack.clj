@@ -99,8 +99,11 @@
 
 (mu/defmethod channel/send! :channel/slack
   [_channel message :- SlackMessage]
-  (let [{:keys [channel-id attachments]} message]
-    (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
+  (let [{:keys [channel-id attachments]} message
+        message-content (create-and-upload-slack-attachments! attachments)
+        blocks (mapcat :blocks message-content)]
+    (doseq [block-chunk (partition-all 50 blocks)]
+      (slack/post-chat-message! channel-id nil [{:blocks block-chunk}]))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;

@@ -1,8 +1,11 @@
 (ns metabase.channel.impl.slack-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.integrations.slack :as slack]))
+
+(set! *warn-on-reflection* true)
 
 (deftest create-and-upload-slack-attachments!-test
   (let [slack-uploader (fn [storage]
@@ -63,3 +66,14 @@
                processed))
         (is (= ["a.png"]
                @titles))))))
+
+(deftest slack-post-receives-at-most-50-blocks-test
+  (let [block-inputs (atom [])]
+    (with-redefs [slack/post-chat-message! (fn [_ _ message-content] (swap! block-inputs conj (mapcat :blocks message-content)))]
+      (channel/send!
+       {:type :channel/slack}
+       {:channel-id "#not-a-channel"
+        :attachments [{:blocks (repeat 423 [{:type "section", :text {:type "plain_text", :text ""}}])}]})
+      (is (== (Math/ceil (/ 423 50)) (count @block-inputs)))
+      (is (every? #(<= 1 (count %) 50) @block-inputs))
+      (is (= 423 (reduce + (map count @block-inputs)))))))
