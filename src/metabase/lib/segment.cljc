@@ -4,6 +4,7 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -31,6 +32,14 @@
 
 (defn- fallback-display-name []
   (i18n/tru "[Unknown Segment]"))
+
+(defmethod lib.metadata.calculation/metadata-method :metadata/segment
+  [query stage-number segment-metadata]
+  (let [base  (binding [lib.metadata.ident/*enforce-idents-present* false]
+                ((get-method lib.metadata.calculation/metadata-method :default) query stage-number segment-metadata))
+        ident (some-> segment-metadata :definition :aggregation-idents (get 0))]
+    (cond-> base
+      ident (assoc :ident ident))))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/segment
   [_query _stage-number segment-metadata _style]
