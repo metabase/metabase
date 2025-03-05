@@ -12,7 +12,8 @@ Notes on handling authentication when working with the SDK.
 
 The SDK requires an endpoint in your app's backend that will sign someone into your Metabase and return a token. The SDK will use that token to authenticate calls to Metabase.
 
-The SDK will call this endpoint to get a new token, or to refresh an existing token that's about to expire.
+The SDK will call this endpoint to get a new token, or to refresh an existing token that's about to expire. You'll also need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md)).
+To set up JWT SSO with Metabase and your app, you'll need to:
 
 ## Example code for generating a token
 

@@ -62,7 +62,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       });
 
       it("should show the modal when the user loads the page", () => {
-        expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+        expect(
+          screen.getByText("Embedded analytics SDK for React"),
+        ).toBeInTheDocument();
         assertLegaleseModal();
       });
     });

@@ -54,12 +54,12 @@ export const InteractiveQuestionResult = ({
     onCreate,
     onSave,
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
     isCardIdError,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
-    originalId === undefined && !question?.isSaved();
+    originalId === "new" && !question?.isSaved();
 
   const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
     useDisclosure(isCreatingQuestionFromScratch);
@@ -76,7 +76,7 @@ export const InteractiveQuestionResult = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if ((!question || isCardIdError) && originalId) {
+  if ((!question || isCardIdError) && originalId && originalId !== "new") {
     return <QuestionNotFoundError id={originalId} />;
   }
 
@@ -174,7 +174,7 @@ export const InteractiveQuestionResult = ({
             await onSave(question);
             closeSaveModal();
           }}
-          saveToCollectionId={saveToCollectionId}
+          saveToCollection={saveToCollection}
         />
       )}
     </FlexibleSizeComponent>

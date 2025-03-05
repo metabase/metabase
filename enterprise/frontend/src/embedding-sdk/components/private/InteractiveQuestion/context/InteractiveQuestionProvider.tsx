@@ -53,7 +53,7 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollectionId,
+  saveToCollection,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
   const {
@@ -62,7 +62,9 @@ export const InteractiveQuestionProvider = ({
     isError: isCardIdError,
   } = useValidatedEntityId({
     type: "card",
-    id: initialQuestionId,
+
+    // If the question is new, we won't have a question id yet.
+    id: initialQuestionId === "new" ? undefined : initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
@@ -152,7 +154,7 @@ export const InteractiveQuestionProvider = ({
     onCreate: handleCreate,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
-    saveToCollectionId,
+    saveToCollection,
     isCardIdError,
   };
 

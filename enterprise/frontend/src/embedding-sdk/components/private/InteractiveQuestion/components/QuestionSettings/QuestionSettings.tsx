@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import type { StackProps } from "metabase/ui";
 import {
   BaseChartSettings,
   useChartSettingsState,
@@ -17,6 +18,7 @@ const QuestionSettingsContent = ({
   question,
   queryResults,
   updateQuestion,
+  ...stackProps
 }: {
   question: Question;
   queryResults?: any[];
@@ -54,6 +56,7 @@ const QuestionSettingsContent = ({
 
   return (
     <BaseChartSettings
+      {...stackProps}
       question={question}
       series={series}
       onChange={onChange}
@@ -64,7 +67,7 @@ const QuestionSettingsContent = ({
   );
 };
 
-export const QuestionSettings = () => {
+export const QuestionSettings = (stackProps: StackProps) => {
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 
@@ -77,6 +80,7 @@ export const QuestionSettings = () => {
       question={question}
       queryResults={queryResults}
       updateQuestion={updateQuestion}
+      {...stackProps}
     />
   );
 };

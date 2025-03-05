@@ -40,7 +40,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
-      sdk_version: ${{ steps.new-sdk-version.outputs.result }}
+      sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
+      major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -57,19 +58,25 @@ jobs:
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
-          result-encoding: string
           script: |
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
             const versionParts = currentVersionWithoutSuffix.split(".");
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
+            const [_, majorVersion] = versionParts
 
             if (!suffix) {
-              return newVersion;
+              return {
+                version: newVersion,
+                majorVersion
+              };
             }
 
-            return `${newVersion}-${suffix}`
+            return {
+              version: `${newVersion}-${suffix}`,
+              majorVersion
+            }
 
       - name: Append workflow summary
         run: |
@@ -77,7 +84,8 @@ jobs:
           **Derived inputs:**
 
           - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
-          - \`next_version\`: "${{ steps.new-sdk-version.outputs.result }}"
+          - \`next_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).version }}"
+          - \`major_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}"
           EOF
 
   check-git-tag:
@@ -210,10 +218,6 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
-          # TODO: Remove this step once github includes the new gh CLI version 2.65.0
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install gh
-
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
@@ -273,6 +277,7 @@ jobs:
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
+      stable_tag: embedding-sdk-${{ needs.determine-version.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -280,11 +285,13 @@ jobs:
           ref: ${{ inputs.branch }}
 
       # Lightweight tags don't need committer name and email
-      - name: Create a new git tag
+      - name: Create and push SDK version tag
         run: |
           git tag ${{ env.tag }}
-
-      - name: Push the new tag
-        id: push-tag
-        run: |
           git push origin ${{ env.tag }}
+
+      - name: Create and push SDK stable version tag
+        if: ${{ startsWith(inputs.branch, 'release-x.') }}
+        run: |
+          git tag -f ${{ env.stable_tag }}
+          git push origin -f ${{ env.stable_tag }}
