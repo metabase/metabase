@@ -11,7 +11,7 @@ import { updateSettings } from "metabase/visualizer/visualizer.slice";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
-export function VizSettingsSidebar() {
+export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
   const settings = useSelector(getVisualizerComputedSettings);
   const metadata = useSelector(getMetadata);
@@ -39,6 +39,7 @@ export function VizSettingsSidebar() {
       series={series}
       computedSettings={settings}
       onChange={handleChangeSettings}
+      className={className}
     />
   );
 }
