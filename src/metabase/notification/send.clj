@@ -181,42 +181,53 @@
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
-(defprotocol NotificationQueue
+(defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
   (put-notification!  [this id notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
   (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
 
-(defn- create-blocking-queue
-  "Create a notification queue backed by a LinkedList and a ConcurrentHashMap."
-  []
-  (let [;; will soon be replaced by a priority queue
-        ids-list         (java.util.LinkedList.)
-        id->notification (java.util.concurrent.ConcurrentHashMap.)
-        queue-lock       (java.util.concurrent.locks.ReentrantLock.)
-        not-empty-cond   (.newCondition queue-lock)]
-    (reify NotificationQueue
-      (put-notification! [_ id notification]
-        (.lock queue-lock)
-        (try
-          (when-not (.contains ids-list id)
-            (.add ids-list id))
-          (.put id->notification id notification)
-          ;; Signal that a notification is available
-          (.signal not-empty-cond)
-          (finally
-            (.unlock queue-lock))))
+(deftype ^:private NotificationQueue
+         "A thread-safe notification queue with the following properties:
+   - Notifications are identified by unique IDs
+   - Adding a notification with an ID already in the queue replaces the existing one
+   - Taking from an empty queue blocks until a notification is available
+   - Multiple threads can safely add and take from the queue concurrently"
+  [^java.util.LinkedList ids-list
+   ^java.util.concurrent.ConcurrentHashMap id->notification
+   ^java.util.concurrent.locks.ReentrantLock queue-lock
+   ^java.util.concurrent.locks.Condition not-empty-cond]
+  NotificationQueueProtocol
+  (put-notification! [_ id notification]
+    (.lock queue-lock)
+    (try
+      (when-not (.contains ids-list id)
+        (.add ids-list id))
+      (.put id->notification id notification)
+      ;; Signal that a notification is available
+      (.signal not-empty-cond)
+      (finally
+        (.unlock queue-lock))))
 
-      (take-notification! [_]
-        (.lock queue-lock)
-        (try
-          ;; Wait until there's at least one notification
-          (while (.isEmpty ids-list)
-            (.await not-empty-cond))
-          (let [id (.removeFirst ids-list)
-                notification (.remove id->notification id)]
-            [id notification])
-          (finally
-            (.unlock queue-lock)))))))
+  (take-notification! [_]
+    (.lock queue-lock)
+    (try
+      ;; Wait until there's at least one notification
+      (while (.isEmpty ids-list)
+        (.await not-empty-cond))
+      (let [id (.removeFirst ids-list)
+            notification (.remove id->notification id)]
+        [id notification])
+      (finally
+        (.unlock queue-lock)))))
+
+(defn- create-notification-queue
+  []
+  (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
+        not-empty-cond (.newCondition queue-lock)]
+    (->NotificationQueue (java.util.LinkedList.)
+                         (java.util.concurrent.ConcurrentHashMap.)
+                         queue-lock
+                         not-empty-cond)))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
@@ -247,7 +258,7 @@
         (put-notification! queue id notification)))))
 
 (defonce ^:private notification-queue
-  (delay (create-blocking-queue)))
+  (delay (create-notification-queue)))
 
 (defonce ^:private dispatcher
   (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
