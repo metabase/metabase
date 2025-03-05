@@ -18,6 +18,7 @@ import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";
 import { TableDataViewHeader } from "./TableDataViewHeader";
 import type { RowCellsWithPkValue } from "./types";
+import { getValidatedTableId } from "./utils";
 
 type TableDataViewProps = {
   params: {
@@ -35,7 +36,11 @@ export const TableDataContainer = ({
 
   const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
 
-  const { data: datasetData, isLoading } = useGetTableDataQuery({
+  const {
+    data: datasetData,
+    isLoading,
+    refetch: refetchTableDataQuery,
+  } = useGetTableDataQuery({
     dbId,
     tableId: tableName,
   });
@@ -47,13 +52,25 @@ export const TableDataContainer = ({
   });
 
   const handleCellValueUpdate = useCallback(
-    (updatedRow: RowCellsWithPkValue) => {
-      return updateTableRows({
-        tableName, // TODO: sanitize table name - we get it from URL ???
+    async (updatedRow: RowCellsWithPkValue) => {
+      if (!datasetData) {
+        console.warn(
+          "Failed to update table data - no data is loaded for a table",
+        );
+        return;
+      }
+
+      const tableId = getValidatedTableId(datasetData.table_id);
+      await updateTableRows({
+        tableId: tableId,
         rows: [updatedRow],
       });
+
+      // TODO: do an optimistic data update here using RTK cache
+
+      refetchTableDataQuery();
     },
-    [tableName, updateTableRows],
+    [datasetData, refetchTableDataQuery, updateTableRows],
   );
 
   if (isLoading) {

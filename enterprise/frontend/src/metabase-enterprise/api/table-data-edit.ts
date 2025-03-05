@@ -15,9 +15,9 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableInsertRowsResponse,
       TableInsertRowsRequest
     >({
-      query: ({ tableName, rows }) => ({
+      query: ({ tableId, rows }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/table/${tableName}`,
+        url: `/api/ee/data-editing/table/${tableId}`,
         body: { rows },
       }),
     }),
@@ -25,9 +25,9 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableUpdateRowsResponse,
       TableUpdateRowsRequest
     >({
-      query: ({ tableName, rows }) => ({
+      query: ({ tableId, rows }) => ({
         method: "PUT",
-        url: `/api/ee/data-editing/table/${tableName}`,
+        url: `/api/ee/data-editing/table/${tableId}`,
         body: { rows },
       }),
     }),
@@ -35,9 +35,9 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
       TableDeleteRowsResponse,
       TableDeleteRowsRequest
     >({
-      query: ({ tableName, rows }) => ({
+      query: ({ tableId, rows }) => ({
         method: "DELETE",
-        url: `/api/ee/data-editing/table/${tableName}`,
+        url: `/api/ee/data-editing/table/${tableId}`,
         body: { rows },
       }),
     }),
