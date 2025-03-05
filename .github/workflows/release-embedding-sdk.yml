@@ -37,6 +37,38 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
+  send-slack-notification-start:
+    name: "Send Slack notification: SDK release started"
+    needs: determine-sdk-version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+
+      - name: Send build start message
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+
+            const title = `:rocket: *SDK release: ${sdkVersion}* :rocket:`
+            const body = `run by ${mentionUserByGithubLogin("${{ github.event.sender.login }}")}`
+            const sendSlackMessageResponse = await sendSlackMessage({
+              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              message: `${title}\n${body}`,
+            });
+
+            console.log('sendSlackMessageResponse')
+            console.log(sendSlackMessageResponse)
+
   determine-sdk-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
