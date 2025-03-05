@@ -8,13 +8,13 @@
     msg]
    `(temporal-interval-tru
      ~n
-     (str "This " ~msg)
-     (str "Previous " ~msg)
-     (str "Previous {0} " ~msg)
-     (str "Previous {0} " ~msg "s")
-     (str "Next " ~msg)
-     (str "Next {0} " ~msg)
-     (str "Next {0} " ~msg "s")))
+     ~(str "This " msg)
+     ~(str "Previous " msg)
+     ~(str "Previous {0} " msg)
+     ~(str "Previous {0} " msg "s")
+     ~(str "Next " msg)
+     ~(str "Next {0} " msg)
+     ~(str "Next {0} " msg "s")))
   ([n
     this-msg
     prev-msg
