@@ -278,11 +278,14 @@
                   :last_analyzed       nil}
                  (into {} (t2/select-one [:model/Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
 
-(deftest test-fingerprint-failure
-  (testing "if fingerprinting fails, the exception should not propagate"
-    (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw (Exception. "expected")))]
-      (is (= (sync.fingerprint/empty-stats-map 0)
-             (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues))))))))
+(deftest fingerprint-failure-test
+  (testing "if fingerprinting fails, the exception should be caught and included in the stats map"
+    (mt/test-drivers (mt/normal-drivers)
+      (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw (Exception. "expected")))
+                    sync.fingerprint/*refingerprint?* true]
+        (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
+                       :throwable #(instance? Exception %))
+                (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
