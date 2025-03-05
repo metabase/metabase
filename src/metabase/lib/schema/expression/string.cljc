@@ -49,11 +49,11 @@
     [:schema [:ref ::expression/string]])
 
 (mr/def ::mbql-type
-  [:enum :Integer :Text :Date])
+  [:enum "Integer" "Text" "Date"])
 
 (mbql-clause/define-mbql-clause :cast (mbql-clause/tuple-clause-schema :cast
                                                                        [:schema :any]
-                                                                       [:schema [:ref ::expression/string]]))
+                                                                       [:schema [:ref ::mbql-type]]))
 (defmethod expression/type-of-method :cast
   [[_cast opts _field cast-to-type]]
   (keyword "type" cast-to-type))
