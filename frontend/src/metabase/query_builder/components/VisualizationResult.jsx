@@ -103,7 +103,6 @@ export default class VisualizationResult extends Component {
           />
           {showCreateAlertModal && (
             <CreateOrEditQuestionAlertModal
-              opened
               onClose={this.onCloseCreateAlertModal}
               onAlertCreated={this.onCloseCreateAlertModal}
             />

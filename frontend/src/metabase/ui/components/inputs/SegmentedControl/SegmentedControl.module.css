@@ -4,6 +4,7 @@
 
 .SegmentedControlLabel {
   color: var(--mb-color-text-dark);
+  line-height: 1;
 
   &:hover {
     color: var(--mb-color-brand);
