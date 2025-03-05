@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
 
@@ -25,8 +27,10 @@ const ColorRangeToggle = ({
       isQuantile={isQuantile}
       onSelect={onColorRangeSelect}
       aria-label={getColorRangeLabel(value)}
-      flex="1 1 auto"
-      className={onColorRangeSelect ? CS.cursorPointer : CS.cursorDefault}
+      className={cx(
+        CS.flex1,
+        onColorRangeSelect ? CS.cursorPointer : CS.cursorDefault,
+      )}
     />
     {showToggleButton && (
       <ActionIcon
