@@ -1,7 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
+import CS from "metabase/css/core/index.css";
 import type { ButtonProps as BaseButtonProps, TextProps } from "metabase/ui";
 import { Button, Icon, Text } from "metabase/ui";
 
@@ -41,11 +43,13 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   }
 ` as unknown as typeof Button;
 
-export const DoneButton = styled((props: ButtonProps) => (
-  <Button {...props} variant={props.variant ?? "filled"} />
-))`
-  align-self: flex-end;
-` as unknown as typeof Button;
+export const DoneButton = (props: ButtonProps) => (
+  <Button
+    {...props}
+    variant={props.variant ?? "filled"}
+    className={cx(CS.alignSelfEnd, props.className)}
+  />
+);
 
 export const DragHandleIcon = styled(Icon)`
   cursor: grab;
