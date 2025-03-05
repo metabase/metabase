@@ -195,7 +195,7 @@ async function getExistingSlackMessage(version: string, channelName: string) {
   };
 }
 
-async function sendSlackReply({ channelName, message, messageId, broadcast }: {channelName: string, message: string, messageId?: string, broadcast?: boolean}) {
+export async function sendSlackReply({ channelName, message, messageId, broadcast }: {channelName: string, message: string, messageId?: string, broadcast?: boolean}) {
   const channelId = await getSlackChannelId(channelName);
   if (!channelId) {
     throw new Error(`Could not find channel ${channelName}`);
@@ -216,7 +216,7 @@ export function slackLink(text: string, url: string) {
   return `<${url}|${text}>`;
 }
 
-function githubRunLink(
+export function githubRunLink(
   text: string,
   runId: string,
   owner: string,
