@@ -367,6 +367,7 @@ export type Expression =
   | NumericLiteral
   | StringLiteral
   | BooleanLiteral
+  | WrappedLiteral
   | OffsetExpression
   | CaseOrIfExpression
   | CallExpression
@@ -399,6 +400,14 @@ export type ExpressionOperator = string;
 export type ExpressionOperand = Expression | CallOptions;
 
 type FieldsClause = ConcreteFieldReference[];
+
+export type WrappedLiteral = [
+  "value",
+  StringLiteral | NumericLiteral | BooleanLiteral,
+  {
+    "base-type"?: string;
+  } | null,
+];
 
 export type TagName = string;
 export type TemplateTagReference = ["template-tag", TagName];
