@@ -322,23 +322,18 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "split",
   },
   {
-    name: "url-part",
-    structure: "urlPart",
+    name: "url-pathname",
+    structure: "urlPathname",
     description: () =>
       t`One should not expect a valid copy in a hackathon project.`,
     args: [
       {
         name: t`text`,
-        description: t`The column or text to return a portion of.`,
+        description: t`The URL or Email column to extract the pathname from.`,
         example: formatIdentifier(t`Url`),
       },
-      {
-        name: t`part`,
-        description: t`"host", "domain", "subdomain", or "path".`,
-        example: `"host"`,
-      },
     ],
-    docsPage: "url-part",
+    docsPage: "url-pathname",
   },
   {
     name: "regex-match-first",

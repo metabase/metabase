@@ -114,15 +114,10 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
-  "url-part": {
-    displayName: `urlPart`,
+  "url-pathname": {
+    displayName: `urlPathname`,
     type: "string",
-    args: ["string", "string"],
-    validator: function (_arg: any, part: string) {
-      if (!["host", "domain", "subdomain", "path"].includes(part)) {
-        return t`Part can only be "host", "domain", "subdomain" or "path"`;
-      }
-    },
+    args: ["string"],
   },
   "regex-match-first": {
     displayName: `regexextract`,
