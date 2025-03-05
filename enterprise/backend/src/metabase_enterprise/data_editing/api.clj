@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [metabase.actions.actions :as actions]
+   [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]

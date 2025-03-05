@@ -399,7 +399,7 @@
 (def ^:private RelativeDateFilterParts
   [:map
    [:column       ::lib.schema.metadata/column]
-   [:value        [:or number? [:enum :current]]]
+   [:value        number?]
    [:unit         ::lib.schema.temporal-bucketing/unit.date-time.interval]
    [:offset-value {:optional true} [:maybe number?]]
    [:offset-unit  {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
@@ -409,7 +409,7 @@
   "Creates a relative date filter clause based on FE-friendly filter parts. It should be possible to destructure each
    created expression with [[relative-date-filter-parts]]."
   [column       :- ::lib.schema.metadata/column
-   value        :- [:or number? [:enum :current]]
+   value        :- number?
    unit         :- ::lib.schema.temporal-bucketing/unit.date-time.interval
    offset-value :- [:maybe number?]
    offset-unit  :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]
@@ -434,7 +434,7 @@
        (value :guard #(or (number? %) (= :current %)))
        (unit :guard keyword?)]
       {:column       (ref->col col-ref)
-       :value        value
+       :value        (if (= value :current) 0 value)
        :unit         unit
        :options      (select-keys opts [:include-current])}
 
