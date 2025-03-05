@@ -595,7 +595,7 @@
            ;; direction. Also, `:aggregation-options` is not allowed
            ;; inside `:expressions` in legacy, we'll just have to toss
            ;; the extra info.
-           (if (#{:value :aggregation-options} (first legacy-clause))
+           (if (#{#_:value :aggregation-options} (first legacy-clause))
              (second legacy-clause)
              legacy-clause)])))
 

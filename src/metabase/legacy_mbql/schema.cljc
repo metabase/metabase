@@ -204,6 +204,9 @@
 ;; treat certain objects. For example, a string compared against a Postgres UUID Field needs to be parsed into a UUID
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
+;;
+;; :value clauses are also used to wrapped literal values in expression clauses.
+;; TODO: remove ^:internal ?
 (defclause ^:internal value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
@@ -945,7 +948,7 @@
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a `:field` clause."
+  `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
@@ -958,6 +961,7 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
+                       (is-clause? :value x)             :value
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -966,6 +970,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
+   [:value    value]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------

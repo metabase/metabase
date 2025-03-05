@@ -394,7 +394,7 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" 1}
+                :expressions {"a" [:value 1 nil]}
                 :expression-idents {"a" (u/generate-nano-id)}}}
 
     ;; card__<id> source table syntax.
