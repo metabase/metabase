@@ -331,8 +331,6 @@ secrets:
     file: db_user.txt
 ```
 
-> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
-
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
 - `MB_DB_USER`
@@ -345,7 +343,7 @@ We currently support the following [environment variables](../configuring-metaba
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 
-NOTE: this is just an example compose file, it's not meant to be used to run Metabase in a production environment, for that, please refer to our guide about [how to do that](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ## Troubleshooting
 
