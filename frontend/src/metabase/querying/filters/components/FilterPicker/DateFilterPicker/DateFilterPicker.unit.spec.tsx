@@ -96,7 +96,7 @@ describe("DateFilterPicker", () => {
     expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
     expect(getNextRelativeFilterParts()).toMatchObject({
       column: expect.anything(),
-      value: "current",
+      value: 0,
       unit: "day",
     });
   });

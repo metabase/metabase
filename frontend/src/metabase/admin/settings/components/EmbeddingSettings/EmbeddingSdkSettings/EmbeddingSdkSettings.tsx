@@ -151,11 +151,11 @@ export function EmbeddingSdkSettings({
           size="large"
           crumbs={[
             [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Embedded analytics SDK`],
+            [t`Embedded analytics SDK for React`],
           ]}
         />
         <SwitchWithSetByEnvVar
-          label={t`Enable Embedded analytics SDK`}
+          label={t`Enable Embedded analytics SDK for React`}
           settingKey="enable-embedding-sdk"
           onChange={
             !isEmbeddingSdkEnabled && showSdkEmbedTerms

@@ -181,6 +181,7 @@
            lib
            logger
            models
+           notification
            plugins
            premium-features
            public-settings
@@ -197,7 +198,7 @@
 
   embed
   {:api  #{metabase.embed.settings}
-   :uses #{analytics models premium-features util}}
+   :uses #{analytics models premium-features tiles util}}
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
@@ -227,7 +228,6 @@
   {:api #{metabase.lib.binning
           metabase.lib.binning.util
           metabase.lib.card
-          metabase.lib.convert
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
@@ -305,7 +305,7 @@
           metabase.models.moderation-review
           metabase.models.native-query-snippet
           metabase.models.native-query-snippet.permissions
-          metabase.models.notification
+          metabase.notification.models
           metabase.models.params
           metabase.models.params.chain-filter
           metabase.models.params.custom-values
@@ -324,6 +324,7 @@
           metabase.models.task-history
           metabase.models.user
           metabase.models.user-parameter-value
+          metabase.models.util.spec-update
           metabase.models.view-log-impl
           metabase.models.visualization-settings}
    :uses #{analytics
@@ -338,6 +339,7 @@
            legacy-mbql
            lib
            moderation
+           notification
            permissions
            plugins
            premium-features
@@ -361,11 +363,25 @@
    :uses #{models util}}
 
   notification
-  {:api  #{metabase.notification.core
+  {:api  #{metabase.notification.api
+           metabase.notification.core
            metabase.notification.init
-           metabase.notification.payload.core
-           metabase.notification.payload.execute}
-   :uses #{analytics api channel config events models permissions premium-features public-settings query-processor request util}}
+           metabase.notification.models
+           metabase.notification.payload.core}
+   :uses #{analytics
+           api
+           channel
+           config
+           driver
+           events
+           models
+           permissions
+           premium-features
+           public-settings
+           query-processor
+           request
+           task
+           util}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -393,7 +409,7 @@
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
            metabase.public-sharing.init}
-   :uses #{actions analytics api db events lib models query-processor request util}}
+   :uses #{actions analytics api db events lib models query-processor request tiles util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -592,10 +608,9 @@
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
-           metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util enterprise/sandbox}}
+   :uses #{api audit driver enterprise/impersonation lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}
@@ -650,6 +665,11 @@
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
 
+  enterprise/impersonation
+  {:api #{metabase-enterprise.impersonation.core
+          metabase-enterprise.impersonation.api}
+   :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
@@ -673,7 +693,7 @@
            query-processor
            request
            util
-           enterprise/advanced-permissions
+           enterprise/impersonation
            enterprise/api}}
 
   enterprise/scim
@@ -707,6 +727,10 @@
   enterprise/stats
   {:api  #{}
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
+
+  enterprise/data-editing
+  {:api #{}
+   :uses #{api actions util}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}

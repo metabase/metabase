@@ -3,7 +3,6 @@
     {
       "name": "Querying",
       "label": ".Team/Querying",
-      "projectUrl": "https://github.com/orgs/metabase/projects/97/views/1",
       "members": [
         "ranquild",
         "kamilmielnik",
@@ -20,7 +19,6 @@
     {
       "name": "Drivers",
       "label": ".Team/Drivers",
-      "projectUrl": "https://github.com/orgs/metabase/projects/98/views/1",
       "members": [
         "snoe",
         "rileythomp"
@@ -29,7 +27,6 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
       "members": [
         "WiNloSt",
         "oisincoveney",
@@ -41,7 +38,6 @@
     {
       "name": "Workflows",
       "label": ".Team/Workflows",
-      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
       "members": [
         "qnkhuat",
         "piranha",
