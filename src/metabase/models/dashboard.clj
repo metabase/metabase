@@ -65,6 +65,9 @@
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
+(defmethod mi/non-timestamped-fields :model/Dashboard [_]
+  #{:last_viewed_at})
+
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
