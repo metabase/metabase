@@ -8,11 +8,22 @@
     msg]
    `(temporal-interval-tru
      ~n
+     ~msg
      ~(str "This " msg)
      ~(str "Previous " msg)
+     ~(str "Next " msg)))
+  ([n
+    msg
+    this-msg
+    prev-msg
+    next-msg]
+   `(temporal-interval-tru
+     ~n
+     ~this-msg
+     ~prev-msg
      ~(str "Previous {0} " msg)
      ~(str "Previous {0} " msg "s")
-     ~(str "Next " msg)
+     ~next-msg
      ~(str "Next {0} " msg)
      ~(str "Next {0} " msg "s")))
   ([n

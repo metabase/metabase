@@ -83,7 +83,7 @@
       (lib.temporal-bucket.util/temporal-interval-tru n "hour")
 
       :day
-      (lib.temporal-bucket.util/temporal-interval-tru n "day"))))
+      (lib.temporal-bucket.util/temporal-interval-tru n "day" "Today" "Yesterday" "Tomorrow"))))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of a relative datetime interval, ported from
