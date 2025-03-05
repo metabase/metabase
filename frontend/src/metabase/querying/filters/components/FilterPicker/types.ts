@@ -8,6 +8,7 @@ export interface FilterPickerWidgetProps {
   isNew: boolean;
   onChange: (filter: Lib.ExpressionClause) => void;
   onBack?: () => void;
+  clicked: Lib.ClickObject;
 }
 
 export interface PickerOperatorOption<Operator> {

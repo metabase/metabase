@@ -12,6 +12,7 @@ import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { NumberValueInput } from "./NumberValueInput";
+import { RangePicker } from "./RangePicker";
 
 export function NumberFilterPicker({
   query,
@@ -21,6 +22,7 @@ export function NumberFilterPicker({
   isNew,
   onChange,
   onBack,
+  clicked,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -76,6 +78,16 @@ export function NumberFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
+      {valueCount === 2 && (
+        <RangePicker
+          clicked={clicked}
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={values}
+          onChange={setValues}
+        />
+      )}
       <div>
         <NumberValueInput
           query={query}

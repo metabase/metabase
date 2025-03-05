@@ -14,6 +14,7 @@ interface FilterPickerBodyProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
+  clicked: Lib.ClickObject;
   onChange: (filter: Lib.ExpressionClause) => void;
   onBack?: () => void;
 }
@@ -24,6 +25,7 @@ export function FilterPickerBody({
   column,
   filter,
   isNew = filter == null,
+  clicked,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -37,6 +39,7 @@ export function FilterPickerBody({
       query={query}
       stageIndex={stageIndex}
       column={column}
+      clicked={clicked}
       filter={filter}
       isNew={isNew}
       onChange={onChange}
