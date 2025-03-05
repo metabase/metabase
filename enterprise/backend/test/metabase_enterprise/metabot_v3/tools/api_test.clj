@@ -52,11 +52,16 @@
                       (fn [arguments]
                         (swap! tool-requests conj arguments)
                         {:structured-output output})]
-          (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
+          (let [filters [{:field_id "q2a/1", :operation "is-not-null"}
+                         {:field_id "q2a/2", :operation "equals", :value "3"}
+                         {:field_id "q2a/3", :operation "equals", :values ["3" "4"]}
+                         {:field_id "q2a/5", :operation "not-equals", :values [3 4]}
+                         {:field_id "q2a/6", :operation "month-equals", :values [4 5 9]}
+                         {:field_id "q2a/6", :operation "year-equals", :value 2008}]
+                response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
                                                {:arguments       {:data_source data-source
-                                                                  :filters     [{:field_id  "q234234/1"
-                                                                                 :operation "is-not-null"}]}
+                                                                  :filters     filters}
                                                 :conversation_id conversation-id})]
             (is (=? {:structured_output output
                      :conversation_id conversation-id}
@@ -140,16 +145,18 @@
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
-        (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
+        (let [filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
+              breakouts [{:field_id "c2/4", :field_granularity "week"}
+                         {:field_id "c2/6", :field_granularity "day"}]
+              response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:metric_id 1
-                                                                :filters   [{:field_id  "c2/7"
-                                                                             :operation "number-greater-than"
-                                                                             :value     50}]
-                                                                :group_by  [{:field_id "c2/2"
-                                                                             :field_granularity "week"}
-                                                                            {:field_id "c2/3"
-                                                                             :field_granularity "day"}]}
+                                                                :filters   filters
+                                                                :group_by  breakouts}
                                               :conversation_id conversation-id})]
           (is (=? {:structured_output output
                    :conversation_id conversation-id}
