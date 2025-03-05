@@ -1,4 +1,4 @@
-(ns metabase.task.notification
+(ns metabase.notification.task.send
   (:require
    [clojure.data :refer [diff]]
    [clojurewerkz.quartzite.conversion :as qc]
@@ -7,7 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
    [metabase.models.task-history :as task-history]
-   [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.log :as log]
@@ -101,7 +101,7 @@
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
-        notification (t2/select-one :model/Notification notification-id)]
+        notification    (t2/select-one :model/Notification notification-id)]
     (cond
       (:active notification)
       (try
@@ -111,7 +111,7 @@
                                                         :notification_subscription_id subscription-id
                                                         :cron_schedule                (:cron_schedule subscription)
                                                         :notification_ids             [notification-id]}}
-          (notification/send-notification! notification :notification/sync? true))
+          (notification.send/send-notification! notification))
         (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
         (catch Exception e
           (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)

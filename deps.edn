@@ -828,11 +828,7 @@
   ;;    clj -X:dev:ee:ee-dev:test:test/notification
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
-                      "test/metabase/channel"
-                      metabase.api.notification-test
-                      metabase.events.notification-test
-                      metabase.models.notification-test
-                      metabase.task.notification-test]}}
+                      "test/metabase/channel"]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
