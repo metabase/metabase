@@ -6,14 +6,16 @@ import type {
 } from "metabase-types/api";
 import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
+type ColumnValuesMapping = Record<string, VisualizerColumnValueSource[]>;
+
 export function updateSettingsForDisplay(
-  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
+  columnValuesMapping: ColumnValuesMapping,
   columns: DatasetColumn[],
   settings: VisualizationSettings,
   sourceDisplay: VisualizationDisplay | null,
   targetDisplay: VisualizationDisplay | null,
 ): {
-  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
+  columnValuesMapping: ColumnValuesMapping;
   columns: DatasetColumn[];
   settings: VisualizationSettings;
 } {
@@ -46,9 +48,23 @@ export function updateSettingsForDisplay(
         ...otherSettings
       } = settings;
 
+      const metric = metrics?.[0];
+      const dimension = dimensions?.[0];
+      const newColumns = columns.filter(
+        column => column.name === metric || column.name === dimension,
+      );
+
+      const newColumnValuesMapping: ColumnValuesMapping = {};
+      if (metric) {
+        newColumnValuesMapping[metric] = columnValuesMapping[metric];
+      }
+      if (dimension) {
+        newColumnValuesMapping[dimension] = columnValuesMapping[dimension];
+      }
+
       return {
-        columnValuesMapping,
-        columns,
+        columnValuesMapping: newColumnValuesMapping,
+        columns: newColumns,
         settings: {
           ...otherSettings,
           "pie.metric": metrics?.[0] ?? "",
