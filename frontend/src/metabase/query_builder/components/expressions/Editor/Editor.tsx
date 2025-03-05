@@ -134,7 +134,7 @@ export function Editor<S extends StartRule = "expression">(
         <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
       )}
 
-      <Flex className={S.toolbar} pr="sm" gap="sm">
+      <Flex className={S.toolbar} pr="md" gap="sm">
         <ButtonTooltip label={t`Format`}>
           <Button
             aria-label={t`Format`}
