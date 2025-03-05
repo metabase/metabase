@@ -6,6 +6,7 @@ import {
   removePopoverData,
   shouldClosePopover,
 } from "metabase/hooks/use-sequenced-content-close-handler";
+import { Box } from "metabase/ui";
 
 export default class OnClickOutsideWrapper extends Component {
   static propTypes = {
@@ -60,7 +61,9 @@ export default class OnClickOutsideWrapper extends Component {
 
   render() {
     return (
-      <div ref={this.contentRef}>{Children.only(this.props.children)}</div>
+      <Box ref={this.contentRef} w="100%">
+        {Children.only(this.props.children)}
+      </Box>
     );
   }
 }
