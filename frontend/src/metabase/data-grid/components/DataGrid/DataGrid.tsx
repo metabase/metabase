@@ -5,6 +5,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
+import cx from "classnames";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
@@ -19,7 +20,26 @@ import { useForceUpdate } from "metabase/hooks/use-force-update";
 
 import S from "./DataGrid.module.css";
 
-export type DataGridProps<TData> = DataGridInstance<TData>;
+// Component supports Mantine-like Styles API
+// Technically this is not the 1:1 mapping of the Mantine API, but it's close enough
+// https://mantine.dev/styles/styles-api/
+export type DataGridStylesNames =
+  | "root"
+  | "tableGrid"
+  | "row"
+  | "headerContainer"
+  | "headerCell"
+  | "bodyContainer"
+  | "bodyCell";
+
+export type DataGridStylesProps = {
+  classNames?: { [key in DataGridStylesNames]?: string };
+  styles?: { [key in DataGridStylesNames]?: React.CSSProperties };
+};
+
+export interface DataGridProps<TData>
+  extends DataGridInstance<TData>,
+    DataGridStylesProps {}
 
 export const DataGrid = function DataGrid<TData>({
   table,
@@ -27,6 +47,8 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  classNames,
+  styles,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -81,24 +103,33 @@ export const DataGrid = function DataGrid<TData>({
 
   return (
     <DndContext {...dndContextProps}>
-      <div className={S.table} data-testid="table-root">
+      <div
+        className={cx(S.table, classNames?.root)}
+        style={styles?.root}
+        data-testid="table-root"
+      >
         <div
           data-testid="table-scroll-container"
-          className={S.tableGrid}
+          className={cx(S.tableGrid, classNames?.tableGrid)}
           ref={gridRef}
           style={{
             paddingRight: isAddColumnButtonSticky
               ? `${ADD_COLUMN_BUTTON_WIDTH}px`
               : 0,
+            ...styles?.tableGrid,
           }}
           onScroll={onScroll}
         >
-          <div data-testid="table-header" className={S.headerContainer}>
+          <div
+            data-testid="table-header"
+            className={S.headerContainer}
+            style={styles?.headerContainer}
+          >
             {table.getHeaderGroups().map(headerGroup => (
               <div
                 key={headerGroup.id}
-                className={S.row}
-                style={{ height: `${HEADER_HEIGHT}px` }}
+                className={cx(S.row, classNames?.row)}
+                style={{ height: `${HEADER_HEIGHT}px`, ...styles?.row }}
               >
                 {virtualPaddingLeft ? (
                   <div style={{ width: virtualPaddingLeft }} />
@@ -124,7 +155,8 @@ export const DataGrid = function DataGrid<TData>({
                         }}
                       >
                         <SortableHeader
-                          className={S.headerCell}
+                          className={cx(S.headerCell, classNames?.headerCell)}
+                          style={styles?.headerCell}
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -143,11 +175,12 @@ export const DataGrid = function DataGrid<TData>({
           </div>
           <div
             data-testid="table-body"
-            className={S.bodyContainer}
+            className={cx(S.bodyContainer, classNames?.bodyContainer)}
             style={{
               display: "grid",
               position: "relative",
               height: `${rowVirtualizer.getTotalSize()}px`,
+              ...styles?.bodyContainer,
             }}
           >
             {virtualRows.map(virtualRow => {
@@ -158,18 +191,19 @@ export const DataGrid = function DataGrid<TData>({
                   key={row.id}
                   ref={rowMeasureRef}
                   data-index={virtualRow.index}
-                  className={S.row}
+                  className={cx(S.row, classNames?.row)}
                   style={{
                     position: "absolute",
                     width: "100%",
                     minHeight: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
+                    ...styles?.row,
                   }}
                 >
                   {virtualPaddingLeft ? (
                     <div
-                      className={S.bodyCell}
-                      style={{ width: virtualPaddingLeft }}
+                      className={cx(S.bodyCell, classNames?.bodyCell)}
+                      style={{ width: virtualPaddingLeft, ...styles?.bodyCell }}
                     />
                   ) : null}
 
@@ -178,7 +212,7 @@ export const DataGrid = function DataGrid<TData>({
                     return (
                       <div
                         key={cell.id}
-                        className={S.bodyCell}
+                        className={cx(S.bodyCell, classNames?.bodyCell)}
                         onClick={e =>
                           onBodyCellClick?.(
                             e,
@@ -191,6 +225,7 @@ export const DataGrid = function DataGrid<TData>({
                         style={{
                           position: "relative",
                           width: cell.column.getSize(),
+                          ...styles?.bodyCell,
                         }}
                       >
                         {flexRender(
@@ -202,8 +237,11 @@ export const DataGrid = function DataGrid<TData>({
                   })}
                   {virtualPaddingRight ? (
                     <div
-                      className={S.bodyCell}
-                      style={{ width: virtualPaddingRight }}
+                      className={cx(S.bodyCell, classNames?.bodyCell)}
+                      style={{
+                        width: virtualPaddingRight,
+                        ...styles?.bodyCell,
+                      }}
                     />
                   ) : null}
                 </div>
