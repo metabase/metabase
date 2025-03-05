@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import type { ButtonProps } from "metabase/core/components/Button";
-import Button from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/core/components/Button";
 
 export interface EntityMenuIconButtonProps extends ButtonProps {
   className?: string;
