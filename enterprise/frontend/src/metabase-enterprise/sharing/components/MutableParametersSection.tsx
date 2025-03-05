@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -6,23 +7,20 @@ import CollapseSection from "metabase/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Dashboard,
-  Parameter,
-  ParameterId,
-  Pulse,
-} from "metabase-types/api";
+import type { Dashboard, ParameterId, Pulse } from "metabase-types/api";
 
-type MutableParametersSectionProps = {
+export type MutableParametersSectionProps = {
   className?: string;
-  parameters: Parameter[];
+  parameters: UiParameter[];
   dashboard: Dashboard;
   pulse: Pulse;
-  setPulseParameters: (parameters: Parameter[]) => void;
+  setPulseParameters: (parameters: UiParameter[]) => void;
+  hiddenParameters?: string;
 };
 
 export const MutableParametersSection = ({
@@ -31,6 +29,7 @@ export const MutableParametersSection = ({
   dashboard,
   pulse,
   setPulseParameters,
+  hiddenParameters,
 }: MutableParametersSectionProps) => {
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
@@ -59,7 +58,16 @@ export const MutableParametersSection = ({
     setPulseParameters(newParameters);
   };
 
-  return _.isEmpty(parameters) ? null : (
+  const connectedParameters = useMemo(() => {
+    return parameters.filter(parameter => {
+      if ("fields" in parameter) {
+        return parameter.fields?.length > 0;
+      }
+      return false;
+    });
+  }, [parameters]);
+
+  return _.isEmpty(connectedParameters) ? null : (
     <CollapseSection
       header={<h4>{t`Set filter values for when this gets sent`}</h4>}
       className={cx(className)}
@@ -72,6 +80,7 @@ export const MutableParametersSection = ({
         vertical
         dashboard={dashboard}
         parameters={valuePopulatedParameters}
+        hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}
       />
     </CollapseSection>
