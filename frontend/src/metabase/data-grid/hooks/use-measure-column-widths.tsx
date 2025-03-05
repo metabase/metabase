@@ -6,14 +6,19 @@ import {
 import React, { useCallback, useEffect, useRef } from "react";
 import type { Root } from "react-dom/client";
 
-import type { ColumnOptions } from "metabase/data-grid/types";
+import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 
-const EXTRA_COLUMN_SPACING = 14;
+import { DEFAULT_FONT_SIZE } from "../constants";
+
+import { DataGridThemeProvider } from "./use-table-theme";
+
+const HEADER_SPACING = 16;
+const BODY_SPACING = 2;
 
 const getTruncatedColumnSizing = (
   columnSizingMap: ColumnSizingState,
@@ -30,8 +35,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
   table: ReactTable<TData>,
   data: TData[],
   columnsOptions: ColumnOptions<TData, TValue>[],
-  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
   truncateLongCellWidth: number,
+  theme: DataGridTheme | undefined,
+  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement,
@@ -46,27 +52,38 @@ export const useMeasureColumnWidths = <TData, TValue>(
           return;
         }
 
-        const contentWidths = Array.from(
+        const elementsMeasures = Array.from(
           div.querySelectorAll("[data-measure-id]"),
         )
-          .map(columnElement => {
-            const columnId = columnElement.getAttribute("data-measure-id");
+          .map(element => {
+            const columnId = element.getAttribute("data-measure-id");
+            const type = element.getAttribute("data-measure-type");
+
             if (columnId == null) {
               return null;
             }
-            const width =
-              (columnElement as HTMLElement).offsetWidth + EXTRA_COLUMN_SPACING;
-            return { columnId, width };
+
+            const width = (element as HTMLElement).offsetWidth;
+            return { columnId, width, type };
           })
           .filter(isNotNull);
 
-        const columnSizingMap: ColumnSizingState = contentWidths.reduce<
-          Record<string, number>
-        >(
-          (acc, { columnId, width }) => ({
-            ...acc,
-            [columnId]: Math.max(width, acc[columnId] || 0),
-          }),
+        const columnSizingMap = elementsMeasures.reduce<ColumnSizingState>(
+          (acc, { columnId, width, type }) => {
+            if (!acc[columnId]) {
+              acc[columnId] = 0;
+            }
+
+            if (type === "header") {
+              const headerWidth = width + HEADER_SPACING;
+              acc[columnId] = Math.max(acc[columnId], headerWidth);
+            } else if (type === "body") {
+              const bodyWidth = width + BODY_SPACING;
+              acc[columnId] = Math.max(acc[columnId], bodyWidth);
+            }
+
+            return acc;
+          },
           {},
         );
 
@@ -100,7 +117,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
                 header.getContext(),
               );
               return (
-                <div key={header.column.id} data-measure-id={header.column.id}>
+                <div
+                  key={header.column.id}
+                  data-measure-id={header.column.id}
+                  data-measure-type="header"
+                >
                   {headerCell}
                 </div>
               );
@@ -108,7 +129,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
           {columnsOptions.map(columnOptions => {
             return (
-              <div key={columnOptions.id} data-measure-id={columnOptions.id}>
+              <div
+                key={columnOptions.id}
+                data-measure-id={columnOptions.id}
+                data-measure-type="body"
+              >
                 {pickRowsToMeasure(data, columnOptions.accessorFn).map(
                   rowIndex => {
                     const cell = table
@@ -138,7 +163,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       const wrappedContent = (
         <EmotionCacheProvider>
-          <ThemeProvider>{measureContent}</ThemeProvider>
+          <ThemeProvider>
+            <DataGridThemeProvider theme={theme}>
+              {measureContent}
+            </DataGridThemeProvider>
+          </ThemeProvider>
         </EmotionCacheProvider>
       );
 
@@ -162,6 +191,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       data,
       setMeasuredColumnSizing,
       table,
+      theme,
       truncateLongCellWidth,
       measurementRenderWrapper,
     ],
@@ -176,7 +206,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.visibility = "hidden";
       measureRoot.style.pointerEvents = "none";
       measureRoot.style.zIndex = "-999";
-
+      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
       document.body.appendChild(measureRoot);
       measureRootRef.current = measureRoot;
     }

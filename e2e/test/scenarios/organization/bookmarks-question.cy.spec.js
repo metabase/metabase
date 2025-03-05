@@ -31,13 +31,12 @@ describe("scenarios > question > bookmarks", () => {
     H.openQuestionActions();
     cy.findByRole("menu").contains("Turn into a model").click();
     cy.findByRole("dialog").contains("Turn this into a model").click();
-    cy.findByRole("status")
-      .should("contain", "This is a model now.")
-      // Close this toast as soon we confim it exists!
-      // It lingers in the UI far too long which is causing flakiness later on
-      // when we assert on the next toast (when we turn the model back to the question).
-      .icon("close")
-      .click();
+
+    H.undoToastList().findByText("This is a model now.");
+    // Close this toast as soon we confim it exists!
+    // It lingers in the UI far too long which is causing flakiness later on
+    // when we assert on the next toast (when we turn the model back to the question).
+    H.undoToastList().icon("close").click();
 
     H.navigationSidebar().within(() => {
       cy.findByLabelText(/Bookmarks/)
@@ -48,7 +47,7 @@ describe("scenarios > question > bookmarks", () => {
     cy.log("Turn the model back into a question");
     H.openQuestionActions();
     cy.findByRole("menu").contains("Turn back to saved question").click();
-    cy.findByRole("status").should("contain", "This is a question now.");
+    H.undoToastList().should("contain", "This is a question now.");
 
     H.openNavigationSidebar();
     cy.log("Should not find bookmark");

@@ -36,10 +36,10 @@ const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
     id: rowIndex + 1,
     name: `Item ${rowIndex + 1}`,
     category: ["Electronics", "Clothing", "Books", "Food"][rowIndex % 4],
-    price: Math.round(Math.random() * 1000) / 10,
-    quantity: Math.round(Math.random() * 100),
+    price: (rowIndex % 10) + 100,
+    quantity: (rowIndex % 10) + 5,
     description: `This is a sample description for item ${rowIndex + 1}. ${"It can be longer to demonstrate text wrapping. ".repeat(
-      Math.floor(Math.random() * 18) + 1,
+      1 + (rowIndex % 17),
     )}`,
   };
 });

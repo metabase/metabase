@@ -1,6 +1,6 @@
 .root {
   height: 100%;
-  padding: 0 0.75em;
+  padding: 0 0.5em;
   text-align: right;
   color: var(--mb-color-text-light);
   display: flex;
@@ -18,10 +18,11 @@
   display: none;
 }
 
-.expandIcon {
+.expandButton {
   display: none;
+  flex-shrink: 0;
 }
 
-.root:hover > .expandIcon {
+.root:hover > .expandButton {
   display: block;
 }

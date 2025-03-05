@@ -303,7 +303,7 @@ function extractColumnAndCheck({
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
   H.tableHeaderClick(column);
-  // cy.findByRole("columnheader", { name: column }).click();
+
   H.popover().findByText(extraction).click();
   cy.wait(1);
 

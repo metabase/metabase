@@ -1104,14 +1104,12 @@ describe("issue 31769", () => {
     cy.findAllByTestId("header-cell").should("have.length", 4);
 
     cy.get("@card_id_q2").then(cardId => {
-      cy.findByTestId("TableInteractive-root")
+      H.tableInteractive()
         .findByText("Q2 - Products → Category → Category")
         .should("exist");
     });
 
-    cy.findByTestId("TableInteractive-root")
-      .findByText("Products → Category")
-      .should("exist");
+    H.tableInteractive().findByText("Products → Category").should("exist");
   });
 });
 
