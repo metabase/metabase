@@ -119,10 +119,15 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "string",
     args: ["string"],
   },
-  "cast": {
+  cast: {
     displayName: `cast`,
     type: "any",
     args: ["expression", "string"],
+    validator: function (_arg: any, type: string) {
+      if (!["Integer", "Text", "Date"].includes(type)) {
+        return t`Expected "Integer", "Text", or "Date" but found "${type}"`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,

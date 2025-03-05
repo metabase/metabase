@@ -349,7 +349,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`type`,
         description: t`The database type to cast the expression to.`,
-        example: formatStringLiteral(t`VARCHAR`),
+        example: formatStringLiteral(t`Text`),
       },
     ],
     docsPage: "cast",
