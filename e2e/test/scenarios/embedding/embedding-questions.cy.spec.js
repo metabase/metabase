@@ -213,6 +213,42 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("October 7, 2023, 1:34 AM");
   });
+
+  it("should not crash on ignored HTTP status codes (1xx & 3xx) (metabase#51386)", () => {
+    cy.intercept({
+      method: "GET",
+      url: "embed/question/**.csv**",
+      headers: {
+        "x-metabase-client": "embedding-iframe",
+        "x-metabase-embedded": "true",
+      },
+    }).as("dl");
+    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+      H.visitQuestion(id);
+
+      cy.intercept(
+        "GET",
+        "api/preview_embed/card/*",
+        cy.spy().as("previewEmbedSpy"),
+      ).as("previewEmbed");
+
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
+
+      cy.wait(["@previewEmbed", "@previewEmbed"]);
+
+      H.getIframeBody().within(() => {
+        cy.findByTestId("embed-frame").as("embedFrame").should("be.visible");
+        cy.findByTestId("download-button").click();
+        cy.findByTestId("download-results-button").click();
+      });
+
+      cy.get("@dl").its("response.statusCode").should("eq", 302);
+    });
+  });
 });
 
 describe("scenarios [EE] > embedding > questions", () => {
