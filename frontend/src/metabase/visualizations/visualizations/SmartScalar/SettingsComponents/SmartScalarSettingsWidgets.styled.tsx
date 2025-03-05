@@ -27,11 +27,7 @@ type ComparisonPickerSecondaryTextProps = TextProps &
 
 export const ComparisonPickerSecondaryText = styled(
   (props: ComparisonPickerSecondaryTextProps) => (
-    <Text
-      {...props}
-      component={props.component ?? "span"}
-      color={props.color ?? "text.0"}
-    />
+    <Text {...props} component={props.component ?? "span"} />
   ),
 )<ComparisonPickerSecondaryTextProps>``;
 
