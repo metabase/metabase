@@ -248,53 +248,52 @@
                 (is (= 1 (count @sent-notifications)))
                 (is (= "G" (:test-value (first @sent-notifications))))))))))))
 
-(deftest blocking-queue-test
-  (testing "blocking queue implementation"
-    (let [queue (#'notification.send/create-notification-queue)]
+(deftest notification-queue-test
+  (let [queue (#'notification.send/create-notification-queue)]
 
-      (testing "put and take operations work correctly"
-        (let [test-notification {:payload_type :notification/testing :test-value "A"}]
-          (#'notification.send/put-notification! queue 1 test-notification)
-          (is (= [1 test-notification] (#'notification.send/take-notification! queue)))))
+    (testing "put and take operations work correctly"
+      (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+      (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+             (#'notification.send/take-notification! queue))))
 
-      (testing "notifications with same ID are replaced in queue"
-        (let [queue (#'notification.send/create-notification-queue)]
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "B"})
-          (is (= [1 {:payload_type :notification/testing :test-value "B"}]
-                 (#'notification.send/take-notification! queue)))))
+    (testing "notifications with same ID are replaced in queue"
+      (let [queue (#'notification.send/create-notification-queue)]
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
+        (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
+               (#'notification.send/take-notification! queue)))))
 
-      (testing "multiple notifications are processed in order"
-        (let [queue (#'notification.send/create-notification-queue)]
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
-          (#'notification.send/put-notification! queue 2 {:payload_type :notification/testing :test-value "B"})
-          (#'notification.send/put-notification! queue 3 {:payload_type :notification/testing :test-value "C"})
+    (testing "multiple notifications are processed in order"
+      (let [queue (#'notification.send/create-notification-queue)]
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+        (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "B"})
+        (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
 
-          (is (= [1 {:payload_type :notification/testing :test-value "A"}]
-                 (#'notification.send/take-notification! queue)))
-          (is (= [2 {:payload_type :notification/testing :test-value "B"}]
-                 (#'notification.send/take-notification! queue)))
-          (is (= [3 {:payload_type :notification/testing :test-value "C"}]
-                 (#'notification.send/take-notification! queue)))))
+        (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+               (#'notification.send/take-notification! queue)))
+        (is (= {:id 2 :payload_type :notification/testing :test-value "B"}
+               (#'notification.send/take-notification! queue)))
+        (is (= {:id 3 :payload_type :notification/testing :test-value "C"}
+               (#'notification.send/take-notification! queue)))))
 
-      (testing "take blocks until notification is available"
-        (let [queue (#'notification.send/create-notification-queue)
-              result (atom nil)
-              latch (java.util.concurrent.CountDownLatch. 1)
-              thread (Thread. (fn []
-                                (.countDown latch) ; signal thread is ready
-                                (reset! result (#'notification.send/take-notification! queue))))]
-          (.start thread)
-          (.await latch) ; wait for thread to start
-          (Thread/sleep 50) ; give thread time to block on take
+    (testing "take blocks until notification is available"
+      (let [queue (#'notification.send/create-notification-queue)
+            result (atom nil)
+            latch (java.util.concurrent.CountDownLatch. 1)
+            thread (Thread. (fn []
+                              (.countDown latch) ; signal thread is ready
+                              (reset! result (#'notification.send/take-notification! queue))))]
+        (.start thread)
+        (.await latch) ; wait for thread to start
+        (Thread/sleep 50) ; give thread time to block on take
 
-          ; Put a notification that the thread should receive
-          (#'notification.send/put-notification! queue 42 {:payload_type :notification/testing :test-value "X"})
+        ; Put a notification that the thread should receive
+        (#'notification.send/put-notification! queue {:id 42 :payload_type :notification/testing :test-value "X"})
 
-          ; Wait for thread to complete
-          (.join ^Thread thread 1000)
+        ; Wait for thread to complete
+        (.join ^Thread thread 1000)
 
-          (is (= [42 {:payload_type :notification/testing :test-value "X"}] @result)))))))
+        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
 
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
@@ -310,13 +309,13 @@
                                    (.await producer-latch)
                                    (dotimes [i num-items-per-producer]
                                      (let [item-id (+ (* producer-id 100) i)
-                                           item {:producer producer-id :item i}]
-                                       (#'notification.send/put-notification! queue item-id item))))
+                                           item {:id item-id :producer producer-id :item i}]
+                                       (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try
                                      (while (pos? (.getCount consumer-latch))
-                                       (let [[id item] (#'notification.send/take-notification! queue)]
-                                         (swap! received-items conj [id item {:consumer consumer-id}])
+                                       (let [item (#'notification.send/take-notification! queue)]
+                                         (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
                                        (log/errorf e "Consumer %s error:" consumer-id))))
