@@ -26,6 +26,7 @@ import type {
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { isNotNull } from "metabase/lib/types";
+import { useCellSelection } from "./use-cell-selection";
 
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
@@ -267,6 +268,8 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnReorder,
   );
 
+  const selection = useCellSelection(table);
+
   return {
     table,
     theme,
@@ -274,6 +277,7 @@ export const useDataGridInstance = <TData, TValue>({
     virtualGrid,
     measureRoot,
     columnsReordering,
+    selection,
     measureColumnWidths,
   };
 };

@@ -113,3 +113,7 @@
 .bodyCell:hover .cellHoverVisible {
   visibility: visible;
 }
+
+.selectedCell {
+  background-color: var(--mb-base-color-blue-20);
+}
