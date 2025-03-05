@@ -258,6 +258,51 @@ describe("scenarios > models metadata", () => {
       .and("contain", "TAX");
   });
 
+  it("should allow reordering columns by the edge of column header (metabase#41419)", () => {
+    const ordersJoinProductsQuery = {
+      type: "model",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        fields: [["field", ORDERS.ID, null]],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(ordersJoinProductsQuery, { visitQuestion: true });
+
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
+    cy.url().should("include", "/metadata");
+
+    cy.log("wait for the hint, otherwise scroll into view doesn't work ");
+    cy.findByTestId("tab-hint-toast").should("be.visible");
+    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo("right");
+
+    cy.log("move Product -> Price before Products -> Vendor");
+
+    cy.findAllByTestId("header-cell")
+      .contains("Products → Price")
+      .trigger("mousedown")
+      .trigger("mousemove", { clientX: 600, clientY: 0 })
+      .trigger("mouseup");
+
+    cy.findAllByTestId("header-cell")
+      .contains("Products → Vendor")
+      .should("be.visible");
+  });
+
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
       H.createNativeQuestion(
