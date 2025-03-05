@@ -73,7 +73,7 @@ export const RangePicker = ({
   }, [data, question]);
 
   return (
-    <Box h={75}>
+    <Box h={75} pt="0.5rem">
       <Visualization
         rawSeries={rawSeries}
         metadata={metadata}
