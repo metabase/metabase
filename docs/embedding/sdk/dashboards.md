@@ -35,11 +35,13 @@ You can embed a dashboard using the one of the dashboard components:
 | renderDrillThroughQuestion\* | `() => ReactNode`                               | A react component that renders [a question's layout](#customizing-drill-through-question-layout) shown after drilling through a question or clicking on a question card in the dashboard.                                                                                                                                        |
 
 _\* Not available for `StaticDashboard`._
--\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk and is against our terms](../sdk/authentication#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParaters` to declutter the user interface is fine.
+
+_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
 ```tsx
+{% raw %}
 <EditableDashboard
   style={{
     height: 800,
@@ -47,15 +49,16 @@ By default, dashboard components take full page height (100vh). You can override
   }}
   dashboardId={dashboardId}
 />
+{% endraw %}
 ```
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveDashboard, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
 
-const authConfig = {...}
+const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -97,9 +100,7 @@ with the custom view as the child component.
 const QuestionView = () => <InteractiveQuestion.Title />;
 ```
 
-The questionView prop accepts a React component that will be rendered in the question view, which
-you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 
@@ -126,7 +127,7 @@ const plugins = {
 ```typescript
 {% raw %}
 <InteractiveDashboard
-  questionId={1}
+  dashboardId={1}
   plugins={{
     dashboard: {
       dashcardMenu: null,

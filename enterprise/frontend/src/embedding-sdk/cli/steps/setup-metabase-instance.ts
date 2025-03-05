@@ -1,56 +1,21 @@
-import { exec as execCallback } from "child_process";
-
-import toggle from "inquirer-toggle";
 import ora from "ora";
-import { promisify } from "util";
 
-import { CONTAINER_NAME, SITE_NAME } from "../constants/config";
+import { SITE_NAME } from "../constants/config";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "../constants/env";
 import { INSTANCE_CONFIGURED_MESSAGE } from "../constants/messages";
 import type { CliOutput, CliStepMethod } from "../types/cli";
-import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
 import { retry } from "../utils/retry";
-
-const exec = promisify(execCallback);
 
 export const setupMetabaseInstance: CliStepMethod = async state => {
   const spinner = ora();
 
-  const showError = (message: string): CliOutput => {
-    spinner.fail();
-    return [
-      {
-        type: "error",
-        message,
-      },
-      state,
-    ];
-  };
-
-  // If the instance we are configuring is not clean,
-  // therefore we cannot ensure the setup steps are performed.
-  const onInstanceConfigured = async (): Promise<CliOutput> => {
-    printEmptyLines();
-    console.log(
-      "  The instance is already configured. Delete the container and start over?",
-    );
-    const shouldRestartSetup = await toggle({
-      message: `${OUTPUT_STYLES.error("WARNING: This will delete all data.")}`,
-      default: false,
-    });
-    if (!shouldRestartSetup) {
-      return showError(INSTANCE_CONFIGURED_MESSAGE);
-    }
-    await exec(`docker rm -f ${CONTAINER_NAME}`);
-
-    return [
-      {
-        type: "success",
-        nextStep: "startLocalMetabaseContainer",
-      },
-      state,
-    ];
-  };
+  // If the user tries to setup the instance manually
+  // before the CLI can initialize them,
+  // we cannot ensure the setup steps are performed.
+  const onInstanceTampered = async (): Promise<CliOutput> => [
+    { type: "error", message: INSTANCE_CONFIGURED_MESSAGE },
+    state,
+  ];
 
   // The API is not immediately ready after the health check.
   // We keep retrying until the request stops timing out.
@@ -89,7 +54,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
       // Error message: The /api/setup route can only be used to create the first user, however a user currently exists.
       if (errorMessage.includes("a user currently exists")) {
-        return onInstanceConfigured();
+        return onInstanceTampered();
       }
 
       try {
@@ -153,7 +118,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
     const message = `Failed to setup Metabase instance. Reason: ${reason}`;
 
     if (reason.includes("Unauthenticated")) {
-      return onInstanceConfigured();
+      return onInstanceTampered();
     }
 
     return [{ type: "error", message }, state];

@@ -200,7 +200,11 @@ export const settings = {
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
-        return hasOnlyFormattableColumns && !columnFormat.highlight_row;
+        return (
+          hasOnlyFormattableColumns &&
+          columnFormat.type === "single" &&
+          !columnFormat.highlight_row
+        );
       });
     },
     getProps: (series: Series) => {
