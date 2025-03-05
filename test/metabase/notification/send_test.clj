@@ -4,14 +4,15 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch PriorityBlockingQueue CountDownLatch)))
@@ -57,7 +58,7 @@
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
                       (notification.tu/with-captured-channel-send!
-                        (notification.send/send-notification-sync! notification-info)))))
+                        (#'notification.send/send-notification-sync! notification-info)))))
 
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
@@ -80,7 +81,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (t2/delete! :model/TaskHistory)
-        (notification.send/send-notification-sync! n)
+        (#'notification.send/send-notification-sync! n)
         (is (=? [{:task         "notification-send"
                   :task_details {:notification_id (:id n)
                                  :notification_handlers [{:id           (mt/malli=? :int)
@@ -118,7 +119,7 @@
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
               (mt/with-dynamic-fn-redefs [channel/send! send!]
-                (notification.send/send-notification-sync! n))
+                (#'notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
                        :task_details {:attempted_retries 1
@@ -168,7 +169,7 @@
                    :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
           (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
                                                                                   (throw (Exception. "test-exception")))]
-            (is (thrown? Exception (notification.send/send-notification-sync! n)))
+            (is (thrown? Exception (#'notification.send/send-notification-sync! n)))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
                                                             {:payload-type "notification/testing"})))))))))
 
@@ -186,7 +187,7 @@
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-attempts 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
-              (notification.send/send-notification-sync! n)
+              (#'notification.send/send-notification-sync! n)
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
@@ -262,7 +263,8 @@
                                                                 ;; fake latency
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
-        (let [test-dispatcher (#'notification.send/create-notification-dispatcher 2)]
+        (let [queue           (#'notification.send/create-blocking-queue)
+              test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
           (testing "basic processing"
             (reset! sent-notifications [])
             (let [notification {:id 1 :test-value "A"}]
@@ -399,3 +401,103 @@
 
           ;; Verify that the content was updated to v2 even though deadline wasn't
           (is (= 2 (:version (last @processed-notifications)))))))))
+
+(deftest blocking-queue-test
+  (testing "blocking queue implementation"
+    (let [queue (#'notification.send/create-blocking-queue)]
+
+      (testing "put and take operations work correctly"
+        (let [test-notification {:payload_type :notification/testing :test-value "A"}]
+          (#'notification.send/put-notification! queue 1 test-notification)
+          (is (= [1 test-notification] (#'notification.send/take-notification! queue)))))
+
+      (testing "notifications with same ID are replaced in queue"
+        (let [queue (#'notification.send/create-blocking-queue)]
+          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
+          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "B"})
+          (is (= [1 {:payload_type :notification/testing :test-value "B"}]
+                 (#'notification.send/take-notification! queue)))))
+
+      (testing "multiple notifications are processed in order"
+        (let [queue (#'notification.send/create-blocking-queue)]
+          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
+          (#'notification.send/put-notification! queue 2 {:payload_type :notification/testing :test-value "B"})
+          (#'notification.send/put-notification! queue 3 {:payload_type :notification/testing :test-value "C"})
+
+          (is (= [1 {:payload_type :notification/testing :test-value "A"}]
+                 (#'notification.send/take-notification! queue)))
+          (is (= [2 {:payload_type :notification/testing :test-value "B"}]
+                 (#'notification.send/take-notification! queue)))
+          (is (= [3 {:payload_type :notification/testing :test-value "C"}]
+                 (#'notification.send/take-notification! queue)))))
+
+      (testing "take blocks until notification is available"
+        (let [queue (#'notification.send/create-blocking-queue)
+              result (atom nil)
+              latch (java.util.concurrent.CountDownLatch. 1)
+              thread (Thread. (fn []
+                                (.countDown latch) ; signal thread is ready
+                                (reset! result (#'notification.send/take-notification! queue))))]
+          (.start thread)
+          (.await latch) ; wait for thread to start
+          (Thread/sleep 50) ; give thread time to block on take
+
+          ; Put a notification that the thread should receive
+          (#'notification.send/put-notification! queue 42 {:payload_type :notification/testing :test-value "X"})
+
+          ; Wait for thread to complete
+          (.join ^Thread thread 1000)
+
+          (is (= [42 {:payload_type :notification/testing :test-value "X"}] @result)))))))
+
+(deftest blocking-queue-concurrency-test
+  (testing "blocking queue handles concurrent operations correctly"
+    (let [queue                  (#'notification.send/create-blocking-queue)
+          num-producers          5
+          num-consumers          3
+          num-items-per-producer 20
+          total-items            (* num-producers num-items-per-producer)
+          received-items         (atom #{})
+          producer-latch         (java.util.concurrent.CountDownLatch. 1)
+          consumer-latch         (java.util.concurrent.CountDownLatch. total-items)
+          producer-fn            (fn [producer-id]
+                                   (.await producer-latch)
+                                   (dotimes [i num-items-per-producer]
+                                     (let [item-id (+ (* producer-id 100) i)
+                                           item {:producer producer-id :item i}]
+                                       (#'notification.send/put-notification! queue item-id item))))
+          consumer-fn            (fn [consumer-id]
+                                   (try
+                                     (while (pos? (.getCount consumer-latch))
+                                       (let [[id item] (#'notification.send/take-notification! queue)]
+                                         (swap! received-items conj [id item {:consumer consumer-id}])
+                                         (.countDown consumer-latch)))
+                                     (catch Exception e
+                                       (log/errorf e "Consumer %s error:" consumer-id))))
+          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))
+          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))]
+
+      ; Start all producers simultaneously
+      (.countDown producer-latch)
+
+      ; Wait for all items to be consumed
+      (is (.await consumer-latch 10000 java.util.concurrent.TimeUnit/MILLISECONDS)
+          "Timed out waiting for consumers to process all items")
+
+      ; Wait for all producer threads to complete
+      (doseq [t producers] (.join ^Thread t 5000))
+
+      (testing "all items were processed"
+        (is (= total-items (count @received-items))))
+
+      (testing "each item was processed exactly once"
+        (let [item-ids (map first @received-items)]
+          (is (= (count item-ids) (count (set item-ids))))))
+
+      (testing "work was distributed among consumers"
+        (let [consumer-counts (->> @received-items
+                                   (map #(get-in % [2 :consumer]))
+                                   frequencies
+                                   vals)]
+          (is (= num-consumers (count consumer-counts)))
+          (is (every? pos? consumer-counts)))))))

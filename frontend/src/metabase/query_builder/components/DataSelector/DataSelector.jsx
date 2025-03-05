@@ -165,6 +165,7 @@ export class UnconnectedDataSelector extends Component {
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectMetric: PropTypes.bool,
+    canSelectSavedQuestion: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -197,6 +198,7 @@ export class UnconnectedDataSelector extends Component {
     isPopover: true,
     isMantine: false,
     canSelectMetric: false,
+    canSelectSavedQuestion: true,
   };
 
   isPopoverOpen() {
@@ -478,7 +480,11 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasSavedQuestions = () => {
-    return this.state.databases.some(database => database.is_saved_questions);
+    const { canSelectSavedQuestion } = this.props;
+    return (
+      this.state.databases.some(database => database.is_saved_questions) &&
+      canSelectSavedQuestion
+    );
   };
 
   getDatabases = () => {
@@ -1009,10 +1015,10 @@ export class UnconnectedDataSelector extends Component {
     }
     if (!selectedDataBucketId) {
       return [
-        "card",
         "dataset",
         "table",
         ...(this.props.canSelectMetric ? ["metric"] : []),
+        ...(this.props.canSelectSavedQuestion ? ["card"] : []),
       ];
     }
     return {

@@ -4,9 +4,9 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
-   [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -128,7 +128,7 @@
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
-(mu/defn send-notification-sync!
+(mu/defn ^:private send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{:keys [id payload_type] :as notification-info} :- ::notification.payload/Notification]
   (u/with-timer-ms
@@ -230,52 +230,97 @@
   "Comparator for sorting notifications by deadline."
   [a b]
   (compare (:deadline a) (:deadline b)))
+(defprotocol NotificationQueue
+  "Protocol for notification queue implementations."
+  (put-notification!  [this id notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
+
+(defn- create-blocking-queue
+  "Create a notification queue backed by a LinkedList and a ConcurrentHashMap."
+  []
+  (let [;; will soon be replaced by a priority queue
+        ids-list         (java.util.LinkedList.)
+        id->notification (java.util.concurrent.ConcurrentHashMap.)
+        queue-lock       (java.util.concurrent.locks.ReentrantLock.)
+        not-empty-cond   (.newCondition queue-lock)]
+    (reify NotificationQueue
+      (put-notification! [_ id notification]
+        (.lock queue-lock)
+        (try
+          (when-not (.contains ids-list id)
+            (.add ids-list id))
+          (.put id->notification id notification)
+          ;; Signal that a notification is available
+          (.signal not-empty-cond)
+          (finally
+            (.unlock queue-lock))))
+
+      (take-notification! [_]
+        (.lock queue-lock)
+        (try
+          ;; Wait until there's at least one notification
+          (while (.isEmpty ids-list)
+            (.await not-empty-cond))
+          (let [id (.removeFirst ids-list)
+                notification (.remove id->notification id)]
+            [id notification])
+          (finally
+            (.unlock queue-lock)))))))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
   - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
-  [pool-size]
-  (let [queue            (java.util.concurrent.PriorityBlockingQueue. 11 deadline-comparator)
-        id->notification (atom {})
-        executor         (Executors/newFixedThreadPool
-                          pool-size
-                          (.build
-                           (doto (BasicThreadFactory$Builder.)
-                             (.namingPattern "send-notification-thread-pool-%d"))))
-        queue-lock       (Object.)]
+  [pool-size queue]
+  (let [executor (Executors/newFixedThreadPool
+                  pool-size
+                  (.build
+                   (doto (BasicThreadFactory$Builder.)
+                     (.namingPattern "send-notification-thread-pool-%d"))))]
+    (.addShutdownHook
+     (Runtime/getRuntime)
+     (Thread. ^Runnable (fn []
+                          (.shutdown ^ExecutorService executor))))
     (dotimes [_ pool-size]
       (.submit ^ExecutorService executor
                ^Callable (fn []
                            (while true
                              (try
-                               (when-let [id (:id (.take queue))]
-                                 (if-let [notification (get @id->notification id)]
-                                   (do
-                                     (log/debugf "[Notification %s] Worker started processing" id)
-                                     (send-notification-sync! notification)
-                                     (swap! id->notification dissoc id))
-                                   (log/warnf "[Notification %s] not found in the queue" id)))
+                               (let [[_id notification] (take-notification! queue)]
+                                 (send-notification-sync! notification))
                                (catch Exception e
                                  (log/error e "Error in notification worker")))))))
     (fn [notification]
       (let [id (or (:id notification) (random-uuid))]
-        (locking queue-lock
-          ;; ensure there is only one notification with the same id in the queue
-          (if (contains? @id->notification id)
-            (log/debugf "[Notification %s] is already in the queue, replacing" id)
-            (do
-              (log/debugf "[Notification %s] Added to the queue" id)
-              (.put queue {:id       id
-                           :deadline (subscription->deadline (:triggering_subscription notification))})))
-          (swap! id->notification assoc id notification))))))
+        (put-notification! queue id notification)))))
 
-(def ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size))))
+(defonce ^:private notification-queue
+  (delay (create-blocking-queue)))
 
-(mu/defn send-notification-async!
+(defonce ^:private dispatcher
+  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
+
+(mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
   [notification :- ::notification.payload/Notification]
   (@dispatcher notification)
   nil)
+
+(def ^:private Options
+  [:map
+   [:notification/sync? :boolean]])
+
+(def ^:dynamic *default-options*
+  "The default options for sending a notification."
+  {:notification/sync? false})
+
+(mu/defn send-notification!
+  "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
+  [notification & {:keys [] :as options} :- [:maybe Options]]
+  (let [options      (merge *default-options* options)
+        notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+    (log/debugf "Sending notification: %s %s" (:id notification) (if (:notification/sync? options) "synchronously" "asynchronously"))
+    (if (:notification/sync? options)
+      (send-notification-sync! notification)
+      (send-notification-async! notification))))
