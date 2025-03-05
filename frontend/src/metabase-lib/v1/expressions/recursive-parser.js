@@ -1,14 +1,9 @@
 import { t } from "ttag";
 
+import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import { unescapeString } from "./string";
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
-
-import {
-  MBQL_CLAUSES,
-  getMBQLName,
-  isCaseOrIfOperator,
-  isOptionsObject,
-  unescapeString,
-} from "./index";
 
 const COMPARISON_OPS = [
   OP.Equal,
@@ -111,7 +106,7 @@ function recursiveParse(source) {
     }
 
     // for string literal, remove its enclosing quotes
-    return type === TOKEN.String ? shrink(text) : parseFloat(text);
+    return type === TOKEN.String ? token.value : parseFloat(text);
   };
 
   // Unary ::= Primary |

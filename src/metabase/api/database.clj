@@ -744,6 +744,7 @@
     (api/check-404
      (or (if schema
            ;; Sometimes we get duplicate records, but bypass that if we have a fully qualified exact match.
+           ;; See: https://github.com/metabase/metabase/issues/53868
            (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
            (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
          (check-unique (t2/select :model/Table
@@ -1274,6 +1275,16 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
+
+(api.macros/defendpoint :get "/:id/healthcheck"
+  "Reports whether the database can currently connect"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+    (binding [h2/*allow-testing-h2-connections* true]
+      (if-let [err-map (test-database-connection engine details)]
+        (merge err-map {:status "error"})
+        {:status "ok"}))))
 
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]

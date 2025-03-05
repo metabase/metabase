@@ -60,6 +60,20 @@
       border-left-width: 1.6px;
     }
 
+    .cm-matchingBracket {
+      background: none !important;
+      outline: 0.5px solid var(--mb-color-text-light);
+      border-radius: 2px;
+    }
+
+    .cm-tag {
+      color: var(--mb-color-brand);
+
+      & * {
+        color: inherit;
+      }
+    }
+
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
@@ -139,58 +153,6 @@
         text-align: right;
         overflow: hidden;
         text-overflow: ellipsis;
-      }
-    }
-
-    /* Syntax highlighting */
-
-    .cm-token-keyword {
-      color: var(--mb-color-saturated-purple);
-    }
-
-    .cm-token-function,
-    .cm-token-variable {
-      color: var(--mb-color-saturated-blue);
-    }
-
-    .cm-token-constant,
-    .cm-token-typeName {
-      color: var(--mb-color-saturated-red);
-    }
-
-    .cm-token-string {
-      color: var(--mb-color-saturated-green);
-    }
-
-    .cm-token-number,
-    .cm-token-bool {
-      color: var(--mb-color-saturated-red);
-    }
-
-    .cm-token-comment,
-    .cm-token-lineComment,
-    .cm-token-blockComment {
-      color: var(--mb-color-text-light);
-      font-style: italic;
-    }
-
-    .cm-token-brace,
-    .cm-token-squareBracket {
-      color: var(--mb-color-brand);
-    }
-
-    .cm-matchingBracket {
-      background: none !important;
-      outline: 0.5px solid var(--mb-color-text-light);
-      border-radius: 2px;
-    }
-
-    .cm-token-propertyName,
-    .cm-tag {
-      color: var(--mb-color-brand);
-
-      & * {
-        color: inherit;
       }
     }
   }

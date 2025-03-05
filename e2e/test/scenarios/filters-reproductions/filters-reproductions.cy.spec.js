@@ -947,7 +947,7 @@ describe("issue 34794", () => {
       cy.findByText("Created At").click();
       cy.icon("chevronleft").click(); // go back to the main filter popover
       cy.findByText("Custom Expression").click();
-      cy.findByLabelText("Expression").type("[Total] > 10").blur();
+      H.CustomExpressionEditor.type("[Total] > 10").blur();
       cy.button("Done").click();
     });
 
@@ -1311,7 +1311,7 @@ describe("45252", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 44435", () => {
+describe("issue 44435", () => {
   // It is crucial that the string is without spaces!
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const longString = alphabet.repeat(10);
