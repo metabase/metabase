@@ -119,6 +119,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "string",
     args: ["string"],
   },
+  "cast": {
+    displayName: `cast`,
+    type: "any",
+    args: ["expression", "string"],
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
@@ -534,6 +539,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "upper",
   "substring",
   "url-pathname",
+  "cast",
   "split",
   "regex-match-first",
   "concat",
