@@ -1,3 +1,5 @@
+import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
 import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
@@ -54,9 +56,11 @@ const mapDispatchToProps = {
   deleteDatabase: deleteDatabase,
   addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
+  push,
 };
 
 export default _.compose(
+  withRouter,
   Database.loadList({
     reloadInterval: getReloadInterval,
     query,
