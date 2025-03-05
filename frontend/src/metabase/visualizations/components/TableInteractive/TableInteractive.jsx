@@ -840,7 +840,7 @@ class TableInteractive extends Component {
           });
           onActionDismissal();
         }}
-        onDrag={(e, data) => {
+        onDrag={(event, data) => {
           const newIndex = this.getDragColNewIndex(data);
           if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
             this.setState({
@@ -849,7 +849,7 @@ class TableInteractive extends Component {
             });
           }
         }}
-        onStop={(e, d) => {
+        onStop={(event, d) => {
           const { dragColIndex, dragColNewIndex } = this.state;
           DRAG_COUNTER++;
           if (
@@ -858,6 +858,12 @@ class TableInteractive extends Component {
             dragColIndex !== dragColNewIndex
           ) {
             this.onColumnReorder(dragColIndex, dragColNewIndex);
+
+            // if the column is dragged, we need to select it which can be done
+            // by calling onVisualizationClick without this line DatasetEditor
+            // doesn't understand which column to select and resets selected
+            // column index to 0, which causes UI flashing
+            this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
