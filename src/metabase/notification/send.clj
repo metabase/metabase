@@ -198,7 +198,6 @@
       (put-notification! [_ id notification]
         (.lock queue-lock)
         (try
-          ;; If ID is not already in the queue, add it
           (when-not (.contains ids-list id)
             (.add ids-list id))
           (.put id->notification id notification)
