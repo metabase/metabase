@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { replaceCardWithVisualization } from "metabase/dashboard/actions";
@@ -17,21 +18,25 @@ import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
-import { getVisualizationRaw } from "metabase/visualizations";
+import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   createDataSource,
   isVisualizerDashboardCard,
   mergeVisualizerData,
+  splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   DashCardId,
   Dashboard,
   DashboardCard,
   Dataset,
+  RawSeries,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
@@ -203,13 +208,16 @@ export function DashCardVisualization({
       ]),
     );
 
-    return [
+    const series: RawSeries = [
       {
-        card: {
-          display,
-          name: settings["card.title"],
-          visualization_settings: settings,
-        },
+        card: extendCardWithDashcardSettings(
+          {
+            display,
+            name: settings["card.title"],
+            visualization_settings: settings,
+          } as Card,
+          _.omit(dashcard.visualization_settings, "visualization"),
+        ) as Card,
 
         data: mergeVisualizerData({
           columns,
@@ -223,6 +231,12 @@ export function DashCardVisualization({
         started_at: new Date().toISOString(),
       },
     ];
+
+    if (display && isCartesianChart(display)) {
+      return splitVisualizerSeries(series, columnValuesMapping);
+    }
+
+    return series;
   }, [_series, dashcard, datasets]);
 
   const metadata = useSelector(getMetadata);
@@ -357,6 +371,7 @@ export function DashCardVisualization({
         dashboard={dashboard}
         dashcard={dashcard}
         rawSeries={series}
+        rawRawSeries={_series}
         metadata={metadata}
         mode={getClickActionMode}
         getHref={getHref}

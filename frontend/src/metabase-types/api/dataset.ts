@@ -146,7 +146,7 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
-} & Pick<Dataset, "data" | "error">;
+} & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
