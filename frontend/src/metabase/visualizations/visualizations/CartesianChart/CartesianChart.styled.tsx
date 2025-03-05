@@ -7,6 +7,7 @@ import { getChartPadding } from "./padding";
 
 type CartesianChartRootProps = {
   isQueryBuilder?: boolean;
+  isCompact?: boolean;
 };
 
 export const CartesianChartRoot = styled.div<CartesianChartRootProps>`

@@ -3,11 +3,17 @@ import type { MantineTheme } from "metabase/ui";
 export const getChartPadding = ({
   theme,
   isQueryBuilder,
+  isCompact,
 }: {
   isQueryBuilder?: boolean;
+  isCompact?: boolean;
   theme: MantineTheme;
 }) => {
   const { padding } = theme.other.cartesian;
+
+  if (isCompact) {
+    return "0";
+  }
 
   if (padding) {
     return padding;

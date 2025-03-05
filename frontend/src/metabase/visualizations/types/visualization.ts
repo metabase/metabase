@@ -170,6 +170,7 @@ export type VisualizationPassThroughProps = {
   canToggleSeriesVisibility?: boolean;
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
+  isCompact?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;

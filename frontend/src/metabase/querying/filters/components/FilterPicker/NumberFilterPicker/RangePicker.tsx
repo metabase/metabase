@@ -78,6 +78,7 @@ export const RangePicker = ({
         rawSeries={rawSeries}
         metadata={metadata}
         showAllLegendItems={false}
+        isCompact
         settingsOverride={{
           "graph.show_values": false,
           "graph.x_axis.labels_enabled": false,

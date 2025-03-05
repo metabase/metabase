@@ -50,6 +50,7 @@ function _CartesianChart(props: VisualizationProps) {
     headerIcon,
     actionButtons,
     isQueryBuilder,
+    isCompact,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -161,6 +162,7 @@ function _CartesianChart(props: VisualizationProps) {
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        isCompact={isCompact}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined

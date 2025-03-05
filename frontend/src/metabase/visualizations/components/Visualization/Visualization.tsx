@@ -120,6 +120,7 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
+  isCompact?: boolean;
   isMobile?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
@@ -539,6 +540,7 @@ class Visualization extends PureComponent<
       isObjectDetail,
       isPreviewing,
       isQueryBuilder,
+      isCompact,
       isSettings,
       isShowingDetailsOnlyColumns,
       isSlow,
@@ -593,11 +595,6 @@ class Visualization extends PureComponent<
       ...(this.props.settings || this.state.computedSettings),
       ...this.props.settingsOverride,
     };
-
-    console.log({
-      props: this.props.settings,
-      state: this.state.computedSettings,
-    });
 
     if (!loading && !error) {
       if (!visualization) {
@@ -784,6 +781,7 @@ class Visualization extends PureComponent<
                   isPlaceholder={isPlaceholder}
                   isPreviewing={isPreviewing}
                   isQueryBuilder={!!isQueryBuilder}
+                  isCompact={!!isCompact}
                   isSettings={!!isSettings}
                   isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                   metadata={metadata}
