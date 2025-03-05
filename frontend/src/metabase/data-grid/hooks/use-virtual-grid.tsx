@@ -23,7 +23,7 @@ export interface VirtualGrid {
   virtualPaddingRight: number | undefined;
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
-  measureGrid: () => void;
+  measureGrid: (resetCache?: boolean) => void;
 }
 
 export const useVirtualGrid = <TData,>({
@@ -79,12 +79,18 @@ export const useVirtualGrid = <TData,>({
     },
   });
 
-  const measureGrid = useCallback(() => {
-    Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
-      rowVirtualizer.measureElement(el),
-    );
-    columnVirtualizer.measure();
-  }, [rowVirtualizer, columnVirtualizer]);
+  const measureGrid = useCallback(
+    (resetCache = false) => {
+      if (resetCache) {
+        rowVirtualizer.elementsCache.clear();
+      }
+      Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
+        rowVirtualizer.measureElement(el),
+      );
+      columnVirtualizer.measure();
+    },
+    [rowVirtualizer, columnVirtualizer],
+  );
 
   const virtualColumns = columnVirtualizer.getVirtualItems();
   const virtualRows = rowVirtualizer.getVirtualItems();

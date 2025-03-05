@@ -15,7 +15,8 @@ export const getRowIdColumn = <TRow, TValue>({
   variant,
   getBackgroundColor,
 }: RowIdColumnOptions): ColumnDef<TRow, TValue> => {
-  const shouldShowIndex = ["indexOnly", "indexExpand"].includes(variant);
+  const shouldShowIndex = ["index", "indexExpand"].includes(variant);
+  const canExpand = variant !== "index";
   return {
     accessorFn: (_row, index) => index as TValue,
     id: ROW_ID_COLUMN_ID,
@@ -27,6 +28,7 @@ export const getRowIdColumn = <TRow, TValue>({
       const value = shouldShowIndex ? row.index + 1 : null;
       return (
         <RowIdCell
+          canExpand={canExpand}
           value={value}
           backgroundColor={getBackgroundColor?.(row.index)}
         />
