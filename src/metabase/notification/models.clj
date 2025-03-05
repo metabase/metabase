@@ -1,4 +1,4 @@
-(ns metabase.models.notification
+(ns metabase.notification.models
   "A notification have:
   - a payload
   - more than one subscriptions
@@ -126,11 +126,11 @@
 
 (defn- update-subscription-trigger!
   [& args]
-  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
+  (apply (requiring-resolve 'metabase.notification.task.send/update-subscription-trigger!) args))
 
 (defn- delete-trigger-for-subscription!
   [& args]
-  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+  (apply (requiring-resolve 'metabase.notification.task.send/delete-trigger-for-subscription!) args))
 
 (t2/define-before-update :model/Notification
   [instance]

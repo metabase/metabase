@@ -167,7 +167,7 @@
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.models.notification/create-notification!
+     metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -413,6 +413,7 @@
     metabase.models.interface                                     mi
     metabase.models.setting                                       setting
     metabase.notification.core                                    notification
+    metabase.notification.payload.core                            notification.payload
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
@@ -794,7 +795,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\.*"
    :name    metabase-lib}
