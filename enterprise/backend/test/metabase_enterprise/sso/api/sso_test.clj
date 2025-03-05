@@ -4,8 +4,7 @@
    [metabase.http-client :as client]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.test :as mt]
-   [metabase.util.string :as string]))
+   [metabase.test :as mt]))
 
 (deftest saml-logout
   (testing "with slo enabled and configured"
