@@ -35,7 +35,7 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { canAccessSettings, getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
   Button,
   Flex,
