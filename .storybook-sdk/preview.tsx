@@ -4,7 +4,7 @@ import { GlobalTypes } from "@storybook/types";
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+import { storybookThemeOptions } from "../enterprise/frontend/src/embedding-sdk/test/storybook-themes";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -37,6 +37,17 @@ export const globalTypes: GlobalTypes = {
     toolbar: {
       icon: "user",
       items: ["admin", "normal"],
+      showName: true,
+      dynamicTitle: true,
+    },
+  },
+  sdkVersion: {
+    name: "SDK Version",
+    description: "Version of the SDK to use",
+    defaultValue: "live_code",
+    toolbar: {
+      icon: "paintbrush",
+      items: ["live_code", "npm_53_stable", "npm_52_stable"],
       showName: true,
       dynamicTitle: true,
     },
