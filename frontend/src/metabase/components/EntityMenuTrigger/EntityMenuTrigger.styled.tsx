@@ -1,9 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import type { ButtonProps } from "metabase/core/components/Button";
 import Button from "metabase/core/components/Button";
 
-export interface EntityMenuIconButtonProps {
+export interface EntityMenuIconButtonProps extends ButtonProps {
   className?: string;
   color?: string;
   hover?: {
@@ -13,7 +14,15 @@ export interface EntityMenuIconButtonProps {
   "data-testid"?: string;
 }
 
-export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
+export const EntityMenuIconButton = styled(
+  (props: EntityMenuIconButtonProps) => (
+    <Button
+      {...props}
+      iconSize={props.iconSize ?? 16}
+      onlyIcon={props.onlyIcon ?? true}
+    />
+  ),
+)`
   width: 36px;
   height: 36px;
 
@@ -27,8 +36,3 @@ export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
         : "var(--mb-color-bg-medium)"};
   }
 `;
-
-EntityMenuIconButton.defaultProps = {
-  iconSize: 16,
-  onlyIcon: true,
-};

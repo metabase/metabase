@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { ComponentProps } from "react";
 
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -25,7 +26,11 @@ export const NoWrap = styled.div`
   line-height: 1.3em;
 `;
 
-export const LoadingSpinner = styled(_LoadingSpinner)`
+type LoadingSpinnerProps = ComponentProps<typeof _LoadingSpinner>;
+
+export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
+  <_LoadingSpinner {...props} size={props.size ?? 18} />
+))`
   display: flex;
   flex-grow: 1;
   align-self: center;

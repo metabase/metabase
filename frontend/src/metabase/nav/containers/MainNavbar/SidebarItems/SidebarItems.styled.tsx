@@ -11,12 +11,9 @@ import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
 
 export const SidebarIcon = styled(
-  (props: IconProps & { isSelected: boolean }) => (
+  ({ isSelected, ...props }: IconProps & { isSelected: boolean }) => (
     <Icon {...props} size={props.size ?? 16} />
   ),
-  {
-    shouldForwardProp: propName => propName !== "isSelected",
-  },
 )<{
   color?: string | null;
   isSelected: boolean;
