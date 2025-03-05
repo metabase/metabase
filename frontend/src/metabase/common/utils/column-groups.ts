@@ -13,6 +13,9 @@ export function getColumnGroupIcon(
   if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
+  if (groupInfo.isSourceCard) {
+    return groupInfo.isModel ? "model" : "table";
+  }
   if (groupInfo.isMainGroup) {
     return "sum";
   }
