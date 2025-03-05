@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
   Divider,
+  Flex,
   Group,
   Icon,
   Paper,
@@ -40,7 +41,7 @@ export const RulePreview = ({
     data-testid="formatting-rule-preview"
     {...paperProps}
   >
-    <Group noWrap px="md" bg="bg-light">
+    <Flex wrap="nowrap" px="md" align="center" bg="bg-light">
       <Text className={CS.flex1} fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns
@@ -58,7 +59,7 @@ export const RulePreview = ({
       >
         <Icon name="close" />
       </ActionIcon>
-    </Group>
+    </Flex>
     <Divider></Divider>
     <Group noWrap p="md" spacing="xs">
       <RuleBackground
