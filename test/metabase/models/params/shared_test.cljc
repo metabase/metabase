@@ -102,7 +102,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "past7days"}}
-      "Previous 7 days"
+      "Previous 7 Days"
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
@@ -217,19 +217,19 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past1weeks"}}
-      "Previous week"
+      "Previous Week"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "next1quarters"}}
-      "Next quarter"
+      "Next Quarter"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past60minutes"}}
-      "Previous 60 minutes"
+      "Previous 60 Minutes"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "next5years"}}
-      "Next 5 years"))
+      "Next 5 Years"))
 
   (t/testing "Date values are formatted using the locale passed in as an argument"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "es" true))
