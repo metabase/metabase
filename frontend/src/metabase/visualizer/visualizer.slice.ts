@@ -343,9 +343,6 @@ const visualizerSlice = createSlice({
     },
     toggleFullscreenMode: state => {
       state.isFullscreen = !state.isFullscreen;
-      if (!state.isFullscreen) {
-        state.isVizSettingsSidebarOpen = false;
-      }
     },
     turnOffFullscreenMode: state => {
       state.isFullscreen = false;

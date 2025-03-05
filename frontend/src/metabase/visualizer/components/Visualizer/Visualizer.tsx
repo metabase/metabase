@@ -139,6 +139,15 @@ export const Visualizer = (props: VisualizerProps) => {
     [dispatch],
   );
 
+  const classNames = [
+    S.Container,
+    isFullscreen ? S.fullscreen : undefined,
+    isVizSettingsSidebarOpen ? S.vizSettingsOpen : undefined,
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <DndContext
       sensors={[canvasSensor]}
@@ -152,49 +161,42 @@ export const Visualizer = (props: VisualizerProps) => {
         },
       }}
     >
-      <Flex className={className} direction="column">
-        <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
-          {!isFullscreen && (
-            <Flex direction="column" miw={320} p="md" className={S.dataSidebar}>
-              <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
-                <DataImporter />
-              </Box>
-              <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
-                <DataManager />
-              </Box>
-            </Flex>
-          )}
-
-          <Flex direction="column" w="100%">
-            <Header
-              onSave={onSave}
-              saveLabel={saveLabel}
-              allowSaveWhenPristine={allowSaveWhenPristine}
-            />
-            <Flex
-              flex={1}
-              direction="column"
-              bg="white"
-              style={{
-                overflowY: "hidden",
-              }}
-            >
-              <Box px="xl" mb="lg" flex={1}>
-                <VisualizationCanvas />
-              </Box>
-              <Footer />
-            </Flex>
+      {/* main container */}
+      <Box className={classNames}>
+        {/* left side bar */}
+        <Box className={S.dataSidebar}>
+          <Flex direction="column" miw={320} p="md" h="100%">
+            <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
+              <DataImporter />
+            </Box>
+            <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
+              <DataManager />
+            </Box>
           </Flex>
-          {!isFullscreen && isVizSettingsSidebarOpen && (
-            <Flex direction="column" miw={320} className={S.settingsSidebar}>
-              <VizSettingsSidebar />
-            </Flex>
-          )}
-        </Flex>
+        </Box>
+
+        {/* top header bar */}
+        <Header
+          onSave={onSave}
+          saveLabel={saveLabel}
+          allowSaveWhenPristine={allowSaveWhenPristine}
+        />
+
+        {/* main area */}
+        <VisualizationCanvas className={S.Canvas} />
+
+        {/* footer */}
+        <Footer className={S.Footer} />
+
+        {/* right side bar */}
+        <Box className={S.settingsSidebar}>
+          <VizSettingsSidebar className={S.settingsSidebarContent} />
+        </Box>
+
         <DragOverlay dropAnimation={null}>
           {draggedItem && <VisualizerDragOverlay item={draggedItem} />}
         </DragOverlay>
-      </Flex>
+      </Box>
     </DndContext>
   );
 };
