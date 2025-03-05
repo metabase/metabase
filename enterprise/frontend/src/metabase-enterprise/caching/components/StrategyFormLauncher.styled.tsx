@@ -9,7 +9,7 @@ import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 export const PolicyToken = styled((props: ButtonProps) => (
-  <Button {...props} radius="sm" />
+  <Button {...props} radius={props.radius ?? "sm"} />
 ))<
   { variant?: string; ref?: MutableRefObject<HTMLButtonElement> } & ButtonProps
 >`

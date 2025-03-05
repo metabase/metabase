@@ -4,7 +4,7 @@ import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Button from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -38,7 +38,13 @@ export const BookmarkIcon = styled(
   animation-timing-function: linear;
 `;
 
-export const BookmarkButton = styled(Button)`
+export const BookmarkButton = styled((props: ButtonProps) => (
+  <Button
+    {...props}
+    onlyIcon={props.onlyIcon ?? true}
+    iconSize={props.iconSize ?? 16}
+  />
+))`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   width: 2rem;
@@ -52,8 +58,3 @@ export const BookmarkButton = styled(Button)`
     vertical-align: middle;
   }
 `;
-
-BookmarkButton.defaultProps = {
-  onlyIcon: true,
-  iconSize: 16,
-};
