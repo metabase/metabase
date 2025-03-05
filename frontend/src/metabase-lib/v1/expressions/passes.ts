@@ -5,43 +5,12 @@ import type {
 } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
-import {
-  isCaseOrIf,
-  isCaseOrIfOperator,
-  isFunction,
-  isOptionsObject,
-} from "./matchers";
+import { isCaseOrIf, isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import type { CompilerPass } from "./pratt/compiler";
-import { OPERATOR } from "./tokenizer";
 
 function isCallExpression(expr: unknown): expr is CallExpression {
   return Array.isArray(expr) && expr.length > 1;
 }
-
-const NEGATIVE_FILTER_SHORTHANDS = {
-  contains: "does-not-contain",
-  "is-null": "not-null",
-  "is-empty": "not-empty",
-};
-
-// ["NOT", ["is-null", 42]] becomes ["not-null",42]
-export const useShorthands: CompilerPass = tree =>
-  modify(tree, node => {
-    if (isFunction(node) && node.length === 2) {
-      const [operator, operand] = node;
-      if (operator === OPERATOR.Not && isFunction(operand)) {
-        const [fn, ...params] = operand;
-        const shorthand =
-          NEGATIVE_FILTER_SHORTHANDS[
-            fn as keyof typeof NEGATIVE_FILTER_SHORTHANDS
-          ];
-        if (shorthand) {
-          return withAST([shorthand, ...params], node);
-        }
-      }
-    }
-    return node;
-  });
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
 export const adjustCaseOrIf: CompilerPass = tree =>
@@ -244,5 +213,4 @@ export const ALL_PASSES = [
   adjustOffset,
   adjustOptions,
   adjustTopLevelLiterals,
-  useShorthands,
 ];
