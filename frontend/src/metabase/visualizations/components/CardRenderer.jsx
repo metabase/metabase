@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import PropTypes from "prop-types";
 import { Component, forwardRef } from "react";
-import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
@@ -15,6 +14,8 @@ class CardRenderer extends Component {
     isEditing: PropTypes.bool,
     isDashboard: PropTypes.bool,
   };
+
+  containerRef = null;
 
   shouldComponentUpdate(nextProps) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
@@ -51,7 +52,10 @@ class CardRenderer extends Component {
       return;
     }
 
-    const parent = ReactDOM.findDOMNode(this);
+    const parent = this.containerRef;
+    if (!parent) {
+      return;
+    }
 
     // deregister previous chart:
     this._deregisterChart();
@@ -78,7 +82,17 @@ class CardRenderer extends Component {
       <div
         className={this.props.className}
         style={this.props.style}
-        ref={this.props.forwardedRef}
+        ref={element => {
+          this.containerRef = element;
+
+          if (this.props.forwardedRef) {
+            if (typeof this.props.forwardedRef === "function") {
+              this.props.forwardedRef(element);
+            } else {
+              this.props.forwardedRef.current = element;
+            }
+          }
+        }}
       />
     );
   }

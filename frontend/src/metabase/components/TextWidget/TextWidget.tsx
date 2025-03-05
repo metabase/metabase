@@ -1,5 +1,4 @@
-import { Component } from "react";
-import ReactDOM from "react-dom";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import { forceRedraw } from "metabase/lib/dom";
@@ -27,6 +26,8 @@ export class TextWidget extends Component<TextWidgetProps, State> {
     disabled: false,
   };
 
+  inputRef = createRef<HTMLInputElement>();
+
   constructor(props: TextWidgetProps) {
     super(props);
 
@@ -44,7 +45,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
     if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
-        forceRedraw(ReactDOM.findDOMNode(this));
+        forceRedraw(this.inputRef.current);
       });
     }
   }
@@ -98,6 +99,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
         }}
         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
+        ref={this.inputRef}
       />
     );
   }
