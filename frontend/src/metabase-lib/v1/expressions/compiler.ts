@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
@@ -68,8 +67,10 @@ export function compileExpression({
       startRule,
     }),
     adjustBooleans,
-    startRule === "boolean" ? adjustTopLevelLiteralBooleanFilter : null,
-  ].filter(isNotNull);
+    pass(adjustTopLevelLiteralBooleanFilter, {
+      enabled: startRule === "boolean",
+    }),
+  ];
 
   try {
     const expression = compile(root, {
@@ -94,4 +95,14 @@ export function compileExpression({
     }
     return { error: { message: t`Invalid expression` } };
   }
+}
+
+function pass(
+  pass: (expr: Expression) => Expression,
+  { enabled }: { enabled?: boolean },
+) {
+  if (enabled) {
+    return pass;
+  }
+  return (expression: Expression) => expression;
 }
