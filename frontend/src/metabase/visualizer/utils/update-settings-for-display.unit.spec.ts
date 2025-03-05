@@ -70,8 +70,8 @@ describe("updateSettingsForDisplay", () => {
 
   it("should work if sourceDisplay is cartesian and targetDisplay is pie", () => {
     const settings = {
-      "graph.metrics": ["count"],
-      "graph.dimensions": ["category"],
+      "graph.metrics": ["COLUMN_2"],
+      "graph.dimensions": ["COLUMN_1"],
     };
     const sourceDisplay = "line";
     const targetDisplay = "pie";
@@ -86,16 +86,48 @@ describe("updateSettingsForDisplay", () => {
       columnValuesMapping,
       columns,
       settings: {
-        "pie.metric": "count",
-        "pie.dimension": "category",
+        "pie.metric": "COLUMN_2",
+        "pie.dimension": "COLUMN_1",
+      },
+    });
+  });
+
+  it("should remove unnecessary columns if sourceDisplay is cartesian and targetDisplay is pie", () => {
+    const settings = {
+      "graph.metrics": ["COLUMN_2"],
+      "graph.dimensions": ["COLUMN_1"],
+    };
+    const sourceDisplay = "line";
+    const targetDisplay = "pie";
+    const result = updateSettingsForDisplay(
+      {
+        ...columnValuesMapping,
+        COLUMN_3: [
+          { sourceId: "card:45", originalName: "category", name: "COLUMN_3" },
+        ],
+      },
+      [
+        ...columns,
+        createMockColumn({ name: "COLUMN_3", display_name: "Category" }),
+      ],
+      settings,
+      sourceDisplay,
+      targetDisplay,
+    );
+    expect(result).toEqual({
+      columnValuesMapping,
+      columns,
+      settings: {
+        "pie.metric": "COLUMN_2",
+        "pie.dimension": "COLUMN_1",
       },
     });
   });
 
   it("should work if sourceDisplay is pie and targetDisplay is cartesian", () => {
     const settings = {
-      "pie.metric": "count",
-      "pie.dimension": "category",
+      "pie.metric": "COLUMN_2",
+      "pie.dimension": "COLUMN_1",
     };
     const sourceDisplay = "pie";
     const targetDisplay = "line";
@@ -110,8 +142,8 @@ describe("updateSettingsForDisplay", () => {
       columnValuesMapping,
       columns,
       settings: {
-        "graph.metrics": ["count"],
-        "graph.dimensions": ["category"],
+        "graph.metrics": ["COLUMN_2"],
+        "graph.dimensions": ["COLUMN_1"],
       },
     });
   });
