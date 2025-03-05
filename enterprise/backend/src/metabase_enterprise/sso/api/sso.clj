@@ -78,14 +78,13 @@
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
     ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
-    (let [deleted-rows (when-not (sso-settings/saml-slo-enabled)
-        (t2/delete! :model/Session {:where [:or [:= :key_hashed metabase-session-key-hashed] [:= :id metabase-session-key]]})]
-      (api/check-404 (> deleted-rows 0))))
+    (when-not (sso-settings/saml-slo-enabled)
+      (t2/delete! :model/Session {:where [:or [:= :key_hashed metabase-session-key-hashed] [:= :id metabase-session-key]]}))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))
        (saml/logout-redirect-location
-          :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
+        :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
         :idp-url (sso-settings/saml-identity-provider-slo-uri)
         :issuer (sso-settings/saml-application-name)
         :user-email email
