@@ -29,10 +29,7 @@
 
   5. Metabase checks for successful LogoutResponse, clears the user's session, and responds to the client with a redirect to the home page."
   (:require
-   [buddy.core.codecs :as codecs]
-   [clojure.data.xml :as xml]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
@@ -51,9 +48,7 @@
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Base64)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,11 +81,11 @@
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
-    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not enabled"))))
+    (throw (IllegalArgumentException. (tru "Can''t create new SAML user when SAML is not enabled"))))
   (when-not email
     (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
                          " "
-                         (tru "We tried looking for {0}, but couldn't find the attribute."
+                         (tru "We tried looking for {0}, but couldn''t find the attribute."
                               (sso-settings/saml-attribute-email))
                          " "
                          (tru "Please make sure your SAML IdP is properly configured."))
@@ -115,7 +110,9 @@
 (defn- acs-url []
   (str (public-settings/site-url) "/auth/sso"))
 
-(defn- sp-cert-keystore-details []
+(defn sp-cert-keystore-details
+  "Build a certificate store map usable by the saml20-clj library."
+  []
   (when-let [path (sso-settings/saml-keystore-path)]
     (when-let [password (sso-settings/saml-keystore-password)]
       (when-let [key-name (sso-settings/saml-keystore-alias)]
@@ -144,35 +141,24 @@
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
-            saml-request (saml/request
-                          {:request-id (str "id-" (random-uuid))
-                           :sp-name    (sso-settings/saml-application-name)
-                           :issuer     (sso-settings/saml-application-name)
-                           :acs-url    (acs-url)
-                           :idp-url    idp-url
-                           :credential (sp-cert-keystore-details)})
-            relay-state  (saml/str->base64 redirect-url)]
-        (saml/idp-redirect-response saml-request idp-url relay-state))
+            relay-state  (u/encode-base64 redirect-url)]
+        (saml/idp-redirect-response {:request-id  (str "id-" (random-uuid))
+                                     :sp-name     (sso-settings/saml-application-name)
+                                     :issuer      (sso-settings/saml-application-name)
+                                     :acs-url     (acs-url)
+                                     :idp-url     idp-url
+                                     :credential  (sp-cert-keystore-details)
+                                     :relay-state relay-state}))
       (catch Throwable e
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)
           (throw (ex-info msg {:status-code 500} e)))))))
 
-(defn- validate-response [response]
-  (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
-                     (throw (ex-info (str (tru "Unable to log in: SAML IdP certificate is not set."))
-                                     {:status-code 500})))]
-    (try
-      (saml/validate response idp-cert (sp-cert-keystore-details) {:acs-url (acs-url)
-                                                                   :issuer  (sso-settings/saml-identity-provider-issuer)})
-      (catch Throwable e
-        (log/error e "SAML response validation failed")
-        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
-                        {:status-code 401}
-                        e))))))
-
-(defn- xml-string->saml-response [xml-string]
-  (validate-response (saml/->Response xml-string)))
+(defn- idp-cert
+  []
+  (or (sso-settings/saml-identity-provider-certificate)
+      (throw (ex-info (str (tru "Unable to log in: SAML IdP certificate is not set."))
+                      {:status-code 500}))))
 
 (defn- unwrap-user-attributes
   "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Ryan',
@@ -193,11 +179,6 @@
                       {:status-code 401})))
     attrs))
 
-(defn- base64-decode [^String s]
-  (when (u/base64-string? s)
-    (codecs/bytes->str
-     (.decode (Base64/getMimeDecoder) s))))
-
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
@@ -205,50 +186,61 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [continue-url  (u/ignore-exceptions
-                        (when-let [s (some-> (:RelayState params) base64-decode)]
+                        (when-let [s (some-> (:RelayState params) u/decode-base64)]
                           (when-not (str/blank? s)
                             s)))]
     (sso-utils/check-sso-redirect continue-url)
-    (let [xml-string    (str/trim (base64-decode (:SAMLResponse params)))
-          saml-response (xml-string->saml-response xml-string)
-          attrs         (saml-response->attributes saml-response)
-          email         (get attrs (sso-settings/saml-attribute-email))
-          first-name    (get attrs (sso-settings/saml-attribute-firstname))
-          last-name     (get attrs (sso-settings/saml-attribute-lastname))
-          groups        (get attrs (sso-settings/saml-attribute-group))
-          session       (fetch-or-create-user!
-                         {:first-name      first-name
-                          :last-name       last-name
-                          :email           email
-                          :group-names     groups
-                          :user-attributes attrs
-                          :device-info     (request/device-info request)})
-          response      (response/redirect (or continue-url (public-settings/site-url)))]
-      (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
-
-(def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")
-
-(mu/defn slo-success? :- :boolean
-  "Given a slo request saml response, return true if the response is successful."
-  [xml-str]
-  (let [*success? (atom false)]
-    (walk/postwalk
-     (fn [x]
-       (when (and (map? x)
-                  (= (:tag x) :samlp:StatusCode)
-                  (= (get-in x [:attrs :Value]) saml2-success-status))
-         (reset! *success? true))
-       x)
-     (xml/parse-str xml-str {:namespace-aware false}))
-    @*success?))
+    (try
+      (let [saml-response (saml/validate-response request
+                                                  {:idp-cert (idp-cert)
+                                                   :sp-private-key (sp-cert-keystore-details)
+                                                   :acs-url (acs-url)
+                                                   ;; remove :in-response-to validation since we're not
+                                                   ;; tracking that in metabase
+                                                   :response-validators [:issuer
+                                                                         :signature
+                                                                         :require-authenticated]
+                                                   :assertion-validators [:signature
+                                                                          :recipient
+                                                                          :not-on-or-after
+                                                                          :not-before
+                                                                          :address
+                                                                          :issuer]
+                                                   :issuer (sso-settings/saml-identity-provider-issuer)})
+            attrs         (saml-response->attributes saml-response)
+            email         (get attrs (sso-settings/saml-attribute-email))
+            first-name    (get attrs (sso-settings/saml-attribute-firstname))
+            last-name     (get attrs (sso-settings/saml-attribute-lastname))
+            groups        (get attrs (sso-settings/saml-attribute-group))
+            session       (fetch-or-create-user!
+                           {:first-name      first-name
+                            :last-name       last-name
+                            :email           email
+                            :group-names     groups
+                            :user-attributes attrs
+                            :device-info     (request/device-info request)})
+            response      (response/redirect (or continue-url (public-settings/site-url)))]
+        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))
+      (catch Throwable e
+        (log/error e "SAML response validation failed")
+        (throw (ex-info (tru "Unable to log in: SAML response validation failed")
+                        {:status-code 401}
+                        e))))))
 
 (defmethod sso.i/sso-handle-slo :saml
-  [{:keys [cookies params]}]
+  [{:keys [cookies] :as req}]
   (if (sso-settings/saml-slo-enabled)
-    (let [xml-str (base64-decode (:SAMLResponse params))
-          success? (slo-success? xml-str)]
-      (if-let [metabase-session-id (and success? (get-in cookies [request/metabase-session-cookie :value]))]
-        (do (t2/delete! :model/Session :id metabase-session-id)
-            (request/clear-session-cookie (response/redirect (urls/site-url))))
+    (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
+                       (throw (ex-info (str (tru "Unable to handle logout: SAML IdP certificate is not set."))
+                                       {:status-code 500})))
+          response (saml/validate-logout req
+                                         {:idp-cert idp-cert
+                                          :issuer (sso-settings/saml-identity-provider-issuer)
+                                          :response-validators [:signature :require-authenticated :issuer]})]
+      (if-let [metabase-session-id (and (saml/logout-success? response)
+                                        (get-in cookies [request/metabase-session-cookie :value]))]
+        (do
+          (t2/delete! :model/Session :id metabase-session-id)
+          (request/clear-session-cookie (response/redirect (urls/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

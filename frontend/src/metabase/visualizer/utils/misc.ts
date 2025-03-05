@@ -6,7 +6,6 @@ import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
-  SingleSeries,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -86,10 +85,10 @@ function areAreaBarLineSeriesCompatible(
   );
 }
 
-export function getInitialStateForCardDataSource({
-  card,
-  data,
-}: SingleSeries): VisualizerHistoryItem {
+export function getInitialStateForCardDataSource(
+  card: Card,
+  columns: DatasetColumn[],
+): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
     display: card.display,
     columns: [],
@@ -98,7 +97,7 @@ export function getInitialStateForCardDataSource({
   };
   const dataSource = createDataSource("card", card.id, card.name);
 
-  data.cols.forEach(column => {
+  columns.forEach(column => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
@@ -120,14 +119,14 @@ export function getInitialStateForCardDataSource({
         return [
           setting,
           originalValue.map(originalColumnName => {
-            const index = data.cols.findIndex(
+            const index = columns.findIndex(
               col => col.name === originalColumnName,
             );
             return state.columns[index].name;
           }),
         ];
       } else {
-        const index = data.cols.findIndex(col => col.name === originalValue);
+        const index = columns.findIndex(col => col.name === originalValue);
         return [setting, state.columns[index].name];
       }
     })

@@ -113,7 +113,7 @@ export function NotebookStep({
         </Box>
 
         <Flex align="center">
-          <Box w={`${(11 / 12) * 100}%`} maw="75rem">
+          <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
             <Step
               step={step}
               query={step.query}
@@ -126,7 +126,7 @@ export function NotebookStep({
             />
           </Box>
           {!readOnly && (
-            <Box w={`${(1 / 12) * 100}%`}>
+            <Box flex={`1 1 ${(1 / 12) * 100}%`}>
               <Box
                 className={cx(S.PreviewButton, {
                   [S.noPreviewButton]: !hasPreviewButton,

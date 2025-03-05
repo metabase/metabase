@@ -229,7 +229,7 @@
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
-  metabase-enterprise.advanced-permissions.driver.impersonation
+  metabase-enterprise.impersonation.driver
   [_ _ _])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)

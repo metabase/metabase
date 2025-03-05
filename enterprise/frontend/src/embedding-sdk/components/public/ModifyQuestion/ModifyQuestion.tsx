@@ -11,7 +11,7 @@ export const ModifyQuestion = ({
   entityTypeFilter,
   isSaveEnabled,
   saveToCollection,
-}: InteractiveQuestionProps = {}) => (
+}: InteractiveQuestionProps) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}

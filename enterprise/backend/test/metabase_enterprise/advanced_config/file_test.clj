@@ -100,8 +100,8 @@
                                    (binding [advanced-config.file/*config* (mock-config-with-setting template)]
                                      (#'advanced-config.file/config)))
       ;; {{ without a corresponding }}
-      "{{}"                        (re-quote "Invalid query: found [[ or {{ with no matching ]] or }}")
-      "{{} }"                      (re-quote "Invalid query: found [[ or {{ with no matching ]] or }}")
+      "{{}"                        (re-quote "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
+      "{{} }"                      (re-quote "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
       ;; raw token, not a list
       "{{CONFIG_FILE_BIRD_NAME}}"  (re-quote "CONFIG_FILE_BIRD_NAME - failed: valid-template-type?")
       ;; unbalanced parens

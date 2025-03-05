@@ -41,6 +41,7 @@ import {
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
+import { updateSettingsForDisplay } from "./utils/update-settings-for-display";
 import {
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
@@ -186,6 +187,18 @@ const visualizerHistoryItemSlice = createSlice({
       state.settings["card.title"] = action.payload;
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      const { columnValuesMapping, columns, settings } =
+        updateSettingsForDisplay(
+          state.columnValuesMapping,
+          state.columns,
+          state.settings,
+          state.display,
+          action.payload,
+        );
+
+      state.columnValuesMapping = columnValuesMapping;
+      state.columns = columns;
+      state.settings = settings;
       state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -483,7 +496,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource({ card, ...dataset });
+    return getInitialStateForCardDataSource(card, dataset.data.cols);
   }
 
   if (

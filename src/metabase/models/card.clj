@@ -26,13 +26,13 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
@@ -137,6 +137,19 @@
   "Returns true if `card` is a model."
   [card]
   (= (keyword (:type card)) :model))
+
+(defn lib-query
+  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
+
+  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
+  ([{:keys [database_id dataset_query] :as card}]
+   (when dataset_query
+     (let [db-id (or database_id (:database dataset_query))
+           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
+       (lib-query mp card))))
+  ([metadata-providerable {:keys [dataset_query] :as _card}]
+   (when dataset_query
+     (lib/query metadata-providerable dataset_query))))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -495,7 +508,7 @@
                                 (into {}))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info
-              (tru "Can't move question into dashboard. Questions saved in dashboards can't appear in other dashboards.")
+              (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
               {:status-code 400
                :other-dashboards dashboard-id->name}))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]

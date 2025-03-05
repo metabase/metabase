@@ -32,7 +32,7 @@ The CLI tool will walk you through the setup. There are a fair number of pieces 
 - [Metabase setup](#metabase-setup)
 - [Permissions setup with multi-tenancy (optional)](#permissions-setup-with-multi-tenancy-optional)
 - [React components setup](#react-components-setup)
-- [Behold: Metabase is embedded in your app](#start-your-app)
+- [Behold: Metabase is embedded in your app](#behold-metabase-is-embedded-in-your-app)
 
 ## Prereq check
 

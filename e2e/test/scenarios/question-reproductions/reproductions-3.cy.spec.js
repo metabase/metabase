@@ -747,7 +747,7 @@ describe("issue 40064", () => {
     cy.log("update the expression and check the value");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({ formula: "[Tax] * 3" });
+    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
     H.popover().button("Update").click();
     H.visualize();
     H.tableInteractive().findByText("6.21").should("be.visible");
@@ -755,10 +755,18 @@ describe("issue 40064", () => {
     cy.log("rename the expression and make sure you cannot create a cycle");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({ formula: "[Tax] * 3", name: "Tax3" });
-    H.popover().button("Update").click();
+    H.enterCustomColumnDetails({
+      formula: "[Tax] * 3",
+      name: "Tax3",
+      blur: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
     H.getNotebookStep("expression").findByText("Tax3").click();
-    H.enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
+    H.enterCustomColumnDetails({
+      formula: "[Tax3] * 3",
+      name: "Tax3",
+      blur: true,
+    });
     H.popover().within(() => {
       cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
@@ -1459,7 +1467,7 @@ describe("issue 44637", () => {
     });
 
     H.queryBuilderFooter().icon("calendar").click();
-    H.rightSidebar().findByText("Add an event");
+    H.rightSidebar().findByText("Create event");
   });
 });
 
@@ -2449,5 +2457,47 @@ describe("issue 47940", () => {
       "contain",
       "December 31, 1969, 4:00 PM",
     );
+  });
+});
+
+describe("issue 53036", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const questionDetails = {
+    name: "Issue 53036",
+    query: {
+      "source-table": PRODUCTS_ID,
+      limit: 5,
+      joins: [
+        {
+          fields: "all",
+          alias: "Orders",
+          "source-table": ORDERS_ID,
+          strategy: "left-join",
+          condition: [
+            "=",
+            ["field", PRODUCTS.ID, null],
+            ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+          ],
+        },
+      ],
+    },
+  };
+
+  it("should keep buttons usable on mid size screen (metabase#53036)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+
+    cy.viewport(650, 800);
+
+    cy.log("try to click on add button - it fails is there is an overlap");
+
+    H.getNotebookStep("join").within(() => {
+      cy.icon("play").should("be.visible");
+      cy.icon("add").click();
+    });
   });
 });

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   skipToken,
+  useGetCardQuery,
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
@@ -23,6 +24,7 @@ import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal"
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
+import { convertCardToInitialState } from "./convert-question-to-initial-state";
 
 interface QuestionListProps {
   searchText: string;
@@ -169,14 +171,8 @@ export function QuestionList({
         />
       </Flex>
       {isVisualizerModalOpen && (
-        <VisualizerModal
-          initialState={{
-            state: {
-              display: list.find(item => item.id === visualizerModalCardId)
-                ?.display,
-            },
-            extraDataSources: [`card:${visualizerModalCardId}`],
-          }}
+        <VisualizerModalWithCardId
+          cardId={visualizerModalCardId}
           onSave={visualization => {
             dispatch(addCardWithVisualization({ visualization }));
             setVisualizerModalCardId(null);
@@ -187,3 +183,25 @@ export function QuestionList({
     </>
   );
 }
+
+const VisualizerModalWithCardId = (
+  props: { cardId: CardId } & ComponentProps<typeof VisualizerModal>,
+) => {
+  const { cardId, ...otherProps } = props;
+
+  const { data: card, isLoading: isQuestionLoading } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
+
+  // TODO improve loading state?
+  if (isQuestionLoading || !card) {
+    return null;
+  }
+
+  return (
+    <VisualizerModal
+      initialState={convertCardToInitialState(card)}
+      {...otherProps}
+    />
+  );
+};

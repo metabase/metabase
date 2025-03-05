@@ -35,6 +35,7 @@ import type {
   Dashboard,
   DashboardCard,
   Dataset,
+  RawSeries,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
@@ -136,15 +137,72 @@ export function DashCardVisualization({
   downloadsEnabled,
   editDashboard,
 }: DashCardVisualizationProps) {
-  const datasets = useSelector(
-    state => getDashcardData(state, dashcard.id) ?? {},
-  );
+  const metadata = useSelector(getMetadata);
+
+  const datasets = useSelector(state => getDashcardData(state, dashcard.id));
   const [
     isVisualizerModalOpen,
     { open: openVisualizerModal, close: closeVisualizerModal },
   ] = useDisclosure(false);
 
   const dispatch = useDispatch();
+
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
+  const series = useMemo(() => {
+    if (
+      !dashcard ||
+      !_series ||
+      _series.length === 0 ||
+      !isVisualizerDashboardCard(dashcard)
+    ) {
+      return _series;
+    }
+
+    const { display, columns, columnValuesMapping, settings } = dashcard
+      .visualization_settings!.visualization as VisualizerHistoryItem;
+
+    const cards = [dashcard.card];
+    if (Array.isArray(dashcard.series)) {
+      cards.push(...dashcard.series);
+    }
+
+    const dataSources = cards.map(card =>
+      createDataSource("card", card.id, card.name),
+    );
+
+    const dataSourceDatasets = Object.fromEntries(
+      Object.entries(datasets ?? {}).map(([cardId, dataset]) => [
+        `card:${cardId}`,
+        dataset,
+      ]),
+    );
+
+    return [
+      {
+        card: {
+          display,
+          name: settings["card.title"],
+          visualization_settings: settings,
+        },
+
+        data: mergeVisualizerData({
+          columns,
+          columnValuesMapping,
+          datasets: dataSourceDatasets,
+          dataSources,
+        }),
+
+        // Certain visualizations memoize settings computation based on series keys
+        // This guarantees a visualization always rerenders on changes
+        started_at: new Date().toISOString(),
+      },
+    ] as Series;
+  }, [_series, dashcard, datasets]);
 
   const editVisualization = useMemo(() => {
     if (
@@ -195,64 +253,6 @@ export function DashCardVisualization({
     },
     [dispatch],
   );
-
-  const series = useMemo(() => {
-    if (
-      !dashcard ||
-      !_series ||
-      _series.length === 0 ||
-      !isVisualizerDashboardCard(dashcard)
-    ) {
-      return _series;
-    }
-
-    const { display, columns, columnValuesMapping, settings } = dashcard
-      .visualization_settings!.visualization as VisualizerHistoryItem;
-
-    const cards = [dashcard.card];
-    if (Array.isArray(dashcard.series)) {
-      cards.push(...dashcard.series);
-    }
-
-    const dataSources = cards.map(card =>
-      createDataSource("card", card.id, card.name),
-    );
-
-    const dataSourceDatasets = Object.fromEntries(
-      Object.entries(datasets).map(([cardId, dataset]) => [
-        `card:${cardId}`,
-        dataset,
-      ]),
-    );
-
-    return [
-      {
-        card: {
-          display,
-          name: settings["card.title"],
-          visualization_settings: settings,
-        },
-
-        data: mergeVisualizerData({
-          columns,
-          columnValuesMapping,
-          datasets: dataSourceDatasets,
-          dataSources,
-        }),
-
-        // Certain visualizations memoize settings computation based on series keys
-        // This guarantees a visualization always rerenders on changes
-        started_at: new Date().toISOString(),
-      },
-    ];
-  }, [_series, dashcard, datasets]);
-
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -315,6 +315,16 @@ export function DashCardVisualization({
     showClickBehaviorSidebar,
     series,
   ]);
+
+  const token = useMemo(
+    () =>
+      isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
+    [dashcard],
+  );
+  const uuid = useMemo(
+    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    [dashcard],
+  );
 
   const actionButtons = useMemo(() => {
     if (!question) {

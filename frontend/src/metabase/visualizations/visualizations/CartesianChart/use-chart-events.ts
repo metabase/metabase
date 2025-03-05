@@ -227,7 +227,7 @@ export const useChartEvents = (
           );
 
           if (eventData) {
-            onChangeCardAndRun(eventData);
+            onChangeCardAndRun?.(eventData);
           }
         },
       },
