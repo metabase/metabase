@@ -9,7 +9,6 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  Box,
   Button,
   Tooltip as ButtonTooltip,
   Flex,
@@ -135,18 +134,19 @@ export function Editor<S extends StartRule = "expression">(
         <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
       )}
 
-      <Box className={S.toolbar} p="xs">
+      <Flex className={S.toolbar} pr="sm" gap="sm">
         <ButtonTooltip label={t`Format`}>
           <Button
             aria-label={t`Format`}
             onClick={formatExpression}
             variant="subtle"
-            leftSection={<Icon name="format_code" />}
             size="xs"
+            p="xs"
             disabled={isFormatting || error != null}
+            leftSection={<Icon name="format_code" />}
           />
         </ButtonTooltip>
-      </Box>
+      </Flex>
 
       {portal}
     </Flex>

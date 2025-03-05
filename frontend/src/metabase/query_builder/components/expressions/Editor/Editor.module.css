@@ -16,8 +16,10 @@
 
 .toolbar {
   position: absolute;
-  bottom: 0.25rem;
+  bottom: 0;
   right: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
 }
 
 .editor {
