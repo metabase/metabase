@@ -238,7 +238,7 @@
                                          {:idp-cert idp-cert
                                           :issuer (sso-settings/saml-identity-provider-issuer)
                                           :response-validators [:signature :require-authenticated :issuer]})]
-      (if-let [metabase-session-key (and (saml/logout-success? response)(get-in cookies [request/metabase-session-cookie :value]))]
+      (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
           (t2/delete! :model/Session {:where [:or [:= (session/hash-session-key metabase-session-key) :key_hashed] [:= metabase-session-key :id]]})
           (request/clear-session-cookie (response/redirect (urls/site-url))))

@@ -727,9 +727,9 @@
   (testing "Successful SAML SLO logouts should delete the user's session, when saml-slo-enabled."
     (with-other-sso-types-disabled!
       (let [session-key (session/generate-session-key)
-              session-key-hashed (session/hash-session-key session-key)]
-          (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                         :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+            session-key-hashed (session/hash-session-key session-key)]
+        (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                       :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
           (with-saml-default-setup!
             (mt/with-temporary-setting-values [saml-slo-enabled true
                                                saml-identity-provider-issuer "http://localhost:9090/realms/master"
@@ -772,9 +772,9 @@
     (with-other-sso-types-disabled!
       (mt/with-temporary-setting-values [saml-slo-enabled false]
         (let [session-key (session/generate-session-key)
-            session-key-hashed (session/hash-session-key session-key)]
-        (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                       :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
+              session-key-hashed (session/hash-session-key session-key)]
+          (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
+                         :model/Session _ {:user_id (:id user) :id (session/generate-session-id) :key_hashed session-key-hashed}]
             (is (t2/exists? :model/Session :key_hashed session-key-hashed))
             (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)]
               (client/client :post "/auth/sso/logout" req-options)

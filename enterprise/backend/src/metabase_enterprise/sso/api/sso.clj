@@ -8,7 +8,6 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
