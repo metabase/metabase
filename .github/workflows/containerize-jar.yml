@@ -1,0 +1,135 @@
+name: Containerize Uberjar
+run-name: Containerize ${{ inputs.tag }} Uberjar
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        type: string
+      repo:
+        description: owner and repo like "metabase/metabase"
+        type: string
+      tag:
+        type: string
+      commit:
+        type: string
+  workflow_dispatch:
+    inputs:
+      artifact-name:
+        description: usually something like "metabase-release-{{ edition }}-{{ hash }}-uberjar"
+        type: string
+      repo:
+        description: docker owner and repo like "metabase/metabase"
+        type: string
+      tag:
+        description: usually a version like v1.87.2
+        type: string
+      commit:
+        description: the full commit hash
+        type: string
+
+jobs:
+  containerize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      platforms: ${{ steps.platforms.outputs.result }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      # we want the dockerfile from the commit we're building
+    - run: git checkout ${{ inputs.commit }} -- bin/docker
+    - name: Retrieve test build uberjar artifact
+      uses: ./.github/actions/fetch-artifact
+      with:
+        name: ${{ inputs.artifact-name }}
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get platforms
+      id: platforms
+      uses: actions/github-script@v7
+      with:
+        result-encoding: string
+        script: | # js
+          const { getBuildRequirements, isValidVersionString} = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = "${{ inputs.tag }}".split('-')[0];
+
+          if (!isValidVersionString(version)) {
+            return "linux/amd64";
+          }
+          // versions before 53 need to be handled differently
+          const buildInfo = getBuildRequirements(version);
+          return buildInfo.platforms;
+    - name: Move the Uberjar to the context dir
+      run: mv ./metabase.jar bin/docker/.
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Set up QEMU
+      if: contains(steps.platforms.outputs.result, 'arm')
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      if: contains(steps.platforms.outputs.result, 'arm')
+      uses: docker/setup-buildx-action@v3
+    - name: Build multi-arch container
+      if: contains(steps.platforms.outputs.result, 'arm')
+      uses: docker/build-push-action@v6
+      with:
+        context: bin/docker/.
+        platforms: ${{ steps.platforms.outputs.result }}
+        network: host
+        tags: ${{ inputs.repo }}:${{ inputs.tag }}
+        no-cache: true
+        push: true
+
+    # we need to do this to get the nice fallback behavior of the legacy manifest file
+    - name: Build container (x86 only)
+      if: contains(steps.platforms.outputs.result, 'arm') == false
+      run: | # bash
+        docker build \
+          -t ${{ inputs.repo }}:${{ inputs.tag }} \
+          --network=host \
+          --push \
+          bin/docker/.
+
+  verify-docker-pull:
+    runs-on: ubuntu-latest
+    needs: containerize
+    timeout-minutes: 15
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Pull the container image
+      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 5
+
+  verify-docker-pull-arm:
+    runs-on: arm-ubuntu-24-2core
+    needs: containerize
+    if: contains(needs.containerize.outputs.platforms, 'linux/arm64')
+    timeout-minutes: 15
+    steps:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Pull the container image
+      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 5

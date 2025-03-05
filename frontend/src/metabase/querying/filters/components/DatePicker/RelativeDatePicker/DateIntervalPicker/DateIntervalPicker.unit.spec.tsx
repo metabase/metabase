@@ -8,16 +8,15 @@ import {
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
 import type {
   DatePickerUnit,
+  RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
-
-import type { DateIntervalValue } from "../types";
 
 import { DateIntervalPicker } from "./DateIntervalPicker";
 
 function getDefaultValue(
   direction: RelativeIntervalDirection,
-): DateIntervalValue {
+): RelativeDatePickerValue {
   return {
     type: "relative",
     value: direction === "last" ? -30 : 30,
@@ -26,7 +25,7 @@ function getDefaultValue(
 }
 
 interface SetupOpts {
-  value: DateIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
   submitButtonLabel?: string;
 }

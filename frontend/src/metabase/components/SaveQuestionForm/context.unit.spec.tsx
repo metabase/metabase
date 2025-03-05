@@ -21,7 +21,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { SaveQuestionProvider, useSaveQuestionContext } from "./context";
 
 const TestComponent = () => {
-  const { values } = useSaveQuestionContext();
+  const { values, saveToDashboard } = useSaveQuestionContext();
 
   return (
     <div>
@@ -30,6 +30,9 @@ const TestComponent = () => {
       )}
       {values.dashboard_id && (
         <div data-testid="dashboardId">{values.dashboard_id}</div>
+      )}
+      {saveToDashboard && (
+        <div data-testid="saveToDashboard">{saveToDashboard}</div>
       )}
     </div>
   );
@@ -126,6 +129,26 @@ describe("SaveQuestionContext", () => {
           ),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should require saving to a specific dashboard if the question has a dashboard id already", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
+          ["selections"],
+        );
+
+        setup({
+          question: new Question(
+            createMockCard({
+              collection_id: 11,
+              collection: createMockCollection({ id: 11 }),
+              dashboard_id: 20,
+            }),
+          ),
+        });
+
+        expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
+        expect(screen.getByTestId("saveToDashboard")).toHaveTextContent("20");
       });
     });
 
@@ -246,6 +269,22 @@ describe("SaveQuestionContext", () => {
             defaultAuditInfo.custom_reports.toString(),
           ),
         );
+      });
+
+      it("should not require saving to a specific dashboard if saving a new version of an existing question", async () => {
+        const collection = createMockCollection({ id: 11 });
+        setupCollectionByIdEndpoint({ collections: [collection] });
+        setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+        const originalQuestion = new Question(
+          createMockCard({ collection, collection_id: 11, dashboard_id: 20 }),
+        );
+        setup({
+          originalQuestion,
+          question: originalQuestion.clone(),
+        });
+
+        expect(screen.queryByTestId("saveToDashboard")).not.toBeInTheDocument();
       });
     });
 

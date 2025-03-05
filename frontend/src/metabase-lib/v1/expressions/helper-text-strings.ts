@@ -7,7 +7,9 @@ import type {
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { formatIdentifier, formatStringLiteral } from "./";
+import { formatStringLiteral } from "./string";
+
+import { formatIdentifier } from "./";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -597,7 +599,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`unit`,
-        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`,
         example: formatStringLiteral("month"),
       },
     ],
@@ -1216,3 +1218,8 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
     ? `questions/query-builder/expressions/${docsPage}`
     : "questions/query-builder/expressions";
 };
+
+export const getFunctionByStructure = (structure: string) =>
+  HELPER_TEXT_STRINGS.find(
+    h => h.structure.toLowerCase() === structure.toLowerCase(),
+  )?.name;
