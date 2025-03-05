@@ -1,12 +1,13 @@
-(ns metabase.task.notification
+(ns metabase.notification.task.send
   (:require
+   [clojure.data :refer [diff]]
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
    [metabase.models.task-history :as task-history]
-   [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.log :as log]
@@ -100,7 +101,7 @@
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
-        notification (t2/select-one :model/Notification notification-id)]
+        notification    (t2/select-one :model/Notification notification-id)]
     (cond
       (:active notification)
       (try
@@ -110,7 +111,7 @@
                                                         :notification_subscription_id subscription-id
                                                         :cron_schedule                (:cron_schedule subscription)
                                                         :notification_ids             [notification-id]}}
-          (notification/send-notification! notification :notification/sync? true))
+          (notification.send/send-notification! notification))
         (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
         (catch Exception e
           (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
@@ -151,8 +152,17 @@
   Called when starting the instance."
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (task/delete-all-triggers-of-job! send-notification-job-key)
-  (run! create-new-trigger! (t2/reducible-select :model/NotificationSubscription :type :notification-subscription/cron)))
+
+  ;; Get all existing triggers and subscription IDs
+  (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
+        existing-triggers-subscription-ids (map #(get-in % [:data "subscription-id"]) existing-triggers)
+        subscription-id->cron              (t2/select-pk->fn identity :model/NotificationSubscription :type :notification-subscription/cron)
+        db-subscription-ids                (keys subscription-id->cron)
+        [to-delete to-create _to-skip]     (diff existing-triggers-subscription-ids db-subscription-ids)]
+    (doseq [subscription-id to-delete]
+      (delete-trigger-for-subscription! subscription-id))
+    (doseq [subscription-id to-create]
+      (create-new-trigger! (get subscription-id->cron subscription-id)))))
 
 (jobs/defjob
   ^{:doc

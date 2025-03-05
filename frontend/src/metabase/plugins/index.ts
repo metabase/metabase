@@ -508,6 +508,7 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+  SimpleDataPicker: (_props: any) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
