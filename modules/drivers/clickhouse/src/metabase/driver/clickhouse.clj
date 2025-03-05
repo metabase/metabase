@@ -1,26 +1,27 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.clickhouse-introspection]
-            [metabase.driver.clickhouse-nippy]
-            [metabase.driver.clickhouse-qp]
-            [metabase.driver.clickhouse-version :as clickhouse-version]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc :as sql-jdbc]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.lib.metadata :as lib.metadata]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.upload :as upload]
-            [metabase.util :as u]
-            [metabase.util.log :as log])
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.clickhouse-introspection]
+   [metabase.driver.clickhouse-nippy]
+   [metabase.driver.clickhouse-qp]
+   [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.upload :as upload]
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]))
 
 (set! *warn-on-reflection* true)

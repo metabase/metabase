@@ -1,24 +1,19 @@
-(ns metabase.driver.clickhouse-impersonation-test
+(ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
   "SET ROLE (connection impersonation feature) tests on with single node or on-premise cluster setups."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
-            [metabase.driver :as driver]
-            [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.test.data.clickhouse :as ctd]
-            [metabase.util :as u]
-            [toucan2.tools.with-temp :as t2.with-temp]))
-
-;; 53+ metabase.sync has moved to metabase.sync.core
-(try
-  (require '[metabase.sync :as sync])
-  (catch java.io.FileNotFoundException e
-    (when (re-find #"metabase/sync\.clj" (.getMessage e))
-      (require '[metabase.sync.core :as sync]))))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
+   [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.sync.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.clickhouse :as ctd]
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +22,7 @@
   (let [default-role (driver.sql/default-database-role :clickhouse nil)
         spec         (sql-jdbc.conn/connection-details->spec :clickhouse details-map)]
     (testing "default role is NONE"
-      (is (= default-role "NONE")))
+      (is (= "NONE" default-role)))
     (testing "does not throw with an existing role"
       (sql-jdbc.execute/do-with-connection-with-options
        :clickhouse spec nil

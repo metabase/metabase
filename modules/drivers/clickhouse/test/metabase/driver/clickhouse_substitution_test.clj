@@ -1,14 +1,15 @@
-(ns metabase.driver.clickhouse-substitution-test
+(ns ^:mb/driver-tests metabase.driver.clickhouse-substitution-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.test :refer :all]
-            [java-time.api :as t]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.clickhouse :as ctd]
-            [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
-            [schema.core :as s])
+  (:require
+   [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.clickhouse :as ctd]
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [schema.core :as s])
   (:import (java.time LocalDate LocalDateTime)))
 
 (set! *warn-on-reflection* true)

@@ -1,23 +1,22 @@
-(ns metabase.driver.clickhouse-test
+(ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.clickhouse :as clickhouse]
-            [metabase.driver.clickhouse-qp :as clickhouse-qp]
-            [metabase.driver.sql-jdbc :as sql-jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.query-processor.compile :as qp.compile]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.clickhouse :as ctd]
-            [metabase.test.data.interface :as tx]
-            [taoensso.nippy :as nippy]
-            [toucan2.tools.with-temp :as t2.with-temp]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
+   [metabase.driver.clickhouse-qp :as clickhouse-qp]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.clickhouse :as ctd]
+   [metabase.test.data.interface :as tx]
+   [taoensso.nippy :as nippy]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :once ctd/create-test-db!)
 
 ;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
 ;; as 0.52 is still tested by CI we will check which macro is defined and use that

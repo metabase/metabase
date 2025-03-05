@@ -1,13 +1,14 @@
 "Provides the info about the ClickHouse version. Extracted from the main clickhouse.clj file,
  as both Driver and QP overrides require access to it, avoiding circular dependencies."
 (ns metabase.driver.clickhouse-version
-  (:require    [clojure.core.memoize :as memoize]
-               [metabase.driver :as driver]
-               [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-               [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-               [metabase.driver.util :as driver.u]
-               [metabase.lib.metadata :as lib.metadata]
-               [metabase.query-processor.store :as qp.store]))
+  (:require
+   [clojure.core.memoize :as memoize]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
 

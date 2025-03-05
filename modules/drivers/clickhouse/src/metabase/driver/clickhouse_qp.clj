@@ -1,29 +1,31 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.string :as str]
-            [honey.sql :as sql]
-            [java-time.api :as t]
-            [metabase.driver.clickhouse-nippy]
-            [metabase.driver.clickhouse-version :as clickhouse-version]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.legacy-mbql.util :as mbql.u]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x])
-  (:import [java.sql ResultSet ResultSetMetaData Types]
-           [java.time
-            LocalDate
-            LocalDateTime
-            LocalTime
-            OffsetDateTime
-            OffsetTime
-            ZonedDateTime]
-           java.util.Arrays))
+  (:require
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [java-time.api :as t]
+   [metabase.driver.clickhouse-nippy]
+   [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x])
+  (:import
+   [java.net Inet4Address Inet6Address]
+   [java.sql ResultSet ResultSetMetaData Types]
+   [java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime]
+   java.util.Arrays))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
@@ -56,10 +58,10 @@
   (when (and db-type (string? db-type))
     (let [db-type-lowercase (u/lower-case-en db-type)
           without-low-car   (if (str/starts-with? db-type-lowercase "lowcardinality(")
-                              (subs db-type-lowercase 15 (- (count db-type-lowercase) 1))
+                              (subs db-type-lowercase 15 (dec (count db-type-lowercase)))
                               db-type-lowercase)
           without-nullable  (if (str/starts-with? without-low-car "nullable(")
-                              (subs without-low-car 9 (- (count without-low-car) 1))
+                              (subs without-low-car 9 (dec (count without-low-car)))
                               without-low-car)]
       without-nullable)))
 
@@ -464,14 +466,13 @@
   (fn []
     (with-null-check rs (.getLong rs i))))
 
-(def ^:private utc-zone-id (java.time.ZoneId/of "UTC"))
 (defn- zdt-in-report-timezone
   [^ZonedDateTime zdt]
   (let [maybe-report-timezone (get-report-timezone-id-safely)]
     (if maybe-report-timezone
       (.withZoneSameInstant zdt (java.time.ZoneId/of maybe-report-timezone))
       (if (= (.getId (.getZone zdt)) "GMT0") ;; for test purposes only; GMT0 is a legacy tz
-        (.withZoneSameInstant zdt utc-zone-id)
+        (.withZoneSameInstant zdt (java.time.ZoneId/of "UTC"))
         zdt))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/DATE]
@@ -487,11 +488,11 @@
       (let [db-type (remove-low-cardinality-and-nullable (.getColumnTypeName rsmeta i))]
         (if (= db-type "datetime64(3, 'gmt0')")
               ;; a hack for some MB test assertions only; GMT0 is a legacy tz
-          (.toLocalDateTime  (zdt-in-report-timezone zdt))
+          (.toLocalDateTime ^ZonedDateTime (zdt-in-report-timezone zdt))
               ;; this is the normal behavior
           (.toOffsetDateTime (.withZoneSameInstant
-                              (zdt-in-report-timezone zdt)
-                              utc-zone-id)))))))
+                              ^ZonedDateTime (zdt-in-report-timezone zdt)
+                              (java.time.ZoneId/of "UTC"))))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -516,12 +517,12 @@
 
 (defn- ipv4-column->string
   [^ResultSet rs ^Integer i]
-  (when-let [inet-address (.getObject rs i java.net.Inet4Address)]
+  (when-let [^Inet4Address inet-address (.getObject rs i Inet4Address)]
     (.getHostAddress inet-address)))
 
 (defn- ipv6-column->string
   [^ResultSet rs ^Integer i]
-  (when-let [inet-address (.getObject rs i java.net.Inet6Address)]
+  (when-let [^Inet6Address inet-address (.getObject rs i Inet6Address)]
     (.getHostAddress inet-address)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/OTHER]
@@ -549,28 +550,28 @@
         ;; _
         :else (.getObject rs i)))))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalDate]
+(defmethod sql.qp/inline-value [:clickhouse LocalDate]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalTime]
+(defmethod sql.qp/inline-value [:clickhouse LocalTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse OffsetTime]
+(defmethod sql.qp/inline-value [:clickhouse OffsetTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
+(defmethod sql.qp/inline-value [:clickhouse LocalDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
+(defmethod sql.qp/inline-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
+(defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

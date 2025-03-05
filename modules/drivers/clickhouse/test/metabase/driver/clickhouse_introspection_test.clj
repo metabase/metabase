@@ -1,4 +1,4 @@
-(ns metabase.driver.clickhouse-introspection-test
+(ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
@@ -12,15 +12,13 @@
    [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(use-fixtures :once ctd/create-test-db!)
-
-(defn- desc-table
+(defn- desc-table!
   [table-name]
   (into #{} (map #(select-keys % [:name :database-type :base-type :database-required])
-                 (:fields (ctd/do-with-test-db
+                 (:fields (ctd/do-with-test-db!
                            #(driver/describe-table :clickhouse % {:name table-name}))))))
 
-(deftest ^:parallel clickhouse-base-types-test-enums
+(deftest clickhouse-base-types-test-enums
   (mt/test-driver
     :clickhouse
     (testing "enums"
@@ -49,9 +47,9 @@
                   :database-required false,
                   :database-type "Nullable(Enum16('SHOW DATABASES' = 0, 'SHOW TABLES' = 1, 'SHOW COLUMNS' = 2))",
                   :name "c6"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-dates
+(deftest clickhouse-base-types-test-dates
   (mt/test-driver
     :clickhouse
     (testing "dates"
@@ -72,9 +70,9 @@
                   :database-required false,
                   :database-type "Nullable(Date32)",
                   :name "c4"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-datetimes
+(deftest clickhouse-base-types-test-datetimes
   (mt/test-driver
     :clickhouse
     (testing "datetimes"
@@ -111,9 +109,9 @@
                   :database-required false,
                   :database-type "Nullable(DateTime)",
                   :name "c8"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-integers
+(deftest clickhouse-base-types-test-integers
   (mt/test-driver
     :clickhouse
     (testing "integers"
@@ -170,9 +168,9 @@
                   :database-required false,
                   :database-type "Nullable(Int32)",
                   :name "c13"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-numerics
+(deftest clickhouse-base-types-test-numerics
   (mt/test-driver
     :clickhouse
     (testing "numerics"
@@ -217,9 +215,9 @@
                   :database-required false,
                   :database-type "Nullable(Decimal(76, 42))",
                   :name "c10"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-strings
+(deftest clickhouse-base-types-test-strings
   (mt/test-driver
     :clickhouse
     (testing "strings"
@@ -244,9 +242,9 @@
                   :database-required true,
                   :database-type "LowCardinality(FixedString(4))",
                   :name "c5"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-arrays
+(deftest clickhouse-base-types-test-arrays
   (mt/test-driver
     :clickhouse
     (testing "arrays"
@@ -267,9 +265,9 @@
                   :database-required true,
                   :database-type "Array(Array(Array(String)))",
                   :name "c4"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-low-cardinality-nullable
+(deftest clickhouse-base-types-test-low-cardinality-nullable
   (mt/test-driver
     :clickhouse
     (testing "low cardinality nullable"
@@ -282,9 +280,9 @@
                   :database-required true,
                   :database-type "LowCardinality(Nullable(FixedString(16)))",
                   :name "c2"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
-(deftest ^:parallel clickhouse-base-types-test-misc
+(deftest clickhouse-base-types-test-misc
   (mt/test-driver
     :clickhouse
     (testing "everything else"
@@ -329,7 +327,7 @@
                   :database-required true,
                   :database-type "Tuple(String, Int32)",
                   :name "c10"}}
-               (desc-table table-name)))))))
+               (desc-table! table-name)))))))
 
 (deftest ^:parallel clickhouse-boolean-type-metadata
   (mt/test-driver
@@ -346,7 +344,7 @@
    :json-unfolding false
    :database-required true})
 
-(deftest ^:parallel clickhouse-filtered-aggregate-functions-test-table-metadata
+(deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver
     :clickhouse
     (is (= {:name "aggregate_functions_filter_test"
@@ -365,18 +363,18 @@
                               :database-type "SimpleAggregateFunction(sum, Int64)"
                               :base-type :type/BigInteger
                               :database-position 3})}}
-           (ctd/do-with-test-db
+           (ctd/do-with-test-db!
             (fn [db]
               (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"})))))))
 
-(deftest ^:parallel clickhouse-filtered-aggregate-functions-test-result-set
+(deftest clickhouse-filtered-aggregate-functions-test-result-set
   (mt/test-driver
     :clickhouse
     (is (= [[42 144 255255]]
            (qp.test/formatted-rows
             [int int int]
             :format-nil-values
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db]
                (data/with-db db
                  (data/run-mbql-query

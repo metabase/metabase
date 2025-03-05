@@ -1,13 +1,14 @@
 (ns metabase.driver.clickhouse-introspection
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.util :as u])
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.util :as u])
   (:import (java.sql DatabaseMetaData)))
 
 (set! *warn-on-reflection* true)
@@ -44,10 +45,10 @@
   (cond
     ;; LowCardinality
     (str/starts-with? db-type "lowcardinality")
-    (normalize-db-type (subs db-type 15 (- (count db-type) 1)))
+    (normalize-db-type (subs db-type 15 (dec (count db-type))))
     ;; Nullable
     (str/starts-with? db-type "nullable")
-    (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
+    (normalize-db-type (subs db-type 9 (dec (count db-type))))
     ;; for test purposes only: GMT0 is a legacy timezone;
     ;; it maps to LocalDateTime instead of OffsetDateTime
     ;; (= db-type "datetime64(3, 'gmt0')")
@@ -69,7 +70,7 @@
     :type/*
     ;; SimpleAggregateFunction
     (str/starts-with? db-type "simpleaggregatefunction")
-    (normalize-db-type (subs db-type (+ (str/index-of db-type ",") 2) (- (count db-type) 1)))
+    (normalize-db-type (subs db-type (+ (str/index-of db-type ",") 2) (dec (count db-type))))
     ;; _
     :else (or (database-type->base-type (keyword db-type)) :type/*)))
 

@@ -1,15 +1,16 @@
-(ns metabase.driver.clickhouse-data-types-test
+(ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [cljc.java-time.local-date :as local-date]
-            [cljc.java-time.local-date-time :as local-date-time]
-            [clojure.test :refer :all]
-            [metabase.query-processor.test-util :as qp.test]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.clickhouse :as ctd]
-            [metabase.test.data.interface :as tx]))
+  (:require
+   [cljc.java-time.local-date :as local-date]
+   [cljc.java-time.local-date-time :as local-date-time]
+   [clojure.test :refer :all]
+   [metabase.query-processor.test-util :as qp.test]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.clickhouse :as ctd]
+   [metabase.test.data.interface :as tx]))
 
-(use-fixtures :once ctd/create-test-db!)
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel clickhouse-decimals
   (mt/test-driver
@@ -264,7 +265,7 @@
           result (ctd/rows-without-index query-result)]
       (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-tuples
+(deftest clickhouse-array-of-tuples
   (mt/test-driver
     :clickhouse
     (is (= [["[[foobar, 1234], [qaz, 0]]"]
@@ -272,7 +273,7 @@
            (qp.test/formatted-rows
             [str]
             :format-nil-values
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db]
                (data/with-db db
                  (data/run-mbql-query
@@ -295,14 +296,14 @@
           result (ctd/rows-without-index query-result)]
       (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-inner-types
+(deftest clickhouse-array-inner-types
   (mt/test-driver
     :clickhouse
     (is (= [["[a, b, c]"
              "[null, d, e]"
              "[1.0000, 2.0000, 3.0000]"
              "[4.0000, null, 5.0000]"]]
-           (ctd/do-with-test-db
+           (ctd/do-with-test-db!
             (fn [db]
               (data/with-db db
                 (->> (data/run-mbql-query arrays_inner_types {})
@@ -336,7 +337,7 @@
                       :aggregation [:count]})
                    qp.test/first-row last)))))))
 
-(deftest ^:parallel clickhouse-non-latin-strings
+(deftest clickhouse-non-latin-strings
   (mt/test-driver
     :clickhouse
     (testing "basic filtering"
@@ -344,7 +345,7 @@
              (qp.test/formatted-rows
               [int str]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -355,7 +356,7 @@
              (qp.test/formatted-rows
               [int str]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -412,7 +413,7 @@
           result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
       (is (= [row2 row3] result)))))
 
-(deftest ^:parallel clickhouse-enums-values-test
+(deftest clickhouse-enums-values-test
   (mt/test-driver
     :clickhouse
     (testing "select enums values as strings"
@@ -422,7 +423,7 @@
              (qp.test/formatted-rows
               [str str str]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -433,7 +434,7 @@
              (qp.test/formatted-rows
               [str]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -444,14 +445,14 @@
                       :fields [[:expression "test"]]
                       :filter [:= $enum1 "foo"]}))))))))))
 
-(deftest ^:parallel clickhouse-ipv4query-test
+(deftest clickhouse-ipv4query-test
   (mt/test-driver
     :clickhouse
     (is (= [[1]]
            (qp.test/formatted-rows
             [int]
             :format-nil-values
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db]
                (data/with-db db
                  (data/run-mbql-query
@@ -459,7 +460,7 @@
                    {:filter [:= $ipvfour "127.0.0.1"]
                     :aggregation [[:count]]})))))))))
 
-(deftest ^:parallel clickhouse-ip-serialization-test
+(deftest clickhouse-ip-serialization-test
   (mt/test-driver
     :clickhouse
     (is (= [["127.0.0.1" "0:0:0:0:0:0:0:1"]
@@ -467,29 +468,29 @@
             [nil nil]]
            (qp.test/formatted-rows
             [str str]
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db] (data/with-db db (data/run-mbql-query ipaddress_test {})))))))))
 
 (defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
-(deftest ^:parallel clickhouse-simple-map-test
+(deftest clickhouse-simple-map-test
   (mt/test-driver
     :clickhouse
     (is (= [["{key1=1, key2=10}"] ["{key1=2, key2=20}"] ["{key1=3, key2=30}"]]
            (qp.test/formatted-rows
             [map-as-string]
             :format-nil-values
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db]
                (data/with-db db
                  (data/run-mbql-query
                    maps_test
                    {})))))))))
 
-(deftest ^:parallel clickhouse-datetime-diff-nullable
+(deftest clickhouse-datetime-diff-nullable
   (mt/test-driver
     :clickhouse
     (is (= [[170 202] [nil nil] [nil nil] [nil nil]]
-           (ctd/do-with-test-db
+           (ctd/do-with-test-db!
             (fn [db]
               (data/with-db db
                 (->> (data/run-mbql-query
@@ -503,7 +504,7 @@
 
 ;; Metabase has pretty extensive testing for sum-where and count-where
 ;; However, this ClickHouse-specific corner case is not covered
-(deftest ^:parallel clickhouse-sum-where-numeric-types
+(deftest clickhouse-sum-where-numeric-types
   (mt/test-driver
     :clickhouse
     (testing "int values (with matching rows)"
@@ -511,7 +512,7 @@
              (qp.test/formatted-rows
               [int]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -522,7 +523,7 @@
              (qp.test/formatted-rows
               [int]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -533,7 +534,7 @@
              (qp.test/formatted-rows
               [double]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
@@ -544,21 +545,21 @@
              (qp.test/formatted-rows
               [double]
               :format-nil-values
-              (ctd/do-with-test-db
+              (ctd/do-with-test-db!
                (fn [db]
                  (data/with-db db
                    (data/run-mbql-query
                      sum_if_test_float
                      {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
 
-(deftest ^:parallel clickhouse-unsigned-integers
+(deftest clickhouse-unsigned-integers
   (mt/test-driver
     :clickhouse
     (is (= [["255" "65535" "4294967295" "18446744073709551615"]]
            (qp.test/formatted-rows
             [str str str str]
             :format-nil-values
-            (ctd/do-with-test-db
+            (ctd/do-with-test-db!
              (fn [db]
                (data/with-db db
                  (data/run-mbql-query

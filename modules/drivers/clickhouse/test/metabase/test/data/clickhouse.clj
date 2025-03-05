@@ -26,6 +26,8 @@
    [metabase.util.malli :as mu]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-view-fields]
@@ -228,7 +230,7 @@
             (.setDefaultQuerySettings clickhouse-conn query-settings)
             (.execute jdbcStmt statement))))))))
 
-(defn do-with-test-db
+(defn do-with-test-db!
   "Execute a test function using the test dataset"
   [f]
   (t2.with-temp/with-temp
