@@ -117,7 +117,43 @@ jobs:
             const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
 
             const runLink = githubRunLink(
-              `:x: ${sdkVersion} release has failed`,
+              `:x: ${sdkVersion} Release has failed`,
+              context.runId,
+              context.repo.owner,
+              context.repo.repo,
+            );
+            sendSlackReply({
+              channelName: 'bot-testing',
+              message: runLink,
+              messageId: ${{ env.slackMessageId}},
+              broadcast: true
+            });
+
+  send-slack-notification-successful:
+    name: "Send Slack notification: SDK release successful"
+    needs: ["determine-sdk-version", "send-slack-notification-start"]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
+    steps:
+      - name: Retrieve build scripts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-scripts
+          path: release/dist/
+
+      - name: Send build successful message
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { githubRunLink, sendSlackReply } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+
+            const runLink = githubRunLink(
+              `:partydeploy: ${sdkVersion} Release is complete :partydeploy:`,
               context.runId,
               context.repo.owner,
               context.repo.repo,
