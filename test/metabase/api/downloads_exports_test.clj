@@ -752,8 +752,8 @@
                                                 {:format_rows   false
                                                  :pivot_results true})
                           csv/read-csv)]
-          (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
-                  ["Grand totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
+          (is (= [["Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
+                  ["2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                  result)))))))
 
 (deftest ^:parallel zero-column-multiple-measures-pivot-tables-test
@@ -1357,22 +1357,22 @@
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
         (let [expected-header   ["Created At: Year" "Category" "Count" "Min of Created At: Year"]
               formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
-          (def formatted-results formatted-results)
           (is (= {:unsaved-card-download    expected-header
                   :card-download            expected-header
                   :public-question-download expected-header
                   :dashcard-download        expected-header
                   :public-dashcard-download expected-header}
                  (update-vals formatted-results first))))
-        #_(testing "The column title changes are used when format-rows is true"
-            (let [expected-header   ["Created At: Year" "Category" "Count Renamed" "Min of Created At: Year"]
-                  formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
-              (is (= {:unsaved-card-download    expected-header
-                      :card-download            expected-header
-                      :public-question-download expected-header
-                      :dashcard-download        expected-header
-                      :public-dashcard-download expected-header}
-                     (update-vals formatted-results first)))))))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header   ["Created At: Year" "Category" "Count Renamed" "Min of Created At: Year"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (def res2 (update-vals formatted-results first))
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))
 
 (defn- pivot-card-with-scalar [scalar]
   {:display                :pivot
