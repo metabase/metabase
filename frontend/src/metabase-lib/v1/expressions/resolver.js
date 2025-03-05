@@ -99,7 +99,8 @@ export function resolve({
           Array.isArray(dimension) &&
           dimension[2]?.["base-type"] === "type/Boolean"
         ) {
-          return dimension;
+          // wrap it in [X] = True
+          return ["=", dimension, true];
         }
       } catch (err) {
         // noop
