@@ -12,7 +12,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs trsn]])
+   [metabase.util.i18n :refer [trs]])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
