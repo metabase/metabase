@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -98,13 +99,16 @@
   (str s))
 
 (defmethod lib.metadata.calculation/display-name-method :expression
-  [_query _stage-number [_expression {:keys [temporal-unit] :as _opts} expression-name] _style]
+  [_query _stage-number [_expression {:keys [temporal-unit binning] :as opts} expression-name] _style]
   (letfn [(temporal-format [display-name]
             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
                                                        (str/replace \- \space)
-                                                       u/capitalize-en)))]
+                                                       u/capitalize-en)))
+          (bin-format [display-name]
+            (lib.binning/ensure-ends-with-binning display-name binning (:semantic-type opts)))]
     (cond-> expression-name
-      temporal-unit temporal-format)))
+      temporal-unit temporal-format
+      binning bin-format)))
 
 (defmethod lib.metadata.calculation/column-name-method :expression
   [_query _stage-number [_expression _opts expression-name]]
@@ -215,6 +219,15 @@
 (defmethod lib.temporal-bucket/temporal-bucket-method :expression
   [[_expression {:keys [temporal-unit]} _expr-name]]
   temporal-unit)
+
+(defmethod lib.binning/binning-method :expression
+  [field-clause]
+  (some-> field-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (lib.metadata.calculation/metadata query stage-number field-clause)))))
 
 #_(defn- conflicting-name? [query stage-number expression-name]
     (let [stage     (lib.util/query-stage query stage-number)
