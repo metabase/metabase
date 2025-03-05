@@ -18,7 +18,7 @@ import {
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
-import type { ErrorWithMessage } from "./types";
+import type { ErrorWithMessage, StartRule } from "./types";
 import { isErrorWithMessage } from "./utils";
 
 export type CompileResult =
@@ -39,7 +39,7 @@ export function compileExpression({
   resolve: shouldResolve = true,
 }: {
   source: string;
-  startRule: string;
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
   database?: Database | null;
