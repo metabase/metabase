@@ -4,6 +4,7 @@ import type {
   ColumnSizingState,
   HeaderContext,
   RowData,
+  SortingState,
   Table,
 } from "@tanstack/react-table";
 import type React from "react";
@@ -140,6 +141,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
+
+  /** Array of column sorting options */
+  sorting?: SortingState;
 
   /** Default row height in pixels */
   defaultRowHeight?: number;

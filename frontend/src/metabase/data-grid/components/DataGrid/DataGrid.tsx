@@ -117,9 +117,10 @@ export const DataGrid = function DataGrid<TData>({
             role="grid"
             ref={gridRef}
             style={{
-              paddingRight: isAddColumnButtonSticky
-                ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-                : 0,
+              paddingRight:
+                hasAddColumnButton && isAddColumnButtonSticky
+                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                  : 0,
             }}
             onScroll={onScroll}
           >

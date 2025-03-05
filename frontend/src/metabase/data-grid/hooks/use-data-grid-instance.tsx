@@ -2,6 +2,7 @@ import {
   type ColumnSizingState,
   getCoreRowModel,
   useReactTable,
+  getSortedRowModel,
 } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +37,7 @@ export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
+  sorting,
   defaultRowHeight = 36,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
@@ -151,8 +153,10 @@ export const useDataGridInstance = <TData, TValue>({
       columnSizing: columnSizingMap,
       columnOrder,
       columnPinning: { left: [ROW_ID_COLUMN_ID] },
+      sorting,
     },
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,

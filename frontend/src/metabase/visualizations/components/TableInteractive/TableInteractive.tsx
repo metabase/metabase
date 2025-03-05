@@ -1,4 +1,8 @@
-import type { CellContext, ColumnSizingState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnSizingState,
+  SortingState,
+} from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 import {
@@ -8,6 +12,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -135,9 +140,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
-    getColumnSortDirection,
+    getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    isDashboard,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -146,11 +152,28 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const queryBuilderMode = useSelector(getQueryBuilderMode);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const isRawTable = useSelector(getIsShowingRawTable);
+  const isClientSideSortingEnabled = isDashboard;
   const scrollToLastColumn = useSelector(
     state => getUiControls(state).scrollToLastColumn,
   );
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const { rows, cols } = data;
+
+  const getColumnSortDirection = useMemo(() => {
+    if (!isClientSideSortingEnabled) {
+      return getServerColumnSortDirection;
+    }
+
+    return (columnIndex: number) => {
+      const col = cols[columnIndex];
+      const sortingState = sorting.find(sort => sort.id === col.name);
+      if (!sortingState) {
+        return undefined;
+      }
+      return sortingState.desc ? "desc" : "asc";
+    };
+  }, [sorting, cols, isClientSideSortingEnabled, getServerColumnSortDirection]);
 
   const columnOrder = useMemo(() => {
     return getColumnOrder(cols, settings["table.row_index"]);
@@ -260,7 +283,29 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
       columnId?: string,
     ) => {
-      if (!columnId) {
+      if (columnId == null) {
+        return;
+      }
+
+      if (isClientSideSortingEnabled) {
+        const currentSorting = sorting.find(
+          columnSorting => columnSorting.id === columnId,
+        );
+
+        if (currentSorting == null) {
+          setSorting(prev => [...prev, { id: columnId, desc: true }]);
+        } else if (currentSorting.desc) {
+          setSorting(prev =>
+            prev.map(sorting => {
+              if (sorting.id === columnId) {
+                return { ...sorting, desc: false };
+              }
+              return sorting;
+            }),
+          );
+        } else {
+          setSorting(prev => prev.filter(sorting => sorting.id !== columnId));
+        }
         return;
       }
 
@@ -275,7 +320,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const clicked = getTableHeaderClickedObject(data, columnIndex, isPivoted);
       onVisualizationClick({ ...clicked, element: event.currentTarget });
     },
-    [data, isPivoted, onVisualizationClick],
+    [
+      data,
+      isPivoted,
+      onVisualizationClick,
+      sorting,
+      isClientSideSortingEnabled,
+    ],
   );
 
   const handleColumnReordering = useCallback(
@@ -360,7 +411,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const wrap = Boolean(columnSettings["text_wrapping"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
-      const headerVariant = mode != null ? "light" : "outline";
+      const headerVariant = mode != null || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
         (value: RowValue, rowIndex: number) =>
           settings["table._cell_background_getter"]?.(
@@ -469,6 +520,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     rows,
     settings,
     tableTheme,
+    isDashboard,
   ]);
 
   const handleColumnResize = useCallback(
@@ -482,6 +534,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
+    if (isDashboard) {
+      return undefined;
+    }
     const getBackgroundColor = memoize((rowIndex: number) =>
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
@@ -503,7 +558,14 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
       getBackgroundColor,
     };
-  }, [cols, isEmbeddingSdk, isPivoted, queryBuilderMode, settings]);
+  }, [
+    cols,
+    isEmbeddingSdk,
+    isPivoted,
+    queryBuilderMode,
+    settings,
+    isDashboard,
+  ]);
 
   const dataGridTheme: DataGridTheme = useMemo(() => {
     return {
@@ -528,6 +590,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     theme: dataGridTheme,
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
+    sorting,
   });
   const { measureColumnWidths, virtualGrid } = tableProps;
 
