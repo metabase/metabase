@@ -62,7 +62,7 @@
   issues when syncing."
   1234)
 
-(mu/defn- fingerprint-table!
+(mu/defn- fingerprint-fields!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
@@ -194,8 +194,7 @@
   (seq (t2/select :model/Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
-;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
-(mu/defn fingerprint-fields!
+(mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
@@ -203,7 +202,7 @@
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
       (let [stats (sync-util/with-error-handling
                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                    (fingerprint-table! table fields))]
+                    (fingerprint-fields! table fields))]
         (if (instance? Exception stats)
           (assoc (empty-stats-map 0)
                  :throwable stats)
@@ -214,7 +213,7 @@
   [:=> [:cat :string [:schema i/TableInstance]] :any])
 
 (mu/defn- fingerprint-fields-for-db!*
-  "Invokes `fingerprint-fields!` on every table in `database`"
+  "Invokes `fingerprint-table!` on every table in `database`"
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
@@ -228,7 +227,7 @@
                     (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [new-acc (merge-with + acc (fingerprint-fields! table))]
+                 (let [new-acc (merge-with + acc (fingerprint-table! table))]
                    (if (and (continue? new-acc) (not (sync-util/abandon-sync? new-acc)))
                      new-acc
                      (reduced new-acc))))
@@ -236,7 +235,7 @@
                tables)))))
 
 (mu/defn fingerprint-fields-for-db!
-  "Invokes [[fingerprint-fields!]] on every table in `database`"
+  "Invokes [[fingerprint-table!]] on every table in `database`"
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
@@ -262,4 +261,4 @@
   "Refingerprint a field"
   [field :- i/FieldInstance]
   (let [table (field/table field)]
-    (fingerprint-table! table [field])))
+    (fingerprint-fields! table [field])))

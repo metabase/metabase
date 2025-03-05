@@ -153,7 +153,7 @@
                     sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
-          [(sync.fingerprint/fingerprint-fields! table)
+          [(sync.fingerprint/fingerprint-table! table)
            @fingerprinted?])))))
 
 (def ^:private default-stat-map
@@ -162,14 +162,14 @@
 (def ^:private one-updated-map
   (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
 
-(deftest  fingerprint-fields!-test
+(deftest  fingerprint-table!-test
   (testing "field is a substype of newer fingerprint version"
     (is (= [one-updated-map true]
            (field-was-fingerprinted?!
             {2 #{:type/Float}}
             {:base_type :type/Decimal, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-2
+(deftest fingerprint-table!-test-2
   (testing "field is a substype of newer fingerprint version, but it is a subtype of :type/Structured"
     (doseq [base-type (descendants :type/Structured)]
       (is (= [default-stat-map false]
@@ -177,49 +177,49 @@
               {2 #{:type/Structured}}
               {:base_type base-type, :fingerprint_version 1}))))))
 
-(deftest fingerprint-fields!-test-3
+(deftest fingerprint-table!-test-3
   (testing "field is *not* a subtype of newer fingerprint version"
     (is (= [default-stat-map false]
            (field-was-fingerprinted?!
             {2 #{:type/Text}}
             {:base_type :type/Decimal, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-4
+(deftest fingerprint-table!-test-4
   (testing "Field is a subtype of one of several types for newer fingerprint version"
     (is (= [one-updated-map true]
            (field-was-fingerprinted?!
             {2 #{:type/Float :type/Text}}
             {:base_type :type/Decimal, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-5
+(deftest fingerprint-table!-test-5
   (testing "Field has same version as latest fingerprint version"
     (is (= [default-stat-map false]
            (field-was-fingerprinted?!
             {1 #{:type/Float}}
             {:base_type :type/Decimal, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-6
+(deftest fingerprint-table!-test-6
   (testing "field has newer version than latest fingerprint version (should never happen)"
     (is (= [default-stat-map false]
            (field-was-fingerprinted?!
             {1 #{:type/Float}}
             {:base_type :type/Decimal, :fingerprint_version 2})))))
 
-(deftest fingerprint-fields!-test-7
+(deftest fingerprint-table!-test-7
   (testing "field has same exact type as newer fingerprint version"
     (is (= [one-updated-map true]
            (field-was-fingerprinted?!
             {2 #{:type/Float}}
             {:base_type :type/Float, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-8
+(deftest fingerprint-table!-test-8
   (testing "field is parent type of newer fingerprint version type"
     (is (= [default-stat-map false]
            (field-was-fingerprinted?!
             {2 #{:type/Decimal}}
             {:base_type :type/Float, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-9
+(deftest fingerprint-table!-test-9
   (testing "several new fingerprint versions exist"
     (is (= [one-updated-map true]
            (field-was-fingerprinted?!
@@ -227,21 +227,21 @@
              3 #{:type/Text}}
             {:base_type :type/Decimal, :fingerprint_version 1})))))
 
-(deftest fingerprint-fields!-test-10
+(deftest fingerprint-table!-test-10
   (is (= [one-updated-map true]
          (field-was-fingerprinted?!
           {2 #{:type/Text}
            3 #{:type/Float}}
           {:base_type :type/Decimal, :fingerprint_version 1}))))
 
-(deftest fingerprint-fields!-test-11
+(deftest fingerprint-table!-test-11
   (testing "field is sensitive"
     (is (= [default-stat-map false]
            (field-was-fingerprinted?!
             {1 #{:type/Text}}
             {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive})))))
 
-(deftest fingerprint-fields!-test-12
+(deftest fingerprint-table!-test-12
   (testing "field is refingerprinted"
     (testing "not fingerprinted because fingerprint version is up to date"
       (is (= [default-stat-map false]
@@ -249,7 +249,7 @@
               {1 #{:type/Text}}
               {:base_type :type/Text, :fingerprint_version 1}))))))
 
-(deftest fingerprint-fields!-test-13
+(deftest fingerprint-table!-test-13
   (testing "field is refingerprinted"
     (testing "not fingerprinted because fingerprint version is up to date"
       (is (= [default-stat-map false]
@@ -257,7 +257,7 @@
               {1 #{:type/Text}}
               {:base_type :type/Text, :fingerprint_version 1}))))))
 
-(deftest fingerprint-table!-test
+(deftest fingerprint-fields!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"
     (mt/with-temp [:model/Field field {:base_type           :type/Integer
                                        :table_id            (data/id :venues)
@@ -272,7 +272,7 @@
                   :failed-fingerprints    0
                   :updated-fingerprints   1
                   :fingerprints-attempted 1}
-                 (#'sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)) [field])))
+                 (#'sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues)) [field])))
           (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                   :fingerprint_version 3
                   :last_analyzed       nil}
@@ -280,15 +280,15 @@
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
-    (with-redefs [sync.fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
+    (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw (Exception. "expected")))]
       (is (= (sync.fingerprint/empty-stats-map 0)
-             (sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues))))))))
+             (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
-        (sync.fingerprint/fingerprint-fields! (t2/select-one :model/Table :id (data/id :venues)))
+        (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)))
         (is (=? {:global {:distinct-count 100
                           :nil%           0.0}
                  :type   {:type/Text {:percent-json   0.0
@@ -305,7 +305,7 @@
             field (t2/select-one :model/Field :id (mt/id :categories :name))]
         (binding [sync.fingerprint/*truncation-size* size]
           (is (=? {:updated-fingerprints 1}
-                  (#'sync.fingerprint/fingerprint-table! table [field])))
+                  (#'sync.fingerprint/fingerprint-fields! table [field])))
           (let [field' (t2/select-one [:model/Field :fingerprint] :id (u/id field))
                 fingerprinted-size (get-in field' [:fingerprint :type :type/Text :average-length])]
             (is fingerprinted-size)
