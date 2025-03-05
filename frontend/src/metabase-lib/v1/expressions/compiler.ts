@@ -11,7 +11,6 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
-  useShorthands,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
@@ -54,7 +53,6 @@ export function compileExpression({
 
   const passes = [
     adjustOptions,
-    useShorthands,
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
@@ -66,13 +64,14 @@ export function compileExpression({
       stageIndex,
       startRule,
     });
-    passes.push(expression =>
-      resolve({
-        expression,
-        type: startRule,
-        fn: resolveMBQLField,
-        database,
-      }),
+    passes.push(
+      (expression: Expression): Expression =>
+        resolve({
+          expression,
+          type: startRule,
+          fn: resolveMBQLField,
+          database,
+        }),
     );
   }
 
