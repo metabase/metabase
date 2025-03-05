@@ -29,7 +29,7 @@ import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 import Styles from "./VisualizationCanvas.module.css";
 
-export function VisualizationCanvas() {
+export function VisualizationCanvas({ className }: { className?: string }) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
 
   const display = useSelector(getVisualizationType);
@@ -40,7 +40,7 @@ export function VisualizationCanvas() {
 
   if (!display && !isLoading) {
     return (
-      <Center h="100%" w="100%" mx="auto">
+      <Center h="100%" w="100%" mx="auto" className={className}>
         <StartFromViz />
       </Center>
     );
@@ -48,7 +48,7 @@ export function VisualizationCanvas() {
 
   if (!display || rawSeries.length === 0) {
     return (
-      <Center h="100%" w="100%" mx="auto">
+      <Center h="100%" w="100%" mx="auto" className={className}>
         {isLoading ? (
           <Loader size="lg" />
         ) : (
@@ -60,7 +60,7 @@ export function VisualizationCanvas() {
 
   return (
     <>
-      <Box className={Styles.Container} ref={setNodeRef}>
+      <Box className={`${Styles.Container} ${className}`} ref={setNodeRef}>
         <Box style={{ gridArea: "left" }}>
           <VerticalWell display={display} />
         </Box>

@@ -34,6 +34,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
+  className,
   ...stackProps
 }: BaseChartSettingsProps) => {
   const {
@@ -194,7 +195,7 @@ export const BaseChartSettings = ({
         data-testid="chartsettings-sidebar"
         h="100%"
         gap={0}
-        className={CS.overflowHidden}
+        className={`${CS.overflowHidden} ${className}`}
         {...stackProps}
       >
         {showSectionPicker && (
