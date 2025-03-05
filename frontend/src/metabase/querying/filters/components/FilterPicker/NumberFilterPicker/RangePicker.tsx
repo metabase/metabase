@@ -1,3 +1,4 @@
+import { RangeSlider } from "@mantine/core";
 import { useMemo } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -9,7 +10,6 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, RawSeries } from "metabase-types/api";
-import { RangeSlider } from "@mantine/core";
 
 interface Props {
   query: Lib.Query;
@@ -83,14 +83,8 @@ export const RangePicker = ({
 
   const value =
     values.length === 2 && values[0] != null && values[1] != null
-      ? values
+      ? [formatNumber(values[0]), formatNumber(values[1])]
       : [min, max];
-  console.log({
-    min,
-    max,
-    minRange,
-    value,
-  });
 
   return (
     <Box h={75} pt="0.5rem">
@@ -114,24 +108,24 @@ export const RangePicker = ({
       {data && (
         <Box px="1rem" pos="relative" top="-1rem">
           <RangeSlider
-            minRange={isNumber(minRange) ? minRange : undefined}
-            min={isNumber(min) ? min : undefined}
-            max={isNumber(max) ? max : undefined}
-            step={minRange}
+            minRange={isNumber(minRange) ? formatNumber(minRange) : undefined}
+            min={isNumber(min) ? formatNumber(min) : undefined}
+            max={isNumber(max) ? formatNumber(max) : undefined}
+            step={isNumber(minRange) ? formatNumber(minRange) : undefined}
             label={null}
             value={
-              isNumber(value[1]) && isNumber(value[0]) ? value : [min, max]
+              isNumber(value[1]) && isNumber(value[0])
+                ? value.map(formatNumber)
+                : [min, max]
             }
             styles={{
               track: {
                 background: "#EDF2F5",
               },
             }}
-            onChange={a => {
-              debugger;
-              return onChange(a);
+            onChange={values => {
+              onChange(values.map(formatNumber));
             }}
-            // defaultValue={[undefined, undefined]}
           />
         </Box>
       )}
@@ -171,4 +165,14 @@ function getDistributionQuery(
 
 function isNumber(num: unknown): num is number {
   return typeof num === "number" && Number.isFinite(num) && !Number.isNaN(num);
+}
+
+function formatNumber(value: NumberOrEmptyValue): number {
+  if (value == null) {
+    return 0;
+  }
+  if (typeof value === "bigint") {
+    throw new Error("Bigint not supported");
+  }
+  return parseFloat(value.toFixed(2));
 }
