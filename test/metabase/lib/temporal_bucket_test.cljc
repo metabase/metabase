@@ -51,7 +51,7 @@
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-relative-datetime n :century))
       -2 "starting 2 unknown units ago"
-      -1 "starting 1 unknown units ago"
+      -1 "starting 1 unknown unit ago"
       0  "starting now"
       1  "starting 1 unknown unit from now"
       2  "starting 2 unknown units from now")))
