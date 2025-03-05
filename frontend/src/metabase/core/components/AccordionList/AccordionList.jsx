@@ -46,6 +46,10 @@ export default class AccordionList extends Component {
     });
 
     this.listRootRef = createRef();
+
+    // We can pass elementRef to List, which is then passed to Grid, which is then attached to the scrolling container.
+    // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/List/List.js#L195-L196
+    // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/Grid/Grid.js#L225-L226
     this.scrollingContainerRef = createRef();
   }
 
@@ -694,6 +698,7 @@ export default class AccordionList extends Component {
       <List
         id={id}
         ref={list => (this._list = list)}
+        elementRef={this.scrollingContainerRef}
         className={className}
         style={{ ...defaultListStyle, ...style }}
         containerStyle={{ pointerEvents: "auto" }}
@@ -711,9 +716,6 @@ export default class AccordionList extends Component {
         containerProps={{
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,
-
-          // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/Grid/Grid.js#L225-L226
-          elementRef: this.scrollingContainerRef,
         }}
         rowRenderer={({ key, index, parent, style }) => {
           return (
