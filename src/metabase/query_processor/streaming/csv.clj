@@ -99,7 +99,6 @@
                             row)
               {:keys [pivot-grouping-key]} @pivot-data
               group                    (get ordered-row pivot-grouping-key)]
-          (def pivot-grouping-key pivot-grouping-key)
           (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
             (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
             (if group
