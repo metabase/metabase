@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import [com.mchange.v2.resourcepool CannotAcquireResourceException]))
 
@@ -339,5 +340,5 @@
                       sync.fingerprint/*refingerprint?* true]
           (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
                          :throwable #(instance? CannotAcquireResourceException %))
-                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) println)))
+                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (fn [_ _] (log/debug _)))))
           (is (= 1 @tables-fingerprinted)))))))
