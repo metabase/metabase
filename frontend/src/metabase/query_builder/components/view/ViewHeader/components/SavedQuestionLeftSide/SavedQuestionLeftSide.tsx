@@ -69,6 +69,7 @@ export function SavedQuestionLeftSide({
     >
       <Flex align="center" wrap="nowrap">
         <Box
+          maw="100%"
           className={cx(ViewTitleHeaderS.SavedQuestionHeaderButtonContainer, {
             [ViewTitleHeaderS.isModelOrMetric]: isModelOrMetric,
           })}
