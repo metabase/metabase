@@ -355,3 +355,29 @@ describe("issue 53170", () => {
     },
   );
 });
+
+describe("issue 52872", () => {
+  const questionName = "A".repeat(254);
+  const questionDetails = {
+    name: questionName,
+    query: {
+      "source-table": ORDERS_ID,
+      limit: 1,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should correctly wrap long question names in the query builder (metabase#52872)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .then($button => {
+        const buttonRight = $button[0].getBoundingClientRect().right;
+        cy.window().its("innerWidth").should("be.gt", buttonRight);
+      });
+  });
+});

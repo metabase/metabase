@@ -37,6 +37,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
         visibility: hidden;
         white-space: pre-wrap;
         word-wrap: break-word;
+        overflow-wrap: anywhere;
       }
     `}
 `;
