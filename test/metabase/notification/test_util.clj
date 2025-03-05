@@ -7,7 +7,6 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
-   [metabase.integrations.slack :as slack]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -187,8 +186,7 @@
                                                                  email-smtp-port 587
                                                                  site-url        "https://testmb.com/"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
-                                (thunk)))})
+   :channel/slack (fn [thunk] (thunk))})
 
 (defn apply-channel-fixtures
   [channel-types thunk]

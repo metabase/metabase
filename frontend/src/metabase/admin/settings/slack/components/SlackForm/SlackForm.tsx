@@ -10,14 +10,8 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { SlackSettings } from "metabase-types/api";
 
-import { SlackFormMessage } from "./SlackForm.styled";
-
 const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string().ensure().required(Errors.required),
-  "slack-files-channel": Yup.string()
-    .ensure()
-    .required(Errors.required)
-    .lowercase(),
   "slack-bug-report-channel": Yup.string()
     .nullable()
     .default(null)
@@ -56,18 +50,6 @@ const SlackForm = ({
           placeholder="xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"
           readOnly={isReadOnly}
         />
-        {!isReadOnly && (
-          <SlackFormMessage>
-            {SLACK_CHANNEL_PROMPT} {SLACK_CHANNEL_DESCRIPTION}
-          </SlackFormMessage>
-        )}
-        <FormInput
-          name="slack-files-channel"
-          title={t`Public channel to store image files`}
-          description={isReadOnly ? SLACK_CHANNEL_DESCRIPTION : undefined}
-          placeholder="metabase_files"
-          readOnly={isReadOnly}
-        />
         {isBugReportingEnabled && (
           <FormInput
             name="slack-bug-report-channel"
@@ -88,8 +70,6 @@ const SlackForm = ({
   );
 };
 
-const SLACK_CHANNEL_PROMPT = t`Finally, open Slack, create a public channel and enter its name below.`;
-const SLACK_CHANNEL_DESCRIPTION = t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`;
 const SLACK_BUG_REPORT_DESCRIPTION = t`This channel will receive bug reports submitted by users.`;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
