@@ -1211,3 +1211,126 @@ describe("scenarios > question > custom column > help text", () => {
       .should("contain", "round([Temperature])");
   });
 });
+
+describe("scenarios > question > custom column > top level literal values", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.visitQuestionAdhoc(
+      {
+        dataset_query: {
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 1,
+            fields: [["field", ORDERS.ID, null]],
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      {
+        mode: "notebook",
+      },
+    );
+  });
+
+  const EXPRESSION_NAME = "Literal";
+
+  it("should accept boolean true", () => {
+    enterExpression("true");
+    verifyExpression("True");
+    verifyCellContent("true");
+  });
+
+  it("should accept boolean false", () => {
+    enterExpression("fAlSE");
+
+    verifyExpression("False");
+    verifyCellContent("false");
+  });
+
+  it("should accept literal string", () => {
+    const EXPRESSION = '"foo"';
+
+    enterExpression(EXPRESSION);
+    verifyExpression(EXPRESSION);
+
+    H.visualize();
+    verifyCellContent("foo");
+  });
+
+  it("should accept empty string", () => {
+    const EXPRESSION = '""';
+
+    enterExpression(EXPRESSION);
+
+    verifyExpression(EXPRESSION);
+    verifyCellContent("");
+  });
+
+  it("should accept literal number", () => {
+    const EXPRESSION = "1234";
+
+    enterExpression(EXPRESSION);
+
+    verifyExpression(EXPRESSION);
+    verifyCellContent("1,234");
+  });
+
+  it("should accept literal zero", () => {
+    const EXPRESSION = "0";
+
+    enterExpression(EXPRESSION);
+
+    verifyExpression(EXPRESSION);
+    verifyCellContent("0");
+  });
+
+  it("should accept literal zero", () => {
+    const EXPRESSION = "0";
+
+    enterExpression(EXPRESSION);
+    verifyExpression(EXPRESSION);
+    verifyCellContent("0");
+  });
+
+  it("should accept negative zero", () => {
+    enterExpression("-0");
+    verifyExpression("0");
+    verifyCellContent("0");
+  });
+
+  it("should accept negative zero", () => {
+    enterExpression("-0");
+    verifyExpression("0");
+    verifyCellContent("0");
+  });
+
+  it("should accept MAX_SAFE_INTEGER", () => {
+    const number = Number.MAX_SAFE_INTEGER;
+    const EXPRESSION = number.toString();
+    enterExpression(EXPRESSION);
+    verifyExpression(EXPRESSION);
+    verifyCellContent(Number.MAX_SAFE_INTEGER.toLocaleString());
+  });
+
+  function enterExpression(expression) {
+    cy.icon("add_data").click();
+    H.enterCustomColumnDetails({ formula: expression, name: EXPRESSION_NAME });
+    H.expressionEditorWidget().button("Done").click();
+  }
+
+  function verifyExpression(expression) {
+    cy.findByText(EXPRESSION_NAME).click();
+    H.CustomExpressionEditor.value().should("equal", expression);
+    H.expressionEditorWidget().button("Update").click();
+  }
+
+  function verifyCellContent(value) {
+    H.visualize();
+    cy.findAllByRole("gridcell")
+      .eq(1)
+      .should("be.visible")
+      .should("have.text", value);
+  }
+});
