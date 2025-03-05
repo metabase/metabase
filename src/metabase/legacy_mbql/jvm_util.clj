@@ -83,12 +83,12 @@
   #"(?<=@|//|\.|^)(?!www\.)(?![^\.:/?#]+\.(?:[^\.:/?#]{1,3}\.)?[^\.:/?#]+(?:[:/?#].*)?$)[^\.:/?#]+(?=\.)")
 
 (def ^:private path-regex
-  ;; this regex is just a hack. It's actually really hard to just match the path.
+  ;; this regex is just a hack. It's actually really hard to just match the path with a regex.
   ;; This will match
   ;; google.com/
   ;; google.com/abc
   ;; google.com/abc?hjfds
-  #"(?<=\.com)/[^?#]*")
+  #"(?<=\.[^/]{1,10})/[^#?]*")
 
 (defn desugar-host-and-domain
   "Unwrap host and domain."
@@ -104,6 +104,6 @@
     [:url-part column "domain"]
     (recur [:regex-match-first column (str domain-regex)])
     [:url-part column "path"]
-    (recur [:regex-match-first column (str domain-regex)])
+    (recur [:regex-match-first column (str path-regex)])
     [:url-part column "host"]
     (recur [:regex-match-first column (str host-regex)])))
