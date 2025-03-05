@@ -12,15 +12,22 @@ const getHost = (port = null) =>
 
 const getSampleAppE2eConfig = suite => ({
   [suite]: async () => {
-    const { appName, subAppName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
+    const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
     const { CLIENT_PORT } = env;
+
+    process.env = {
+      ...process.env,
+      ...env,
+    };
 
     const defaultConfig = {
       browser: "chrome",
-      project: ["e2e/tmp", appName, subAppName].join("/"),
+      project: ["e2e/tmp", appName].join("/"),
       configFile: "e2e/support/cypress.config.js",
       config: {
-        baseUrl: getHost(CLIENT_PORT),
+        // If the `CLIENT_PORT` is not set, it means we have multiple apps running on different ports,
+        // so we control the `baseUrl` based on other `env` variables.
+        baseUrl: CLIENT_PORT ? getHost(CLIENT_PORT) : "",
       },
       testingType: "e2e",
       openMode: args["--open"] || process.env.OPEN_UI === "true",
@@ -50,12 +57,7 @@ const configs = {
     return finalConfig;
   },
   ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
-  ...getSampleAppE2eConfig(
-    "metabase-nextjs-sdk-embedding-sample-app-router-e2e",
-  ),
-  ...getSampleAppE2eConfig(
-    "metabase-nextjs-sdk-embedding-sample-pages-router-e2e",
-  ),
+  ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("shoppy-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
