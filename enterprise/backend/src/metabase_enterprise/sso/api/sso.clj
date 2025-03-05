@@ -16,7 +16,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [saml20-clj.core :as saml]
-   [saml20-clj.encode-decode :as encode-decode]
    [stencil.core :as stencil]
    [toucan2.core :as t2]))
 

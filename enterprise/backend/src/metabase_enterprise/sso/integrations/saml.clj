@@ -29,7 +29,6 @@
 
   5. Metabase checks for successful LogoutResponse, clears the user's session, and responds to the client with a redirect to the home page."
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -49,9 +48,7 @@
    [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Base64)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
