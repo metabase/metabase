@@ -535,9 +535,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
-    if (isDashboard) {
-      return undefined;
-    }
     const getBackgroundColor = memoize((rowIndex: number) =>
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
@@ -553,6 +550,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       settings["table.row_index"] && !isNotebookPreview && !isModelEditor;
     if (!hasObjectDetail && !shouldShowRowIndex) {
       return undefined;
+    }
+
+    if (isDashboard && shouldShowRowIndex) {
+      return {
+        variant: "index",
+        getBackgroundColor,
+      };
     }
 
     return {

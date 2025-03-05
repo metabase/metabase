@@ -14,10 +14,6 @@
   display: block;
 }
 
-.root:hover > .rowNumber {
-  display: none;
-}
-
 .expandButton {
   display: none;
   flex-shrink: 0;

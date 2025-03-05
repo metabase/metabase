@@ -179,7 +179,7 @@ export interface DataGridOptions<TData = any, TValue = any> {
 export type CellAlign = "left" | "middle" | "right";
 export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
-export type RowIdVariant = "indexExpand" | "expandButton";
+export type RowIdVariant = "indexExpand" | "expandButton" | "index";
 
 export type CellFormatter<TValue> = (
   value: TValue,
