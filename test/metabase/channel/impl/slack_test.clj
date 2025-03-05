@@ -28,11 +28,11 @@
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
                              (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:blocks [{:type "section"
-                           :text {:type "mrkdwn", :text "<a.com|a>"}}
+                           :text {:type "mrkdwn", :text "<a.com|a>", :verbatim true}}
                           {:type "image"
                            :alt_text "a",
                            :slack_file {:id "ID_a.png"}}]}
-                {:blocks [{:type "section" :text {:type "mrkdwn", :text "<b.com|b>"}}
+                {:blocks [{:type "section" :text {:type "mrkdwn", :text "<b.com|b>", :verbatim true}}
                           {:type "image"
                            :alt_text "b",
                            :slack_file {:id "ID_b.png"}}]}]
@@ -55,12 +55,12 @@
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
                              (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:blocks [{:type "section"
-                           :text {:text "<a.com|a>", :type "mrkdwn"}}
+                           :text {:text "<a.com|a>", :type "mrkdwn", :verbatim true}}
                           {:type "image"
                            :alt_text "a",
                            :slack_file {:id "ID_a.png"}}]}
                 {:blocks [{:type "section"
-                           :text {:text "<b.com|b>", :type "mrkdwn"}}
+                           :text {:text "<b.com|b>", :type "mrkdwn", :verbatim true}}
                           {:type "section"
                            :text {:type "plain_text", :text "hi again"}}]}]
                processed))
@@ -77,3 +77,33 @@
       (is (== (Math/ceil (/ 423 50)) (count @block-inputs)))
       (is (every? #(<= 1 (count %) 50) @block-inputs))
       (is (= 423 (reduce + (map count @block-inputs)))))))
+
+(deftest mkdwn-link-escaping-test
+  (let [mock-upload-file!
+        (fn [_bytes attachment-name]
+          {:url (str "http://uploaded/" attachment-name)
+           :id (str "ID_" attachment-name)})]
+    (testing "Uploads files"
+      (let [attachments [{:title           "&amp;a"
+                          :title_link      "a.com"
+                          :attachment-name "a.png"
+                          :rendered-info   {:attachments nil
+                                            :content     [:div "hi"]}}
+                         {:title           "> click <https://c.com|here>"
+                          :title_link      "b.com"
+                          :attachment-name "b.png"
+                          :rendered-info   {:attachments nil
+                                            :content     [:div "hi again"]
+                                            :render/text "hi again"}}]
+            processed   (with-redefs [slack/upload-file! mock-upload-file!]
+                          (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+        (is (= [{:blocks [{:type "section"
+                           :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
+                          {:type "image"
+                           :alt_text "&amp;a",
+                           :slack_file {:id "ID_a.png"}}]}
+                {:blocks [{:type "section"
+                           :text {:text "<b.com|&gt; click &lt;https://c.com|here&gt;>", :type "mrkdwn", :verbatim true}}
+                          {:type "section"
+                           :text {:type "plain_text", :text "hi again"}}]}]
+               processed))))))

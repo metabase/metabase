@@ -17,6 +17,15 @@
   (when (= (:type notification-recipient) :notification-recipient/raw-value)
     (-> notification-recipient :details :value)))
 
+(defn- escape-mkdwn
+  "Escapes slack mkdwn special characters in the string, as specified here:
+  https://api.slack.com/reference/surfaces/formatting."
+  [s]
+  (-> s
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
+
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
@@ -75,7 +84,8 @@
                               (if (:render/text rendered-info)
                                 {:blocks [{:type "section"
                                            :text {:type "mrkdwn"
-                                                  :text (format "<%s|%s>" title_link title)}}
+                                                  :text (format "<%s|%s>" title_link (escape-mkdwn title))
+                                                  :verbatim true}}
                                           {:type "section"
                                            :text {:type "plain_text"
                                                   :text (:render/text rendered-info)}}]}
@@ -83,7 +93,8 @@
                                       {file-id :id} (slack/upload-file! image-bytes attachment-name)]
                                   {:blocks [{:type "section"
                                              :text {:type "mrkdwn"
-                                                    :text (format "<%s|%s>" title_link title)}}
+                                                    :text (format "<%s|%s>" title_link (escape-mkdwn title))
+                                                    :verbatim true}}
                                             {:type "image"
                                              :slack_file {:id file-id}
                                              :alt_text title}]})))))
