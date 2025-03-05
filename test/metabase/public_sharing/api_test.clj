@@ -1970,6 +1970,14 @@
                                                                    dashcard-id
                                                                    card-id))
                                   "ID,State,Latitude,Longitude\n")))
+          (testing "urlencoded requests"
+            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                   uuid
+                                                                   dashcard-id
+                                                                   card-id)
+                                                 {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
+                                                 {:format_rows true})
+                                  "ID,State,Latitude,Longitude\n")))
           (testing "Invalid id throws 404"
             (client/client :post 404 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
                                              uuid
