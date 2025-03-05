@@ -180,7 +180,7 @@ const DatabaseFormFooter = ({
   const isNew = values.id == null;
 
   const docsUrl = useSelector(state =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
     getDocsUrl(state, { page: "databases/connecting" }),
   );
 

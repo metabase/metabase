@@ -13,7 +13,7 @@ import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Divider } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -61,8 +61,8 @@ const mapStateToProps = (state: State) => {
   return {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
-    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
     isAdmin: getUserIsAdmin(state),
+    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
 
@@ -110,24 +110,30 @@ function DatabaseEditAppInner({
               <>
                 <ExistingDatabaseHeader database={database} />
 
-                <Divider mb="3.25rem" />
+                <Divider mb={{ base: "1.5rem", sm: "3.25rem" }} />
 
-                <DatabaseConnectionInfoSection
-                  database={database}
-                  dismissSyncSpinner={dismissSyncSpinner}
-                />
+                <Flex
+                  direction="column"
+                  gap={{ base: "2rem", sm: "5.5rem" }}
+                  mb={{ base: "3rem", sm: "5.5rem" }}
+                >
+                  <DatabaseConnectionInfoSection
+                    database={database}
+                    dismissSyncSpinner={dismissSyncSpinner}
+                  />
 
-                <DatabaseModelFeaturesSection
-                  database={database}
-                  isModelPersistenceEnabled={isModelPersistenceEnabled}
-                  updateDatabase={updateDatabase}
-                />
+                  <DatabaseModelFeaturesSection
+                    database={database}
+                    isModelPersistenceEnabled={isModelPersistenceEnabled}
+                    updateDatabase={updateDatabase}
+                  />
 
-                <DatabaseDangerZoneSection
-                  isAdmin={isAdmin}
-                  database={database}
-                  deleteDatabase={deleteDatabase}
-                />
+                  <DatabaseDangerZoneSection
+                    isAdmin={isAdmin}
+                    database={database}
+                    deleteDatabase={deleteDatabase}
+                  />
+                </Flex>
               </>
             )}
           </LoadingAndErrorWrapper>

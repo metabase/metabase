@@ -25,7 +25,7 @@ export const ExistingDatabaseHeader = ({
           )}
           <Text size="sm" c="text-medium">
             {c(
-              "Time in which the database was added to Metabase (e.g. Added 3/4/2025",
+              "Time in which the database was added to Metabase (e.g. Added 3/4/2025)",
             )
               .t`Added ${new Intl.DateTimeFormat().format(new Date(database.created_at))}`}
           </Text>
