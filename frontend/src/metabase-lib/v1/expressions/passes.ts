@@ -177,7 +177,10 @@ export const adjustBooleans: CompilerPass = tree =>
   });
 
 function isBooleanField(input: unknown) {
-  if (Array.isArray(input) && input[0] === "field") {
+  if (
+    Array.isArray(input) &&
+    (input[0] === "field" || input[0] === "expression")
+  ) {
     const [, _id, opts] = input;
     return (
       opts &&
