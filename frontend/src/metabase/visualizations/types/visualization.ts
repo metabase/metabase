@@ -119,6 +119,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isNightMode: boolean;
@@ -161,6 +162,8 @@ export interface VisualizationProps {
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
+
+  getCard?: (cardName: string) => Promise<Card | undefined>;
 
   dispatch: Dispatch;
 }
@@ -301,6 +304,7 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
+  supportsVisualizer?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;

@@ -80,7 +80,7 @@ export default class FunnelNormal extends Component {
     // Initial infos (required for step calculation)
     let infos = [
       {
-        value: sortedRows[0][metricIndex],
+        value: sortedRows[0]?.[metricIndex],
         graph: {
           startBottom: 0.0,
           startTop: 1.0,
@@ -90,7 +90,7 @@ export default class FunnelNormal extends Component {
       },
     ];
 
-    let remaining = sortedRows[0][metricIndex];
+    let remaining = sortedRows[0]?.[metricIndex];
 
     sortedRows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
@@ -177,11 +177,11 @@ export default class FunnelNormal extends Component {
         <FunnelStep isFirst>
           <Head isNarrow={isNarrow}>
             <Ellipsified data-testid="funnel-chart-header">
-              {formatDimension(sortedRows[0][dimensionIndex])}
+              {formatDimension(sortedRows[0]?.[dimensionIndex])}
             </Ellipsified>
           </Head>
           <FunnelStart isNarrow={isNarrow}>
-            <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
+            <Title>{formatMetric(sortedRows[0]?.[metricIndex])}</Title>
             <Subtitle>{cols[metricIndex].display_name}</Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
