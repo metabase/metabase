@@ -234,8 +234,9 @@ export function resolve({
       typeof expression === "boolean" ? "expression" : typeof expression,
     )
   ) {
-    throw new Error(
+    throw new ResolverError(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
+      expression.node,
     );
   }
   return expression;

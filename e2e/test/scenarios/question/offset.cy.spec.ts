@@ -263,7 +263,8 @@ describe("scenarios > question > offset", () => {
       H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
 
-        cy.findByPlaceholderText("Something nice and descriptive")
+        H.CustomExpressionEditor.nameInput()
+          .clear()
           .type("My expression")
           .blur();
 
