@@ -132,7 +132,7 @@ export function FormCreator({
       <SidebarContent>
         <FormContainer>
           {onClose && (
-            /* We want to avoid absolute positioning, so we use margin with z-index since 
+            /* We want to avoid absolute positioning, so we use margin with z-index since
                it's covered by the next element with padding */
             <Flex
               justify="flex-end"
