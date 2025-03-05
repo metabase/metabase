@@ -113,3 +113,12 @@
 .bodyCell:hover .cellHoverVisible {
   visibility: visible;
 }
+
+/** Used for storybook examples for class Styles Api */
+.__storybookStylesApiBodyCellExample {
+  background-color: #eef6fd;
+
+  &:hover {
+    background-color: aquamarine;
+  }
+}
