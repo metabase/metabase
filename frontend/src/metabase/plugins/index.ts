@@ -478,6 +478,15 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   },
 };
 
+// Comes with PLUGIN_APPLICATION_PERMISSIONS
+export interface UserWithApplicationPermissions extends User {
+  permissions?: {
+    can_access_monitoring: boolean;
+    can_access_setting: boolean;
+    can_access_subscription: boolean;
+  };
+}
+
 export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
