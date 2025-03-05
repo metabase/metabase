@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
+import { useGetAdhocQueryQuery } from "metabase/api";
 import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
-import { Api, useGetAdhocQueryQuery } from "metabase/api";
 
 interface Props {
   query: Lib.Query;
@@ -35,10 +35,18 @@ export const RangePicker = ({
   const { data, isLoading } = useGetAdhocQueryQuery(legacyQuery);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <Box p="md" pb={0}>
+        Loading...
+      </Box>
+    );
   }
 
-  return <div>{JSON.stringify(data, null, 2)}</div>;
+  return (
+    <Box p="md" pb={0}>
+      {JSON.stringify(data, null, 2)}
+    </Box>
+  );
 };
 
 function getDistributionQuery(
