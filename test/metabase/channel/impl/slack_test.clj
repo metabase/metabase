@@ -26,7 +26,7 @@
                              :rendered-info   {:attachments nil
                                                :content     [:div "hi again"]}}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
-                             (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+                             (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
         (is (= [{:blocks [{:type "section"
                            :text {:type "mrkdwn", :text "<a.com|a>", :verbatim true}}
                           {:type "image"
@@ -53,7 +53,7 @@
                                                :content     [:div "hi again"]
                                                :render/text "hi again"}}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
-                             (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+                             (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
         (is (= [{:blocks [{:type "section"
                            :text {:text "<a.com|a>", :type "mrkdwn", :verbatim true}}
                           {:type "image"
@@ -96,7 +96,7 @@
                                             :content     [:div "hi again"]
                                             :render/text "hi again"}}]
             processed   (with-redefs [slack/upload-file! mock-upload-file!]
-                          (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+                          (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
         (is (= [{:blocks [{:type "section"
                            :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
                           {:type "image"

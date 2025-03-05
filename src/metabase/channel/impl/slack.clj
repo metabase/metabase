@@ -71,35 +71,32 @@
   many columns) is truncated."
   1200)
 
-(defn- create-and-upload-slack-attachments!
-  "Create an attachment in Slack for a given Card by rendering its content into an image and uploading
-  it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
-  returns an image url, defaulting to slack/upload-file!.
+(defn- create-and-upload-slack-attachment!
+  "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
+  Attachments containing `:blocks` lists containing text cards are returned unmodified."
+  [{:keys [title title_link attachment-name rendered-info blocks] :as attachment-data}]
+  (cond
+    blocks attachment-data
 
-  Nested `blocks` lists containing text cards are passed through unmodified."
-  [attachments]
-  (reduce (fn [processed {:keys [title title_link attachment-name rendered-info] :as attachment-data}]
-            (conj processed (if (:blocks attachment-data)
-                              attachment-data
-                              (if (:render/text rendered-info)
-                                {:blocks [{:type "section"
-                                           :text {:type "mrkdwn"
-                                                  :text (format "<%s|%s>" title_link (escape-mkdwn title))
-                                                  :verbatim true}}
-                                          {:type "section"
-                                           :text {:type "plain_text"
-                                                  :text (:render/text rendered-info)}}]}
-                                (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
-                                      {file-id :id} (slack/upload-file! image-bytes attachment-name)]
-                                  {:blocks [{:type "section"
-                                             :text {:type "mrkdwn"
-                                                    :text (format "<%s|%s>" title_link (escape-mkdwn title))
-                                                    :verbatim true}}
-                                            {:type "image"
-                                             :slack_file {:id file-id}
-                                             :alt_text title}]})))))
-          []
-          attachments))
+    (:render/text rendered-info)
+    {:blocks [{:type "section"
+               :text {:type     "mrkdwn"
+                      :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                      :verbatim true}}
+              {:type "section"
+               :text {:type "plain_text"
+                      :text (:render/text rendered-info)}}]}
+
+    :else
+    (let [image-bytes   (channel.render/png-from-render-info rendered-info slack-width)
+          {file-id :id} (slack/upload-file! image-bytes attachment-name)]
+      {:blocks [{:type "section"
+                 :text {:type     "mrkdwn"
+                        :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                        :verbatim true}}
+                {:type       "image"
+                 :slack_file {:id file-id}
+                 :alt_text   title}]})))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -111,7 +108,7 @@
 (mu/defmethod channel/send! :channel/slack
   [_channel message :- SlackMessage]
   (let [{:keys [channel-id attachments]} message
-        message-content (create-and-upload-slack-attachments! attachments)
+        message-content (mapv create-and-upload-slack-attachment! attachments)
         blocks (mapcat :blocks message-content)]
     (doseq [block-chunk (partition-all 50 blocks)]
       (slack/post-chat-message! channel-id nil [{:blocks block-chunk}]))))
