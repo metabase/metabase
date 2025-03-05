@@ -1667,13 +1667,6 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-(defn- type-query [query field]
-  (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
-                                "FROM ( "
-                                (-> query qp.compile/compile :query)
-                                " ) AS subquery "
-                                "LIMIT 1")}))
-
 (deftest ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
@@ -1685,9 +1678,7 @@
                 unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                                    (lib/with-fields [field-md])
                                    (lib/limit 1))
-                unbinned-type-query (type-query unbinned-query field)
                 binned-query (-> unbinned-query
-                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))
-                binned-type-query (type-query binned-query field)]
-            (is (= (-> unbinned-type-query qp/process-query mt/rows)
-                   (-> binned-type-query   qp/process-query mt/rows)))))))))
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))

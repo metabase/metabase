@@ -29,20 +29,23 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, saveToCollectionId } = options;
+  const { details, question, onCreate, saveToCollection } = options;
 
   if (details.saveType !== "create") {
     return;
   }
 
-  // `saveToCollectionId` is used to override the target collection of the question,
+  // `saveToCollection` is used to override the target collection of the question,
   // this is mainly used for the embedding SDK.
   const collectionId = canonicalCollectionId(
-    isNullOrUndefined(saveToCollectionId)
+    isNullOrUndefined(saveToCollection)
       ? details.collection_id
-      : saveToCollectionId,
+      : saveToCollection,
   );
   const dashboardId = details.dashboard_id;
+  const dashboardTabId = details.dashboard_tab_id
+    ? parseInt(details.dashboard_tab_id, 10)
+    : undefined;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
@@ -53,7 +56,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
+  return onCreate(newQuestion, { dashboardTabId });
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {
@@ -63,7 +66,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
     question,
     onSave,
     onCreate,
-    saveToCollectionId,
+    saveToCollection,
   } = options;
 
   if (details.saveType === "overwrite" && originalQuestion) {
@@ -77,7 +80,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       question,
       details,
       onCreate,
-      saveToCollectionId,
+      saveToCollection,
     });
   }
 }
@@ -87,8 +90,8 @@ export const getInitialValues = (
   question: Question,
   initialCollectionId: FormValues["collection_id"],
   initialDashboardId: FormValues["dashboard_id"],
-  initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
+  const isNewQuestion = originalQuestion && question.card().type === "question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
@@ -102,7 +105,9 @@ export const getInitialValues = (
       : question.dashboardId();
 
   const collectionId =
-    question.collectionId() === undefined || isReadonly
+    question.collectionId() === undefined ||
+    isReadonly ||
+    (isNewQuestion && question.collectionId() === undefined)
       ? initialCollectionId
       : question.collectionId();
 
@@ -117,7 +122,7 @@ export const getInitialValues = (
       originalQuestion?.description() || question.description() || "",
     collection_id: collectionId,
     dashboard_id: dashboardId,
-    tab_id: initialDashboardTabId,
+    dashboard_tab_id: undefined,
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&

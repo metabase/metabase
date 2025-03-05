@@ -10,7 +10,7 @@ import DatabaseEngineWarning, {
 } from "./DatabaseEngineWarning";
 
 export default {
-  title: "Databases/DatabaseEngineWarning",
+  title: "App/Databases/DatabaseEngineWarning",
   component: DatabaseEngineWarning,
   argTypes: { onChange: { action: "onChange" } },
 };

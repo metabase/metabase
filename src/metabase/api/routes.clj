@@ -36,6 +36,7 @@
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
+   [metabase.notification.api]
    [metabase.permissions.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
@@ -152,6 +153,7 @@
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
+   "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.permissions.api)
    "/persist"              (+auth 'metabase.model-persistence.api)

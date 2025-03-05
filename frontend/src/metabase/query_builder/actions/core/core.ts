@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
+import { invalidateNotificationsApiCache } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
@@ -10,7 +11,6 @@ import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -24,6 +24,7 @@ import {
 } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
+  DashboardTabId,
   Database,
   DatasetQuery,
   ParameterId,
@@ -188,13 +189,19 @@ export const setDatasetQuery =
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
+type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
-export const apiCreateQuestion = (question: Question) => {
+export const apiCreateQuestion = (
+  question: Question,
+  options?: OnCreateOptions,
+) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const submittableQuestion = getSubmittableQuestion(getState(), question);
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
+      options,
     );
 
     const databases: Database[] = Databases.selectors.getList(getState());
@@ -261,9 +268,9 @@ export const apiUpdateQuestion = (
       },
     );
 
-    // reload the question alerts for the current question
+    // invalidate question notifications
     // (some of the old alerts might be removed during update)
-    await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
+    dispatch(invalidateNotificationsApiCache());
 
     await dispatch({
       type: API_UPDATE_QUESTION,
@@ -332,8 +339,17 @@ export const revertToRevision = createThunkAction(
   },
 );
 
-async function reduxCreateQuestion(question: Question, dispatch: Dispatch) {
-  const action = await dispatch(Questions.actions.create(question.card()));
+async function reduxCreateQuestion(
+  question: Question,
+  dispatch: Dispatch,
+  options?: OnCreateOptions,
+) {
+  const action = await dispatch(
+    Questions.actions.create({
+      ...question.card(),
+      dashboard_tab_id: options?.dashboardTabId,
+    }),
+  );
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
 

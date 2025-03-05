@@ -86,7 +86,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       fontFamily,
       isEditing,
       onVisualizationClick,
-    }: VisualizationProps,
+    },
     ref,
   ) {
     const [viewPortWidth, setViewPortWidth] = useState(width);
@@ -335,7 +335,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       !leftHeaderWidths ||
       (leftHeaderWidths?.length && columnsChanged)
     ) {
-      return null;
+      // We have to return an element to assign the ref to it
+      return <div ref={ref} />;
     }
 
     const {

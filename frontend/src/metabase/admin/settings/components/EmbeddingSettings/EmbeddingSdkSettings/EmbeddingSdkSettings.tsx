@@ -151,11 +151,11 @@ export function EmbeddingSdkSettings({
           size="large"
           crumbs={[
             [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Embedding SDK for React`],
+            [t`Embedded analytics SDK for React`],
           ]}
         />
         <SwitchWithSetByEnvVar
-          label={t`Enable Embedded analytics SDK`}
+          label={t`Enable Embedded analytics SDK for React`}
           settingKey="enable-embedding-sdk"
           onChange={
             !isEmbeddingSdkEnabled && showSdkEmbedTerms
@@ -202,7 +202,7 @@ export function EmbeddingSdkSettings({
             variant="outline"
             component={ExternalLink}
             href={quickStartUrl}
-          >{t`Check out the Quick Start`}</Button>
+          >{t`Check out the Quickstart`}</Button>
         </Box>
         <Box>
           <SettingHeader

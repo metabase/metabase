@@ -295,6 +295,16 @@
    x]
   (lib.cache/attach-query-cache (query-method metadata-providerable x)))
 
+(mu/defn ->query :- ::lib.schema/query
+  "[[->]] friendly form of [[query]].
+
+  Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
+  existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
+  it in separately -- metadata is needed for most query manipulation operations."
+  [x
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (query metadata-providerable x))
+
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

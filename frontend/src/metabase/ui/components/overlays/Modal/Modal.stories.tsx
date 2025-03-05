@@ -136,7 +136,7 @@ const NoBodyTextTemplate = (args: ModalProps) => {
 };
 
 export default {
-  title: "Overlays/Modal",
+  title: "Components/Overlays/Modal",
   component: Modal,
   args,
   argTypes,

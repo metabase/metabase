@@ -27,7 +27,7 @@
    (the-parameters dashboard-subscription-params dashboard-params)))
 
 (mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- notification.payload/Notification]
+  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
   (let [dashboard-id (:dashboard_id dashboard_subscription)
         dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
         parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]

@@ -9,7 +9,7 @@ import {
 import RowChart, { type StaticRowChartProps } from "./RowChart";
 
 export default {
-  title: "static-viz/RowChart",
+  title: "Viz/Static Viz/RowChart",
   component: RowChart,
 };
 

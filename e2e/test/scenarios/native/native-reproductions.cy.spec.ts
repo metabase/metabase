@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { IconName } from "metabase/ui";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
@@ -130,8 +131,10 @@ describe("issue 33327", () => {
     getRunQueryButton().click();
     cy.wait("@dataset");
 
-    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
-    cy.findByTestId("scalar-value").should("not.exist");
+    cy.findByTestId("visualization-root").within(() => {
+      cy.icon("warning").should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
+    });
 
     H.NativeEditor.get().should("contain", "SELECT --1");
     H.NativeEditor.type("{leftarrow}{backspace}{backspace}");
@@ -253,4 +256,129 @@ describe("issue 53299", { tags: ["@mongo"] }, () => {
     H.selectNativeEditorDataSource("QA Mongo");
     H.nativeEditorDataSource().should("contain", "QA Mongo");
   });
+});
+
+describe("issue 53171", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: `Question ${"a".repeat(100)}`,
+        query: { "source-table": ORDERS_ID },
+      },
+      {
+        idAlias: "longNameQuestionId",
+        wrapId: true,
+      },
+    );
+  });
+
+  it("title and icons in data reference sidebar should not overflow (metabase#53171)", () => {
+    H.startNewNativeQuestion();
+
+    cy.get("@longNameQuestionId").then(longNameQuestion => {
+      H.NativeEditor.type(`{{#${longNameQuestion}`);
+    });
+
+    cy.findByTestId("sidebar-content").within($container => {
+      const [container] = $container;
+
+      cy.findByTestId("sidebar-header").should($header => {
+        const [header] = $header;
+        const headerDescendants = header.querySelectorAll("*");
+
+        headerDescendants.forEach(descendant => {
+          H.assertDescendantNotOverflowsContainer(descendant, container);
+        });
+      });
+
+      verifyIconVisibleAndSized("chevronleft", 16);
+      verifyIconVisibleAndSized("table", 16);
+      verifyIconVisibleAndSized("close", 18);
+    });
+  });
+
+  function verifyIconVisibleAndSized(iconName: IconName, size: number) {
+    cy.icon(iconName)
+      .should("be.visible")
+      .and(icon => {
+        expect(icon.outerWidth()).to.equal(size);
+        expect(icon.outerHeight()).to.equal(size);
+      });
+  }
+});
+
+describe("issue 54124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: "Reference Question",
+        query: { "source-table": ORDERS_ID },
+      },
+      {
+        idAlias: "questionId",
+        wrapId: true,
+      },
+    );
+  });
+
+  it("should be possible to close the data reference sidebar (metabase#54124)", () => {
+    H.startNewNativeQuestion();
+
+    cy.get("@questionId").then(questionId => {
+      H.NativeEditor.type(
+        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
+      );
+    });
+
+    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.findByTestId("sidebar-content").should("not.exist");
+
+    cy.log("moving cursor should open the reference sidebar again");
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+    cy.findByTestId("sidebar-content").should("be.visible");
+  });
+});
+
+describe("issues 52811, 52812", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("popovers should close when clicking outside (metabase#52811, metabase#52812)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{x");
+    cy.findByLabelText("Variable type").click();
+
+    cy.log("popover should close when clicking away (metabase#52811)");
+    H.popover().findByText("Field Filter").click();
+    clickAway();
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log(
+      "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
+    );
+    H.rightSidebar()
+      .findByText("Default filter widget value")
+      .should("not.exist");
+    cy.findByLabelText("Always require a value").should("not.exist");
+
+    cy.log(
+      "existing popover should close when opening a new one (metabase#52811)",
+    );
+    cy.findByTestId("sidebar-content").findByText("Select...").click();
+    cy.findByLabelText("Variable type").click();
+    H.popover()
+      .should("have.length", 1)
+      .and("contain.text", "Field Filter")
+      .and("not.contain.text", "Sample Database");
+  });
+
+  function clickAway() {
+    cy.get("body").click(0, 0);
+  }
 });

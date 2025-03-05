@@ -11,7 +11,7 @@
         :autoSync true
         :rough true
         ;; allow click:
-        :securityLevel="loose"
+        :securityLevel= "loose"
         :panZoom true
         :code chart-text
         :pan {:x 100 :y 100}}
@@ -25,6 +25,4 @@
 (comment
 
   ;; todo figure out click
-  (open-mermaid-live! "flowchart \n A --> B")
-
-  )
+  (open-mermaid-live! "flowchart \n A --> B"))

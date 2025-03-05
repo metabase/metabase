@@ -60,7 +60,6 @@ import {
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
-  getIsVisualized,
   getLastRunCard,
   getModalSnippet,
   getMode,
@@ -74,7 +73,6 @@ import {
   getQueryResults,
   getQueryStartTime,
   getQuestion,
-  getQuestionAlerts,
   getRawSeries,
   getSampleDatabaseId,
   getSelectedTimelineEventIds,
@@ -163,7 +161,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
-    isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
@@ -178,7 +175,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isResultDirty: getIsResultDirty(state),
     isMetadataDirty: isResultsMetadataDirty(state),
 
-    questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
     queryStartTime: getQueryStartTime(state),

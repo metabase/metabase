@@ -14,6 +14,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
@@ -27,8 +29,12 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
+   [metabase.server.streaming-response]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -40,6 +46,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.quick-task :as quick-task]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -291,7 +299,7 @@
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:= "tables"]]
-                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
+                                                       (deferred-tru "include must be either empty or the value ''tables''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
@@ -611,7 +619,7 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
         " or turn autocompletions off."))
   :visibility :public
@@ -711,6 +719,69 @@
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
+
+;;; ----------------------------------------- GET /api/database/:id/table/:fqn ---------------------------------------
+
+(defn- check-unique [tables]
+  (when (seq tables)
+    (let [unique-combos (distinct (map (juxt :schema :name) tables))]
+      (when (> (count unique-combos) 1)
+        (throw (ex-info "Ambiguous table identifier"
+                        {:status-code       300
+                         :potential-matches (for [[schema table-name] unique-combos]
+                                              (if schema
+                                                (str schema "." table-name)
+                                                table-name))})))
+      (first tables))))
+
+(defn- resolve-table [db-id table-identifier]
+  (let [[schema table-name] (let [parts (str/split table-identifier #"\.")]
+                              (case (count parts)
+                                1 [nil (first parts)]
+                                2 parts
+                                nil))]
+    (api/check table-name 400 "Invalid table identifier")
+    (api/check-404
+     (or (if schema
+           ;; Sometimes we get duplicate records, but bypass that if we have a fully qualified exact match.
+           ;; See: https://github.com/metabase/metabase/issues/53868
+           (t2/select-one :model/Table :db_id db-id :name table-name :schema schema)
+           (check-unique (t2/select :model/Table :db_id db-id :name table-name)))
+         (check-unique (t2/select :model/Table
+                                  :db_id db-id
+                                  :%lower.name (u/lower-case-en table-name)
+                                  (cond-> {}
+                                    schema (assoc :where {:%lower.schema (u/lower-case-en schema)}))))))))
+
+(api.macros/defendpoint :get "/:db-id/table/:table-identifier/data"
+  "Get the data for the given table"
+  [{:keys [db-id table-identifier]} :- [:map
+                                        [:db-id ms/PositiveInt]
+                                        [:table-identifier ms/NonBlankString]]]
+  (api/read-check (t2/select-one :model/Database :id db-id))
+  (qp.store/with-metadata-provider db-id
+    (let [mp    (qp.store/metadata-provider)
+          table-id (:id (resolve-table db-id table-identifier))
+          query (-> (lib/query mp (lib.metadata/table mp table-id))
+                    (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                    qp/userland-query-with-default-constraints
+                    (update :info merge {:executed-by api/*current-user-id*
+                                         :context     :table-grid
+                                         :card-id     nil}))]
+      (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+                                                :user-id api/*current-user-id*})
+      (span/with-span!
+        {:name "query-table-async"}
+        (qp.streaming/streaming-response [rff :api]
+          (qp/process-query query
+                           ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+                           ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+                           ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                            (qp.streaming/transforming-query-response
+                             rff
+                             (fn [response]
+                               (-> (assoc response :table_id table-id)
+                                   (dissoc :json_query :context :cached :average_execution_time))))))))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
@@ -986,7 +1057,7 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (sync/submit-task!
+        (quick-task/submit-task!
          (fn []
            (sync/sync-db-metadata! db)
            (sync/analyze-db! db)))
@@ -1028,7 +1099,7 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (if *rescan-values-async*
-        (sync/submit-task!
+        (quick-task/submit-task!
          (fn []
            (sync/update-field-values! db)))
         (sync/update-field-values! db))))
@@ -1204,6 +1275,16 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
+
+(api.macros/defendpoint :get "/:id/healthcheck"
+  "Reports whether the database can currently connect"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+    (binding [h2/*allow-testing-h2-connections* true]
+      (if-let [err-map (test-database-connection engine details)]
+        (merge err-map {:status "error"})
+        {:status "ok"}))))
 
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]

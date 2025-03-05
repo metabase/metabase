@@ -93,8 +93,9 @@ describe("scenarios > metrics > question", () => {
     H.enterCustomColumnDetails({
       formula: `[${ORDERS_TIMESERIES_METRIC.name}] * 2`,
       name: "Expression",
+      blur: true,
     });
-    H.popover().button("Update").click();
+    H.popover().button("Update").should("not.be.disabled").click();
     H.echartsContainer().findByText("Expression").should("be.visible");
   });
 
@@ -117,6 +118,7 @@ describe("scenarios > metrics > question", () => {
       .findByTestId("pinned-dimensions")
       .findByLabelText("Created At")
       .findByText("by month")
+      .realHover()
       .click();
     H.popover().findByText("Year").click();
     H.assertQueryBuilderRowCount(5);

@@ -15,7 +15,7 @@ function Demo() {
 const BlockTemplate = (args: CodeProps) => <Code {...args}>{CODE_BLOCK}</Code>;
 
 export default {
-  title: "Typography/Code",
+  title: "Components/Text/Code",
   component: Code,
   argTypes: {
     bg: {

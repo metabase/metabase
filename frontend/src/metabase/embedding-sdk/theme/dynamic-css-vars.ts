@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 
 import { alpha, darken, isDark, isLight, lighten } from "metabase/lib/colors";

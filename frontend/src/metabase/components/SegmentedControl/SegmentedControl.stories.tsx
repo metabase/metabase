@@ -7,7 +7,7 @@ import {
 } from "./SegmentedControl";
 
 export default {
-  title: "Components/SegmentedControl",
+  title: "Deprecated/Components/SegmentedControl",
   component: SegmentedControl,
 };
 
