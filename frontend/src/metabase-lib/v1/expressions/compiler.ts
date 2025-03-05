@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { fieldResolver } from "./field-resolver";
+import { resolverPass } from "./field-resolver";
 import {
   adjustBooleans,
   adjustCaseOrIf,
@@ -14,7 +14,6 @@ import {
   adjustOptions,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
-import { resolve } from "./resolver";
 import type { ErrorWithMessage, StartRule } from "./types";
 import { isErrorWithMessage } from "./utils";
 
@@ -52,26 +51,18 @@ export function compileExpression({
     return { error: errors[0] };
   }
 
-  const resolverPass = shouldResolve
-    ? (expression: Expression): Expression =>
-        resolve({
-          expression,
-          type: startRule,
-          database,
-          fn: fieldResolver({
-            query,
-            stageIndex,
-            startRule,
-          }),
-        })
-    : null;
-
   const passes = [
     adjustOptions,
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
-    resolverPass,
+    resolverPass({
+      enabled: shouldResolve,
+      database,
+      query,
+      stageIndex,
+      startRule,
+    }),
     adjustBooleans,
   ].filter(isNotNull);
 
