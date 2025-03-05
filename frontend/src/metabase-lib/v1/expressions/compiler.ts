@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
@@ -7,6 +8,7 @@ import type { Expression } from "metabase-types/api";
 import { getMBQLName } from "./config";
 import { fieldResolver } from "./field-resolver";
 import {
+  adjustBooleans,
   adjustCaseOrIf,
   adjustMultiArgOptions,
   adjustOffset,
@@ -52,30 +54,29 @@ export function compileExpression({
     return { error: errors[0] };
   }
 
+  const resolverPass = shouldResolve
+    ? (expression: Expression): Expression =>
+        resolve({
+          expression,
+          type: startRule,
+          database,
+          fn: fieldResolver({
+            query,
+            stageIndex,
+            startRule,
+          }),
+        })
+    : null;
+
   const passes = [
     adjustOptions,
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
     adjustTopLevelLiterals,
-  ];
-
-  if (shouldResolve) {
-    const resolveMBQLField = fieldResolver({
-      query,
-      stageIndex,
-      startRule,
-    });
-    passes.push(
-      (expression: Expression): Expression =>
-        resolve({
-          expression,
-          type: startRule,
-          fn: resolveMBQLField,
-          database,
-        }),
-    );
-  }
+    resolverPass,
+    adjustBooleans,
+  ].filter(isNotNull);
 
   try {
     const expression = compile(root, {
