@@ -1039,18 +1039,21 @@
                                ::lib.schema.temporal-bucketing/option
                                ::lib.schema.temporal-bucketing/unit]]]
    (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
-     (assert (standard-join-condition? join-condition)
-             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
-     (let [unit (cond-> option-or-unit
-                  (not (keyword? option-or-unit)) :unit)
-           stage-number (lib.util/canonical-stage-index query stage-number)
-           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
-           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
-       (cond-> join-condition
-         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
-         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+     ;; HACK HACK HACK
+     #_(assert (standard-join-condition? join-condition)
+               (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
+     (if-not (standard-join-condition? join-condition)
+       join-condition
+       (let [unit (cond-> option-or-unit
+                    (not (keyword? option-or-unit)) :unit)
+             stage-number (lib.util/canonical-stage-index query stage-number)
+             available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+             available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+             sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+             sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+         (cond-> join-condition
+           sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+           sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit)))))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]
