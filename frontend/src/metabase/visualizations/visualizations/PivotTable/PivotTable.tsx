@@ -165,7 +165,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       (
         topHeaderRef.current as Collection | null
       )?.recomputeCellSizesAndPositions?.();
-      (gridRef.current as Grid | null)?.recomputeGridSize?.();
+      gridRef.current?.recomputeGridSize?.();
     }, [
       data,
       leftHeaderRef,
