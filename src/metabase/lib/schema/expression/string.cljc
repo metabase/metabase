@@ -7,13 +7,9 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text
     [:schema [:ref ::expression/string]]))
 
-(doseq [op [:host :domain :subdomain]]
+(doseq [op [:host :domain :subdomain :url-pathname]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text
     [:schema [:ref ::expression/string]]))
-
-(mbql-clause/define-tuple-mbql-clause :url-part :- :type/Text
-  [:schema [:ref ::expression/string]]
-  [:schema [:enum "domain" "host" "path" "subdomain"]])
 
 (doseq [op [:month-name :quarter-name :day-name]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text

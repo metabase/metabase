@@ -101,11 +101,5 @@
     (recur [:regex-match-first column (str domain-regex)])
     [:subdomain column]
     (recur [:regex-match-first column (str subdomain-regex)])
-    [:url-part column "domain"]
-    (recur [:regex-match-first column (str domain-regex)])
-    [:url-part column "path"]
-    (recur [:regex-match-first column (str path-regex)])
-    [:url-part column "host"]
-    (recur [:regex-match-first column (str host-regex)])
-    [:url-part column "subdomain"]
-    (recur [:regex-match-first column (str subdomain-regex)])))
+    [:url-pathname column]
+    (recur [:regex-match-first column (str path-regex)])))
