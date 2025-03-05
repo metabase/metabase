@@ -13,14 +13,12 @@ export const ComparisonList = styled.ul`
   }
 `;
 
-export const AddComparisonButton = styled(Button)<ButtonProps>`
+export const AddComparisonButton = styled((props: ButtonProps) => (
+  <Button {...props} variant={props.variant ?? "subtle"} />
+))`
   align-self: flex-start;
   padding: 0;
 `;
-
-AddComparisonButton.defaultProps = {
-  variant: "subtle",
-};
 
 type ComparisonPickerSecondaryTextProps = TextProps &
   HTMLAttributes<HTMLSpanElement> & {
@@ -28,13 +26,14 @@ type ComparisonPickerSecondaryTextProps = TextProps &
   };
 
 export const ComparisonPickerSecondaryText = styled(
-  Text,
+  (props: ComparisonPickerSecondaryTextProps) => (
+    <Text
+      {...props}
+      component={props.component ?? "span"}
+      color={props.color ?? "text.0"}
+    />
+  ),
 )<ComparisonPickerSecondaryTextProps>``;
-
-ComparisonPickerSecondaryText.defaultProps = {
-  component: "span",
-  color: "text.0",
-};
 
 export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   height: 40px;
@@ -46,13 +45,11 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   }
 ` as unknown as typeof Button;
 
-export const DoneButton = styled(Button)<ButtonProps>`
+export const DoneButton = styled((props: ButtonProps) => (
+  <Button {...props} variant={props.variant ?? "filled"} />
+))`
   align-self: flex-end;
 ` as unknown as typeof Button;
-
-DoneButton.defaultProps = {
-  variant: "filled",
-};
 
 export const DragHandleIcon = styled(Icon)`
   cursor: grab;
