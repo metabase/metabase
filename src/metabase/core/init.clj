@@ -13,6 +13,7 @@
    [metabase.driver.init]
    [metabase.events.init]
    [metabase.indexed-entities.init]
+   [metabase.lib-be.init]
    [metabase.logger.init]
    [metabase.login-history.init]
    [metabase.model-persistence.init]
