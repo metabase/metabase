@@ -84,8 +84,8 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
   }, [color, value, colorMapping, isInverted, onChange]);
 
   return (
-    <Stack py="md" gap="md" {...props} ref={ref}>
-      <Group px="md" gap="xs" justify="center">
+    <Stack py="md" spacing="md" {...props} ref={ref}>
+      <Group px="md" spacing="xs" position="center">
         {colors.map((value, index) => (
           <ColorPill
             key={index}
