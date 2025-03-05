@@ -9,6 +9,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, RawSeries } from "metabase-types/api";
+import { RangeSlider } from "@mantine/core";
 
 interface Props {
   query: Lib.Query;
@@ -72,6 +73,25 @@ export const RangePicker = ({
     ];
   }, [data, question]);
 
+  const fingerprintTypeInfo =
+    clicked.column?.fingerprint?.type?.["type/Number"];
+  const { min, max } = fingerprintTypeInfo ?? {
+    min: Number.MIN_SAFE_INTEGER,
+    max: Number.MAX_SAFE_INTEGER,
+  };
+  const minRange = (max - min) / 100;
+
+  const value =
+    values.length === 2 && values[0] != null && values[1] != null
+      ? values
+      : [min, max];
+  console.log({
+    min,
+    max,
+    minRange,
+    value,
+  });
+
   return (
     <Box h={75} pt="0.5rem">
       <Visualization
@@ -85,8 +105,36 @@ export const RangePicker = ({
           "graph.y_axis.labels_enabled": false,
           "graph.y_axis.axis_enabled": false,
           "graph.x_axis.axis_enabled": false,
+          "series_settings.colors": {
+            count: "#CBE2F7",
+          },
         }}
       />
+
+      {data && (
+        <Box px="1rem" pos="relative" top="-1rem">
+          <RangeSlider
+            minRange={isNumber(minRange) ? minRange : undefined}
+            min={isNumber(min) ? min : undefined}
+            max={isNumber(max) ? max : undefined}
+            step={minRange}
+            label={null}
+            value={
+              isNumber(value[1]) && isNumber(value[0]) ? value : [min, max]
+            }
+            styles={{
+              track: {
+                background: "#EDF2F5",
+              },
+            }}
+            onChange={a => {
+              debugger;
+              return onChange(a);
+            }}
+            // defaultValue={[undefined, undefined]}
+          />
+        </Box>
+      )}
     </Box>
   );
 };
@@ -119,4 +167,8 @@ function getDistributionQuery(
   }
 
   return Lib.drillThru(query, stageIndex, undefined, distributionDrill);
+}
+
+function isNumber(num: unknown): num is number {
+  return typeof num === "number" && Number.isFinite(num) && !Number.isNaN(num);
 }
