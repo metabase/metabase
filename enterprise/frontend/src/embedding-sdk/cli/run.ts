@@ -2,6 +2,7 @@ import {
   addDatabaseConnectionStep,
   askForTenancyColumns,
   askIfHasDatabase,
+  checkIfDockerContainerExists,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -30,6 +31,10 @@ export const CLI_STEPS: CliStepConfig[] = [
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
+  {
+    id: "checkIfDockerContainerExists",
+    executeStep: checkIfDockerContainerExists,
+  },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
     id: "startLocalMetabaseContainer",

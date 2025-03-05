@@ -1,10 +1,11 @@
 import isPropValid from "@emotion/is-prop-valid";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import Triggerable from "metabase/components/Triggerable";
 import { Group, type GroupProps, Icon } from "metabase/ui";
 
-export const GrabberHandle = styled(Icon)`
+export const GrabberHandle = styled(Icon, { shouldForwardProp: isPropValid })`
   color: var(--mb-color-text-medium);
   cursor: inherit;
 `;

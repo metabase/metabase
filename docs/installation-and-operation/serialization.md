@@ -54,7 +54,7 @@ Metabase will only export the following entities:
 - Actions
 - Models
 - Metrics
-- SQL Snippets
+- Snippets
 - Data model and table metadata
 - Segments
 - Public sharing settings for questions and dashboards
@@ -258,9 +258,15 @@ type: question
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
-Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). Entity IDs use the [NanoID format](https://github.com/ai/nanoid).
+Metabase assigns a unique Entity ID to every Metabase item (a dashboard, question, model, collection, etc.). These Entity IDs are in addition to the sequential IDs Metabase generates. Entity IDs use the [NanoID format](https://github.com/ai/nanoid), and are stable across Metabases. By "stable" we mean that you can, for example, export a dashboard with an entity ID from one Metabase, and import that dashboard into another Metabase and have that dashboard use the same Entity ID, even though it's in a different Metabase.
 
-You can see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
+To get an item's Entity ID in Metabase:
+
+1. Visit the item in Metabase.
+2. Click on the info button.
+3. In the overview tab, copy the Entity ID.
+
+You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. For example, in the [Example of a serialized question](#example-of-a-serialized-question), you'll see the Entity ID of that question:
 
 ```yaml
 entity_id: r6vC_vLmo9zG6_r9sAuYG
@@ -288,6 +294,18 @@ collection_id: onou5H28Wvy3kWnjxxdKQ
 ```
 
 This ID refers to the collection where the question was saved. In a real export, you'd be able to find a YAML file for this collection whose name starts with its ID: `onou5H28Wvy3kWnjxxdKQ`.
+
+### Entity IDs work with embedding
+
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded Analytics SDK](../embedding/sdk/introduction.md).
+
+A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
+
+1. Create a dashboard in a Metabase running locally on your machine.
+2. Embed the dashboard in your app locally using the Entity ID in your application code.
+3. Export your Metabase changes to YAML files via serialization.
+4. Import your Metabase changes (the exported YAML files) to your production Metabase.
+5. Since the Entity ID remains the same in the production Metabase, you can just push the code in your app to production, and the code will refer to the right dashboard.
 
 ### Databases, schemas, tables, and fields are identified by name
 

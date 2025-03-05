@@ -20,7 +20,37 @@ import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
+// Note: Changing the names of the stories may impact loki visual testing. Please ensure that
+// Any story name changes are also reflected in the loki.config.js storiesFilter array.
 const parameters = {
+  options: {
+    storySort: {
+      order: [
+        "Intro",
+        "Design System",
+        "Typography",
+        "Components",
+        [
+          "Buttons",
+          "Data display",
+          "Feedback",
+          "Inputs",
+          "Overlays",
+          "Parameters",
+          "Navigation",
+          "Text",
+          "*",
+          "Utils",
+          "Ask Before Using",
+        ],
+        "Patterns",
+        "Viz",
+        "*",
+        "App",
+        "Deprecated",
+      ],
+    },
+  },
   controls: {
     matchers: {
       color: /(background|color)$/i,

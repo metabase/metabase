@@ -1,24 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
-const channels = {
-  slack: {
-    setup: H.mockSlackConfigured,
-    createAlert: () => {
-      H.toggleAlertChannel("Email");
-      H.toggleAlertChannel("Slack");
-      cy.findByPlaceholderText(/Pick a user or channel/).click();
-      H.popover().findByText("#work").click();
-    },
-  },
-  email: { setup: H.setupSMTP, createAlert: () => {} },
-};
 
 describe("scenarios > alert", () => {
   beforeEach(() => {
@@ -29,28 +15,25 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
       H.modal().within(() => {
         cy.findByText(
-          "To send alerts, you'll need to set up email, Slack or Webhook integration.",
+          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.",
         );
 
-        cy.findByRole("link", { name: "Configure email" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/email",
-        );
-        cy.findByRole("link", { name: "Configure Slack" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/notifications/slack",
-        );
-        cy.findByRole("link", { name: "Configure webhook" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/notifications",
-        );
+        cy.findByText("Set up SMTP")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/email");
+        cy.findByText("Set up Slack")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/notifications/slack");
+        cy.findByText("Add a webhook")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/notifications");
       });
     });
 
@@ -58,60 +41,16 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "To send alerts, an admin needs to set up email integration.",
-      );
-    });
-  });
-
-  Object.entries(channels).forEach(([channel, config]) => {
-    describe(`with ${channel} set up`, { tags: "@external" }, () => {
-      beforeEach(config.setup);
-
-      it("educational screen should show for the first alert, but not for the second", () => {
-        cy.intercept("POST", "/api/alert").as("savedAlert");
-        cy.intercept("POST", `/api/card/${ORDERS_COUNT_QUESTION_ID}/query`).as(
-          "questionLoaded",
+      H.modal().within(() => {
+        cy.findByText(
+          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.",
         );
 
-        // Open the first alert screen and create an alert
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openSharingMenu("Create alert");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("The wide world of alerts");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("There are a few different kinds of alerts you can get");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a raw data question returns any results");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a line or bar crosses a goal line");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a progress bar reaches its goal");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Set up an alert").click();
-
-        config.createAlert();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Done").click();
-
-        cy.wait("@savedAlert");
-
-        // Open the second alert screen
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-        cy.wait("@questionLoaded");
-
-        H.openSharingMenu("Create alert");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Let's set up your alert");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("The wide world of alerts").should("not.exist");
+        cy.findByText("Set up SMTP").should("not.exist");
+        cy.findByText("Set up Slack").should("not.exist");
+        cy.findByText("Add a webhook").should("not.exist");
       });
     });
   });
@@ -131,37 +70,33 @@ describe("scenarios > alert", () => {
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
-      //Disable Email
-      H.toggleAlertChannel("Email");
-      H.toggleAlertChannel("Foo Hook");
-      H.toggleAlertChannel("Bar Hook");
+      H.addNotificationHandlerChannel("Bar Hook");
 
       cy.findByRole("button", { name: "Done" }).click();
 
+      H.notificationList().findByText("Your alert is all set up.");
+
       H.openSharingMenu("Edit alerts");
 
-      H.popover().within(() => {
-        cy.findByText("You set up an alert").should("be.visible");
-        cy.findByRole("listitem", { name: "Number of HTTP channels" })
-          .should("contain.text", "2")
-          .findByRole("img", { name: /webhook/i })
-          .should("exist");
-        cy.findByText("Edit").click();
+      H.modal().within(() => {
+        cy.findByText("Edit alerts").should("be.visible");
+
+        cy.icon("webhook").should("be.visible");
+
+        cy.findByText(/Created by you/)
+          .should("be.visible")
+          .realHover();
+
+        cy.icon("trash").click();
       });
 
-      cy.findByRole("button", { name: "Delete this alert" }).click();
+      cy.findByRole("button", { name: "Delete it" }).click();
+      H.notificationList().findByText("The alert was successfully deleted.");
 
-      cy.log(
-        "Webhooks should render with their given names in delete modal metabase#48428",
-      );
-      cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
-      cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
-
-      cy.findByTestId("delete-confirmation-modal-alert")
-        .findByRole("button", { name: "Delete this alert" })
-        .click();
+      // delete modal should close
+      H.modal().should("not.exist");
     });
   });
 
@@ -194,11 +129,73 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    H.openSharingMenu("Create alert");
-    H.modal().button("Set up an alert").click();
+    H.openSharingMenu("Create an alert");
     H.modal().button("Done").click();
 
     H.openSharingMenu("Edit alerts");
-    H.popover().findByText("You set up an alert").should("be.visible");
+    H.modal().within(() => {
+      cy.findByText("Edit alerts").should("be.visible");
+      cy.findByText(/Created by you/).should("be.visible");
+    });
   });
+
+  describe(
+    "scenarios > sharing > approved domains (EE)",
+    { tags: "@external" },
+    () => {
+      const allowedDomain = "metabase.test";
+      const deniedDomain = "metabase.example";
+      const deniedEmail = `mailer@${deniedDomain}`;
+      const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+      const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+
+      function addEmailRecipient(email) {
+        cy.findByRole("textbox").click().type(`${email}`).blur();
+      }
+
+      function setAllowedDomains() {
+        H.updateSetting("subscription-allowed-domains", allowedDomain);
+      }
+
+      beforeEach(() => {
+        H.restore();
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
+        H.setupSMTP();
+        setAllowedDomains();
+      });
+
+      it("should validate approved email domains for a question alert", () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        H.openSharingMenu("Create an alert");
+
+        H.modal().within(() => {
+          cy.findByText("New alert").should("be.visible");
+
+          cy.findByTestId("token-field").within(() => {
+            addEmailRecipient(deniedEmail);
+          });
+
+          cy.findByText(alertError);
+          cy.button("Done").should("be.disabled");
+        });
+      });
+
+      it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.openSharingMenu("Subscriptions");
+
+        H.sidebar().within(() => {
+          cy.findByText("Email it").click();
+          addEmailRecipient(deniedEmail);
+
+          // Reproduces metabase#17977
+          cy.button("Send email now").should("be.disabled");
+          cy.button("Done").should("be.disabled");
+          cy.findByText(subscriptionError);
+        });
+      });
+    },
+  );
 });

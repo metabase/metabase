@@ -26,7 +26,7 @@
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
-    :model/ConnectionImpersonation           metabase-enterprise.advanced-permissions.models.connection-impersonation
+    :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/Dashboard                         metabase.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.models.dashboard-card
@@ -48,10 +48,11 @@
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.models.moderation-review
     :model/NativeQuerySnippet                metabase.models.native-query-snippet
-    :model/Notification                      metabase.models.notification
-    :model/NotificationHandler               metabase.models.notification
-    :model/NotificationRecipient             metabase.models.notification
-    :model/NotificationSubscription          metabase.models.notification
+    :model/Notification                      metabase.notification.models
+    :model/NotificationCard                  metabase.notification.models
+    :model/NotificationHandler               metabase.notification.models
+    :model/NotificationRecipient             metabase.notification.models
+    :model/NotificationSubscription          metabase.notification.models
     :model/ParameterCard                     metabase.models.parameter-card
     :model/Permissions                       metabase.permissions.models.permissions
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group

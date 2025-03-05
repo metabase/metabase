@@ -26,10 +26,13 @@ const argTypes = {
     ],
     control: { type: "select" },
   },
+  color: {
+    control: { type: "text" },
+  },
 };
 
 const DefaultTemplate = (args: TooltipProps) => (
-  <Flex justify="center">
+  <Flex justify="center" mih="200px">
     <Tooltip {...args}>
       <Button variant="filled">Toggle tooltip</Button>
     </Tooltip>
@@ -37,7 +40,7 @@ const DefaultTemplate = (args: TooltipProps) => (
 );
 
 export default {
-  title: "Overlays/Tooltip",
+  title: "Components/Overlays/Tooltip",
   component: Tooltip,
   args,
   argTypes,
@@ -45,4 +48,18 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  parameters: { loki: { skip: true } },
+};
+
+export const LongContentWithFixedWidth = {
+  render: DefaultTemplate,
+  args: {
+    opened: true,
+    label: (
+      <div style={{ maxWidth: 350 }}>
+        The query for this chart was run in America/Toronto rather than UTC due
+        to database or driver constraints.
+      </div>
+    ),
+  },
 };

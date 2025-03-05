@@ -42,7 +42,7 @@ const StateTemplate = (args: SwitchProps) => (
 );
 
 export default {
-  title: "Inputs/Switch",
+  title: "Components/Inputs/Switch",
   component: Switch,
   args,
   argTypes,

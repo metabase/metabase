@@ -1,3 +1,41 @@
+## [0.54.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.2-nightly...embedding-sdk-0.54.3-nightly) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54023](https://github.com/metabase/metabase/issues/54023)) ([17578a7](https://github.com/metabase/metabase/commit/17578a74c3c2531942806370e78fe20ea94d506f))
+* **sdk:** add forwardRef to remove 'Function components cannot be given ([#54280](https://github.com/metabase/metabase/issues/54280)) ([af88536](https://github.com/metabase/metabase/commit/af88536cefc8482f6866412aad1127716caed2d0))
+* **sdk:** Add missing support of mapQuestionClickActions plugin for InteractiveDashboard ([#54240](https://github.com/metabase/metabase/issues/54240)) ([01bad49](https://github.com/metabase/metabase/commit/01bad49f5b5536354ad98f05d8bb8864a7f38d2d))
+* **sdk:** deprecate the CreateQuestion component ([#54212](https://github.com/metabase/metabase/issues/54212)) ([837df59](https://github.com/metabase/metabase/commit/837df592232ccd2b3c82bc1c1bbd1862cb606863))
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([789f1d5](https://github.com/metabase/metabase/commit/789f1d5002bcc4b7aac05ff492a741cfabb7e02c))
+* **sdk:** Rename saveToCollectionId to saveToCollection ([#54225](https://github.com/metabase/metabase/issues/54225)) ([f77ff5e](https://github.com/metabase/metabase/commit/f77ff5e4922647991cfde71b024960e48a785014))
+
+
+### Features
+
+* **sdk:** cli should ask to remove the instance early if one exists ([#53545](https://github.com/metabase/metabase/issues/53545)) ([250b47b](https://github.com/metabase/metabase/commit/250b47b0d82396ae0a33a156baaf34e3635854b5))
+
+
+
+## [0.54.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.1-nightly...embedding-sdk-0.54.2-nightly) (2025-02-25)
+
+
+### Bug Fixes
+
+* **sdk:** Add dir attribute for PublicComponentStylesWrapper ([#54082](https://github.com/metabase/metabase/issues/54082)) ([c4e499c](https://github.com/metabase/metabase/commit/c4e499cd2a1b9a5739dda0cbd8a6be78ad03c160))
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([8af4499](https://github.com/metabase/metabase/commit/8af4499d470a0f2641539687020f3252f2b6b6d5))
+* **sdk:** fix visual artifacts in binning options ([#53961](https://github.com/metabase/metabase/issues/53961)) ([7ad55f5](https://github.com/metabase/metabase/commit/7ad55f50997f09640884e5475ecc9c0d217ec034))
+* **sdk:** hide "New Question" in EditableDashboard sidebar ([#53908](https://github.com/metabase/metabase/issues/53908)) ([8423d63](https://github.com/metabase/metabase/commit/8423d6382a9635026918277203ee14ebb09ff942))
+* **sdk:** improve example component import paths in cli ([#53473](https://github.com/metabase/metabase/issues/53473)) ([33a64e9](https://github.com/metabase/metabase/commit/33a64e993f5dfa6046d1d72760fff84edd6717dc))
+
+
+### Features
+
+* **sdk:** asks whether to add a db right before adding db connection in the cli ([#53680](https://github.com/metabase/metabase/issues/53680)) ([f957817](https://github.com/metabase/metabase/commit/f957817f705c76ac3e675fa802751aab2c0c1526))
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([65b050e](https://github.com/metabase/metabase/commit/65b050eb7d701a871668ba442476482da7b48a57))
+
+
+
 ## [0.54.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.1-nightly...embedding-sdk-0.54.1-nightly) (2025-02-17)
 
 

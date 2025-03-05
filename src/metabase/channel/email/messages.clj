@@ -5,6 +5,7 @@
   NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email :as email]
@@ -19,6 +20,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
@@ -92,7 +94,7 @@
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -266,13 +268,25 @@
     (email/send-message! message)))
 
 (defn generate-pulse-unsubscribe-hash
-  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions.
+
+  Deprecated: only used for dashboard subscriptions for now, should be migrated to `generate-notification-unsubscribe-hash`
+  once we migrate all the dashboard subscriptions to the new notification system."
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
     (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
                   :email    email
                   :pulse-id pulse-id}))))
+
+(defn generate-notification-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from notifications."
+  [notification-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/encode {:salt            (public-settings/site-uuid-for-unsubscribing-url)
+                  :email           email
+                  :notification-id notification-id}))))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
@@ -325,87 +339,93 @@
   []
   (or (driver/report-timezone) "UTC"))
 
-(defn alert-schedule-text
-  "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
-  for inclusion in the email template. Not translated, since emails in general are not currently translated."
-  [channel]
-  (case (keyword (:schedule_type channel))
-    :hourly
-    "Run hourly"
+(defn notification-card-schedule-text
+  "Given cron notification subscription return a human-readable description of the schedule."
+  [{:keys [cron_schedule type] :as _subscription}]
+  (when (= :notification-subscription/cron type)
+    ;; TODO consider using https://github.com/grahamar/cron-parser
+    (let [schedule (u.cron/cron-string->schedule-map cron_schedule)]
+      (case (keyword (:schedule_type schedule))
+        :hourly
+        "Run hourly"
 
-    :daily
-    (format "Run daily at %s %s"
-            (schedule-hour-text channel)
-            (schedule-timezone))
+        :daily
+        (format "Run daily at %s %s"
+                (schedule-hour-text schedule)
+                (schedule-timezone))
 
-    :weekly
-    (format "Run weekly on %s at %s %s"
-            (schedule-day-text channel)
-            (schedule-hour-text channel)
-            (schedule-timezone))))
-
-(def alert-condition-text
-  "A map of alert conditions to their corresponding text."
-  {:meets "when this question meets its goal"
-   :below "when this question goes below its goal"
-   :rows  "whenever this question has any results"})
+        :weekly
+        (format "Run weekly on %s at %s %s"
+                (schedule-day-text schedule)
+                (schedule-hour-text schedule)
+                (schedule-timezone))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
-  [user subject template-path template-context]
-  (future
-    (try
-      (email/send-email-retrying!
-       {:recipients   [(:email user)]
-        :message-type :html
-        :subject      subject
-        :message      (channel.template/render template-path template-context)})
-      (catch Exception e
-        (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
+  ([recipients subject template-path template-context]
+   (send-email! recipients subject template-path template-context false))
+  ([recipients subject template-path template-context bcc?]
+   (when (seq recipients)
+     (future
+       (try
+         (email/send-email-retrying!
+          {:recipients   recipients
+           :message-type :html
+           :subject      subject
+           :message      (channel.template/render template-path template-context)
+           :bcc?         bcc?})
+         (catch Exception e
+           (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject)))))))
 
 (defn- template-path [template-name]
   (str "metabase/channel/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
-(def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
-(def ^:private added-template              (template-path "alert_you_were_added"))
-(def ^:private stopped-template            (template-path "alert_stopped_working"))
-(def ^:private archived-template           (template-path "alert_archived"))
+(def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
+(def ^:private removed-template            (template-path "notification_card_you_were_removed"))
+(def ^:private added-template              (template-path "notification_card_you_were_added"))
+(def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
+(def ^:private archived-template           (template-path "card_notification_archived"))
 
-(defn send-you-unsubscribed-alert-email!
-  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
-  [alert who-unsubscribed]
-  (send-email! who-unsubscribed "You unsubscribed from an alert" you-unsubscribed-template
-               (common-alert-context alert)))
+(defn- username
+  [user]
+  (->> [(:first_name user) (:last_name user)]
+       (remove nil?)
+       (str/join " ")))
 
-(defn send-admin-unsubscribed-alert-email!
-  "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
-  [alert user-added {:keys [first_name last_name] :as _admin}]
-  (let [admin-name (format "%s %s" first_name last_name)]
-    (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
-                 (assoc (common-alert-context alert) :adminName admin-name))))
+(defn send-you-unsubscribed-notification-card-email!
+  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
+  [notification unsubscribed-emails]
+  (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
 
-(defn send-you-were-added-alert-email!
-  "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
-  [alert user-added {:keys [first_name last_name] :as _admin-adder}]
-  (let [subject (format "%s %s added you to an alert" first_name last_name)]
-    (send-email! user-added subject added-template (common-alert-context alert alert-condition-text))))
+(defn send-you-were-removed-notification-card-email!
+  "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
+  [notification removed-emails actor]
+  (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name (username actor)) true))
+
+(defn send-you-were-added-card-notification-email!
+  "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
+  [notification added-user-emails adder]
+  (let [subject (format "%s added you to an alert" (username adder))]
+    (send-email! added-user-emails subject added-template notification true)))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [{card-id :id card-name :name} (first-card alert)]
-    (send-email! user not-working-subject archived-template {:archiveURL   (urls/archive-url)
-                                                             :questionName (format "%s (#%d)" card-name card-id)
-                                                             :archiverName (format "%s %s" first_name last_name)})))
+  [card recipient-emails archiver]
+  (send-email! recipient-emails not-working-subject archived-template
+               {:card card
+                :actor archiver}
+               true))
+
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+  [card recipient-emails archiver]
+  (send-email! recipient-emails not-working-subject changed-stopped-template
+               {:card card
+                :actor archiver}
+               true))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"

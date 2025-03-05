@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -32,8 +33,22 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))
    :details mi/transform-encrypted-json})
 
+(mr/def ::Channel
+  "Channel schema."
+  [:map
+   [:name                         string?]
+   [:type                         :keyword]
+   [:details                      :map]
+   [:active      {:optional true} :boolean]
+   [:description {:optional true} [:maybe string?]]])
+
 (defmethod mi/can-write? :model/Channel
   [& _]
+  (or (mi/superuser?)
+      (perms/current-user-has-application-permissions? :setting)))
+
+(defmethod mi/can-read? :model/Channel
+  [_channel]
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
 
@@ -55,7 +70,7 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel         [_instance] [:name :type])
+(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
@@ -74,7 +89,7 @@
   #{:email/handlebars-text
     :email/handlebars-resource})
 
-(def ^:private ChannelTemplateEmailDetails
+(mr/def ::ChannelTemplateEmailDetails
   [:merge
    [:map
     [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
@@ -88,7 +103,7 @@
      [:map
       [:body string?]]]]])
 
-(def ChannelTemplate
+(mr/def ::ChannelTemplate
   "Channel Template schema."
   [:merge
    [:map
@@ -96,12 +111,12 @@
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map
-      [:details ChannelTemplateEmailDetails]]]
+      [:details ::ChannelTemplateEmailDetails]]]
     [::mc/default :any]]])
 
 (defn- check-valid-channel-template
   [channel-template]
-  (mu/validate-throw ChannelTemplate channel-template))
+  (mu/validate-throw ::ChannelTemplate channel-template))
 
 (t2/define-before-insert :model/ChannelTemplate
   [instance]

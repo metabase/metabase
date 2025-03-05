@@ -7,6 +7,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.json]
@@ -26,7 +27,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
-   (org.bson.types ObjectId)))
+   (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -161,8 +162,9 @@
   [{"$facet"
     (cond-> {"results"    [{"$match" {"result" true}}]
              "newResults" [{"$match" {"result" false}}
-                           {"$group" {"_id"   {"type" "$type"
-                                               "path" "$path"}
+                           {"$group" {"_id"   {"type"       "$type"
+                                               "type-alias" "$type-alias"
+                                               "path"       "$path"}
                                       ;; count is zero if type is "null" so we only select "null" as the type if there
                                       ;; is no other type for the path
                                       "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
@@ -170,31 +172,37 @@
                                                                 "else" 1}}}
                                       "index" {"$min" "$index"}}}
                            {"$sort" {"count" -1}}
-                           {"$group" {"_id"      "$_id.path"
-                                      "type"     {"$first" "$_id.type"}
-                                      "index"    {"$min" "$index"}}}
-                           {"$project" {"path"   "$_id"
-                                        "type"   1
-                                        "result" {"$literal" true}
-                                        "object" nil
-                                        "index"  1}}]}
+                           {"$group" {"_id"        "$_id.path"
+                                      "type"       {"$first" "$_id.type"}
+                                      "type-alias" {"$first" "$_id.type-alias"}
+                                      "index"      {"$min" "$index"}}}
+                           {"$project" {"path"      "$_id"
+                                        "type"       1
+                                        "type-alias" 1
+                                        "result"     {"$literal" true}
+                                        "object"     nil
+                                        "index"      1}}]}
       (not= depth max-depth)
       (assoc "nextItems" [{"$match" {"result" false, "object" {"$ne" nil}}}
                           {"$project" {"path" 1
                                        "kvs"  {"$map" {"input" {"$objectToArray" "$object"}
                                                        "as"    "item"
-                                                       "in"    {"k"      "$$item.k"
+                                                       "in"    {"k"          "$$item.k"
                                                                 ;; we only need v in the next step it's an object
-                                                                "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
-                                                                                   "then" "$$item.v"
-                                                                                   "else" nil}}
-                                                                "type"   {"$type" "$$item.v"}}}}}}
+                                                                "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                                       "then" "$$item.v"
+                                                                                       "else" nil}}
+                                                                "type"       {"$type" "$$item.v"}
+                                                                "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                                                                           "args" ["$$item.v" {"$type" "$$item.v"}]
+                                                                                           "lang" "js"}}}}}}}
                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-                          {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
-                                       "type"   "$kvs.type"
-                                       "result" {"$literal" false}
-                                       "index"  1
-                                       "object" "$kvs.object"}}]))}
+                          {"$project" {"path"       {"$concat" ["$path" "." "$kvs.k"]}
+                                       "type"       "$kvs.type"
+                                       "type-alias" "$kvs.type-alias"
+                                       "result"     {"$literal" false}
+                                       "index"      1
+                                       "object"     "$kvs.object"}}]))}
    {"$project" {"acc" {"$concatArrays" (cond-> ["$results" "$newResults"]
                                          (not= depth max-depth)
                                          (conj "$nextItems"))}}}
@@ -215,21 +223,25 @@
         initial-items [{"$project" {"path" "$ROOT"
                                     "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"}
                                                    "as"    "item"
-                                                   "in"    {"k"      "$$item.k"
-                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
-                                                                               "then" "$$item.v"
-                                                                               "else" nil}}
-                                                            "type"   {"$type" "$$item.v"}}}}}}
+                                                   "in"    {"k"          "$$item.k"
+                                                            "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                                   "then" "$$item.v"
+                                                                                   "else" nil}}
+                                                            "type"       {"$type" "$$item.v"}
+                                                            "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
+                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
+                                                                                       "lang" "js"}}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-                       {"$project" {"path"   "$kvs.k"
-                                    "result" {"$literal" false}
-                                    "type"   "$kvs.type"
-                                    "index"  1
-                                    "object" "$kvs.object"}}]]
+                       {"$project" {"path"       "$kvs.k"
+                                    "result"     {"$literal" false}
+                                    "type"       "$kvs.type"
+                                    "type-alias" "$kvs.type-alias"
+                                    "index"      1
+                                    "object"     "$kvs.object"}}]]
     (concat sample
             initial-items
             (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
-            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
+            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "type-alias" "$type-alias", "index" "$index"}}])))
 
 (comment
   ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
@@ -297,6 +309,7 @@
                              [:map {:closed true}
                               [:path  ::lib.schema.common/non-blank-string]
                               [:type  ::lib.schema.common/non-blank-string]
+                              [:type-alias  ::lib.schema.common/non-blank-string]
                               [:index :int]]]
   "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
   Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
@@ -319,6 +332,9 @@
         "object"     :type/Dictionary
         "array"      :type/Array
         "binData"    :type/*
+        ;; "uuid" is not a database type like the rest here
+        ;; it's determined by the subtype of binData fields in describe-table
+        "uuid"       :type/UUID
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
         ;; Mongo's date type is actually a date time so we can't map it to :type/Date
@@ -369,14 +385,14 @@
 (defmethod driver/describe-table :mongo
   [_driver database table]
   (let [fields (->> (describe-table database table)
-                    (map (fn [x]
-                           (let [path (str/split (:path x) #"\.")
+                    (map (fn [field]
+                           (let [path (str/split (:path field) #"\.")
                                  name (last path)]
                              (cond-> {:name              name
-                                      :database-type     (:type x)
-                                      :base-type         (type-alias->base-type (:type x))
+                                      :database-type     (:type field)
+                                      :base-type         (type-alias->base-type (:type-alias field))
                                       ; index is used by `set-database-position`, and not present in final result
-                                      :index             (:index x)
+                                      :index             (:index field)
                                       ; path is used to nest fields, and not present in final result
                                       :path              path}
                                (= name "_id")
@@ -489,6 +505,47 @@
     (let [mongo-opts {:limit    metadata-queries/nested-field-sample-limit
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
       (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
+
+(defn- encode-mongo
+  "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"
+  ([mgo] (encode-mongo mgo 0))
+  ([mgo indent-level]
+   (let [indent (apply str (repeat indent-level "  "))
+         next-indent (str indent "  ")]
+     (letfn [(encode-map [m next-indent]
+               (if (empty? m) "{}"
+                   (str "{\n"
+                        (->> m
+                             (map (fn [[k v]] (str next-indent "\"" (name k) "\": " (encode-mongo v (inc indent-level)))))
+                             (str/join ",\n"))
+                        "\n" indent "}")))
+             (encode-vector [v next-indent]
+               (if (empty? v) "[]"
+                   (str "[\n"
+                        (->> v
+                             (map #(str next-indent (encode-mongo % (inc indent-level))))
+                             (str/join ",\n"))
+                        "\n" indent "]")))
+             (encode-binary [bin]
+               (if (= (.getType ^Binary bin) mongo.conversion/bson-uuid-type)
+                 (str "UUID(\"" (mongo.conversion/bsonuuid->uuid bin) "\")")
+                 (json/encode bin)))
+             (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
+       (cond
+         (map? mgo) (encode-map mgo next-indent)
+         (vector? mgo) (encode-vector mgo next-indent)
+         (instance? ObjectId mgo) (encode-object-id mgo)
+         (instance? Binary mgo) (encode-binary mgo)
+         :else (json/encode mgo))))))
+
+(defmethod driver/prettify-native-form :mongo
+  [_driver native-form]
+  (try
+    (encode-mongo native-form)
+    (catch Throwable e
+      (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
+      (log/debugf e "Query:\n%s" native-form)
+      native-form)))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.

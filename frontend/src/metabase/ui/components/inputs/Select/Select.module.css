@@ -9,7 +9,6 @@
 }
 
 .SelectWrapper {
-  margin-top: var(--mantine-spacing-xs);
   color: var(--mb-color-text-dark);
 
   &[data-disabled] {
@@ -44,6 +43,7 @@
 
   &[data-disabled] {
     opacity: 1;
+    color: var(--mb-color-text-light);
   }
 
   &::placeholder {
@@ -79,7 +79,7 @@
   [data-disabled] & {
     opacity: 1;
     color: var(--mb-color-text-light);
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-bg-medium);
 
     &::placeholder {
       color: var(--mb-color-text-light);

@@ -229,7 +229,7 @@
 
 (defenterprise set-role-if-supported!
   "OSS no-op implementation of `set-role-if-supported!`."
-  metabase-enterprise.advanced-permissions.driver.impersonation
+  metabase-enterprise.impersonation.driver
   [_ _ _])
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
@@ -598,7 +598,9 @@
 
 (defmethod read-column-thunk [:sql-jdbc Types/ARRAY]
   [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
-  (fn [] (vec (.getArray ^java.sql.Array (.getObject rs i)))))
+  (fn []
+    (when-let [obj (.getObject rs i)]
+      (vec (.getArray ^java.sql.Array obj)))))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
   [_ rs _ i]
