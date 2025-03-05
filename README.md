@@ -1,5 +1,24 @@
 # Metabase
 
+## Attribution Statement for Public Fork
+
+This project is a fork of [Metabase](https://github.com/metabase/metabase) and is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+Modifications & Changes
+
+This fork includes modifications to the original project. The key changes include:
+
+* Increased the default image preview size in tables.
+* Disabled some Databricks driver checks to ensure its compatibility with legacy Databricks deployments.
+
+All changes are publicly available under the AGPL-3.0 license, and the full source code can be accessed [here](https://github.com/Constructor-io/metabase).
+
+License Notice
+
+This software is distributed under the terms of the AGPL-3.0 license. A copy of the license is included in this repository as LICENSE-AGPL.txt or can be found at:
+📜 https://www.gnu.org/licenses/agpl-3.0.html
+
+
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](docs/images/metabase-product-screenshot.svg)
