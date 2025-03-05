@@ -71,7 +71,13 @@ If you can't expose your Metabase to the internet, talk to us about our [air-gap
 In case you need to route outbound Metabase traffic through a proxy on your network, use the following command when starting Metabase:
 
 ```
-java -Dhttps.proxyHost=[your proxy's hostname] -Dhttps.proxyPort=[your proxy's port] -jar enterprise_metabase.jar
+java -Dhttps.proxyHost=[your proxy's hostname or ip] -Dhttps.proxyPort=[your proxy's port] -jar metabase.jar
+```
+
+or if you're using containers, then you need to use the `JAVA_TOOL_OPTIONS` environment variable:
+
+```
+JAVA_TOOL_OPTIONS=-Dhttps.proxyHost=[your proxy's hostname or ip] -Dhttps.proxyPort=[your proxy's port]
 ```
 
 Depending on your organization’s setup, you may need to take additional configuration steps. If the command above doesn't work for you, we recommend reaching out to your internal infrastructure or dev ops teams for assistance.

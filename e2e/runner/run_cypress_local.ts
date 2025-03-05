@@ -7,7 +7,7 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
-import { startSampleAppContainers } from "./start-sample-app-containers/start-sample-app-containers";
+import { startSampleAppContainers } from "./start-sample-app-containers/startSampleAppContainers";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -117,8 +117,7 @@ const init = async () => {
 
   switch (options.TEST_SUITE) {
     case "metabase-nodejs-react-sdk-embedding-sample-e2e":
-    case "metabase-nextjs-sdk-embedding-sample-app-router-e2e":
-    case "metabase-nextjs-sdk-embedding-sample-pages-router-e2e":
+    case "metabase-nextjs-sdk-embedding-sample-e2e":
     case "shoppy-e2e":
       await startSampleAppContainers(options.TEST_SUITE);
       break;

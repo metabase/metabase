@@ -11,11 +11,6 @@ export const EmptyStateHeader = styled.div`
   text-align: center;
 `;
 
-export const EmptyStateFooter = styled.div`
-  display: flex;
-  margin-top: 1rem;
-`;
-
 export const EmptyStateActions = styled.div`
   display: flex;
   align-items: center;

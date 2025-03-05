@@ -1,8 +1,14 @@
-import { type MouseEvent, type Ref, forwardRef, useState } from "react";
+import {
+  type MouseEvent,
+  type Ref,
+  forwardRef,
+  useMemo,
+  useState,
+} from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
@@ -11,6 +17,7 @@ import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
@@ -72,12 +79,12 @@ export function NotebookDataPicker({
 
   if (isEmbedding) {
     return (
-      <LegacyDataPicker
+      <EmbeddingDataPicker
         query={query}
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
-        hasMetrics={hasMetrics}
+        canChangeDatabase={canChangeDatabase}
         isDisabled={isDisabled}
         onChange={handleChange}
       />
@@ -188,25 +195,31 @@ function ModernDataPicker({
   );
 }
 
-type LegacyDataPickerProps = {
+type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
-  hasMetrics: boolean;
+  canChangeDatabase: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
 };
 
-function LegacyDataPicker({
+function EmbeddingDataPicker({
   query,
   stageIndex,
   table,
   placeholder,
-  hasMetrics,
+  canChangeDatabase,
   isDisabled,
   onChange,
-}: LegacyDataPickerProps) {
+}: EmbeddingDataPickerProps) {
+  const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
+    useSearchQuery({
+      models: ["dataset", "table"],
+      limit: 0,
+    });
+
   const databaseId = Lib.databaseID(query);
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
@@ -214,18 +227,67 @@ function LegacyDataPicker({
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
-  const context = useNotebookContext();
-  const modelList = getModelFilterList(context, hasMetrics);
+
+  const metadata = useSelector(getMetadata);
+  const databases = useMemo(() => {
+    // We're joining data
+    if (!canChangeDatabase) {
+      return [
+        metadata.database(databaseId),
+        metadata.savedQuestionsDatabase(),
+      ].filter(Boolean);
+    }
+
+    /**
+     * When not joining data, we want to use all databases loaded inside `DataSourceSelector`
+     *
+     * @see https://github.com/metabase/metabase/blob/fb25682fe8dbafe2062e37bce832f62440872ab7/frontend/src/metabase/query_builder/components/DataSelector/DataSelector.jsx#L1163-L1168
+     */
+    return undefined;
+  }, [canChangeDatabase, databaseId, metadata]);
+
+  if (isDataSourceCountLoading) {
+    return null;
+  }
+
+  const shouldUseSimpleDataPicker =
+    dataSourceCountData != null && dataSourceCountData.total < 100;
+  if (shouldUseSimpleDataPicker) {
+    return (
+      <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
+        filterByDatabaseId={canChangeDatabase ? null : databaseId}
+        selectedEntity={pickerInfo?.tableId}
+        isInitiallyOpen={!table}
+        triggerElement={
+          <DataPickerTarget
+            /**
+             * We try to blur the line between models and tables for embedding users.
+             * this property will change the way icons are displayed in the data picker trigger,
+             * so we need to remove it. Treating it as a table.
+             */
+            getTableIcon={() => "table"}
+            tableInfo={tableInfo}
+            placeholder={placeholder}
+            isDisabled={isDisabled}
+          />
+        }
+        setSourceTableFn={onChange}
+      />
+    );
+  }
 
   return (
     <DataSourceSelector
       key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
+      databases={databases}
+      canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
       databaseQuery={{ saved: true }}
-      canSelectMetric={modelList.includes("metric")}
+      canSelectMetric={false}
+      canSelectSavedQuestion={false}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
@@ -244,6 +306,7 @@ type DataPickerTargetProps = {
   isDisabled?: boolean;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  getTableIcon?: (tableInfo: Lib.TableDisplayInfo) => IconName;
 };
 
 const DataPickerTarget = forwardRef(function DataPickerTarget(
@@ -253,6 +316,7 @@ const DataPickerTarget = forwardRef(function DataPickerTarget(
     isDisabled,
     onClick,
     onAuxClick,
+    getTableIcon = defaultGetTableIcon,
   }: DataPickerTargetProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -277,7 +341,7 @@ const DataPickerTarget = forwardRef(function DataPickerTarget(
   );
 });
 
-function getTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
+function defaultGetTableIcon(tableInfo: Lib.TableDisplayInfo): IconName {
   switch (true) {
     case tableInfo.isQuestion:
       return "table2";

@@ -209,7 +209,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       clickLineChartPoint();
-      // TODO: fix it, currently we drill down to the quesiton on dot click
+      // TODO: fix it, currently we drill down to the question on dot click
       // assertDrillThroughMenuOpen();
     });
 
@@ -1801,7 +1801,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type("Dell Adams");
+        cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
       onNextAnchorClick(anchor => {
@@ -2622,6 +2622,82 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           `/dashboard/${targetDashboard.id}`,
         );
         cy.location("search").should("eq", `?tab=${firstTab.id}-first-tab`);
+      });
+    });
+  });
+
+  it("should handle redirect to a dashboard with a filter, when filter was removed (metabase#35444)", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+    H.createDashboard(
+      {
+        ...TARGET_DASHBOARD,
+        parameters: [DASHBOARD_FILTER_TEXT],
+      },
+      {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      },
+    ).then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        dashcards: [
+          createMockDashboardCard({
+            card_id: ORDERS_QUESTION_ID,
+            parameter_mappings: [
+              createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+            ],
+          }),
+        ],
+      });
+    });
+
+    H.createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
+      H.visitDashboard(card.dashboard_id);
+
+      H.editDashboard();
+
+      H.getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      getClickMapping("Text filter").click();
+
+      H.popover().findByText("Count").click();
+      H.saveDashboard();
+    });
+
+    cy.get("@targetDashboardId").then(targetDashboardId => {
+      cy.log("remove filter from the target dashboard");
+
+      cy.request("PUT", `/api/dashboard/${targetDashboardId}`, {
+        parameters: [],
+      });
+
+      cy.log(
+        "reload source dashboard to apply removed filter of target dashboard in the mappings",
+      );
+
+      cy.reload();
+
+      H.editDashboard();
+
+      H.getDashboardCard().realHover().icon("click").click();
+
+      cy.get("aside").should("contain", "No available targets");
+      cy.get("aside").button("Done").click();
+
+      H.saveDashboard({ awaitRequest: false });
+      cy.wait("@saveDashboard-getDashboard");
+
+      clickLineChartPoint();
+
+      cy.findByTestId("dashboard-header").should(
+        "contain",
+        TARGET_DASHBOARD.name,
+      );
+
+      cy.log("search shouldn't contain `undefined=`");
+
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+        expect(search).to.equal("");
       });
     });
   });
