@@ -15,6 +15,8 @@ There are different ways you can embed questions:
 
 ## Embedding a static question
 
+![Static question](../images/static-question.png)
+
 You can embed a static question using the `StaticQuestion` component.
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
@@ -37,6 +39,8 @@ export default function App() {
 ```
 
 ## Embedding an interactive question
+
+![Interactive question](../images/interactive-question.png)
 
 You can embed an interactive question using the `InteractiveQuestion` component.
 
@@ -98,39 +102,45 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 ```typescript
 {% raw %}
-<InteractiveQuestion questionId={95}>
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <div style={{ display: "grid", placeItems: "center" }}>
-      <InteractiveQuestion.Title />
-      <InteractiveQuestion.ResetButton />
+    <div className="App" style={{ width: "100%", maxWidth: "1600px", height: "800px", margin: "0 auto" }}>
+      <MetabaseProvider authConfig={config} theme={theme}>
+        <InteractiveQuestion questionId={questionId}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+            }}
+          >
+            <div style={{ display: "grid", placeItems: "center", width: "100%" }}>
+              <InteractiveQuestion.Title />
+              <InteractiveQuestion.ResetButton />
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              <div style={{ width: "100%" }}>
+                <InteractiveQuestion.QuestionVisualization />
+              </div>
+              <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
+                <InteractiveQuestion.Summarize />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
+              <InteractiveQuestion.Filter />
+            </div>
+          </div>
+        </InteractiveQuestion>
+      </MetabaseProvider>
     </div>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ width: "100%" }}>
-        <InteractiveQuestion.QuestionVisualization />
-      </div>
-      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
-        <InteractiveQuestion.Summarize />
-      </div>
-    </div>
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <InteractiveQuestion.Filter />
-    </div>
-  </div>
-</InteractiveQuestion>
 {% endraw %}
 ```
 
@@ -140,100 +150,57 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 
 _\* signifies a required prop_
 
-#### `InteractiveQuestion.BackButton`
+### `InteractiveQuestion.BackButton`
 
-A navigation button that returns to the previous view. Only renders when `onNavigateBack` prop from InteractiveQuestion is available.
+A navigation button that returns to the previous view. Only renders when `onNavigateBack` prop from `InteractiveQuestion` is available.
 
 Uses [Mantine ActionIcon props](https://v6.mantine.dev/core/action-icon/) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
 
-#### `InteractiveQuestion.Filter`
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
 
-A set of interactive filter badges that allow adding, editing, and removing filters. Displays current filters as badges with an "Add another filter" option.
-
-| Prop               | Type    | Description                                          |
-| ------------------ | ------- | ---------------------------------------------------- |
-| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
-
-#### `InteractiveQuestion.FilterDropdown`
-
-A dropdown button for the Filter component.
-
-| Prop               | Type    | Description                                          |
-| ------------------ | ------- | ---------------------------------------------------- |
-| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
-
-#### `InteractiveQuestion.ResetButton`
-
-Button to reset question modifications. Only appears when there are unsaved changes to the question.
-
-Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
-
-#### `InteractiveQuestion.Title`
-
-Displays a title based on the question's state. Shows:
-
-- The question's display name if it's saved
-- An auto-generated description for ad-hoc questions (non-native queries)
-- "New question" as fallback or for new/native queries
-
-| Prop      | Type          | Description                                     |
-| --------- | ------------- | ----------------------------------------------- |
-| className | string        | Custom CSS class name for styling the component |
-| style     | CSSProperties | Inline styles to apply to the component         |
-
-#### `InteractiveQuestion.SaveButton`
-
-Button for saving question changes. Only enabled when there are unsaved modifications to the question.
-
-_Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` handler or the button will not do anything when clicked.
-
-Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
-
-#### `InteractiveQuestion.Breakout`
+### `InteractiveQuestion.Breakout`
 
 A set of badges for managing data groupings (breakouts).
 
 No props. Uses question context for breakout functionality.
 
-#### `InteractiveQuestion.BreakoutDropdown`
+### `InteractiveQuestion.BreakoutDropdown`
 
 Dropdown button for the Breakout component.
 
 Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
 
-#### `InteractiveQuestion.Summarize`
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
 
-Interface for adding and managing data summaries (like counts, sums, averages). Displays as a set of badges.
+### `InteractiveQuestion.ChartTypeDropdown`
 
-No props. Uses question context for summarization functionality.
+Dropdown for selecting the visualization type (bar chart, line chart, table, etc.). Automatically updates to show recommended visualization types for the current data.
 
-#### `InteractiveQuestion.SummarizeDropdown`
+Uses [Mantine Menu props](https://v6.mantine.dev/core/menu/?t=props) under the hood, as well as:
 
-Dropdown button for the Summarize component.
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
 
-Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
+### `InteractiveQuestion.ChartTypeSelector`
 
-#### `InteractiveQuestion.Editor`
+Detailed chart type selection interface with recommended visualization options.
+
+Uses [Mantine Stack props](https://v6.mantine.dev/core/stack/?t=props) under the hood, as well as:
+
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
+### `InteractiveQuestion.Editor`
 
 Advanced query editor that provides full access to question configuration. Includes filtering, aggregation, custom expressions, and joins.
 
@@ -243,22 +210,55 @@ _Replaces deprecated `InteractiveQuestion.Notebook`_
 | ------- | ---------- | --------------------------------------------------- |
 | onApply | () => void | Callback function executed when changes are applied |
 
-#### `InteractiveQuestion.EditorButton`
-
-Toggle button for showing/hiding the Editor interface.
+### `InteractiveQuestion.EditorButton`
 
 _Replaces deprecated `InteractiveQuestion.NotebookButton`_
 
-_Note_: Currently, in custom layouts, the `EditorButton` must have an `onClick` handler or the button will not do anything when clicked.
+Toggle button for showing/hiding the Editor interface. In custom layouts, the `EditorButton` _must_ have an `onClick` handler or the button won't do anything when clicked.
 
 Uses [Mantine ActionIcon props](https://v6.mantine.dev/core/action-icon/) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| isOpen | boolean | Whether the editor is currently open |
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
 
-#### `InteractiveQuestion.QuestionVisualization`
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| isOpen    | boolean             | Whether the editor is currently open            |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
+### `InteractiveQuestion.Filter`
+
+A set of interactive filter badges that allow adding, editing, and removing filters. Displays current filters as badges with an "Add another filter" option.
+
+| Prop               | Type    | Description                                          |
+| ------------------ | ------- | ---------------------------------------------------- |
+| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
+
+### `InteractiveQuestion.FilterDropdown`
+
+A dropdown button for the Filter component.
+
+| Prop               | Type    | Description                                          |
+| ------------------ | ------- | ---------------------------------------------------- |
+| withColumnItemIcon | boolean | Whether to show column icons in the filter interface |
+
+### `InteractiveQuestion.QuestionSettings`
+
+Settings panel for configuring visualization options like axes, colors, and formatting.
+
+No props. Uses question context for settings.
+
+### `InteractiveQuestion.QuestionSettingsDropdown`
+
+Dropdown button that contains the QuestionSettings component.
+
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose` and `opened` under the hood, as well as:
+
+| Prop      | Type                          | Description                                     |
+| --------- | ----------------------------- | ----------------------------------------------- |
+| height    | React.CSSProperties["height"] | Height for the dropdown menu                    |
+| className | string                        | Custom CSS class name for styling the component |
+| style     | React.CSSProperties           | Inline styles to apply to the component         |
+
+### `InteractiveQuestion.QuestionVisualization`
 
 The main visualization component that renders the question results as a chart, table, or other visualization type.
 
@@ -269,44 +269,31 @@ The main visualization component that renders the question results as a chart, t
 | className | string              | Custom CSS class name for styling the component |
 | style     | React.CSSProperties | Inline styles to apply to the component         |
 
-#### `InteractiveQuestion.QuestionSettings`
+### `InteractiveQuestion.ResetButton`
 
-Settings panel for configuring visualization options like axes, colors, and formatting.
+Button to reset question modifications. Only appears when there are unsaved changes to the question.
 
-No props. Uses question context for settings.
+Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
 
-#### `InteractiveQuestion.QuestionSettingsDropdown`
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
 
-Dropdown button that contains the QuestionSettings component.
+### `InteractiveQuestion.SaveButton`
 
-Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose` and `opened` under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| height | React.CSSProperties["height"] | Height for the dropdown menu |
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
+Button for saving question changes. Only enabled when there are unsaved modifications to the question.
 
-#### `InteractiveQuestion.ChartTypeSelector`
+_Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` handler or the button will not do anything when clicked.
 
-Detailed chart type selection interface with recommended visualization options.
+Uses [Mantine Button props](https://v6.mantine.dev/core/button/?t=props) under the hood, as well as:
 
-Uses [Mantine Stack props](https://v6.mantine.dev/core/stack/?t=props) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
 
-#### `InteractiveQuestion.ChartTypeDropdown`
-
-Dropdown for selecting the visualization type (bar chart, line chart, table, etc.). Automatically updates to show recommended visualization types for the current data.
-
-Uses [Mantine Menu props](https://v6.mantine.dev/core/menu/?t=props) under the hood, as well as:
-| Prop | Type | Description |
-|------|------|-------------|
-| className | string | Custom CSS class name for styling the component |
-| style | React.CSSProperties | Inline styles to apply to the component |
-
-#### `InteractiveQuestion.SaveQuestionForm`
+### `InteractiveQuestion.SaveQuestionForm`
 
 Form for saving a question, including title and description. When saved:
 
@@ -319,9 +306,39 @@ Form for saving a question, including title and description. When saved:
 | -------- | ---------- | ------------------------------------------------- |
 | onCancel | () => void | Callback function executed when save is cancelled |
 
+### `InteractiveQuestion.Summarize`
+
+Interface for adding and managing data summaries (like counts, sums, averages). Displays as a set of badges.
+
+No props. Uses question context for summarization functionality.
+
+### `InteractiveQuestion.SummarizeDropdown`
+
+Dropdown button for the Summarize component.
+
+Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
+
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
+### `InteractiveQuestion.Title`
+
+Displays a title based on the question's state. Shows:
+
+- The question's display name if it's saved
+- An auto-generated description for ad-hoc questions (non-native queries)
+- "New question" as fallback or for new/native queries
+
+| Prop      | Type          | Description                                     |
+| --------- | ------------- | ----------------------------------------------- |
+| className | string        | Custom CSS class name for styling the component |
+| style     | CSSProperties | Inline styles to apply to the component         |
+
 ## Interactive question plugins
 
-You can use plugins to add custom functionality to your questions.
+You can use [plugins](./plugins.md) to add custom functionality to your questions.
 
 ### `mapQuestionClickActions`
 
@@ -384,11 +401,9 @@ return (
 );
 ```
 
-## Embedding an editable interactive question
+## Prevent people from saving changes to an `InteractiveQuestion`
 
-You can edit an existing question using the query builder by passing in the `questionId` prop of an existing question.
-
-To disallow saving the question, pass `isSaveEnabled={false}` to the component.
+To prevent people from saving changes to an interactive question, or from saving changes as a new question, you can set `isSaveEnabled={false}`:
 
 ```tsx
 import React from "react";
@@ -399,15 +414,17 @@ const authConfig = defineMetabaseAuthConfig({...});
 export default function App() {
     return (
         <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={1} />
+            <InteractiveQuestion questionId={1} isSaveEnabled={false} />
         </MetabaseProvider>
     );
 }
 ```
 
-## Embedding the query builder for creating new questions
+## Embedding the query builder
 
-You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+![Query builder](../images/query-builder.png)
+
+You can embed the query builder without a pre-defined question by not passing the `questionId` prop, or passing `questionId={undefined}` to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 import React from "react";
@@ -423,3 +440,5 @@ export default function App() {
     );
 }
 ```
+
+To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
