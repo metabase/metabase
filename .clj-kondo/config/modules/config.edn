@@ -711,6 +711,10 @@
   {:api  #{}
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
+  enterprise/data-editing
+  {:api #{}
+   :uses #{api actions util}}
+
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
    :uses #{premium-features query-processor task util enterprise/cache}}
