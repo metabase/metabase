@@ -33,7 +33,7 @@ export default class LegendHorizontal extends Component {
           const handleMouseEnter = () => {
             onHoverChange?.({
               index,
-              element: this.legendItemRefs[index],
+              element: this.legendItemRefs[index]?.getRootElement(),
             });
           };
 
