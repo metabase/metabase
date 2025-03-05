@@ -208,7 +208,7 @@ jobs:
         push: true
 
     - name: Retag and push images if dev branch - should be cached at this point
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee-extra' }}
       uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
