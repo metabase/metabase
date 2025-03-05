@@ -18,8 +18,8 @@ export const RuleListing = ({
 }: SortableRuleListProps & {
   onAdd: MouseEventHandler<HTMLButtonElement>;
 }) => (
-  <Stack gap="md">
-    <Stack gap="sm">
+  <Stack spacing="md">
+    <Stack spacing="sm">
       <Text fw="bold" fz="lg">{t`Conditional formatting`}</Text>
       <Text lh="normal">
         {t`You can add rules to make the cells in this table change color if
@@ -31,14 +31,14 @@ export const RuleListing = ({
         variant="subtle"
         color="text-dark"
         onClick={onAdd}
-        leftSection={<Icon name="add" />}
+        leftIcon={<Icon name="add" />}
       >
         {t`Add a rule`}
       </Button>
     </Box>
     {rules.length > 0 && (
       <>
-        <Stack gap="sm">
+        <Stack spacing="sm">
           <Title
             fw="bold"
             fz="lg"
