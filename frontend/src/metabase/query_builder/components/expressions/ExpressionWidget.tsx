@@ -21,6 +21,7 @@ import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
+const EDITOR_WIDGET_WIDTH = 688;
 
 export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
   startRule?: S;
@@ -178,7 +179,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }
 
   return (
-    <Box w={WIDGET_WIDTH} data-testid="expression-editor">
+    <Box w={EDITOR_WIDGET_WIDTH} data-testid="expression-editor">
       {header}
 
       <Editor
