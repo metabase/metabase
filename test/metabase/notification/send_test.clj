@@ -315,7 +315,7 @@
                                                      :cron_schedule "0 0 * * * ? *"}} ; hourly schedule
           high-priority   {:id "high-priority"
                            :triggering_subscription {:type :notification-subscription/cron
-                                                     :cron_schedule "0 * * * * ? *"}}] ; minutely schedule]
+                                                     :cron_schedule "0 * * * * ? *"}}] ; minutely schedule
       (#'notification.send/put-notification! queue middle-priority)
       (#'notification.send/put-notification! queue low-priority)
       (#'notification.send/put-notification! queue high-priority)
@@ -354,9 +354,9 @@
   (let [queue (#'notification.send/create-notification-queue)]
 
     (testing "put and take operations work correctly"
-      (let [test-notification {:id 1 :payload_type :notification/testing :test-value "A"}]
-        (#'notification.send/put-notification! queue test-notification)
-        (is (= test-notification (#'notification.send/take-notification! queue)))))
+      (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+      (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+             (#'notification.send/take-notification! queue))))
 
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-notification-queue)]
@@ -410,8 +410,8 @@
           producer-fn            (fn [producer-id]
                                    (.await producer-latch)
                                    (dotimes [i num-items-per-producer]
-                                     (let [item {:id       (+ (* producer-id 100) i)
-                                                 :producer producer-id :item i}]
+                                     (let [item-id (+ (* producer-id 100) i)
+                                           item {:id item-id :producer producer-id :item i}]
                                        (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try

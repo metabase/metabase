@@ -256,16 +256,14 @@
           ^java.util.concurrent.locks.Condition not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ notification]
-    (.lock queue-lock)
-    (let [id                (or (:id notification) (str (random-uuid)))
-          notification-item (->NotificationItem
-                             id
-                             (subscription->deadline (:triggering_subscription notification)))]
+    (let [id   (or (:id notification) (str (random-uuid)))
+          item (NotificationItem. id (subscription->deadline (:triggering_subscription notification)))]
       (try
-        (when-not (.contains items-list notification-item)
-          (.add items-list notification-item))
+        (.lock queue-lock)
+        (when-not (.contains items-list item)
+          (.offer items-list item))
         (.put id->notification id notification)
-       ;; Signal that a notification is available
+        ;; Signal that a notification is available
         (.signal not-empty-cond)
         (finally
           (.unlock queue-lock)))))
