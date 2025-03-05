@@ -2247,7 +2247,7 @@ msgid "Send password reset email"
 msgstr "ارسال ایمیل بازیابی پسورد"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "برای دریافت دستورالعمل در مورد چگونگی بازنشانی گذرواژه خود، ایمیل خود را بررسی کنید."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30
