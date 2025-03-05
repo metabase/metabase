@@ -16,3 +16,12 @@
   border-left: 1px solid var(--mb-color-border);
   border-bottom: 1px solid var(--mb-color-border);
 }
+
+.button {
+  background-color: var(--mb-base-color-brand-10) !important;
+}
+
+.button:hover {
+  background-color: var(--mb-base-color-brand-20) !important;
+  transition: background-color 200ms;
+}
