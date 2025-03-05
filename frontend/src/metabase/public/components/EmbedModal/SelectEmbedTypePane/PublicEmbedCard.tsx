@@ -40,7 +40,6 @@ export const PublicEmbedCard = ({
     post.`}
       </Text>
       <Popover
-        width={200}
         position="bottom"
         withArrow
         shadow="md"
@@ -56,7 +55,7 @@ export const PublicEmbedCard = ({
             onClick={() => setIsOpen(value => !value)}
           >{t`Get embedding code`}</Button>
         </Popover.Target>
-        <Popover.Dropdown w="28.5rem">
+        <Popover.Dropdown>
           <Stack p="lg" w="28rem" mih="7.5rem">
             {loading ? (
               <Center>

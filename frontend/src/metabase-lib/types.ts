@@ -413,7 +413,7 @@ export type SpecificDateFilterParts = {
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   unit: RelativeDateFilterUnit;
-  value: number | "current";
+  value: number;
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;

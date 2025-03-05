@@ -1387,21 +1387,23 @@
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
 (defn- do-with-chain-filter-fixtures! [f]
-  (with-embedding-enabled-and-new-secret-key!
-    (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-      (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
-      (letfn [(token [params]
-                (dash-token dashboard (when params {:params params})))
-              (values-url [& [params param-key]]
-                (format "embed/dashboard/%s/params/%s/values"
-                        (token params) (or param-key "_CATEGORY_ID_")))
-              (search-url [& [params param-key query]]
-                (format "embed/dashboard/%s/params/%s/search/%s"
-                        (token params) (or param-key "_CATEGORY_NAME_") (or query "food")))]
-        (f (assoc m
-                  :token token
-                  :values-url values-url
-                  :search-url search-url))))))
+  ;; Enable perms-related EE features to ensure changes to perms code don't break embedded chain filters (#54601)
+  (mt/with-additional-premium-features #{:sandboxes :advanced-permissions :impersonation}
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
+        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
+        (letfn [(token [params]
+                  (dash-token dashboard (when params {:params params})))
+                (values-url [& [params param-key]]
+                  (format "embed/dashboard/%s/params/%s/values"
+                          (token params) (or param-key "_CATEGORY_ID_")))
+                (search-url [& [params param-key query]]
+                  (format "embed/dashboard/%s/params/%s/search/%s"
+                          (token params) (or param-key "_CATEGORY_NAME_") (or query "food")))]
+          (f (assoc m
+                    :token token
+                    :values-url values-url
+                    :search-url search-url)))))))
 
 (defmacro ^:private with-chain-filter-fixtures! [[binding] & body]
   `(do-with-chain-filter-fixtures! (fn [~binding] ~@body)))

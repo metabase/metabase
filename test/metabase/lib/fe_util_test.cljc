@@ -379,9 +379,9 @@
   (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
-      (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
+      (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
-                               :value  :current
+                               :value  0
                                :unit   :day}
 
                               (lib.filter/time-interval column -10 :month)
@@ -422,6 +422,10 @@
                                                                            offset-value
                                                                            offset-unit
                                                                            options)))))))
+    (testing "should convert `:current` to `0` for backward compatibility"
+      (let [clause (lib.filter/time-interval column :current :day)
+            parts  {:column column, :value  0, :unit :day}]
+        (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)

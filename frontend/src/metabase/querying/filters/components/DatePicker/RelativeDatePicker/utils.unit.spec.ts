@@ -29,7 +29,7 @@ describe("setDirection", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "week",
       };
       expect(setDirection(value, "last")).toEqual({
@@ -75,7 +75,7 @@ describe("setDirection", () => {
     it("should convert a current value", () => {
       const value: RelativeDatePickerValue = {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "week",
       };
       expect(setDirection(value, "next")).toEqual({
