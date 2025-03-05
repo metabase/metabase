@@ -1362,3 +1362,36 @@ describe("issue 53527", () => {
     H.tableInteractive().findByText("ab").should("be.visible");
   });
 });
+
+describe("issue 48562", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        CustomColumn: ["contains", ["field", 10000, null], "abc"],
+      },
+      filter: ["segment", 10001],
+      aggregation: [["metric", 10002]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("CustomColumn").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
+    cy.get("body").type("{esc}");
+    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
+    cy.button("Cancel").click();
+    cy.get("body").type("{esc}");
+    H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
+  });
+});
