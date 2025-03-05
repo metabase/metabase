@@ -1,4 +1,4 @@
-import { Stack, Title, type TitleProps } from "metabase/ui";
+import { Group, Stack, Title, type TitleProps } from "metabase/ui";
 
 const args = {
   align: "left",
@@ -19,20 +19,47 @@ const argTypes = {
 const DefaultTemplate = (args: TitleProps) => <Title {...args}>Header</Title>;
 
 const SizeTemplate = (args: TitleProps) => (
-  <Stack>
-    <Title {...args} order={1}>
-      Header 1
-    </Title>
-    <Title {...args} order={2}>
-      Header 2
-    </Title>
-    <Title {...args} order={3}>
-      Header 3
-    </Title>
-    <Title {...args} order={4}>
-      Header 4
-    </Title>
-  </Stack>
+  <Group align="top">
+    <Stack>
+      <Title {...args} order={1}>
+        Get up and running in no time
+      </Title>
+      <Title {...args} order={2}>
+        Get up and running in no time
+      </Title>
+      <Title {...args} order={3}>
+        Get up and running in no time
+      </Title>
+      <Title {...args} order={4}>
+        Get up and running in no time
+      </Title>
+      <Title {...args} order={5}>
+        Get up and running in no time
+      </Title>
+    </Stack>
+    <Stack maw={400}>
+      <Title {...args} order={1}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={2}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={3}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={4}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={5}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+    </Stack>
+  </Group>
 );
 
 export default {
