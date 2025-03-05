@@ -14,7 +14,7 @@
 
   (temporal-interval-tru  0 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Today\"
   (temporal-interval-tru -1 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Yesterday\"
-  (temporal-interval-tru  0 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Tomorrow\"
+  (temporal-interval-tru  1 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Tomorrow\"
   (temporal-interval-tru -2 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Previous 2 days\"
   (temporal-interval-tru  4 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Next 4 days\""
   ([n
