@@ -35,8 +35,18 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
+import { canAccessSettings, getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  Button,
+  Flex,
+  Modal,
+  Paper,
+  Select,
+  Stack,
+  Switch,
+  Text,
+  rem,
+} from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
   Notification,
@@ -262,22 +272,35 @@ export const CreateOrEditQuestionAlertModal = ({
             >
               <Flex gap="lg" align="center">
                 <AlertTriggerIcon />
-                <Select
-                  data-testid="alert-goal-select"
-                  data={triggerOptions}
-                  value={notification.payload.send_condition}
-                  w={276}
-                  disabled={hasSingleTriggerOption}
-                  onChange={value =>
-                    setNotification({
-                      ...notification,
-                      payload: {
-                        ...notification.payload,
-                        send_condition: value as NotificationCardSendCondition,
-                      },
-                    })
-                  }
-                />
+                {hasSingleTriggerOption ? (
+                  <Paper
+                    data-testid="alert-goal-select"
+                    withBorder
+                    shadow="none"
+                    py="sm"
+                    px="1.5rem"
+                    bg="transparent"
+                  >
+                    <Text>{triggerOptions[0].label}</Text>
+                  </Paper>
+                ) : (
+                  <Select
+                    data-testid="alert-goal-select"
+                    data={triggerOptions}
+                    value={notification.payload.send_condition}
+                    w={276}
+                    onChange={value =>
+                      setNotification({
+                        ...notification,
+                        payload: {
+                          ...notification.payload,
+                          send_condition:
+                            value as NotificationCardSendCondition,
+                        },
+                      })
+                    }
+                  />
+                )}
               </Flex>
             </AlertModalSettingsBlock>
             <AlertModalSettingsBlock title={t`When do you want to check this?`}>

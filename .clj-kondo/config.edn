@@ -167,7 +167,7 @@
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.models.notification/create-notification!
+     metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -413,6 +413,7 @@
     metabase.models.interface                                     mi
     metabase.models.setting                                       setting
     metabase.notification.core                                    notification
+    metabase.notification.payload.core                            notification.payload
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
@@ -742,7 +743,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                        macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                                      macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                macros.quartz/build-trigger
-   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!          macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.impersonation.util-test/with-impersonations!                     macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!             macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -793,7 +794,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\.*"
    :name    metabase-lib}
