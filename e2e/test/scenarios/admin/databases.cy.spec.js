@@ -505,7 +505,8 @@ describe("scenarios > admin > databases > exceptions", () => {
       .should("be.disabled");
     cy.findByTestId("database-connection-info-section")
       .findByRole("button", { name: "Edit" })
-      .trigger("mouseenter");
+      .should("be.disabled")
+      .trigger("mouseenter", { force: true });
     H.tooltip().findByText("This database cannot be modified.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
