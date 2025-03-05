@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket.util :as lib.temporal-bucket.util]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -62,14 +63,6 @@
       :last    -1
       0)))
 
-(defmacro ^:private temporal-interval-tru [n a b c d e f g]
-  `(cond
-     (zero? n) (i18n/tru a)
-     (= n 1)   (i18n/tru b)
-     (= n -1)  (i18n/tru c)
-     (neg? n)  (i18n/trun d e (abs n))
-     (pos? n)  (i18n/trun f g n)))
-
 (mu/defn describe-temporal-interval :- ::lib.schema.common/non-blank-string
   "Get a translated description of a temporal bucketing interval. If unit is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
@@ -78,15 +71,19 @@
         unit (or unit :day)]
     (case (keyword unit)
       :millisecond
-      (temporal-interval-tru
-       n
-       "This millisecond"
-       "Next millisecond"
-       "Previous millisecond"
-       "Previous {0} millisecond"
-       "Previous {0} milliseconds"
-       "Next {0} millisecond"
-       "Next {0} milliseconds"))))
+      (lib.temporal-bucket.util/temporal-interval-tru n "millisecond")
+
+      :second
+      (lib.temporal-bucket.util/temporal-interval-tru n "second")
+
+      :minute
+      (lib.temporal-bucket.util/temporal-interval-tru n "minute")
+
+      :hour
+      (lib.temporal-bucket.util/temporal-interval-tru n "hour")
+
+      :day
+      (lib.temporal-bucket.util/temporal-interval-tru n "day"))))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of a relative datetime interval, ported from
