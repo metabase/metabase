@@ -330,6 +330,7 @@ export const useChartEvents = (
         canBrush(rawSeries, settings, onChangeCardAndRun) &&
         !hovered &&
         !clicked;
+
       setTimeout(() => {
         if (shouldEnableBrushing) {
           chartRef.current?.dispatchAction({
