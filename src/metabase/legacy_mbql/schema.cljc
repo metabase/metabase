@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case cast concat replace abs])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -484,6 +484,12 @@
 (def ^:private DateTimeExpressionArg
   [:ref ::DateTimeExpressionArg])
 
+(mr/def ::CastExpression
+  :any)
+
+(def CastExpression
+  [:ref ::CastExpression])
+
 (mr/def ::ExpressionArg
   [:multi
    {:error/message "expression argument"
@@ -498,6 +504,7 @@
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
+                       (is-clause? :cast x)              :cast-expression
                        :else                             :else))}
    [:number              number?]
    [:boolean             :boolean]
@@ -508,6 +515,7 @@
    [:string              :string]
    [:string-expression   StringExpression]
    [:value               value]
+   [:cast-expression     CastExpression]
    [:else                Field]])
 
 (def ^:private ExpressionArg
@@ -967,6 +975,7 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
+                       (is-clause? :cast x)              :cast-expression
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -975,6 +984,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
+   [:cast-expression CastExpression]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------

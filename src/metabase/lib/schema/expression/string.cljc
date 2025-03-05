@@ -44,6 +44,6 @@
   [:schema [:ref ::expression/string]]
   [:schema [:ref ::expression/integer]])
 
-(mbql-clause/define-tuple-mbql-clause :cast :- ::expression/type.unknown
-  [:schema [:ref ::expression/base-type]]
-  [:schema [:ref ::common/non-blank-string]])
+(mbql-clause/define-tuple-mbql-clause :cast :- :type/*
+  [:schema :any]
+  [:schema [:ref ::expression/string]])

@@ -660,7 +660,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :cast]
   [driver [_ value type]]
-  [:cast (sql.qp/->honeysql driver value) type])
+  [:cast (sql.qp/->honeysql driver value) [:raw type]])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
