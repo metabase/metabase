@@ -1,3 +1,21 @@
+## [0.54.4-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.3-nightly...embedding-sdk-0.54.4-nightly) (2025-03-05)
+
+
+### Bug Fixes
+
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([54a7b1c](https://github.com/metabase/metabase/commit/54a7b1c707e814c735d19e36d914529791cf5b7c))
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54450](https://github.com/metabase/metabase/issues/54450)) ([752e924](https://github.com/metabase/metabase/commit/752e9246e59541a3e70968959bfd1e1b9592c4e1))
+* **sdk:** Fix ColorSelector in Conditional Formatting ([#54402](https://github.com/metabase/metabase/issues/54402)) ([cd06480](https://github.com/metabase/metabase/commit/cd06480c6b7d404d8f93ad514ed06158776285eb))
+* **sdk:** move import of mantine css to index file of sdk ([#54602](https://github.com/metabase/metabase/issues/54602)) ([b427265](https://github.com/metabase/metabase/commit/b427265c7da86f4c6a96f927f419cb6e47d3e2de))
+
+
+### Features
+
+* **sdk:** Simple data picker ([#54489](https://github.com/metabase/metabase/issues/54489)) ([f417142](https://github.com/metabase/metabase/commit/f4171427b21b8c21407274e0f606ffaeb3692986)), closes [#52964](https://github.com/metabase/metabase/issues/52964)
+* **sdk:** use questionId={new} for creating new questions ([#54323](https://github.com/metabase/metabase/issues/54323)) ([fb25682](https://github.com/metabase/metabase/commit/fb25682fe8dbafe2062e37bce832f62440872ab7))
+
+
+
 ## [0.54.3-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.2-nightly...embedding-sdk-0.54.3-nightly) (2025-02-26)
 
 
