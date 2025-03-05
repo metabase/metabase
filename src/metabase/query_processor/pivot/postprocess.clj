@@ -111,12 +111,6 @@
    :col-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) col-indexes)
    :val-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) val-indexes)})
 
-(defn- get-column-title
-  [col-settings]
-  (or (-> col-settings :column :remapped_to_column :display_name)
-      (-> col-settings :column :display_name)
-      (tru "(empty)")))
-
 (defn- build-top-headers
   [top-left-header top-header-items]
   (let [max-depth (if (empty? top-header-items)
