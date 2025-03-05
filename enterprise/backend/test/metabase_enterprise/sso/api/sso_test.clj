@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.request.core :as request]
-   [metabase.test :as mt]))
+   [metabase.session.core :as session]
+   [metabase.test :as mt]
+   [metabase.util.string :as string]))
 
 (deftest saml-logout
   (testing "with slo enabled and configured"
@@ -21,7 +23,7 @@
           (with-redefs [random-uuid (constantly "66d96ab4-9834-40db-a3cd-42b361503ab9")]
             (binding [client/*url-prefix* ""]
               (mt/with-temp [:model/User user {:email "saml_test@metabase.com" :sso_source "saml"}
-                             :model/Session {session-id :id} {:user_id (:id user) :id (str (random-uuid))}]
+                             :model/Session {session-id :id} {:user_id (:id user) :id (session/generate-session-id) :key_hashed (session/hash-session-key (session/generate-session-key))}]
                 (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-id)]
                   (testing "logout is redirected to idp"
                     (let [response  (client/client :post "/auth/sso/logout" req-options)]
