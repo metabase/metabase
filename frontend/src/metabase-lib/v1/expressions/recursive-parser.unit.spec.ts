@@ -25,6 +25,7 @@ describe("recursive-parser", () => {
   it("should parse string literals", () => {
     expect(process("'Universe'")).toEqual("Universe");
     expect(process('"answer"')).toEqual("answer");
+    expect(process('"\\""')).toEqual('"');
   });
 
   it("should parse field references", () => {
