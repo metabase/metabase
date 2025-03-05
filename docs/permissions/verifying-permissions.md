@@ -90,3 +90,9 @@ If the test user is still seeing data they shouldn't:
 - Verify that the "All Users" group has "Blocked" View data permissions.
 - Check for permissions on nested collections. Do sub-collections have the intended permissions? 
 - Verify data sandboxing rules. Is the user attribute associated with the correct table column?
+
+## Further reading
+
+- [Troubleshooting permissions](../troubleshooting-guide/permissions.md) 
+- [Troubleshooting data permissions](../troubleshooting-guide/data-permissions.md)
+
