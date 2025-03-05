@@ -113,6 +113,7 @@ class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
+    this.resizeHandleRefs = [];
     this.detailShortcutRef = createRef();
 
     this.gridRef = createRef();
@@ -872,9 +873,12 @@ class TableInteractive extends Component {
             dragColNewLefts: null,
           });
         }}
+        nodeRef={this.headerRefs[columnIndex]}
       >
         <Box
-          ref={e => (this.headerRefs[columnIndex] = e)}
+          ref={element => {
+            this.headerRefs[columnIndex] = element;
+          }}
           style={{
             ...style,
             overflow: "visible" /* ensure resize handle is visible */,
@@ -969,8 +973,12 @@ class TableInteractive extends Component {
               this.onColumnResize(columnIndex, x);
               this.setState({ dragColIndex: null });
             }}
+            nodeRef={this.resizeHandleRefs[columnIndex]}
           >
             <ResizeHandle
+              ref={element => {
+                this.resizeHandleRefs[columnIndex] = element;
+              }}
               style={{
                 zIndex: 99,
                 position: "absolute",
@@ -1239,7 +1247,9 @@ class TableInteractive extends Component {
                   />
                 )}
                 <Grid
-                  ref={ref => (this.header = ref)}
+                  ref={ref => {
+                    this.header = ref;
+                  }}
                   style={{
                     top: 0,
                     left: 0,
