@@ -43,11 +43,15 @@ describe("scenarios > admin > permissions > database details permissions", () =>
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sample Database").click();
 
-    cy.findByTestId("database-actions-panel")
-      .should("contain", "Sync database schema now")
-      .and("contain", "Re-scan field values now")
-      .and("contain", "Discard saved field values")
-      .and("not.contain", "Remove this database");
+    cy.findByTestId("database-connection-info-section").within(() => {
+      cy.button("Sync database schema now").should("exist");
+      cy.button("Re-scan field values now").should("exist");
+    });
+
+    cy.findByTestId("database-danger-zone-section").within(() => {
+      cy.button("Discard saved field values").should("exist");
+      cy.button("Remove this database").should("not.exist");
+    });
 
     cy.request({
       method: "DELETE",

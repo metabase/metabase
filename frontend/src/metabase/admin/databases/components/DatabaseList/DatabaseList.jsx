@@ -32,13 +32,12 @@ export default class DatabaseList extends Component {
       this["deleteDatabaseModal_" + database.id] = createRef();
     });
 
-    this.state = {
-      isPermissionModalOpened: (props.created && props.createdDbId) || false,
-    };
+    this.state = {};
   }
 
   onPermissionModalClose = () => {
-    this.setState({ isPermissionModalOpened: false });
+    const { location, push } = this.props;
+    push(location.pathname);
   };
 
   static propTypes = {
@@ -52,6 +51,8 @@ export default class DatabaseList extends Component {
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
     isAdmin: PropTypes.bool,
+    push: PropTypes.func.isRequired,
+    location: PropTypes.object,
   };
 
   render() {
@@ -63,9 +64,11 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
       isAdmin,
+      created,
       createdDbId,
     } = this.props;
-    const { isPermissionModalOpened } = this.state;
+
+    const isPermissionModalOpened = (created && createdDbId) || false;
 
     const error = deletionError || addSampleDatabaseError;
 
