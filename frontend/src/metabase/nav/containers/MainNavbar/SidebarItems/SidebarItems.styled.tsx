@@ -2,6 +2,7 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { ComponentProps } from "react";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Link from "metabase/core/components/Link";
@@ -38,11 +39,9 @@ function getTextColor(isSelected: boolean) {
   return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
 }
 
-interface NodeRootProps {
-  isSelected: boolean;
-  depth: number;
+type NodeRootProps = ComponentProps<typeof TreeNode.Root> & {
   hasDefaultIconStyle?: boolean;
-}
+};
 
 export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
   color: ${props => getTextColor(props.isSelected)};
