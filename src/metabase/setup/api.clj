@@ -147,7 +147,9 @@
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
       ;; return response with session ID and set the cookie as well
-      (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request {:id session-id} session
+                                   {:request-time (t/zoned-date-time (t/zone-id "GMT"))
+                                    :set-permanent false}))))
 
 ;;; Admin Checklist
 

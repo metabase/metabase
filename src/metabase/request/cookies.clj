@@ -201,12 +201,10 @@
 
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
-  [request]
-  (if (public-settings/session-cookies)
-    ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
-    false
-    ;; Otherwise check whether the user selected "remember me" during login
-    (get-in request [:body :remember])))
+  [set-permanent]
+  ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
+  ;; otherwise use the flag being set from the login request
+  (and (not (public-settings/session-cookies)) set-permanent))
 
 (mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
@@ -218,7 +216,9 @@
     :as _session-instance} :- [:map [:id [:or
                                           uuid?
                                           [:re u/uuid-regex]]]]
-   request-time]
+   {:keys [request-time set-permanent]} :- [:map
+                                            [:request-time :time/zoned-date-time]
+                                            [:set-permanent {:optional true} [:maybe boolean?]]]]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
                         {:http-only true}
@@ -226,8 +226,8 @@
                         ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
                         ;; browser is closed.
                         ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
-                        ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-                        (when (use-permanent-cookies? request)
+                        ;; max-session-age is in minutes; Max-Age= directive should be in seconds
+                        (when (use-permanent-cookies? set-permanent)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
     (when (and (= (session-cookie-samesite) :none) (not (request.util/https? request)))
       (log/warn
