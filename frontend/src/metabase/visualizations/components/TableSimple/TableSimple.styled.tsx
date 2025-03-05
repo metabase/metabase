@@ -4,6 +4,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { alpha, color } from "metabase/lib/colors";
+import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
@@ -57,13 +58,11 @@ export const Table = styled.table`
   }
 `;
 
-export const SortIcon = styled(Icon)`
+export const SortIcon = styled((props: IconProps) => (
+  <Icon {...props} size={props.size ?? 8} />
+))`
   margin: 4px;
 `;
-
-SortIcon.defaultProps = {
-  size: 8,
-};
 
 export const TableHeaderCellContent = styled.button<{
   isSorted: boolean;
