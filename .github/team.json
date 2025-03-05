@@ -5,15 +5,21 @@
       "label": ".Team/Querying",
       "members": [
         "ranquild",
-        "kamilmielnik",
         "romeovs",
         "bshepherdson",
         "metamben",
-        "lbrdnk",
         "appleby",
         "uladzimirdev",
         "wzimrin",
         "ericnormand"
+      ]
+    },
+    {
+      "name": "Semantic Layer",
+      "label": ".Team/SemanticLayer",
+      "members": [       
+        "kamilmielnik",      
+        "lbrdnk"
       ]
     },
     {
