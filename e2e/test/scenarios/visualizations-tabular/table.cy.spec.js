@@ -85,6 +85,45 @@ describe("scenarios > visualizations > table", () => {
     headerCells().contains("QUANTITY").should("not.exist");
   });
 
+  it("should preserve set widths after reordering (VIZ-439)", () => {
+    H.startNewNativeQuestion({
+      query: 'select 1 "first_column", 2 "second_column"',
+      display: "table",
+      visualization_settings: { "table.column_widths": [600, 150] },
+    });
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
+    H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
+
+    H.moveDnDKitElement(H.tableHeaderColumn("first_column"), {
+      horizontal: 100,
+    });
+
+    const assertUnchangedWidths = () => {
+      cy.get("@firstWidth").then(firstWidth => {
+        H.tableHeaderColumn("first_column")
+          .invoke("outerWidth")
+          .should("eq", firstWidth);
+      });
+
+      cy.get("@secondWidth").then(secondWidth => {
+        H.tableHeaderColumn("second_column")
+          .invoke("outerWidth")
+          .should("eq", secondWidth);
+      });
+    };
+
+    assertUnchangedWidths();
+    cy.reload();
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    // Wait for column widths to be set
+    cy.wait(100);
+    assertUnchangedWidths();
+  });
+
   it("should allow to display any column as link with extrapolated url and text", () => {
     H.openPeopleTable({ limit: 2 });
 

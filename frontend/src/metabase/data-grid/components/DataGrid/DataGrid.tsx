@@ -20,6 +20,7 @@ import {
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { getScrollBarSize } from "metabase/lib/dom";
 
 import S from "./DataGrid.module.css";
 
@@ -76,16 +77,28 @@ export const DataGrid = function DataGrid<TData>({
     table.getTotalSize() >=
     (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
 
+  const addColumnMarginRight =
+    virtualGrid.rowVirtualizer.getTotalSize() >=
+    (gridRef.current?.offsetHeight ?? Infinity)
+      ? getScrollBarSize()
+      : 0;
+
   const hasAddColumnButton = onAddColumnClick != null;
   const addColumnButton = useMemo(
     () =>
       hasAddColumnButton ? (
         <AddColumnButton
+          marginRight={addColumnMarginRight}
           isSticky={isAddColumnButtonSticky}
           onClick={onAddColumnClick}
         />
       ) : null,
-    [hasAddColumnButton, isAddColumnButtonSticky, onAddColumnClick],
+    [
+      hasAddColumnButton,
+      isAddColumnButtonSticky,
+      onAddColumnClick,
+      addColumnMarginRight,
+    ],
   );
 
   const isEmpty = table.getRowModel().rows.length === 0;
