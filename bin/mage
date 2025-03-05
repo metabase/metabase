@@ -8,9 +8,18 @@
 
 (ns mage
   (:require
+   [babashka.tasks :as bt]
    [mage.color :as c]
    [mage.shell :as sh]
    [mage.util :as u]))
+
+(set! *warn-on-reflection* true)
+
+(defn lolcat [f]
+  (if (try (u/sh "command -v lolcat")
+           (catch Exception _ false))
+    (bt/shell (str "lolcat " f))
+    (println (slurp f))))
 
 (defn invalid-task? []
   (let [task-name (first *command-line-args*)]
@@ -18,17 +27,30 @@
       (println (c/red (str "Unknown task: " task-name)))
       true)))
 
+(defn- print-help []
+  (do
+    (lolcat "./mage/resource.txt")
+    (flush)
+    (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
+    (println "")
+    (println (u/sh "bb tasks"))))
+
 (defn -main [& _]
-  (if (or (nil? *command-line-args*) ;; forgot to pass args
-          (= *command-line-args* ["-h"]) ;; trying to get help
-          (= *command-line-args* ["--help"])
-          (invalid-task?))
-    (do
-      (print (slurp "./mage/resource.txt"))
-      (flush)
-      (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
-      (println "")
-      (println (u/sh "bb tasks")))
+  (cond
+    ;; help
+    (or
+     (= *command-line-args* ["-h"])
+     (= *command-line-args* ["--help"]))
+    (print-help)
+
+    ;; errors
+    (or
+     (nil? *command-line-args*)
+     (invalid-task?))
+    (do (print-help) (System/exit 1))
+
+
+    :else
     (apply sh/sh (into ["bb"] *command-line-args*))))
 
 (when (= *file* (System/getProperty "babashka.file"))
