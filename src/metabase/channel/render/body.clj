@@ -8,6 +8,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
+   [metabase.channel.render.util :as render.util]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
@@ -66,14 +67,6 @@
   "Should this column be shown in a rendered table in a Pulse?"
   [{:keys [visibility_type] :as _column}]
   (not (contains? #{:details-only :retired :sensitive} visibility_type)))
-
-;; @TSP TODO - should be shared util function for both card.clj & body.clj
-(defn- is-visualizer-dashcard?
-  "true if dashcard has visualizer specific viz settings"
-  [dashcard]
-  (boolean
-   (and (some? dashcard)
-        (get-in dashcard [:visualization_settings :visualization]))))
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
@@ -659,7 +652,7 @@
 (defn- get-funnel-axis-fns
   "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
   [card dashcard data]
-  (if (is-visualizer-dashcard? dashcard)
+  (if (render.util/is-visualizer-dashcard? dashcard)
     ;; x-axis looks for :funnel.dimension
     ;; y-axis looks for :funnel.metric
     (let [x-axis-is-first (= (:name (first (:cols data))) (get-in data [:viz-settings :funnel.dimension]))]
@@ -696,14 +689,14 @@
 (defn- get-funnel-data
   "Return data for funnel, repackaging if for a visualizer built dashcard"
   [card dashcard data]
-  (if (is-visualizer-dashcard? dashcard)
+  (if (render.util/is-visualizer-dashcard? dashcard)
     (let [cards-with-data (series-cards-with-data dashcard card data)]
       (merge-visualizer-data cards-with-data (:visualization_settings dashcard)))
     data))
 
 (mu/defmethod render :funnel :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
-  (let [viz-settings   (if (is-visualizer-dashcard? dashcard)
+  (let [viz-settings   (if (render.util/is-visualizer-dashcard? dashcard)
                          (get dashcard :visualization_settings)
                          (get card :visualization_settings))
         data       (get-funnel-data card dashcard data)]

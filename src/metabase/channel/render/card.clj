@@ -5,6 +5,7 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.channel.render.util :as render.util]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -25,11 +26,6 @@
    [:channel.render/include-title?       {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description? {:description "default: false", :optional true} :boolean]])
 
-(defn- is-visualizer-dashcard?
-  "Return true if this dashcard is a visualizer dashcard else false"
-  [dashcard]
-  (some? (get-in dashcard [:visualization_settings :visualization])))
-
 (defn- card-href
   [card]
   (h (urls/card-url (u/the-id card))))
@@ -47,7 +43,7 @@
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
-          title-href   (if (is-visualizer-dashcard? dashcard)
+          title-href   (if (render.util/is-visualizer-dashcard? dashcard)
                          (visualizer-dashcard-href dashcard)
                          (card-href card))]
       {:attachments (when image-bundle
@@ -84,7 +80,7 @@
 (defn- visualizer-display-type
   "Return dashcard's display type if it is a visualizer dashcard else nil"
   [dashcard]
-  (if (is-visualizer-dashcard? dashcard)
+  (if (render.util/is-visualizer-dashcard? dashcard)
     (keyword (get-in dashcard [:visualization_settings :visualization :display]))
     nil))
 
@@ -108,12 +104,12 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
-             (= false (is-visualizer-dashcard? maybe-dashcard))
+             (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (= false (is-visualizer-dashcard? maybe-dashcard))
+        (and (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
              (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
@@ -191,7 +187,7 @@
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
-         attachment-href                  (if (is-visualizer-dashcard? dashcard)
+         attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
                                             (visualizer-dashcard-href dashcard)
                                             (card-href card))]
      (cond-> {:attachments (merge title-attachments body-attachments)
