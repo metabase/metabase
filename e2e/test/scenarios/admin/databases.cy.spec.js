@@ -505,7 +505,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       .should("be.disabled");
     cy.findByTestId("database-connection-info-section")
       .findByRole("button", { name: "Edit" })
-      .realHover();
+      .trigger("mouseenter");
     H.tooltip().findByText("This database cannot be modified.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
@@ -734,7 +734,6 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByText("Scan triggered!");
 
     // lets you discard saved field values
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByTestId("database-danger-zone-section")
       .as("danger")
       .within(() => {

@@ -28,6 +28,7 @@ import type { DatabaseEditErrorType } from "../components/DatabaseEditConnection
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import {
+  deleteDatabase,
   dismissSyncSpinner,
   initializeDatabase,
   reset,
@@ -46,6 +47,7 @@ interface DatabaseEditAppProps {
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
+  deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
   selectEngine: (engine: string) => void;
   location: Location;
   isAdmin: boolean;
@@ -70,6 +72,7 @@ const mapDispatchToProps = {
   reset,
   selectEngine,
   updateDatabase,
+  deleteDatabase,
 };
 
 function DatabaseEditAppInner({
@@ -83,6 +86,7 @@ function DatabaseEditAppInner({
   params,
   reset,
   updateDatabase,
+  deleteDatabase,
 }: DatabaseEditAppProps) {
   useMount(async () => {
     reset();
@@ -122,6 +126,7 @@ function DatabaseEditAppInner({
                 <DatabaseDangerZoneSection
                   isAdmin={isAdmin}
                   database={database}
+                  deleteDatabase={deleteDatabase}
                 />
               </>
             )}

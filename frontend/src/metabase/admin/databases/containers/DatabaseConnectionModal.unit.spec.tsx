@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -22,7 +23,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { DatabaseEditApp } from "./DatabaseEditApp";
+import { DatabaseConnectionModal } from "./DatabaseConnectionModal";
 
 const ENGINES_MOCK: Record<string, Engine> = {
   H2: {
@@ -71,8 +72,8 @@ async function setup({
     <Route path="/">
       <Route path="/home" component={MockComponent} />
       <Route path="/admin/databases" component={MockComponent} />
-      <IndexRoute component={DatabaseEditApp} />
-      <Route path=":databaseId" component={DatabaseEditApp} />
+      <IndexRoute component={DatabaseConnectionModal} />
+      <Route path=":databaseId" component={DatabaseConnectionModal} />
     </Route>,
     {
       withRouter: true,
@@ -91,8 +92,8 @@ async function setup({
   };
 }
 
-describe("DatabaseEditApp", () => {
-  describe("Database connections", () => {
+describe("DatabaseConnectionModal", () => {
+  describe("edit existing connection", () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
@@ -138,7 +139,9 @@ describe("DatabaseEditApp", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
@@ -146,7 +149,9 @@ describe("DatabaseEditApp", () => {
       await userEvent.type(displayNameInput, "ab");
       await userEvent.type(displayNameInput, "{backspace}{backspace}");
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -156,14 +161,18 @@ describe("DatabaseEditApp", () => {
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       await userEvent.type(displayNameInput, "Test database");
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         await screen.findByTestId("leave-confirmation"),
@@ -173,7 +182,9 @@ describe("DatabaseEditApp", () => {
     it("does not show custom warning modal after creating new database connection", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
