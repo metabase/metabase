@@ -42,6 +42,7 @@ import {
   parseDataSourceId,
 } from "./utils";
 import {
+  addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
   removeColumnFromCartesianChart,
@@ -479,14 +480,21 @@ function maybeCombineDataset(
     canCombineCard(state.display, state.columns, state.settings, card)
   ) {
     const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const columns = dataset.data.cols.filter(col => metrics.includes(col.name));
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+    const columns = dataset.data.cols.filter(
+      col => metrics.includes(col.name) || dimensions.includes(col.name),
+    );
     columns.forEach(column => {
       const columnRef = createVisualizerColumnReference(
         source,
         column,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      addMetricColumnToCartesianChart(state, column, columnRef);
+      if (metrics.includes(column.name)) {
+        addMetricColumnToCartesianChart(state, column, columnRef);
+      } else {
+        addDimensionColumnToCartesianChart(state, column, columnRef);
+      }
     });
     return state;
   }
