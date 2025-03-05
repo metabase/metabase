@@ -58,10 +58,13 @@ const interactiveEmbedSlice = createSlice({
         ...action.payload,
       };
     },
+    setIsEmbeddingSdk: (state, action: PayloadAction<boolean>) => {
+      state.isEmbeddingSdk = action.payload;
+    },
   },
 });
 
-export const { setInitialUrlOptions, setOptions } =
+export const { setInitialUrlOptions, setOptions, setIsEmbeddingSdk } =
   interactiveEmbedSlice.actions;
 
 // eslint-disable-next-line import/no-default-export
