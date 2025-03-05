@@ -98,8 +98,7 @@
 
 (defonce ahoj (atom []))
 (comment
-  (reset! ahoj [])
-)
+  (reset! ahoj []))
 
 ;; SHOULD create a query with subset of keys and new aggregations
 ;; next step is to create a query for PARENTS!
@@ -110,6 +109,9 @@
 ;;       Question is whether we want fingerprint prior filtering, should we include joins???
 ;;
 ;; TODO: Could this re-use process multiple from pivoting code?
+;;
+;;
+
 (defn dummy-adhoc-bounds
   [ref]
   ;; here I must ensure there is no binning in that query!!! does that make sense?
@@ -135,34 +137,36 @@
           (get-in (dummy-adhoc-bounds ref)
                   [:data :rows 0])))
 
-(mu/defn- update-binned-field :- mbql.s/field
+(mu/defn- update-binned-field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
   [{:keys [source-metadata], :as _inner-query}
-   field-id-or-name->filters                  :- FieldIDOrName->Filters
-   [_ id-or-name {:keys [binning], :as opts} :as fref] :- mbql.s/field]
-  
-  (let [r (let [metadata                                   (matching-metadata id-or-name source-metadata)
+   field-id-or-name->filters                  :- :any #_FieldIDOrName->Filters
+   [_ id-or-name {:keys [binning], :as opts} :as fref] :- :any]
+  (def fff fref)
+  (let [r (let [metadata                                   (try (matching-metadata id-or-name source-metadata)
+                                                                (catch Exception _))
                 ;; this here mix max val
                 #_#_{:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
                                                                                (:fingerprint metadata)
                                                                                field-id-or-name->filters)
-                {:keys [min-value max-value], :as min-max} (dummy-adhoc-extract-bounds fref)
-                [new-strategy resolved-options]            (lib.binning.util/resolve-options (qp.store/metadata-provider)
-                                                                                             (:strategy binning)
-                                                                                             (get binning (:strategy binning))
-                                                                                             metadata
-                                                                                             min-value max-value)
+                {:keys [min-value max-value], :as min-max} @(def mimi (dummy-adhoc-extract-bounds fref))
+                [new-strategy resolved-options]            @(def ww (lib.binning.util/resolve-options (qp.store/metadata-provider)
+                                                                                                      (:strategy binning)
+                                                                                                      (get binning (:strategy binning))
+                                                                                                      metadata
+                                                                                                      min-value max-value))
                 resolved-options                           (merge min-max resolved-options)
         ;; Bail out and use unmodifed version if we can't converge on a nice version.
-                new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
-                                resolved-options)]
-            [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])]
-    (swap! ahoj conj {:ref fref
-                      :res r
-                      :query *query*
-                      :field-parents *parents*})
+                new-options (or #_(lib.binning.util/nicer-breakout new-strategy resolved-options)
+                             resolved-options)]
+            @(def rii (assoc fref 2 (update opts :binning merge {:strategy new-strategy} new-options)))
+            #_[:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])]
+    #_(swap! ahoj conj {:ref fref
+                        :res r
+                        :query *query*
+                        :field-parents *parents*})
     #_(dummy-adhoc-bounds fref)
     r))
 
@@ -170,13 +174,30 @@
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
   [{filters :filter, :as inner-query}]
   (let [field-id-or-name->filters (filter->field-map filters)]
-    (lib.util.match/replace inner-query
-      [:field _ (_ :guard :binning)]
-      (try
-        (binding [*parents* &parents]
-          (update-binned-field inner-query field-id-or-name->filters &match))
-        (catch Throwable e
-          (throw (ex-info (.getMessage e) {:clause &match} e)))))))
+    (lib.util.match/replace
+     inner-query
+     ;;
+     ;; should not be doubled -- how to match for :field or :expression
+     [:field _ (_ :guard :binning)]
+     (try
+       (binding [*parents* &parents]
+         (update-binned-field inner-query field-id-or-name->filters &match))
+       (catch Throwable e
+         (throw (ex-info (.getMessage e) {:clause &match} e))))
+     [:expression _ (_ :guard :binning)]
+     (try
+       (binding [*parents* &parents]
+         (update-binned-field inner-query field-id-or-name->filters &match))
+       (catch Throwable e
+         (throw (ex-info (.getMessage e) {:clause &match} e)))))))
+
+;; post-walk the query
+;;
+
+(defn- back-bins-by-series
+  [query]
+  (swap! ahoj conj query)
+  query)
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
@@ -186,4 +207,6 @@
   (if (= query-type :native)
     query
     (binding [*query* query]
-      (update query :query update-binning-strategy-in-inner-query))))
+      (-> query
+          (update :query update-binning-strategy-in-inner-query)
+          #_(update :query back-bins-by-series)))))

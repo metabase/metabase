@@ -13,6 +13,7 @@
   [min-value :- number?
    max-value :- number?
    num-bins  :- ::lib.schema.binning/num-bins]
+  (def xix num-bins)
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
@@ -123,15 +124,15 @@
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 
-(mu/defn resolve-options :- ResolvedStrategy
+(defn resolve-options
   "Given any binning `:strategy`, determine the `:bin-width` and `:num-bins` we should use based on the column's
   fingerprint."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   strategy              :- ::lib.schema.binning/strategy
-   strategy-param        :- [:maybe number?]
-   column                :- ::lib.schema.metadata/column
-   min-value             :- number?
-   max-value             :- number?]
+  [metadata-providerable
+   strategy
+   strategy-param
+   column
+   min-value
+   max-value]
   (case strategy
     :num-bins
     [:num-bins
