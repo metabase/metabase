@@ -1334,3 +1334,44 @@ describe("scenarios > question > custom column > top level literal values", () =
       .should("have.text", value);
   }
 });
+
+describe("scenarios > question > custom column > boolean filter", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.visitQuestionAdhoc(
+      {
+        dataset_query: {
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 1,
+            fields: [["field", ORDERS.ID, null]],
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      {
+        mode: "notebook",
+      },
+    );
+  });
+
+  it("should be possible to use a boolean dimension in a filter directly", () => {
+    cy.icon("add_data").click();
+    H.enterCustomColumnDetails({ formula: "[ID] > 10", name: "Custom" });
+    H.expressionEditorWidget().button("Done").click();
+
+    cy.icon("filter").click();
+    H.popover().findByText("Custom Expression").click();
+
+    H.enterCustomColumnDetails({ formula: "[Custom]" });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("filter").findByText("Custom is true").click();
+
+    H.popover().findByText("Custom").should("be.visible");
+    H.popover().findByText("True").should("be.visible");
+    H.popover().findByText("False").should("be.visible");
+  });
+});
