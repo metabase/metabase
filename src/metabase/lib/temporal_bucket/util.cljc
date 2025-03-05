@@ -59,7 +59,7 @@
 
   (relative-datetime-tru  0 \"month\") -> \"starting now\"
   (relative-datetime-tru -1 \"month\") -> \"starting 1 month ago\"
-  (relative-datetime-tru  2 \"month\") -> \"starting 2 months ago\""
+  (relative-datetime-tru  2 \"month\") -> \"starting 2 months from now\""
   [n
    unit-message]
   `(cond
