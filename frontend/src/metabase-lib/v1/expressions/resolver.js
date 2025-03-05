@@ -88,6 +88,24 @@ export function resolve({
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
+    if (type === "boolean") {
+      // In the case of a boolean expression (ie. filter), we allow fields and expressions
+      // that have a boolean type to be used directly.
+      const [name] = operands;
+      try {
+        const dimension = fn("dimension", name, expression.node);
+        if (
+          dimension &&
+          Array.isArray(dimension) &&
+          dimension[2]?.["base-type"] === "type/Boolean"
+        ) {
+          return dimension;
+        }
+      } catch (err) {
+        // noop
+      }
+    }
+
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
