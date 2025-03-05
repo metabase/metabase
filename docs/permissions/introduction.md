@@ -21,7 +21,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 - [Data permissions](#data-permissions)
 - [Collection permissions](#collection-permissions)
 - [Application permissions](#application-permissions)
-- [Snippet folder permissions](#sql-snippet-folder-permissions)
+- [Snippet folder permissions](#snippet-folder-permissions)
 
 ### Data permissions
 
@@ -53,7 +53,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Snippet folder permissions
 
-For plans that include [Snippet Folders][sql-snippet-folders], you can also set permissions on those folders.
+For plans that include [Snippet Folders][snippet-folders], you can also set permissions on those folders.
 
 ## Changing permissions
 
@@ -76,5 +76,5 @@ Whenever you change permissions for a group, make sure you:
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
-[sql-snippet-folders]: ../questions/native-editor/snippets.md
+[snippet-folders]: ../questions/native-editor/snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md
