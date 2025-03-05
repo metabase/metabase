@@ -10,7 +10,14 @@ import {
   Option,
 } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { Button, Select, TextInputBlurChange } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Select,
+  Stack,
+  Text,
+  TextInputBlurChange,
+} from "metabase/ui";
 import type { TextInputBlurChangeProps } from "metabase/ui/components/inputs/TextInputBlurChange/TextInputBlurChange";
 import { isBoolean } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -86,31 +93,34 @@ export const RuleEditor = ({
 
     onChange({ ...rule, columns, ...operatorUpdate });
   };
+
   return (
-    <div>
-      <h3 className={CS.mb1}>{t`Which columns should be affected?`}</h3>
-      <DeprecatedSelect
-        value={rule.columns}
-        onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
-          handleColumnChange(e.target.value)
-        }
-        isInitiallyOpen={rule.columns.length === 0}
-        placeholder={t`Choose a column`}
-        multiple
-      >
-        {cols.map(col => (
-          <Option
-            key={col.name}
-            value={col.name}
-            disabled={isFieldDisabled(col)}
-          >
-            {col.display_name}
-          </Option>
-        ))}
-      </DeprecatedSelect>
+    <Stack spacing="lg">
+      <Stack spacing="xs">
+        <Text fw="bold" fz="lg">{t`Which columns should be affected?`}</Text>
+        <DeprecatedSelect
+          value={rule.columns}
+          onChange={(e: { target: { value: SelectMultipleItemsReturned } }) =>
+            handleColumnChange(e.target.value)
+          }
+          isInitiallyOpen={rule.columns.length === 0}
+          placeholder={t`Choose a column`}
+          multiple
+        >
+          {cols.map(col => (
+            <Option
+              key={col.name}
+              value={col.name}
+              disabled={isFieldDisabled(col)}
+            >
+              {col.display_name}
+            </Option>
+          ))}
+        </DeprecatedSelect>
+      </Stack>
       {isNumericRule && !isKeyRule && (
-        <div>
-          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Formatting style`}</h3>
+        <Stack spacing="xs">
+          <Text fw="bold" fz="lg">{t`Formatting style`}</Text>
           <ChartSettingRadio
             options={[
               { name: t`Single color`, value: "single" },
@@ -124,49 +134,52 @@ export const RuleEditor = ({
               })
             }
           />
-        </div>
+        </Stack>
       )}
       {rule.type === "single" ? (
-        <div>
-          <h3 className={cx(CS.mt3, CS.mb1)}>
-            {ngettext(
-              msgid`When a cell in this column…`,
-              `When any cell in these columns…`,
-              selectedColumns.length,
-            )}
-          </h3>
-          <Select
-            value={rule.operator}
-            onChange={(operator: ColumnFormattingOperator) =>
-              onChange({ ...rule, operator })
-            }
-            data={_.pairs(operators).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-            data-testid="conditional-formatting-value-operator-button"
-          />
-          <RuleEditorValueInput
-            hasOperand={hasOperand}
-            isNumericRule={isNumericRule}
-            isKeyRule={isKeyRule}
-            rule={rule}
-            onChange={onChange}
-          />
-          <h3
-            className={cx(CS.mt3, CS.mb1)}
-          >{t`…turn its background this color:`}</h3>
-          <ColorSelector
-            data-testid="conditional-formatting-color-selector"
-            value={rule.color}
-            colors={COLORS}
-            onChange={color => onChange({ ...rule, color })}
-          />
+        <>
+          <Stack spacing="xs">
+            <Text fw="bold" fz="lg">
+              {ngettext(
+                msgid`When a cell in this column…`,
+                `When any cell in these columns…`,
+                selectedColumns.length,
+              )}
+            </Text>
+            <Box>
+              <Select
+                value={rule.operator}
+                onChange={(operator: ColumnFormattingOperator) =>
+                  onChange({ ...rule, operator })
+                }
+                data={_.pairs(operators).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+                data-testid="conditional-formatting-value-operator-button"
+              />
+              <RuleEditorValueInput
+                hasOperand={hasOperand}
+                isNumericRule={isNumericRule}
+                isKeyRule={isKeyRule}
+                rule={rule}
+                onChange={onChange}
+              />
+            </Box>
+          </Stack>
+          <Stack spacing="xs" align="flex-start">
+            <Text fw="bold" fz="lg">{t`…turn its background this color:`}</Text>
+
+            <ColorSelector
+              data-testid="conditional-formatting-color-selector"
+              value={rule.color}
+              colors={COLORS}
+              onChange={color => onChange({ ...rule, color })}
+            />
+          </Stack>
           {canHighlightRow && (
-            <>
-              <h3
-                className={cx(CS.mt3, CS.mb1)}
-              >{t`Highlight the whole row`}</h3>
+            <Stack spacing="xs">
+              <Text fw="bold" fz="lg">{t`Highlight the whole row`}</Text>
 
               <ChartSettingToggle
                 value={rule.highlight_row}
@@ -177,81 +190,89 @@ export const RuleEditor = ({
                   })
                 }
               />
-            </>
+            </Stack>
           )}
-        </div>
+        </>
       ) : rule.type === "range" ? (
-        <div>
-          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Colors`}</h3>
-          <ColorRangeSelector
-            value={rule.colors}
-            onChange={colors => {
-              onChange({ ...rule, colors });
-            }}
-            colors={COLORS}
-            colorRanges={COLOR_RANGES}
-          />
-          <h3 className={cx(CS.mt3, CS.mb1)}>{t`Start the range at`}</h3>
-          <ChartSettingRadio
-            value={rule.min_type}
-            onChange={min_type =>
-              onChange({
-                ...rule,
-                min_type: min_type as ColumnRangeFormattingSetting["min_type"],
-              })
-            }
-            options={(rule.columns.length <= 1
-              ? [{ name: t`Smallest value in this column`, value: null }]
-              : [
-                  { name: t`Smallest value in each column`, value: null },
-                  {
-                    name: t`Smallest value in all of these columns`,
-                    value: "all",
-                  },
-                ]
-            ).concat([{ name: t`Custom value`, value: "custom" }])}
-          />
-          {rule.min_type === "custom" && (
-            <ChartSettingInputNumeric
-              className={INPUT_CLASSNAME}
-              value={rule.min_value}
-              onChange={min_value =>
-                onChange({ ...rule, min_value: min_value ?? undefined })
-              }
+        <>
+          <Stack spacing="xs">
+            <Text fw="bold" fz="lg">{t`Colors`}</Text>
+            <ColorRangeSelector
+              value={rule.colors}
+              onChange={colors => {
+                onChange({ ...rule, colors });
+              }}
+              colors={COLORS}
+              colorRanges={COLOR_RANGES}
             />
-          )}
-          <h3 className={cx(CS.mt3, CS.mb1)}>{t`End the range at`}</h3>
-          <ChartSettingRadio
-            value={rule.max_type}
-            onChange={max_type =>
-              onChange({
-                ...rule,
-                max_type: max_type as ColumnRangeFormattingSetting["max_type"],
-              })
-            }
-            options={(rule.columns.length <= 1
-              ? [{ name: t`Largest value in this column`, value: null }]
-              : [
-                  { name: t`Largest value in each column`, value: null },
-                  {
-                    name: t`Largest value in all of these columns`,
-                    value: "all",
-                  },
-                ]
-            ).concat([{ name: t`Custom value`, value: "custom" }])}
-          />
-          {rule.max_type === "custom" && (
-            <ChartSettingInputNumeric
-              className={INPUT_CLASSNAME}
-              value={rule.max_value}
-              onChange={max_value =>
-                onChange({ ...rule, max_value: max_value ?? undefined })
+          </Stack>
+          <Stack spacing="xs">
+            <Text fw="bold" fz="lg">{t`Start the range at`}</Text>
+            <ChartSettingRadio
+              value={rule.min_type}
+              onChange={min_type =>
+                onChange({
+                  ...rule,
+                  min_type:
+                    min_type as ColumnRangeFormattingSetting["min_type"],
+                })
               }
+              options={(rule.columns.length <= 1
+                ? [{ name: t`Smallest value in this column`, value: null }]
+                : [
+                    { name: t`Smallest value in each column`, value: null },
+                    {
+                      name: t`Smallest value in all of these columns`,
+                      value: "all",
+                    },
+                  ]
+              ).concat([{ name: t`Custom value`, value: "custom" }])}
             />
-          )}
-        </div>
+            {rule.min_type === "custom" && (
+              <ChartSettingInputNumeric
+                className={INPUT_CLASSNAME}
+                value={rule.min_value}
+                onChange={min_value =>
+                  onChange({ ...rule, min_value: min_value ?? undefined })
+                }
+              />
+            )}
+          </Stack>
+          <Stack spacing="xs">
+            <Text fw="bold" fz="lg">{t`End the range at`}</Text>
+            <ChartSettingRadio
+              value={rule.max_type}
+              onChange={max_type =>
+                onChange({
+                  ...rule,
+                  max_type:
+                    max_type as ColumnRangeFormattingSetting["max_type"],
+                })
+              }
+              options={(rule.columns.length <= 1
+                ? [{ name: t`Largest value in this column`, value: null }]
+                : [
+                    { name: t`Largest value in each column`, value: null },
+                    {
+                      name: t`Largest value in all of these columns`,
+                      value: "all",
+                    },
+                  ]
+              ).concat([{ name: t`Custom value`, value: "custom" }])}
+            />
+            {rule.max_type === "custom" && (
+              <ChartSettingInputNumeric
+                className={INPUT_CLASSNAME}
+                value={rule.max_value}
+                onChange={max_value =>
+                  onChange({ ...rule, max_value: max_value ?? undefined })
+                }
+              />
+            )}
+          </Stack>
+        </>
       ) : null}
-      <div className={CS.mt4}>
+      <Box>
         {rule.columns.length === 0 ? (
           <Button variant="filled" onClick={onRemove}>
             {isNew ? t`Cancel` : t`Delete`}
@@ -261,8 +282,8 @@ export const RuleEditor = ({
             {isNew ? t`Add rule` : t`Update rule`}
           </Button>
         )}
-      </div>
-    </div>
+      </Box>
+    </Stack>
   );
 };
 
