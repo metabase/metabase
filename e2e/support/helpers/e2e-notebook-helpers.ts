@@ -229,7 +229,7 @@ export function selectFilterOperator(operatorName: string) {
 
 type JoinType = "left-join" | "right-join" | "inner-join" | "full-join";
 
-type Stage = {
+export type Stage = {
   joins?: {
     lhsTable: string;
     rhsTable: string;
