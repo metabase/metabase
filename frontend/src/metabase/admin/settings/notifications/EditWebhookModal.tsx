@@ -70,23 +70,20 @@ export const EditWebhookModal = ({
   );
 
   return (
-    <Modal.Root opened={isOpen} onClose={onClose} size="36rem">
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header p="2.5rem" mb="1.5rem">
-          <Modal.Title>{t`Edit this webhook`}</Modal.Title>
-          <Modal.CloseButton />
-        </Modal.Header>
-        <Modal.Body p="2.5rem">
-          <WebhookForm
-            onSubmit={handleSumbit}
-            onCancel={onClose}
-            onDelete={handleDelete}
-            initialValues={initialValues}
-            submitLabel={t`Save changes`}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      size="36rem"
+      padding="2.5rem"
+      title={t`Edit this webhook`}
+    >
+      <WebhookForm
+        onSubmit={handleSumbit}
+        onCancel={onClose}
+        onDelete={handleDelete}
+        initialValues={initialValues}
+        submitLabel={t`Save changes`}
+      />
+    </Modal>
   );
 };

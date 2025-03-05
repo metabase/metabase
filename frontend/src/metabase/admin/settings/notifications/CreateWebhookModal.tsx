@@ -51,21 +51,18 @@ export const CreateWebhookModal = ({
   };
 
   return (
-    <Modal.Root opened={isOpen} onClose={onClose} size="36rem">
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header p="2.5rem" mb="1.5rem">
-          <Modal.Title>{t`New webhook destination`}</Modal.Title>
-          <Modal.CloseButton />
-        </Modal.Header>
-        <Modal.Body p="2.5rem">
-          <WebhookForm
-            onSubmit={handleSubmit}
-            onCancel={onClose}
-            initialValues={initialValues}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      size="36rem"
+      padding="2.5rem"
+      title={t`New webhook destination`}
+    >
+      <WebhookForm
+        onSubmit={handleSubmit}
+        onCancel={onClose}
+        initialValues={initialValues}
+      />
+    </Modal>
   );
 };
