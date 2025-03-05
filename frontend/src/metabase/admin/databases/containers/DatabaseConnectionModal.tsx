@@ -77,10 +77,6 @@ export const DatabaseConnectionModalInner = ({
     }
   };
 
-  if (!database) {
-    return null;
-  }
-
   return (
     <Modal
       title={addingNewDatabase ? t`Add a database` : t`Edit connection details`}

@@ -14,35 +14,33 @@ export const DatabaseInfoSection = ({
   condensed = false,
   ...props
 }: DatabaseInfoSectionProps) => (
-  <Flex gap="5.5rem" mb="5.5rem" {...props}>
-    <Flex gap="lg" w="100%">
-      <Flex
-        direction="column"
-        w="100%"
-        maw="16rem"
-        mt="md"
-        style={{ flexShrink: 0 }}
-      >
-        <Text size="lg" fw="700" mb="xs" lh={1.4}>
-          {name}
-        </Text>
-        <Text c="text-secondary" lh={1.4}>
-          {description}
-        </Text>
-      </Flex>
-      <Box w="100%">
-        <Card
-          withBorder
-          bg="accent-gray-light"
-          shadow="none"
-          style={{ flexGrow: 0 }}
-          px="1.5rem"
-          py={condensed ? "1.125rem" : "1.875rem"}
-        >
-          {children}
-        </Card>
-      </Box>
+  <Flex gap="lg" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
+    <Flex
+      direction="column"
+      w="100%"
+      maw={{ sm: "16rem" }}
+      mt="md"
+      style={{ flexShrink: 0 }}
+    >
+      <Text size="lg" fw="700" mb="xs" lh={1.4}>
+        {name}
+      </Text>
+      <Text c="text-secondary" lh={1.4}>
+        {description}
+      </Text>
     </Flex>
+    <Box w="100%">
+      <Card
+        withBorder
+        bg="accent-gray-light"
+        shadow="none"
+        style={{ flexGrow: 0 }}
+        px="1.5rem"
+        py={condensed ? "1.125rem" : "1.875rem"}
+      >
+        {children}
+      </Card>
+    </Box>
   </Flex>
 );
 

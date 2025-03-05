@@ -11,6 +11,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
+import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
@@ -53,9 +54,6 @@ export const DatabaseEditConnectionForm = ({
     }
   };
 
-  // TODO: we should disable the edit button if the user can't edit
-  // also this state could look better
-
   return (
     <ErrorBoundary errorComponent={GenericError as ComponentType}>
       <LoadingAndErrorWrapper error={initializeError}>
@@ -69,7 +67,7 @@ export const DatabaseEditConnectionForm = ({
             autofocusFieldName={autofocusFieldName}
           />
         ) : (
-          <div>{t`This database cannot be modified.`}</div>
+          <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>
         )}
       </LoadingAndErrorWrapper>
       <LeaveConfirmationModal

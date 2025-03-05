@@ -57,34 +57,24 @@ export const DatabaseConnectionInfoSection = ({
     return match(healthQuery)
       .with(
         { currentData: { status: "ok" } },
-        () =>
-          ({
-            message: t`No connection issues`,
-            color: "var(--mb-color-success)",
-          }) as const,
+        () => ({ message: t`No connection issues`, color: "success" }) as const,
       )
       .with(
         { isUninitialized: true },
         { isFetching: true },
         { isLoading: true },
-        () => ({ message: t`Loading...`, color: "gray" }) as const,
+        () => ({ message: t`Loading...`, color: "text-light" }) as const,
       )
       .with(
         { currentData: { status: "error" } },
-        query =>
-          ({
-            message: query.currentData.message,
-            color: "var(--mb-color-danger)",
-          }) as const,
+        q => ({ message: q.currentData.message, color: "danger" }) as const,
       )
       .with(
         { isError: true },
-        // @kyle: what color should represent a failure to get the health state?
-        // you can induce this state above by making `match(healthQuery)` => `match({ isError: true })`
         () =>
           ({
-            message: t`Was unable to preform healthcheck request.`,
-            color: "var(--mb-color-danger)",
+            message: t`Failed to retrieve database health status.`,
+            color: "text-light",
           }) as const,
       )
       .exhaustive();
@@ -92,9 +82,9 @@ export const DatabaseConnectionInfoSection = ({
 
   return (
     <DatabaseInfoSection
+      condensed
       name={t`Connection and sync`}
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
-      condensed
       data-testid="database-connection-info-section"
     >
       <Flex align="center" justify="space-between" gap="lg">
@@ -102,17 +92,14 @@ export const DatabaseConnectionInfoSection = ({
           <Box
             w=".75rem"
             h=".75rem"
-            style={{
-              flexShrink: 0,
-              borderRadius: "50%",
-              background: health.color,
-            }}
+            bg={health.color}
+            style={{ flexShrink: 0, borderRadius: "50%" }}
           />
           <Text lh="1.4">{health.message}</Text>
         </Flex>
         <Tooltip
           disabled={isDbModifiable(database)}
-          label={t`This database cannot be modified.`}
+          label={t`This database is managed by Metabase Cloud and cannot be modified.`}
         >
           <Button
             onClick={openDbDetailsModal}

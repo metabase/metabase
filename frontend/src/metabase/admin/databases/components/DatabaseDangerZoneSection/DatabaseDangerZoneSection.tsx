@@ -54,7 +54,7 @@ export const DatabaseDangerZoneSection = ({
       description={t`Remove this database and other destructive actions.`}
       data-testid="database-danger-zone-section"
     >
-      <Flex gap="sm">
+      <Flex gap="sm" wrap="wrap">
         {isSyncCompleted(database) && (
           <ModalWithTrigger
             triggerElement={
