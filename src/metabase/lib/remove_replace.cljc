@@ -9,6 +9,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -125,44 +126,46 @@
 
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
-  (let [result (lib.util/update-query-stage query stage-number
-                                            remove-replace-fn location target-clause)
-        target-uuid (lib.options/uuid target-clause)]
-    (if (not= query result)
-      (lib.util.match/match-one location
-        [:expressions]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :expression
-             {}
-             (lib.util/expression-name target-clause))
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+  ;; We may see missing idents during the remove/replace process, so disable the assertions.
+  (binding [lib.metadata.ident/*enforce-idents-present* false]
+    (let [result (lib.util/update-query-stage query stage-number
+                                              remove-replace-fn location target-clause)
+          target-uuid (lib.options/uuid target-clause)]
+      (if (not= query result)
+        (lib.util.match/match-one location
+          [:expressions]
+          (-> result
+              (remove-local-references
+               stage-number
+               unmodified-query-for-stage
+               :expression
+               {}
+               (lib.util/expression-name target-clause))
+              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        [:aggregation]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :aggregation
-             {}
-             target-uuid)
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+          [:aggregation]
+          (-> result
+              (remove-local-references
+               stage-number
+               unmodified-query-for-stage
+               :aggregation
+               {}
+               target-uuid)
+              (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        #_{:clj-kondo/ignore [:invalid-arity]}
-        (:or
-         [:breakout]
-         [:fields]
-         [:joins _ :fields])
-        (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
+          #_{:clj-kondo/ignore [:invalid-arity]}
+          (:or
+           [:breakout]
+           [:fields]
+           [:joins _ :fields])
+          (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+              (update-stale-references stage-number unmodified-query-for-stage))
 
-        _
-        result)
-      result)))
+          _
+          result)
+        result))))
 
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
