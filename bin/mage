@@ -39,16 +39,14 @@
   (cond
     ;; help
     (or
+     (nil? *command-line-args*)
      (= *command-line-args* ["-h"])
      (= *command-line-args* ["--help"]))
     (print-help)
 
     ;; errors
-    (or
-     (nil? *command-line-args*)
-     (invalid-task?))
+    (invalid-task?)
     (do (print-help) (System/exit 1))
-
 
     :else
     (apply sh/sh (into ["bb"] *command-line-args*))))
