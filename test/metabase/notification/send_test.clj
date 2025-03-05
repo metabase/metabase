@@ -218,7 +218,7 @@
 
           (testing "notifications with same ID are replaced in queue"
             (reset! sent-notifications [])
-           ;; make the queue busy
+            ;; make the queue busy
             (test-dispatcher {:id 40 :test-value "D"})
             (test-dispatcher {:id 41 :test-value "D"})
             (test-dispatcher {:id 42 :test-value "D"})

@@ -187,24 +187,37 @@
   (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
 
 (defn- create-blocking-queue
-  "Create a notification queue backed by a LinkedBlockingQueue."
+  "Create a notification queue backed by a LinkedList and a ConcurrentHashMap."
   []
-  (let [ids-queue        (java.util.concurrent.LinkedBlockingQueue.)
+  (let [;; will soon be replaced by a priority queue
+        ids-list         (java.util.LinkedList.)
         id->notification (java.util.concurrent.ConcurrentHashMap.)
-        queue-lock       (Object.)]
+        queue-lock       (java.util.concurrent.locks.ReentrantLock.)
+        not-empty-cond   (.newCondition queue-lock)]
     (reify NotificationQueue
       (put-notification! [_ id notification]
-        (locking queue-lock
-          (when-not (.contains ids-queue id)
-            (.put ids-queue id))
-          (.put id->notification id notification)))
+        (.lock queue-lock)
+        (try
+          ;; If ID is not already in the queue, add it
+          (when-not (.contains ids-list id)
+            (.add ids-list id))
+          (.put id->notification id notification)
+          ;; Signal that a notification is available
+          (.signal not-empty-cond)
+          (finally
+            (.unlock queue-lock))))
 
       (take-notification! [_]
-        (let [id (.take ids-queue)]
-          (locking queue-lock
-            (let [notification (.get id->notification id)]
-              (.remove id->notification id)
-              [id notification])))))))
+        (.lock queue-lock)
+        (try
+          ;; Wait until there's at least one notification
+          (while (.isEmpty ids-list)
+            (.await not-empty-cond))
+          (let [id (.removeFirst ids-list)
+                notification (.remove id->notification id)]
+            [id notification])
+          (finally
+            (.unlock queue-lock)))))))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
