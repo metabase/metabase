@@ -211,7 +211,7 @@
                                                                {:name "Vendor", :type "string"}
                                                                {:name "Price", :type "number"}
                                                                {:name "Rating", :type "number"}
-                                                               {:name "Created At", :type "date"}])))
+                                                               {:name "Created At", :type "datetime"}])))
                    :conversation_id conversation-id}
                   response)))))))
 
@@ -234,7 +234,7 @@
                                    :query_id string?
                                    :query query
                                    :result_columns
-                                   [{:field_id (str "q" generated-id "/0"), :name "Created At: Week", :type "date"}
+                                   [{:field_id (str "q" generated-id "/0"), :name "Created At: Week", :type "datetime"}
                                     {:field_id (str "q" generated-id "/1"), :name "Average of Rating", :type "number"}]}
                :conversation_id conversation-id}
               ;; normalize query to convert strings like "field" to keywords
@@ -263,7 +263,7 @@
                                           (assoc :id question-id
                                                  :result_columns
                                                  (map-indexed #(assoc %2 :field_id (format "c%d/%d" question-id %1))
-                                                              [{:name "Created At: Week", :type "date"}
+                                                              [{:name "Created At: Week", :type "datetime"}
                                                                {:name "Average of Rating", :type "number"}])))
                    :conversation_id conversation-id}
                   response)))))))
@@ -293,7 +293,7 @@
                                             (assoc :id (str "card__" model-id)
                                                    :fields
                                                    (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
-                                                                [{:name "Created At: Week", :type "date"}
+                                                                [{:name "Created At: Week", :type "datetime"}
                                                                  {:name "Average of Rating", :type "number"}])))
                      :conversation_id conversation-id}
                     response))))))))
@@ -311,13 +311,13 @@
           (is (=? {:structured_output {:name "Products"
                                        :id (str table-id)
                                        :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
-                                                            [{:name "ID", :type "number"}
+                                                            [{:name "ID", :type "number", :semantic_type "pk"}
                                                              {:name "Ean", :type "string"}
-                                                             {:name "Title", :type "string"}
-                                                             {:name "Category", :type "string"}
-                                                             {:name "Vendor", :type "string"}
+                                                             {:name "Title", :type "string", :semantic_type "title"}
+                                                             {:name "Category", :type "string", :semantic_type "category"}
+                                                             {:name "Vendor", :type "string", :semantic_type "company"}
                                                              {:name "Price", :type "number"}
-                                                             {:name "Rating", :type "number"}
-                                                             {:name "Created At", :type "date"}])}
+                                                             {:name "Rating", :type "number", :semantic_type "score"}
+                                                             {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}])}
                    :conversation_id conversation-id}
                   response)))))))
