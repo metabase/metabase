@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.api :as api.session]
+   [metabase.session.models.session :as session]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -59,7 +60,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= true]]]
-                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-real-response :post 200 "session" body)]
@@ -195,16 +196,17 @@
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test.users/clear-cached-session-tokens!)
-      (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id session-id)]
+      (let [session-key       (client/authenticate (test.users/user->credentials :rasta))
+            session-key-hashed (session/hash-session-key session-key)
+            login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        (client/client session-id :delete 204 "session")
+        (client/client session-key :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (t2/select-one :model/Session :id session-id)))
+               (t2/select-one :model/Session :key_hashed session-key-hashed)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]

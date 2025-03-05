@@ -44,7 +44,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -67,7 +67,7 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -132,8 +132,8 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-uuid)}]
+                       (let [{session-key :key, :as session} (login username password (request/device-info request))
+                             response                        {:id (str session-key)}]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -144,11 +144,12 @@
 
 (api.macros/defendpoint :delete "/"
   "Logout."
-  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
-  (api/check-exists? :model/Session metabase-session-id)
-  (t2/delete! :model/Session :id metabase-session-id)
-  (request/clear-session-cookie api/generic-204-no-content))
+  ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
+  [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
+  (let [session-key-hashed (session/hash-session-key metabase-session-key)
+        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
+    (api/check-404 (> rows-deleted 0))
+    (request/clear-session-cookie api/generic-204-no-content)))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -255,9 +256,9 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
+          (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
                 response                        {:success    true
-                                                 :session_id (str session-uuid)}]
+                                                 :session_id (str session-key)}]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
@@ -286,8 +287,8 @@
   ;; Verify the token is valid with Google
   (letfn [(do-login []
             (let [user (sso/do-google-auth request)
-                  {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
-                  response {:id (str session-uuid)}
+                  {session-key :key, :as session} (session/create-session! :sso user (request/device-info request))
+                  response {:id (str session-key)}
                   user (t2/select-one [:model/User :id :is_active], :email (:email user))]
               (if (and user (:is_active user))
                 (request/set-session-cookies request
