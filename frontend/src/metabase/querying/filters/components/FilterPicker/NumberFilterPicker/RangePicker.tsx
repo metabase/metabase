@@ -1,10 +1,14 @@
 import { useMemo } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type { DatasetColumn } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type { DatasetColumn, RawSeries } from "metabase-types/api";
 
 interface Props {
   query: Lib.Query;
@@ -31,8 +35,24 @@ export const RangePicker = ({
     () => Lib.toLegacyQuery(distributionQuery),
     [distributionQuery],
   );
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return new Question(distributionQuery, metadata).setDisplay("bar");
+  }, [distributionQuery, metadata]);
 
   const { data, isLoading } = useGetAdhocQueryQuery(legacyQuery);
+  const rawSeries = useMemo<RawSeries | undefined>(() => {
+    if (!data) {
+      return undefined;
+    }
+
+    return [
+      {
+        data: data.data,
+        card: question.card(),
+      },
+    ];
+  }, [data, question]);
 
   if (isLoading) {
     return (
@@ -44,7 +64,7 @@ export const RangePicker = ({
 
   return (
     <Box p="md" pb={0}>
-      {JSON.stringify(data, null, 2)}
+      <Visualization rawSeries={rawSeries} />
     </Box>
   );
 };
