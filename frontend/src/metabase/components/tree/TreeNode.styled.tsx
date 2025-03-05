@@ -64,16 +64,9 @@ export const NameContainer = styled.div`
   flex: 1;
 `;
 
-interface IconContainerProps {
-  transparent?: boolean;
-}
-
-export const IconContainer = styled((props: IconContainerProps) => {
-  const { transparent, ...rest } = props;
-  return <div {...rest} />;
-})`
+export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: ${props => ((props.transparent ?? true) ? 0.5 : 1)};
+  opacity: ${({ transparent = true }) => (transparent ? 0.5 : 1)};
 `;
