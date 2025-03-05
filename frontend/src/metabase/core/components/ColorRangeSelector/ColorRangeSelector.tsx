@@ -30,14 +30,13 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
     colorMapping,
     isQuantile,
     onChange,
-    withinPortal,
     ...props
   }: ColorRangeSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [opened, { close, toggle }] = useDisclosure(false);
   return (
-    <Popover opened={opened} onClose={close} withinPortal={withinPortal}>
+    <Popover opened={opened} onClose={close}>
       <Popover.Target>
         <ColorRange
           {...props}
