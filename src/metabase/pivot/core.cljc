@@ -9,6 +9,9 @@
   (:import
    #?(:clj (java.text Collator))))
 
+#?(:clj
+   (set! *warn-on-reflection* true))
+
 (defn- json-parse
   "Parses a JSON string in Clojure or ClojureScript"
   [x]
@@ -184,7 +187,7 @@
             0
 
             (string? a)
-            #?(:clj (.compare collator (str a) (str b))
+            #?(:clj (.compare ^Collator collator (str a) (str b))
                :cljs (.localeCompare (str a) (str b)))
             :else
             (compare a b)))]
