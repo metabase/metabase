@@ -46,6 +46,7 @@ export default class AccordionList extends Component {
     });
 
     this.listRootRef = createRef();
+    this.scrollingContainerRef = createRef();
   }
 
   static propTypes = {
@@ -182,7 +183,7 @@ export default class AccordionList extends Component {
 
   _getRootContainer() {
     return this.isVirtualized()
-      ? this._list?.Grid?._scrollingContainer
+      ? this.scrollingContainerRef.current
       : this.listRootRef.current;
   }
 
@@ -710,6 +711,9 @@ export default class AccordionList extends Component {
         containerProps={{
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,
+
+          // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/Grid/Grid.js#L225-L226
+          elementRef: this.scrollingContainerRef,
         }}
         rowRenderer={({ key, index, parent, style }) => {
           return (
