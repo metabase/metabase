@@ -9,10 +9,10 @@ jobs:
   update-pr-description:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Find Linear issues and update PR description
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
@@ -82,7 +82,7 @@ jobs:
               const linearId = issue.identifier;
 
               // Check if the PR description already has the closing text
-              if (pr.body && pr.body.includes(`closes ${linearId}`)) {
+              if (pr.body && pr.body.includes(`closes [${linearId}](${issue.url})`)) {
                 console.log('PR description already contains closing text');
                 return;
               }
