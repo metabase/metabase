@@ -217,7 +217,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
-  "table-data-editing",
+  "table_data_editing",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
