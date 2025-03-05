@@ -1,6 +1,7 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
@@ -163,7 +164,7 @@ function formatDimension(
 
   const column = columns[columnIndex];
   if (!column) {
-    return "";
+    return formatDimensionName(t`Unknown Field`, options);
   }
 
   const info = Lib.displayInfo(query, stageIndex, column);
@@ -185,7 +186,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
   });
 
   if (!metric) {
-    throw new Error(`metric with ID: ${metricId} does not exist`);
+    return formatMetricName(t`Unknown Metric`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -211,7 +212,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   });
 
   if (!segment) {
-    throw new Error(`segment with ID does not exist: ${segmentId}`);
+    return formatSegmentName(t`Unknown Segment`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
