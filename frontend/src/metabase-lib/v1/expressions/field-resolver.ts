@@ -1,9 +1,43 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Expression } from "metabase-types/api";
 
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
 import { type Node, ResolverError } from "./pratt";
+import { resolve } from "./resolver";
+import type { StartRule } from "./types";
+
+export function resolverPass({
+  query,
+  stageIndex,
+  startRule,
+  database,
+  enabled = true,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  startRule: StartRule;
+  database?: Database | null;
+  enabled?: boolean;
+}) {
+  if (!enabled) {
+    return (expression: Expression): Expression => expression;
+  }
+
+  return (expression: Expression): Expression =>
+    resolve({
+      expression,
+      type: startRule,
+      database,
+      fn: fieldResolver({
+        query,
+        stageIndex,
+        startRule,
+      }),
+    });
+}
 
 export function fieldResolver(options: {
   query: Lib.Query;
