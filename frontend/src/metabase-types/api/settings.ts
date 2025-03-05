@@ -278,6 +278,7 @@ interface InstanceSettings {
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
+  "site-name": string;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;

@@ -602,8 +602,7 @@ describe("scenarios > admin > permissions", () => {
     });
 
     cy.visit("/admin/permissions/");
-    //Both the command palette and the admin app call refresh settings
-    cy.wait(["@sessionProps", "@sessionProps"]);
+    cy.wait("@sessionProps");
 
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
@@ -650,8 +649,7 @@ describe("scenarios > admin > permissions", () => {
     });
 
     cy.visit("/admin/permissions/");
-    //Both the command palette and the admin app call refresh settings
-    cy.wait(["@sessionProps", "@sessionProps"]);
+    cy.wait("@sessionProps");
 
     cy.findByRole("dialog", { name: /permissions may look different/ })
       .findByRole("button", { name: "Got it" })
