@@ -45,7 +45,6 @@ import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimi
 import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import { updateSetting } from "../settings";
-import SetupCheckList from "../setup/components/SetupCheckList";
 import SlackSettings from "../slack/containers/SlackSettings";
 
 import {
@@ -76,13 +75,6 @@ function updateSectionsWithPlugins(sections) {
 }
 
 export const ADMIN_SETTINGS_SECTIONS = {
-  setup: {
-    name: t`Setup`,
-    order: 10,
-    settings: [],
-    component: SetupCheckList,
-    adminOnly: true,
-  },
   general: {
     name: t`General`,
     order: 20,
