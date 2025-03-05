@@ -23,7 +23,9 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     () => {
       cy.visit("/admin/settings/cloud");
 
-      cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
+      cy.findByTestId("upsell-big-card").findByText(
+        /Migrate to Metabase Cloud/,
+      );
       H.expectGoodSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "hosting",
