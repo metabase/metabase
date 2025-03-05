@@ -13,6 +13,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiteralBooleanFilter,
   adjustTopLevelLiterals,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
@@ -76,6 +77,7 @@ export function compileExpression({
     adjustTopLevelLiterals,
     resolverPass,
     adjustBooleans,
+    startRule === "boolean" ? adjustTopLevelLiteralBooleanFilter : null,
   ].filter(isNotNull);
 
   try {

@@ -5,7 +5,13 @@ import type {
 } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
-import { isCaseOrIf, isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import {
+  isBooleanLiteral,
+  isCaseOrIf,
+  isCaseOrIfOperator,
+  isOptionsObject,
+  isWrappedLiteral,
+} from "./matchers";
 import type { CompilerPass } from "./pratt/compiler";
 
 function isCallExpression(expr: unknown): expr is CallExpression {
@@ -145,6 +151,17 @@ export const adjustBooleans: CompilerPass = tree =>
     return node;
   });
 
+export const adjustTopLevelLiteralBooleanFilter: CompilerPass = tree => {
+  if (
+    isBooleanField(tree) ||
+    isBooleanLiteral(tree) ||
+    (isWrappedLiteral(tree) && isBooleanLiteral(tree[1]))
+  ) {
+    return withAST(["=", tree, true], tree);
+  }
+  return tree;
+};
+
 function isBooleanField(input: unknown) {
   if (
     Array.isArray(input) &&
@@ -213,4 +230,5 @@ export const ALL_PASSES = [
   adjustOffset,
   adjustOptions,
   adjustTopLevelLiterals,
+  adjustTopLevelLiteralBooleanFilter,
 ];
