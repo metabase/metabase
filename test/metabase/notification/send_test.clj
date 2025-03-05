@@ -263,7 +263,7 @@
                                                                 ;; fake latency
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
-        (let [queue           (#'notification.send/create-blocking-queue)
+        (let [queue           (#'notification.send/create-notification-queue)
               test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
           (testing "basic processing"
             (reset! sent-notifications [])
@@ -404,7 +404,7 @@
 
 (deftest blocking-queue-test
   (testing "blocking queue implementation"
-    (let [queue (#'notification.send/create-blocking-queue)]
+    (let [queue (#'notification.send/create-notification-queue)]
 
       (testing "put and take operations work correctly"
         (let [test-notification {:payload_type :notification/testing :test-value "A"}]
@@ -412,14 +412,14 @@
           (is (= [1 test-notification] (#'notification.send/take-notification! queue)))))
 
       (testing "notifications with same ID are replaced in queue"
-        (let [queue (#'notification.send/create-blocking-queue)]
+        (let [queue (#'notification.send/create-notification-queue)]
           (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
           (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "B"})
           (is (= [1 {:payload_type :notification/testing :test-value "B"}]
                  (#'notification.send/take-notification! queue)))))
 
       (testing "multiple notifications are processed in order"
-        (let [queue (#'notification.send/create-blocking-queue)]
+        (let [queue (#'notification.send/create-notification-queue)]
           (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
           (#'notification.send/put-notification! queue 2 {:payload_type :notification/testing :test-value "B"})
           (#'notification.send/put-notification! queue 3 {:payload_type :notification/testing :test-value "C"})
@@ -432,7 +432,7 @@
                  (#'notification.send/take-notification! queue)))))
 
       (testing "take blocks until notification is available"
-        (let [queue (#'notification.send/create-blocking-queue)
+        (let [queue (#'notification.send/create-notification-queue)
               result (atom nil)
               latch (java.util.concurrent.CountDownLatch. 1)
               thread (Thread. (fn []
@@ -452,7 +452,7 @@
 
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
-    (let [queue                  (#'notification.send/create-blocking-queue)
+    (let [queue                  (#'notification.send/create-notification-queue)
           num-producers          5
           num-consumers          3
           num-items-per-producer 20
