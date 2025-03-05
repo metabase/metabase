@@ -2,9 +2,6 @@ import type { SelectProps } from "metabase/ui";
 
 import { combineConsecutiveStrings, getLongestSelectLabel } from "./utils";
 
-const allowAnyAmountOfWhitespace = (str: string) =>
-  new RegExp(str.replace(/ /g, "\\s*"));
-
 describe("Schedule utility functions", () => {
   describe("getLongestSelectLabel", () => {
     it("should return the longest label from an array of strings", () => {

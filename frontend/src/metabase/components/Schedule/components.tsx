@@ -8,11 +8,8 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type { SelectProps } from "metabase/ui";
-import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -20,6 +17,7 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
+import { AutoWidthSelect } from "./AutoWidthSelect";
 import {
   type Weekday,
   defaultHour,
@@ -27,9 +25,8 @@ import {
   getScheduleComponentLabel,
   getScheduleStrings,
   minutes,
-} from "./constants";
+} from "./strings";
 import type { UpdateSchedule } from "./types";
-import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
 
 export type SelectFrameProps = {
   schedule: ScheduleSettings;
@@ -245,59 +242,6 @@ export const SelectMinute = ({
       }
       aria-label={label}
       data-testid="select-minute"
-    />
-  );
-};
-
-/** A Select that is automatically sized to fit its largest option name */
-export const AutoWidthSelect = <Value extends string>({
-  style,
-  value,
-  ...props
-}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
-  const fontFamily = useSelector(state =>
-    getSetting(state, "application-font"),
-  );
-  const width = useMemo(() => {
-    const longestLabel = getLongestSelectLabel(props.data, fontFamily);
-
-    const width = `${
-      measureTextWidthSafely(longestLabel, 50, {
-        family: fontFamily,
-        ...style,
-      }) + 60
-    }px`;
-
-    return width;
-  }, [props.data, style, fontFamily]);
-  return (
-    <Select
-      styles={{
-        wrapper: {
-          paddingInlineEnd: 0,
-          marginTop: 0,
-          width,
-        },
-        label: {
-          marginBottom: 0,
-        },
-        input: {
-          paddingInlineEnd: 0,
-          lineHeight: "2.5rem",
-        },
-      }}
-      renderOption={item => (
-        <Box
-          p="sm"
-          style={{
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.option.label}
-        </Box>
-      )}
-      value={value}
-      {...props}
     />
   );
 };

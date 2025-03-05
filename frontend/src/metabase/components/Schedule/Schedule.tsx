@@ -1,10 +1,4 @@
-import {
-  Children,
-  type HTMLAttributes,
-  type ReactNode,
-  isValidElement,
-  useCallback,
-} from "react";
+import { type HTMLAttributes, useCallback } from "react";
 import { match } from "ts-pattern";
 import { c } from "ttag";
 
@@ -12,6 +6,7 @@ import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, type BoxProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
+import { GroupControlsTogether } from "./GroupControlsTogether";
 import S from "./Schedule.module.css";
 import {
   SelectFrame,
@@ -23,7 +18,6 @@ import {
 } from "./components";
 import { defaultDay, defaults } from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
-import { combineConsecutiveStrings } from "./utils";
 
 export interface ScheduleProps {
   schedule: ScheduleSettings;
@@ -192,44 +186,4 @@ export const Schedule = ({
       </GroupControlsTogether>
     </Box>
   );
-};
-
-const GroupControlsTogether = ({ children }: { children: ReactNode }) => {
-  const childNodes: ReactNode[] = Children.toArray(children);
-  const groupedNodes: ReactNode[] = [];
-  let currentGroup: ReactNode[] = [];
-
-  const compactChildren = combineConsecutiveStrings(childNodes);
-
-  compactChildren.forEach((child, index) => {
-    if (isValidElement(child)) {
-      // Child is element
-      currentGroup.push(child);
-
-      if (!isValidElement(compactChildren[index + 1])) {
-        // Flush current group
-        groupedNodes.push(<div className={S.ControlGroup}>{currentGroup}</div>);
-        currentGroup = [];
-      }
-    } else {
-      // Child should be a string
-      if (typeof child !== "string") {
-        throw new TypeError();
-      }
-
-      if (!child.trim()) {
-        return;
-      }
-
-      const isTextLong = child.length > 20;
-      const isTextNodeLast = index === compactChildren.length - 1;
-      const className =
-        isTextLong || isTextNodeLast
-          ? S.TextInSecondColumn
-          : S.TextInFirstColumn;
-      groupedNodes.push(<div className={className}>{child}</div>);
-    }
-  });
-
-  return <>{groupedNodes}</>;
 };
