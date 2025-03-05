@@ -13,6 +13,7 @@ import type {
   MetricAgg,
   OffsetExpression,
   SegmentFilter,
+  WrappedLiteral,
 } from "metabase-types/api";
 
 import {
