@@ -226,55 +226,73 @@
                          (t/seconds 30))]
     (t/plus (t/local-date-time) deadline-bonus)))
 
+;; A notification that can be put into a queue but has equal checks based on its ID
+(deftype NotificationItem [id deadline]
+  Object
+  (equals [this  other]
+    (and (instance? NotificationItem other)
+         (= (.id this) (.id ^NotificationItem other))))
+
+  (hashCode [this]
+    (hash (.id this)))
+  Comparable
+  (compareTo [this other]
+    (compare (.id this) (.id ^NotificationItem other))))
+
 (defn- deadline-comparator
   "Comparator for sorting notifications by deadline."
   [a b]
-  (compare (:deadline a) (:deadline b)))
+  (compare (.deadline ^NotificationItem a) (.deadline ^NotificationItem b)))
 
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
-  (put-notification!  [this id notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
-  (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
+  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
 
-;; A thread-safe notification queue with the following properties:
-;; - Notifications are identified by unique IDs
-;; - Adding a notification with an ID already in the queue replaces the existing one
-;; - Taking from an empty queue blocks until a notification is available
-;; - Multiple threads can safely add and take from the queue concurrently
 (deftype ^:private NotificationQueue
-         [^java.util.LinkedList ids-list
+         [^java.util.PriorityQueue items-list
           ^java.util.concurrent.ConcurrentHashMap id->notification
           ^java.util.concurrent.locks.ReentrantLock queue-lock
           ^java.util.concurrent.locks.Condition not-empty-cond]
   NotificationQueueProtocol
-  (put-notification! [_ id notification]
+  (put-notification! [_ notification]
     (.lock queue-lock)
-    (try
-      (when-not (.contains ids-list id)
-        (.add ids-list id))
-      (.put id->notification id notification)
-      ;; Signal that a notification is available
-      (.signal not-empty-cond)
-      (finally
-        (.unlock queue-lock))))
+    (let [id                (or (:id notification) (str (random-uuid)))
+          notification-item (->NotificationItem
+                             id
+                             (subscription->deadline (:triggering_subscription notification)))]
+      (try
+        (when-not (.contains items-list notification-item)
+          (.add items-list notification-item))
+        (.put id->notification id notification)
+       ;; Signal that a notification is available
+        (.signal not-empty-cond)
+        (finally
+          (.unlock queue-lock)))))
 
   (take-notification! [_]
     (.lock queue-lock)
     (try
       ;; Wait until there's at least one notification
-      (while (.isEmpty ids-list)
+      (while (.isEmpty items-list)
         (.await not-empty-cond))
-      (let [id (.removeFirst ids-list)
-            notification (.remove id->notification id)]
-        [id notification])
+      (let [^NotificationItem item (.poll items-list)
+            id                     (.id item)]
+        (.remove id->notification id))
       (finally
         (.unlock queue-lock)))))
 
 (defn- create-notification-queue
+  "A thread-safe, prioritized notification queue with the following properties:
+  - Notifications are identified by unique IDs
+  - Prioritized by deadline
+  - Adding a notification with an ID already in the queue replaces the existing one
+  - Taking from an empty queue blocks until a notification is available
+  - Multiple threads can safely add and take from the queue concurrently"
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.LinkedList.)
+    (->NotificationQueue (java.util.PriorityQueue. 11 deadline-comparator)
                          (java.util.concurrent.ConcurrentHashMap.)
                          queue-lock
                          not-empty-cond)))
@@ -299,13 +317,12 @@
                ^Callable (fn []
                            (while true
                              (try
-                               (let [[_id notification] (take-notification! queue)]
+                               (let [notification (take-notification! queue)]
                                  (send-notification-sync! notification))
                                (catch Exception e
                                  (log/error e "Error in notification worker")))))))
     (fn [notification]
-      (let [id (or (:id notification) (random-uuid))]
-        (put-notification! queue id notification)))))
+      (put-notification! queue notification))))
 
 (defonce ^:private dispatcher
   (delay (create-notification-dispatcher (notification-thread-pool-size) (create-notification-queue))))

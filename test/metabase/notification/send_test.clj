@@ -15,7 +15,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent CountDownLatch PriorityBlockingQueue CountDownLatch)))
+   (java.util.concurrent CountDownLatch CountDownLatch)))
 
 (set! *warn-on-reflection* true)
 
@@ -238,19 +238,12 @@
     (let [now        (t/instant)
           later      (t/plus now (t/minutes 5))
           even-later (t/plus now (t/minutes 10))
-          items      [{:id "3" :deadline even-later}
-                      {:id "1" :deadline now}
-                      {:id "2" :deadline later}]
-          queue (PriorityBlockingQueue. 10 @#'notification.send/deadline-comparator)]
-
-      ;; Add items to queue in random order
-      (doseq [item items]
-        (.put queue item))
-
-      ;; Items should come out in deadline order
-      (is (= "1" (:id (.take queue))))
-      (is (= "2" (:id (.take queue))))
-      (is (= "3" (:id (.take queue)))))))
+          items      (->> [{:id 3 :deadline even-later}
+                           {:id 1 :deadline now}
+                           {:id 2 :deadline later}]
+                          (map #(#'notification.send/->NotificationItem (:id %) (:deadline %)))
+                          (sort @#'notification.send/deadline-comparator))]
+      (is (= [1 2 3] (map #(.id %) items))))))
 
 (deftest notification-dispatcher-test
   (testing "notification dispatcher"
@@ -313,142 +306,96 @@
 
 (deftest notification-priority-test
   (testing "notifications are processed in priority order (by deadline)"
-    (let [processed-notifications (atom [])
-          first-job-latch (CountDownLatch. 1)
-          processing-started-latch (CountDownLatch. 1)]
-      (with-redefs [notification.send/send-notification-sync! (fn [notification]
-                                                                (when (= (:id notification) "blocking-job")
-                                                                  (.countDown processing-started-latch)
-                                                                  (.await first-job-latch 5 java.util.concurrent.TimeUnit/SECONDS))
-                                                                (swap! processed-notifications conj (:id notification)))]
+    (let [queue (#'notification.send/create-notification-queue)
+          low-priority    {:id "low-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 0 * * ? *"}} ; daily schedule
+          middle-priority {:id "middle-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 * * * ? *"}} ; hourly schedule
+          high-priority   {:id "high-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 * * * * ? *"}}] ; minutely schedule]
+      (#'notification.send/put-notification! queue middle-priority)
+      (#'notification.send/put-notification! queue low-priority)
+      (#'notification.send/put-notification! queue high-priority)
 
-        (let [dispatcher (#'notification.send/create-notification-dispatcher 1)
-              blocking-job {:id "blocking-job"
-                            :triggering_subscription {:type :notification-subscription/cron
-                                                      :cron_schedule "0 0 0 * * ? *"}}
-              low-priority {:id "low-priority"
-                            :triggering_subscription {:type :notification-subscription/cron
-                                                      :cron_schedule "0 0 0 * * ? *"}}
-              high-priority {:id "high-priority"
-                             :triggering_subscription {:type :notification-subscription/cron
-                                                       :cron_schedule "0 * * * * ? *"}}]
-          (dispatcher blocking-job)
-          ;; blocking to have time to put other notifications in the queue
-          (.await processing-started-latch 5 java.util.concurrent.TimeUnit/SECONDS)
-          (dispatcher low-priority)
-          (dispatcher high-priority)
-          (.countDown first-job-latch)
-          (u/poll {:thunk       (fn [] (count @processed-notifications))
-                   :done?       (fn [cnt] (= 3 cnt))
-                   :interval-ms 10
-                   :timeout-ms 1000})
-          (is (= ["blocking-job" "high-priority" "low-priority"] @processed-notifications)))))))
+      (is (= [high-priority middle-priority low-priority]
+             (for [_ (range 3)]
+               (#'notification.send/take-notification! queue)))))))
 
-(deftest notification-replacement-test
+(deftest notification-queue-preserves-deadline-on-replacement-test
   (testing "notifications with same ID are replaced in queue while preserving original deadline"
-    ;; This test verifies that when a notification with the same ID is added to the queue:
-    ;; 1. The content is updated to the latest version
-    ;; 2. The original deadline is preserved (not recalculated)
-    ;; 3. The processing order based on priority is maintained
-    ;;
-    ;; Testing approach:
-    ;; - We use different cron schedules (daily vs minutely) to create different priorities
-    ;; - We replace a notification with a version that has a higher priority schedule
-    ;; - If the deadline was recalculated on replacement, the order would change
-    ;; - By observing the processing order, we can verify deadline preservation
-    (let [processed-notifications (atom [])
-          blocking-job-latch (CountDownLatch. 1)
-          processing-started-latch (CountDownLatch. 1)]
-      (with-redefs [notification.send/send-notification-sync! (fn [notification]
-                                                                (when (= (:id notification) "blocking-job")
-                                                                  (.countDown processing-started-latch)
-                                                                  (.await blocking-job-latch 5 java.util.concurrent.TimeUnit/SECONDS))
-                                                                (swap! processed-notifications conj notification))]
-        (let [dispatcher (#'notification.send/create-notification-dispatcher 1)
-              blocking-job    {:id "blocking-job"
-                               :triggering_subscription {:type :notification-subscription/cron
-                                                         :cron_schedule "0 0 0 * * ? *"}}
-              high-priority   {:id "high-priority"
-                               :triggering_subscription {:type :notification-subscription/cron
-                                                         :cron_schedule "0 * * * * ? *"}}
-              notification-v1 {:id "same-id"
-                               :version 1
-                               :triggering_subscription {:type :notification-subscription/cron
-                                                         :cron_schedule "0 0 0 * * ? *"}}
-              notification-v2 {:id "same-id"
-                               :version 2
-                               :triggering_subscription {:type :notification-subscription/cron
-                                                         :cron_schedule "0 * * * * ? *"}}]
-          (dispatcher blocking-job)
-          (.await processing-started-latch 5 java.util.concurrent.TimeUnit/SECONDS)
+    (let [queue (#'notification.send/create-notification-queue)
+          ;; Create a notification with a daily schedule (lower priority)
+          notification-v1 {:id "same-id"
+                           :version 1
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 0 * * ? *"}} ;; daily schedule
+          notification-v2 {:id "same-id"
+                           :version 2
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "* * * * * ? *"}} ;; every second
+          high-priority   {:id "high-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 * * * * ? *"}}] ;; every minute
 
-          (dispatcher high-priority)
-          (dispatcher notification-v1)
-          ;; notification-v2 here will have a lower deadline to high-priority, but since we preserve
-          ;; the original deadline, it should be processed after high-priority
-          (dispatcher notification-v2)
+      (#'notification.send/put-notification! queue notification-v1)
+      (#'notification.send/put-notification! queue high-priority)
+      (#'notification.send/put-notification! queue notification-v2)
 
-          (.countDown blocking-job-latch)
-          (u/poll {:thunk       (fn [] (count @processed-notifications))
-                   :done?       (fn [cnt] (= 3 cnt))
-                   :interval-ms 10
-                   :timeout-ms 1000})
+      (is (= [high-priority notification-v2]
+             ;; If deadline is preserved, high-priority should come first since it was added after notification-v1
+             ;; If deadline was recalculated, notification-v2 would come first due to its minutely schedule
+             (for [_ (range 2)]
+               (#'notification.send/take-notification! queue)))))))
 
-          ;; Verify that high-priority was processed before same-id,
-          ;; proving that the deadline of same-id wasn't updated when replaced
-          (is (= ["blocking-job" "high-priority" "same-id"]
-                 (map :id @processed-notifications)))
+(deftest notification-queue-test
+  (let [queue (#'notification.send/create-notification-queue)]
 
-          ;; Verify that the content was updated to v2 even though deadline wasn't
-          (is (= 2 (:version (last @processed-notifications)))))))))
+    (testing "put and take operations work correctly"
+      (let [test-notification {:id 1 :payload_type :notification/testing :test-value "A"}]
+        (#'notification.send/put-notification! queue test-notification)
+        (is (= test-notification (#'notification.send/take-notification! queue)))))
 
-(deftest blocking-queue-test
-  (testing "blocking queue implementation"
-    (let [queue (#'notification.send/create-notification-queue)]
+    (testing "notifications with same ID are replaced in queue"
+      (let [queue (#'notification.send/create-notification-queue)]
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
+        (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
+               (#'notification.send/take-notification! queue)))))
 
-      (testing "put and take operations work correctly"
-        (let [test-notification {:payload_type :notification/testing :test-value "A"}]
-          (#'notification.send/put-notification! queue 1 test-notification)
-          (is (= [1 test-notification] (#'notification.send/take-notification! queue)))))
+    (testing "multiple notifications are processed in order"
+      (let [queue (#'notification.send/create-notification-queue)]
+        (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+        (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "B"})
+        (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
 
-      (testing "notifications with same ID are replaced in queue"
-        (let [queue (#'notification.send/create-notification-queue)]
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "B"})
-          (is (= [1 {:payload_type :notification/testing :test-value "B"}]
-                 (#'notification.send/take-notification! queue)))))
+        (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+               (#'notification.send/take-notification! queue)))
+        (is (= {:id 2 :payload_type :notification/testing :test-value "B"}
+               (#'notification.send/take-notification! queue)))
+        (is (= {:id 3 :payload_type :notification/testing :test-value "C"}
+               (#'notification.send/take-notification! queue)))))
 
-      (testing "multiple notifications are processed in order"
-        (let [queue (#'notification.send/create-notification-queue)]
-          (#'notification.send/put-notification! queue 1 {:payload_type :notification/testing :test-value "A"})
-          (#'notification.send/put-notification! queue 2 {:payload_type :notification/testing :test-value "B"})
-          (#'notification.send/put-notification! queue 3 {:payload_type :notification/testing :test-value "C"})
+    (testing "take blocks until notification is available"
+      (let [queue (#'notification.send/create-notification-queue)
+            result (atom nil)
+            latch (java.util.concurrent.CountDownLatch. 1)
+            thread (Thread. (fn []
+                              (.countDown latch) ; signal thread is ready
+                              (reset! result (#'notification.send/take-notification! queue))))]
+        (.start thread)
+        (.await latch) ; wait for thread to start
+        (Thread/sleep 50) ; give thread time to block on take
 
-          (is (= [1 {:payload_type :notification/testing :test-value "A"}]
-                 (#'notification.send/take-notification! queue)))
-          (is (= [2 {:payload_type :notification/testing :test-value "B"}]
-                 (#'notification.send/take-notification! queue)))
-          (is (= [3 {:payload_type :notification/testing :test-value "C"}]
-                 (#'notification.send/take-notification! queue)))))
+        ; Put a notification that the thread should receive
+        (#'notification.send/put-notification! queue {:id 42 :payload_type :notification/testing :test-value "X"})
 
-      (testing "take blocks until notification is available"
-        (let [queue (#'notification.send/create-notification-queue)
-              result (atom nil)
-              latch (java.util.concurrent.CountDownLatch. 1)
-              thread (Thread. (fn []
-                                (.countDown latch) ; signal thread is ready
-                                (reset! result (#'notification.send/take-notification! queue))))]
-          (.start thread)
-          (.await latch) ; wait for thread to start
-          (Thread/sleep 50) ; give thread time to block on take
+        ; Wait for thread to complete
+        (.join ^Thread thread 1000)
 
-          ; Put a notification that the thread should receive
-          (#'notification.send/put-notification! queue 42 {:payload_type :notification/testing :test-value "X"})
-
-          ; Wait for thread to complete
-          (.join ^Thread thread 1000)
-
-          (is (= [42 {:payload_type :notification/testing :test-value "X"}] @result)))))))
+        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
 
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
@@ -463,14 +410,14 @@
           producer-fn            (fn [producer-id]
                                    (.await producer-latch)
                                    (dotimes [i num-items-per-producer]
-                                     (let [item-id (+ (* producer-id 100) i)
-                                           item {:producer producer-id :item i}]
-                                       (#'notification.send/put-notification! queue item-id item))))
+                                     (let [item {:id       (+ (* producer-id 100) i)
+                                                 :producer producer-id :item i}]
+                                       (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try
                                      (while (pos? (.getCount consumer-latch))
-                                       (let [[id item] (#'notification.send/take-notification! queue)]
-                                         (swap! received-items conj [id item {:consumer consumer-id}])
+                                       (let [item (#'notification.send/take-notification! queue)]
+                                         (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
                                        (log/errorf e "Consumer %s error:" consumer-id))))
