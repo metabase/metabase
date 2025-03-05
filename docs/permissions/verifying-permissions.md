@@ -7,7 +7,9 @@ description: "How to check that your permissions configuration is set up the way
 
 > This guide assumes you're using Metabase on a [Pro or Enterprise](https://www.metabase.com/pricing/) plan, which gives you access to the full suite of access control tools.
 
-It's good practice to check that you've set up your permissions the way you intended. This page assumes you have a basic understanding of how [data](./data.md) and [collection](./collections.md) permissions work in Metabase.
+It's good practice to check that you've set up your permissions the way you intended. 
+
+This page is not meant to be exhaustive, and it assumes you have a basic understanding of how [data](./data.md) and [collection](./collections.md) permissions work in Metabase.
 
 ## Create a test user to verify a group's permissions
 
@@ -20,16 +22,54 @@ Let's say we set permissions up on the Sample Database that ships with Metabase.
 
 ## Checking data permissions
 
-- **View data**: visit a question that queries the data you set permissions on. Can they view the question? Unless you've also given the group "Create queries" permissions, the question should be marked "View only", and they shouldn't be able to drill-through charts or edit questions.
-- **Create queries**: in the left sidebar, navigate to the database you've set permissions on. Can the test user see the tables they're supposed to see? They should only be able to view tables they have Create queries permission to view. If they only have View data permissions, the user should only be able to see data from that table when viewing a question or dashboard in a collection.
-- **Download results**: visit a question that queries the data you set permissions on. Can they download the results?
-- **Manage table metadata**: click on the gear icon in the upper right and select Admin settings. Can the person view the Table metadata tab? Does the list of tables they can edit match your expectations?
+Things to check for when testing data permissions.
+
+### View data only
+
+- Can view existing questions
+- Questions marked as "View only"
+- Can't drill-through charts
+- Can't edit questions
+
+### View data and Create queries
+
+- Can view existing questions
+- Can drill-through charts
+- Can see and query tables in database browser
+
+### Download results
+
+- Verify if they can see a download button.
+
+### Manage table metadata
+
+- Click gear icon > Admin settings.
+- Check if they can view the Table metadata tab.
+- Verify list of editable tables.
 
 ## Checking collection permissions
 
-- **No access**: they should _not_ be able to see the collection at all.
-- **View**: they _should_ be able to view the items in the collection, but _not_ edit the items, nor add items to that collection. Whether they can view the results of questions in that collection depends on their data permissions for the relevant data source.
-- **Curate**: they should be able to view and edit questions in the collection, as well as add items to the collection.
+Things to check for when testing collection permissions.
+
+### No access
+
+- Can't see the collection at all
+- Collection doesn't appear in sidebar
+- Can't access collection via direct URL
+
+### View access
+
+- Can view items in the collection
+- Can't edit existing items
+- Can't add new items to collection
+- Can't only view results if they have data permissions
+
+### Curate access
+
+- Can view all items in collection
+- Can edit existing items
+- Can add new items to collection
+- Can archive items
 
 ## Example permissions setup
 
@@ -69,17 +109,17 @@ Log in as the test user in a private/incognito window, and test the following:
 
 1. Try to access the Sample Database directly from Browse Data.
 
-- Expected: They should only be able to see the Orders table.
-- Expected: They should only see orders where `USER_ID` is `3`.
+- They should only be able to see the Orders table.
+- They should only see orders where `USER_ID` is `3`.
 
 2. Navigate to the test collection.
 
-- Expected: They should see the collection and any questions inside it. They should be able to create a new question and save it to that collection.
-- Expected: They should be able to edit questions in the collection.
+- They should see the collection and any questions inside it. They should be able to create a new question and save it to that collection.
+- They should be able to edit questions in the collection.
 
 3. Use your admin account to add a question that queries a different table, like the Reviews table. Save that question to the test collection. Log in as the test user and view the collection.
 
-- Expected: They should be able to see the question (because they have Curate access to the collection), but not view the question's _results_ (because their View data permissions are "Blocked" for the Reviews table).
+- They should be able to see the question (because they have Curate access to the collection), but not view the question's _results_ (because their View data permissions are "Blocked" for the Reviews table).
 
 ### Troubleshooting
 
@@ -88,11 +128,10 @@ If the test user is still seeing data they shouldn't:
 - Verify permission changes were saved.
 - Check group membership. Are they in another group that has more access?
 - Verify that the "All Users" group has "Blocked" View data permissions.
-- Check for permissions on nested collections. Do sub-collections have the intended permissions? 
+- Check for permissions on nested collections. Do sub-collections have the intended permissions?
 - Verify data sandboxing rules. Is the user attribute associated with the correct table column?
 
 ## Further reading
 
-- [Troubleshooting permissions](../troubleshooting-guide/permissions.md) 
+- [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Troubleshooting data permissions](../troubleshooting-guide/data-permissions.md)
-
