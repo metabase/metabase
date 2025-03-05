@@ -229,7 +229,7 @@ describe("issue 52812", () => {
   it("popovers should close when clicking outside (metabase#52812)", () => {
     H.startNewNativeQuestion();
     H.nativeEditor().type("{{x");
-    cy.findByLabelText("Variable type").click();
+    cy.findAllByLabelText("Variable type").filter(":visible").click();
 
     H.popover().findByText("Field Filter").click();
 
