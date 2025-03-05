@@ -45,12 +45,11 @@ export default class AccordionList extends Component {
       minHeight: 10,
     });
 
-    this.listRootRef = createRef();
-
-    // We can pass elementRef to List, which is then passed to Grid, which is then attached to the scrolling container.
+    // For virtualized lists, we can pass elementRef to List, which is then passed to Grid,
+    // which is then attached to the scrolling container.
     // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/List/List.js#L195-L196
     // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/Grid/Grid.js#L225-L226
-    this.scrollingContainerRef = createRef();
+    this.listRootRef = createRef();
   }
 
   static propTypes = {
@@ -141,7 +140,7 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
-    const container = this._getRootContainer();
+    const container = this.listRootRef.current;
 
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
@@ -183,12 +182,6 @@ export default class AccordionList extends Component {
       clearTimeout(this._forceUpdateTimeout);
       this._forceUpdateTimeout = null;
     }
-  }
-
-  _getRootContainer() {
-    return this.isVirtualized()
-      ? this.scrollingContainerRef.current
-      : this.listRootRef.current;
   }
 
   // resets the row height cache when the displayed rows change
@@ -613,7 +606,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this._getRootContainer()?.focus();
+    this.listRootRef.current?.focus();
   };
 
   render() {
@@ -698,7 +691,7 @@ export default class AccordionList extends Component {
       <List
         id={id}
         ref={list => (this._list = list)}
-        elementRef={this.scrollingContainerRef}
+        elementRef={this.listRootRef}
         className={className}
         style={{ ...defaultListStyle, ...style }}
         containerStyle={{ pointerEvents: "auto" }}
