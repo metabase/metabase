@@ -83,12 +83,9 @@ export default function App() {
 
 ## Customizing drill-through question layout
 
-When drilling through or clicking on a question card in the dashboard, you will be taken to the question view.
+When drilling through or clicking on a question card in the dashboard, you will be taken to the question view. By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
 
-By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
-
-To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component,
-with the custom view as the child component.
+To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
 ```typescript
 <InteractiveQuestion
@@ -104,7 +101,7 @@ The questionView prop accepts a React component that will be rendered in the que
 
 ## Dashboard plugins
 
-### `dashcardMenu`
+### `dashboardCardMenu`
 
 This plugin allows you to add, remove, and modify the custom actions on the overflow menu of dashboard cards. The plugin appears as a dropdown menu on the top right corner of the card.
 
@@ -113,7 +110,7 @@ The plugin's default configuration looks like this:
 ```typescript
 const plugins = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       withDownloads: true,
       withEditLink: true,
       customItems: [],
@@ -122,7 +119,7 @@ const plugins = {
 };
 ```
 
-`dashcardMenu`: can be used in the InteractiveDashboard like this:
+`dashboardCardMenu`: can be used in the InteractiveDashboard like this:
 
 ```typescript
 {% raw %}
@@ -130,7 +127,7 @@ const plugins = {
   dashboardId={1}
   plugins={{
     dashboard: {
-      dashcardMenu: null,
+      dashboardCardMenu: null,
     },
   }}
 />
@@ -144,7 +141,7 @@ To remove the download button from the dashcard menu, set `withDownloads` to `fa
 ```typescript
 const plugins = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       withDownloads: false,
       withEditLink: false,
       customItems: [],
@@ -169,9 +166,10 @@ You can add custom actions to the dashcard menu by adding an object to the `cust
 Here's an example:
 
 ```typescript
+{% raw %}
 const plugins: MetabasePluginsConfig = {
   dashboard: {
-    dashcardMenu: {
+    dashboardCardMenu: {
       customItems: [
         {
           iconName: "chevronright",
@@ -193,6 +191,7 @@ const plugins: MetabasePluginsConfig = {
     },
   },
 };
+{% endraw %}
 ```
 
 #### Replacing the existing menu with your own component
@@ -202,7 +201,7 @@ If you want to replace the existing menu with your own component, you can do so 
 ```typescript
 const plugins: MetabasePluginsConfig = {
   dashboard: {
-    dashcardMenu: ({ question }) => (
+    dashboardCardMenu: () => (
       <button onClick={() => console.log(question.name)}>Click me</button>
     ),
   },

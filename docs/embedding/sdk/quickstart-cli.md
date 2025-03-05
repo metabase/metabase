@@ -32,23 +32,7 @@ The CLI tool will walk you through the setup. There are a fair number of pieces 
 - [Metabase setup](#metabase-setup)
 - [Permissions setup with multi-tenancy (optional)](#permissions-setup-with-multi-tenancy-optional)
 - [React components setup](#react-components-setup)
-- [Behold: Metabase is embedded in your app](#start-your-app)
-
-## Prereq check
-
-The tool will check for the following:
-
-- You've run the command in the top-level directory of your React application.
-- You've installed the SDK (if you haven't, the CLI will install the SDK for you and add it as a dependency in your `package.json`).
-- You have Docker up and running on your machine.
-
-## Database connection (optional)
-
-The tool will ask if you have a database to connect to. Use the arrow keys to select Yes or No. The tool will use this database to generate an embedded dashboard.
-
-If you answer no, the script will use the Sample Database that ships with Metabase to create a dashboard to embed.
-
-If you select Yes, the tool will prompt you to connect to a database. Pick your database's engine. You'll need to provide database's host, port, username, and password. The tool will connect to the database, and prompt you to select tables from your database to embed. Pick 1-3 tables. If you want to see multi-tenancy in action, pick a table with user IDs in it. Metabase will X-ray these tables to create a dashboard to embed.
+- [Behold: Metabase is embedded in your app](#behold-metabase-is-embedded-in-your-app)
 
 ## Metabase setup
 
