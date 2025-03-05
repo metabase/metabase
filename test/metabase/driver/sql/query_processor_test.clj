@@ -1137,15 +1137,15 @@
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
 
-(deftest ^:parallel query-with-wrapped-literal-expression-test
+(deftest ^:parallel query-with-unwrapped-literal-expression-test
   (testing "wrapped literal expression support"
     (is (= [[1 "foo" 12345]
             [2 "foo" 12345]]
            (mt/rows
             (mt/run-mbql-query orders
-              {:expressions {"wrapped string" [:value "foo" nil]
-                             "wrapped int"    [:value 12345 nil]}
+              {:expressions {"unwrapped string" "foo"
+                             "unwrapped int"    12345}
                :fields [$id
-                        [:expression "wrapped string" nil]
-                        [:expression "wrapped int" nil]]
+                        [:expression "unwrapped string" nil]
+                        [:expression "unwrapped int" nil]]
                :limit 2}))))))
