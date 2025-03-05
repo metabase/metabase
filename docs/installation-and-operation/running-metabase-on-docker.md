@@ -117,8 +117,9 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -329,6 +330,8 @@ secrets:
   db_user:
     file: db_user.txt
 ```
+
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
 
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
