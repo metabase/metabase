@@ -217,7 +217,7 @@ describe("getDateFilterDisplayName", () => {
     },
     {
       value: { type: "relative", value: 0, unit: "year" },
-      displayName: "This Year",
+      displayName: "This year",
     },
     {
       value: { type: "relative", value: -1, unit: "day" },
@@ -225,7 +225,7 @@ describe("getDateFilterDisplayName", () => {
     },
     {
       value: { type: "relative", value: -2, unit: "year" },
-      displayName: "Previous 2 Years",
+      displayName: "Previous 2 years",
     },
     {
       value: {
@@ -239,7 +239,7 @@ describe("getDateFilterDisplayName", () => {
     },
     {
       value: { type: "relative", value: 2, unit: "month" },
-      displayName: "Next 2 Months",
+      displayName: "Next 2 months",
     },
     {
       value: {

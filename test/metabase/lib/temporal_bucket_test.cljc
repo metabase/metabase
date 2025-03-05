@@ -15,19 +15,19 @@
     (testing unit
       (are [n expected] (= expected
                            (lib.temporal-bucket/describe-temporal-interval n unit))
-        -2 "Previous 2 Days"
+        -2 "Previous 2 days"
         -1 "Yesterday"
         0  "Today"
         1  "Tomorrow"
-        2  "Next 2 Days")))
+        2  "Next 2 days")))
   (testing :month
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-temporal-interval n :month))
-      -2 "Previous 2 Months"
-      -1 "Previous Month"
-      0  "This Month"
-      1  "Next Month"
-      2  "Next 2 Months"))
+      -2 "Previous 2 months"
+      -1 "Previous month"
+      0  "This month"
+      1  "Next month"
+      2  "Next 2 months"))
   (testing "unknown unit"
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-temporal-interval n :century))
