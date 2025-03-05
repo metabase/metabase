@@ -300,7 +300,7 @@ describe("scenarios > question > native", () => {
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Here's where your results will appear").should("be.visible");
+    cy.findByText("Query results will appear here.").should("be.visible");
   });
 
   it("should allow to preview a fully parameterized query", () => {
