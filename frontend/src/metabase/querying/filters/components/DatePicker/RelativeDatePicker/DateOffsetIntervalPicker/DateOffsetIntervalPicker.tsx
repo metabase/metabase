@@ -102,6 +102,7 @@ export function DateOffsetIntervalPicker({
           onChange={handleIntervalChange}
         />
         <Select
+          w="max-content"
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
@@ -116,6 +117,7 @@ export function DateOffsetIntervalPicker({
           onChange={handleOffsetIntervalChange}
         />
         <Select
+          w="max-content"
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}
