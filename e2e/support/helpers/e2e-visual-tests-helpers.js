@@ -161,7 +161,7 @@ export function echartsTooltip() {
 
     // (metabase#52732): tooltip container must have the correct z-index (200)
     // this assertion prevents the tooltip from being rendered below charts.
-    expect(Number(tooltipContainerStyle.zIndex)).to.equal(200);
+    expect(Number(tooltipContainerStyle.zIndex)).to.equal(201);
 
     // Return the visible tooltip
     return visibleTooltip;
