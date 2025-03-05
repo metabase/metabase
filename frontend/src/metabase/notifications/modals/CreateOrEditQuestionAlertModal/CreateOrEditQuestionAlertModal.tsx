@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { c, t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
@@ -14,7 +14,7 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import SchedulePicker from "metabase/containers/SchedulePicker";
+import { Schedule } from "metabase/components/Schedule/Schedule";
 import CS from "metabase/css/core/index.css";
 import {
   alertIsValid,
@@ -36,6 +36,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Button,
   Flex,
@@ -86,7 +87,8 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "hourly",
   "daily",
   "weekly",
-] as const;
+  "monthly",
+];
 
 type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
@@ -114,6 +116,9 @@ export const CreateOrEditQuestionAlertModal = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const timezone = useSelector(state =>
+    getSetting(state, "report-timezone-short"),
+  );
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -236,6 +241,34 @@ export const CreateOrEditQuestionAlertModal = ({
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
+  const scheduleSettings = useMemo(() => {
+    return (
+      cronToScheduleSettings(subscription?.cron_schedule) ||
+      DEFAULT_ALERT_SCHEDULE
+    );
+  }, [subscription]);
+
+  const onScheduleChange = useCallback(
+    (nextSchedule: ScheduleSettings) => {
+      if (!subscription) {
+        return;
+      }
+
+      if (nextSchedule.schedule_type) {
+        setNotification({
+          ...notification,
+          subscriptions: [
+            {
+              ...subscription,
+              cron_schedule: scheduleSettingsToCron(nextSchedule),
+            },
+          ],
+        });
+      }
+    },
+    [setNotification, subscription, notification],
+  );
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
       <ChannelSetupModal
@@ -304,27 +337,14 @@ export const CreateOrEditQuestionAlertModal = ({
           </Flex>
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock title={t`When do you want to check this?`}>
-          <SchedulePicker
-            mt={0}
-            schedule={
-              cronToScheduleSettings(subscription.cron_schedule) ||
-              DEFAULT_ALERT_SCHEDULE // default is just for typechecking
-            }
+          <Schedule
+            schedule={scheduleSettings}
             scheduleOptions={ALERT_SCHEDULE_OPTIONS}
-            onScheduleChange={(nextSchedule: ScheduleSettings) => {
-              if (nextSchedule.schedule_type) {
-                setNotification({
-                  ...notification,
-                  subscriptions: [
-                    {
-                      ...subscription,
-                      cron_schedule: scheduleSettingsToCron(nextSchedule),
-                    },
-                  ],
-                });
-              }
-            }}
-            textBeforeInterval={t`Check`}
+            minutesOnHourPicker
+            onScheduleChange={onScheduleChange}
+            verb={c("A verb in the imperative mood").t`Check`}
+            timezone={timezone}
+            aria-label={t`Describe how often the alert notification should be sent`}
           />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
