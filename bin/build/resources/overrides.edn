@@ -40,7 +40,8 @@
  "com.thoughtworks.paranamer"  {"paranamer" {:resource "BSD.txt"}}
  "de.rototor.pdfbox"           {"graphics2d" {:resource "apache2_0.txt"}}
  "hiccup"                      {"hiccup" {:resource "EPL.txt"}}
- "io.dropwizard.metrics"       {"metrics-core" {:resource "apache2_0.txt"}}
+ "io.dropwizard.metrics"       {"metrics-core" {:resource "apache2_0.txt"}
+                                "metrics-json" {:resource "apache2_0.txt"}}
  "jakarta.activation"          {"jakarta.activation-api" {:resource "EDL.txt"}}
  "jakarta.xml.bind"            {"jakarta.xml.bind-api" {:resource "EDL.txt"}}
  "javax.servlet"               {"servlet-api" {:resource "CDDL_1.txt"}}
@@ -49,6 +50,10 @@
  "methodical"                  {"methodical" {:resource "EPL_2.txt"}}
  "net.jcip"                    {"jcip-annotations" {:resource "CC_2_5.txt"}}
  "net.redhogs.cronparser"      {"cron-parser-core" {:resource "MIT.txt"}}
+ "net.shibboleth"              {"shib-networking" {:resource "apache2_0.txt"}
+                                "shib-support" {:resource "apache2_0.txt"}
+                                "shib-security" {:resource "apache2_0.txt"}
+                                "shib-velocity" {:resource "apache2_0.txt"}}
  "net.shibboleth.utilities"    {"java-support" {:resource "apache2_0.txt"}}
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
