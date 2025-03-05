@@ -658,6 +658,10 @@
   [driver [_ text divider position]]
   [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
 
+(defmethod sql.qp/->honeysql [:postgres :cast]
+  [driver [_ value type]]
+  [:cast (sql.qp/->honeysql driver value) type])
+
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
     (into [(format "%s::%s" expr-sql (name psql-type))]

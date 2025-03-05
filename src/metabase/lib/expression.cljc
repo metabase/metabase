@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace cast])
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -319,6 +319,8 @@
 (lib.common/defop day-name [n])
 (lib.common/defop offset [x n])
 (lib.common/defop split [text divider pos])
+
+(lib.common/defop cast [value t])
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query

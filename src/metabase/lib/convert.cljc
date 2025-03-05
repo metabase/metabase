@@ -464,7 +464,7 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
              :concat :substring :replace :regex-match-first
-             :split
+             :split :cast
              :length :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 

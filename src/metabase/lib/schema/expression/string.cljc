@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.string
   (:require
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]))
 
@@ -42,3 +43,7 @@
   [:schema [:ref ::expression/string]]
   [:schema [:ref ::expression/string]]
   [:schema [:ref ::expression/integer]])
+
+(mbql-clause/define-tuple-mbql-clause :cast :- ::expression/type.unknown
+  [:schema [:ref ::expression/base-type]]
+  [:schema [:ref ::common/non-blank-string]])

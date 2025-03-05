@@ -702,6 +702,9 @@
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now))
 
+(defclause ^{:requires-features #{:expressions}} cast
+  value ::FieldOrExpressionDef
+  type ::lib.schema.common/non-blank-string)
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
 (def Filter

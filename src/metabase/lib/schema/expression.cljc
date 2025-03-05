@@ -203,3 +203,4 @@
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
   [:sequential {:min 1} [:ref ::expression.definition]])
+
