@@ -180,7 +180,13 @@ export const DataGrid = function DataGrid<TData>({
                         key={cell.id}
                         className={S.bodyCell}
                         onClick={e =>
-                          onBodyCellClick?.(e, cell.row.index, cell.column.id)
+                          onBodyCellClick?.(
+                            e,
+                            cell.row.index,
+                            cell.column.id,
+                            cell.getValue(),
+                            cell.id,
+                          )
                         }
                         style={{
                           position: "relative",

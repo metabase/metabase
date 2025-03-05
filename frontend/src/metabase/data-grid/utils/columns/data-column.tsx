@@ -14,7 +14,7 @@ import type {
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
 
-const getDefaultCellTemplate = <TRow, TValue>(
+export const getDefaultCellTemplate = <TRow, TValue>(
   {
     id,
     align,
