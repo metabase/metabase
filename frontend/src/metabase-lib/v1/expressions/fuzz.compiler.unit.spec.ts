@@ -4,6 +4,7 @@ import _ from "underscore";
 import { query } from "./__support__/shared";
 import { compileExpression } from "./compiler";
 import { generateExpression } from "./test/generator";
+import type { StartRule } from "./types";
 
 jest.mock("metabase-lib", () => {
   const mod = jest.requireActual("metabase-lib");
@@ -18,7 +19,7 @@ jest.mock("metabase-lib", () => {
 const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 const MAX_SEED = 10_000;
 
-function compile(expression: string, startRule: string = "expression") {
+function compile(expression: string, startRule: StartRule = "expression") {
   const result = compileExpression({
     source: expression,
     query,

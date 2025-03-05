@@ -4,10 +4,11 @@ import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
 import { compileExpression } from "../compiler";
+import type { StartRule } from "../types";
 
 import { format } from "./formatter";
 
-function setup(printWidth: number, startRule: string = "expression") {
+function setup(printWidth: number, startRule: StartRule = "expression") {
   async function isFormatted(expressions: string | string[]): Promise<void> {
     if (!Array.isArray(expressions)) {
       return isFormatted([expressions]);
