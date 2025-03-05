@@ -1,5 +1,6 @@
 ---
-title: "Embedded analytics SDK - components"
+title: "Embedded analytics SDK - questions"
+description: How to embed charts in your app with the Embedded analytics SDK.
 ---
 
 # Embedded analytics SDK - questions
@@ -10,7 +11,7 @@ There are different ways you can embed questions:
 
 - [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
 - [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
+- [Query builder](#embedding-the-query-builder-for-creating-new-questions). Embeds the graphical query builder without a pre-defined query.
 
 ## Embedding a static question
 
@@ -385,7 +386,9 @@ return (
 
 ## Embedding an editable interactive question
 
-You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
+You can edit an existing question using the query builder by passing in the `questionId` prop of an existing question.
+
+To disallow saving the question, pass `isSaveEnabled={false}` to the component.
 
 ```tsx
 import React from "react";
@@ -396,30 +399,26 @@ const authConfig = defineMetabaseAuthConfig({...});
 export default function App() {
     return (
         <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={1} isSaveEnabled />
+            <InteractiveQuestion questionId={1} />
         </MetabaseProvider>
     );
 }
 ```
 
-## Embedding the query builder
+## Embedding the query builder for creating new questions
 
-With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
-
-This component is built on top of the `InteractiveQuestion` component with [namespaced components](#interactive-question-components). It [shares the same props as InteractiveQuestion](#question-props), except it lacks the `questionId` prop and the ability to pass custom children.
-
-To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
+You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
 const authConfig = defineMetabaseAuthConfig({...});
 
 export default function App() {
     return (
         <MetabaseProvider authConfig={authConfig}>
-            <CreateQuestion />
+            <InteractiveQuestion questionId="new" />
         </MetabaseProvider>
     );
 }

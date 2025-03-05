@@ -41,6 +41,7 @@ _\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
 ```tsx
+{% raw %}
 <EditableDashboard
   style={{
     height: 800,
@@ -48,6 +49,7 @@ By default, dashboard components take full page height (100vh). You can override
   }}
   dashboardId={dashboardId}
 />
+{% endraw %}
 ```
 
 ## Example embedded dashboard with `InteractiveDashboard` component

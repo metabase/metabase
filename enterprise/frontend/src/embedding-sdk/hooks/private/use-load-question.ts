@@ -22,9 +22,6 @@ type LoadQuestionResult = Promise<
 >;
 
 export interface LoadQuestionHookResult {
-  // The ID provided to the question component.
-  originalId?: number | string;
-
   question?: Question;
   originalQuestion?: Question;
 
