@@ -1357,7 +1357,7 @@ describe("scenarios > question > custom column > boolean filter", () => {
     );
   });
 
-  it("should be possible to use a boolean dimension in a filter directly", () => {
+  it("should be possible to use a boolean expression in a filter directly", () => {
     cy.icon("add_data").click();
     H.enterCustomColumnDetails({ formula: "[ID] > 10", name: "Custom" });
     H.expressionEditorWidget().button("Done").click();
@@ -1373,5 +1373,29 @@ describe("scenarios > question > custom column > boolean filter", () => {
     H.popover().findByText("Custom").should("be.visible");
     H.popover().findByText("True").should("be.visible");
     H.popover().findByText("False").should("be.visible");
+  });
+
+  it("should be possible to use a literal 'True' in a filter directly", () => {
+    cy.icon("filter").click();
+    H.popover().findByText("Custom Expression").click();
+
+    H.enterCustomColumnDetails({ formula: "True" });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("filter").findByText("value is true").click();
+
+    H.CustomExpressionEditor.value().should("equal", "True = True");
+  });
+
+  it("should be possible to use a literal 'False' in a filter directly", () => {
+    cy.icon("filter").click();
+    H.popover().findByText("Custom Expression").click();
+
+    H.enterCustomColumnDetails({ formula: "False" });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("filter").findByText("value is true").click();
+
+    H.CustomExpressionEditor.value().should("equal", "False = True");
   });
 });
