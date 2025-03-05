@@ -1,25 +1,104 @@
-name: Check Linear Issue Link
+name: Update PR Description with Linear Link
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened]
+  push:
+    branches:
+      - '*'  # Triggers on push to any branch that has an open PR
 
 jobs:
-  check-linear-link:
+  update-pr-description:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install @actions/github @actions/core axios
-
-      - name: Check PR for Linear issue links
+      - name: Find Linear issues and update PR description
+        uses: actions/github-script@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
-        run: node .github/scripts/linear-pr-links/link.js
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branchName = context.payload.ref.replace('refs/heads/', '');
+
+            // Get PRs associated with this branch
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${branchName}`,
+              state: 'open'
+            });
+
+            if (prs.data.length === 0) {
+              console.log('No open PRs found for this branch');
+              return;
+            }
+
+            const pr = prs.data[0];
+
+            // Query Linear's GraphQL API to find issues linked to this branch
+            const linearApiKey = process.env.LINEAR_API_KEY;
+            if (!linearApiKey) {
+              console.log('LINEAR_API_KEY secret is not set');
+              return;
+            }
+
+            const axios = require('axios');
+
+            // Using branch name to find linked issues
+            const query = `
+              query {
+                issues(filter: {
+                  branchName: {contains: "${branchName}"}
+                }) {
+                  nodes {
+                    id
+                    identifier
+                    url
+                  }
+                }
+              }
+            `;
+
+            try {
+              const response = await axios({
+                url: 'https://api.linear.app/graphql',
+                method: 'post',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': linearApiKey
+                },
+                data: { query }
+              });
+
+              const issues = response.data.data.issues.nodes;
+
+              if (issues.length === 0) {
+                console.log('No Linear issues found linked to this branch');
+                return;
+              }
+
+              // Use the first linked issue
+              const issue = issues[0];
+              const linearId = issue.identifier;
+
+              // Check if the PR description already has the closing text
+              if (pr.body && pr.body.includes(`closes ${linearId}`)) {
+                console.log('PR description already contains closing text');
+                return;
+              }
+
+              // Add closing text to the beginning of the PR description
+              // Include a clickable link to the Linear issue
+              const updatedBody = `closes [${linearId}](${issue.url})\n\n${pr.body || ''}`;
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                body: updatedBody
+              });
+
+              console.log(`Updated PR #${pr.number} with Linear closing text for issue ${linearId}`);
+            } catch (error) {
+              console.error('Error querying Linear API:', error.message);
+            }
