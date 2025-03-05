@@ -42,7 +42,8 @@
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :card.title)
+    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
+                           (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
