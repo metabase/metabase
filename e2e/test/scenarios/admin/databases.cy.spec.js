@@ -123,7 +123,7 @@ describe("admin > database > add", () => {
           }
         });
 
-        H.popover().contains("PostgreSQL").click({ force: true });
+        H.popover().contains("PostgreSQL").click();
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
@@ -138,12 +138,16 @@ describe("admin > database > add", () => {
           cy.findByLabelText("Choose when syncs and scans happen")
             .click()
             .should("have.attr", "aria-checked", "true");
+
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
           ).should("have.attr", "aria-selected", "true");
 
           // make sure tooltips behave as expected
-          cy.findByLabelText("Host").parent().icon("info").realHover();
+          cy.findByLabelText("Host")
+            .parent()
+            .icon("info")
+            .trigger("mouseenter");
         });
 
         H.tooltip()
@@ -244,6 +248,8 @@ describe("admin > database > add", () => {
         cy.findByRole("table").within(() => {
           cy.findByText("QA Postgres12").click();
         });
+
+        editDatabase();
 
         cy.findByLabelText("Choose when syncs and scans happen").should(
           "have.attr",
@@ -899,5 +905,6 @@ function editDatabase() {
 }
 
 function forceTypeAndBlurUsingLabel(label, value) {
+  cy.findByLabelText(label).scrollIntoView();
   cy.findByLabelText(label).clear().type(value, { force: true }).blur();
 }
