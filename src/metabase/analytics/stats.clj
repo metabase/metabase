@@ -14,7 +14,7 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.slack :as slack]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
