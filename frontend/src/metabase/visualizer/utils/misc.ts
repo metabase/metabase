@@ -104,7 +104,7 @@ export function getInitialStateForCardDataSource({
       column,
       extractReferencedColumns(state.columnValuesMapping),
     );
-    state.columns.push(copyColumn(columnRef.name, column));
+    state.columns.push(copyColumn(columnRef.name, column, "", []));
     state.columnValuesMapping[columnRef.name] = [columnRef];
   });
 

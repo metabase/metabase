@@ -213,7 +213,12 @@ const visualizerHistoryItemSlice = createSlice({
         extractReferencedColumns(state.columnValuesMapping),
       );
 
-      const newColumn = copyColumn(columnRef.name, column);
+      const newColumn = copyColumn(
+        columnRef.name,
+        column,
+        dataSource.name,
+        state.columns,
+      );
       state.columns.push(newColumn);
       state.columnValuesMapping[newColumn.name] = [columnRef];
     },
@@ -491,9 +496,9 @@ function maybeCombineDataset(
         extractReferencedColumns(state.columnValuesMapping),
       );
       if (metrics.includes(column.name)) {
-        addMetricColumnToCartesianChart(state, column, columnRef);
+        addMetricColumnToCartesianChart(state, column, columnRef, source);
       } else {
-        addDimensionColumnToCartesianChart(state, column, columnRef);
+        addDimensionColumnToCartesianChart(state, column, columnRef, source);
       }
     });
     return state;

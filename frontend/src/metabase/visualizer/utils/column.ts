@@ -67,13 +67,22 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
+export function copyColumn(
+  name: string,
+  column: DatasetColumn,
+  dataSourceName: string,
+  existingColumns: DatasetColumn[],
+): DatasetColumn {
   const copy: DatasetColumn = {
     ...column,
     name,
     // @ts-expect-error TODO name is supposed to be a number (FieldId) but here it's a string?
     field_ref: ["field", name, { "base-type": column.base_type }],
   };
+
+  if (existingColumns.some(col => col.display_name === copy.display_name)) {
+    copy.display_name = `${copy.display_name} (${dataSourceName})`;
+  }
 
   // TODO Remove manual MBQL manipulation
   if (isDate(column)) {
