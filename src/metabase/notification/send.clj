@@ -187,16 +187,16 @@
   (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
 
 (deftype ^:private NotificationQueue
-         [^java.util.LinkedList ids-list
-          ^java.util.concurrent.ConcurrentHashMap id->notification
+         [^java.util.LinkedList                     ids-list
+          ^java.util.concurrent.ConcurrentHashMap   id->notification
           ^java.util.concurrent.locks.ReentrantLock queue-lock
-          ^java.util.concurrent.locks.Condition not-empty-cond]
+          ^java.util.concurrent.locks.Condition     not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ notification]
     (let [id (or (:id notification) (str (random-uuid)))]
       (.lock queue-lock)
       (try
-        (when-not (.contains ids-list id)
+        (when-not (.containsKey id->notification id)
           (.add ids-list id))
         (.put id->notification id notification)
         ;; Signal that a notification is available
@@ -234,6 +234,8 @@
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
+    (we keep the latest version because it likely contains the most up-to-date information
+     such as: creator_id, active status, handlers info etc.)
   - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
   [pool-size queue]
   (let [executor (Executors/newFixedThreadPool
@@ -244,21 +246,32 @@
     (.addShutdownHook
      (Runtime/getRuntime)
      (Thread. ^Runnable (fn []
-                          (.shutdown ^ExecutorService executor))))
+                          (.shutdownNow ^ExecutorService executor)
+                          (try
+                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
+                            (catch InterruptedException _
+                              (log/warn "Interrupted while waiting for notification executor to terminate"))))))
     (dotimes [_ pool-size]
       (.submit ^ExecutorService executor
                ^Callable (fn []
-                           (while true
+                           (while (not (Thread/interrupted))
                              (try
                                (let [notification (take-notification! queue)]
                                  (send-notification-sync! notification))
+                               (catch InterruptedException _
+                                 (log/info "Notification worker interrupted, shutting down")
+                                 (throw (InterruptedException.)))
                                (catch Exception e
                                  (log/error e "Error in notification worker")))))))
     (fn [notification]
       (put-notification! queue notification))))
 
+(defonce ^{:private true
+           :doc "Do not use this queue directly, use the dispatcher instead."}
+  notification-queue (delay (create-notification-queue)))
+
 (defonce ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) (create-notification-queue))))
+  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
 
 (mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
