@@ -246,10 +246,10 @@
       (let [id (or (:id notification) (random-uuid))]
         (put-notification! queue id notification)))))
 
-(def ^:private notification-queue
+(defonce ^:private notification-queue
   (delay (create-blocking-queue)))
 
-(def ^:private dispatcher
+(defonce ^:private dispatcher
   (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
 
 (mu/defn ^:private send-notification-async!
