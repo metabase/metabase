@@ -795,7 +795,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "relative-time-interval",
-    structure: "offsetInterval",
+    structure: "intervalStartingFrom",
     description: () =>
       t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
     args: [
