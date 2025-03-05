@@ -181,44 +181,64 @@
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
-(defn create-notification-dispatcher
+(defprotocol NotificationQueue
+  "Protocol for notification queue implementations."
+  (put-notification!  [this id notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (take-notification! [this]                 "Take the next notification from the queue, blocking if none available."))
+
+(defn- create-blocking-queue
+  "Create a notification queue backed by a LinkedBlockingQueue."
+  []
+  (let [ids-queue        (java.util.concurrent.LinkedBlockingQueue.)
+        id->notification (java.util.concurrent.ConcurrentHashMap.)
+        queue-lock       (Object.)]
+    (reify NotificationQueue
+      (put-notification! [_ id notification]
+        (locking queue-lock
+          (when-not (.contains ids-queue id)
+            (.put ids-queue id))
+          (.put id->notification id notification)))
+
+      (take-notification! [_]
+        (let [id (.take ids-queue)]
+          (locking queue-lock
+            (let [notification (.get id->notification id)]
+              (.remove id->notification id)
+              [id notification])))))))
+
+(defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
   - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
-  [pool-size]
-  (let [ids-queue        (java.util.concurrent.LinkedBlockingQueue.)
-        id->notification (atom {})
-        executor         (Executors/newFixedThreadPool
-                          pool-size
-                          (.build
-                           (doto (BasicThreadFactory$Builder.)
-                             (.namingPattern "send-notification-thread-pool-%d"))))
-        queue-lock       (Object.)]
+  [pool-size queue]
+  (let [executor (Executors/newFixedThreadPool
+                  pool-size
+                  (.build
+                   (doto (BasicThreadFactory$Builder.)
+                     (.namingPattern "send-notification-thread-pool-%d"))))]
+    (.addShutdownHook
+     (Runtime/getRuntime)
+     (Thread. ^Runnable (fn []
+                          (.shutdown ^ExecutorService executor))))
     (dotimes [_ pool-size]
       (.submit ^ExecutorService executor
                ^Callable (fn []
                            (while true
                              (try
-                               (when-let [id (.take ids-queue)]
-                                 (let [notification (get @id->notification id)]
-                                   (swap! id->notification dissoc id)
-                                   (send-notification-sync! notification)))
+                               (let [[_id notification] (take-notification! queue)]
+                                 (send-notification-sync! notification))
                                (catch Exception e
                                  (log/error e "Error in notification worker")))))))
     (fn [notification]
       (let [id (or (:id notification) (random-uuid))]
-        (locking queue-lock
-          (swap! id->notification assoc id notification)
-          ;; ensure there is only one notification with the same id in the queue
-          (if (.contains ids-queue id)
-            (log/infof "Notification %s is already in the queue, replacing" id)
-            (do
-              (log/infof "Adding notification %s to the queue" id)
-              (.put ids-queue id))))))))
+        (put-notification! queue id notification)))))
+
+(def ^:private notification-queue
+  (delay (create-blocking-queue)))
 
 (def ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size))))
+  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
 
 (mu/defn send-notification-async!
   "Send a notification asynchronously."
