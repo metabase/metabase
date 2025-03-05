@@ -106,7 +106,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
-      "This month"))
+      "This Month"))
 
   (t/testing "Special characters (with semantic meaning in Markdown) are escaped in formatted values"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
@@ -205,7 +205,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "thisweek"}}
-      "This week"
+      "This Week"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past1days"}}
