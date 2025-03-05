@@ -10,7 +10,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import [com.mchange.v2.resourcepool CannotAcquireResourceException]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
@@ -327,3 +328,16 @@
           (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))
           ;; but it is bounded.
           (is (< attempted (+ @#'sync.fingerprint/max-refingerprint-field-count 10))))))))
+
+(deftest abandon-failed-fingerprint-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "fingerprinting stops after the first table if we can't connect to the db"
+      (let [tables-fingerprinted (atom 0)]
+        (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_table _fields]
+                                                             (swap! tables-fingerprinted inc)
+                                                             (throw (CannotAcquireResourceException. "Unable to acquire resource")))
+                      sync.fingerprint/*refingerprint?* true]
+          (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
+                         :throwable #(instance? CannotAcquireResourceException %))
+                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) println)))
+          (is (= 1 @tables-fingerprinted)))))))
