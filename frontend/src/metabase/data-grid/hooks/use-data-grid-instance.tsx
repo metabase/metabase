@@ -1,8 +1,8 @@
 import {
   type ColumnSizingState,
   getCoreRowModel,
-  useReactTable,
   getSortedRowModel,
+  useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -75,6 +75,12 @@ export const useDataGridInstance = <TData, TValue>({
     });
 
   const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure(theme);
+
+  useUpdateEffect(() => {
+    if (controlledColumnSizingMap) {
+      setColumnSizingMap(controlledColumnSizingMap);
+    }
+  }, [controlledColumnSizingMap]);
 
   useUpdateEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
