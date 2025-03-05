@@ -38,10 +38,6 @@ export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
   color: var(--mb-color-brand);
 `;
 
-LoadingSpinner.defaultProps = {
-  size: 18,
-};
-
 export const RelativeContainer = styled.div<{ height?: number }>`
   position: relative;
   height: ${({ height }) => height || "1em"};
