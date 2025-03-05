@@ -40,7 +40,7 @@ export const RangePicker = ({
     return new Question(distributionQuery, metadata).setDisplay("bar");
   }, [distributionQuery, metadata]);
 
-  const { data, isLoading } = useGetAdhocQueryQuery(legacyQuery);
+  const { data } = useGetAdhocQueryQuery(legacyQuery);
   const rawSeries = useMemo<RawSeries | undefined>(() => {
     if (!data) {
       return undefined;
@@ -54,17 +54,20 @@ export const RangePicker = ({
     ];
   }, [data, question]);
 
-  if (isLoading) {
-    return (
-      <Box p="md" pb={0}>
-        Loading...
-      </Box>
-    );
-  }
-
   return (
-    <Box p="md" pb={0}>
-      <Visualization rawSeries={rawSeries} />
+    <Box h={75}>
+      <Visualization
+        rawSeries={rawSeries}
+        metadata={metadata}
+        showAllLegendItems={false}
+        settingsOverride={{
+          "graph.show_values": false,
+          "graph.x_axis.labels_enabled": false,
+          "graph.y_axis.labels_enabled": false,
+          "graph.y_axis.axis_enabled": false,
+          "graph.x_axis.axis_enabled": false,
+        }}
+      />
     </Box>
   );
 };

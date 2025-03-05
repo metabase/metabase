@@ -130,6 +130,7 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
+  settingsOverride?: VisualizationSettings;
   showTitle?: boolean;
   showWarnings?: boolean;
   style?: CSSProperties;
@@ -199,7 +200,7 @@ const deriveStateFromProps = (props: VisualizationProps) => {
 
   return {
     series,
-    computedSettings,
+    computedSettings: { ...computedSettings, ...props.settingsOverride },
     visualization: transformed?.visualization,
   };
 };
@@ -254,6 +255,7 @@ class Visualization extends PureComponent<
     if (
       !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
       !equals(props.settings, state._lastProps?.settings) ||
+      !equals(props.settingsOverride, state._lastProps?.settingsOverride) ||
       !equals(props.timelineEvents, state._lastProps?.timelineEvents) ||
       !equals(
         props.selectedTimelineEventIds,
@@ -273,6 +275,7 @@ class Visualization extends PureComponent<
         _lastProps: _.pick(props, [
           "rawSeries",
           "settings",
+          "settingsOverride",
           "timelineEvents",
           "selectedTimelineEventIds",
         ]),
@@ -586,7 +589,15 @@ class Visualization extends PureComponent<
     const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
-    let settings = this.props.settings || this.state.computedSettings;
+    let settings = {
+      ...(this.props.settings || this.state.computedSettings),
+      ...this.props.settingsOverride,
+    };
+
+    console.log({
+      props: this.props.settings,
+      state: this.state.computedSettings,
+    });
 
     if (!loading && !error) {
       if (!visualization) {
@@ -608,7 +619,10 @@ class Visualization extends PureComponent<
             // hide the error and replace series with the placeholder series
             error = null;
             series = visualization.placeholderSeries;
-            settings = getComputedSettingsForSeries(series);
+            settings = {
+              ...getComputedSettingsForSeries(series),
+              ...this.props.settingsOverride,
+            };
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
