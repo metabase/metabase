@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { mockScrollIntoView, render, screen } from "__support__/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -98,6 +98,8 @@ const setup = (props = {}) => {
   render(<Wrapper {...props} />);
 };
 
+mockScrollIntoView();
+
 describe("ChartSettingsTableFormatting", () => {
   it("should allow you to add a rule", async () => {
     setup();
@@ -109,8 +111,9 @@ describe("ChartSettingsTableFormatting", () => {
       await screen.findByText("Which columns should be affected?"),
     );
 
-    expect(await screen.findByText("is equal to")).toBeInTheDocument();
-
+    expect(
+      await screen.findByTestId("conditional-formatting-value-operator-button"),
+    ).toHaveValue("is equal to");
     await userEvent.type(
       await screen.findByTestId("conditional-formatting-value-input"),
       "toucan",
