@@ -122,5 +122,8 @@ modules/drivers/*/.lsp/*
 
 *storybook.log
 
+# jar downloader
+/jars/
+
 # metabot
 llm-payloads

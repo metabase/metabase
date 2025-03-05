@@ -9,11 +9,15 @@
    [metabase.models.serialization :as serdes]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private base-types-without-field-values
   #{:type/*
@@ -449,17 +453,18 @@
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
-    (t2/select :model/FieldValues :field_id 1)
-    (t2/select :model/FieldValues :field_id 1 :type :full)
-    (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - :full FieldValues cannot have a hash_key"
-                          (t2/select :model/FieldValues :field_id 1 :type :full :hash_key "12345")))
+    (let [field-id (mt/id :venues :id)]
+      (t2/select :model/FieldValues :field_id field-id)
+      (t2/select :model/FieldValues :field_id field-id :type :full)
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid query - :full FieldValues cannot have a hash_key"
+                            (t2/select :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
 
-    (t2/select :model/FieldValues :field_id 1 :type :sandbox)
-    (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key "12345")
-    (is (thrown-with-msg? ExceptionInfo
-                          #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
-                          (t2/select :model/FieldValues :field_id 1 :type :sandbox :hash_key nil)))))
+      (t2/select :model/FieldValues :field_id field-id :type :sandbox)
+      (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                            (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key nil))))))
 
 (deftest select-safety-filter-test
   (testing "We do not modify queries that omit type"

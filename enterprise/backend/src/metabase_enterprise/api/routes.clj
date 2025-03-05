@@ -12,6 +12,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.data-editing.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
@@ -33,6 +34,7 @@
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
+   :table-data-editing         (deferred-tru "Editing Table Data")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
    :query-reference-validation (deferred-tru "Query Reference Validation")
@@ -64,6 +66,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
+   "/data-editing"               (premium-handler metabase-enterprise.data-editing.api/routes :table-data-editing)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot-v3"                 (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
    "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes

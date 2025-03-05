@@ -1,4 +1,4 @@
-(ns metabase.api.notification.unsubscribe
+(ns metabase.notification.api.unsubscribe
   "Unauthenticated `/api/notification/unsubscribe` endpoints to allow non-logged-in people to unsubscribe from
   Alerts/DashboardNotifications."
   (:require

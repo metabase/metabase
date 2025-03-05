@@ -181,6 +181,7 @@
            lib
            logger
            models
+           notification
            plugins
            premium-features
            public-settings
@@ -304,7 +305,7 @@
           metabase.models.moderation-review
           metabase.models.native-query-snippet
           metabase.models.native-query-snippet.permissions
-          metabase.models.notification
+          metabase.notification.models
           metabase.models.params
           metabase.models.params.chain-filter
           metabase.models.params.custom-values
@@ -323,6 +324,7 @@
           metabase.models.task-history
           metabase.models.user
           metabase.models.user-parameter-value
+          metabase.models.util.spec-update
           metabase.models.view-log-impl
           metabase.models.visualization-settings}
    :uses #{analytics
@@ -337,6 +339,7 @@
            legacy-mbql
            lib
            moderation
+           notification
            permissions
            plugins
            premium-features
@@ -360,11 +363,25 @@
    :uses #{models util}}
 
   notification
-  {:api  #{metabase.notification.core
+  {:api  #{metabase.notification.api
+           metabase.notification.core
            metabase.notification.init
-           metabase.notification.payload.core
-           metabase.notification.payload.execute}
-   :uses #{analytics api channel config events models permissions premium-features public-settings query-processor request util}}
+           metabase.notification.models
+           metabase.notification.payload.core}
+   :uses #{analytics
+           api
+           channel
+           config
+           driver
+           events
+           models
+           permissions
+           premium-features
+           public-settings
+           query-processor
+           request
+           task
+           util}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -719,6 +736,10 @@
   enterprise/stats
   {:api  #{}
    :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
+
+  enterprise/data-editing
+  {:api #{}
+   :uses #{api actions util}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}

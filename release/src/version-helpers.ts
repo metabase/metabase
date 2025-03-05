@@ -76,6 +76,10 @@ export const getMajorVersion = (versionString: string) =>
     .replace(/-rc\d+/i, "")
     .split(".")[0];
 
+export const isReleaseBranch = (branchName: string) => {
+  return branchName.startsWith("release-x.");
+};
+
 export const getReleaseBranch = (versionString: string) => {
   if (!isValidVersionString(versionString)) {
     throw new Error(`Invalid version string: ${versionString}`);
@@ -155,42 +159,35 @@ export const getSdkVersionFromReleaseBranchName = async ({
 };
 
 export const getDotXs = (version: string, number: number) => {
-  const pieces = version.replace(/-.+/, '').split("."); // ignore any -suffixes
+  const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
   return pieces.slice(0, number + 1).join(".") + ".x";
-}
+};
 
 export const getDotXVersion = (version: string) => {
   const versionType = getVersionType(version);
 
-  if(versionType === "major") {
+  if (versionType === "major") {
     return getDotXs(version, 1);
   }
 
   return getDotXs(version, 2);
-}
+};
 
-export const getExtraTagsForVersion = ({ version }: { version: string}) => {
+export const getExtraTagsForVersion = ({ version }: { version: string }) => {
   const ossVerion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
   const versionType = getVersionType(version);
 
   // eg. v0.23.x / v1.23.x
-  const tags = [
-    getDotXs(ossVerion, 1),
-    getDotXs(eeVersion, 1),
-  ];
+  const tags = [getDotXs(ossVerion, 1), getDotXs(eeVersion, 1)];
 
   if (versionType === "major") {
     return tags;
   }
 
   // eg. v0.23.4.x / v1.23.4.x
-  return [
-    ...tags,
-    getDotXs(ossVerion, 2),
-    getDotXs(eeVersion, 2),
-  ];
-}
+  return [...tags, getDotXs(ossVerion, 2), getDotXs(eeVersion, 2)];
+};
 
 /**
  * queries the github api to get all embedding sdk version tags
