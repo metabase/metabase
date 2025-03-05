@@ -156,7 +156,7 @@ export async function sendPreReleaseStatus({
   });
 }
 
-function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: { channelName?: string, message: string }) {
+export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: { channelName?: string, message: string }) {
   return slack.chat.postMessage({
     channel: channelName,
     text: message,
