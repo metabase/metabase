@@ -234,6 +234,7 @@ class Visualization extends PureComponent<
 
   constructor(props: VisualizationProps) {
     super(props);
+
     this.state = {
       clicked: null,
       computedSettings: {},
