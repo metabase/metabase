@@ -293,7 +293,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         );
 
         if (currentSorting == null) {
-          setSorting(prev => [...prev, { id: columnId, desc: true }]);
+          setSorting([{ id: columnId, desc: true }]);
         } else if (currentSorting.desc) {
           setSorting(prev =>
             prev.map(sorting => {
@@ -393,6 +393,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           },
         },
       });
+
       if (res?.length > 0) {
         return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
           onVisualizationClick({

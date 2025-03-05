@@ -243,6 +243,10 @@ export const useDataGridInstance = <TData, TValue>({
     prevWrappedColumns.current = wrappedColumnsOptions.map(column => column.id);
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
+  useUpdateEffect(() => {
+    measureGrid(true);
+  }, [sorting]);
+
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
       const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
