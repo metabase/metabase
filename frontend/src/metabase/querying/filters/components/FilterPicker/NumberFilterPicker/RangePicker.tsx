@@ -4,6 +4,7 @@ import { t } from "ttag";
 import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
+import { Api, useGetAdhocQueryQuery } from "metabase/api";
 
 interface Props {
   query: Lib.Query;
@@ -26,10 +27,18 @@ export const RangePicker = ({
     () => getDistributionQuery(query, stageIndex, clicked.column),
     [query, stageIndex, clicked.column],
   );
-
-  return (
-    <div>{JSON.stringify(Lib.toLegacyQuery(distributionQuery), null, 2)}</div>
+  const legacyQuery = useMemo(
+    () => Lib.toLegacyQuery(distributionQuery),
+    [distributionQuery],
   );
+
+  const { data, isLoading } = useGetAdhocQueryQuery(legacyQuery);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return <div>{JSON.stringify(data, null, 2)}</div>;
 };
 
 function getDistributionQuery(
