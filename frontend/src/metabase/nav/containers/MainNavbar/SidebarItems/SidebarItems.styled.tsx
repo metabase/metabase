@@ -7,11 +7,17 @@ import { TreeNode } from "metabase/components/tree/TreeNode";
 import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
 
-export const SidebarIcon = styled(Icon, {
-  shouldForwardProp: propName => propName !== "isSelected",
-})<{
+export const SidebarIcon = styled(
+  (props: IconProps & { isSelected: boolean }) => (
+    <Icon {...props} size={props.size ?? 16} />
+  ),
+  {
+    shouldForwardProp: propName => propName !== "isSelected",
+  },
+)<{
   color?: string | null;
   isSelected: boolean;
 }>`
@@ -21,10 +27,6 @@ export const SidebarIcon = styled(Icon, {
       color: var(--mb-color-brand);
     `}
 `;
-
-SidebarIcon.defaultProps = {
-  size: 16,
-};
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
@@ -39,9 +41,13 @@ function getTextColor(isSelected: boolean) {
   return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
 }
 
-export const NodeRoot = styled(TreeNode.Root)<{
+interface NodeRootProps {
+  isSelected: boolean;
+  depth: number;
   hasDefaultIconStyle?: boolean;
-}>`
+}
+
+export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
   color: ${props => getTextColor(props.isSelected)};
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
@@ -65,14 +71,11 @@ export const NodeRoot = styled(TreeNode.Root)<{
   &:focus,
   &:focus-within {
     ${SidebarIcon} {
-      ${props => props.hasDefaultIconStyle && activeColorCSS};
+      ${({ hasDefaultIconStyle = true }) =>
+        hasDefaultIconStyle && activeColorCSS};
     }
   }
 `;
-
-NodeRoot.defaultProps = {
-  hasDefaultIconStyle: true,
-};
 
 const collectionDragAndDropHoverStyle = css`
   color: var(--mb-color-text-white);
