@@ -18,8 +18,9 @@ import type { SelectionRange } from "../types";
 
 export type CodeMirrorEditorProps = {
   query: Lib.Query;
-  onChange?: (queryText: string) => void;
+  highlightedLineNumbers?: number[];
   readOnly?: boolean;
+  onChange?: (queryText: string) => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange) => void;
@@ -31,29 +32,32 @@ export interface CodeMirrorEditorRef {
 }
 
 import S from "./CodeMirrorEditor.module.css";
-import { useExtensions } from "./extensions";
+import { useExtensions, useHighlightLines } from "./extensions";
 import { convertSelectionToRange, matchCardIdAtCursor } from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
   CodeMirrorEditorProps
->(function CodeMirrorEditor(props, ref) {
-  const editor = useRef<ReactCodeMirrorRef>(null);
-  const {
+>(function CodeMirrorEditor(
+  {
     query,
-    onChange,
+    highlightedLineNumbers,
     readOnly,
+    onChange,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
-  } = props;
-
+  },
+  ref,
+) {
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
   const extensions = useExtensions(query);
+  useHighlightLines(editorRef, highlightedLineNumbers);
 
   useImperativeHandle(ref, () => {
     return {
       focus() {
-        editor.current?.editor?.focus();
+        editorRef.current?.editor?.focus();
       },
       getSelectionTarget() {
         return document.querySelector(".cm-selectionBackground");
@@ -65,21 +69,17 @@ export const CodeMirrorEditor = forwardRef<
     (update: ViewUpdate) => {
       // handle selection changes
       const value = update.state.doc.toString();
+
       if (onSelectionChange) {
-        const beforeRange = convertSelectionToRange(
-          update.startState.doc.toString(),
-          update.startState.selection.main,
-        );
-        const afterRange = convertSelectionToRange(
-          value,
-          update.state.selection.main,
-        );
+        const beforeSelection = update.startState.selection.main;
+        const afterSelection = update.state.selection.main;
 
         if (
-          beforeRange.start !== afterRange.start ||
-          beforeRange.end !== afterRange.end
+          beforeSelection.head !== afterSelection.head ||
+          beforeSelection.anchor !== afterSelection.anchor
         ) {
-          onSelectionChange(afterRange);
+          // only forward changes if the selection has actually changed
+          onSelectionChange(convertSelectionToRange(value, afterSelection));
         }
       }
       if (onCursorMoveOverCardTag) {
@@ -99,7 +99,7 @@ export const CodeMirrorEditor = forwardRef<
 
   useEffect(() => {
     function handler(evt: MouseEvent) {
-      const selection = editor.current?.state?.selection.main;
+      const selection = editorRef.current?.state?.selection.main;
       if (!selection) {
         return;
       }
@@ -119,7 +119,7 @@ export const CodeMirrorEditor = forwardRef<
 
   return (
     <CodeMirror
-      ref={editor}
+      ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
       extensions={extensions}
