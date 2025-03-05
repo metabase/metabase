@@ -37,8 +37,7 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
-  determine-version:
-    name: Determine SDK version
+  determine-sdk-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
@@ -91,11 +90,11 @@ jobs:
           EOF
 
   check-git-tag:
-    needs: determine-version
+    needs: determine-sdk-version
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -136,7 +135,7 @@ jobs:
         run: yarn embedding-sdk:test-unit
 
   build-sdk:
-    needs: [test, determine-version]
+    needs: [test, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -158,7 +157,7 @@ jobs:
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
-          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-version.outputs.sdk_version }}
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
       - name: Update changelog
         run: |
@@ -183,11 +182,11 @@ jobs:
           path: ./changelog-diff
 
   publish-npm:
-    needs: [build-sdk, determine-version]
+    needs: [build-sdk, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      sdk_version: ${{ needs.determine-version.outputs.sdk_version }}
+      sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out branch to prepare for a SDK version bump PR
         uses: actions/checkout@v4
@@ -274,12 +273,12 @@ jobs:
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
-    needs: [publish-npm, determine-version]
+    needs: [publish-npm, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
-      stable_tag: embedding-sdk-${{ needs.determine-version.outputs.major_version }}-stable
+      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
+      stable_tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
