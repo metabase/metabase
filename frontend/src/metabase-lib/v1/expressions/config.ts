@@ -533,7 +533,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower",
   "upper",
   "substring",
-  "url-part",
+  "url-pathname",
   "split",
   "regex-match-first",
   "concat",
