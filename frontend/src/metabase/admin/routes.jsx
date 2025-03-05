@@ -69,7 +69,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       >
         <IndexRoute component={DatabaseListApp} />
         <Route component={DatabaseListApp}>
-          <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
+          <Route component={IsAdmin}>
+            <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
+          </Route>
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} />
