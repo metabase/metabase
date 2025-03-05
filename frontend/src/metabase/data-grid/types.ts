@@ -11,6 +11,7 @@ import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
+import { Selection } from "./hooks/use-cell-selection";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -191,6 +192,7 @@ export interface DataGridInstance<TData> {
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
+  selection: Selection;
   measureColumnWidths: () => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
