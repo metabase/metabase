@@ -31,11 +31,11 @@
   (testing "unknown unit"
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-temporal-interval n :century))
-      -2 "Previous 2 Century"
-      -1 "Previous Century"
-      0  "This Century"
-      1  "Next Century"
-      2  "Next 2 Century")))
+      -2 "Previous 2 unknown units"
+      -1 "Previous unknown unit"
+      0  "This unknown unit"
+      1  "Next unknown unit"
+      2  "Next 2 unknown units")))
 
 (deftest ^:parallel describe-relative-datetime-test
   (doseq [unit [:day nil]]
