@@ -65,10 +65,11 @@ export function VisualizerModal({
     <>
       <Modal
         opened={open}
-        title={t`Visualize`}
         size="100%"
         transitionProps={{ transition: "fade", duration: 200 }}
+        withCloseButton={false}
         onClose={onModalClose}
+        padding={0}
       >
         <Visualizer
           className={S.VisualizerRoot}

@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
-import { getVisualizationType } from "metabase/visualizer/selectors";
+import {
+  getDatasets,
+  getVisualizationType,
+} from "metabase/visualizer/selectors";
 import {
   setDisplay,
   toggleVizSettingsSidebar,
@@ -17,6 +20,8 @@ import S from "./Footer.module.css";
 export function Footer() {
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
+  const datasets = useSelector(getDatasets);
+  const hasDatasets = Object.values(datasets).length > 0;
 
   const handleChangeDisplay = useCallback(
     (nextDisplay: string) => {
@@ -27,10 +32,12 @@ export function Footer() {
   return (
     <Flex className={S.footer} px="xl" py="md">
       <VisualizationPicker value={display} onChange={handleChangeDisplay} />
-      <Button
-        ml="auto"
-        onClick={() => dispatch(toggleVizSettingsSidebar())}
-      >{t`Settings`}</Button>
+      {hasDatasets && (
+        <Button
+          ml="auto"
+          onClick={() => dispatch(toggleVizSettingsSidebar())}
+        >{t`Settings`}</Button>
+      )}
     </Flex>
   );
 }
