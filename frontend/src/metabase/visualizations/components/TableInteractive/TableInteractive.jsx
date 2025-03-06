@@ -198,6 +198,7 @@ class TableInteractive extends Component {
       document.body.appendChild(this._div);
     }
 
+    this._setupDraggableRefs(this.props);
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
     this._showDetailShortcut(this.props.data, this.props.isPivoted);
@@ -292,6 +293,10 @@ class TableInteractive extends Component {
   }
 
   componentDidUpdate(prevProps) {
+    if (prevProps.data?.cols?.length !== this.props.data?.cols?.length) {
+      this._setupDraggableRefs(this.props);
+    }
+
     if (
       !this.state.contentWidths ||
       prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
@@ -316,6 +321,27 @@ class TableInteractive extends Component {
       this.props.height
     ) {
       this.props.dispatch(setUIControls({ scrollToLastColumn: false }));
+    }
+  }
+
+  _setupDraggableRefs(props) {
+    const { data } = props;
+
+    const columnLength = data?.cols?.length;
+
+    // There is a bug with react-draggable where it uses
+    // ReactDOM.findDOMNode when the ref value is falsey.
+    // This is a workaround to ensure that the refs are always truthy.
+    const dummyNode = document.createElement("div");
+
+    if (columnLength !== undefined) {
+      this.headerRefs = [...Array(columnLength)].map(() =>
+        createRef(dummyNode),
+      );
+
+      this.resizeHandleRefs = [...Array(columnLength)].map(() =>
+        createRef(dummyNode),
+      );
     }
   }
 
@@ -823,16 +849,6 @@ class TableInteractive extends Component {
     const isAscending = sortDirection === "asc";
 
     const columnInfoPopoverTestId = "field-info-popover";
-
-    const dummy = document.createElement("div");
-
-    if (!this.headerRefs[columnIndex]) {
-      this.headerRefs[columnIndex] = createRef(dummy);
-    }
-
-    if (!this.resizeHandleRefs[columnIndex]) {
-      this.resizeHandleRefs[columnIndex] = createRef(dummy);
-    }
 
     return (
       <TableDraggable
