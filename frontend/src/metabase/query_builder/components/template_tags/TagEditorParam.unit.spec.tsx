@@ -14,7 +14,7 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { TemplateTag } from "metabase-types/api";
+import type { Card, TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
@@ -36,9 +36,13 @@ import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
   tag?: TemplateTag;
+  originalCard?: Card;
 }
 
-const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
+const setup = ({
+  tag = createMockTemplateTag(),
+  originalCard,
+}: SetupOpts = {}) => {
   mockScrollIntoView();
   const database = createSampleDatabase();
   const state = createMockState({
@@ -46,6 +50,7 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
       card: createMockCard({
         dataset_query: createMockNativeDatasetQuery(),
       }),
+      originalCard,
     }),
     entities: createMockEntitiesState({
       databases: [database],
@@ -111,6 +116,29 @@ describe("TagEditorParam", () => {
         "widget-type": "string/starts-with",
       });
       const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Field Filter"));
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+    });
+
+    it("should not throw when the original question has an mbql query", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+      });
+      const originalCard = createMockCard();
+      const { setTemplateTag } = setup({ tag, originalCard });
 
       await userEvent.click(screen.getByTestId("variable-type-select"));
       await userEvent.click(screen.getByText("Field Filter"));
