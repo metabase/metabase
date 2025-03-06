@@ -18,10 +18,10 @@
 }
 
 .button {
-  background-color: var(--mb-base-color-brand-10) !important;
+  transition: background-color 200ms;
+  background-color: var(--mb-base-color-brand-10);
 }
 
 .button:hover {
-  background-color: var(--mb-base-color-brand-20) !important;
-  transition: background-color 200ms;
+  background: var(--mb-base-color-brand-20) !important;
 }
