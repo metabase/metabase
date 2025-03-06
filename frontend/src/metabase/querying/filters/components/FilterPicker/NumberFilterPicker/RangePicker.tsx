@@ -87,7 +87,7 @@ export const RangePicker = ({
       : [min, max];
 
   return (
-    <Box h={75} pt="0.5rem">
+    <Box h={100} pt="0.5rem">
       <Visualization
         rawSeries={rawSeries}
         metadata={metadata}
@@ -106,7 +106,7 @@ export const RangePicker = ({
       />
 
       {data && (
-        <Box px="1rem" pos="relative" top="-1rem">
+        <Box px="1rem" pos="relative" top="-0.8rem">
           <RangeSlider
             minRange={isNumber(minRange) ? formatNumber(minRange) : undefined}
             min={isNumber(min) ? formatNumber(min) : undefined}

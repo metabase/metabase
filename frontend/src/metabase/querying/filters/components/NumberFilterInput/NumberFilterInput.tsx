@@ -43,6 +43,7 @@ export const NumberFilterInput = forwardRef(function NumberFilterInput(
   return (
     <TextInput
       {...props}
+      autoFocus={false}
       ref={ref}
       value={inputValue}
       onChange={handleChange}
