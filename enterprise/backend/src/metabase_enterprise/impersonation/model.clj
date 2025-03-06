@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.models.connection-impersonation
+(ns metabase-enterprise.impersonation.model
   "Model definition for Connection Impersonations, which are used to define specific database roles used by users in
   certain permission groups when running queries."
   (:require
