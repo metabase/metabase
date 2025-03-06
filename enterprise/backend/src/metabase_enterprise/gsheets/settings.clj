@@ -6,27 +6,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mr/def :gsheets/gsheets
-  [:multi {:dispatch :status}
-   ["not-connected" [:map]]
-
-   ["loading"
-    [:map
-     [:folder_url ms/NonBlankString]
-     ;; time in seconds from epoch:
-     [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]
-
-   ["complete"
-    [:map
-     [:folder_url ms/NonBlankString]
-     ;; time in seconds from epoch:
-     [:folder-upload-time pos-int?]
-     [:gdrive/conn-id ms/UUIDString]]]])
 
 (defsetting show-google-sheets-integration
   "Whether or not to show the user a button that sets up Google Sheets integration."
