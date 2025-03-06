@@ -438,7 +438,7 @@ class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  onColumnReorder(columnIndex, newColumnIndex) {
+  handleColumnReorder(columnIndex, newColumnIndex) {
     const { settings, onUpdateVisualizationSettings } = this.props;
     const columns = settings["table.columns"].slice(); // copy since splice mutates
 
@@ -857,7 +857,7 @@ class TableInteractive extends Component {
             dragColNewIndex != null &&
             dragColIndex !== dragColNewIndex
           ) {
-            this.onColumnReorder(dragColIndex, dragColNewIndex);
+            this.handleColumnReorder(dragColIndex, dragColNewIndex);
 
             // if the column is dragged, we need to tell DatasetEditor know that
             // this specific column needs to be marked as selected to be able to
