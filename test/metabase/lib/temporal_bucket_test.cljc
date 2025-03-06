@@ -42,19 +42,19 @@
     (testing unit
       (are [n expected] (= expected
                            (lib.temporal-bucket/describe-relative-datetime n unit))
-        -2 "2 days ago"
-        -1 "1 day ago"
-        0  "Now"
-        1  "1 day from now"
-        2  "2 days from now")))
+        -2 "starting 2 days ago"
+        -1 "starting 1 day ago"
+        0  "starting now"
+        1  "starting 1 day from now"
+        2  "starting 2 days from now")))
   (testing "unknown unit"
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-relative-datetime n :century))
-      -2 "2 century ago"
-      -1 "1 century ago"
-      0  "Now"
-      1  "1 century from now"
-      2  "2 century from now")))
+      -2 "starting 2 unknown units ago"
+      -1 "starting 1 unknown unit ago"
+      0  "starting now"
+      1  "starting 1 unknown unit from now"
+      2  "starting 2 unknown units from now")))
 
 (deftest ^:parallel describe-temporal-unit-test
   (is (= ""
