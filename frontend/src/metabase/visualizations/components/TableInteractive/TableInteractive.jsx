@@ -903,8 +903,8 @@ class TableInteractive extends Component {
       >
         <Box
           ref={element => {
-            // We cannot have `null` in `nodeRef` as it will trigger `ReactDOM.findDOMNode` in React 19,
-            // so we have to check if element is not null.
+            // We cannot have `null` in `nodeRef` as it will fallback to
+            // `findDOMNode` which no longer exists in React 19.
             if (element) {
               this.headerRefs[columnIndex].current = element;
             }
@@ -1007,8 +1007,8 @@ class TableInteractive extends Component {
           >
             <ResizeHandle
               ref={element => {
-                // We cannot have `null` in `nodeRef` as it will trigger `ReactDOM.findDOMNode` in React 19,
-                // so we have to check if element is not null.
+                // We cannot have `null` in `nodeRef` as it will fallback to
+                // `findDOMNode` which no longer exists in React 19.
                 if (element) {
                   this.resizeHandleRefs[columnIndex].current = element;
                 }
