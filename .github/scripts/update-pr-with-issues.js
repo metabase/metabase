@@ -136,11 +136,11 @@ async function main() {
     }
 
     if (shouldUpdate) {
-      // Add references to the end of the PR body
+      // Add references to the beginning of the PR body
       if (newBody.trim()) {
         newBody += '\n\n';
       }
-      newBody += `\n<!-- Added by :sparkle: Add Issue References :sparkle: to PR GitHub Action -->\n${closingRefs}`;
+      newBody = `<!-- Added by :sparkle: Add Issue References :sparkle: to PR GitHub Action -->\n${closingRefs}\n---\n` + newBody;
 
       // Update the PR
       const updateData = JSON.stringify({
