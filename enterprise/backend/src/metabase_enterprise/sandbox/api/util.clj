@@ -41,29 +41,30 @@
   `enforced-sandboxes-for-tables` below, so that the cache is used."
   :feature :sandboxes
   [user-id]
-  (let [user-group-ids           (user/group-ids user-id)
-        sandboxes-with-group-ids (t2/hydrate
-                                  (t2/select :model/GroupTableAccessPolicy
-                                             {:select [[:pgm.group_id :group_id]
-                                                       [:s.*]]
-                                              :from [[:permissions_group_membership :pgm]]
-                                              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
-                                              :where [:and
-                                                      [:= :pgm.user_id user-id]]})
-                                  :table)
+  (when user-id
+    (let [user-group-ids           (user/group-ids user-id)
+          sandboxes-with-group-ids (t2/hydrate
+                                    (t2/select :model/GroupTableAccessPolicy
+                                               {:select [[:pgm.group_id :group_id]
+                                                         [:s.*]]
+                                                :from [[:permissions_group_membership :pgm]]
+                                                :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
+                                                :where [:and
+                                                        [:= :pgm.user_id user-id]]})
+                                    :table)
 
-        impersonations-with-group-ids (t2/select :model/ConnectionImpersonation
-                                                 :group_id [:in user-group-ids])
-        group-id->impersonations (->> impersonations-with-group-ids
-                                      (group-by :group_id))
-        group-id->sandboxes (->> sandboxes-with-group-ids
-                                 (group-by :group_id)
-                                 (m/map-vals (fn [sandboxes]
-                                               (->> sandboxes
-                                                    (filter :table_id)
-                                                    (into #{})))))]
-    (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations)
-            (reduce set/union #{} (vals group-id->sandboxes)))))
+          impersonations-with-group-ids (t2/select :model/ConnectionImpersonation
+                                                   :group_id [:in user-group-ids])
+          group-id->impersonations (->> impersonations-with-group-ids
+                                        (group-by :group_id))
+          group-id->sandboxes (->> sandboxes-with-group-ids
+                                   (group-by :group_id)
+                                   (m/map-vals (fn [sandboxes]
+                                                 (->> sandboxes
+                                                      (filter :table_id)
+                                                      (into #{})))))]
+      (filter #(enforce-sandbox? % user-group-ids group-id->sandboxes group-id->impersonations)
+              (reduce set/union #{} (vals group-id->sandboxes))))))
 
 (defn enforced-sandboxes-for-tables
   "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A

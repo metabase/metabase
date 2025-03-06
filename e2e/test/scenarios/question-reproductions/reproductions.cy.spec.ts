@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -303,4 +304,54 @@ describe("issue 49270", () => {
     cy.title().should("equal", "Doing science... · Metabase");
     cy.title().should("equal", "Question · Metabase");
   });
+});
+
+describe("issue 53404", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should show an error message when overwriting a card with a cycle (metabase#53404)", () => {
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openNotebook();
+    H.getNotebookStep("data").button("Join data").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("Orders").click();
+    });
+    H.popover().findByText("ID").click();
+    H.popover().findByText("ID").click();
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@updateCard");
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
+      cy.findByText(/undefined/).should("not.exist");
+    });
+  });
+});
+
+describe("issue 53170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it(
+    "should correctly position the add column popover (metabase#53170)",
+    { viewportWidth: 480, viewportHeight: 800 },
+    () => {
+      H.openOrdersTable();
+      cy.findByLabelText("Add column").click();
+      H.popover().within(() => {
+        cy.findByText("Combine columns").click();
+        cy.button("Done").then($button => {
+          const buttonRight = $button[0].getBoundingClientRect().right;
+          cy.window().its("innerWidth").should("be.gt", buttonRight);
+        });
+      });
+    },
+  );
 });

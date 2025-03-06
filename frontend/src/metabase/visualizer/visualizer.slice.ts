@@ -41,6 +41,7 @@ import {
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
+import { updateSettingsForDisplay } from "./utils/update-settings-for-display";
 import {
   addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
@@ -85,6 +86,7 @@ function getInitialState(): VisualizerState {
     past: [],
     present: getInitialVisualizerHistoryItem(),
     future: [],
+    initialState: getInitialVisualizerHistoryItem(),
   };
 }
 
@@ -186,6 +188,18 @@ const visualizerHistoryItemSlice = createSlice({
       state.settings["card.title"] = action.payload;
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      const { columnValuesMapping, columns, settings } =
+        updateSettingsForDisplay(
+          state.columnValuesMapping,
+          state.columns,
+          state.settings,
+          state.display,
+          action.payload,
+        );
+
+      state.columnValuesMapping = columnValuesMapping;
+      state.columns = columns;
+      state.settings = settings;
       state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -380,6 +394,17 @@ const visualizerSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(initializeVisualizer.fulfilled, (state, action) => {
+        const initialState = action.payload;
+        if (initialState) {
+          state.initialState = {
+            ...getInitialVisualizerHistoryItem(),
+            ...initialState,
+          };
+        }
+
+        maybeUpdateHistory(state, action);
+      })
       .addCase(handleDrop, (state, action) => {
         state.draggedItem = null;
         maybeUpdateHistory(state, action);
@@ -477,7 +502,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    return getInitialStateForCardDataSource({ card, ...dataset });
+    return getInitialStateForCardDataSource(card, dataset.data.cols);
   }
 
   if (

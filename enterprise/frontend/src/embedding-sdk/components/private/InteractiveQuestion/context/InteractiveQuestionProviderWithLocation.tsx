@@ -9,7 +9,9 @@ export const InteractiveQuestionProviderWithLocation = ({
   params,
   ...props
 }: InteractiveQuestionProviderWithLocationProps) => {
-  const cardId = Urls.extractEntityId(params.slug);
+  // If we cannot extract an entity ID from the slug, assume we are creating a new question.
+  const cardId = Urls.extractEntityId(params.slug) ?? "new";
+
   const { options, serializedCard } = parseHash(location.hash);
   const deserializedCard = serializedCard && deserializeCard(serializedCard);
 

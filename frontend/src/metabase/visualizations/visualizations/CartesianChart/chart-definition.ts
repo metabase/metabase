@@ -33,6 +33,7 @@ export const getCartesianChartDefinition = (
   return {
     noHeader: true,
     supportsSeries: true,
+    supportsVisualizer: true,
 
     isSensible: ({ cols, rows }) => {
       return (

@@ -7,6 +7,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import { dashboardCardSupportsVisualizer } from "metabase/visualizer/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -152,17 +153,16 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (dashcard && !isVirtualDashCard(dashcard)) {
+    if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
       buttons.push(
         <VisualizerButton
           key="visualizer-button"
-          series={series}
+          card={series[0].card}
           dashcard={dashcard}
+          columns={series[0].data?.cols ?? []}
         />,
       );
-    }
-
-    if (!disableSettingsConfig) {
+    } else if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"

@@ -347,7 +347,7 @@ describe(
         .findByLabelText("warning icon")
         .realHover();
 
-      H.popover().findByText(
+      H.tooltip().findByText(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
       );
     });

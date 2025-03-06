@@ -62,8 +62,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
           cy.findByText("New alert").should("be.visible");
 
           cy.findByTestId("alert-goal-select")
-            .should("be.disabled")
-            .should("have.value", "When this question has results");
+            .should("not.be.enabled")
+            .should("have.text", "When this question has results");
 
           cy.findByText("Done").click();
         });
@@ -129,8 +129,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         cy.findByText("New alert").should("be.visible");
 
         cy.findByTestId("alert-goal-select")
-          .should("be.disabled")
-          .should("have.value", "When this question has results");
+          .should("not.be.enabled")
+          .should("have.text", "When this question has results");
 
         cy.findByText("Done").click();
       });

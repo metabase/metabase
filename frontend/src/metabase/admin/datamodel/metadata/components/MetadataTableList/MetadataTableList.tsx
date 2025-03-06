@@ -6,7 +6,6 @@ import { useAsyncFn } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
@@ -14,7 +13,7 @@ import { connect } from "metabase/lib/redux";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
@@ -335,7 +334,7 @@ const ToggleVisibilityButton = ({
   );
 
   return (
-    <Tooltip tooltip={tooltip}>
+    <Tooltip label={tooltip}>
       <HideIconButton
         disabled={loading}
         aria-label={tooltip}

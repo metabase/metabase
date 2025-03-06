@@ -4,11 +4,6 @@ import type { ClientCodeSampleConfig } from "metabase/public/lib/types";
 
 import { CodeSample } from "./CodeSample";
 
-import "ace/mode-html";
-import "ace/mode-jsx";
-import "ace/mode-jade";
-import "ace/mode-html_ruby";
-
 interface ClientEmbedCodePaneProps {
   clientCodeOptions: ClientCodeSampleConfig[];
   selectedClientCodeOptionId: string;
@@ -37,7 +32,7 @@ export const ClientEmbedCodePane = ({
       selectedOptionId={selectedClientCodeOptionId}
       languageOptions={clientCodeOptions}
       source={selectedClientCodeOption.source}
-      textHighlightMode={selectedClientCodeOption.mode}
+      language={selectedClientCodeOption.language}
       onChangeOption={setSelectedClientCodeOptionId}
       onCopy={onCopy}
     />

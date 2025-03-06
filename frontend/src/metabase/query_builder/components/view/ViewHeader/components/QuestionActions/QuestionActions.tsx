@@ -5,13 +5,12 @@ import { t } from "ttag";
 import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { Box, Divider, Icon, Menu } from "metabase/ui";
+import { Box, Divider, Icon, Menu, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
@@ -100,7 +99,7 @@ export const QuestionActions = ({
           />
         </Box>
       )}
-      <Tooltip tooltip={t`More info`}>
+      <Tooltip label={t`More info`}>
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <Button
             className={ViewTitleHeaderS.ViewHeaderIconButton}
@@ -120,7 +119,7 @@ export const QuestionActions = ({
             ref={fileInputRef}
             onChange={handleFileUpload}
           />
-          <Tooltip tooltip={t`Upload data to this model`}>
+          <Tooltip label={t`Upload data to this model`}>
             <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
               <Menu position="bottom-end">
                 <Menu.Target>

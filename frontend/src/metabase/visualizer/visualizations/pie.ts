@@ -3,7 +3,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { isNotNull } from "metabase/lib/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
-  addColumnMapping,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
@@ -48,10 +47,7 @@ export const pieDropHandler = (
     }
 
     if (metricColumnName) {
-      state.columnValuesMapping[metricColumnName] = addColumnMapping(
-        state.columnValuesMapping[metricColumnName],
-        columnRef,
-      );
+      state.columnValuesMapping[metricColumnName] = [columnRef];
     }
   }
 

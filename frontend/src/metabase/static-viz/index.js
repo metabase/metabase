@@ -13,6 +13,10 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { extractRemappings } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import {
+  createDataSource,
+  mergeVisualizerData,
+} from "metabase/visualizer/utils";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -44,10 +48,46 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
   });
 }
 
+function getVisualizerRawSeries(rawSeries, dashcardSettings) {
+  const { columns, columnValuesMapping } = dashcardSettings.visualization;
+  const datasets = rawSeries.reduce((acc, series) => {
+    if (series.card.id) {
+      acc[`card:${series.card.id}`] = series;
+    }
+    return acc;
+  }, {});
+
+  const dataSources = rawSeries.map(series =>
+    createDataSource("card", series.card.id, series.card.name),
+  );
+
+  const mergedData = mergeVisualizerData({
+    columns,
+    columnValuesMapping,
+    datasets,
+    dataSources,
+  });
+
+  const { display, settings } = dashcardSettings.visualization;
+  return [
+    {
+      card: {
+        display,
+        visualization_settings: settings,
+      },
+      data: mergedData,
+    },
+  ];
+}
+
 export function RenderChart(rawSeries, dashcardSettings, options) {
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );
+
+  if ("visualization" in dashcardSettings) {
+    rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
+  }
 
   updateStartOfWeek(options.startOfWeek);
   MetabaseSettings.set("custom-formatting", options.customFormatting);

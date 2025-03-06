@@ -1,8 +1,11 @@
-import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
+import type {
+  BaseDashboardCard,
+  VisualizerDashboardCard,
+} from "metabase-types/api";
 
 export function isVisualizerDashboardCard(
-  dashcard: DashboardCard | undefined,
-): dashcard is QuestionDashboardCard {
+  dashcard?: BaseDashboardCard,
+): dashcard is VisualizerDashboardCard {
   if (!dashcard?.visualization_settings) {
     return false;
   }

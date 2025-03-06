@@ -1,7 +1,14 @@
+// Mantine styles need to be imported before any of our components so that our styles win over
+// the default mantine styles
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+
 // polyfills useSyncExternalStore for React 17
 import "./lib/polyfill/use-sync-external-store";
 
 import "metabase/lib/dayjs";
+
+import "ee-plugins";
 
 // we need to manually import them here to make sure they are included in the bundle
 // as they're dynamically loaded in the main codebase
