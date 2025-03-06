@@ -5,9 +5,12 @@ import _ from "underscore";
 import { connect } from "metabase/lib/redux";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -59,6 +62,7 @@ interface Props {
   databases: Database[];
   databaseFields?: Field[];
   metadata: Metadata;
+  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,
@@ -71,10 +75,17 @@ interface Props {
 function mapStateToProps(state: State) {
   return {
     metadata: getMetadata(state),
+    originalQuestion: getOriginalQuestion(state),
   };
 }
 
 const mapDispatchToProps = { fetchField };
+
+const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
+  values_query_type: undefined,
+  values_source_type: undefined,
+  values_source_config: undefined,
+};
 
 class TagEditorParamInner extends Component<Props> {
   UNSAFE_componentWillMount() {
@@ -86,6 +97,32 @@ class TagEditorParamInner extends Component<Props> {
       fetchField(fieldId, true);
     }
   }
+
+  getTemplateTagConfig = (newType: TemplateTagType): ParameterValuesConfig => {
+    const { tag, parameter, originalQuestion } = this.props;
+    if (!parameter || !originalQuestion) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    const query = originalQuestion.query();
+    const queryInfo = Lib.queryDisplayInfo(query);
+    if (!queryInfo.isNative) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    const originalTag = Lib.templateTags(query)[tag.id];
+    const parameters = originalQuestion.parameters();
+    const originalParameter = parameters.find(({ id }) => id === parameter.id);
+    if (!originalTag || originalTag.type !== newType || !originalParameter) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    return {
+      values_source_type: originalParameter.values_source_type,
+      values_source_config: originalParameter.values_source_config,
+      values_query_type: originalParameter.values_query_type,
+    };
+  };
 
   setType = (type: TemplateTagType) => {
     const { tag, setTemplateTag, setParameterValue, setTemplateTagConfig } =
@@ -101,11 +138,7 @@ class TagEditorParamInner extends Component<Props> {
       });
 
       setParameterValue(tag.id, null);
-      setTemplateTagConfig(tag, {
-        values_source_type: undefined,
-        values_source_config: undefined,
-        values_query_type: undefined,
-      });
+      setTemplateTagConfig(tag, this.getTemplateTagConfig(type));
     }
   };
 
