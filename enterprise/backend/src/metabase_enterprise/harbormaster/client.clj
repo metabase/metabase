@@ -4,7 +4,8 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.models.setting :as setting]
+   [metabase.api.auth :as api.auth]
+   [metabase.cloud-migration.core :as cloud-migration]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -38,11 +39,11 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (setting/get-value-of-type :string :store-api-url)
+  (let [store-api-url (cloud-migration/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
-        api-key (setting/get-value-of-type :string :api-key)
+        api-key (api.auth/api-key)
         _ (when (str/blank? api-key)
             (log/error "Missing api-key. Cannot create hm client config.")
             (throw (ex-info (tru "Missing api-key.") {:api-key api-key})))]
@@ -54,6 +55,39 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (mr/def :hm-client/http-reply [:tuple [:enum :ok :error] :map])
+
+(defn- send-request [request-method-fn store-api-url url request]
+  (try
+    (request-method-fn
+     (str store-api-url (+slash-prefix url))
+     request)
+    (catch Exception e
+      (log/errorf e "Error making request to %s" url)
+      {:ex-data (ex-data e)
+       :request request
+       :url     url})))
+
+(defn- decode-respones [unparsed-response url request]
+  (if (some? (:ex-data unparsed-response)) ;; skip decoding failed responses
+    unparsed-response
+    (try
+      (m/update-existing unparsed-response :body json/decode+kw)
+      (catch Exception e
+        (log/errorf e "Error decoding response from %s, is it json?" url)
+        {:ex-data           (ex-data e)
+         :unparsed-response unparsed-response
+         :request           request
+         :url               url}))))
+
+(defn- calculate-success [response url request]
+  (try
+    (get-safe-status response)
+    (catch Exception e
+      (log/errorf e "Error decoding response from %s, is it json?" url)
+      {:response response
+       :request  request
+       :url      url
+       :ex-data  (ex-data e)})))
 
 (mu/defn make-request :- :hm-client/http-reply
   "Makes a request to the store-api-url with the given method, path, and body.
@@ -68,31 +102,7 @@
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode body)))
         request-method-fn (->requestor method)
-        unparsed-response (try
-                            (request-method-fn
-                             (str store-api-url (+slash-prefix url))
-                             request)
-                            (catch Exception e
-                              (log/errorf e "Error making request to %s" url)
-                              {:ex-data (ex-data e)
-                               :request request
-                               :url     url}))
-        response          (if (some? (:ex-data unparsed-response)) ;; skip decoding failed responses
-                            unparsed-response
-                            (try
-                              (m/update-existing unparsed-response :body json/decode+kw)
-                              (catch Exception e
-                                (log/errorf e "Error decoding response from %s, is it json?" url)
-                                {:ex-data           (ex-data e)
-                                 :unparsed-response unparsed-response
-                                 :request           request
-                                 :url               url})))
-        success?          (try
-                            (get-safe-status response)
-                            (catch Exception e
-                              (log/errorf e "Error decoding response from %s, is it json?" url)
-                              {:response response
-                               :request  request
-                               :url      url
-                               :ex-data  (ex-data e)}))]
+        unparsed-response (send-request request-method-fn store-api-url url request)
+        response          (decode-respones unparsed-response url request)
+        success?          (calculate-success response url request)]
     [(if success? :ok :error) response]))

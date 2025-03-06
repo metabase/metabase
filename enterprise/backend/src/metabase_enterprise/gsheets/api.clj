@@ -25,7 +25,7 @@
 ;;
 ;; ## Overview
 ;; Google Sheets Integration allows users to connect their Google Drive folders to Metabase. We sync any Google Sheets
-;; inside of those folders, and make them avaliable to the user in their attached data warehouse. This integration is
+;; inside of those folders, and make them available to the user in their attached data warehouse. This integration is
 ;; implemented using Harbormaster, which is a service that manages instances of Metabase and also gives us a connection
 ;; to Google Sheets data. When a user connects a Google Drive folder to Metabase, Harbormaster creates a connection to
 ;; the folder and starts syncing the data to Metabase. This data is then available to the user in Metabase as tables.
@@ -95,7 +95,7 @@
   ([message data]
    (throw (ex-info message (merge data {;; the `:errors true` bit informs the exception middleware to return the message
                                         ;; in the body, even if we want to pass a stauts code. Without `:errors true`,
-                                        ;; sending a stuats code will ellide the message from the response.
+                                        ;; sending a status code will elide the message from the response.
                                         :errors true
                                         :message message})))))
 
@@ -103,12 +103,21 @@
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn- hm-service-account-email :- [:or [:= false] :string]
+(mu/defn- hm-service-account-email :- :string
   "Checks to see if Google service-account is setup in harbormaster, and returns the email."
   []
-  (let [[_status {:keys [body] :as _response}] (hm.client/make-request :get "/api/v2/mb/connections-google/service-account")]
-    (if-let [email (:email body)]
+  (let [[status {:keys [body] :as response}] (hm.client/make-request :get "/api/v2/mb/connections-google/service-account")
+        email (:email body)]
+    (cond
       email
+      email
+
+      (= :error status)
+      (error-response-in-body
+       (tru "Harbormaster returned an error.")
+       {:hm/response response :status-code 502})
+
+      :else
       (error-response-in-body
        (tru "Google service-account is not setup in harbormaster.")
        {:status-code 502}))))
@@ -166,7 +175,7 @@
   "Get a specific gdrive connection by id."
   [id]
   (when-not id
-    (throw (ex-info "must have an id to lookup by id" {})))
+    (throw (ex-info "Cannot fetch Google Drive connection: ID is nil" {})))
   (hm.client/make-request :get (str "/api/v2/mb/connections/" id)))
 
 (mu/defn- hm-create-gdrive-conn! :- :hm-client/http-reply
@@ -230,11 +239,11 @@
 
 (defn- handle-get-folder [attached-dwh]
   (let [conn-id (or (:gdrive/conn-id (gsheets))
-                    (log/warn "CACHE MISS ON GSHEETS")
-                    (some-> (t2/select-one :model/Setting :key "gsheets")
-                            :value
-                            json/decode+kw
-                            :gdrive/conn-id))
+                    (do (log/warn "CACHE MISS ON GSHEETS")
+                        (some-> (t2/select-one :model/Setting :key "gsheets")
+                                :value
+                                json/decode+kw
+                                :gdrive/conn-id)))
         [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
                                     ;; missing id:
                                     (catch Exception _
@@ -310,9 +319,6 @@
 
 (comment
 
-  (def drive-folder-url
-    "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=drive_link")
-
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1
               {:is_attached_dwh true
@@ -321,14 +327,9 @@
                     "\"auto-cruft-columns\":[\"^_dlt_id$\",\"^_dlt_load_id$\"]}")})
 
   (do
-    ;; This is what the notify endpoint calls:
-    ;; Do a sync on the attached dwh:
+    ;; This is what the notify endpoint calls to do a sync on the attached dwh:
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
 
     (sync-metadata/sync-db-metadata!
-     (t2/select-one :model/Database :is_attached_dwh true)))
-
-  (gsheets.settings/gsheets)
-
-  (reset-gsheets-status!))
+     (t2/select-one :model/Database :is_attached_dwh true))))

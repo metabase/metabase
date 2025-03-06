@@ -118,7 +118,7 @@
 (def ^:private
   gdrive-link
   "nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
-  "<gdrive-link>")
+  "<expected-gdrive-link>")
 
 (defmacro with-sample-db-as-dwh [& body]
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"

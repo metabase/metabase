@@ -94,7 +94,7 @@
        :trace-redirects []}]
  {:method :post,
   :url "/api/v2/mb/connections",
-  :body {:type "gdrive", :secret {:resources ["<gdrive-link>"]}}}
+  :body {:type "gdrive", :secret {:resources ["<expected-gdrive-link>"]}}}
  [:ok {:cached nil,
        :request-time 1941,
        :repeatable? false,

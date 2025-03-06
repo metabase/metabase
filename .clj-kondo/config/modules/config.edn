@@ -673,7 +673,7 @@
 
   enterprise/harbormaster
   {:api #{metabase-enterprise.harbormaster.client}
-   :uses #{models util}}
+   :uses #{api cloud-migration models util}}
 
   enterprise/impersonation
   {:api #{metabase-enterprise.impersonation.core
