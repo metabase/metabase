@@ -32,6 +32,7 @@
   (when-not (.exists (io/file dir))
     (println (c/blue "Creating directory " dir " ..."))
     (fs/create-dirs dir)
+    (download version dir)
     (println (c/green "Created.\n")))
   (try
     (println (str "Downloading from: " (url version)
