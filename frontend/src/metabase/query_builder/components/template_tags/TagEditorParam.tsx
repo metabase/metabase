@@ -5,11 +5,9 @@ import _ from "underscore";
 import { connect } from "metabase/lib/redux";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -20,7 +18,6 @@ import {
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DimensionReference,
   FieldId,
@@ -62,7 +59,6 @@ interface Props {
   databases: Database[];
   databaseFields?: Field[];
   metadata: Metadata;
-  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,
@@ -75,7 +71,6 @@ interface Props {
 function mapStateToProps(state: State) {
   return {
     metadata: getMetadata(state),
-    originalQuestion: getOriginalQuestion(state),
   };
 }
 
@@ -93,22 +88,8 @@ class TagEditorParamInner extends Component<Props> {
   }
 
   setType = (type: TemplateTagType) => {
-    const {
-      tag,
-      parameter,
-      setTemplateTag,
-      setParameterValue,
-      setTemplateTagConfig,
-      originalQuestion,
-    } = this.props;
-
-    const originalQuery = originalQuestion?.legacyQuery() as NativeQuery;
-    const originalTag = originalQuery
-      ?.variableTemplateTags()
-      .find((originalTag: TemplateTag) => originalTag.id === tag.id);
-    const originalParameter = originalQuestion
-      ?.parameters()
-      .find(originalParameter => originalParameter.id === parameter?.id);
+    const { tag, setTemplateTag, setParameterValue, setTemplateTagConfig } =
+      this.props;
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -120,23 +101,11 @@ class TagEditorParamInner extends Component<Props> {
       });
 
       setParameterValue(tag.id, null);
-
-      if (!originalTag || originalTag.type !== type) {
-        // clear the values_source_config when changing the type
-        // as the values will most likely not work for the new type.
-        setTemplateTagConfig(tag, {
-          values_source_type: undefined,
-          values_source_config: undefined,
-          values_query_type: undefined,
-        });
-      } else {
-        // reset the original values_source_config when changing the type
-        setTemplateTagConfig(tag, {
-          values_source_type: originalParameter?.values_source_type,
-          values_source_config: originalParameter?.values_source_config,
-          values_query_type: originalParameter?.values_query_type,
-        });
-      }
+      setTemplateTagConfig(tag, {
+        values_source_type: undefined,
+        values_source_config: undefined,
+        values_query_type: undefined,
+      });
     }
   };
 
