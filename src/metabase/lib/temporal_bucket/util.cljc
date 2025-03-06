@@ -47,12 +47,13 @@
     next-interval-message
     next-single-interval-message
     next-plural-interval-message]
-   `(cond
-      (zero? ~n) (i18n/tru ~this-interval-message)
-      (= ~n -1)  (i18n/tru ~prev-interval-message)
-      (= ~n 1)   (i18n/tru ~next-interval-message)
-      (neg? ~n)  (i18n/trun ~prev-single-interval-message ~prev-plural-interval-message (abs ~n))
-      (pos? ~n)  (i18n/trun ~next-single-interval-message ~next-plural-interval-message ~n))))
+   `(let [n# ~n]
+      (cond
+        (zero? n#) (i18n/tru ~this-interval-message)
+        (= n# -1)  (i18n/tru ~prev-interval-message)
+        (= n# 1)   (i18n/tru ~next-interval-message)
+        (neg? n#)  (i18n/trun ~prev-single-interval-message ~prev-plural-interval-message (abs n#))
+        (pos? n#)  (i18n/trun ~next-single-interval-message ~next-plural-interval-message n#)))))
 
 (defmacro relative-datetime-tru
   "Translates the offset part of a relative datetime interval. The macro accepts only compile-time messages. Examples:
@@ -62,12 +63,13 @@
   (relative-datetime-tru  2 \"month\") -> \"starting 2 months from now\""
   [n
    unit-message]
-  `(cond
-     (neg? ~n)
-     (i18n/trun ~(str "starting {0} " unit-message " ago") ~(str "starting {0} " unit-message "s ago") (abs ~n))
+  `(let [n# ~n]
+     (cond
+       (neg? n#)
+       (i18n/trun ~(str "starting {0} " unit-message " ago") ~(str "starting {0} " unit-message "s ago") (abs n#))
 
-     (pos? ~n)
-     (i18n/trun ~(str "starting {0} " unit-message " from now") ~(str "starting {0} " unit-message "s from now") ~n)
+       (pos? n#)
+       (i18n/trun ~(str "starting {0} " unit-message " from now") ~(str "starting {0} " unit-message "s from now") n#)
 
-     :else
-     (i18n/tru "starting now")))
+       :else
+       (i18n/tru "starting now"))))
