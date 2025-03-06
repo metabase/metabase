@@ -33,8 +33,8 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import { isRegularClickAction } from "metabase/visualizations/types";
 import {
+  formatVisualizerClickObject,
   isVisualizerDashboardCard,
-  parseDataSourceId,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
@@ -239,75 +239,26 @@ class Visualization extends PureComponent {
     }
   }
 
-  findColumnCardId = column => {
-    const { dashcard } = this.props;
-    const { columnValuesMapping } =
-      dashcard.visualization_settings.visualization;
-
-    const [valueSource] = columnValuesMapping[column.name] ?? [];
-
-    return parseDataSourceId(valueSource.sourceId).sourceId;
-  };
-
-  findRealColumn = column => {
-    if (!this.isVisualizerViz()) {
-      return column;
-    }
-
-    const { dashcard, rawRawSeries } = this.props;
-    const { columnValuesMapping } =
-      dashcard.visualization_settings.visualization;
-
-    const [valueSource] = columnValuesMapping[column.name] ?? [];
-
-    if (!valueSource) {
-      return;
-    }
-
-    const cardId = parseDataSourceId(valueSource.sourceId).sourceId;
-    const cardSeries = rawRawSeries.find(series => series.card.id === cardId);
-
-    return cardSeries.data.cols.find(
-      col => col.name === valueSource.originalName,
-    );
-  };
-
-  formatClicked = clicked => {
-    if (!this.isVisualizerViz()) {
-      return clicked;
-    }
-    return {
-      ...clicked,
-      cardId: clicked.column ? this.findColumnCardId(clicked.column) : null,
-      column: clicked.column
-        ? this.findRealColumn(clicked.column)
-        : clicked.column,
-      data: Array.isArray(clicked.data)
-        ? clicked.data.map(item => ({
-            ...item,
-            col: this.findRealColumn(item.col),
-          }))
-        : clicked.data,
-      dimensions: Array.isArray(clicked.dimensions)
-        ? clicked.dimensions.map(dimension => ({
-            ...dimension,
-            column: this.findRealColumn(dimension.column),
-          }))
-        : clicked.dimensions,
-    };
-  };
-
-  getClickActions(_clicked) {
-    if (!_clicked) {
+  getClickActions(clickedObject) {
+    if (!clickedObject) {
       return [];
     }
     const {
+      dashcard,
       metadata,
+      rawRawSeries,
       isRawTable,
       getExtraDataForClick = () => ({}),
     } = this.props;
 
-    const clicked = this.formatClicked(_clicked);
+    const clicked = this.isVisualizerViz()
+      ? formatVisualizerClickObject(
+          clickedObject,
+          rawRawSeries,
+          dashcard.visualization_settings.visualization.columnValuesMapping,
+        )
+      : clickedObject;
+
     const card = this.findCardById(clicked.cardId);
 
     const question = this._getQuestionForCardCached(metadata, card);
@@ -334,17 +285,9 @@ class Visualization extends PureComponent {
 
   findCardById = cardId => {
     const { rawSeries, rawRawSeries } = this.props;
-
-    if (this.isVisualizerViz()) {
-      return (
-        rawRawSeries.find(series => series.card.id === cardId)?.card ??
-        rawRawSeries[0].card
-      );
-    }
-
+    const series = this.isVisualizerViz() ? rawRawSeries : rawSeries;
     return (
-      rawSeries.find(series => series.card.id === cardId)?.card ??
-      rawSeries[0].card
+      series.find(series => series.card.id === cardId)?.card ?? series[0].card
     );
   };
 
