@@ -41,25 +41,19 @@
      ~n
      ~this-interval-message
      ~prev-interval-message
-     ~(str "Previous {0} " unit-message)
      ~(str "Previous {0} " unit-message "s")
      ~next-interval-message
-     ~(str "Next {0} " unit-message)
      ~(str "Next {0} " unit-message "s")))
   ([n
     this-interval-message
     prev-interval-message
-    prev-single-interval-message
     prev-plural-interval-message
     next-interval-message
-    next-single-interval-message
     next-plural-interval-message]
    (assert (every? string? [this-interval-message
                             prev-interval-message
-                            prev-single-interval-message
                             prev-plural-interval-message
                             next-interval-message
-                            next-single-interval-message
                             next-plural-interval-message])
            "[[temporal-interval-tru]] accepts compile-time strings only.")
    `(let [n# ~n]
@@ -67,8 +61,8 @@
         (zero? n#) (i18n/tru ~this-interval-message)
         (= n# -1)  (i18n/tru ~prev-interval-message)
         (= n# 1)   (i18n/tru ~next-interval-message)
-        (neg? n#)  (i18n/trun ~prev-single-interval-message ~prev-plural-interval-message (abs n#))
-        (pos? n#)  (i18n/trun ~next-single-interval-message ~next-plural-interval-message n#)))))
+        (neg? n#)  (i18n/trun ~prev-interval-message ~prev-plural-interval-message (abs n#))
+        (pos? n#)  (i18n/trun ~next-interval-message ~next-plural-interval-message n#)))))
 
 (defmacro relative-datetime-tru
   "Translates the offset part of a relative datetime interval. The macro accepts only compile-time messages. Examples:
