@@ -1,5 +1,10 @@
 import type { CellContext } from "@tanstack/react-table";
-import { useCallback, useState } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  useCallback,
+  useState,
+} from "react";
 
 import { Input } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -12,7 +17,7 @@ interface EditingBodyCellProps<TRow, TValue> {
   cellContext: CellContext<TRow, TValue>;
   columns: DatasetColumn[];
   onCellValueUpdate: (params: RowCellsWithPkValue) => void;
-  onCellEditCancel: (cellId: string) => void;
+  onCellEditCancel: () => void;
 }
 
 export const EditingBodyCell = ({
@@ -22,17 +27,14 @@ export const EditingBodyCell = ({
   onCellEditCancel,
 }: EditingBodyCellProps<RowValues, RowValue>) => {
   const {
-    cell,
     getValue,
     row: { original: rowData },
     column: { id: columnName },
   } = cellContext;
-  const cellId = cell.id;
-
   const initialValue = getValue<RowValue>();
   const [value, setValue] = useState<RowValue>(initialValue);
 
-  const handleFieldBlur = useCallback(() => {
+  const doCellValueUpdate = useCallback(() => {
     if (value !== initialValue) {
       const pkColumnIndex = columns.findIndex(isPK);
       const pkColumn = columns[pkColumnIndex];
@@ -46,9 +48,8 @@ export const EditingBodyCell = ({
       }
     }
 
-    onCellEditCancel(cellId);
+    onCellEditCancel();
   }, [
-    cellId,
     columnName,
     columns,
     initialValue,
@@ -58,14 +59,36 @@ export const EditingBodyCell = ({
     value,
   ]);
 
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => setValue(e.target.value),
+    [],
+  );
+
+  const handleKeyUp = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        doCellValueUpdate();
+      }
+      if (e.key === "Escape") {
+        onCellEditCancel();
+      }
+    },
+    [doCellValueUpdate, onCellEditCancel],
+  );
+
+  const handleFieldBlur = useCallback(() => {
+    doCellValueUpdate();
+  }, [doCellValueUpdate]);
+
   return (
     <Input
-      value={value as any} // TODO: fixup this type
+      value={value as any} // TODO [Milestone 2]: fixup this type after adding specific inputs based on data type
       className={S.input}
       variant="unstyled"
       size="xs"
       autoFocus
-      onChange={e => setValue(e.target.value)}
+      onChange={handleChange}
+      onKeyUp={handleKeyUp}
       onBlur={handleFieldBlur}
     />
   );
