@@ -14,6 +14,21 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
+    // we return a list of entities in a specific order to avoid flakiness. "recency" score can sometimes cause the order to change and fail the test
+    cy.intercept(
+      "GET",
+      "**/search?q=Company&context=command-palette&include_dashboard_questions=true&limit=20",
+      req => {
+        req.reply(res => {
+          const orderedNames = ["Products", "Orders", "Reviews", "People"];
+          res.body.data = res.body.data.sort((a, b) => {
+            return orderedNames.indexOf(a.name) - orderedNames.indexOf(b.name);
+          });
+          return res.body;
+        });
+      },
+    );
+
     // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",

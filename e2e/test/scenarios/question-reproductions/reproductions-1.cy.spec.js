@@ -535,7 +535,7 @@ describe("issue 17514", () => {
       cy.wait("@cardQuery");
 
       cy.findByTestId("parameter-value-widget-target")
-        .findByText("Previous 30 Years")
+        .findByText("Previous 30 years")
         .click();
 
       cy.findByTestId("parameter-value-dropdown")
