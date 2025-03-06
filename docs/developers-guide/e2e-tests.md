@@ -193,12 +193,12 @@ In order to check compatibility between Sample Apps and Embedding SDK, we have a
 
 To run these tests locally, run:
 ```
-CYPRESS_ALL_FEATURES_TOKEN=<token> TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+ENTERPRISE_TOKEN=<token> TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 ```
-CYPRESS_ALL_FEATURES_TOKEN=<token> TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+ENTERPRISE_TOKEN=<token> TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 On our CI, test failures do not block the merging of a pull request (PR). However, if a test fails, it’s most likely due to one of the following reasons:
