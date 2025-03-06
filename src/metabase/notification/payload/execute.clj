@@ -163,8 +163,7 @@
                                          :constraints   {}
                                          :middleware    {:process-viz-settings?             true
                                                          :js-int-to-string?                 false
-                                                         :add-default-userland-constraints? false
-                                                         :format-rows?                      false}
+                                                         :add-default-userland-constraints? false}
                                          :make-run      (fn make-run [qp _export-format]
                                                           (^:once fn* [query info]
                                                             (qp
@@ -271,8 +270,7 @@
                                        :middleware {:skip-results-metadata?            false
                                                     :process-viz-settings?             true
                                                     :js-int-to-string?                 false
-                                                    :add-default-userland-constraints? false
-                                                    :format-rows?                      false})
+                                                    :add-default-userland-constraints? false})
                                 (merge (cond-> {:executed-by creator-id
                                                 :context     :pulse
                                                 :card-id     card-id}
