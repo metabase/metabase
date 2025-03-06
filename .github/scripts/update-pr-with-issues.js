@@ -94,16 +94,19 @@ async function main() {
       console.log(`Found ${linearData.data.attachmentsForURL.nodes.length} linked Linear tasks`);
     }
 
+
     // Extract GitHub issue numbers from all attachments in the linked Linear task
     const issueNumbers = [];
     for (const node of linearData.data.attachmentsForURL.nodes) {
-      const linearTask = node.issue;
-      console.log(`Found linked Linear task: '${linearTask.identifier}' !`);
+      console.log(`checking node task: ${node}`)
+      const linearIssue = node.issue;
 
-      for (const attachment of linearTask.attachments.nodes) {
+      for (const attachment of linearIssue.attachments.nodes) {
         const url = attachment.url;
+        console.log(`-->  checking url: ${url}`)
         const match = url.match(/github\.com\/.*\/.*\/issues\/(\d+)/);
         if (match) {
+          console.log(`-->  found match: ${match[1]}`)
           issueNumbers.push(match[1]);
         }
       }
