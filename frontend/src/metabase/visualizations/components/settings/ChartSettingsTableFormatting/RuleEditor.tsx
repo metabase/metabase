@@ -13,7 +13,6 @@ import CS from "metabase/css/core/index.css";
 import {
   Box,
   Button,
-  Flex,
   Select,
   Stack,
   Text,
