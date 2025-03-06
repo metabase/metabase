@@ -3,15 +3,14 @@ import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { ClientSortableTable } from "metabase/common/components/Table";
+import { useToast } from "metabase/common/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
   useDeleteUploadTableMutation,
@@ -34,7 +33,7 @@ export function UploadManagementTable() {
   const [selectedItems, setSelectedItems] = useState<Table[]>([]);
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
@@ -110,9 +109,7 @@ export function UploadManagementTable() {
               selectedItems.length,
             );
 
-            dispatch(
-              addUndo({ message, toastColor: "error", icon: "warning" }),
-            );
+            sendToast({ message, toastColor: "error", icon: "warning" });
           } else if (result.length > 0) {
             const message = ngettext(
               msgid`1 table deleted`,
@@ -120,7 +117,7 @@ export function UploadManagementTable() {
               result.length,
             );
 
-            dispatch(addUndo({ message }));
+            sendToast({ message });
           }
           setSelectedItems([]);
         }}
