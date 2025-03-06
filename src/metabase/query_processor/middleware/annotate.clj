@@ -231,7 +231,7 @@
           [:expression expression-name])))))
 
 (defn- col-info-for-expression
-  [inner-query [_expression expression-name {:keys [temporal-unit] :as _opts} :as clause]]
+  [inner-query [_expression expression-name {:keys [temporal-unit binning] :as _opts} :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
@@ -240,7 +240,11 @@
     :expression_name expression-name
     :field_ref       (fe-friendly-expression-ref clause)}
    (when temporal-unit
-     {:unit temporal-unit})))
+     {:unit temporal-unit})
+   (when binning
+     {:binning_info (-> binning
+                        (set/rename-keys {:strategy :binning-strategy})
+                        u/snake-keys)})))
 
 (mu/defn- col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
