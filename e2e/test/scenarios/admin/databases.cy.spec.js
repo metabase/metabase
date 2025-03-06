@@ -103,6 +103,7 @@ describe("admin > database > add", () => {
 
     cy.intercept("POST", "/api/database").as("createDatabase");
     cy.intercept("GET", "/api/database").as("getDatabases");
+    cy.intercept("GET", "/api/database/:id").as("getDatabase");
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
@@ -225,15 +226,12 @@ describe("admin > database > add", () => {
           expect(request.body.details.user).to.equal("metabase");
         });
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
 
         waitForDbSync();
       });
 
-      it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+      it("should add Postgres database and redirect to db info page (metabase#12972, metabase#14334, metabase#17450)", () => {
         cy.findByRole("dialog").within(() => {
           cy.findByText(
             "Your database was added! Want to configure permissions?",
@@ -245,10 +243,10 @@ describe("admin > database > add", () => {
           cy.findByText("Done!");
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Postgres12").click();
-        });
-
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Postgres12",
+        );
         editDatabase();
 
         cy.findAllByTestId("database-connection-info-section").should(
@@ -282,7 +280,7 @@ describe("admin > database > add", () => {
     });
 
     it(
-      "should add Mongo database and redirect to listing",
+      "should add Mongo database and redirect to db info page",
       { tags: "@mongo" },
       () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -309,10 +307,7 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -321,9 +316,10 @@ describe("admin > database > add", () => {
           cy.button("Maybe later").click();
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo");
-        });
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Mongo",
+        );
 
         cy.findByRole("status").within(() => {
           cy.findByText("Syncing…");
@@ -375,10 +371,7 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should(
-          "match",
-          /\/admin\/databases\?created=true&createdDbId=\d$/,
-        );
+        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -387,9 +380,10 @@ describe("admin > database > add", () => {
           cy.button("Maybe later").click();
         });
 
-        cy.findByRole("table").within(() => {
-          cy.findByText("QA Mongo");
-        });
+        cy.findByTestId("database-header-section").should(
+          "contain.text",
+          "QA Mongo",
+        );
 
         cy.findByRole("status").within(() => {
           cy.findByText("Syncing…");
@@ -398,7 +392,7 @@ describe("admin > database > add", () => {
       },
     );
 
-    it("should add MySQL database and redirect to listing", () => {
+    it("should add MySQL database and redirect to db info page", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -425,10 +419,7 @@ describe("admin > database > add", () => {
 
       cy.wait("@createDatabase");
 
-      cy.url().should(
-        "match",
-        /\/admin\/databases\?created=true&createdDbId=\d$/,
-      );
+      cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
 
       cy.findByRole("dialog").within(() => {
         cy.findByText(
@@ -437,8 +428,11 @@ describe("admin > database > add", () => {
         cy.button("Maybe later").click();
       });
 
+      cy.findByTestId("database-header-section").should(
+        "contain.text",
+        "QA MySQL8",
+      );
       cy.findByRole("status").findByText("Syncing…").should("be.visible");
-      cy.findByRole("table").findByText("QA MySQL8").should("be.visible");
       cy.findByRole("status").findByText("Syncing…").should("not.exist");
       cy.findByRole("status").findByText("Done!").should("be.visible");
     });

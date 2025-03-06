@@ -69,9 +69,7 @@ export const DatabaseConnectionModalInner = ({
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      onChangeLocation(
-        `/admin/databases?created=true&createdDbId=${savedDB.id}`,
-      );
+      onChangeLocation(`/admin/databases/${savedDB?.id}?created=true`);
     } else {
       handleCloseModal();
     }

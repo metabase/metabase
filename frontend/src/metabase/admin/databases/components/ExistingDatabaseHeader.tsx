@@ -14,7 +14,7 @@ export const ExistingDatabaseHeader = ({
   const driverName = engines[database.engine ?? ""]?.["driver-name"];
 
   return (
-    <Flex mb="2.75rem" gap="1.25rem">
+    <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">
       <Flex direction="column" justify="space-between" gap="sm">
         <Title>{database?.name}</Title>
         <Flex gap="sm">
@@ -26,8 +26,11 @@ export const ExistingDatabaseHeader = ({
           <Text size="sm" c="text-medium">
             {c(
               "Time in which the database was added to Metabase (e.g. Added 3/4/2025)",
-            )
-              .t`Added ${new Intl.DateTimeFormat().format(new Date(database.created_at))}`}
+            ).t`Added ${new Intl.DateTimeFormat(undefined, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }).format(new Date(database.created_at))}`}
           </Text>
         </Flex>
       </Flex>

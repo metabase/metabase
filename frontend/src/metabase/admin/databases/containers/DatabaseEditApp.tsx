@@ -1,6 +1,8 @@
 import type { Location } from "history";
 import type { ComponentType } from "react";
-import { useMount } from "react-use";
+import { Link } from "react-router";
+import { replace } from "react-router-redux";
+import { useInterval, useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,12 +15,13 @@ import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Divider, Flex } from "metabase/ui";
+import { Box, Button, Divider, Flex, Modal, Text } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
   DatabaseId,
   Database as DatabaseType,
+  InitialSyncStatus,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -53,6 +56,7 @@ interface DatabaseEditAppProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
+  replace: (path: string) => void;
 }
 
 const mapStateToProps = (state: State) => {
@@ -73,7 +77,29 @@ const mapDispatchToProps = {
   selectEngine,
   updateDatabase,
   deleteDatabase,
+  replace,
 };
+
+// loads the database into the redux state and polls until the
+// database has been successfully synced for the first time
+// ideally this should be ported to RTKQuery
+function useDatabaseInitializer(
+  reset: () => void,
+  initializeDatabase: (databaseId: DatabaseId) => Promise<void>,
+  databaseId: DatabaseId,
+  initialSyncStatus: InitialSyncStatus | undefined,
+) {
+  useMount(async () => {
+    reset();
+    initializeDatabase(databaseId);
+  });
+
+  // keep refetcing the database until the sync status reached a terminal state
+  useInterval(
+    () => initializeDatabase(databaseId),
+    initialSyncStatus === "incomplete" ? 2000 : null,
+  );
+}
 
 function DatabaseEditAppInner({
   children,
@@ -87,17 +113,24 @@ function DatabaseEditAppInner({
   reset,
   updateDatabase,
   deleteDatabase,
+  location,
+  replace,
 }: DatabaseEditAppProps) {
-  useMount(async () => {
-    reset();
-    await initializeDatabase(params.databaseId);
-  });
+  useDatabaseInitializer(
+    reset,
+    initializeDatabase,
+    params.databaseId,
+    database?.initial_sync_status,
+  );
 
-  const isLoading = !database && !initializeError;
+  const isLoading = !database?.id && !initializeError;
   const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
   ]);
+
+  const isPermissionModalOpened = !!location.query.created || false;
+  const onPermissionModalClose = () => replace(location.pathname);
 
   return (
     <>
@@ -134,6 +167,31 @@ function DatabaseEditAppInner({
                     deleteDatabase={deleteDatabase}
                   />
                 </Flex>
+
+                <Modal
+                  opened={isPermissionModalOpened}
+                  onClose={onPermissionModalClose}
+                  size={620}
+                  withCloseButton={false}
+                  title={t`Your database was added! Want to configure permissions?`}
+                  padding="2rem"
+                >
+                  <Text
+                    mb="1.5rem"
+                    mt="1rem"
+                  >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
+                  <Flex justify="end">
+                    <Button
+                      mr="0.5rem"
+                      onClick={onPermissionModalClose}
+                    >{t`Maybe later`}</Button>
+                    <Button
+                      component={Link}
+                      variant="filled"
+                      to={`/admin/permissions/data/database/${database.id}`}
+                    >{t`Configure permissions`}</Button>
+                  </Flex>
+                </Modal>
               </>
             )}
           </LoadingAndErrorWrapper>

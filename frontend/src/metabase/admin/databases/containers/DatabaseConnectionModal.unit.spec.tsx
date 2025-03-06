@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { IndexRoute, Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
@@ -71,7 +72,7 @@ async function setup({
   const { history } = renderWithProviders(
     <Route path="/">
       <Route path="/home" component={MockComponent} />
-      <Route path="/admin/databases" component={MockComponent} />
+      <Route path="/admin/databases/:id" component={MockComponent} />
       <IndexRoute component={DatabaseConnectionModal} />
       <Route path=":databaseId" component={DatabaseConnectionModal} />
     </Route>,
@@ -197,16 +198,24 @@ describe("DatabaseConnectionModal", () => {
         "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
       );
 
+      // need to add an id to the mocked db result so redirect can go the the correct location
+      fetchMock.post(
+        "path:/api/database",
+        async url => {
+          const lastCall = fetchMock.lastCall(url);
+          return { ...(await lastCall?.request?.json()), id: 1 };
+        },
+        { overwriteRoutes: true },
+      );
+
       await userEvent.click(await screen.findByText("Save"));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toEqual(
-          "/admin/databases",
+          "/admin/databases/1",
         );
       });
-
       expect(history.getCurrentLocation().search).toContain("created=true");
-      expect(history.getCurrentLocation().search).toContain("createdDbId"); //Enpoint doesn't return an ID
 
       expect(
         screen.queryByTestId("leave-confirmation"),

@@ -12,7 +12,6 @@ import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
   AddSampleDatabaseLink,
@@ -35,23 +34,15 @@ export default class DatabaseList extends Component {
     this.state = {};
   }
 
-  onPermissionModalClose = () => {
-    const { location, push } = this.props;
-    push(location.pathname);
-  };
-
   static propTypes = {
     databases: PropTypes.array,
     hasSampleDatabase: PropTypes.bool,
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
-    created: PropTypes.string,
-    createdDbId: PropTypes.string,
     showSyncingModal: PropTypes.bool,
     closeSyncingModal: PropTypes.func,
     isAdmin: PropTypes.bool,
-    push: PropTypes.func.isRequired,
     location: PropTypes.object,
   };
 
@@ -64,11 +55,7 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
       isAdmin,
-      created,
-      createdDbId,
     } = this.props;
-
-    const isPermissionModalOpened = (created && createdDbId) || false;
 
     const error = deletionError || addSampleDatabaseError;
 
@@ -166,30 +153,6 @@ export default class DatabaseList extends Component {
               </div>
             ) : null}
           </section>
-
-          <Modal
-            opened={isPermissionModalOpened}
-            size={620}
-            withCloseButton={false}
-            title={t`Your database was added! Want to configure permissions?`}
-            padding="2rem"
-          >
-            <Text
-              mb="1.5rem"
-              mt="1rem"
-            >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
-            <Flex justify="end">
-              <Button
-                mr="0.5rem"
-                onClick={this.onPermissionModalClose}
-              >{t`Maybe later`}</Button>
-              <Button
-                component={Link}
-                variant="filled"
-                to={`/admin/permissions/data/database/${createdDbId}`}
-              >{t`Configure permissions`}</Button>
-            </Flex>
-          </Modal>
         </div>
 
         {this.props.children}
