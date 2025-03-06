@@ -144,9 +144,9 @@ export function Editor<S extends StartRule = "expression">(
       )}
 
       <Flex className={S.toolbar} pr="md" gap="sm">
-        <ButtonTooltip label={t`Format`}>
+        <ButtonTooltip label={t`Auto-format`}>
           <Button
-            aria-label={t`Format`}
+            aria-label={t`Auto-format`}
             onClick={formatExpression}
             variant="subtle"
             size="xs"
