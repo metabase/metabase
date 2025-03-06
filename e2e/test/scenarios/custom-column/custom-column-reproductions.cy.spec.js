@@ -1325,3 +1325,40 @@ describe("issue 53682", () => {
     });
   });
 });
+
+describe("issue 53527", () => {
+  const nativeQuestionDetails = {
+    name: "Quotes SQL",
+    native: {
+      query: "SELECT 'a\"b' AS TEXT",
+      "template-tags": {},
+    },
+  };
+
+  const mbqlQuestionDetails = cardId => ({
+    name: "Quotes MBQL",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should properly unescape quotes in the expression editor (metabase#53527)", () => {
+    H.createNativeQuestion(nativeQuestionDetails).then(({ body: card }) => {
+      H.createQuestion(mbqlQuestionDetails(card.id), { visitQuestion: true });
+    });
+    H.openNotebook();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: 'replace([TEXT], "\\"", "")',
+      name: "CustomColumn",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().findByText("ab").should("be.visible");
+  });
+});
