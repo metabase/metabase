@@ -166,8 +166,8 @@ export function DashCardVisualization({
       return rawSeries;
     }
 
-    const { display, columns, columnValuesMapping, settings } = dashcard
-      .visualization_settings!.visualization as VisualizerHistoryItem;
+    const { display, columns, columnValuesMapping, settings } =
+      dashcard.visualization_settings.visualization;
 
     const cards = [dashcard.card];
     if (Array.isArray(dashcard.series)) {
