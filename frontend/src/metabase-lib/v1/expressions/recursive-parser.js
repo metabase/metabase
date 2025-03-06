@@ -106,7 +106,7 @@ function recursiveParse(source) {
     }
 
     // for string literal, remove its enclosing quotes
-    return type === TOKEN.String ? shrink(text) : parseFloat(text);
+    return type === TOKEN.String ? token.value : parseFloat(text);
   };
 
   // Unary ::= Primary |
