@@ -98,7 +98,9 @@ class TagEditorParamInner extends Component<Props> {
     }
   }
 
-  getTemplateTagConfig = (newType: TemplateTagType): ParameterValuesConfig => {
+  getTemplateTagConfigAfterTypeChange = (
+    newType: TemplateTagType,
+  ): ParameterValuesConfig => {
     const { tag, parameter, originalQuestion } = this.props;
     if (!parameter || !originalQuestion) {
       return EMPTY_VALUES_CONFIG;
@@ -138,7 +140,7 @@ class TagEditorParamInner extends Component<Props> {
       });
 
       setParameterValue(tag.id, null);
-      setTemplateTagConfig(tag, this.getTemplateTagConfig(type));
+      setTemplateTagConfig(tag, this.getTemplateTagConfigAfterTypeChange(type));
     }
   };
 
