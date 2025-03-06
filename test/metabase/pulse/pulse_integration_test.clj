@@ -827,30 +827,30 @@
     ;; Disable search index, as the way the database is reset at the end can flake somehow.
     ;; This test has nothing to do with search, so not wasting more time on understanding it.
     (search.tu/with-index-disabled
-     (mt/dataset test-data
-       (mt/test-helpers-set-global-values!
-        (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
-              saved-dashboard     (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
-              {dash-id   :id
-               title     :name
-               dashcards :dashcards} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))]
-          (testing "Make sure our content was generated and saved"
-            (is (= 11 (count dashcards)))
-            (is (= "A look at Orders" title)))
-          (mt/with-temp [:model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                                :dashboard_id dash-id}
-                         :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                                     :pulse_id     pulse-id
-                                                                     :enabled      true}
-                         :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                                         :user_id          (mt/user->id :rasta)}]
-            (mt/with-fake-inbox
-             (with-redefs [email/bcc-enabled? (constantly false)]
-               (mt/with-test-user nil
-                 (pulse.send/send-pulse! pulse)))
-             (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
-               (is (false? (str/includes? html-body "An error occurred while displaying this card."))))))
-          (t2/delete! :model/Dashboard :id dash-id)))))))
+      (mt/dataset test-data
+        (mt/test-helpers-set-global-values!
+          (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
+                saved-dashboard     (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
+                {dash-id   :id
+                 title     :name
+                 dashcards :dashcards} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))]
+            (testing "Make sure our content was generated and saved"
+              (is (= 11 (count dashcards)))
+              (is (= "A look at Orders" title)))
+            (mt/with-temp [:model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                                  :dashboard_id dash-id}
+                           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                       :pulse_id     pulse-id
+                                                                       :enabled      true}
+                           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                           :user_id          (mt/user->id :rasta)}]
+              (mt/with-fake-inbox
+                (with-redefs [email/bcc-enabled? (constantly false)]
+                  (mt/with-test-user nil
+                    (pulse.send/send-pulse! pulse)))
+                (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+                  (is (false? (str/includes? html-body "An error occurred while displaying this card."))))))
+            (t2/delete! :model/Dashboard :id dash-id)))))))
 
 (deftest geographic-coordinates-formatting-test
   (testing "Longitude and latitude columns should format correctly on export (#38419)"
