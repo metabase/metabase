@@ -189,6 +189,7 @@ jobs:
         with:
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: ${{ inputs.branch}}
+          fetch-depth: 0
 
       - name: Setup git user
         run: |
@@ -221,7 +222,16 @@ jobs:
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
-          git push origin HEAD
+          echo checking out master
+          git checkout master
+
+          echo pushing origin
+          git push origin update-sdk-version-${{ env.sdk_version }}
+
+          echo checkout doc branch
+          git checkout update-sdk-version-${{ env.sdk_version }}
+
+          echo create doc branch
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
                        --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
