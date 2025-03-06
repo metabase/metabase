@@ -755,7 +755,7 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (persisted-info/invalidate! {:card_id [:in model-ids]}))
+    (persisted-info/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
       (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
@@ -763,7 +763,7 @@
             ;; the initial upload.
             fix-name #(update % :display_name humanization/name->human-readable-name)
             metadata (card.metadata/refresh-metadata card {:update-fn fix-name})]
-        (t2/update! :model/Card id {:result_metadata metadata}))))
+        (t2/update! :model/Card id {:result_metadata metadata})))))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
