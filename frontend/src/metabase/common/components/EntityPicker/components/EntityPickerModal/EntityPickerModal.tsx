@@ -1,4 +1,3 @@
-import { useWindowEvent } from "@mantine/hooks";
 import {
   type ReactNode,
   useCallback,
@@ -12,7 +11,6 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -330,24 +328,12 @@ export function EntityPickerModal<
     setSelectedTabId(initialTabId);
   }, [initialTabId]);
 
-  useWindowEvent(
-    "keydown",
-    event => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    },
-    { capture: true, once: true },
-  );
-
-  const titleId = useUniqueId("entity-picker-modal-title-");
-
   return (
-    <Modal.Root
+    <Modal
       opened={open}
       onClose={onClose}
       data-testid="entity-picker-modal"
+      title={title}
       /**
        * Both children of this component have "position: fixed" so the element's height is 0 by default.
        * This makes the following assertion to fail in Cypress:
@@ -357,82 +343,77 @@ export function EntityPickerModal<
       h="100vh"
       w="100vw"
       trapFocus={trapFocus}
-      closeOnEscape={false} // we're doing this manually in useWindowEvent
+      closeOnEscape
       yOffset="10dvh"
+      classNames={{
+        content: S.modalContent,
+        body: S.modalBody,
+      }}
+      styles={{
+        inner: {
+          display: "flex",
+          flexDirection: "column",
+        },
+        content: {
+          width: "57.5rem",
+        },
+      }}
     >
-      <Modal.Overlay />
-      <Modal.Content
-        className={S.modalContent}
-        aria-labelledby={titleId}
-        w="57.5rem"
-      >
-        <Modal.Header
-          px="2.5rem"
-          pt="1rem"
-          pb={hasTabs ? "1rem" : "1.5rem"}
-          bg="var(--mb-color-background)"
-        >
-          <Modal.Title id={titleId} lh="2.5rem">
-            {title}
-          </Modal.Title>
-          <Modal.CloseButton size={21} pos="relative" top="1px" />
-        </Modal.Header>
-        <Modal.Body className={S.modalBody} p="0">
-          {hydratedOptions.showSearch && (
-            <Box px="2.5rem" mb="1.5rem">
-              <TextInput
-                classNames={{ input: S.textInput }}
-                data-autofocus
-                type="search"
-                leftSection={<Icon name="search" size={16} />}
-                miw={400}
-                placeholder={getSearchInputPlaceholder(selectedFolder)}
-                value={searchQuery}
-                onChange={e => handleQueryChange(e.target.value ?? "")}
-              />
-            </Box>
-          )}
-          {!isLoadingTabs && !isLoadingRecentItems ? (
-            <ErrorBoundary>
-              {hasTabs ? (
-                <TabsView
-                  selectedTabId={selectedTabId}
-                  tabs={tabs}
-                  onItemSelect={handleSelectItem}
-                  onTabChange={handleTabChange}
-                />
-              ) : (
-                <div
-                  className={S.singlePickerView}
-                  data-testid="single-picker-view"
-                >
-                  {tabs[0]?.render({
-                    onItemSelect: item => handleSelectItem(item, tabs[0].id),
-                  }) ?? null}
-                </div>
-              )}
-              {!!hydratedOptions.hasConfirmButtons && onConfirm && (
-                <ButtonBar
-                  onConfirm={onConfirm}
-                  onCancel={onClose}
-                  canConfirm={canSelectItem}
-                  actionButtons={showActionButtons ? actionButtons : []}
-                  confirmButtonText={
-                    typeof options?.confirmButtonText === "function"
-                      ? options.confirmButtonText(selectedItem?.model)
-                      : options?.confirmButtonText
-                  }
-                  cancelButtonText={options?.cancelButtonText}
-                />
-              )}
-            </ErrorBoundary>
+      {hydratedOptions.showSearch && (
+        <Box px="2.5rem" mb="1.5rem">
+          <TextInput
+            classNames={{ input: S.textInput }}
+            data-autofocus
+            type="search"
+            leftSection={<Icon name="search" size={16} />}
+            miw={400}
+            placeholder={getSearchInputPlaceholder(selectedFolder)}
+            value={searchQuery}
+            onChange={e => handleQueryChange(e.target.value ?? "")}
+          />
+        </Box>
+      )}
+      {!isLoadingTabs && !isLoadingRecentItems ? (
+        <ErrorBoundary>
+          {hasTabs ? (
+            <TabsView
+              selectedTabId={selectedTabId}
+              tabs={tabs}
+              onItemSelect={handleSelectItem}
+              onTabChange={handleTabChange}
+            />
           ) : (
-            <EntityPickerLoadingSkeleton />
+            <div
+              className={S.singlePickerView}
+              data-testid="single-picker-view"
+            >
+              {tabs[0]?.render({
+                onItemSelect: item => handleSelectItem(item, tabs[0].id),
+              }) ?? null}
+            </div>
           )}
-          {children}
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+          {!!hydratedOptions.hasConfirmButtons && onConfirm && (
+            <ButtonBar
+              onConfirm={onConfirm}
+              onCancel={onClose}
+              canConfirm={canSelectItem}
+              actionButtons={showActionButtons ? actionButtons : []}
+              confirmButtonText={
+                typeof options?.confirmButtonText === "function"
+                  ? options.confirmButtonText(selectedItem?.model)
+                  : options?.confirmButtonText
+              }
+              cancelButtonText={options?.cancelButtonText}
+            />
+          )}
+        </ErrorBoundary>
+      ) : (
+        <EntityPickerLoadingSkeleton />
+      )}
+      {children}
+      {/* </Modal.Body>
+      </Modal.Content> */}
+    </Modal>
   );
 }
 
