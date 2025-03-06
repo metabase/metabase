@@ -140,7 +140,7 @@ async function main() {
       if (newBody.trim()) {
         newBody += '\n\n';
       }
-      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->\n${closingRefs}\n\n---\n` + newBody;
+      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->${closingRefs}\n\n\n---\n\n` + newBody;
 
       // Update the PR
       const updateData = JSON.stringify({
