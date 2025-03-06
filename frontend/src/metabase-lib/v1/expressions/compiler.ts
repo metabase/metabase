@@ -58,6 +58,9 @@ export function compileExpression({
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
+    pass(adjustTopLevelLiteralBooleanFilter, {
+      enabled: startRule === "boolean",
+    }),
     resolverPass({
       enabled: shouldResolve,
       database,
@@ -66,9 +69,6 @@ export function compileExpression({
       startRule,
     }),
     adjustBooleans,
-    pass(adjustTopLevelLiteralBooleanFilter, {
-      enabled: startRule === "boolean",
-    }),
   ];
 
   try {
