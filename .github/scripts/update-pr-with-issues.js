@@ -109,7 +109,7 @@ async function main() {
       }
     }
 
-    console.log(`Found linked GitHub issues: ${issueNumbers.join(', ')}`);
+    console.log(`Found linked GitHub issues: ${JSON.stringify(issueNumbers)}`);
 
     if (issueNumbers.length === 0) {
       console.log('No GitHub issues linked to the Linear task');
