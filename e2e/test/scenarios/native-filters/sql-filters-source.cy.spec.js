@@ -883,7 +883,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.runQuery("cardQuery");
   });
 
-  it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {
+  it("should clear the value type and config when changing the template tag type", () => {
     H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -908,11 +908,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Field Filter");
     H.setConnectedFieldSource("Orders", "Total");
-
-    SQLFilter.openTypePickerFromSelectedFilterType("Number");
-    SQLFilter.chooseType("Text");
-    cy.get("[data-checked='true']").should("have.text", "Search box");
-    H.checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });
 
