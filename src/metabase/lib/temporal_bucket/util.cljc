@@ -19,6 +19,8 @@
   (temporal-interval-tru  4 \"day\" \"Today\" \"Yesterday\" \"Tomorrow\") -> \"Next 4 days\""
   ([n
     unit-message]
+   (assert (string? unit-message)
+           "[[temporal-interval-tru]] accepts compile-time strings only.")
    `(temporal-interval-tru
      ~n
      ~unit-message
@@ -30,6 +32,11 @@
     this-interval-message
     prev-interval-message
     next-interval-message]
+   (assert (every? string? [unit-message
+                            this-interval-message
+                            prev-interval-message
+                            next-interval-message])
+           "[[temporal-interval-tru]] accepts compile-time strings only.")
    `(temporal-interval-tru
      ~n
      ~this-interval-message
@@ -47,6 +54,14 @@
     next-interval-message
     next-single-interval-message
     next-plural-interval-message]
+   (assert (every? string? [this-interval-message
+                            prev-interval-message
+                            prev-single-interval-message
+                            prev-plural-interval-message
+                            next-interval-message
+                            next-single-interval-message
+                            next-plural-interval-message])
+           "[[temporal-interval-tru]] accepts compile-time strings only.")
    `(let [n# ~n]
       (cond
         (zero? n#) (i18n/tru ~this-interval-message)
@@ -63,6 +78,8 @@
   (relative-datetime-tru  2 \"month\") -> \"starting 2 months from now\""
   [n
    unit-message]
+  (assert (string? unit-message)
+          "[[relative-datetime-tru]] accepts compile-time strings only.")
   `(let [n# ~n]
      (cond
        (neg? n#)
