@@ -18,9 +18,9 @@
   cljfmt-files
   {:doc      "Runs cljfmt on the given files/directories"
    :requires [[mage.format :as format]]
-   :examples [["./bin/mage format-file src/metabase/events.clj" "Format events.clj"]
-              ["./bin/mage format-file src" "Format all files in src"]
-              ["./bin/mage format-file -c src" "Check all files in src"]]
+   :examples [["./bin/mage cljfmt-files src/metabase/events.clj" "Format events.clj"]
+              ["./bin/mage cljfmt-files src" "Format all files in src"]
+              ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
    :options  [["-c" "--force-check" "Check staged files"]]
    :args     [:sequential [:string {:description "Files or directories to format."}]]
    :task     (format/files (cli/parse! (current-task)))}
@@ -129,6 +129,13 @@
    ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
    ;; map of ports.
    :data       {:a [:b :c] :b [:d]}}
+
+  -test {:doc "run all mage tests"
+         :requires [[mage.core-test]
+                    [mage.examples-test :as examples-test]]
+         :task (do
+                 (mage.core-test/run-tests)
+                 (examples-test/run-example-tests))}
 
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
