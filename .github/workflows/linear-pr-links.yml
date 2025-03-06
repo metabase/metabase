@@ -1,104 +1,122 @@
-name: Update PR Description with Linear Link
+name: Add Issue References to PR
 
 on:
-  push:
-    branches:
-      - '*'  # Triggers on push to any branch that has an open PR
+  pull_request:
+    types: [opened, edited, synchronize]
 
 jobs:
-  update-pr-description:
+  add-issue-references:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Find Linear issues and update PR description
+      - name: Add Issue References
         uses: actions/github-script@v7
-        env:
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const branchName = context.payload.ref.replace('refs/heads/', '');
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
 
-            // Get PRs associated with this branch
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${branchName}`,
-              state: 'open'
-            });
+            // Get PR URL to query Linear API
+            const prUrl = pr.html_url;
 
-            if (prs.data.length === 0) {
-              console.log('No open PRs found for this branch');
-              return;
-            }
-
-            const pr = prs.data[0];
-
-            // Query Linear's GraphQL API to find issues linked to this branch
             const linearApiKey = process.env.LINEAR_API_KEY;
             if (!linearApiKey) {
-              console.log('LINEAR_API_KEY secret is not set');
+              console.log('Linear API key not configured');
               return;
             }
 
-            const axios = require('axios');
+            const { default: fetch } = await import('node-fetch');
 
-            // Using branch name to find linked issues
+            // Query Linear API to find tasks linked to this PR
             const query = `
               query {
-                issues(filter: {
-                  branchName: {contains: "${branchName}"}
-                }) {
+                attachmentSearch(filter: {url: {eq: "${prUrl}"}}) {
                   nodes {
-                    id
-                    identifier
-                    url
+                    issue {
+                      id
+                      identifier
+                      attachments {
+                        nodes {
+                          url
+                        }
+                      }
+                    }
                   }
                 }
               }
             `;
 
-            try {
-              const response = await axios({
-                url: 'https://api.linear.app/graphql',
-                method: 'post',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': linearApiKey
-                },
-                data: { query }
-              });
+            const response = await fetch('https://api.linear.app/graphql', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': linearApiKey
+              },
+              body: JSON.stringify({ query })
+            });
 
-              const issues = response.data.data.issues.nodes;
+            const data = await response.json();
 
-              if (issues.length === 0) {
-                console.log('No Linear issues found linked to this branch');
-                return;
-              }
-
-              // Use the first linked issue
-              const issue = issues[0];
-              const linearId = issue.identifier;
-
-              // Check if the PR description already has the closing text
-              if (pr.body && pr.body.includes(`closes [${linearId}](${issue.url})`)) {
-                console.log('PR description already contains closing text');
-                return;
-              }
-
-              // Add closing text to the beginning of the PR description
-              // Include a clickable link to the Linear issue
-              const updatedBody = `closes [${linearId}](${issue.url})\n\n${pr.body || ''}`;
-
-              await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                body: updatedBody
-              });
-
-              console.log(`Updated PR #${pr.number} with Linear closing text for issue ${linearId}`);
-            } catch (error) {
-              console.error('Error querying Linear API:', error.message);
+            if (!data.data || !data.data.attachmentSearch || data.data.attachmentSearch.nodes.length === 0) {
+              console.log('No Linear tasks linked to this PR');
+              return;
             }
+
+            // Extract GitHub issue numbers from all attachments in the linked Linear task
+            const issueNumbers = [];
+            for (const node of data.data.attachmentSearch.nodes) {
+              const linearTask = node.issue;
+              console.log(`Found linked Linear task: ${linearTask.identifier}`);
+
+              for (const attachment of linearTask.attachments.nodes) {
+                const url = attachment.url;
+                const match = url.match(/github\.com\/.*\/.*\/issues\/(\d+)/);
+                if (match) {
+                  issueNumbers.push(match[1]);
+                }
+              }
+            }
+
+            if (issueNumbers.length === 0) {
+              console.log('No GitHub issues linked to the Linear task');
+              return;
+            }
+
+            // Generate closing references
+            const closingRefs = issueNumbers.map(num => `closes #${num}`).join(' ');
+
+            // Check if the PR body already contains these references
+            let newBody = pr.body || '';
+            let shouldUpdate = false;
+
+            for (const num of issueNumbers) {
+              if (!newBody.includes(`closes #${num}`) && !newBody.includes(`Closes #${num}`)) {
+                shouldUpdate = true;
+                break;
+              }
+            }
+
+            if (shouldUpdate) {
+              // Add references to the end of the PR body
+              if (newBody.trim()) {
+                newBody += '\n\n';
+              }
+              newBody += `<!-- Added by GitHub Action -->\n${closingRefs}`;
+
+              // Update the PR
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                body: newBody
+              });
+
+              console.log(`Updated PR #${pr.number} with issue references: ${closingRefs}`);
+            } else {
+              console.log('PR already contains all closing references');
+            }
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
