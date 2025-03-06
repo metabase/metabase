@@ -2,7 +2,6 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import cx from "classnames";
 import type { HTMLAttributes, TableHTMLAttributes } from "react";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -22,7 +21,7 @@ type TableProps = TableHTMLAttributes<HTMLTableElement> & {
 };
 
 export const Table = styled((props: TableProps) => (
-  <table {...props} className={cx(AdminS.ContentTable, props.className)} />
+  <table {...props} className={props.className ?? AdminS.ContentTable} />
 ))`
   background-color: var(--mb-color-bg-white);
   table-layout: fixed;
