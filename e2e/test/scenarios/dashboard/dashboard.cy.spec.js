@@ -50,9 +50,7 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      // cy.realPress("Escape");
-      // TODO: Fix this:
-      H.entityPickerModal().button("Cancel").click();
+      cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");

@@ -233,8 +233,41 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       await userEvent.click(newCollBtn());
-      await screen.findByTestId("create-collection-on-the-go"),
-        await screen.findByText("Give it a name");
+      await screen.findByTestId("create-collection-on-the-go");
+      await screen.findByText("Give it a name");
+    });
+
+    it("allow you to use esc to close modals", async () => {
+      setup();
+      const name = "my dashboard";
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      await userEvent.click(newCollBtn());
+      await screen.findByTestId("create-collection-on-the-go");
+
+      //Both parent modals should be hidden
+      expect(
+        await screen.findByRole("dialog", { name: "Select a collection" }),
+      ).toHaveAttribute("data-hidden", "true");
+      expect(
+        await screen.findByRole("dialog", { name: "New dashboard" }),
+      ).toHaveAttribute("data-hidden", "true");
+      userEvent.keyboard("{Escape}");
+
+      // Back to entity picker
+      expect(
+        await screen.findByRole("dialog", { name: "Select a collection" }),
+      ).not.toHaveAttribute("data-hidden", "true");
+      expect(
+        await screen.findByRole("dialog", { name: "New dashboard" }),
+      ).toHaveAttribute("data-hidden", "true");
+      userEvent.keyboard("{Escape}");
+
+      // Back to create dashboard modal
+      expect(
+        await screen.findByRole("dialog", { name: "New dashboard" }),
+      ).not.toHaveAttribute("data-hidden", "true");
     });
   });
 });
