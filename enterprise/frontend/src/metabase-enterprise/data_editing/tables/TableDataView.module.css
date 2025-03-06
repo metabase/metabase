@@ -22,9 +22,6 @@
 }
 
 .tableHeaderCell {
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
   background-color: var(--mb-base-color-orion-5);
   height: var(--editing-row-height);
   border-right: 1px solid var(--mb-color-border);
@@ -47,4 +44,5 @@
   height: var(--editing-row-height);
   display: flex;
   align-items: center;
+  padding: 0 12px;
 }
