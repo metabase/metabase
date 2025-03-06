@@ -3,27 +3,21 @@ import { useCallback, useState } from "react";
 import type { DataGridCellId } from "metabase/data-grid";
 
 export const useTableEditing = () => {
-  const [editingCellsMap, setEditingCellsMap] = useState<
-    Record<DataGridCellId, boolean>
-  >({});
+  const [editingCellId, setEditingCellId] = useState<DataGridCellId | null>(
+    null,
+  );
 
   const onCellClickToEdit = useCallback((cellId: DataGridCellId) => {
-    setEditingCellsMap(prevState => ({
-      ...prevState,
-      [cellId]: true,
-    }));
+    setEditingCellId(cellId);
   }, []);
 
-  const onCellEditCancel = useCallback((cellId: DataGridCellId) => {
-    setEditingCellsMap(prevState => ({
-      ...prevState,
-      [cellId]: false,
-    }));
+  const onCellEditCancel = useCallback(() => {
+    setEditingCellId(null);
   }, []);
 
   return {
     onCellClickToEdit,
     onCellEditCancel,
-    editingCellsMap,
+    editingCellId,
   };
 };

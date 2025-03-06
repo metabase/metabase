@@ -26,7 +26,7 @@ export const TableDataView = ({
 }: TableDataViewProps) => {
   const { cols, rows } = data.data;
 
-  const { editingCellsMap, onCellClickToEdit, onCellEditCancel } =
+  const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
@@ -54,12 +54,12 @@ export const TableDataView = ({
             onCellEditCancel={onCellEditCancel}
           />
         ),
-        getIsCellEditing: (cellId: string) => editingCellsMap[cellId],
+        getIsCellEditing: (cellId: string) => editingCellId === cellId,
       };
 
       return options;
     });
-  }, [cols, editingCellsMap, onCellEditCancel, onCellValueUpdate]);
+  }, [cols, editingCellId, onCellEditCancel, onCellValueUpdate]);
 
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
