@@ -193,7 +193,7 @@
            util}}
 
   eid-translation
-  {:api  #{metabase.eid-translation}
+  {:api  #{metabase.eid-translation.core}
    :uses #{}}
 
   embed
