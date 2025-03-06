@@ -59,14 +59,14 @@ export function NumberValueInput({
 
   if (valueCount === 2) {
     return (
-      <Flex align="center" justify="center" p="md">
+      <Flex align="center" justify="space-between" p="md" gap={"lg"}>
         <NumberFilterInput
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
           onChange={newValue => onChange([newValue, values[1]])}
         />
-        <Text mx="sm">{t`and`}</Text>
+        {/* <Text mx="sm">{t`and`}</Text> */}
         <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
