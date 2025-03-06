@@ -10530,35 +10530,6 @@ databaseChangeLog:
             );
       rollback: # not needed, these are created on startup using deserialization
 
-  - changeSet:
-      id: v53.2025-02-21T20:43:40
-      author: nvoxland
-      comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
-      preConditions:
-      changes:
-        - addColumn:
-            tableName: core_session
-            columns:
-              - column:
-                  name: key_hashed
-                  type: varchar(254)
-                  value: "upgrade placeholder"
-                  remarks: Hashed version of the session key
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v53.2025-02-21T21:21:04
-      author: nvoxland
-      comment: Creating index on the hashed session key
-      preConditions:
-      changes:
-        - createIndex:
-            tableName: core_session
-            columns:
-              - column:
-                  name: key_hashed
-            indexName: idx_core_session_key_hashed
 
   - changeSet:
       id: v54.2025-01-30T16:10:55
@@ -10832,6 +10803,36 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/alerts/v1/h2-alerts.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-03-06T16:55:15
+      author: nvoxland
+      comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: key_hashed
+                  type: varchar(254)
+                  value: "upgrade placeholder"
+                  remarks: Hashed version of the session key
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v54.2025-03-06T16:55:16
+      author: nvoxland
+      comment: Creating index on the hashed session key
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: core_session
+            columns:
+              - column:
+                  name: key_hashed
+            indexName: idx_core_session_key_hashed
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
