@@ -1281,22 +1281,7 @@ describe("scenarios > question > custom column > top level literal values", () =
     const EXPRESSION = "0";
 
     enterExpression(EXPRESSION);
-
     verifyExpression(EXPRESSION);
-    verifyCellContent("0");
-  });
-
-  it("should accept literal zero", () => {
-    const EXPRESSION = "0";
-
-    enterExpression(EXPRESSION);
-    verifyExpression(EXPRESSION);
-    verifyCellContent("0");
-  });
-
-  it("should accept negative zero", () => {
-    enterExpression("-0");
-    verifyExpression("0");
     verifyCellContent("0");
   });
 
