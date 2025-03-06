@@ -140,7 +140,7 @@ async function main() {
       if (newBody.trim()) {
         newBody += '\n\n';
       }
-      newBody = `<!-- Added by :sparkle: Add Issue References :sparkle: to PR GitHub Action -->\n${closingRefs}\n---\n` + newBody;
+      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->\n${closingRefs}\n---\n` + newBody;
 
       // Update the PR
       const updateData = JSON.stringify({
