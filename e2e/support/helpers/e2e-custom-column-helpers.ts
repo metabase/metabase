@@ -200,7 +200,7 @@ export const CustomExpressionEditor = {
     return CustomExpressionEditor;
   },
   format() {
-    cy.findByLabelText("Format").click();
+    cy.findByLabelText("Auto-format").click();
     return CustomExpressionEditor;
   },
   selectAll() {
