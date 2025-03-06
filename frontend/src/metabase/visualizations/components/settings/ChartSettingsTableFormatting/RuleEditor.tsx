@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import NumericInput from "metabase/components/NumericInput";
 import Button from "metabase/core/components/Button";
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/core/components/ColorSelector";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";

@@ -1,15 +1,17 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorRange from "metabase/core/components/ColorRange";
+import { Popover, type PopoverProps } from "metabase/ui";
 
 import ColorRangePopover from "./ColorRangePopover";
 
 export type ColorRangeSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
   "onChange" | "onSelect"
->;
+> &
+  Pick<PopoverProps, "withinPortal">;
 
 export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   value: string[];
@@ -20,7 +22,7 @@ export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   onChange?: (newValue: string[]) => void;
 }
 
-const ColorRangeSelector = forwardRef(function ColorRangeSelector(
+export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
   {
     value,
     colors,
@@ -32,19 +34,20 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
   }: ColorRangeSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [opened, { close, toggle }] = useDisclosure(false);
   return (
-    <TippyPopoverWithTrigger
-      renderTrigger={({ onClick }) => (
+    <Popover opened={opened} onClose={close}>
+      <Popover.Target>
         <ColorRange
           {...props}
           ref={ref}
           colors={value}
           isQuantile={isQuantile}
-          onClick={onClick}
+          onClick={toggle}
           role="button"
         />
-      )}
-      popoverContent={({ closePopover }) => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <ColorRangePopover
           initialValue={value}
           colors={colors}
@@ -52,12 +55,9 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
           colorMapping={colorMapping}
           isQuantile={isQuantile}
           onChange={onChange}
-          onClose={closePopover}
+          onClose={close}
         />
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorRangeSelector;
