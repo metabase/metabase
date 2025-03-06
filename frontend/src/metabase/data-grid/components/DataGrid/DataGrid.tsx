@@ -90,13 +90,19 @@ export const DataGrid = function DataGrid<TData>({
 
   const isEmpty = table.getRowModel().rows.length === 0;
 
+  const backgroundColor =
+    theme?.cell?.backgroundColor ?? "var(--mb-color-bg-white)";
+
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
         <div
           className={S.table}
           data-testid="table-root"
-          style={{ fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE }}
+          style={{
+            fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
+            backgroundColor,
+          }}
         >
           <div
             data-testid="table-scroll-container"
@@ -141,6 +147,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
+                            backgroundColor,
                           }
                         : {
                             width,
@@ -218,6 +225,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
+                            backgroundColor,
                           }
                         : {
                             width,
