@@ -62,7 +62,8 @@
         (= n# -1)  (i18n/tru ~prev-interval-message)
         (= n# 1)   (i18n/tru ~next-interval-message)
         (neg? n#)  (i18n/trun ~prev-interval-message ~prev-interval-plural-message (abs n#))
-        (pos? n#)  (i18n/trun ~next-interval-message ~next-interval-plural-message n#)))))
+        (pos? n#)  (i18n/trun ~next-interval-message ~next-interval-plural-message n#)
+        :else      (throw (ex-info (str "Invalid n: " n#) {:n n#}))))))
 
 (defmacro relative-datetime-tru
   "Translates the offset part of a relative datetime interval. The macro accepts only compile-time messages. Examples:
