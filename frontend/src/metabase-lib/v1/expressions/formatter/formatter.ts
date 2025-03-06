@@ -25,6 +25,7 @@ import {
 } from "../config";
 import {
   formatDimensionName,
+  formatIdentifier,
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
@@ -164,7 +165,7 @@ function formatDimension(
 
   const column = columns[columnIndex];
   if (!column) {
-    return formatDimensionName(t`Unknown Field`, options);
+    return formatIdentifier(t`Unknown Field`, options);
   }
 
   const info = Lib.displayInfo(query, stageIndex, column);
@@ -186,7 +187,7 @@ function formatMetric(path: AstPath<MetricAgg>, options: FormatOptions): Doc {
   });
 
   if (!metric) {
-    return formatMetricName(t`Unknown Metric`, options);
+    return formatIdentifier(t`Unknown Metric`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -212,7 +213,7 @@ function formatSegment(path: AstPath<SegmentFilter>, options: FormatOptions) {
   });
 
   if (!segment) {
-    return formatSegmentName(t`Unknown Segment`, options);
+    return formatIdentifier(t`Unknown Segment`, options);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);

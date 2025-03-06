@@ -1385,12 +1385,12 @@ describe("issue 48562", () => {
     H.openNotebook();
     H.getNotebookStep("expression").findByText("CustomColumn").click();
     H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
-    cy.get("body").type("{esc}");
+    cy.realPress("Escape");
     H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
     cy.button("Cancel").click();
-    cy.get("body").type("{esc}");
+    cy.realPress("Escape");
     H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
     H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
   });
