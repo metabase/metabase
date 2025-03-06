@@ -34,6 +34,7 @@ function httpsRequest(options, data = null) {
 }
 
 async function main() {
+  console.log("???")
   try {
     // Get environment variables
     const githubToken = process.env.GITHUB_TOKEN;
