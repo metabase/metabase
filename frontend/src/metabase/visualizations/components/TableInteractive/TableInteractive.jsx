@@ -329,19 +329,13 @@ class TableInteractive extends Component {
 
     const columnLength = data?.cols?.length;
 
-    // There is a bug with react-draggable where it uses
-    // ReactDOM.findDOMNode when the ref value is falsey.
-    // This is a workaround to ensure that the refs are always truthy.
-    const dummyNode = document.createElement("div");
-
+    // Initialize refs for each column headers.
+    // Without this, the draggable components will crash on React 19.
+    // This is because react-draggable uses ReactDOM.findDOMNode
+    // when `nodeRef` is falsey, which no longer exists on React 19.
     if (columnLength !== undefined) {
-      this.headerRefs = [...Array(columnLength)].map(() =>
-        createRef(dummyNode),
-      );
-
-      this.resizeHandleRefs = [...Array(columnLength)].map(() =>
-        createRef(dummyNode),
-      );
+      this.headerRefs = [...Array(columnLength)].map(() => createRef());
+      this.resizeHandleRefs = [...Array(columnLength)].map(() => createRef());
     }
   }
 
