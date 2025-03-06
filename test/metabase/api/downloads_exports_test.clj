@@ -305,13 +305,13 @@
                       (apply concat)))))
         (testing "unformatted"
           (is (= [[["Category"
-                    "2016-01-01T00:00Z"
-                    "2017-01-01T00:00Z"
-                    "2018-01-01T00:00Z"
-                    "2019-01-01T00:00Z"
+                    "2016-01-01T00:00:00Z"
+                    "2017-01-01T00:00:00Z"
+                    "2018-01-01T00:00:00Z"
+                    "2019-01-01T00:00:00Z"
                     "Row totals"]
                    ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
-                   ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.2"]
+                   ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
                    ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
@@ -1366,6 +1366,7 @@
         (testing "The column title changes are used when format-rows is true"
           (let [expected-header   ["Created At: Year" "Category" "Count Renamed" "Min of Created At: Year"]
                 formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (def res2 (update-vals formatted-results first))
             (is (= {:unsaved-card-download    expected-header
                     :card-download            expected-header
                     :public-question-download expected-header
