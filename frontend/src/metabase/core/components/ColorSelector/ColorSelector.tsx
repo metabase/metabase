@@ -35,6 +35,7 @@ export const ColorSelector = ({
       opened={opened}
       onClose={close}
       position="bottom-start"
+      trapFocus
     >
       <Popover.Target>
         <Center data-testid="color-selector-button">
