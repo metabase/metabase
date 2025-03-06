@@ -1,5 +1,10 @@
 const https = require('https');
 
+function containsIssueReference(text, issueNumber) {
+  const regex = new RegExp(`(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved):?\\s*#?${issueNumber}\\b`, 'i');
+  return regex.test(text);
+}
+
 // Function to make HTTPS requests
 function httpsRequest(options, data = null) {
   return new Promise((resolve, reject) => {
@@ -129,7 +134,7 @@ async function main() {
 
     let shouldUpdate = false;
     for (const num of issueNumbers) {
-      if (!newBody.includes(`closes #${num}`) && !newBody.includes(`Closes #${num}`)) {
+      if (!containsIssueReference(newBody, num)) {
         shouldUpdate = true;
         break;
       }
