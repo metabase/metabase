@@ -58,7 +58,6 @@ export function compileExpression({
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
-    adjustTopLevelLiterals,
     resolverPass({
       enabled: shouldResolve,
       database,
