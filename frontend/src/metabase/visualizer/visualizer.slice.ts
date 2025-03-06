@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { copy } from "metabase/lib/utils";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -121,7 +122,7 @@ export const initializeVisualizer = createAsyncThunk(
         })
         .flat(),
     );
-    return initialState;
+    return copy(initialState);
   },
 );
 
