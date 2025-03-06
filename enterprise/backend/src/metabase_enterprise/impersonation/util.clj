@@ -1,6 +1,6 @@
-(ns metabase-enterprise.advanced-permissions.api.util
+(ns metabase-enterprise.impersonation.util
   (:require
-   [metabase-enterprise.advanced-permissions.driver.impersonation :as advanced-perms.driver.impersonation]
+   [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -14,7 +14,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (seq (advanced-perms.driver.impersonation/enforced-impersonations-for-db db-or-id))
+       (seq (impersonation.driver/enforced-impersonations-for-db db-or-id))
        ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be using impersonation.
        (throw (ex-info (str (tru "No current user found"))

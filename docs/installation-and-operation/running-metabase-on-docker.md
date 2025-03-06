@@ -117,8 +117,9 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -281,7 +282,6 @@ These files should be in the same directory as the `docker-compose.yml`. Put the
 Notice the "\_FILE" on the environment variables that have a secret:
 
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -342,6 +342,8 @@ We currently support the following [environment variables](../configuring-metaba
 - `MB_LDAP_BIND_DN`
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
+
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ## Troubleshooting
 

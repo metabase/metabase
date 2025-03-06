@@ -792,6 +792,39 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "relative-time-interval",
+    structure: "intervalStartingFrom",
+    description: () =>
+      t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The date column to check.`,
+        example: formatIdentifier(t`Created At`),
+      },
+      {
+        name: t`value`,
+        description: t`Period of the interval, where negative numbers go back in time.`,
+        example: "-20",
+      },
+      {
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("month"),
+      },
+      {
+        name: t`offsetValue`,
+        description: t`The initial interval period to start from, where negative values are back in time.`,
+        example: "-10",
+      },
+      {
+        name: t`offsetUnit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("year"),
+      },
+    ],
+  },
+  {
     name: "relative-datetime",
     structure: "relativeDateTime",
     description: () => t`Gets a timestamp relative to the current time`,
