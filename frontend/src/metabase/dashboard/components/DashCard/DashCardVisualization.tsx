@@ -107,7 +107,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series: _series,
+  series: rawSeries,
   getClickActionMode,
   getHref,
   gridSize,
@@ -182,11 +182,11 @@ export function DashCardVisualization({
   const series = useMemo(() => {
     if (
       !dashcard ||
-      !_series ||
-      _series.length === 0 ||
+      !rawSeries ||
+      rawSeries.length === 0 ||
       !isVisualizerDashboardCard(dashcard)
     ) {
-      return _series;
+      return rawSeries;
     }
 
     const { display, columns, columnValuesMapping, settings } = dashcard
@@ -237,7 +237,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [_series, dashcard, datasets]);
+  }, [rawSeries, dashcard, datasets]);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -371,7 +371,9 @@ export function DashCardVisualization({
         dashboard={dashboard}
         dashcard={dashcard}
         rawSeries={series}
-        rawRawSeries={_series}
+        visualizerRawSeries={
+          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+        }
         metadata={metadata}
         mode={getClickActionMode}
         getHref={getHref}

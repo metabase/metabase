@@ -246,7 +246,7 @@ class Visualization extends PureComponent {
     const {
       dashcard,
       metadata,
-      rawRawSeries,
+      visualizerRawSeries,
       isRawTable,
       getExtraDataForClick = () => ({}),
     } = this.props;
@@ -254,7 +254,7 @@ class Visualization extends PureComponent {
     const clicked = this.isVisualizerViz()
       ? formatVisualizerClickObject(
           clickedObject,
-          rawRawSeries,
+          visualizerRawSeries,
           dashcard.visualization_settings.visualization.columnValuesMapping,
         )
       : clickedObject;
@@ -284,10 +284,13 @@ class Visualization extends PureComponent {
   };
 
   findCardById = cardId => {
-    const { rawSeries, rawRawSeries } = this.props;
-    const series = this.isVisualizerViz() ? rawRawSeries : rawSeries;
+    const { rawSeries, visualizerRawSeries } = this.props;
+    const lookupSeries = this.isVisualizerViz()
+      ? visualizerRawSeries
+      : rawSeries;
     return (
-      series.find(series => series.card.id === cardId)?.card ?? series[0].card
+      lookupSeries.find(series => series.card.id === cardId)?.card ??
+      lookupSeries[0].card
     );
   };
 
