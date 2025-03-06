@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
-export function useClickOutsideModal(ref: React.RefObject<HTMLDivElement>) {
+export function useCloseModal({
+  enabled = true,
+}: {
+  enabled?: boolean;
+} = {}) {
   const [showModal, setShowModal] = useState(false);
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     function handler(event: MouseEvent) {
-      if (!ref.current) {
-        return;
-      }
-      if (
-        !ref.current.contains(event.target as Node) &&
-        isInActiveElement(event.target)
-      ) {
+      if (isInActiveElement(event.target)) {
         event.preventDefault();
         event.stopPropagation();
         setShowModal(true);
@@ -21,7 +23,7 @@ export function useClickOutsideModal(ref: React.RefObject<HTMLDivElement>) {
     return () => {
       window.removeEventListener("click", handler, { capture: true });
     };
-  }, [ref]);
+  }, [enabled]);
 
   const closeModal = useCallback(() => {
     setShowModal(false);
