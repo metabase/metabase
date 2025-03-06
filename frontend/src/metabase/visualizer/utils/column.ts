@@ -67,7 +67,12 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
+export function copyColumn(
+  name: string,
+  column: DatasetColumn,
+  dataSourceName: string,
+  existingColumns: DatasetColumn[],
+): DatasetColumn {
   const copy: DatasetColumn = {
     ...column,
     name,
@@ -77,6 +82,10 @@ export function copyColumn(name: string, column: DatasetColumn): DatasetColumn {
       { "base-type": column.base_type },
     ] as FieldLiteral,
   };
+
+  if (existingColumns.some(col => col.display_name === copy.display_name)) {
+    copy.display_name = `${copy.display_name} (${dataSourceName})`;
+  }
 
   // TODO Remove manual MBQL manipulation
   if (isDate(column)) {

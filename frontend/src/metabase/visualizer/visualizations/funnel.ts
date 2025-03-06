@@ -40,13 +40,20 @@ export const funnelDropHandler = (
     let dimensionColumnName = state.settings["funnel.dimension"];
     if (!dimensionColumnName) {
       dimensionColumnName = columnRef.name;
-      state.columns.push(copyColumn(dimensionColumnName, column));
+      state.columns.push(
+        copyColumn(dimensionColumnName, column, dataSource.name, state.columns),
+      );
       state.settings["funnel.dimension"] = dimensionColumnName;
     } else {
       const index = state.columns.findIndex(
         col => col.name === dimensionColumnName,
       );
-      state.columns[index] = copyColumn(dimensionColumnName, column);
+      state.columns[index] = copyColumn(
+        dimensionColumnName,
+        column,
+        dataSource.name,
+        state.columns,
+      );
     }
 
     if (dimensionColumnName) {
@@ -61,13 +68,20 @@ export const funnelDropHandler = (
     let metricColumnName = state.settings["funnel.metric"];
     if (!metricColumnName) {
       metricColumnName = columnRef.name;
-      state.columns.push(copyColumn(metricColumnName, column));
+      state.columns.push(
+        copyColumn(metricColumnName, column, dataSource.name, state.columns),
+      );
       state.settings["funnel.metric"] = metricColumnName;
     } else {
       const index = state.columns.findIndex(
         col => col.name === metricColumnName,
       );
-      state.columns[index] = copyColumn(metricColumnName, column);
+      state.columns[index] = copyColumn(
+        metricColumnName,
+        column,
+        dataSource.name,
+        state.columns,
+      );
     }
 
     if (metricColumnName) {
@@ -104,7 +118,9 @@ export function addScalarToFunnel(
 
   if (!metricColumnName) {
     metricColumnName = columnRef.name;
-    state.columns.push(copyColumn(metricColumnName, column));
+    state.columns.push(
+      copyColumn(metricColumnName, column, dataSource.name, state.columns),
+    );
     state.settings["funnel.metric"] = metricColumnName;
   }
   if (!dimensionColumnName) {
