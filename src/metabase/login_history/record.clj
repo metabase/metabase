@@ -30,7 +30,7 @@
 
 (mu/defn record-login-history!
   "Record login history for a user, and send them an email if this is their first time logging in from this device."
-  [session-id  :- uuid?
+  [session-id  :- string?
    user        :- [:map
                    {:description ":model/User"}
                    [:id pos-int?]
