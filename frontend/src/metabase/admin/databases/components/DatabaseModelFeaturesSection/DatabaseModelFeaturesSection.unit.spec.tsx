@@ -69,12 +69,15 @@ describe("DatabaseModelFeaturesSection", () => {
   describe("model actions control", () => {
     it("is shown if database supports actions", () => {
       setup();
+
       expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
     });
 
-    it("is shown for non-admin users", () => {
-      setup();
-      expect(screen.getByLabelText(/Model actions/i)).toBeInTheDocument();
+    it("isn't shown if database doesn't support actions", () => {
+      const features = _.without(COMMON_DATABASE_FEATURES, "actions");
+      setup({ database: createMockDatabase({ features }) });
+
+      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
     });
 
     it("shows if actions are enabled", () => {
@@ -95,13 +98,6 @@ describe("DatabaseModelFeaturesSection", () => {
       });
 
       expect(screen.getByLabelText(/Model actions/i)).not.toBeChecked();
-    });
-
-    it("isn't shown if database doesn't support actions", () => {
-      const features = _.without(COMMON_DATABASE_FEATURES, "actions");
-      setup({ database: createMockDatabase({ features }) });
-
-      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
     });
 
     it("enables actions", async () => {
@@ -133,12 +129,9 @@ describe("DatabaseModelFeaturesSection", () => {
   describe("model caching control", () => {
     it("isn't shown if model caching is turned off globally", () => {
       setup({ isModelPersistenceEnabled: false });
-
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model persistence on/i),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(/Turn model persistence off/i),
+        screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
     });
 
@@ -149,23 +142,16 @@ describe("DatabaseModelFeaturesSection", () => {
           features: _.without(COMMON_DATABASE_FEATURES, "persist-models"),
         }),
       });
-
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model persistence on/i),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(/Turn model persistence off/i),
+        screen.queryByLabelText("Model persistence"),
       ).not.toBeInTheDocument();
     });
 
     it("offers to enable caching when it's enabled on the instance and supported by a database", () => {
       setup({ isModelPersistenceEnabled: true });
-      expect(
-        screen.getByText(/Turn model persistence on/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(/Turn model persistence off/i),
-      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Model persistence")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model persistence")).not.toBeChecked();
     });
 
     it("offers to disable caching when it's enabled for a database", () => {
@@ -175,12 +161,9 @@ describe("DatabaseModelFeaturesSection", () => {
           features: [...COMMON_DATABASE_FEATURES, "persist-models-enabled"],
         }),
       });
-      expect(
-        screen.getByText(/Turn model persistence off/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(/Turn model persistence on/i),
-      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Model actions")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model persistence")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model persistence")).toBeChecked();
     });
   });
 });

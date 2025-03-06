@@ -5,14 +5,14 @@ import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
 
-import { Description, Error, Label } from "./ModelActionsSection.styled";
+import { Description, Error, Label } from "../ModelFeatureToggles";
 
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;
   onToggleModelActionsEnabled: (enabled: boolean) => Promise<void>;
 }
 
-function ModelActionsSection({
+export function ModelActionsSection({
   hasModelActionsEnabled,
   onToggleModelActionsEnabled,
 }: ModelActionsSectionProps) {
@@ -48,6 +48,3 @@ function ModelActionsSection({
     </div>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelActionsSection;

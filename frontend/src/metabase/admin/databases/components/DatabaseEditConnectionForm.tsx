@@ -56,7 +56,7 @@ export const DatabaseEditConnectionForm = ({
 
   return (
     <ErrorBoundary errorComponent={GenericError as ComponentType}>
-      <LoadingAndErrorWrapper error={initializeError}>
+      <LoadingAndErrorWrapper loading={!database} error={initializeError}>
         {isDbModifiable(database) ? (
           <DatabaseForm
             initialValues={database}
