@@ -12,7 +12,7 @@ export const AlertModalSettingsBlock = ({
   children,
 }: AlertModalSettingsBlockProps) => {
   return (
-    <Stack spacing="0.75rem">
+    <Stack gap="0.75rem">
       <Text size="lg" lineClamp={1}>
         {title}
       </Text>

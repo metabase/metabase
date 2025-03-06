@@ -49,6 +49,7 @@ export function ChartSettingsButton({
           },
           content: {
             height: "85%",
+            overflowY: "hidden",
           },
         }}
       >

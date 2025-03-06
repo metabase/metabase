@@ -262,7 +262,7 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack spacing="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >

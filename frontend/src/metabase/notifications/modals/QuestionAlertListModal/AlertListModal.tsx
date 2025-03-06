@@ -63,7 +63,7 @@ export const AlertListModal = ({
       padding="xl"
       title={t`Edit alerts`}
     >
-      <Stack spacing="lg" mb="lg" mt="1rem">
+      <Stack gap="lg" mb="lg" mt="1rem">
         {sortedQuestionAlerts.map(alert => {
           const canEditAlert =
             isAdmin ||
