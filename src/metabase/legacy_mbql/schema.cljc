@@ -961,7 +961,6 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
-                       (is-clause? :value x)             :value
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -970,8 +969,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
-   [:value    value]
-   [:else     Field]])
+   [:else     [:or Field string? number? boolean?]]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 

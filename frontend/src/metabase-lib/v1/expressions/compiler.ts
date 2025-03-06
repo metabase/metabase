@@ -13,7 +13,7 @@ import {
   adjustOffset,
   adjustOptions,
   adjustTopLevelLiteralBooleanFilter,
-  adjustTopLevelLiterals,
+  //adjustTopLevelLiterals,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import type { ErrorWithMessage, StartRule } from "./types";

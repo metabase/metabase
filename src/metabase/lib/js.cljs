@@ -2317,6 +2317,14 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
+(defn- normalize-non-literal-expression
+  [expr]
+  ;; TODO HACK HACK HACK
+  ;; Is it possible to fix this in normalize-fragment instead?
+  (if ((some-fn string? boolean? number?) expr)
+    expr
+    (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))))
+
 (defn ^:export expression-clause-for-legacy-expression
   "Convert `legacy-expression` into a modern expression clause.
 
@@ -2325,7 +2333,7 @@
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+          expr (normalize-non-literal-expression expr)]
       (lib.core/normalize (lib.convert/->pMBQL expr)))))
 
 (defn ^:export legacy-expression-for-expression-clause
@@ -2364,7 +2372,7 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [expr (as-> legacy-expression expr
                  (js->clj expr :keywordize-keys true)
-                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
+                 (normalize-non-literal-expression expr)
                  (lib.convert/->pMBQL expr)
                  (lib.core/normalize expr))]
       (-> (lib.expression/diagnose-expression a-query stage-number
