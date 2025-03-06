@@ -1222,3 +1222,71 @@ describe("scenarios > question > custom column > help text", () => {
     H.CustomExpressionEditor.get().should("be.visible");
   });
 });
+
+describe("scenarios > question > custom column > exiting the editor", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.openProductsTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+  });
+
+  it("should be possible to exit the editor by clicking outside of it when there is no text", () => {
+    H.getNotebookStep("data").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+  });
+
+  it("should be possible to exit the editor by clicking outside of it when there is no text, by clicking an interactive element", () => {
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+    H.popover().findByText("Select none").should("be.visible");
+  });
+
+  it("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", blur: false });
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("Select none").should("not.exist");
+    H.expressionEditorWidget().should("exist");
+
+    H.modal().within(() => {
+      cy.findByText("Keep editing your custom expression?").should(
+        "be.visible",
+      );
+      cy.button("Discard changes").should("be.enabled");
+      cy.button("Keep editing").click();
+    });
+
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("exist");
+  });
+
+  it("should be possible to discard changes when clicking outside of the editor", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", blur: false });
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.expressionEditorWidget().should("exist");
+    H.popover().findByText("Select none").should("not.exist");
+
+    H.modal().within(() => {
+      cy.findByText("Keep editing your custom expression?").should(
+        "be.visible",
+      );
+      cy.button("Keep editing").should("be.enabled");
+      cy.button("Discard changes").click();
+    });
+
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+  });
+
+  it("should be possible to discard changes by clicking cancel button", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", name: "OK" });
+    H.expressionEditorWidget().button("Cancel").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+    H.getNotebookStep("expression").findByText("OK").should("not.exist");
+  });
+});
