@@ -1,4 +1,4 @@
-import type { ModalBaseProps } from "@mantine/core";
+import type { ModalProps } from "@mantine/core";
 
 /** Prevent eager portal rendering.
  *
@@ -6,13 +6,13 @@ import type { ModalBaseProps } from "@mantine/core";
  * underneath another one already on the page */
 export const PreventEagerPortal = <
   T extends Partial<
-    Pick<ModalBaseProps, "withinPortal" | "opened" | "children">
+    Pick<ModalProps, "withinPortal" | "opened" | "children" | "stackId">
   >,
 >(
   props: T,
 ) => {
-  const { withinPortal = true, opened = true, children } = props;
-  if (withinPortal && !opened) {
+  const { withinPortal = true, opened = true, stackId, children } = props;
+  if (withinPortal && !opened && !stackId) {
     return null;
   }
   return <>{children}</>;

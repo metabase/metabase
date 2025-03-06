@@ -299,22 +299,21 @@ export function LinkedEntityPicker({
         onClick={() => setIsPickerOpen(true)}
         onCancel={handleResetLinkTargetType}
       />
-      {isPickerOpen && (
-        <PickerComponent
-          title={getModalTitle()}
-          value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
-          onChange={newTarget => {
-            handleSelectLinkTargetEntityId(newTarget.id);
-            setIsPickerOpen(false);
-          }}
-          onClose={() => setIsPickerOpen(false)}
-          options={{
-            showPersonalCollections: filterPersonalCollections !== "exclude",
-            showRootCollection: true,
-            hasConfirmButtons: false,
-          }}
-        />
-      )}
+      <PickerComponent
+        open={isPickerOpen}
+        title={getModalTitle()}
+        value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
+        onChange={newTarget => {
+          handleSelectLinkTargetEntityId(newTarget.id);
+          setIsPickerOpen(false);
+        }}
+        onClose={() => setIsPickerOpen(false)}
+        options={{
+          showPersonalCollections: filterPersonalCollections !== "exclude",
+          showRootCollection: true,
+          hasConfirmButtons: false,
+        }}
+      />
 
       {isDashboard && dashboardTabs.length > 1 && (
         <Select

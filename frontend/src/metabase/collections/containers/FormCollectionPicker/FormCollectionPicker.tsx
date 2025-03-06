@@ -146,16 +146,16 @@ function FormCollectionPicker({
           )}
         </Button>
       </FormField>
-      {isPickerOpen && (
-        <CollectionPickerModal
-          title={t`Select a collection`}
-          value={{ id: value, model: "collection" }}
-          onChange={handleChange}
-          onClose={() => setIsPickerOpen(false)}
-          options={options}
-          {...collectionPickerModalProps}
-        />
-      )}
+
+      <CollectionPickerModal
+        open={isPickerOpen}
+        title={t`Select a collection`}
+        value={{ id: value, model: "collection" }}
+        onChange={handleChange}
+        onClose={() => setIsPickerOpen(false)}
+        options={options}
+        {...collectionPickerModalProps}
+      />
     </>
   );
 }

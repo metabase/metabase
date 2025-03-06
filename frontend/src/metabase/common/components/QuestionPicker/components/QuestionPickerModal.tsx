@@ -25,6 +25,7 @@ import {
 
 interface QuestionPickerModalProps {
   title?: string;
+  open: boolean;
   onChange: (item: QuestionPickerValueItem) => void;
   onClose: () => void;
   options?: QuestionPickerOptions;
@@ -51,6 +52,7 @@ const defaultOptions: QuestionPickerOptions = {
 
 export const QuestionPickerModal = ({
   title = t`Choose a question or model`,
+  open,
   onChange,
   onClose,
   value = { model: "collection", id: "root" },
@@ -160,6 +162,7 @@ export const QuestionPickerModal = ({
 
   return (
     <EntityPickerModal
+      open={open}
       title={title}
       onItemSelect={handleItemSelect}
       canSelectItem={canSelectItem(selectedItem)}

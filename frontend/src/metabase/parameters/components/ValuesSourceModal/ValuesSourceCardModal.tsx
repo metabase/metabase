@@ -40,6 +40,7 @@ export const ValuesSourceCardModal = ({
 
   return (
     <QuestionPickerModal
+      open
       title={t`Selectable values for ${parameter.name}`}
       value={initialValue}
       onChange={handleSubmit}

@@ -34,25 +34,24 @@ export const DashboardSelector = ({
       <DashboardPickerButton onClick={() => setIsOpen(true)}>
         {dashboard?.name || t`Select a dashboard`}
       </DashboardPickerButton>
-      {isOpen && (
-        <DashboardPickerModal
-          title={t`Choose a dashboard`}
-          value={
-            dashboard?.id ? { model: "dashboard", id: dashboard.id } : undefined
-          }
-          onChange={(dashboard: DashboardPickerValueItem) => {
-            onChange(dashboard.id);
-            setIsOpen(false);
-          }}
-          onClose={() => setIsOpen(false)}
-          options={{
-            showPersonalCollections: false,
-            showRootCollection: true,
-            allowCreateNew: false,
-            hasConfirmButtons: false,
-          }}
-        />
-      )}
+      <DashboardPickerModal
+        open={isOpen}
+        title={t`Choose a dashboard`}
+        value={
+          dashboard?.id ? { model: "dashboard", id: dashboard.id } : undefined
+        }
+        onChange={(dashboard: DashboardPickerValueItem) => {
+          onChange(dashboard.id);
+          setIsOpen(false);
+        }}
+        onClose={() => setIsOpen(false)}
+        options={{
+          showPersonalCollections: false,
+          showRootCollection: true,
+          allowCreateNew: false,
+          hasConfirmButtons: false,
+        }}
+      />
     </Flex>
   );
 };

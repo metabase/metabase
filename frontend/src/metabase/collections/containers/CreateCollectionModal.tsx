@@ -53,6 +53,7 @@ function CreateCollectionModal({
       data-testid="new-collection-modal"
       padding="40px"
       title={t`New collection`}
+      stackId="create-collection-modal"
     >
       <CreateCollectionForm
         {...props}

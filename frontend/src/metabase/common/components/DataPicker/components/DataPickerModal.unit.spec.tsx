@@ -38,6 +38,7 @@ function setup({
 
   renderWithProviders(
     <DataPickerModal
+      open={true}
       title={title}
       value={value}
       databaseId={databaseId}

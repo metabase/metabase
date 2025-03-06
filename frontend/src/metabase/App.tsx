@@ -27,6 +27,7 @@ import {
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
+import { Modal } from "metabase/ui";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
@@ -103,21 +104,23 @@ function App({
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
-            <AppBanner />
-            {isAppBarVisible && <AppBar />}
-            <AppContentContainer isAdminApp={isAdminApp}>
-              {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : children}
-                </ContentViewportContext.Provider>
-              </AppContent>
-              <UndoListing />
-              <StatusListing />
-              <NewModals />
-            </AppContentContainer>
+            <Modal.Stack>
+              <AppBanner />
+              {isAppBarVisible && <AppBar />}
+              <AppContentContainer isAdminApp={isAdminApp}>
+                {isNavBarEnabled && <Navbar />}
+                <AppContent ref={setViewportElement}>
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : children}
+                  </ContentViewportContext.Provider>
+                </AppContent>
+                <UndoListing />
+                <StatusListing />
+                <NewModals />
+              </AppContentContainer>
+            </Modal.Stack>
           </AppContainer>
           <Palette />
         </KBarProvider>

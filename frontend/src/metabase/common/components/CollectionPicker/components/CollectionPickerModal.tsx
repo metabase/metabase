@@ -23,6 +23,7 @@ import { NewCollectionDialog } from "./NewCollectionDialog";
 
 export interface CollectionPickerModalProps {
   title?: string;
+  open: boolean;
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
@@ -50,6 +51,7 @@ const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
 };
 
 export const CollectionPickerModal = ({
+  open,
   title = t`Choose a collection`,
   onChange,
   onClose,
@@ -204,6 +206,7 @@ export const CollectionPickerModal = ({
   return (
     <>
       <EntityPickerModal
+        open={open}
         title={title}
         onItemSelect={handleItemSelect}
         canSelectItem={

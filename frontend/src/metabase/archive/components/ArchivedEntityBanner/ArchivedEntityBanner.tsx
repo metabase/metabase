@@ -81,21 +81,20 @@ export const ArchivedEntityBanner = ({
           )}
         </Flex>
       </Box>
-      {modal === "move" && (
-        <CollectionPickerModal
-          title={`Move ${name}`}
-          value={{ id: "root", model: "collection" }}
-          onChange={collection => onMove?.(collection)}
-          options={{
-            showSearch: true,
-            hasConfirmButtons: true,
-            showRootCollection: true,
-            showPersonalCollections: true,
-            confirmButtonText: t`Move`,
-          }}
-          onClose={() => setModal(null)}
-        />
-      )}
+      <CollectionPickerModal
+        open={modal === "move"}
+        title={`Move ${name}`}
+        value={{ id: "root", model: "collection" }}
+        onChange={collection => onMove?.(collection)}
+        options={{
+          showSearch: true,
+          hasConfirmButtons: true,
+          showRootCollection: true,
+          showPersonalCollections: true,
+          confirmButtonText: t`Move`,
+        }}
+        onClose={() => setModal(null)}
+      />
       {modal === "delete" && (
         <ConfirmDeleteModal
           name={name}

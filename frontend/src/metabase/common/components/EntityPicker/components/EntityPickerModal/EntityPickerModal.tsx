@@ -1,4 +1,3 @@
-import { useWindowEvent } from "@mantine/hooks";
 import {
   type ReactNode,
   useCallback,
@@ -11,8 +10,6 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -77,6 +74,7 @@ export interface EntityPickerModalProps<
   Item extends TypeWithModel<Id, Model>,
 > {
   title?: string;
+  open: boolean;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
@@ -105,6 +103,7 @@ export function EntityPickerModal<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
+  open,
   title = t`Choose an item`,
   canSelectItem,
   selectedItem,
@@ -163,8 +162,6 @@ export function EntityPickerModal<
   );
 
   assertValidProps(hydratedOptions, onConfirm);
-
-  const { open } = useModalOpen();
 
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -330,24 +327,23 @@ export function EntityPickerModal<
     setSelectedTabId(initialTabId);
   }, [initialTabId]);
 
-  useWindowEvent(
-    "keydown",
-    event => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    },
-    { capture: true, once: true },
-  );
-
-  const titleId = useUniqueId("entity-picker-modal-title-");
+  // useWindowEvent(
+  //   "keydown",
+  //   event => {
+  //     if (event.key === "Escape") {
+  //       event.stopPropagation();
+  //       onClose();
+  //     }
+  //   },
+  //   { capture: true, once: true },
+  // );
 
   return (
-    <Modal.Root
+    <Modal
       opened={open}
       onClose={onClose}
       data-testid="entity-picker-modal"
+      title={title}
       /**
        * Both children of this component have "position: fixed" so the element's height is 0 by default.
        * This makes the following assertion to fail in Cypress:
@@ -357,10 +353,20 @@ export function EntityPickerModal<
       h="100vh"
       w="100vw"
       trapFocus={trapFocus}
-      closeOnEscape={false} // we're doing this manually in useWindowEvent
+      stackId="entity-picker"
       yOffset="10dvh"
+      classNames={{
+        content: S.modalContent,
+        body: S.modalBody,
+      }}
+      styles={{
+        inner: {
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
-      <Modal.Overlay />
+      {/* <Modal.Overlay />
       <Modal.Content
         className={S.modalContent}
         aria-labelledby={titleId}
@@ -377,62 +383,64 @@ export function EntityPickerModal<
           </Modal.Title>
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
-        <Modal.Body className={S.modalBody} p="0">
-          {hydratedOptions.showSearch && (
-            <Box px="2.5rem" mb="1.5rem">
-              <TextInput
-                classNames={{ input: S.textInput }}
-                data-autofocus
-                type="search"
-                leftSection={<Icon name="search" size={16} />}
-                miw={400}
-                placeholder={getSearchInputPlaceholder(selectedFolder)}
-                value={searchQuery}
-                onChange={e => handleQueryChange(e.target.value ?? "")}
+        <Modal.Body className={S.modalBody} p="0"> */}
+      <>
+        {hydratedOptions.showSearch && (
+          <Box px="2.5rem" mb="1.5rem">
+            <TextInput
+              classNames={{ input: S.textInput }}
+              data-autofocus
+              type="search"
+              leftSection={<Icon name="search" size={16} />}
+              miw={400}
+              placeholder={getSearchInputPlaceholder(selectedFolder)}
+              value={searchQuery}
+              onChange={e => handleQueryChange(e.target.value ?? "")}
+            />
+          </Box>
+        )}
+        {!isLoadingTabs && !isLoadingRecentItems ? (
+          <ErrorBoundary>
+            {hasTabs ? (
+              <TabsView
+                selectedTabId={selectedTabId}
+                tabs={tabs}
+                onItemSelect={handleSelectItem}
+                onTabChange={handleTabChange}
               />
-            </Box>
-          )}
-          {!isLoadingTabs && !isLoadingRecentItems ? (
-            <ErrorBoundary>
-              {hasTabs ? (
-                <TabsView
-                  selectedTabId={selectedTabId}
-                  tabs={tabs}
-                  onItemSelect={handleSelectItem}
-                  onTabChange={handleTabChange}
-                />
-              ) : (
-                <div
-                  className={S.singlePickerView}
-                  data-testid="single-picker-view"
-                >
-                  {tabs[0]?.render({
-                    onItemSelect: item => handleSelectItem(item, tabs[0].id),
-                  }) ?? null}
-                </div>
-              )}
-              {!!hydratedOptions.hasConfirmButtons && onConfirm && (
-                <ButtonBar
-                  onConfirm={onConfirm}
-                  onCancel={onClose}
-                  canConfirm={canSelectItem}
-                  actionButtons={showActionButtons ? actionButtons : []}
-                  confirmButtonText={
-                    typeof options?.confirmButtonText === "function"
-                      ? options.confirmButtonText(selectedItem?.model)
-                      : options?.confirmButtonText
-                  }
-                  cancelButtonText={options?.cancelButtonText}
-                />
-              )}
-            </ErrorBoundary>
-          ) : (
-            <EntityPickerLoadingSkeleton />
-          )}
-          {children}
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+            ) : (
+              <div
+                className={S.singlePickerView}
+                data-testid="single-picker-view"
+              >
+                {tabs[0]?.render({
+                  onItemSelect: item => handleSelectItem(item, tabs[0].id),
+                }) ?? null}
+              </div>
+            )}
+            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
+              <ButtonBar
+                onConfirm={onConfirm}
+                onCancel={onClose}
+                canConfirm={canSelectItem}
+                actionButtons={showActionButtons ? actionButtons : []}
+                confirmButtonText={
+                  typeof options?.confirmButtonText === "function"
+                    ? options.confirmButtonText(selectedItem?.model)
+                    : options?.confirmButtonText
+                }
+                cancelButtonText={options?.cancelButtonText}
+              />
+            )}
+          </ErrorBoundary>
+        ) : (
+          <EntityPickerLoadingSkeleton />
+        )}
+        {children}
+      </>
+      {/* </Modal.Body>
+      </Modal.Content> */}
+    </Modal>
   );
 }
 

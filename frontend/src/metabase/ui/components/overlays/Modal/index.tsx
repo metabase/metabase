@@ -31,4 +31,5 @@ Modal.CloseButton = MantineModal.CloseButton;
 Modal.Header = MantineModal.Header;
 Modal.Title = MantineModal.Title;
 Modal.Body = MantineModal.Body;
+Modal.Stack = MantineModal.Stack;
 // Modal.NativeScrollArea = MantineModal.NativeScrollArea;

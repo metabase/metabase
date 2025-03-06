@@ -171,19 +171,18 @@ export const QueryValidator = () => {
           emptyBody={<QueryValidatorEmpty />}
         />
       </Box>
-      {collectionPickerOpen && (
-        <CollectionPickerModal
-          title={t`Select a collection`}
-          value={{ id: collectionId, model: "collection" }}
-          onChange={handleCollectionChange}
-          onClose={() => setCollectionPickerOpen(false)}
-          options={{
-            hasRecents: false,
-            showRootCollection: true,
-            showPersonalCollections: true,
-          }}
-        />
-      )}
+      <CollectionPickerModal
+        open={collectionPickerOpen}
+        title={t`Select a collection`}
+        value={{ id: collectionId, model: "collection" }}
+        onChange={handleCollectionChange}
+        onClose={() => setCollectionPickerOpen(false)}
+        options={{
+          hasRecents: false,
+          showRootCollection: true,
+          showPersonalCollections: true,
+        }}
+      />
     </>
   ) : (
     <Flex justify="center" p="1rem">

@@ -56,22 +56,22 @@ function DashCardPlaceholderInner({
           >{t`Select question`}</Button>
         )}
       </Flex>
-      {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          models={["card", "dataset", "metric"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-        />
-      )}
+
+      <QuestionPickerModal
+        open={isQuestionPickerOpen}
+        title={t`Pick what you want to replace this with`}
+        value={
+          dashboard.collection_id
+            ? {
+                id: dashboard.collection_id,
+                model: "collection",
+              }
+            : undefined
+        }
+        models={["card", "dataset", "metric"]}
+        onChange={handleSelectQuestion}
+        onClose={() => setQuestionPickerOpen(false)}
+      />
     </>
   );
 }

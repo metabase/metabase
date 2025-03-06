@@ -336,6 +336,7 @@ const setupModal = async ({
 
   renderWithProviders(
     <QuestionPickerModal
+      open={true}
       onChange={onChange}
       value={initialValue}
       onClose={jest.fn()}

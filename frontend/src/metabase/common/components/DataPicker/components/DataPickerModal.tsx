@@ -43,6 +43,7 @@ interface Props {
    */
   databaseId?: DatabaseId;
   title: string;
+  open: boolean;
   value: DataPickerValue | undefined;
   models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
@@ -71,6 +72,7 @@ const options: DataPickerModalOptions = {
 export const DataPickerModal = ({
   databaseId,
   title,
+  open,
   value,
   models = ["table", "card", "dataset"],
   onChange,
@@ -227,6 +229,7 @@ export const DataPickerModal = ({
 
   return (
     <EntityPickerModal
+      open={open}
       canSelectItem
       defaultToRecentTab={false}
       initialValue={value}

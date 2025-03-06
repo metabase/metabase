@@ -68,15 +68,14 @@ export function DataStep({
           {tableInfo?.displayName}
         </Text>
       )}
-      {isOpened && (
-        <DataPickerModal
-          title={t`Select a table`}
-          models={["table"]}
-          value={tableValue}
-          onChange={handleChange}
-          onClose={() => setIsOpened(false)}
-        />
-      )}
+      <DataPickerModal
+        open={isOpened}
+        title={t`Select a table`}
+        models={["table"]}
+        value={tableValue}
+        onChange={handleChange}
+        onClose={() => setIsOpened(false)}
+      />
     </ClauseStep>
   );
 }

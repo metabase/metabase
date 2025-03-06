@@ -181,16 +181,15 @@ function ModernDataPicker({
           onAuxClick={handleAuxClick}
         />
       </Tooltip>
-      {isOpened && (
-        <DataPickerModal
-          title={title}
-          value={tableValue}
-          databaseId={canChangeDatabase ? undefined : databaseId}
-          models={modelList}
-          onChange={onChange}
-          onClose={() => setIsOpened(false)}
-        />
-      )}
+      <DataPickerModal
+        open={isOpened}
+        title={title}
+        value={tableValue}
+        databaseId={canChangeDatabase ? undefined : databaseId}
+        models={modelList}
+        onChange={onChange}
+        onClose={() => setIsOpened(false)}
+      />
     </>
   );
 }

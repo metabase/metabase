@@ -110,6 +110,7 @@ const setup = ({
 
   renderWithProviders(
     <EntityPickerModal
+      open={true}
       title={title}
       onItemSelect={onItemSelect}
       canSelectItem={true}

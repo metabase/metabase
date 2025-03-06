@@ -64,18 +64,17 @@ export function FormModelPicker({
           {isModelSelected ? model?.name : placeholder}
         </Button>
       </FormField>
-      {isPickerOpen && (
-        <QuestionPickerModal
-          models={["dataset"]}
-          title={t`Select a model`}
-          value={model?.id ? getQuestionPickerValue(model) : undefined}
-          onChange={newModel => {
-            setValue(newModel.id);
-            setIsPickerOpen(false);
-          }}
-          onClose={() => setIsPickerOpen(false)}
-        />
-      )}
+      <QuestionPickerModal
+        open={isPickerOpen}
+        models={["dataset"]}
+        title={t`Select a model`}
+        value={model?.id ? getQuestionPickerValue(model) : undefined}
+        onChange={newModel => {
+          setValue(newModel.id);
+          setIsPickerOpen(false);
+        }}
+        onClose={() => setIsPickerOpen(false)}
+      />
     </>
   );
 }

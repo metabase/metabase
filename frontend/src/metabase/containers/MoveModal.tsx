@@ -118,6 +118,7 @@ export const MoveModal = ({
 
   return (
     <CollectionPickerModal
+      open={true}
       title={title}
       value={{
         id: initialCollectionId,
