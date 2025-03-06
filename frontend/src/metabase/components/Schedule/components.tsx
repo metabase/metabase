@@ -69,6 +69,7 @@ export const SelectFrequency = ({
       }
       data={scheduleTypeOptions}
       aria-label={label}
+      data-testid="select-frequency"
     />
   );
 };
@@ -87,6 +88,7 @@ export const SelectFrame = ({
       }
       data={frames}
       aria-label={label}
+      data-testid="select-frame"
     />
   );
 };
@@ -132,6 +134,7 @@ export const SelectTime = ({
           );
         }}
         aria-label={timeSelectLabel}
+        data-testid="select-time"
       />
       {/* Choose between AM and PM */}
       <Group gap="sm">
@@ -147,6 +150,7 @@ export const SelectTime = ({
             }
             data={amAndPM}
             aria-label={amPmControlLabel}
+            data-testid="select-am-pm"
           />
         )}
         {timezone && (
@@ -183,6 +187,7 @@ export const SelectWeekday = ({
       }
       data={weekdays}
       aria-label={label}
+      data-testid="select-weekday"
     />
   );
 };
@@ -213,6 +218,7 @@ export const SelectWeekdayOfMonth = ({
       }
       data={weekdayOfMonthOptions}
       aria-label={label}
+      data-testid="select-weekday-of-month"
     />
   );
 };
@@ -236,6 +242,7 @@ export const SelectMinute = ({
         updateSchedule("schedule_minute", Number(value))
       }
       aria-label={label}
+      data-testid="select-minute"
     />
   );
 };
