@@ -54,30 +54,17 @@ export function NumberFilterPicker({
 
   const availableOptions = useMemo(() => {
     return availableOptions2.sort((a, b) => {
-      // if (previousOperator === 'between' && a.operator === '=') {
-      //   return 0;
-      // }
-      // if (a.operator === "between") {
-      //   return -1;
-      // }
-      // if (a.operator === "=") {
-      //   return -1;
-      // }
       if (a.operator === "between") {
         return -1;
       }
 
       return 0;
     });
-  }, [availableOptions2, operator, previousOperator]);
+  }, [availableOptions2]);
   const selectedOption = availableOptions.find(
     option => option.operator === operator,
   );
 
-  console.log({
-    operator,
-    previousOperator,
-  });
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
@@ -99,13 +86,7 @@ export function NumberFilterPicker({
           {availableOptions.map(option => {
             return (
               <Menu.Item
-                // display={"block"}
-                // w={"100%"}
                 key={option.operator}
-                // variant="transparent"
-                // c={"#4C5773"}
-                // ta={"left"}
-                // style={{textAlign:'left'}}
                 onClick={() => {
                   handleOperatorChange(option.operator);
                   setIsOpen(false);
@@ -175,9 +156,7 @@ export function NumberFilterPicker({
                   selectedOption?.operator === option.operator
                     ? {
                         label: {
-                          // color: "#696E7B",
-                          // borderColor: "#dee2e6",
-                          // fontWeight: "bold",
+                          fontWeight: "bold",
                         },
                       }
                     : {
@@ -209,16 +188,6 @@ export function NumberFilterPicker({
           </Chip>
         </Chip.Group>
       </Flex>
-      {/*       <FilterPickerHeader
-        columnName={columnInfo.longDisplayName}
-        onBack={onBack}
-      >
-        <FilterOperatorPicker
-          value={operator}
-          options={availableOptions}
-          onChange={handleOperatorChange}
-        />
-      </FilterPickerHeader> */}
 
       {valueCount === 2 && (
         <RangePicker
