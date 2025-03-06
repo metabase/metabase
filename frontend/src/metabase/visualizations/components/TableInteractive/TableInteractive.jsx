@@ -198,7 +198,7 @@ class TableInteractive extends Component {
       document.body.appendChild(this._div);
     }
 
-    this._setupDraggableRefs(this.props);
+    this._setupColumnHeaderDraggableRefs(this.props);
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
     this._showDetailShortcut(this.props.data, this.props.isPivoted);
@@ -294,7 +294,7 @@ class TableInteractive extends Component {
 
   componentDidUpdate(prevProps) {
     if (prevProps.data?.cols?.length !== this.props.data?.cols?.length) {
-      this._setupDraggableRefs(this.props);
+      this._setupColumnHeaderDraggableRefs(this.props);
     }
 
     if (
@@ -324,7 +324,7 @@ class TableInteractive extends Component {
     }
   }
 
-  _setupDraggableRefs(props) {
+  _setupColumnHeaderDraggableRefs(props) {
     const { data } = props;
 
     const columnLength = data?.cols?.length;
