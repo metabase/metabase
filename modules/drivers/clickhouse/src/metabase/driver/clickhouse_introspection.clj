@@ -5,11 +5,12 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.util :as u])
-  (:import (java.sql DatabaseMetaData)))
+  (:import
+   (java.sql Connection DatabaseMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -112,21 +113,18 @@
   [table]
   (not (str/starts-with? (:table_name table) ".inner")))
 
-(defn- ->spec
-  [db]
-  (if (u/id db)
-    (sql-jdbc.conn/db->pooled-connection-spec db) db))
-
 (defn- get-all-tables
-  [db]
-  (jdbc/with-db-metadata [metadata (->spec db)]
-    (->> (get-tables-from-metadata metadata "%")
-         (jdbc/metadata-result)
-         (vec)
-         (filter #(and
-                   (not (contains? (sql-jdbc.sync/excluded-schemas :clickhouse) (:table_schem %)))
-                   (not-inner-mv-table? %)))
-         (tables-set))))
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db nil
+   (fn [^Connection conn]
+     (->> (get-tables-from-metadata (.getMetaData conn) "%")
+          jdbc/metadata-result
+          vec
+          (filter #(and
+                    (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem %)))
+                    (not-inner-mv-table? %)))
+          tables-set))))
 
 ;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
@@ -135,33 +133,36 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
-(defn- get-tables-in-dbs [db-or-dbs]
+(defn- get-tables-in-dbs
+  [driver db-or-dbs]
   (->> (for [db (as-> (or (get-db-name db-or-dbs) "default") dbs
                   (str/split dbs #" ")
                   (remove empty? dbs)
-                  (map (comp #(ddl.i/format-name :clickhouse %) str/trim) dbs))]
-         (jdbc/with-db-metadata [metadata (->spec db-or-dbs)]
-           (jdbc/metadata-result
-            (get-tables-from-metadata metadata db))))
+                  (map (comp #(ddl.i/format-name driver %) str/trim) dbs))]
+         (sql-jdbc.execute/do-with-connection-with-options
+          driver db-or-dbs nil
+          (fn [^Connection conn]
+            (-> (.getMetaData conn)
+                (get-tables-from-metadata db)
+                jdbc/metadata-result))))
        (apply concat)
        (filter not-inner-mv-table?)
        (tables-set)))
 
 (defmethod driver/describe-database :clickhouse
-  [_ {{:keys [scan-all-databases]}
-      :details :as db}]
+  [driver {{:keys [scan-all-databases]}
+           :details :as db}]
   {:tables
-   (if
-    (boolean scan-all-databases)
-     (get-all-tables db)
-     (get-tables-in-dbs db))})
+   (if (boolean scan-all-databases)
+     (get-all-tables driver db)
+     (get-tables-in-dbs driver db))})
 
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
 
 (defmethod driver/describe-table :clickhouse
-  [_ database table]
+  [_driver database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
                               :let [updated-field (update field :database-required

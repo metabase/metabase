@@ -24,7 +24,9 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -196,16 +198,18 @@
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
       ;; (println "### Executing create-test-db! with details:" details)
-      (jdbc/with-db-connection
-        [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
-        (let [raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
-              statements (as-> raw-statements s
-                           (str/split s #";")
-                           (map str/trim s)
-                           (filter seq s))]
+      (sql-jdbc.execute/do-with-connection-with-options
+       :clickhouse details nil
+       (fn [^Connection conn]
+         (let [metadata (.getMetaData conn)
+               raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
+               statements (as-> raw-statements s
+                            (str/split s #";")
+                            (map str/trim s)
+                            (filter seq s))]
           ;; (println "## Executing statements " statements)
-          (jdbc/db-do-commands spec false statements)
-          (reset! test-db-initialized? true)))
+           (jdbc/db-do-commands metadata false statements)
+           (reset! test-db-initialized? true))))
       ;; (println "### Done with executing create-test-db! with details:" details)
       ))
   (f))
