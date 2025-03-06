@@ -91,7 +91,32 @@
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
                       :group-by [{:field_id (->field-id "Created At")
-                                  :field_granularity "week"}]})))))
+                                  :field_granularity "week"}]}))))
+          (testing "Multi-value filtering works"
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table (mt/id :orders)
+                                                         :aggregation [[:metric metric-id]]
+                                                         :filter
+                                                         [:and
+                                                          [:starts-with {}
+                                                           [:field (mt/id :people :state)
+                                                            {:base-type :type/Text
+                                                             :source-field (mt/id :orders :user_id)}]
+                                                           "A" "G"]
+                                                          [:!=
+                                                           [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                                           3 42]]}}}}
+                    (metabot-v3.tools.filters/query-metric
+                     {:metric-id metric-id
+                      :filters [{:field_id (->field-id "User → State")
+                                 :operation "string-starts-with"
+                                 :values ["A" "G"]}
+                                {:field_id (->field-id "Discount")
+                                 :operation "not-equals"
+                                 :values [3 42]}]})))))
         (testing "Missing metric results in an error."
           (is (= {:output (str "No metric found with metric_id " Integer/MAX_VALUE)}
                  (metabot-v3.tools.filters/query-metric {:metric-id Integer/MAX_VALUE}))))

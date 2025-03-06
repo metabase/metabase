@@ -20,7 +20,7 @@
 (defn- add-filter
   [query llm-filter]
   (let [llm-filter (update llm-filter :operation keyword)
-        {:keys [column operation value]} llm-filter
+        {:keys [column operation value values]} llm-filter
         column (cond-> column
                  (date-filter? llm-filter) (lib/with-temporal-bucket :day))
         filter
@@ -31,34 +31,92 @@
           :string-is-not-empty          (lib/not-empty column)
           :is-true                      (lib/= column true)
           :is-false                     (lib/= column false)
-          :year-equals                  (lib/= (lib/get-year column) value)
-          :year-not-equals              (lib/!= (lib/get-year column) value)
-          :quarter-equals               (lib/= (lib/get-quarter column) value)
-          :quarter-not-equals           (lib/!= (lib/get-quarter column) value)
-          :month-equals                 (lib/= (lib/get-month column) value)
-          :month-not-equals             (lib/!= (lib/get-month column) value)
-          :day-of-week-equals           (lib/= (lib/get-day-of-week column :iso) value)
-          :day-of-week-not-equals       (lib/!= (lib/get-day-of-week column :iso) value)
-          :hour-equals                  (lib/= (lib/get-hour column) value)
-          :hour-not-equals              (lib/!= (lib/get-hour column) value)
-          :minute-equals                (lib/= (lib/get-minute column) value)
-          :minute-not-equals            (lib/!= (lib/get-minute column) value)
-          :second-equals                (lib/= (lib/get-second column) value)
-          :second-not-equals            (lib/!= (lib/get-second column) value)
-          :date-equals                  (lib/= column value)
-          :date-not-equals              (lib/!= column value)
+          :equals                       (if values
+                                          (apply lib/= column values)
+                                          (lib/= column value))
+          :not-equals                   (if values
+                                          (apply lib/!= column values)
+                                          (lib/!= column value))
+          :greater-than                 (lib/> column value)
+          :greater-than-or-equal        (lib/>= column value)
+          :less-than                    (lib/< column value)
+          :less-than-or-equal           (lib/<= column value)
+          :year-equals                  (if values
+                                          (apply lib/= (lib/get-year column) values)
+                                          (lib/= (lib/get-year column) value))
+          :year-not-equals              (if values
+                                          (apply lib/!= (lib/get-year column) values)
+                                          (lib/!= (lib/get-year column) value))
+          :quarter-equals               (if values
+                                          (apply lib/= (lib/get-quarter column) values)
+                                          (lib/= (lib/get-quarter column) value))
+          :quarter-not-equals           (if values
+                                          (apply lib/!= (lib/get-quarter column) values)
+                                          (lib/!= (lib/get-quarter column) value))
+          :month-equals                 (if values
+                                          (apply lib/= (lib/get-month column) values)
+                                          (lib/= (lib/get-month column) value))
+          :month-not-equals             (if values
+                                          (apply lib/!= (lib/get-month column) values)
+                                          (lib/!= (lib/get-month column) value))
+          :day-of-week-equals           (if values
+                                          (apply lib/= (lib/get-day-of-week column :iso) values)
+                                          (lib/= (lib/get-day-of-week column :iso) value))
+          :day-of-week-not-equals       (if values
+                                          (apply lib/!= (lib/get-day-of-week column :iso) values)
+                                          (lib/!= (lib/get-day-of-week column :iso) value))
+          :hour-equals                  (if values
+                                          (apply lib/= (lib/get-hour column) values)
+                                          (lib/= (lib/get-hour column) value))
+          :hour-not-equals              (if values
+                                          (apply lib/!= (lib/get-hour column) values)
+                                          (lib/!= (lib/get-hour column) value))
+          :minute-equals                (if values
+                                          (apply lib/= (lib/get-minute column) values)
+                                          (lib/= (lib/get-minute column) value))
+          :minute-not-equals            (if values
+                                          (apply lib/!= (lib/get-minute column) values)
+                                          (lib/!= (lib/get-minute column) value))
+          :second-equals                (if values
+                                          (apply lib/= (lib/get-second column) values)
+                                          (lib/= (lib/get-second column) value))
+          :second-not-equals            (if values
+                                          (apply lib/!= (lib/get-second column) values)
+                                          (lib/!= (lib/get-second column) value))
+          :date-equals                  (if values
+                                          (apply lib/= column values)
+                                          (lib/= column value))
+          :date-not-equals              (if values
+                                          (apply lib/!= column values)
+                                          (lib/!= column value))
           :date-before                  (lib/< column value)
           :date-on-or-before            (lib/<= column value)
           :date-after                   (lib/> column value)
           :date-on-or-after             (lib/>= column value)
-          :string-equals                (lib/= column value)
-          :string-not-equals            (lib/!= column value)
-          :string-contains              (lib/contains column value)
-          :string-not-contains          (lib/not (lib/contains column value))
-          :string-starts-with           (lib/starts-with column value)
-          :string-ends-with             (lib/ends-with column value)
-          :number-equals                (lib/= column value)
-          :number-not-equals            (lib/!= column value)
+          :string-equals                (if values
+                                          (apply lib/= column values)
+                                          (lib/= column value))
+          :string-not-equals            (if values
+                                          (apply lib/!= column values)
+                                          (lib/!= column value))
+          :string-contains              (if values
+                                          (apply lib/contains column values)
+                                          (lib/contains column value))
+          :string-not-contains          (if values
+                                          (apply lib/not (lib/contains column values))
+                                          (lib/not (lib/contains column value)))
+          :string-starts-with           (if values
+                                          (apply lib/starts-with column values)
+                                          (lib/starts-with column value))
+          :string-ends-with             (if values
+                                          (apply lib/ends-with column values)
+                                          (lib/ends-with column value))
+          :number-equals                (if values
+                                          (apply lib/= column values)
+                                          (lib/= column value))
+          :number-not-equals            (if values
+                                          (apply lib/!= column values)
+                                          (lib/!= column value))
           :number-greater-than          (lib/> column value)
           :number-greater-than-or-equal (lib/>= column value)
           :number-less-than             (lib/< column value)

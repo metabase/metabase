@@ -104,35 +104,79 @@
                 "second-equals"      "second-not-equals"]]
    [:value :int]])
 
+(mr/def ::disjunctive-temporal-extraction-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "year-equals"        "year-not-equals"
+                "quarter-equals"     "quarter-not-equals"
+                "month-equals"       "month-not-equals"
+                "day-of-week-equals" "day-of-week-not-equals"
+                "hour-equals"        "hour-not-equals"
+                "minute-equals"      "minute-not-equals"
+                "second-equals"      "second-not-equals"]]
+   [:values [:sequential :int]]])
+
 (mr/def ::temporal-filter
   [:map
    [:field_id :string]
    [:operation [:enum
-                "date-equals" "date-not-equals"
-                "date-before" "date-on-or-before"
-                "date-after"  "date-on-or-after"]]
+                "equals"       "not-equals"
+                "greater-than" "greater-than-or-equal"
+                "less-than"    "less-than-or-equal"
+                "date-equals"  "date-not-equals"
+                "date-before"  "date-on-or-before"
+                "date-after"   "date-on-or-after"]]
    [:value :string]])
 
 (mr/def ::string-filter
   [:map
    [:field_id :string]
    [:operation [:enum
+                "equals"             "not-equals"
                 "string-equals"      "string-not-equals"
                 "string-contains"    "string-not-contains"
                 "string-starts-with" "string-ends-with"]]
    [:value :string]])
 
+(mr/def ::disjunctive-string-date-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "equals"             "not-equals"
+                "date-equals"        "date-not-equals"
+                "string-equals"      "string-not-equals"
+                "string-contains"    "string-not-contains"
+                "string-starts-with" "string-ends-with"]]
+   [:values [:sequential :string]]])
+
 (mr/def ::numeric-filter
   [:map
    [:field_id :string]
    [:operation [:enum
+                "equals"              "not-equals"
+                "greater-than"        "greater-than-or-equal"
+                "less-than"           "less-than-or-equal"
                 "number-equals"       "number-not-equals"
                 "number-greater-than" "number-greater-than-or-equal"
                 "number-less-than"    "number-less-than-or-equal"]]
    [:value [:or :int :double]]])
 
+(mr/def ::disjunctive-numeric-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "equals"        "not-equals"
+                "number-equals" "number-not-equals"]]
+   [:values [:sequential [:or :int :double]]]])
+
 (mr/def ::filter
-  [:or ::existence-filter ::temporal-extraction-filter ::temporal-filter ::string-filter ::numeric-filter])
+  [:or
+   ::existence-filter
+   ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
+   ::temporal-filter
+   ::string-filter ::disjunctive-string-date-filter
+   ::numeric-filter ::disjunctive-numeric-filter])
 
 (mr/def ::group-by
   [:map
