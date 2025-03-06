@@ -119,9 +119,6 @@ describe("StaticQuestion", () => {
     });
 
     afterEach(() => {
-      act(() => {
-        jest.runAllTimers();
-      });
       jest.useRealTimers();
     });
 
