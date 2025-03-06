@@ -7,7 +7,7 @@ export function CloseModal({
   onClose,
 }: {
   closeModal: () => void;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   return (
     <Modal
@@ -26,9 +26,11 @@ export function CloseModal({
         </Box>
 
         <Flex justify="end" gap="sm">
-          <Button onClick={onClose} variant="subtle">
-            {t`Discard changes`}
-          </Button>
+          {onClose && (
+            <Button onClick={onClose} variant="subtle">
+              {t`Discard changes`}
+            </Button>
+          )}
           <Button onClick={closeModal} variant="primary">
             {t`Keep editing`}
           </Button>

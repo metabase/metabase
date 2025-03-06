@@ -46,7 +46,7 @@ type EditorProps<S extends StartRule> = {
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ErrorWithMessage | Error | null;
-  onCloseEditor: () => void;
+  onCloseEditor?: () => void;
 
   onChange: (
     clause: ClauseType<S> | null,
