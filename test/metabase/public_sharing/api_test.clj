@@ -2058,7 +2058,6 @@
 
 (deftest oembed-test
   (testing "GET /oembed"
-    (testing "Cannot export when enable-public-sharing is false"
-      (let [response (client/client :get 200 "public/oembed?url=path/to/url&format=json")]
-        (is (= "1.0" (:version response)))
-        (is (= "rich" (:type response)))))))
+    (let [response (client/client :get 200 "public/oembed?url=path/to/url&format=json")]
+      (is (= "1.0" (:version response)))
+      (is (= "rich" (:type response))))))
