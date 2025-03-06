@@ -86,9 +86,9 @@ async function main() {
     }, linearQuery);
 
     console.log('Linear API response:');
-    console.log(JSON.stringify(linearData));
+    console.log(JSON.stringify(linearData) + "\n");
 
-    if (!linearData.data || !linearData.data.attachmentSearch || linearData.data.attachmentSearch.nodes.length === 0) {
+    if (!linearData.data || !linearData.data.attachmentsForURL || linearData.data.attachmentsForURL.nodes.length === 0) {
       console.log('No Linear tasks linked to this PR');
       return;
     } else {
