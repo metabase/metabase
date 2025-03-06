@@ -1,8 +1,9 @@
 import {
+  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { mockScrollBy, renderWithProviders, screen } from "__support__/ui";
 import type { DatabaseId, RecentItem, SearchResult } from "metabase-types/api";
 import {
   createMockRecentCollectionItem,
@@ -35,6 +36,7 @@ function setup({
 
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
   setupSearchEndpoints(searchItems);
+  setupDatabasesEndpoints([]);
 
   renderWithProviders(
     <DataPickerModal
@@ -48,6 +50,8 @@ function setup({
 
   return { onChange, onClose };
 }
+
+mockScrollBy();
 
 describe("DataPickerModal", () => {
   describe("recents", () => {
