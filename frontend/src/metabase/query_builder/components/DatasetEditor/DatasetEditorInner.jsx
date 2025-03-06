@@ -387,6 +387,10 @@ const _DatasetEditorInner = props => {
     [setFocusedFieldName],
   );
 
+  const handleHeaderColumnReorder = useCallback(columnName => {
+    setFocusedFieldName(columnName);
+  }, []);
+
   // This value together with focusedFieldIndex is used to
   // horizontally scroll the InteractiveTable to the focused column
   // (via react-virtualized's "scrollToColumn" prop)
@@ -543,6 +547,7 @@ const _DatasetEditorInner = props => {
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
+                onHeaderColumnReorder={handleHeaderColumnReorder}
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}

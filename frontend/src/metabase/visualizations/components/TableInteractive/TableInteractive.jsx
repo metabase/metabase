@@ -840,7 +840,7 @@ class TableInteractive extends Component {
           });
           onActionDismissal();
         }}
-        onDrag={(e, data) => {
+        onDrag={(event, data) => {
           const newIndex = this.getDragColNewIndex(data);
           if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
             this.setState({
@@ -849,7 +849,7 @@ class TableInteractive extends Component {
             });
           }
         }}
-        onStop={(e, d) => {
+        onStop={(event, d) => {
           const { dragColIndex, dragColNewIndex } = this.state;
           DRAG_COUNTER++;
           if (
@@ -858,6 +858,11 @@ class TableInteractive extends Component {
             dragColIndex !== dragColNewIndex
           ) {
             this.onColumnReorder(dragColIndex, dragColNewIndex);
+
+            // if the column is dragged, we need to tell DatasetEditor know that
+            // this specific column needs to be marked as selected to be able to
+            // scroll to it in a virtual table
+            // this.props.onHeaderColumnReorder?.(clicked.column.name);
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
