@@ -824,8 +824,19 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
 
+    const dummy = document.createElement("div");
+
+    if (!this.headerRefs[columnIndex]) {
+      this.headerRefs[columnIndex] = createRef(dummy);
+    }
+
+    if (!this.resizeHandleRefs[columnIndex]) {
+      this.resizeHandleRefs[columnIndex] = createRef(dummy);
+    }
+
     return (
       <TableDraggable
+        nodeRef={this.headerRefs[columnIndex]}
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
         /* needs to be index+name+counter so Draggable resets after each drag */
@@ -873,11 +884,14 @@ class TableInteractive extends Component {
             dragColNewLefts: null,
           });
         }}
-        nodeRef={this.headerRefs[columnIndex]}
       >
         <Box
           ref={element => {
-            this.headerRefs[columnIndex] = element;
+            // We cannot have `null` in `nodeRef` as it will trigger `ReactDOM.findDOMNode` in React 19,
+            // so we have to check if element is not null.
+            if (element) {
+              this.headerRefs[columnIndex].current = element;
+            }
           }}
           style={{
             ...style,
@@ -977,7 +991,11 @@ class TableInteractive extends Component {
           >
             <ResizeHandle
               ref={element => {
-                this.resizeHandleRefs[columnIndex] = element;
+                // We cannot have `null` in `nodeRef` as it will trigger `ReactDOM.findDOMNode` in React 19,
+                // so we have to check if element is not null.
+                if (element) {
+                  this.resizeHandleRefs[columnIndex].current = element;
+                }
               }}
               style={{
                 zIndex: 99,
