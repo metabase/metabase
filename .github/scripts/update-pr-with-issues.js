@@ -91,14 +91,14 @@ async function main() {
       console.log('No Linear tasks linked to this PR');
       return;
     } else {
-      console.log(`Found ${linearData.data.attachmentSearch.nodes.length} linked Linear tasks`);
+      console.log(`Found ${linearData.data.attachmentsForURL.nodes.length} linked Linear tasks`);
     }
 
     // Extract GitHub issue numbers from all attachments in the linked Linear task
     const issueNumbers = [];
-    for (const node of linearData.data.attachmentSearch.nodes) {
+    for (const node of linearData.data.attachmentsForURL.nodes) {
       const linearTask = node.issue;
-      console.log(`Found linked Linear task: ${linearTask.identifier}`);
+      console.log(`Found linked Linear task: '${linearTask.identifier}' !`);
 
       for (const attachment of linearTask.attachments.nodes) {
         const url = attachment.url;
@@ -108,6 +108,8 @@ async function main() {
         }
       }
     }
+
+    console.log(`Found linked GitHub issues: ${issueNumbers.join(', ')}`);
 
     if (issueNumbers.length === 0) {
       console.log('No GitHub issues linked to the Linear task');
@@ -119,8 +121,8 @@ async function main() {
 
     // Check if the PR body already contains these references
     let newBody = prData.body || '';
-    let shouldUpdate = false;
 
+    let shouldUpdate = false;
     for (const num of issueNumbers) {
       if (!newBody.includes(`closes #${num}`) && !newBody.includes(`Closes #${num}`)) {
         shouldUpdate = true;
@@ -133,7 +135,7 @@ async function main() {
       if (newBody.trim()) {
         newBody += '\n\n';
       }
-      newBody += `<!-- Added by GitHub Action -->\n${closingRefs}`;
+      newBody += `\n<!-- Added by GitHub Action -->\n${closingRefs}`;
 
       // Update the PR
       const updateData = JSON.stringify({
