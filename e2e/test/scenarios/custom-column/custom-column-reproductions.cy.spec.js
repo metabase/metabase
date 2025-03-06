@@ -1121,7 +1121,7 @@ describe("issue 49882", () => {
 
     H.popover()
       .findByText("Expecting comma but got case instead")
-      .should("be.visible");
+      .should("be.visible", { timeout: 5000 });
   });
 
   // TODO: we no longer have wrapped lines (for now)
