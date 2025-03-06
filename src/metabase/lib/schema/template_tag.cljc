@@ -62,7 +62,8 @@
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    [:dimension   [:ref :mbql.clause/field]]
+    ;; field filters can have missing dimension before it is set
+    [:dimension {:optional true} [:ref :mbql.clause/field]]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
