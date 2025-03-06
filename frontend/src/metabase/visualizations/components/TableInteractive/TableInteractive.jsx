@@ -203,7 +203,7 @@ class TableInteractive extends Component {
       document.body.appendChild(this._div);
     }
 
-    this._setupColumnHeaderDraggableRefs(this.props);
+    this._setupColumnHeaderDraggableRefs(this.props.data);
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
     this._showDetailShortcut(this.props.data, this.props.isPivoted);
@@ -299,7 +299,7 @@ class TableInteractive extends Component {
 
   componentDidUpdate(prevProps) {
     if (prevProps.data?.cols?.length !== this.props.data?.cols?.length) {
-      this._setupColumnHeaderDraggableRefs(this.props);
+      this._setupColumnHeaderDraggableRefs(this.props.data);
     }
 
     if (
@@ -329,18 +329,16 @@ class TableInteractive extends Component {
     }
   }
 
-  _setupColumnHeaderDraggableRefs(props) {
-    const { data } = props;
-
-    const columnLength = data?.cols?.length;
+  _setupColumnHeaderDraggableRefs(data) {
+    const columnCount = data?.cols?.length;
 
     // Initialize refs for each column headers.
     // Without this, the draggable components will crash on React 19.
     // This is because react-draggable uses ReactDOM.findDOMNode
     // when `nodeRef` is falsey, which no longer exists on React 19.
-    if (columnLength !== undefined) {
-      this.headerRefs = [...Array(columnLength)].map(() => createRef());
-      this.resizeHandleRefs = [...Array(columnLength)].map(() => createRef());
+    if (columnCount !== undefined) {
+      this.headerRefs = [...Array(columnCount)].map(() => createRef());
+      this.resizeHandleRefs = [...Array(columnCount)].map(() => createRef());
     }
   }
 
