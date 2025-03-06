@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import type { ComponentType } from "react";
-import { Link } from "react-router";
 import { replace } from "react-router-redux";
 import { useInterval, useMount } from "react-use";
 import { t } from "ttag";
@@ -15,7 +14,7 @@ import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Divider, Flex, Modal, Text } from "metabase/ui";
+import { Box, Divider, Flex } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseData,
@@ -30,6 +29,7 @@ import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSecti
 import type { DatabaseEditErrorType } from "../components/DatabaseEditConnectionForm";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
+import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import {
   deleteDatabase,
   dismissSyncSpinner,
@@ -94,7 +94,7 @@ function useDatabaseInitializer(
     initializeDatabase(databaseId);
   });
 
-  // keep refetcing the database until the sync status reached a terminal state
+  // keep refetching the database until the sync status reached a terminal state
   useInterval(
     () => initializeDatabase(databaseId),
     initialSyncStatus === "incomplete" ? 2000 : null,
@@ -168,30 +168,11 @@ function DatabaseEditAppInner({
                   />
                 </Flex>
 
-                <Modal
+                <NewDatabasePermissionsModal
                   opened={isPermissionModalOpened}
                   onClose={onPermissionModalClose}
-                  size={620}
-                  withCloseButton={false}
-                  title={t`Your database was added! Want to configure permissions?`}
-                  padding="2rem"
-                >
-                  <Text
-                    mb="1.5rem"
-                    mt="1rem"
-                  >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
-                  <Flex justify="end">
-                    <Button
-                      mr="0.5rem"
-                      onClick={onPermissionModalClose}
-                    >{t`Maybe later`}</Button>
-                    <Button
-                      component={Link}
-                      variant="filled"
-                      to={`/admin/permissions/data/database/${database.id}`}
-                    >{t`Configure permissions`}</Button>
-                  </Flex>
-                </Modal>
+                  database={database}
+                />
               </>
             )}
           </LoadingAndErrorWrapper>
