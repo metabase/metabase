@@ -10,6 +10,6 @@
   &:focus-within {
     outline: 2px solid var(--mb-base-color-blue-50);
     border-color: transparent;
-    z-index: 5; /* needed to avoid outline truncation for the focused cell */
+    z-index: 5; /* needed to avoid outline truncation for a focused cell */
   }
 }

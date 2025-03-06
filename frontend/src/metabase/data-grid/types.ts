@@ -58,6 +58,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -90,6 +93,8 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values for display */
   formatter?: CellFormatter<TValue>;
+
+  getIsCellEditing: (cellId: string) => boolean;
 }
 
 /**

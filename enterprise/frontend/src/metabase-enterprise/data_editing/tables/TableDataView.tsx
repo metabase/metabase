@@ -1,8 +1,6 @@
-/* eslint-disable react/prop-types */
 import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
-import _ from "underscore";
+import { useCallback, useMemo } from "react";
 
 import {
   type ColumnOptions,
@@ -10,13 +8,11 @@ import {
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
-import { getDefaultCellTemplate } from "metabase/data-grid/utils/columns/data-column";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Input } from "metabase/ui";
+import { EditingBodyCell } from "metabase-enterprise/data_editing/tables/EditingBodyCell";
 import { useTableEditing } from "metabase-enterprise/data_editing/tables/use-table-editing";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
-import S from "./TableDataView.module.css";
 import type { RowCellsWithPkValue } from "./types";
 
 type TableDataViewProps = {
@@ -50,65 +46,20 @@ export const TableDataView = ({
         accessorFn: (row: RowValues) => row[columnIndex],
         formatter: value => formatValue(value, { column }),
         wrap: false,
-      };
-
-      options.cell = function EditingCell(props) {
-        const {
-          cell,
-          getValue,
-          row: { index: rowIndex },
-          column: { id: columnName },
-        } = props;
-        const cellId = cell.id;
-        const isEditing = editingCellsMap[cellId];
-
-        const initialValue = getValue();
-        const [value, setValue] = useState(initialValue);
-
-        if (isEditing) {
-          const handleFieldBlur = () => {
-            if (value !== initialValue) {
-              // eslint-disable-next-line no-console
-              console.log("Update table data, ", props);
-
-              const pkColumnIndex = cols.findIndex(
-                ({ semantic_type }) => semantic_type === "type/PK",
-              );
-              const pkColumn = cols[pkColumnIndex];
-              const rowPkValue = rows[rowIndex][pkColumnIndex];
-
-              if (rowPkValue !== undefined) {
-                onCellValueUpdate({
-                  [pkColumn.name]: rowPkValue,
-                  [columnName]: value,
-                });
-              }
-            }
-
-            onCellEditCancel(cellId);
-          };
-
-          return (
-            <Input
-              value={value as any} // TODO: fixup this type
-              className={S.input}
-              variant="unstyled"
-              size="xs"
-              autoFocus
-              onChange={e => setValue(e.target.value)}
-              onBlur={handleFieldBlur}
-            />
-          );
-        }
-
-        const CellComponent = getDefaultCellTemplate(options, false, _.noop);
-
-        return <CellComponent {...props} />;
+        editingCell: cellContext => (
+          <EditingBodyCell
+            cellContext={cellContext}
+            columns={cols}
+            onCellValueUpdate={onCellValueUpdate}
+            onCellEditCancel={onCellEditCancel}
+          />
+        ),
+        getIsCellEditing: (cellId: string) => editingCellsMap[cellId],
       };
 
       return options;
     });
-  }, [cols, editingCellsMap, onCellEditCancel, onCellValueUpdate, rows]);
+  }, [cols, editingCellsMap, onCellEditCancel, onCellValueUpdate]);
 
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
@@ -129,19 +80,14 @@ export const TableDataView = ({
     (
       e: React.MouseEvent<HTMLDivElement>,
       rowIndex: number,
-      columnId: string,
-      value: any,
+      columnName: string,
       cellId: string,
     ) => {
-      const column = cols.find(({ name }) => name === columnId); // TODO: refactor to a common id getter
-      const row = rows[rowIndex];
-
-      // eslint-disable-next-line no-console
-      console.log("Clicked cell", { row, column, value, cellId });
+      // const cellId = getGridCellId(rowIndex, columnName);
 
       onCellClickToEdit(cellId);
     },
-    [cols, onCellClickToEdit, rows],
+    [onCellClickToEdit],
   );
 
   return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
