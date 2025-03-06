@@ -311,7 +311,7 @@
                     "2019-01-01T00:00:00Z"
                     "Row totals"]
                    ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
-                   ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
+                   ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.2"]
                    ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
@@ -321,12 +321,7 @@
                     :subscription-attachment
                     :public-question-download
                     :public-dashcard-download}]
-                 (->> (all-outputs! card {:export-format :csv
-                                          :format-rows false
-                                          :pivot true
-                                          :ignore-cached-results? false
-                                          :skip-results-metadata? true
-                                          :format-rows? true})
+                 (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))

@@ -10,8 +10,8 @@
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -105,11 +105,19 @@
                          (filter some?))])
                column-split))))
 
+(defn- create-formatters
+  [columns indexes timezone settings format-rows?]
+  (mapv (fn [idx]
+          (fn [value]
+            ((formatter/create-formatter timezone (nth columns idx) settings format-rows?)
+             (common/format-value value))))
+        indexes))
+
 (defn- make-formatters
   [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
-  {:row-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) row-indexes)
-   :col-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) col-indexes)
-   :val-formatters (mapv #(formatter/create-formatter timezone (nth columns %) settings format-rows?) val-indexes)})
+  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
 
 (defn- build-top-headers
   [top-left-header top-header-items]
