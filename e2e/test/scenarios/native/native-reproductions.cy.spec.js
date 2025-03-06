@@ -526,8 +526,6 @@ describe("issue 31926", { tags: "@external" }, () => {
     });
     // run button disabled
     cy.findAllByTestId("run-button").filter(":visible").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    //cy.contains(`Can\'t find field with ID: ${PRODUCTS.CATEGORY}`);
 
     // Try to save the native query
     // save button disabled
