@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -154,10 +155,11 @@ function useExpression<S extends StartRule = "expression">({
   const [isFormatting, setIsFormatting] = useState(true);
 
   const formatExpression = useCallback(() => {
-    const expression =
-      clause &&
-      Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-    if (!expression) {
+    const expression = isNotNull(clause)
+      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
+      : null;
+
+    if (expression === null) {
       setSource("");
       setIsFormatting(false);
       return;
