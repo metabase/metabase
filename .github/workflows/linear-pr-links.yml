@@ -11,6 +11,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install node-fetch@3
+
       - name: Add Issue References
         uses: actions/github-script@v7
         with:
@@ -28,7 +36,7 @@ jobs:
               return;
             }
 
-            const { default: fetch } = await import('node-fetch');
+            const nodeFetch = await import('node-fetch');
 
             // Query Linear API to find tasks linked to this PR
             const query = `
@@ -49,7 +57,7 @@ jobs:
               }
             `;
 
-            const response = await fetch('https://api.linear.app/graphql', {
+            const response = await nodeFetch('https://api.linear.app/graphql', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
