@@ -83,6 +83,17 @@ export function NumberFilterPicker({
     return (
       <Box w={WIDTH} p="md">
         <Menu>
+          <Menu.Item
+            onClick={() => {
+              setIsOpen(false);
+            }}
+          >
+            <Flex align="center" gap={"md"}>
+              <Icon name="chevronleft" />
+              <span>Back</span>
+            </Flex>
+          </Menu.Item>
+
           {availableOptions.map(option => {
             return (
               <Menu.Item
