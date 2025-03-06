@@ -99,7 +99,7 @@ async function main() {
     // Extract GitHub issue numbers from all attachments in the linked Linear task
     const issueNumbers = [];
     for (const node of linearData.data.attachmentsForURL.nodes) {
-      console.log(`checking node task: ${node}`)
+      console.log(`checking node task: ${JSON.stringify(node)}`)
       const linearIssue = node.issue;
 
       for (const attachment of linearIssue.attachments.nodes) {
@@ -140,7 +140,7 @@ async function main() {
       if (newBody.trim()) {
         newBody += '\n\n';
       }
-      newBody += `\n<!-- Added by GitHub Action -->\n${closingRefs}`;
+      newBody += `\n<!-- Added by :sparkle: Add Issue References :sparkle: to PR GitHub Action -->\n${closingRefs}`;
 
       // Update the PR
       const updateData = JSON.stringify({
