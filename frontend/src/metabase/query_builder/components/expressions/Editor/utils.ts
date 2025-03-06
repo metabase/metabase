@@ -86,7 +86,7 @@ export function diagnoseAndCompileExpression<
   }
 
   const { expression, expressionClause: clause } = result;
-  if (expression == null || !isExpression(expression) || clause == null) {
+  if (!isExpression(expression) || clause === null) {
     return {
       clause: null,
       error: { message: t`Invalid expression` },
