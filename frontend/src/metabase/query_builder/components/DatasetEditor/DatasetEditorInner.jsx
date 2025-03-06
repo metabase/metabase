@@ -387,9 +387,18 @@ const _DatasetEditorInner = props => {
     [setFocusedFieldName],
   );
 
-  const handleHeaderColumnReorder = useCallback(columnName => {
-    setFocusedFieldName(columnName);
-  }, []);
+  const handleHeaderColumnReorder = useCallback(
+    dragColIndex => {
+      const field = fields[dragColIndex];
+
+      if (!field) {
+        return;
+      }
+
+      setFocusedFieldName(field.name);
+    },
+    [fields],
+  );
 
   // This value together with focusedFieldIndex is used to
   // horizontally scroll the InteractiveTable to the focused column
