@@ -44,10 +44,6 @@
   [:schema [:ref ::expression/string]]
   [:schema [:ref ::expression/integer]])
 
-#_(mbql-clause/define-tuple-mbql-clause :cast :- :type/*
-    [:schema :any]
-    [:schema [:ref ::expression/string]])
-
 (mr/def ::mbql-type
   [:enum "Integer" "Text" "Date"])
 

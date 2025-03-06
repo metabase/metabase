@@ -389,7 +389,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :url-part :month-name :quarter-name :day-name :split})
+    :host :domain :subdomain :url-pathname :month-name :quarter-name :day-name :split})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -591,8 +591,8 @@
 (defclause ^{:requires-features #{:expressions :regex}} subdomain
   s StringExpressionArg)
 
-(defclause ^{:requires-features #{:expressions :regex}} url-part
-  s StringExpressionArg, part :string)
+(defclause ^{:requires-features #{:expressions :regex}} url-pathname
+  s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} month-name
   n NumericExpressionArg)
@@ -958,7 +958,7 @@
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain url-part month-name quarter-name day-name split))
+          subdomain url-pathname month-name quarter-name day-name split))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a

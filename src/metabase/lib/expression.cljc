@@ -313,7 +313,7 @@
 (lib.common/defop host [s])
 (lib.common/defop domain [s])
 (lib.common/defop subdomain [s])
-(lib.common/defop url-part [s part])
+(lib.common/defop url-pathname [s part])
 (lib.common/defop month-name [n])
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
