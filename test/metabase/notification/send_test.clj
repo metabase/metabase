@@ -19,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test

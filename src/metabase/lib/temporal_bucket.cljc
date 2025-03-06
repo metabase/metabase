@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket.util :as lib.temporal-bucket.util]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -68,18 +69,27 @@
    unit :- [:maybe :keyword]]
   (let [n    (interval-n->int n)
         unit (or unit :day)]
-    (cond
-      (zero? n) (if (= unit :day)
-                  (i18n/tru "Today")
-                  (i18n/tru "This {0}" (describe-temporal-unit unit)))
-      (= n 1)   (if (= unit :day)
-                  (i18n/tru "Tomorrow")
-                  (i18n/tru "Next {0}" (describe-temporal-unit unit)))
-      (= n -1)  (if (= unit :day)
-                  (i18n/tru "Yesterday")
-                  (i18n/tru "Previous {0}" (describe-temporal-unit unit)))
-      (neg? n)  (i18n/tru "Previous {0} {1}" (abs n) (describe-temporal-unit (abs n) unit))
-      (pos? n)  (i18n/tru "Next {0} {1}" n (describe-temporal-unit n unit)))))
+    (case (keyword unit)
+      :default         (lib.temporal-bucket.util/temporal-interval-tru n "default period")
+      :millisecond     (lib.temporal-bucket.util/temporal-interval-tru n "millisecond")
+      :second          (lib.temporal-bucket.util/temporal-interval-tru n "second")
+      :minute          (lib.temporal-bucket.util/temporal-interval-tru n "minute")
+      :hour            (lib.temporal-bucket.util/temporal-interval-tru n "hour")
+      :day             (lib.temporal-bucket.util/temporal-interval-tru n "day" "Today" "Yesterday" "Tomorrow")
+      :week            (lib.temporal-bucket.util/temporal-interval-tru n "week")
+      :month           (lib.temporal-bucket.util/temporal-interval-tru n "month")
+      :quarter         (lib.temporal-bucket.util/temporal-interval-tru n "quarter")
+      :year            (lib.temporal-bucket.util/temporal-interval-tru n "year")
+      :minute-of-hour  (lib.temporal-bucket.util/temporal-interval-tru n "minute of hour")
+      :hour-of-day     (lib.temporal-bucket.util/temporal-interval-tru n "hour of day")
+      :day-of-week     (lib.temporal-bucket.util/temporal-interval-tru n "day of week")
+      :day-of-month    (lib.temporal-bucket.util/temporal-interval-tru n "day of month")
+      :day-of-year     (lib.temporal-bucket.util/temporal-interval-tru n "day of year")
+      :week-of-year    (lib.temporal-bucket.util/temporal-interval-tru n "week of year")
+      :month-of-year   (lib.temporal-bucket.util/temporal-interval-tru n "month of year")
+      :quarter-of-year (lib.temporal-bucket.util/temporal-interval-tru n "quarter of year")
+      ;; else
+      (lib.temporal-bucket.util/temporal-interval-tru n "unknown unit"))))
 
 (mu/defn describe-relative-datetime :- ::lib.schema.common/non-blank-string
   "Get a translated description of a relative datetime interval, ported from

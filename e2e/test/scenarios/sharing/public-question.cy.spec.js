@@ -70,7 +70,7 @@ describe("scenarios > public > question", () => {
       // On page load, query params are added
       cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-      H.filterWidget().contains("Previous 30 Years");
+      H.filterWidget().contains("Previous 30 years");
       H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
@@ -116,7 +116,7 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              H.filterWidget().contains("Previous 30 Years");
+              H.filterWidget().contains("Previous 30 years");
               H.filterWidget().contains("Affiliate");
 
               cy.findByTestId("visualization-root").should("be.visible");

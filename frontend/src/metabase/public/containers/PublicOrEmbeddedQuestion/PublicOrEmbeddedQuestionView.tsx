@@ -118,6 +118,8 @@ export function PublicOrEmbeddedQuestionView({
             mode={PublicMode}
             metadata={metadata}
             onChangeCardAndRun={() => {}}
+            token={token}
+            uuid={uuid}
           />
         )}
       </LoadingAndErrorWrapper>
