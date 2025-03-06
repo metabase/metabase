@@ -47,22 +47,22 @@
   ([n
     this-interval-message
     prev-interval-message
-    prev-plural-interval-message
+    prev-interval-plural-message
     next-interval-message
-    next-plural-interval-message]
+    next-interval-plural-message]
    (assert (every? string? [this-interval-message
                             prev-interval-message
-                            prev-plural-interval-message
+                            prev-interval-plural-message
                             next-interval-message
-                            next-plural-interval-message])
+                            next-interval-plural-message])
            "[[temporal-interval-tru]] accepts compile-time strings only.")
    `(let [n# ~n]
       (cond
         (zero? n#) (i18n/tru ~this-interval-message)
         (= n# -1)  (i18n/tru ~prev-interval-message)
         (= n# 1)   (i18n/tru ~next-interval-message)
-        (neg? n#)  (i18n/trun ~prev-interval-message ~prev-plural-interval-message (abs n#))
-        (pos? n#)  (i18n/trun ~next-interval-message ~next-plural-interval-message n#)))))
+        (neg? n#)  (i18n/trun ~prev-interval-message ~prev-interval-plural-message (abs n#))
+        (pos? n#)  (i18n/trun ~next-interval-message ~next-interval-plural-message n#)))))
 
 (defmacro relative-datetime-tru
   "Translates the offset part of a relative datetime interval. The macro accepts only compile-time messages. Examples:
