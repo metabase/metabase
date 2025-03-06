@@ -259,6 +259,8 @@ import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import overflow_component from "./overflow.svg?component";
+import overflow_source from "./overflow.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -416,6 +418,10 @@ export const Icons = {
   add: {
     component: add_component,
     source: add_source,
+  },
+  overflow: {
+    component: overflow_component,
+    source: overflow_source,
   },
   add_column: {
     component: add_column_component,

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 
 import { useNumberFilter } from "metabase/querying/filters/hooks/use-number-filter";
-import { Box, Flex, Menu } from "metabase/ui";
+import { Box, Flex, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
@@ -157,6 +157,8 @@ export function NumberFilterPicker({
                     ? {
                         label: {
                           fontWeight: "bold",
+
+                          padding: "0.5rem",
                         },
                       }
                     : {
@@ -164,6 +166,8 @@ export function NumberFilterPicker({
                           color: "#696E7B",
                           borderColor: "#dee2e6",
                           fontWeight: "bold",
+
+                          padding: "0.5rem",
                         },
                       }
                 }
@@ -175,16 +179,21 @@ export function NumberFilterPicker({
           <Chip
             radius={"xl"}
             variant="outline"
+            h={32}
+            mah={32}
             styles={{
               label: {
+                height: 32,
+                maxHeight: 32,
                 color: "#696E7B",
                 borderColor: "#dee2e6",
                 fontWeight: "bold",
+                padding: "0.5rem",
               },
             }}
             onClick={() => setIsOpen(true)}
           >
-            ...
+            <Icon name="overflow" />
           </Chip>
         </Chip.Group>
       </Flex>
