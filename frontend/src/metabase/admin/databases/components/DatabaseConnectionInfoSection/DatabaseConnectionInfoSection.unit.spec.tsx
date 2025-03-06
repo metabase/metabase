@@ -19,9 +19,13 @@ const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 interface SetupOpts {
   database?: Database;
+  mockEndpointsCb?: (database: Database) => void;
 }
 
-function setup({ database = createMockDatabase() }: SetupOpts = {}) {
+function setup({
+  database = createMockDatabase(),
+  mockEndpointsCb,
+}: SetupOpts = {}) {
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: [database],
@@ -35,6 +39,8 @@ function setup({ database = createMockDatabase() }: SetupOpts = {}) {
     metric: 0,
     segment: 0,
   });
+
+  mockEndpointsCb?.(database);
 
   // Using mockResolvedValue since the `ActionButton` component
   // this section is using expects these callbacks to be Promises
@@ -56,6 +62,47 @@ function setup({ database = createMockDatabase() }: SetupOpts = {}) {
 }
 
 describe("DatabaseConnectionInfoSection", () => {
+  describe("connection status", () => {
+    it("should show success message if healthcheck returns ok", async () => {
+      setup();
+      expect(await screen.findByText("Loading...")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      });
+      expect(
+        await screen.findByText("No connection issues"),
+      ).toBeInTheDocument();
+    });
+
+    it("should show error message if healthcheck returns errors", async () => {
+      setup({
+        mockEndpointsCb: database => {
+          fetchMock.get(
+            `path:/api/database/${database.id}/healthcheck`,
+            { body: { status: "error", message: "Test failure" } },
+            { overwriteRoutes: true },
+          );
+        },
+      });
+      expect(await screen.findByText("Test failure")).toBeInTheDocument();
+    });
+
+    it("should show error message if healthcheck HTTP request fails", async () => {
+      setup({
+        mockEndpointsCb: database => {
+          fetchMock.get(
+            `path:/api/database/${database.id}/healthcheck`,
+            { status: 500 },
+            { overwriteRoutes: true },
+          );
+        },
+      });
+      expect(
+        await screen.findByText("Failed to retrieve database health status."),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("actions", () => {
     it("syncs database schema", async () => {
       const { database } = setup();

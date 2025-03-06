@@ -10,10 +10,12 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
-  fetchMock.get(`path:/api/database/${db.id}/healthcheck`, { status: "ok" });
   fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
   fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
+  fetchMock.get(`path:/api/database/${db.id}/healthcheck`, {
+    body: { status: "ok" },
+  });
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints({ ...table, db }));

@@ -251,6 +251,11 @@ describe("admin > database > add", () => {
 
         editDatabase();
 
+        cy.findAllByTestId("database-connection-info-section").should(
+          "contain.text",
+          "No connection issues",
+        );
+
         cy.findByLabelText("Choose when syncs and scans happen").should(
           "have.attr",
           "aria-checked",
@@ -596,11 +601,18 @@ describe("scenarios > admin > databases > sample database", () => {
 
   it("database settings", () => {
     visitDatabase(SAMPLE_DB_ID);
+
+    cy.findAllByTestId("database-connection-info-section").should(
+      "contain.text",
+      "No connection issues",
+    );
+
+    editDatabase();
+
     // should not display a setup help card
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?").should("not.exist");
 
-    editDatabase();
     cy.log(
       "should not be possible to change database type for the Sample Database (metabase#16382)",
     );
@@ -682,7 +694,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
   });
 
-  it("database actions sidebar", () => {
+  it("database actions", () => {
     cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
       "sync_schema",
     );
