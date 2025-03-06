@@ -8,3 +8,43 @@
   overflow: hidden;
   flex: 1 1 auto;
 }
+
+/** DataGrid overrides */
+.tableGrid {
+  --editing-row-height: 32px;
+
+  grid-template-rows: none;
+}
+
+.tableRow {
+  min-height: var(--editing-row-height);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.tableHeaderCell {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background-color: var(--mb-base-color-orion-5);
+  height: var(--editing-row-height);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.tableBodyCell {
+  border-right: 1px solid var(--mb-color-border);
+  background-color: transparent;
+}
+
+.tableRow:hover {
+  background-color: var(--mb-base-color-blue-10);
+}
+
+.tableRow:hover .tableHeaderCell {
+  box-shadow: none;
+}
+
+.headerCellContainer {
+  height: var(--editing-row-height);
+  display: flex;
+  align-items: center;
+}

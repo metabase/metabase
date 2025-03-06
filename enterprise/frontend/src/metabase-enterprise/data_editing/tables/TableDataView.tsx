@@ -9,11 +9,13 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
+import { Box, Text } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import { EditingBodyCellConditional } from "./EditingBodyCell";
 import type { UpdatedRowCellsHandlerParams } from "./types";
 import { useTableEditing } from "./use-table-editing";
+import S from "./TableDataView.module.css";
 
 type TableDataViewProps = {
   data: Dataset;
@@ -57,6 +59,16 @@ export const TableDataView = ({
         getIsCellEditing: (cellId: string) => editingCellId === cellId,
       };
 
+      options.header = function EditingHeader(_props) {
+        return (
+          <Box className={S.headerCellContainer}>
+            <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
+              {column.display_name}
+            </Text>
+          </Box>
+        );
+      };
+
       return options;
     });
   }, [cols, editingCellId, onCellEditCancel, onCellValueUpdate]);
@@ -74,6 +86,7 @@ export const TableDataView = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    defaultRowHeight: 32,
   });
 
   const handleCellClick = useCallback(
@@ -94,5 +107,20 @@ export const TableDataView = ({
     [onCellClickToEdit, editingCellId],
   );
 
-  return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
+  return (
+    <DataGrid
+      {...tableProps}
+      classNames={{
+        tableGrid: S.tableGrid,
+        headerCell: S.tableHeaderCell,
+        bodyCell: S.tableBodyCell,
+        row: S.tableRow,
+      }}
+      styles={{
+        // Overrides HEADER_HEIGHT JS const
+        row: { height: "32px" },
+      }}
+      onBodyCellClick={handleCellClick}
+    />
+  );
 };
