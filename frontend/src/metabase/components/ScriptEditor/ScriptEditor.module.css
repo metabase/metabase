@@ -1,0 +1,48 @@
+.CodeBlock {
+  transition: height 0.3s;
+  color: #000;
+  &:not([data-specificity-hack]) {
+    pre {
+      padding: 0;
+    }
+    pre code {
+      font-size: 0.85rem !important;
+
+      color: #298798 !important;
+      --code-color-number: #617d47;
+      --code-color-title: #b56612;
+      --code-color-keyword: #9571c8;
+      --code-color-var: #4b6fc4;
+      --code-color-comment: #9399bd;
+    }
+  }
+}
+
+.ScriptRunningIndicator {
+  &:not([data-specificity-hack]) {
+    --loader-size: 1rem;
+  }
+}
+
+.JobRunningIndicator {
+  &:not([data-specificity-hack]) {
+    --loader-size: 1rem;
+  }
+}
+.ScriptNavLink {
+  border-radius: 0;
+  &:hover {
+    background-color: #f9f9f9;
+  }
+}
+
+.MarkdownInModal {
+  h3 {
+    margin: 0.5rem 0;
+  }
+  li {
+    list-style: disc;
+    margin-left: 1rem;
+    margin-bottom: 0.5rem;
+  }
+}

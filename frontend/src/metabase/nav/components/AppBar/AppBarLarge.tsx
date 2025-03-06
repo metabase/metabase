@@ -32,6 +32,7 @@ export interface AppBarLargeProps {
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onLogout: () => void;
+  setShowScriptWizard: boolean;
 }
 
 const AppBarLarge = ({
@@ -47,6 +48,7 @@ const AppBarLarge = ({
   isQuestionLineageVisible,
   onToggleNavbar,
   onLogout,
+  setShowScriptWizard,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
@@ -78,7 +80,10 @@ const AppBarLarge = ({
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
+              <ProfileLink
+                onLogout={onLogout}
+                setShowScriptWizard={setShowScriptWizard}
+              />
             </AppBarProfileLinkContainer>
           )}
         </AppBarRightContainer>
