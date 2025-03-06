@@ -17,6 +17,7 @@ describe("parseValues", () => {
   });
 
   it("should allow escaping quotes commas with \\", () => {
+    expect(parseValues('"\\""')).toEqual(['"']);
     expect(parseValues(`"\\"baz\\""`)).toEqual(['"baz"']);
     expect(parseValues(`"bar,\\"baz\\""`)).toEqual(['bar,"baz"']);
     expect(parseValues(`"\\"baz\\",quu"`)).toEqual(['"baz",quu']);
