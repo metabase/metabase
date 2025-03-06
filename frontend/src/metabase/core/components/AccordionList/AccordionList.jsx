@@ -45,10 +45,7 @@ export default class AccordionList extends Component {
       minHeight: 10,
     });
 
-    // For virtualized lists, we can pass elementRef to List, which is then passed to Grid,
-    // which is then attached to the scrolling container.
-    // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/List/List.js#L195-L196
-    // https://github.com/bvaughn/react-virtualized/blob/9.22.5/source/Grid/Grid.js#L225-L226
+    /** @type {React.RefObject<HTMLDivElement>} */
     this.listRootRef = createRef();
   }
 
@@ -140,8 +137,6 @@ export default class AccordionList extends Component {
   };
 
   componentDidMount() {
-    const container = this.listRootRef.current;
-
     // NOTE: for some reason the row heights aren't computed correctly when
     // first rendering, so force the list to update
     this._forceUpdateList();
@@ -149,6 +144,8 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
+      const container = this._getListContainerElement();
+
       const hasFocusedChildren = container?.contains(document.activeElement);
       if (!hasFocusedChildren && this.props.hasInitialFocus) {
         container?.focus();
@@ -182,6 +179,15 @@ export default class AccordionList extends Component {
       clearTimeout(this._forceUpdateTimeout);
       this._forceUpdateTimeout = null;
     }
+  }
+
+  /** @returns {HTMLDivElement | null} */
+  _getListContainerElement() {
+    const element = this.isVirtualized()
+      ? this._list?.Grid?._scrollingContainer
+      : this.listRootRef.current;
+
+    return element ?? null;
   }
 
   // resets the row height cache when the displayed rows change
@@ -606,7 +612,7 @@ export default class AccordionList extends Component {
   // Because of virtualization, focused search input can be removed which does not trigger blur event.
   // We need to restore focus on the component root container to make keyboard navigation working
   handleSearchRemoval = () => {
-    this.listRootRef.current?.focus();
+    this._getListContainerElement()?.focus();
   };
 
   render() {
@@ -640,7 +646,9 @@ export default class AccordionList extends Component {
             ...style,
           }}
           data-testid={testId}
-          ref={this.listRootRef}
+          ref={element => {
+            this.listRootRef.current = element;
+          }}
         >
           {rows.map((row, index) => (
             <AccordionListCell
@@ -690,8 +698,9 @@ export default class AccordionList extends Component {
     return (
       <List
         id={id}
-        ref={list => (this._list = list)}
-        elementRef={this.listRootRef}
+        ref={list => {
+          this._list = list;
+        }}
         className={className}
         style={{ ...defaultListStyle, ...style }}
         containerStyle={{ pointerEvents: "auto" }}
