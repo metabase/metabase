@@ -1361,7 +1361,6 @@
         (testing "The column title changes are used when format-rows is true"
           (let [expected-header   ["Created At: Year" "Category" "Count Renamed" "Min of Created At: Year"]
                 formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
-            (def res2 (update-vals formatted-results first))
             (is (= {:unsaved-card-download    expected-header
                     :card-download            expected-header
                     :public-question-download expected-header
