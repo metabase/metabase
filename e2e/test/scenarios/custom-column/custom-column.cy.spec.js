@@ -1255,7 +1255,6 @@ describe("scenarios > question > custom column > top level literal values", () =
     enterExpression(EXPRESSION);
     verifyExpression(EXPRESSION);
 
-    H.visualize();
     verifyCellContent("foo");
   });
 
@@ -1367,7 +1366,7 @@ describe("scenarios > question > custom column > boolean filter", () => {
     H.enterCustomColumnDetails({ formula: "True" });
     H.expressionEditorWidget().button("Done").click();
 
-    H.getNotebookStep("filter").findByText("value is true").click();
+    H.getNotebookStep("filter").findByText("true is true").click();
 
     H.CustomExpressionEditor.value().should("equal", "True = True");
   });
@@ -1379,7 +1378,7 @@ describe("scenarios > question > custom column > boolean filter", () => {
     H.enterCustomColumnDetails({ formula: "False" });
     H.expressionEditorWidget().button("Done").click();
 
-    H.getNotebookStep("filter").findByText("value is true").click();
+    H.getNotebookStep("filter").findByText("false is true").click();
 
     H.CustomExpressionEditor.value().should("equal", "False = True");
   });
