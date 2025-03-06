@@ -108,6 +108,7 @@ async function main() {
         if (match) {
           console.log(`-->  found match: ${match[1]}`)
           issueNumbers.push(match[1]);
+          console.log("")
         }
       }
     }
