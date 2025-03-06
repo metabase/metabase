@@ -169,7 +169,9 @@
   (u/prog1 gsheets.constants/not-connected
     (gsheets! <>)
     (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-      (hm-delete-conn! id))))
+      (let [[delete-status _] (hm-delete-conn! id)]
+        (when-not (= delete-status :ok)
+          (log/debugf "Unable to delete gdrive connection %s." id))))))
 
 (mu/defn hm-get-gdrive-conn :- :hm-client/http-reply
   "Get a specific gdrive connection by id."
