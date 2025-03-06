@@ -316,6 +316,7 @@
                             {"foo" {:type :dimension
                                     :id "1"
                                     :name "foo"
+                                    ;; missing :dimension
                                     :widget-type :text
                                     :display-name "foo"}})
                           :question)))
@@ -398,3 +399,22 @@
                                   :name "mytag"
                                   :type :dimension
                                   :widget-type :date/range}}))))
+
+(deftest ^:parallel remove-template-tags-when-changing-database
+  (let [query (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+                  (lib/with-template-tags {"mytag"
+                                           {:default nil
+                                            :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                            :display-name "My Tag"
+                                            :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                            :name "mytag"
+                                            :type :dimension
+                                            :widget-type :date/range}}))]
+    (testing "remove dimensions from template tags"
+      (is (empty? (-> query
+                      (lib/with-different-database
+                        (meta.graph-provider/->SimpleGraphMetadataProvider
+                         (assoc meta/metadata :id 9999)))
+                      lib/template-tags
+                      vals
+                      (->> (filter :dimension))))))))
