@@ -104,9 +104,6 @@ describe("InteractiveQuestion - multiple interactive questions", () => {
   });
 
   afterEach(() => {
-    act(() => {
-      jest.runAllTimers();
-    });
     jest.useRealTimers();
   });
 

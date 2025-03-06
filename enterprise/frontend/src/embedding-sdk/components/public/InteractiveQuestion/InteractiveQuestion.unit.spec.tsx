@@ -141,9 +141,6 @@ describe("InteractiveQuestion", () => {
     });
 
     afterEach(() => {
-      act(() => {
-        jest.runAllTimers();
-      });
       jest.useRealTimers();
     });
 
