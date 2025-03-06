@@ -6,28 +6,29 @@ import _ from "underscore";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
-type Value = string | undefined;
+type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
 
-export interface TextInputBlurChangeProps
-  extends Omit<TextInputProps, "value" | "onBlur" | "ref"> {
-  value: Value;
+export type TextInputBlurChangeProps<
+  T extends TextInputRestProps = TextInputRestProps,
+> = T & {
+  value: T["value"] | undefined;
   onBlurChange: (event: { target: HTMLInputElement }) => void;
-  normalize?: (value: Value) => Value;
-}
+  normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
+};
 
 /**
  * A wrapper around TextInput to be used with onBlurChange prop.
  *
  * In case you don't need it, use TextInput directly.
  */
-export function TextInputBlurChange({
+export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   value,
   onChange,
   onBlurChange,
   normalize = value => value,
   ...restProps
-}: TextInputBlurChangeProps) {
-  const [internalValue, setInternalValue] = useState<Value>();
+}: TextInputBlurChangeProps<T>) {
+  const [internalValue, setInternalValue] = useState<T["value"]>();
   const ref = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => setInternalValue(value), [value]);
