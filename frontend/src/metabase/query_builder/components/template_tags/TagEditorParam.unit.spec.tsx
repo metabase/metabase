@@ -131,7 +131,7 @@ describe("TagEditorParam", () => {
       });
     });
 
-    it("should not throw when the original question has an mbql query", async () => {
+    it("should not throw when the original question has an mbql query (metabase#50662)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: ["field", PEOPLE.NAME, null],
