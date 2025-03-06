@@ -198,7 +198,12 @@
       (is (= [(t/instant "2023-01-01T12:00:00Z")
               (t/instant "2023-01-02T12:00:00Z")
               (t/instant "2023-01-03T12:00:00Z")]
-             (#'notification.send/cron->next-execution-times cron-schedule 3))))))
+             (#'notification.send/cron->next-execution-times cron-schedule 3))))
+    (testing "handles one-off cron expressions that don't repeat"
+      ;; Use a real cron expression that only executes once in the future
+      (let [specific-date-cron "0 0 12 2 1 ? 2023"] ; Noon on Jan 2, 2023 only
+        (is (= [(t/instant "2023-01-02T12:00:00Z")]
+               (#'notification.send/cron->next-execution-times specific-date-cron 5)))))))
 
 (deftest avg-interval-seconds-test
   (testing "avg-interval-seconds calculates correct average"
@@ -215,8 +220,12 @@
       (testing "minutely schedule"
         (is (= 60 (#'notification.send/avg-interval-seconds minutely-cron 5))))))
 
-  (testing "throws assertion error when n < 2"
-    (is (thrown? AssertionError (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 1)))))
+  (testing "throws assertion error when n < 1"
+    (is (thrown? AssertionError (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 0))))
+
+  (testing "handles one-off schedules correctly"
+    (with-redefs [notification.send/cron->next-execution-times (fn [_ _] [(t/instant)])]
+      (is (= 10 (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 5))))))
 
 (deftest subscription->deadline-test
   (t/with-clock (t/mock-clock (t/instant))
@@ -241,7 +250,7 @@
           items      (->> [{:id 3 :deadline even-later}
                            {:id 1 :deadline now}
                            {:id 2 :deadline later}]
-                          (map #(#'notification.send/->NotificationItem (:id %) (:deadline %)))
+                          (map #(#'notification.send/->NotificationQueueEntry (:id %) (:deadline %)))
                           (sort @#'notification.send/deadline-comparator))]
       (is (= [1 2 3] (map #(.id %) items))))))
 

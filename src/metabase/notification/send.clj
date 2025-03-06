@@ -182,7 +182,10 @@
     nil))
 
 (defn- cron->next-execution-times
-  "Returns the next n fired times for a given cron schedule."
+  "Returns the next n fired times for a given cron schedule.
+
+   If the cron schedule doesn't have n future executions (e.g., one-off schedules),
+   returns as many execution times as available."
   [cron-schedule n]
   (let [cron-expression (CronExpression. ^String cron-schedule)
         now             (t/java-date)]
@@ -191,26 +194,36 @@
            remaining n]
       (if (zero? remaining)
         times
-        (let [next-execution (.getNextValidTimeAfter cron-expression next-time)]
+        (if-let [next-execution (.getNextValidTimeAfter cron-expression next-time)]
           (recur (conj times (t/instant next-execution))
                  next-execution
-                 (dec remaining)))))))
+                 (dec remaining))
+          ;; No more executions available
+          times)))))
 
 (defn- avg-interval-seconds
-  "Returns the average seconds between executions for a given cron schedule by sampling future execution times."
+  "Returns the average seconds between executions for a given cron schedule by sampling future execution times.
+
+   Using the average across multiple executions (rather than mean interval) helps handle
+   irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
+   fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
+
+   For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
   [cron-schedule n]
-  (assert (>= n 2) "Need at least 2 execution times to calculate average")
+  (assert (pos? n) "Need at least 1 execution time to calculate average")
   (let [times (cron->next-execution-times cron-schedule n)]
-    (/ (t/as (t/duration (first times) (last times)) :seconds)
-       (dec n))))
+    (if (< (count times) 2)
+      ;; Handle one-off schedules that don't repeat or have only one execution
+      10
+      (/ (t/as (t/duration (first times) (last times)) :seconds)
+         (dec (count times))))))
 
 (defn- subscription->deadline
   "Calculates a deadline for notification execution with priority based on frequency.
 
   More frequent notifications (based on cron schedule) receive shorter deadlines,
   which results in higher priority when multiple notifications are scheduled at
-  the same time.
-  "
+  the same time."
   [{:keys [type cron_schedule]}]
   (let [deadline-bonus (case type
                          :notification-subscription/cron
@@ -227,22 +240,22 @@
     (t/plus (t/local-date-time) deadline-bonus)))
 
 ;; A notification that can be put into a queue but has equal checks based on its ID
-(deftype NotificationItem [id deadline]
+(deftype NotificationQueueEntry [id deadline]
   Object
   (equals [this  other]
-    (and (instance? NotificationItem other)
-         (= (.id this) (.id ^NotificationItem other))))
+    (and (instance? NotificationQueueEntry other)
+         (= (.id this) (.id ^NotificationQueueEntry other))))
 
   (hashCode [this]
     (hash (.id this)))
   Comparable
   (compareTo [this other]
-    (compare (.id this) (.id ^NotificationItem other))))
+    (compare (.id this) (.id ^NotificationQueueEntry other))))
 
 (defn- deadline-comparator
   "Comparator for sorting notifications by deadline."
   [a b]
-  (compare (.deadline ^NotificationItem a) (.deadline ^NotificationItem b)))
+  (compare (.deadline ^NotificationQueueEntry a) (.deadline ^NotificationQueueEntry b)))
 
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
@@ -257,7 +270,7 @@
   NotificationQueueProtocol
   (put-notification! [_ notification]
     (let [id   (or (:id notification) (str (random-uuid)))
-          item (NotificationItem. id (subscription->deadline (:triggering_subscription notification)))]
+          item (NotificationQueueEntry. id (subscription->deadline (:triggering_subscription notification)))]
       (try
         (.lock queue-lock)
         (when-not (.containsKey id->notification id)
@@ -274,8 +287,8 @@
       ;; Wait until there's at least one notification
       (while (.isEmpty items-list)
         (.await not-empty-cond))
-      (let [^NotificationItem item (.poll items-list)
-            id                     (.id item)]
+      (let [^NotificationQueueEntry entry (.poll items-list)
+            id                            (.id entry)]
         (.remove id->notification id))
       (finally
         (.unlock queue-lock)))))
@@ -290,7 +303,7 @@
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.PriorityQueue. 11 deadline-comparator)
+    (->NotificationQueue (java.util.PriorityQueue. deadline-comparator)
                          (java.util.concurrent.ConcurrentHashMap.)
                          queue-lock
                          not-empty-cond)))

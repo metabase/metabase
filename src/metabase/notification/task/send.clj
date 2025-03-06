@@ -13,9 +13,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.text SimpleDateFormat)
-   (java.util TimeZone Date)
-   (org.quartz CronTrigger TriggerKey CronExpression)))
+   (java.util TimeZone)
+   (org.quartz CronTrigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
