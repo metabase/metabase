@@ -65,23 +65,14 @@ async function main() {
     // Query Linear API to find tasks linked to this PR
     const linearQuery = JSON.stringify({
       query: `
-                  query {
-                    attachmentSearch(filter: {url: {eq: "${prUrl}"}}) {
-                      nodes {
-                        issue {
-                          id
-                          identifier
-                          attachments {
-                            nodes {
-                              url
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                `
-    });
+        query {
+          attachmentsForURL(url: "${prUrl}") {
+            nodes {
+              issue {
+                id
+                identifier
+                attachments {
+                  nodes {url}}}}}}`});
 
     const linearData = await httpsRequest({
       hostname: 'api.linear.app',
@@ -96,6 +87,8 @@ async function main() {
     if (!linearData.data || !linearData.data.attachmentSearch || linearData.data.attachmentSearch.nodes.length === 0) {
       console.log('No Linear tasks linked to this PR');
       return;
+    } else {
+      console.log(`Found ${linearData.data.attachmentSearch.nodes.length} linked Linear tasks`);
     }
 
     // Extract GitHub issue numbers from all attachments in the linked Linear task
