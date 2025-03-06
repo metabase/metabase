@@ -492,9 +492,9 @@
          (assoc value
                 :clicked {:data data :dimensions dimensions}
                 :backgroundColor (color-getter
-                                  (get values index)
-                                  (:rowIndex value)
-                                  (:name (get valueColumns index)))))
+                                  (nth values index)
+                                  index
+                                  (:name (nth valueColumns index)))))
        formatted-values))))
 
 (defn- is-subtotal?
