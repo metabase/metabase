@@ -93,6 +93,7 @@ export function Tooltip({
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
         className={S.dropdown}
+        data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
           <HelpText

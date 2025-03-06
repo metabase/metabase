@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Modal, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 
@@ -19,6 +19,7 @@ import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
+import { useClickOutsideModal } from "./utils";
 
 const WIDGET_WIDTH = 472;
 const EDITOR_WIDGET_WIDTH = 688;
@@ -149,6 +150,9 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setIsExtractingColumn(false);
   }, []);
 
+  const ref = useRef<HTMLDivElement>(null);
+  const { showModal, closeModal } = useClickOutsideModal(ref);
+
   if (startRule === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
@@ -179,8 +183,34 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }
 
   return (
-    <Box w={EDITOR_WIDGET_WIDTH} data-testid="expression-editor">
+    <Box w={EDITOR_WIDGET_WIDTH} data-testid="expression-editor" ref={ref}>
       {header}
+
+      <Modal
+        title={t`Keep editing your custom expression?`}
+        opened={showModal}
+        onClose={closeModal}
+        closeOnEscape
+        closeButtonProps={{ style: { display: "none" } }}
+        data-ignore-editor-clicks="true"
+      >
+        <Stack gap="md">
+          <Box py="md">
+            <Text>
+              {t`You have changes that haven't been saved to your custom expression. You can continue editing it or discard the changes.`}
+            </Text>
+          </Box>
+
+          <Flex justify="end" gap="sm">
+            <Button onClick={onClose} variant="subtle">
+              {t`Discard changes`}
+            </Button>
+            <Button onClick={closeModal} variant="primary">
+              {t`Keep editing`}
+            </Button>
+          </Flex>
+        </Stack>
+      </Modal>
 
       <Editor
         id="expression-content"
