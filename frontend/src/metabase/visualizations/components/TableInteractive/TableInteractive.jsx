@@ -112,8 +112,13 @@ class TableInteractive extends Component {
       showDetailShortcut: true,
     };
     this.columnHasResized = {};
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
     this.headerRefs = [];
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
     this.resizeHandleRefs = [];
+
     this.detailShortcutRef = createRef();
 
     this.gridRef = createRef();
@@ -883,7 +888,10 @@ class TableInteractive extends Component {
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
-              this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
+              this.onVisualizationClick(
+                clicked,
+                this.headerRefs[columnIndex]?.current,
+              );
             });
           }
           this.setState({
