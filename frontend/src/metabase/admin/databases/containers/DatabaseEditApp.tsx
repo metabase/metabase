@@ -28,6 +28,7 @@ import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionI
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
 import type { DatabaseEditErrorType } from "../components/DatabaseEditConnectionForm";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
+import { DatabaseRoutingSection } from "../components/DatabaseRoutingSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import {
@@ -166,6 +167,8 @@ function DatabaseEditAppInner({
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
                     updateDatabase={updateDatabase}
                   />
+
+                  <DatabaseRoutingSection database={database} />
 
                   <DatabaseDangerZoneSection
                     isAdmin={isAdmin}
