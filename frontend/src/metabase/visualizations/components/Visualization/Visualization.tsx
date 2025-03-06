@@ -560,6 +560,7 @@ class Visualization extends PureComponent<
       query,
       queryBuilderMode,
       rawSeries = [],
+      visualizerRawSeries,
       renderEmptyMessage,
       renderTableHeaderWrapper,
       replacementContent,
@@ -800,6 +801,7 @@ class Visualization extends PureComponent<
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}
                   rawSeries={rawSeries}
+                  visualizerRawSeries={visualizerRawSeries}
                   renderEmptyMessage={renderEmptyMessage}
                   renderTableHeaderWrapper={renderTableHeaderWrapper}
                   scrollToColumn={scrollToColumn}

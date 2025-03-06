@@ -107,6 +107,7 @@ export interface VisualizationProps {
   data: DatasetData;
   metadata?: Metadata;
   rawSeries: RawSeries;
+  visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;

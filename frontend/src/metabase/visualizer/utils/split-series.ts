@@ -64,7 +64,7 @@ export function splitVisualizerSeries(
     return {
       card: {
         ...mainCard,
-        id: -(i + 1),
+        id: getVisualizerSeriesCardId(i),
         name: seriesName,
         visualization_settings: {
           ...mainCard.visualization_settings,
@@ -82,4 +82,15 @@ export function splitVisualizerSeries(
       started_at: new Date().toISOString(),
     };
   }) as RawSeries;
+}
+
+function getVisualizerSeriesCardId(seriesIndex: number) {
+  return -(seriesIndex + 1);
+}
+
+export function getVisualizerSeriesCardIndex(cardId?: number) {
+  if (!cardId) {
+    return 0;
+  }
+  return -cardId - 1;
 }
