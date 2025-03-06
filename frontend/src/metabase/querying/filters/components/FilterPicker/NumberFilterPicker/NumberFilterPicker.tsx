@@ -14,6 +14,7 @@ import type { FilterPickerWidgetProps } from "../types";
 
 import { NumberValueInput } from "./NumberValueInput";
 import { RangePicker } from "./RangePicker";
+import { Chart } from "./Chart";
 
 export function NumberFilterPicker({
   query,
@@ -174,6 +175,17 @@ export function NumberFilterPicker({
 
       {valueCount === 2 && (
         <RangePicker
+          clicked={clicked}
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={values}
+          onChange={setValues}
+        />
+      )}
+
+      {valueCount === 1 && (
+        <Chart
           clicked={clicked}
           query={query}
           stageIndex={stageIndex}
