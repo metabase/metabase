@@ -279,4 +279,10 @@ describe("isAllowedIframeUrl", () => {
     expect(_isAllowedIframeUrl("https://sheets.google.com/sheet")).toBe(false);
     expect(_isAllowedIframeUrl("https://google.com?s=text")).toBe(false);
   });
+
+  it("should work with comma separated domain lists", () => {
+    expect(isAllowedIframeUrl("youtube.com", "youtube.com, facebook.com")).toBe(
+      true,
+    );
+  });
 });
