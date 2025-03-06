@@ -1,8 +1,9 @@
-import type { CellContext, RowData } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import { Input } from "metabase/ui";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./TableDataView.module.css";
 import type { RowCellsWithPkValue } from "./types";
@@ -14,16 +15,16 @@ interface EditingBodyCellProps<TRow, TValue> {
   onCellEditCancel: (cellId: string) => void;
 }
 
-export const EditingBodyCell = <TRow extends RowData, TValue = RowValue>({
+export const EditingBodyCell = ({
   cellContext,
   columns,
   onCellValueUpdate,
   onCellEditCancel,
-}: EditingBodyCellProps<TRow, TValue>) => {
+}: EditingBodyCellProps<RowValues, RowValue>) => {
   const {
     cell,
     getValue,
-    row: { index: rowIndex },
+    row: { original: rowData },
     column: { id: columnName },
   } = cellContext;
   const cellId = cell.id;
@@ -33,11 +34,9 @@ export const EditingBodyCell = <TRow extends RowData, TValue = RowValue>({
 
   const handleFieldBlur = useCallback(() => {
     if (value !== initialValue) {
-      const pkColumnIndex = columns.findIndex(
-        ({ semantic_type }) => semantic_type === "type/PK",
-      );
+      const pkColumnIndex = columns.findIndex(isPK);
       const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rows[rowIndex][pkColumnIndex];
+      const rowPkValue = rowData[pkColumnIndex];
 
       if (rowPkValue !== undefined) {
         onCellValueUpdate({
@@ -55,7 +54,7 @@ export const EditingBodyCell = <TRow extends RowData, TValue = RowValue>({
     initialValue,
     onCellEditCancel,
     onCellValueUpdate,
-    rowIndex,
+    rowData,
     value,
   ]);
 

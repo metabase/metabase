@@ -23,13 +23,22 @@ export const getDefaultCellTemplate = <TRow, TValue>(
     cellVariant,
     wrap,
     getCellClassName,
+    getIsCellEditing,
+    editingCell: EditingCellComponent,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ) => {
-  return function Cell({ getValue, row }: CellContext<TRow, TValue>) {
+  return function Cell(cellContext: CellContext<TRow, TValue>) {
+    const { cell, getValue, row } = cellContext;
     const value = getValue();
     const backgroundColor = getBackgroundColor?.(value, row?.index);
+
+    const isEditing = getIsCellEditing?.(cell.id);
+
+    if (isEditing && EditingCellComponent) {
+      return <EditingCellComponent {...cellContext} />;
+    }
 
     return (
       <BodyCell

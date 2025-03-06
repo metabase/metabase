@@ -79,12 +79,12 @@ export const TableDataView = ({
   const handleCellClick = useCallback(
     (
       e: React.MouseEvent<HTMLDivElement>,
-      rowIndex: number,
-      columnName: string,
-      cellId: string,
+      {
+        cellId,
+      }: {
+        cellId: string;
+      },
     ) => {
-      // const cellId = getGridCellId(rowIndex, columnName);
-
       onCellClickToEdit(cellId);
     },
     [onCellClickToEdit],
