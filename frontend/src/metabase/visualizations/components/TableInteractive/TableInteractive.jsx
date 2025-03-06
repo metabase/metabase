@@ -862,7 +862,7 @@ class TableInteractive extends Component {
             // if the column is dragged, we need to tell DatasetEditor know that
             // this specific column needs to be marked as selected to be able to
             // scroll to it in a virtual table
-            // this.props.onHeaderColumnReorder?.(clicked.column.name);
+            this.props.onHeaderColumnReorder?.(clicked.column.name);
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
