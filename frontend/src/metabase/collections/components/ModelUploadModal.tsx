@@ -142,7 +142,7 @@ export function ModelUploadModal({
         {uploadMode !== UploadMode.create && (
           <Select
             aria-label="Select a model"
-            leftSection={<Icon name="model" />}
+            icon={<Icon name="model" />}
             placeholder="Select a model"
             value={tableId ? String(tableId) : ""}
             data={
