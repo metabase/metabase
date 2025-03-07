@@ -83,7 +83,7 @@
                          (update :info merge {:executed-by api/*current-user-id*
                                               :context     :table-grid
                                               :card-id     nil}))]
-        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+        (events/publish-event! :event/table-read {:object  table
                                                   :user-id api/*current-user-id*})
         (span/with-span!
           {:name "query-table-async"}
