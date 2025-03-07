@@ -910,7 +910,7 @@ class TableInteractive extends Component {
           ref={element => {
             // We cannot have `null` in `nodeRef` as it will fallback to
             // `findDOMNode` which no longer exists in React 19.
-            if (element) {
+            if (element && this.headerRefs[columnIndex]) {
               this.headerRefs[columnIndex].current = element;
             }
           }}
@@ -1014,7 +1014,7 @@ class TableInteractive extends Component {
               ref={element => {
                 // We cannot have `null` in `nodeRef` as it will fallback to
                 // `findDOMNode` which no longer exists in React 19.
-                if (element) {
+                if (element && this.resizeHandleRefs[columnIndex]) {
                   this.resizeHandleRefs[columnIndex].current = element;
                 }
               }}
