@@ -929,11 +929,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a rule").click();
-    cy.findByTestId("conditional-formatting-value-input").type("70");
+    cy.findByTestId("conditional-formatting-value-input").type("70").blur();
+    cy.findByTestId("conditional-formatting-value-operator-button").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("is equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("is less than or equal to").click();
+    cy.findByText("is less than or equal to").click({ force: true });
 
     cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
       "have.css",
