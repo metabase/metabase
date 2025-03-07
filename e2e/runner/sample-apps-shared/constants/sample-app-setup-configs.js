@@ -16,7 +16,7 @@ const BASE_SETUP_CONFIG = {
   env: BASE_ENV,
 };
 
-export const SAMPLE_APP_SETUP_CONFIGS = {
+const SAMPLE_APP_SETUP_CONFIGS = {
   "metabase-nodejs-react-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nodejs-react-sdk-embedding-sample",
@@ -35,4 +35,8 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     appName: "shoppy",
   },
+};
+
+module.exports = {
+  SAMPLE_APP_SETUP_CONFIGS,
 };
