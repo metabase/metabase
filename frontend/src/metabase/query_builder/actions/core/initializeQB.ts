@@ -323,6 +323,7 @@ async function handleQBInit(
   if (isNative) {
     const isEditing = getIsEditingInDashboard(getState());
     uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
+    uiControls.isShowingDataReference = true;
   }
 
   if (isNative && isEditable) {
