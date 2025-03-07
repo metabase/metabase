@@ -460,7 +460,7 @@
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator frontend/src/metabase-lib/v1/expressions/tokenizer/grammar.lezer -o frontend/src/metabase-lib/v1/expressions/tokenizer/lezer.js",
-    "cloud:dev": "yarn && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev'"
+    "cloud:dev": "yarn && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
   "lint-staged": {
     "+(frontend|enterprise)/**/*.styled.tsx": [

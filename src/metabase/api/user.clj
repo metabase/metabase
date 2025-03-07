@@ -534,9 +534,9 @@
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
+      (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
             response                        {:success    true
-                                             :session_id (str session-uuid)}]
+                                             :session_id (str session-key)}]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -1573,11 +1573,6 @@
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
 
-(defn random-string
-  "Returns a string of `n` random alphanumeric characters."
-  [n]
-  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
-
 (defmacro with-prometheus-system!
   "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
   be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
