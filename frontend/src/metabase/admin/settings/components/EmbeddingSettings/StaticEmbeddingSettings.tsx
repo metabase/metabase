@@ -6,8 +6,7 @@ import { Box, Stack } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 
 import type { SettingElement } from "../../types";
-import SettingHeader from "../SettingHeader";
-import { SettingTitle } from "../SettingHeader/SettingHeader.styled";
+import { SettingHeader, SettingTitle } from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
@@ -56,7 +55,7 @@ export function StaticEmbeddingSettings({
         <Box data-testid="embedding-secret-key-setting">
           <SettingHeader
             id="setting-embedding-secret-key"
-            setting={embeddingSecretKeySetting}
+            description={embeddingSecretKeySetting.description}
           />
           <SetByEnvVarWrapper setting={embeddingSecretKeySetting}>
             <SecretKeyWidget
@@ -72,7 +71,9 @@ export function StaticEmbeddingSettings({
           </SetByEnvVarWrapper>
         </Box>
         <Box data-testid="embedded-resources">
-          <SettingTitle>{t`Manage embeds`}</SettingTitle>
+          <SettingTitle
+            id={isStaticEmbeddingEnabled.toString()}
+          >{t`Manage embeds`}</SettingTitle>
           {/* Right now, when changing the setting, we don't have a mechanism to reload the data.
           For now we'll have to use this key.   */}
           <EmbeddedResources key={isStaticEmbeddingEnabled.toString()} />

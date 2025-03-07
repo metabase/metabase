@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { AdminSettingComponentProps } from "metabase/admin/settings/components/EmbeddingSettings/types";
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
 import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
@@ -86,12 +86,7 @@ export function InteractiveEmbeddingSettings({
         />
 
         <Box>
-          <SettingHeader
-            id="get-started"
-            setting={{
-              display_name: t`Get started`,
-            }}
-          />
+          <SettingHeader id="get-started" title={t`Get started`} />
           <Button
             variant="outline"
             component={ExternalLink}
@@ -102,7 +97,8 @@ export function InteractiveEmbeddingSettings({
         <Box>
           <SettingHeader
             id={interactiveEmbeddingOriginsSetting.key}
-            setting={interactiveEmbeddingOriginsSetting}
+            title={interactiveEmbeddingOriginsSetting.display_name}
+            description={interactiveEmbeddingOriginsSetting.description}
           />
           <SetByEnvVarWrapper setting={interactiveEmbeddingOriginsSetting}>
             <SettingTextInput
@@ -115,7 +111,11 @@ export function InteractiveEmbeddingSettings({
         </Box>
 
         <Box>
-          <SettingHeader id={sameSiteSetting.key} setting={sameSiteSetting} />
+          <SettingHeader
+            id={sameSiteSetting.key}
+            title={sameSiteSetting.display_name}
+            description={sameSiteSetting.description}
+          />
           <SetByEnvVarWrapper setting={sameSiteSetting}>
             <SameSiteSelectWidget
               setting={sameSiteSetting}
