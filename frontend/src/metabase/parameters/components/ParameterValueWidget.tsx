@@ -9,7 +9,13 @@ import FormattedParameterValue from "metabase/parameters/components/FormattedPar
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
+import {
+  Box,
+  Icon,
+  Popover,
+  type PopoverProps,
+  UnstyledButton,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
@@ -248,6 +254,7 @@ export const ParameterValueWidget = ({
         >
           <Sortable
             id={parameter.id}
+            as={UnstyledButton}
             draggingStyle={{ opacity: 0.5 }}
             disabled={!isSortable}
             role="listitem"
