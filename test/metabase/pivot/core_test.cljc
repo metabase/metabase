@@ -111,17 +111,6 @@
            (->> (pivot/columns-without-pivot-group (:cols pivot-test-data))
                 (map :name))))))
 
-(deftest column-split->indexes-test
-  (testing "Converts names in a column-split map to indexes"
-    (is (= {:rows [0 2]
-            :columns [1]
-            :values [3]}
-           (pivot/column-split->indexes
-            {:rows ["col0" "col2"]
-             :columns ["col1"]
-             :values ["count"]}
-            (pivot/columns-without-pivot-group (:cols pivot-test-data)))))))
-
 (deftest split-pivot-data
   (testing "split-pivot-table pulls apart the aggregations packed into a single
     result set, keyed by the columns indexes that are aggregated"
