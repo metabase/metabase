@@ -584,20 +584,23 @@
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
-      (or
-       ;; look for either string or keyword version of `expression-name` in `expressions`
-       (some (partial get expressions) allowed-names)
-       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
-       (let [found (into found (keys expressions))]
-         (if source-query
-           (recur source-query found)
-           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
-           ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
-                           {:type            :invalid-query
-                            :expression-name expression-name
-                            :tried           allowed-names
-                            :found           found}))))))))
+      ;; look for either string or keyword version of `expression-name` in `expressions`
+      (let [expression-value (first (keep (partial get expressions) allowed-names))]
+        ;; Expression's value is allowed to be false, but not nil.
+        ;; TODO: support SQL NULL as a literal value?
+        (if-not (nil? expression-value)
+          expression-value
+          ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+          (let [found (into found (keys expressions))]
+            (if source-query
+              (recur source-query found)
+              ;; failing that throw an Exception with detailed info about what we tried and what the actual
+              ;; expressions were
+              (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
+                              {:type            :invalid-query
+                               :expression-name expression-name
+                               :tried           allowed-names
+                               :found           found})))))))))
 
 (mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
