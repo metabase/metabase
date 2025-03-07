@@ -205,8 +205,14 @@ export type VisualizationPassThroughProps = {
   showAllLegendItems?: boolean;
   onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
+  onHeaderColumnReorder?: (columnName: string) => void;
+
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
+
+  // Public & Embedded questions, needed for pin maps to generate the correct tile URL
+  uuid?: string;
+  token?: string;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
