@@ -3,6 +3,7 @@
   /*
   firefox has a known issue about overflow: auto, adding additional horizontal
   scrollbar so we have to pass separately overflow-x: hidden to prevent this
+  https://bugzilla.mozilla.org/show_bug.cgi?id=764076
   */
   overflow-y: auto;
   overflow-x: hidden;
