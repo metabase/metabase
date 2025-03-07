@@ -798,7 +798,7 @@ type MappingSection = [SectionName | null, ColumnName[]];
 export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   const expectedItemsCount = sections.reduce(
     (sum, [sectionName, columnNames]) =>
-      sum + [sectionName, ...columnNames].length,
+      sum + (sectionName ? 1 : 0) + columnNames.length,
     0,
   );
 
