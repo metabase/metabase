@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { TabButton } from "metabase/core/components/TabButton";
-import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
 import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -21,18 +19,6 @@ export const TabList = styled(BaseTabList)`
 
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
-  }
-
-  ${TabLink.Root}:not(:last-child) {
-    margin-right: 0.75rem;
-  }
-
-  ${TabButton.Root}:not(:last-child) {
-    margin-right: 0.75rem;
-  }
-
-  ${TabButton.Renameable.Root}:not(:last-child) {
-    margin-right: 0.75rem;
   }
 `;
 

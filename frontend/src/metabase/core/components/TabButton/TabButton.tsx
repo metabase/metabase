@@ -282,7 +282,5 @@ export function RenameableTabButton({
 
 export const TabButton = Object.assign(_TabButton, {
   Root: TabButtonRoot,
-  Renameable: Object.assign(RenameableTabButton, {
-    Root: RenameableTabButtonStyled,
-  }),
+  Renameable: RenameableTabButton,
 });
