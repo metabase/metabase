@@ -445,6 +445,7 @@
 (def ReturnedColumnsOptions
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
+   [:include-remaps? {:optional true} :boolean]
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 

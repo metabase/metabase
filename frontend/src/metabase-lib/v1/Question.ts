@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
+import { assoc, assocIn, chain, dissoc, getIn, updateIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
@@ -719,6 +719,7 @@ class Question {
       description: this._card.description,
       collection_id: this._card.collection_id,
       dashboard_id: this._card.dashboard_id,
+      entity_id: this._card.entity_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       ...(_.isEmpty(this._card.parameters)
@@ -903,6 +904,17 @@ class Question {
     if (databaseId != null) {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
+
+    // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
+    // If neither of those exists, synthesize a random one.
+    const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
+    const entity_id = card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
+
+    // Then set both locations.
+    card = chain(card)
+      .assoc("entity_id", entity_id)
+      .assocIn(innerEntityIdPath, entity_id)
+      .value();
 
     return new Question(card, metadata, parameterValues);
   }

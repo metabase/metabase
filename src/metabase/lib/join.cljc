@@ -161,20 +161,46 @@
     (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
         field-or-join)))
 
+(mu/defn- maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+  "Resolve a join with a specific `join-alias`. Returns nil if there's no such join."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
+    (m/find-first #(= (:alias %) join-alias)
+                  joins)))
+
+(defn- join-not-found-error [query stage-number join-alias]
+  (ex-info (i18n/tru "No join named {0}, found: {1}"
+                     (pr-str join-alias)
+                     (pr-str (mapv :alias (:joins (lib.util/query-stage query stage-number)))))
+           {:join-alias   join-alias
+            :query        query
+            :stage-number stage-number}))
+
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
-  (let [{:keys [joins]} (lib.util/query-stage query stage-number)]
-    (or (m/find-first #(= (:alias %) join-alias)
-                      joins)
-        (throw (ex-info (i18n/tru "No join named {0}, found: {1}"
-                                  (pr-str join-alias)
-                                  (pr-str (mapv :alias joins)))
-                        {:join-alias   join-alias
-                         :query        query
-                         :stage-number stage-number})))))
+  (or (maybe-resolve-join query stage-number join-alias)
+      (throw (join-not-found-error query stage-number join-alias))))
+
+;; HACK: This is only necessary to handle broken legacy refs that refer to a :join-alias from another stage.
+;; If such refs can be excluded, this can be dropped. The best approach is likely for conversion from legacy to heal
+;; such a bad ref in advance.
+(mu/defn resolve-join-across-stages :- ::lib.schema.join/join
+  "Resolves a join with a specific `join-alias`, in the specified stage **and** earlier stages.
+
+  This can heal some bad legacy references which use a `join-alias` for a previous stage even when they should not."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (let [stage-index (lib.util/canonical-stage-index query stage-number)]
+    (or (some #(maybe-resolve-join query % join-alias)
+          ;; Every stage from the input `stage-number` down to 1, but excluding 0.
+              (range stage-index -1 -1))
+        (throw (join-not-found-error query stage-number join-alias)))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
@@ -258,12 +284,14 @@
     (let [ensure-previous-stages-have-metadata (resolve 'metabase.lib.stage/ensure-previous-stages-have-metadata)
           join-query (cond-> (assoc query :stages stages)
                        ensure-previous-stages-have-metadata
-                       (ensure-previous-stages-have-metadata -1))
+                       (ensure-previous-stages-have-metadata -1 options))
+          join-cols       (lib.metadata.calculation/returned-columns
+                           join-query -1 (lib.util/query-stage join-query -1) options)
           field-metadatas (if (= fields :all)
-                            (lib.metadata.calculation/returned-columns join-query -1 (peek stages) options)
+                            join-cols
                             (for [field-ref fields
                                   :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (lib.metadata.calculation/metadata join-query -1 join-field)))]
+                              (lib.equality/find-matching-column join-field join-cols)))]
       (mapv (fn [field-metadata]
               (->> (column-from-join-fields query stage-number field-metadata join-alias)
                    (adjust-ident join)

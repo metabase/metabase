@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -136,14 +137,19 @@
     mbql.normalize/normalize))
 
 (defmethod lib.metadata.calculation/metadata-method :metric
-  [query stage-number [_ _ metric-id]]
-  (let [metric-meta (lib.metadata/metric query metric-id)
-        metric-aggregation (some-> metric-meta
-                                   :dataset-query
-                                   normalize-legacy-query
-                                   lib.convert/->pMBQL
-                                   lib.aggregation/aggregations
-                                   first)
-        metric-name (:name metric-meta)]
-    (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
-           :display-name metric-name)))
+  [query _stage-number [_ opts metric-id]]
+  (let [metric-meta       (lib.metadata/metric query metric-id)
+        metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
+        inner-aggregation (first (lib.aggregation/aggregations metric-query))
+        inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
+    (-> inner-meta
+        (assoc :display-name           (:name metric-meta) ; Metric card's name
+               :lib/hack-original-name (:name metric-meta) ; Metric card's name
+               :name                   (:name inner-meta)  ; Name of the inner aggregation column
+               :ident                  (:ident opts))      ; Ident of the `[:metric ...]` reference!
+        ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation!
+        ;; If the `[:metric ...]` ref is a top-level aggregation it will have its own ident, which we should use.
+        ;; If there is not `:opts` in the
+        (u/assoc-dissoc :ident (:ident opts))
+        ;; If the :metric ref has a :name option, that overrides the metric card's name.
+        (cond-> (:name opts) (assoc :name (:name opts))))))

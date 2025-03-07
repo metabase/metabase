@@ -134,10 +134,17 @@
     ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
 
+(mu/defn- matching-name? :- :boolean
+  [target-name :- :string
+   column :- ::lib.schema.metadata/column]
+  (or (clojure.core/= (:lib/desired-column-alias column) target-name)
+      (clojure.core/= (:name column) target-name)
+      (clojure.core/= (:lib/hack-original-name column) target-name)))
+
 (mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
-  (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
+  (or (not-empty (filter #(and (matching-name? ref-name %)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
@@ -363,6 +370,13 @@
                       ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
                       (get ref-tails (or (:lib/desired-column-alias column)
                                          (:name column)))
+                      ;; In some awkward legacy-converted queries, we lose track of the original name of the column
+                      ;; in the library metadata, while the legacy refs in later stages still use the original name
+                      ;; instead of the :lib/desired-column-alias.
+                      ;; Various returned-columns-method implementations will preserve this `:lib/hack-original-name`
+                      ;; in order to be able to match even these janky queries.
+                      (when-let [hack-original-name (:lib/hack-original-name column)]
+                        (get ref-tails hack-original-name))
                       [])]
     (case (count matches)
       0 nil

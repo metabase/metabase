@@ -509,3 +509,11 @@
   (build-graph card-id new-query new-query)
   ;; return nil if nothing throws
   nil)
+
+(comment
+  (let [mp (metabase.lib.metadata.jvm/application-database-metadata-provider 1)]
+    (->legacy-MBQL
+      (query mp {:type   :native
+                 :native {:query "SELECT * FROM Orders;"}
+                 :info   {:card-entity-id "DSLt7PjkpP5xpbBf1fQ1W"}})))
+  )

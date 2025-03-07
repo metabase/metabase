@@ -12,6 +12,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -87,7 +88,7 @@
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                                 :- ::lib.schema/query
    stage-number                                                          :- :int
-   [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
+   [_field {:keys [join-alias source-field], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (let [metadata (merge
                   (when-let [base-type (:base-type opts)]
                     {:base-type base-type})
@@ -192,8 +193,13 @@
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
-      source-field   (assoc :fk-field-id source-field)
-      join-alias     (lib.join/with-join-alias join-alias)
+      source-field   (-> (assoc :fk-field-id source-field)
+                         (update :ident lib.metadata.ident/implicitly-joined-ident
+                                 (:ident (lib.metadata/field query source-field))))
+      join-alias     (-> (lib.join/with-join-alias join-alias)
+                         (update :ident lib.metadata.ident/explicitly-joined-ident
+                                 (:ident (lib.join/resolve-join-across-stages query stage-number join-alias))))
+      ;; Overwriting the ident with one from the options, eg. for a breakout clause.
       ident          (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
@@ -786,7 +792,8 @@
     (lib.types.isa/searchable? field) :search
     :else                             :none))
 
-(mu/defn- remapped-field :- [:maybe ::lib.schema.metadata/column]
+(mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (when (lib.types.isa/foreign-key? column)

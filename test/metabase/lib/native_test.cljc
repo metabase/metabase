@@ -418,3 +418,9 @@
                       lib/template-tags
                       vals
                       (->> (filter :dimension))))))))
+
+(deftest ^:parallel native-query-idents-test
+  (let [card  (:venues/native (lib.tu/mock-cards))
+        mp    (lib.tu/metadata-provider-with-mock-card card)
+        query (lib/query mp (lib.metadata/card mp (:id card)))]
+    (prn (lib/returned-columns query))))
