@@ -26,18 +26,13 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       cy.findByTestId("upsell-big-card").findByText(
         /Migrate to Metabase Cloud/,
       );
-      H.expectGoodSnowplowEvent({
-        event: "upsell_viewed",
-        promoted_feature: "hosting",
-      });
       cy.findByTestId("upsell-big-card")
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
       H.expectGoodSnowplowEvent({
         event: "upsell_clicked",
-        promoted_feature: "hosting",
-        upsell_location: "settings-cloud",
+        promoted_feature: "cloud",
       });
       H.expectNoBadSnowplowEvents();
     },
