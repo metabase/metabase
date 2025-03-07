@@ -1,7 +1,6 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
-   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -9,7 +8,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
