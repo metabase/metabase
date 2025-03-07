@@ -43,12 +43,12 @@ describe("issue 23851", () => {
 
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At: Day of week is equal to 6",
+      "Created At: Day of week is Friday",
     );
     cy.get("[data-testid=cell-data]").should("contain", "109.22");
     H.openNotebook();
     H.getNotebookStep("filter")
-      .findByText("Created At: Day of week is equal to 6")
+      .findByText("Created At: Day of week is Friday")
       .should("exist");
   });
 });
