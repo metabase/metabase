@@ -194,6 +194,16 @@ export function DashCardVisualization({
     series,
   ]);
 
+  const token = useMemo(
+    () =>
+      isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
+    [dashcard],
+  );
+  const uuid = useMemo(
+    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    [dashcard],
+  );
+
   const actionButtons = useMemo(() => {
     if (!question) {
       return null;
@@ -281,6 +291,8 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      token={token}
+      uuid={uuid}
     />
   );
 }

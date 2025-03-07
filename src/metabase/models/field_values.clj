@@ -319,7 +319,7 @@
 
 (defenterprise hash-key-for-impersonation
   "Return a hash-key that will be used for impersonated fieldvalues."
-  metabase-enterprise.advanced-permissions.driver.impersonation
+  metabase-enterprise.impersonation.driver
   [_field-id]
   nil)
 

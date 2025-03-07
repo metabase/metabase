@@ -972,6 +972,26 @@
          (t/format :iso-offset-date-time a)       ; a_dt_tz_text
          (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
 
+(deftest single-time-zone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :test/timestamptz-type)
+    (mt/dataset diff-time-zones-cases
+      (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
+        (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                      (let [a-str "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
+                            b-str "2022-10-03T00:00:00Z"
+                            units [:second :minute :hour :day :week :month :quarter :year]]
+
+                        (->> (mt/run-mbql-query times
+                               {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
+                                :expressions (into {} (for [unit units]
+                                                        [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
+                                :fields (into [] (for [unit units]
+                                                   [:expression (name unit)]))})
+                             (mt/formatted-rows
+                              (repeat (count units) int))
+                             first
+                             (zipmap units)))))))))
+
 (defn run-datetime-diff-time-zone-tests!
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.
 

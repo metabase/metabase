@@ -218,6 +218,10 @@
    ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
    ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
    ;; `sync-active-instances!`
+   (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
+               (sync-util/name-for-logging table)
+               (pr-str (sort (map common/canonical-name db-metadata)))
+               (pr-str (sort (map common/canonical-name our-metadata))))
    (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
      (+ num-updates
         (retire-fields! table db-metadata our-metadata)

@@ -5,6 +5,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.email-test :as et]
    [metabase.channel.email.messages :as messages]
+   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
@@ -142,3 +143,14 @@
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox))))))))
+
+(deftest all-admin-recipients
+  (mt/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
+                                  :name          "Test API key"
+                                  :user_id       (mt/user->id :crowberto)
+                                  :creator_id    (mt/user->id :crowberto)
+                                  :updated_by_id (mt/user->id :crowberto)}]
+    (testing "all-admin-recipients returns all admin emails"
+      (let [emails (#'messages/all-admin-recipients)]
+        (is (some #(= % "crowberto@metabase.com") emails))
+        (is (not (some #(str/starts-with? % "api-key-user") emails)))))))

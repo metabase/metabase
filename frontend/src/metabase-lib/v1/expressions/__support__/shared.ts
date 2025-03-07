@@ -381,6 +381,11 @@ const filter = [
     ["time-interval", created, -1, "month"],
     "time interval filter",
   ],
+  [
+    'intervalStartingFrom([Created At], -1, "month", -2, "years")',
+    ["relative-time-interval", created, -1, "month", -2, "years"],
+    "relative time interval filter",
+  ],
   ["[Expensive Things]", segment, "segment"],
   ["NOT [Expensive Things]", ["not", segment], "not segment"],
   [
