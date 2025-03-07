@@ -221,8 +221,7 @@
                        "User ID"}
                      (into #{} (map :display_name) (:cols (:data response)))))
               (is (seq (:rows (:data response))))
-              (is (empty? (set/intersection #{:json_query :context :cached :average_execution_time} (set (keys response)))))
-              (is (= (mt/id :orders) (:table_id response)))))
+              (is (empty? (set/intersection #{:json_query :context :cached :average_execution_time} (set (keys response)))))))
           (testing "we track a table-read event"
             (is (= [["public" "orders"]]
                    (->> @published-events

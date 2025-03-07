@@ -95,8 +95,7 @@
                               (qp.streaming/transforming-query-response
                                rff
                                (fn [response]
-                                 (-> (assoc response :table_id table-id)
-                                     (dissoc :json_query :context :cached :average_execution_time)))))))))))
+                                 (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
