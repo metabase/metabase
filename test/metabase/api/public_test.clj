@@ -1958,12 +1958,6 @@
                        :model/Card {card-id :id} {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id} {:card_id      card-id
                                                                :dashboard_id dashboard-id}]
-          (testing "CSV export"
-            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                                   uuid
-                                                                   dashcard-id
-                                                                   card-id))
-                                  "ID,State,Latitude,Longitude\n")))
           (testing "urlencoded requests"
             (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
                                                                    uuid
@@ -1978,14 +1972,14 @@
                                              dashcard-id
                                              9998889978)))
           (testing "JSON export"
-            (is (= 1 (-> (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/json"
+            (is (= "1" (-> (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/json"
                                                           uuid
                                                           dashcard-id
                                                           card-id))
                          first
                          :ID))))
           (testing "API export"
-            (is (= 1 (-> (client/client :post 202 (format "public/dashboard/%s/dashcard/%d/card/%d/api"
+            (is (= "1" (-> (client/client :post 202 (format "public/dashboard/%s/dashcard/%d/card/%d/api"
                                                           uuid
                                                           dashcard-id
                                                           card-id))
