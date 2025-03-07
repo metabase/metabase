@@ -20,7 +20,11 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbedded,
+  getIsEmbeddingSdk,
+} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
@@ -246,6 +250,8 @@ function EmbeddingDataPicker({
     return undefined;
   }, [canChangeDatabase, databaseId, metadata]);
 
+  const entityTypes = useSelector(state => getEmbedOptions(state).entity_types);
+
   if (isDataSourceCountLoading) {
     return null;
   }
@@ -286,6 +292,8 @@ function EmbeddingDataPicker({
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
       databaseQuery={{ saved: true }}
+      canSelectModel={entityTypes.includes("model")}
+      canSelectTable={entityTypes.includes("table")}
       canSelectMetric={false}
       canSelectSavedQuestion={false}
       triggerElement={
