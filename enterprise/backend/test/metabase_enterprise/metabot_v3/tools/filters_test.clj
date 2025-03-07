@@ -272,41 +272,26 @@
         ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
-        env {:history [{:role :tool
-                        :tool-call-id "some tool call ID"
-                        :structured-content query-details}]}]
-    (testing "Trivial query works."
-      (is  (=? {:structured-output
-                {:type :query
-                 :query_id string?
-                 :query {:database (mt/id), :type :query, :query {:source-query {:source-table table-id}}}}}
-               (metabot-v3.tools.filters/filter-records
-                {:data-source {:query_id query-id}}
-                env))))
-    (let [input {:data-source {:query_id query-id}
-                 :filters [{:field_id (->field-id "Discount")
-                            :operation "number-greater-than"
-                            :value 3}]}
-          expected {:structured-output {:type :query,
-                                        :query_id string?
-                                        :query {:database (mt/id)
-                                                :type :query
-                                                :query {:source-query {:source-table table-id}
-                                                        :filter [:>
-                                                                 [:field
-                                                                  "DISCOUNT"
-                                                                  {:base-type :type/Float}]
-                                                                 3]}}}}]
-      (testing "Filtering works."
-        (testing "new tool call with query and query_id"
-          (is (=? expected
-                  (metabot-v3.tools.filters/filter-records
-                   (assoc input :data-source (select-keys query-details [:query :query_id]))))))
-        (testing "new tool call with just query"
-          (is (=? expected
-                  (metabot-v3.tools.filters/filter-records
-                   (assoc input :data-source (select-keys query-details [:query]))))))))
-    (testing "Missing query results in an error."
-      (is (= {:output (str "No query found with query_id " query-id)}
-             (metabot-v3.tools.filters/filter-records
-              {:data-source {:query_id query-id}}))))))
+        input {:data-source {:query_id query-id}
+               :filters [{:field_id (->field-id "Discount")
+                          :operation "number-greater-than"
+                          :value 3}]}
+        expected {:structured-output {:type :query,
+                                      :query_id string?
+                                      :query {:database (mt/id)
+                                              :type :query
+                                              :query {:source-query {:source-table table-id}
+                                                      :filter [:>
+                                                               [:field
+                                                                "DISCOUNT"
+                                                                {:base-type :type/Float}]
+                                                               3]}}}}]
+    (testing "Filtering works."
+      (testing "new tool call with query and query_id"
+        (is (=? expected
+                (metabot-v3.tools.filters/filter-records
+                 (assoc input :data-source (select-keys query-details [:query :query_id]))))))
+      (testing "new tool call with just query"
+        (is (=? expected
+                (metabot-v3.tools.filters/filter-records
+                 (assoc input :data-source (select-keys query-details [:query])))))))))

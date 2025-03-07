@@ -80,15 +80,7 @@
 (defn- fix-sql-endpoint []
   (str (ai-proxy-base-url) "/v1/sql/fix"))
 
-(defn- decode-response-body [response-body]
-  (mc/decode ::metabot-v3.client.schema/ai-proxy.response
-             response-body
-             (mtx/transformer
-              (mtx/json-transformer)
-              {:name :api-response}
-              (mtx/key-transformer {:decode u/->kebab-case-en}))))
-
-(mu/defn request-v2 :- ::metabot-v3.client.schema/ai-proxy.response-v2
+(mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response-v2
   "Make a V2 request to the AI Proxy."
   [{:keys [context messages conversation-id session-id state]}
    :- [:map
@@ -100,17 +92,13 @@
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-v2-endpoint-url)
-          body     (doto (metabot-v3.u/recursive-update-keys
-                          {:messages        (when (seq messages) ; TODO just use messages when dummy tools are gone
-                                              (mc/encode ::metabot-v3.client.schema/messages
-                                                         messages
-                                                         (mtx/transformer {:name :api-request})))
-                           :context         context
-                           :conversation-id conversation-id
-                           :state           state
-                           :user-id         api/*current-user-id*}
-                          metabot-v3.u/safe->snake_case_en)
-                     (metabot-v3.context/log :llm.log/be->llm))
+          body     (-> {:messages messages
+                        :context  context}
+                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
+                       (assoc :conversation_id conversation-id
+                              :state           state
+                              :user_id         api/*current-user-id*))
+          _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
                                                "Content-Type"              "application/json;charset=UTF-8"
@@ -124,25 +112,23 @@
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (u/prog1 (-> (mc/decode ::metabot-v3.client.schema/ai-proxy.response-v2
-                                (:body response)
-                                (mtx/transformer
-                                 (mtx/json-transformer)
-                                 {:name :api-response}
-                                 (mtx/key-transformer {:decode u/->kebab-case-en})))
-                     (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->kebab-case-en))
+        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response-v2
+                            (:body response)
+                            (mtx/transformer
+                             (mtx/json-transformer)
+                             {:name :api-response}
+                             (mtx/key-transformer {:decode u/->kebab-case-en})))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
     (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e))
-                      {}
-                      e)))))
+      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
-(defn select-metric-request
+(mu/defn select-metric-request
   "Make a request to AI Service to select a metric."
-  [metrics query]
+  [metrics :- [:sequential ::metabot-v3.client.schema/metric]
+   query   :- :string]
   (try
     (let [url (metric-selection-endpoint-url)
           body {:metrics metrics
@@ -150,8 +136,8 @@
           options (build-request-options body)
           response (post! url options)]
       (if (= (:status response) 200)
-        (u/prog1 (decode-response-body (:body response))
-          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (u/prog1 (:body response)
+          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -160,17 +146,17 @@
                       {}
                       e)))))
 
-(defn find-outliers-request
+(mu/defn find-outliers-request
   "Make a request to AI Service to find outliers"
-  [values]
+  [values :- [:sequential [:map [:dimension :any] [:value :any]]]]
   (try
     (let [url (find-outliers-endpoint-url)
           body {:values values}
           options (build-request-options body)
           response (post! url options)]
       (if (= (:status response) 200)
-        (u/prog1 (decode-response-body (:body response))
-          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (u/prog1 (:body response)
+          (log/debugf "Response:\n%s" (u/pprint-to-str <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -179,9 +165,13 @@
                       {}
                       e)))))
 
-(defn fix-sql
+(mu/defn fix-sql
   "Ask the AI service to propose fixes a SQL query and a given error."
-  [body]
+  [body :- [:map
+            [:sql :string]
+            [:dialect :keyword]
+            [:error_message :string]
+            [:schema_ddl {:optional true} :string]]]
   (let [url (fix-sql-endpoint)
         options (build-request-options body)
         response (post! url options)]

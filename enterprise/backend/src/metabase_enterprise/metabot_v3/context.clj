@@ -1,9 +1,7 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
-   [metabase-enterprise.metabot-v3.tools.query :as metabot-v3.tools.query]
    [metabase.config :as config]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
@@ -39,31 +37,20 @@
         (.newLine w)))))
 
 (mr/def ::context
-  [:map-of
-   ;; TODO -- should this be recursive?
-   {:encode/api-request #(update-keys % u/->snake_case_en)}
-   :keyword
-   :any])
-
-(def ^:private current-user-time-format
-  (DateTimeFormatter/ofPattern "'Today is' EEEE, 'Year' yyyy, 'Date' yyyy-MM-dd, HH:mm:ss"))
+  [:map-of :keyword :any])
 
 (defn- set-user-time
-  [context {:keys [date-format] :or {date-format current-user-time-format}}]
+  [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
                         (OffsetDateTime/now))]
     (-> context
         (dissoc :current_time_with_timezone)
         (assoc :current_user_time (.format ^DateTimeFormatter date-format offset-time)))))
 
-(mu/defn create-context
+(mu/defn create-context :- ::context
   "Create a tool context."
-  ([context]
+  ([context :- ::context]
    (create-context context nil))
-  ([context opts]
+  ([context :- ::context
+    opts    :- [:maybe [:map-of :keyword :any]]]
    (set-user-time context opts)))
-
-(mu/defn create-reactions
-  "Extracts reactions based on the current context."
-  [context]
-  (vec (metabot-v3.tools.query/create-reactions context)))
