@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
 
@@ -381,4 +382,39 @@ describe("issues 52811, 52812", () => {
   function clickAway() {
     cy.get("body").click(0, 0);
   }
+});
+
+describe("issue 52806", () => {
+  const questionDetails = {
+    name: "SQL",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+        "template-tags": {
+          id: {
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: "1",
+          },
+        },
+      },
+    },
+    visualization_settings: {},
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.location().should(location => expect(location.search).to.eq(""));
+  });
 });
