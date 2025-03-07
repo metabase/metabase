@@ -55,6 +55,7 @@ export function StaticEmbeddingSettings({
         <Box data-testid="embedding-secret-key-setting">
           <SettingHeader
             id="setting-embedding-secret-key"
+            title={embeddingSecretKeySetting.display_name}
             description={embeddingSecretKeySetting.description}
           />
           <SetByEnvVarWrapper setting={embeddingSecretKeySetting}>
