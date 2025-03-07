@@ -138,5 +138,4 @@ function normalizeEntityTypes(
 export const { setInitialUrlOptions, setOptions } =
   interactiveEmbedSlice.actions;
 
-// eslint-disable-next-line import/no-default-export
-export default interactiveEmbedSlice.reducer;
+export const embed = interactiveEmbedSlice.reducer;
