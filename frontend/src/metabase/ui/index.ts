@@ -9,3 +9,4 @@ export type {
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 export * from "./components";
+export { Combobox, useCombobox } from "@mantine/core";
