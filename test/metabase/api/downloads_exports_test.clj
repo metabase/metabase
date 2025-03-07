@@ -1336,7 +1336,7 @@
                    (update-vals formatted-results first)))))))))
 
 (deftest pivot-non-numeric-values-in-aggregations
-  (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still work (#49512)."
+  (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still work (#49353)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
                                        :dataset_query          (mt/mbql-query products
@@ -1345,9 +1345,10 @@
                                                                   :breakout    [$category
                                                                                 !year.created_at]})
                                        :visualization_settings {:pivot_table.column_split
-                                                                {:rows    [["CREATED_AT" "CATEGORY"]]
+                                                                {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
+                                                                           [:field (mt/id :products :category) {:base-type :type/Text}]]
                                                                  :columns []
-                                                                 :values  ["count" "min"]}
+                                                                 :values  [[:aggregation 0] [:aggregation 1]]}
                                                                 :column_settings
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
         (let [expected-header   ["Created At: Year" "Category" "Count" "Min of Created At: Year"]

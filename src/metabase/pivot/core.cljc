@@ -28,16 +28,6 @@
   [columns]
   (filter #(not (is-pivot-group-column %)) columns))
 
-(defn column-split->indexes
-  "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
-    e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
-    ->   {:rows [1] :columns [0] :values [2]}"
-  [column-split columns-without-pivot-group]
-  (let [find-index (fn [col-name] (u/index-of #(= (:name %) col-name) columns-without-pivot-group))]
-    (update-vals
-     column-split
-     (fn [column-names] (into [] (keep find-index column-names))))))
-
 (defn- get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
   The pivot group value is a bitmask where each bit represents a breakout. If a

@@ -93,18 +93,6 @@
         (get col-settings {::mb.viz/column-name (:name col)})))
      cols)))
 
-(defn- column-split->indexes
-  [column-split columns-without-pivot-group]
-  (letfn [(find-index [col-name]
-            (u/index-of (fn [col] (= (:name col) col-name))
-                        columns-without-pivot-group))]
-    (into {}
-          (map (fn [[k column-names]]
-                 [k (->> column-names
-                         (map find-index)
-                         (filter some?))])
-               column-split))))
-
 (defn- create-formatters
   [columns indexes timezone settings format-rows?]
   (mapv (fn [idx]
@@ -189,12 +177,12 @@
 
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports."
-  [{:keys [data settings timezone format-rows?]}]
+  [{:keys [data settings timezone format-rows? pivot-export-options]}]
   (let [columns (pivot/columns-without-pivot-group (:cols data))
         column-split (:pivot_table.column_split settings)
-        {row-indexes :rows
-         col-indexes :columns
-         val-indexes :values} (pivot/column-split->indexes column-split columns)
+        row-indexes (:pivot-rows pivot-export-options)
+        col-indexes (:pivot-cols pivot-export-options)
+        val-indexes (:pivot-measures pivot-export-options)
         col-settings (merge-column-settings columns settings)
         {:keys [row-formatters
                 col-formatters
