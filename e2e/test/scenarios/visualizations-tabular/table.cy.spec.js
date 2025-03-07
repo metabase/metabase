@@ -415,7 +415,9 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       // popover should open automatically
       H.popover().findByText("Subtotal").click();
       cy.realPress("Escape");
-      cy.findByRole("button", { name: /is equal to/i }).click();
+      cy.findByTestId("conditional-formatting-value-operator-button").click({
+        force: true,
+      });
       H.popover().findByText("is less than").click();
 
       cy.findByTestId("conditional-formatting-value-input").type("20");
@@ -496,7 +498,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
       //Check that is-true was applied by default to boolean field rule
       cy.findByTestId("conditional-formatting-value-operator-button").should(
-        "contain.text",
+        "have.value",
         "is true",
       );
 
