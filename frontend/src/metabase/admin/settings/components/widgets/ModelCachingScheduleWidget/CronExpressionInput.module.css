@@ -14,38 +14,10 @@
 
 .styledInput {
   width: 100%;
-  border: 1px solid darken(var(--mb-color-border), 10%);
-}
-
-.inputContainer {
-  position: relative;
-}
-
-.infoIcon {
-  position: absolute;
-  right: 1rem;
-  top: 33%;
-  color: var(--mb-color-text-medium);
 }
 
 .infoIcon:hover {
   color: var(--mb-color-brand);
-}
-
-.popoverContent {
-  background-color: #222;
-  padding: 18px;
-  color: var(--mb-color-text-white);
-}
-
-.popoverTitle {
-  display: block;
-  font-weight: 700;
-}
-
-.popoverText {
-  display: block;
-  margin-top: 4px;
 }
 
 .explanation {

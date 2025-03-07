@@ -1,14 +1,9 @@
-import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import FormS from "metabase/css/components/form.module.css";
-import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
-import { Icon } from "metabase/ui";
+import { Icon, Text, TextInput, Tooltip } from "metabase/ui";
 
 import S from "./CronExpressionInput.module.css";
 import { CustomScheduleExplainer } from "./CustomScheduleExplainer";
@@ -51,17 +46,17 @@ export function CronExpressionInput({
   return (
     <>
       <CustomScheduleInputHint />
-      <div className={S.inputContainer}>
-        <Input
-          value={value}
-          hasError={!!error}
-          onChange={handleChange}
-          onBlurChange={handleBlur}
-        />
-        <CronFormatPopover>
-          <Icon className={S.infoIcon} name="info" />
-        </CronFormatPopover>
-      </div>
+      <TextInput
+        placeholder="For example 5   0   *   Aug   ?"
+        size="lg"
+        error={!!error}
+        type="text"
+        fw={600}
+        value={value}
+        onChange={event => handleChange(event.target.value)}
+        onBlur={event => handleBlur(event.target.value)}
+        rightSection={<CronFormatTooltip />}
+      />
       {error && <span className={S.errorMessage}>{error}</span>}
       {value && !error && <CustomScheduleExplainer cronExpression={value} />}
     </>
@@ -92,29 +87,7 @@ function CustomScheduleInputHint() {
   );
 }
 
-type InputProps = {
-  value: string;
-  hasError?: boolean;
-  onChange: (value: string) => void;
-  onBlurChange: (value: string) => void;
-};
-
-function Input({ value = "", hasError, onChange, onBlurChange }: InputProps) {
-  return (
-    <input
-      placeholder="For example 5   0   *   Aug   ?"
-      className={cx(FormS.FormInput, S.styledInput, {
-        [cx(CS.borderError, CS.bgErrorInput)]: hasError,
-      })}
-      type="text"
-      value={value}
-      onChange={event => onChange(event.target.value)}
-      onBlur={event => onBlurChange(event.target.value)}
-    />
-  );
-}
-
-function CronFormatPopover({ children }: { children: React.ReactElement }) {
+function CronFormatTooltip() {
   // some of these have to be plural because they're plural elsewhere and the same strings cannot be used as both
   // singular message IDs and plural message IDs
   const descriptions = [
@@ -127,20 +100,19 @@ function CronFormatPopover({ children }: { children: React.ReactElement }) {
   ];
 
   return (
-    <TippyPopover
-      placement="top"
-      content={
-        <div className={S.popoverContent}>
-          <span className={S.popoverTitle}>{t`Allowed values`}</span>
+    <Tooltip
+      label={
+        <div>
+          <Text fw="bold" c="inherit">{t`Allowed values`}</Text>
           {descriptions.map((text, i) => (
-            <span className={S.popoverText} key={i}>
+            <Text key={i} fw="normal" c="inherit">
               {text}
-            </span>
+            </Text>
           ))}
         </div>
       }
     >
-      {children}
-    </TippyPopover>
+      <Icon name="info" className={S.infoIcon} />
+    </Tooltip>
   );
 }
