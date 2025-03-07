@@ -16,6 +16,7 @@ export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
   className?: string;
   header: Header<TData, TValue>;
+  style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
 }
 
@@ -23,6 +24,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   header,
   className,
   children,
+  style,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
   const isPinned = header.column.getIsPinned();
@@ -39,9 +41,9 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const style = useMemo<CSSProperties>(() => {
+  const rootStyle = useMemo<CSSProperties>(() => {
     if (isPinned) {
-      return {};
+      return style ?? {};
     }
     return {
       position: "relative",
@@ -51,6 +53,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       zIndex: isDragging ? 2 : 0,
       cursor: isDragging ? "grabbing" : "pointer",
       outline: "none",
+      ...style,
     };
   }, [isDragging, transform, isPinned]);
 
@@ -101,7 +104,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
     <div
       ref={setNodeRef}
       className={cx(S.root, className)}
-      style={style}
+      style={rootStyle}
       onMouseDown={handleDragStart}
       onMouseUp={handleDragEnd}
     >

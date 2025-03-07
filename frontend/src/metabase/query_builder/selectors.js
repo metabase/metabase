@@ -47,7 +47,7 @@ import {
   isSavedQuestionChanged,
 } from "./utils/question";
 
-export const getUiControls = state => state.qb.uiControls;
+export const getUiControls = state => state.qb?.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
 export const getLoadingControls = state => state.qb.loadingControls;
 
@@ -84,7 +84,7 @@ export const getIsRunning = state => getUiControls(state).isRunning;
 export const getIsLoadingComplete = state =>
   getQueryStatus(state) === "complete";
 
-export const getCard = state => state.qb.card;
+export const getCard = state => state.qb?.card;
 export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
@@ -92,7 +92,7 @@ export const getParameterValues = state => state.qb.parameterValues;
 export const getParameterValuesSearchCache = state =>
   state.qb.parameterValuesSearchCache;
 
-export const getMetadataDiff = state => state.qb.metadataDiff;
+export const getMetadataDiff = state => state.qb?.metadataDiff;
 
 export const getEntities = state => state.entities;
 export const getVisibleTimelineEventIds = state =>
@@ -100,7 +100,7 @@ export const getVisibleTimelineEventIds = state =>
 export const getSelectedTimelineEventIds = state =>
   state.qb.selectedTimelineEventIds;
 
-const getRawQueryResults = state => state.qb.queryResults;
+const getRawQueryResults = state => state.qb?.queryResults;
 
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(
@@ -110,7 +110,7 @@ export const getIsBookmarked = (state, props) =>
 
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
+  uiControls => uiControls?.queryBuilderMode,
 );
 
 const getCardResultMetadata = createSelector(
