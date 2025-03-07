@@ -32,7 +32,7 @@
     DatabaseMetaData
     ResultSet
     Types)
-   (java.time Instant OffsetDateTime ZonedDateTime)
+   (java.time Instant OffsetDateTime ZonedDateTime LocalDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
@@ -636,6 +636,14 @@
 (defmethod sql.qp/inline-value [:oracle Instant]
   [driver t]
   (sql.qp/inline-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+
+(defmethod sql.qp/inline-value [:oracle LocalDateTime]
+  [_driver dt]
+  (if (zero? (:milli-of-second (t/as-map dt)))
+    ;; Use `to_date` instead of `date '1970-01-01 00:00:00'` cast because
+    ;; the latter depends on Oracle's NLS_DATE_FORMAT and will error on most installs
+    (format "to_date('%s', 'YYYY-MM-DD HH24:MI:SS')" (u.date/format "yyyy-MM-dd HH:mm:ss" dt))
+    (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" dt))))
 
 ;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
