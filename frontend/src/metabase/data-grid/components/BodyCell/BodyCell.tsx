@@ -27,6 +27,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   canExpand = false,
   columnId,
   rowIndex,
+  isSelected,
   className,
   style,
   contentTestId = "cell-data",
@@ -68,6 +69,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
     <BaseCell
       role="gridcell"
       align={align}
+      isSelected={isSelected}
       className={cx(S.root, className, {
         [S.pill]: variant === "pill",
       })}
