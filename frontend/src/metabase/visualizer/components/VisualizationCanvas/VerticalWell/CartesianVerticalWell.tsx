@@ -61,9 +61,9 @@ export function CartesianVerticalWell() {
         pos="relative"
         gap="sm"
         style={{
-          transform: "rotate(-90deg)",
-          minWidth: "100cqh",
+          height: "100%",
           overflow: "auto",
+          writingMode: "sideways-lr",
         }}
       >
         {metrics.map(metric => (

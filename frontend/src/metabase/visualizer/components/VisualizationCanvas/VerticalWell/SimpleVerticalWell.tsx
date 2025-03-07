@@ -28,7 +28,7 @@ export const SimpleVerticalWell = forwardRef<
       align="center"
       justify="center"
       bg={isHighlighted ? "var(--mb-color-brand-light)" : "bg-light"}
-      p="md"
+      p="xs"
       wrap="nowrap"
       style={{
         borderRadius: "var(--border-radius-xl)",

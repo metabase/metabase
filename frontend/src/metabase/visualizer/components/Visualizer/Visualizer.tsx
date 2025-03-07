@@ -11,6 +11,7 @@ import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getDraggedItem,
@@ -18,7 +19,10 @@ import {
   getIsFullscreenModeEnabled,
   getIsVizSettingsSidebarOpen,
 } from "metabase/visualizer/selectors";
-import { isValidDraggedItem } from "metabase/visualizer/utils";
+import {
+  isDraggedWellItem,
+  isValidDraggedItem,
+} from "metabase/visualizer/utils";
 import {
   closeVizSettingsSidebar,
   handleDrop,
@@ -26,7 +30,10 @@ import {
   setDraggedItem,
   turnOffFullscreenMode,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
+import type {
+  DraggedItem,
+  VisualizerHistoryItem,
+} from "metabase-types/store/visualizer";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
@@ -37,6 +44,29 @@ import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 import S from "./Visualizer.module.css";
+
+const MEASURE_VERTICAL_ITEM = (node: HTMLElement) => {
+  const rect = node.getBoundingClientRect();
+
+  return new DOMRect(
+    rect.x + (rect.width - rect.height) / 2,
+    rect.y + (rect.height - rect.width) / 2,
+    rect.height,
+    rect.width,
+  );
+};
+
+const MEASURE_HORIZONTAL_ITEM = (node: HTMLElement) => {
+  return node.getBoundingClientRect();
+};
+
+const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
+  return (
+    draggedItem &&
+    isDraggedWellItem(draggedItem) &&
+    draggedItem.data.current.wellId === DROPPABLE_ID.Y_AXIS_WELL
+  );
+};
 
 interface VisualizerProps {
   className?: string;
@@ -113,6 +143,13 @@ export const Visualizer = (props: VisualizerProps) => {
       sensors={[canvasSensor]}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      measuring={{
+        draggable: {
+          measure: isVerticalDraggedItem(draggedItem)
+            ? MEASURE_VERTICAL_ITEM
+            : MEASURE_HORIZONTAL_ITEM,
+        },
+      }}
     >
       <Flex className={className} direction="column">
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
