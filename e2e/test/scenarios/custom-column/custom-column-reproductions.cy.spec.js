@@ -1325,3 +1325,73 @@ describe("issue 53682", () => {
     });
   });
 });
+
+describe("issue 53527", () => {
+  const nativeQuestionDetails = {
+    name: "Quotes SQL",
+    native: {
+      query: "SELECT 'a\"b' AS TEXT",
+      "template-tags": {},
+    },
+  };
+
+  const mbqlQuestionDetails = cardId => ({
+    name: "Quotes MBQL",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should properly unescape quotes in the expression editor (metabase#53527)", () => {
+    H.createNativeQuestion(nativeQuestionDetails).then(({ body: card }) => {
+      H.createQuestion(mbqlQuestionDetails(card.id), { visitQuestion: true });
+    });
+    H.openNotebook();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: 'replace([TEXT], "\\"", "")',
+      name: "CustomColumn",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().findByText("ab").should("be.visible");
+  });
+});
+
+describe("issue 48562", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        CustomColumn: ["contains", ["field", 10000, null], "abc"],
+      },
+      filter: ["segment", 10001],
+      aggregation: [["metric", 10002]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("CustomColumn").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
+    cy.realPress("Escape");
+    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
+    cy.button("Cancel").click();
+    cy.realPress("Escape");
+    H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
+  });
+});

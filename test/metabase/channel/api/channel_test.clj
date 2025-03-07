@@ -4,6 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -62,6 +63,14 @@
                                (assoc default-test-channel :details {:return-type  "return-value"
                                                                      :return-value false}))))))
 
+(defmacro with-disabled-subscriptions-permissions!
+  [& body]
+  `(try
+     (perms/revoke-application-permissions! (perms/all-users-group) :subscription)
+     ~@body
+     (finally
+       (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
+
 (deftest list-channels-test
   (mt/with-temp [:model/Channel chn-1 default-test-channel
                  :model/Channel chn-2 (assoc default-test-channel
@@ -74,6 +83,38 @@
     (testing "return all if include_inactive is true"
       (is (= (map #(update % :type u/qualified-name) [chn-1 (assoc chn-2 :name "Channel 2")])
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
+
+(deftest list-channels-permissions-test
+  (mt/with-temp [:model/Channel {chn-1 :id} (assoc default-test-channel :type :channel/http)]
+    (let [get-channel  (fn [user status]
+                         (mt/user-http-request user :get status (format "channel/%s" chn-1)))
+          get-channels (fn [user]
+                         (set (map :id (mt/user-http-request user :get 200 "channel"))))]
+      (testing "admin can see all channels"
+        (get-channel :crowberto 200)
+        (is (= #{chn-1}
+               (get-channels :crowberto))))
+      (testing "non admin user cannot see channels of other users"
+        (get-channel :rasta 403)
+        (is (= #{}
+               (get-channels :rasta))))
+
+      (mt/when-ee-evailable
+       (with-disabled-subscriptions-permissions!
+         (mt/with-user-in-groups [group {:name "test notification perm"}
+                                  user  [group]]
+           (mt/with-premium-features #{:advanced-permissions}
+             (testing "with advanced-permissions enabled"
+               (testing "cannot see channels if they don't have settings permissions"
+                 (is (= #{}
+                        (get-channels (:id user))))
+                 (get-channel user 403))
+
+               (testing "can see channels if they have settings permissions"
+                 (perms/grant-application-permissions! group :setting)
+                 (get-channel user 200)
+                 (is (= #{chn-1}
+                        (get-channels (:id user)))))))))))))
 
 (deftest ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"

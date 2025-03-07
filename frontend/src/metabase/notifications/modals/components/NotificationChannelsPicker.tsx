@@ -10,7 +10,7 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,
@@ -41,7 +41,7 @@ export const NotificationChannelsPicker = ({
   const { data: httpChannelsConfig = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const userCanAccessSettings = useSelector(canAccessSettings);
 
   const usersListOptions: User[] = users?.data || (user ? [user] : []);
 
@@ -143,7 +143,7 @@ export const NotificationChannelsPicker = ({
         </ChannelSettingsBlock>
       )}
 
-      {isAdmin &&
+      {userCanAccessSettings &&
         hookHandlers &&
         hookHandlers.map(channel => (
           <ChannelSettingsBlock
@@ -162,7 +162,7 @@ export const NotificationChannelsPicker = ({
         channelsSpec={channels}
         httpChannelsConfig={httpChannelsConfig}
         onAddChannel={addChannel}
-        isAdmin={isAdmin}
+        userCanAccessSettings={userCanAccessSettings}
       />
     </Stack>
   );

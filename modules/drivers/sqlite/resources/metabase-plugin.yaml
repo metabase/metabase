@@ -10,7 +10,7 @@ driver:
   connection-properties:
     - name: db
       display-name: Filename
-      placeholder: /home/camsaul/toucan_sightings.sqlite
+      placeholder: /path/to/toucan_sightings.sqlite
       required: true
     - cloud-ip-address-info
     - advanced-options-start
