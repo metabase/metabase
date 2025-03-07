@@ -3,13 +3,13 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
+   [metabase-enterprise.impersonation.util-test :as impersonation.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync.sync :as sync]
+   [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
@@ -67,20 +67,17 @@
     (qp.store/with-metadata-provider (u/the-id db) (thunk db))))
 
 (deftest clickhouse-set-role
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (let [user-details                   {:user "metabase_test_user"}
-         ;; See docker-compose.yml for the port mappings
-         ;; 24.4+
+          ;; See docker-compose.yml for the port mappings
+          ;; 24.4+
           single-node-port-details       {:port 8123}
           single-node-details            (merge user-details single-node-port-details)
           cluster-port-details           {:port 8127}
           cluster-details                (merge user-details cluster-port-details)]
       (testing "single node"
         (testing "should support the impersonation feature"
-          (t2.with-temp/with-temp
-            [:model/Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
-            (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
+          (is (true? (driver/database-supports? :clickhouse :connection-impersonation (mt/db)))))
         (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                           "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                           "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
@@ -123,8 +120,7 @@
             (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (mt/with-premium-features #{:advanced-permissions}
       (let [table-name       (str "metabase_impersonation_test.test_" (System/currentTimeMillis))
             select-query     (format "SELECT * FROM %s;" table-name)
@@ -155,10 +151,10 @@
                                                              "insert_quorum" "2"})
         (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
         (t2.with-temp/with-temp [:model/Database db cluster-details]
-          (mt/with-db db (sync/sync-database! db)
+          (mt/with-db db (sync.core/sync-database! db)
 
             (letfn [(check-impersonation! [roles expected]
-                      (advanced-perms.api.tu/with-impersonations!
+                      (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                          :attributes     {"impersonation_attr" roles}}
                         (is (= expected

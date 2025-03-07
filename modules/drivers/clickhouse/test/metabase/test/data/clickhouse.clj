@@ -84,7 +84,7 @@
     :timezone :America/Los_Angeles}
    (when-let [user (tx/db-test-env-var :clickhouse :user "default")]
      {:user user})
-   (when-let [password (tx/db-test-env-var :clickhouse :password "password")]
+   (when-let [password (tx/db-test-env-var :clickhouse :password)]
      {:password password})
    (when (= context :db)
      {:db database-name})))
