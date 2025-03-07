@@ -21,7 +21,9 @@
 (defn settings
   "Gets valid config settings."
   []
-  (dox/filter-env-vars (dox/get-settings)))
+  (->> (dox/get-settings)
+       dox/filter-env-vars
+       (remove :deprecated)))
 
 (defn get-name-and-default
   "Get a setting's name and its default."
