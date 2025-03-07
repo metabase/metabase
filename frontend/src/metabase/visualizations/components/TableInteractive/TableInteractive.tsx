@@ -281,19 +281,21 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const handleColumnReordering = useCallback(
     (columnsOrder: string[]) => {
-      const result = settings["table.columns"]?.slice() ?? [];
+      const newColumns = settings["table.columns"]?.slice() ?? [];
 
-      const enabledIndices = result
+      const enabledIndices = newColumns
         .map((col, index) => (col.enabled ? index : -1))
         .filter(index => index !== -1);
 
       columnsOrder.forEach((columnName, orderIndex) => {
-        const sourceIndex = result.findIndex(col => col.name === columnName);
+        const sourceIndex = newColumns.findIndex(
+          col => col.name === columnName,
+        );
         if (sourceIndex !== -1) {
           const targetIndex = enabledIndices[orderIndex];
 
-          const [column] = result.splice(sourceIndex, 1);
-          result.splice(targetIndex, 0, column);
+          const [column] = newColumns.splice(sourceIndex, 1);
+          newColumns.splice(targetIndex, 0, column);
 
           if (sourceIndex > targetIndex) {
             for (let i = orderIndex + 1; i < enabledIndices.length; i++) {
@@ -303,13 +305,22 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
+      const newEnabledColumns = newColumns.filter(col => col.enabled);
+      const savedWidths = settings["table.column_widths"];
+      const newWidths =
+        Array.isArray(savedWidths) &&
+        savedWidths.length === newEnabledColumns.length
+          ? newEnabledColumns.map(c => columnSizingMap[c.name])
+          : undefined;
+
       const settingsUpdate = {
-        "table.columns": result,
+        "table.columns": newColumns,
+        "table.column_widths": newWidths,
       };
 
       onUpdateVisualizationSettings(settingsUpdate);
     },
-    [onUpdateVisualizationSettings, settings],
+    [onUpdateVisualizationSettings, settings, columnSizingMap],
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
