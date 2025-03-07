@@ -329,10 +329,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Map tile server URL`,
         description: (
           <>
-            <p>
+            <div>
               {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
-            </p>
-            <p>{t`Metabase uses OpenStreetMaps by default.`}</p>
+            </div>
+            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
           </>
         ),
         type: "string",
@@ -375,8 +375,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         ],
         description: (
           <>
-            <p>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</p>
-            <p>{t`Not all databases support timezones, in which case this setting won't take effect.`}</p>
+            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
+            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
           </>
         ),
         allowValueCollection: true,
@@ -492,8 +492,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`AI features enabled`,
         description: (
           <>
-            <p>{t`Enable AI features.`}</p>
-            <p>{t`You must supply an API key before AI features can be enabled.`}</p>
+            <div>{t`Enable AI features.`}</div>
+            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
           </>
         ),
         type: "boolean",
