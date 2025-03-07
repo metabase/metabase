@@ -2,6 +2,7 @@
 import type { Theme } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import Label from "metabase/components/type/Label";
 import Link from "metabase/core/components/Link";
@@ -90,9 +91,18 @@ export const EntityNameLink = styled(Link)`
   color: ${() => color("admin-navbar")};
 `;
 
-export const HintIcon = styled((props: IconProps) => (
-  <Icon {...props} name={props.name ?? "info"} size={props.size ?? 16} />
-))`
+export const HintIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function HintIcon(props, ref) {
+    return (
+      <Icon
+        {...props}
+        name={props.name ?? "info"}
+        size={props.size ?? 16}
+        ref={ref}
+      />
+    );
+  }),
+)`
   color: var(--mb-color-text-light);
   margin-left: 0.375rem;
   cursor: pointer;

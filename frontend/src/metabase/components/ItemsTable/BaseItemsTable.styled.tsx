@@ -2,8 +2,11 @@
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import cx from "classnames";
-import type { HTMLAttributes, TableHTMLAttributes } from "react";
+import {
+  type HTMLAttributes,
+  type TableHTMLAttributes,
+  forwardRef,
+} from "react";
 
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -22,7 +25,7 @@ type TableProps = TableHTMLAttributes<HTMLTableElement> & {
 };
 
 export const Table = styled((props: TableProps) => (
-  <table {...props} className={cx(AdminS.ContentTable, props.className)} />
+  <table {...props} className={props.className ?? AdminS.ContentTable} />
 ))`
   background-color: var(--mb-color-bg-white);
   table-layout: fixed;
@@ -122,9 +125,11 @@ export const ItemNameCell = styled.td`
   }
 `;
 
-export const SortingIcon = styled((props: IconProps) => (
-  <FixedSizeIcon {...props} size={props.size ?? 8} />
-))`
+export const SortingIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function SortingIcon(props, ref) {
+    return <FixedSizeIcon {...props} size={props.size ?? 8} ref={ref} />;
+  }),
+)`
   margin-inline-start: 4px;
 `;
 

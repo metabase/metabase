@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import FormField from "metabase/core/components/FormField";
 import Radio from "metabase/core/components/Radio";
@@ -60,9 +61,11 @@ export const Subtitle = styled.div`
   margin-top: 1.2rem;
 `;
 
-export const DragHandle = styled((props: IconProps) => (
-  <Icon {...props} size={props.size ?? DRAG_HANDLE_SIZE} />
-))`
+export const DragHandle = styled(
+  forwardRef<SVGSVGElement, IconProps>(function DragHandle(props, ref) {
+    return <Icon {...props} size={props.size ?? DRAG_HANDLE_SIZE} ref={ref} />;
+  }),
+)`
   color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
