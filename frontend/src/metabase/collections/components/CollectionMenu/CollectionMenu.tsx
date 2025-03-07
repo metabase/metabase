@@ -11,8 +11,9 @@ import { IndicatorMenu } from "metabase/core/components/IndicatorMenu";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Badge, Icon, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
 
 export interface CollectionMenuProps {
   collection: Collection;
@@ -101,6 +102,18 @@ export const CollectionMenu = ({
         userAckKey="move-to-dashboard"
         badgeLabel={t`New`}
       >{t`Move questions into their dashboards`}</IndicatorMenu.ItemWithBadge>,
+
+      <UserHasSeen key="move-to-dashboard" hasSeenKey="move-to-dashboard">
+        {({ show, ack }) => (
+          <Menu.Item
+            leftSection={<Icon name="add_to_dash" />}
+            component={ForwardRefLink}
+            to={`${url}/move-questions-dashboard`}
+            onClick={ack}
+            rightSection={show ? <Badge>{t`New`}</Badge> : null}
+          >{t`Move questions into their dashboards`}</Menu.Item>
+        )}
+      </UserHasSeen>,
     );
   }
 
