@@ -793,7 +793,7 @@ export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
 
 type SectionName = string;
 type ColumnName = string;
-type MappingSection = [SectionName, ColumnName[]];
+type MappingSection = [SectionName | null, ColumnName[]];
 
 export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   const expectedItemsCount = sections.reduce(
@@ -807,10 +807,12 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {
-        const item = cy.wrap($items[index]);
-        item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
-        item.should("have.text", sectionName);
-        ++index;
+        if (sectionName) {
+          const item = cy.wrap($items[index]);
+          item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
+          item.should("have.text", sectionName);
+          ++index;
+        }
 
         for (const columnName of columnNames) {
           const item = cy.wrap($items[index]);
