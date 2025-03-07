@@ -148,7 +148,10 @@
                         ;; pulse.name is no longer used for generating title.
                         ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
                         {:name (:name dashboard)
-                         :collection_id (:collection_id dashboard)})
+                         :collection_id (:collection_id dashboard)
+                         ;; not allowing updated_at to change because this is usually triggered after a "last_viewed_at" update on dashboard which doesn't warrant a pulse update.
+                         ;; plus, the name and collection_id are not really used for anything so it's fine they don't trigger a pulse update_at change even if they do change.
+                         :updated_at :updated_at})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
 (t2/define-after-update :model/Dashboard
