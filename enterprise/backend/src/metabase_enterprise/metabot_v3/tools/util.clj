@@ -22,10 +22,12 @@
   [column]
   (let [column (u/normalize-map column)]
     (cond
-      (lib.types.isa/boolean? column)               "boolean"
-      (lib.types.isa/string-or-string-like? column) "string"
-      (lib.types.isa/numeric? column)               "number"
-      (lib.types.isa/temporal? column)              "date")))
+      (lib.types.isa/boolean? column)                "boolean"
+      (lib.types.isa/string-or-string-like? column)  "string"
+      (lib.types.isa/numeric? column)                "number"
+      (isa? (:effective-type column) :type/DateTime) "datetime"
+      (isa? (:effective-type column) :type/Time)     "time"
+      (lib.types.isa/temporal? column)               "date")))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
@@ -60,11 +62,13 @@
   [query column index-or-columns field-id-prefix]
   (let [pos (if (sequential? index-or-columns)
               (first (find-column-indexes column index-or-columns))
-              index-or-columns)]
+              index-or-columns)
+        semantic-type (:semantic-type column)]
     (-> {:field_id (str field-id-prefix pos)
          :name (lib/display-name query -1 column :long)
          :type (convert-field-type column)}
-        (m/assoc-some :description (get column :description)))))
+        (m/assoc-some :description (get column :description)
+                      :semantic_type (some-> semantic-type name u/->snake_case_en)))))
 
 (defn resolve-column-index
   "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
