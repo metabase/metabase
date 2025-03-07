@@ -355,3 +355,26 @@ describe("issue 53170", () => {
     },
   );
 });
+
+describe("issue 54817", () => {
+  const placeholder = "Search for a column…";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to navigate to the search input in the filter modal via keyboard (metabase#54817)", () => {
+    H.openOrdersTable();
+    H.filter();
+    H.modal().within(() => {
+      cy.findByPlaceholderText(placeholder).should("not.be.focused");
+      cy.realPress(["Tab"]);
+      cy.findByPlaceholderText(placeholder).should("be.focused");
+      cy.realPress(["Tab"]);
+      cy.findByPlaceholderText(placeholder).should("not.be.focused");
+      cy.realPress(["Shift", "Tab"]);
+      cy.findByPlaceholderText(placeholder).should("be.focused");
+    });
+  });
+});
