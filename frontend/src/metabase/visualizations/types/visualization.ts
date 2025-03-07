@@ -205,6 +205,8 @@ export type VisualizationPassThroughProps = {
   showAllLegendItems?: boolean;
   onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
+  onHeaderColumnReorder?: (columnName: string) => void;
+
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
 
