@@ -142,15 +142,14 @@
              data       (map-indexed
                          (fn [index value]
                            {:value value
-                            :colIdx index})
+                            :col (nth cols index)})
                          row)
              ;; @tsp TODO? this could use the `data` above
              dimensions (->> row
                              (map-indexed (fn [index value]
                                             {:value value
-                                             :colIdx index}))
-                             (filter (fn [tmp]
-                                       (= ((nth cols (:colIdx tmp)) "source") "breakout"))))
+                                             :column (nth cols index)}))
+                             (filter (fn [{column :column}] (= (column :source) "breakout"))))
              value-columns (select-indexes cols val-indexes)]
          (assoc acc
                 value-key
