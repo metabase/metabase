@@ -847,6 +847,10 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
 
+    if (!this.headerRefs[columnIndex] || !this.resizeHandleRefs[columnIndex]) {
+      return null;
+    }
+
     return (
       <TableDraggable
         nodeRef={this.headerRefs[columnIndex]}
@@ -910,7 +914,7 @@ class TableInteractive extends Component {
           ref={element => {
             // We cannot have `null` in `nodeRef` as it will fallback to
             // `findDOMNode` which no longer exists in React 19.
-            if (element && this.headerRefs[columnIndex]) {
+            if (element) {
               this.headerRefs[columnIndex].current = element;
             }
           }}
@@ -1014,7 +1018,7 @@ class TableInteractive extends Component {
               ref={element => {
                 // We cannot have `null` in `nodeRef` as it will fallback to
                 // `findDOMNode` which no longer exists in React 19.
-                if (element && this.resizeHandleRefs[columnIndex]) {
+                if (element) {
                   this.resizeHandleRefs[columnIndex].current = element;
                 }
               }}
