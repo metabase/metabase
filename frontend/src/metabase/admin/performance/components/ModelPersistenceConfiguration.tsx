@@ -107,7 +107,7 @@ export const ModelPersistenceConfiguration = () => {
       ? PersistedModelsApi.enablePersistence()
       : PersistedModelsApi.disablePersistence();
     await resolveWithToasts([promise]);
-    dispatch(refreshSiteSettings({}));
+    dispatch(refreshSiteSettings());
   };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
