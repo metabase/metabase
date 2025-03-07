@@ -80,14 +80,6 @@
       :month           (lib.temporal-bucket.util/temporal-interval-tru n "month")
       :quarter         (lib.temporal-bucket.util/temporal-interval-tru n "quarter")
       :year            (lib.temporal-bucket.util/temporal-interval-tru n "year")
-      :minute-of-hour  (lib.temporal-bucket.util/temporal-interval-tru n "minute of hour")
-      :hour-of-day     (lib.temporal-bucket.util/temporal-interval-tru n "hour of day")
-      :day-of-week     (lib.temporal-bucket.util/temporal-interval-tru n "day of week")
-      :day-of-month    (lib.temporal-bucket.util/temporal-interval-tru n "day of month")
-      :day-of-year     (lib.temporal-bucket.util/temporal-interval-tru n "day of year")
-      :week-of-year    (lib.temporal-bucket.util/temporal-interval-tru n "week of year")
-      :month-of-year   (lib.temporal-bucket.util/temporal-interval-tru n "month of year")
-      :quarter-of-year (lib.temporal-bucket.util/temporal-interval-tru n "quarter of year")
       ;; else
       (lib.temporal-bucket.util/temporal-interval-tru n "unknown unit"))))
 
