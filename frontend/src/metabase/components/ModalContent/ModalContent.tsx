@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import type { ReactNode } from "react";
 import { Component } from "react";
 
@@ -23,14 +22,6 @@ export default class ModalContent extends Component<ModalContentProps> {
   static defaultProps = {
     formModal: true,
   };
-
-  static childContextTypes = {
-    isModal: PropTypes.bool,
-  };
-
-  getChildContext() {
-    return { isModal: true };
-  }
 
   render() {
     const {
