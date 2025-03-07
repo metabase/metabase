@@ -1139,13 +1139,21 @@
 
 (deftest ^:parallel query-with-unwrapped-literal-expression-test
   (testing "wrapped literal expression support"
-    (is (= [[1 "foo" 12345]
-            [2 "foo" 12345]]
+    (is (= [[1 "" "foo" 0 12345 true false]
+            [2 "" "foo" 0 12345 true false]]
            (mt/rows
             (mt/run-mbql-query orders
-              {:expressions {"unwrapped string" "foo"
-                             "unwrapped int"    12345}
+              {:expressions {"empty"  ""
+                             "foo"    "foo"
+                             "zero"   0
+                             "12345"  12345
+                             "True"   true
+                             "False"  false}
                :fields [$id
-                        [:expression "unwrapped string" nil]
-                        [:expression "unwrapped int" nil]]
+                        [:expression "empty" nil]
+                        [:expression "foo"   nil]
+                        [:expression "zero"  nil]
+                        [:expression "12345" nil]
+                        [:expression "True"  nil]
+                        [:expression "False" nil]]
                :limit 2}))))))
