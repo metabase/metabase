@@ -37,6 +37,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       H.expectGoodSnowplowEvent({
         event: "upsell_clicked",
         promoted_feature: "hosting",
+        upsell_location: "settings-cloud",
       });
       H.expectNoBadSnowplowEvents();
     },
