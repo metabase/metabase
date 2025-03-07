@@ -3,6 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
+import { forwardRef } from "react";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import Link from "metabase/core/components/Link";
@@ -12,8 +13,10 @@ import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
 
 export const SidebarIcon = styled(
-  ({ isSelected, ...props }: IconProps & { isSelected: boolean }) => (
-    <Icon {...props} size={props.size ?? 16} />
+  forwardRef<SVGSVGElement, IconProps & { isSelected: boolean }>(
+    function SidebarIcon({ isSelected, ...props }, ref) {
+      return <Icon {...props} size={props.size ?? 16} ref={ref} />;
+    },
   ),
 )<{
   color?: string | null;
