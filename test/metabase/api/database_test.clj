@@ -694,45 +694,6 @@
                                              :table_name "FOO_TABLE"}}
                         (f (mt/user-http-request :rasta :get 200 (format "database/%d/fields" (mt/id)))))))))))
 
-(deftest resolve-table-test
-  (testing "#'api.database/resolve-table"
-    (let [resolve-table #'api.database/resolve-table]
-      (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
-                     :model/Table {t1-id :id} {:db_id db-id :schema nil      :name "CUSTOMERS"}
-                     :model/Table {t2-id :id} {:db_id db-id :schema "PUBLIC" :name "ORDERS"}
-                     :model/Table _           {:db_id db-id :schema "APP"    :name "MEMBERS"}
-                     :model/Table _           {:db_id db-id :schema "PUBLIC" :name "MEMBERS"}]
-
-        (testing "exact match without schema"
-          (is (= t1-id (:id (resolve-table db-id "CUSTOMERS")))))
-
-        (testing "exact match with schema"
-          (is (= t2-id (:id (resolve-table db-id "PUBLIC.ORDERS")))))
-
-        (testing "case-insensitive match"
-          (is (= t1-id (:id (resolve-table db-id "customers"))))
-          (is (= t2-id (:id (resolve-table db-id "public.orders")))))
-
-        (testing "ambiguous match (multiple schemas with same table name)"
-          (let [ex (is (thrown-with-msg? ExceptionInfo
-                                         #"Ambiguous table identifier"
-                                         (resolve-table db-id "members")))]
-            (is (= 300 (:status-code (ex-data ex))))
-            (is (= #{"APP.MEMBERS" "PUBLIC.MEMBERS"}
-                   (set (:potential-matches (ex-data ex)))))))
-
-        (testing "non-existent table"
-          (let [ex (is (thrown-with-msg? ExceptionInfo
-                                         #"Not found"
-                                         (resolve-table db-id "non_existent")))]
-            (is (= 404 (:status-code (ex-data ex))))))
-
-        (testing "invalid format (too many segments)"
-          (let [ex (is (thrown-with-msg? ExceptionInfo
-                                         #"Invalid table identifier"
-                                         (resolve-table db-id "a.b.c")))]
-            (is (= 400 (:status-code (ex-data ex))))))))))
-
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
   (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
