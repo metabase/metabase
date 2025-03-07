@@ -10,16 +10,6 @@
     (clj->js
      (pivot/columns-without-pivot-group cols))))
 
-(defn ^:export column-split-indexes
-  "Converts names of columns in `column-split` to indices into `columns-without-pivot-group`.
-    e.g. {:rows [\"CREATED_AT\"], :columns [\"RATING\"], :values [\"count\"]}
-    ->   {:rows [1] :columns [0] :values [2]}"
-  [column-split cols]
-  (let [column-split (js->clj column-split :keywordize-keys true)
-        cols         (js->clj cols :keywordize-keys true)]
-    (clj->js
-     (pivot/column-split->indexes column-split cols))))
-
 (defn ^:export split-pivot-data
   "Pulls apart different aggregations that were packed into one result set returned from the QP.
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column

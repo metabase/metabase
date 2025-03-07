@@ -32,7 +32,11 @@ export function multiLevelPivot(data, settings) {
     columns: columnIndexes,
     rows: rowIndexes,
     values: valueIndexes,
-  } = Pivot.column_split_indexes(columnSplit, columns);
+  } = _.mapObject(columnSplit, columnNames =>
+    columnNames
+      .map(columnName => columns.findIndex(col => col.name === columnName))
+      .filter(index => index !== -1),
+  );
 
   const columnSettings = columns.map(column => settings.column(column));
 
