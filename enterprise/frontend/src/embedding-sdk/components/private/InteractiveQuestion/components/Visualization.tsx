@@ -28,6 +28,7 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
+    variant,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
@@ -62,7 +63,9 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
-        navigateToNewCardInsideQB={navigateToNewCard}
+        navigateToNewCardInsideQB={
+          variant === "static" ? undefined : navigateToNewCard
+        }
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })

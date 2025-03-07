@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
@@ -12,6 +13,7 @@ import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -38,31 +40,7 @@ const TEST_PARAM = createMockParameter({
   target: ["variable", ["template-tag", "product_id"]],
 });
 
-const VISUALIZATION_TYPES: Record<
-  string,
-  {
-    container: string;
-    button: string;
-  }
-> = {
-  Table: { container: "Table-container", button: "Table-button" },
-  Number: {
-    container: "Number-container",
-    button: "Number-button",
-  },
-  Gauge: {
-    container: "Gauge-container",
-    button: "Gauge-button",
-  },
-  Detail: {
-    container: "Detail-container",
-    button: "Detail-button",
-  },
-  Progress: {
-    container: "Progress-container",
-    button: "Progress-button",
-  },
-};
+const VISUALIZATION_TYPES = ["Table", "Number", "Gauge", "Detail", "Progress"];
 
 const setup = ({
   withChartTypeSelector = false,
@@ -75,6 +53,7 @@ const setup = ({
 } = {}) => {
   if (isValidCard) {
     setupCardEndpoints(card);
+    setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
   } else {
     setupUnauthorizedCardEndpoints(card);
   }
@@ -119,36 +98,48 @@ describe("StaticQuestion", () => {
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
     await waitForLoaderToBeRemoved();
-    expect(
-      screen.getByText("You don't have permissions to do that."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Question not found")).toBeInTheDocument();
+    expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
   });
 
   it("should render a visualization selector if withChartTypeSelector is true", async () => {
     setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("chart-type-selector-button"),
+    ).toBeInTheDocument();
   });
 
   it("should not render a visualization selector if withChartTypeSelector is false", async () => {
     setup();
     await waitForLoaderToBeRemoved();
-    expect(screen.queryByTestId("chart-type-settings")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("chart-type-selector-button"),
+    ).not.toBeInTheDocument();
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
     setup({ withChartTypeSelector: true });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("chart-type-selector-button"),
+    ).toBeInTheDocument();
 
-    for (const visType of Object.keys(VISUALIZATION_TYPES)) {
+    for (const visType of VISUALIZATION_TYPES) {
+      await userEvent.click(screen.getByTestId("chart-type-selector-button"));
       await userEvent.click(
-        screen.getByTestId(VISUALIZATION_TYPES[visType].button),
+        await within(screen.getByRole("menu")).findByText(visType),
       );
-
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
       expect(
-        screen.getByTestId(VISUALIZATION_TYPES[visType].container),
-      ).toHaveAttribute("aria-selected", "true");
+        within(screen.getByTestId("chart-type-selector-button")).getByText(
+          visType,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("visualization-root")).toHaveAttribute(
+        "data-viz-ui-name",
+        visType,
+      );
     }
   });
 
@@ -165,12 +156,22 @@ describe("StaticQuestion", () => {
       id: TEST_PARAM.id,
       type: TEST_PARAM.type,
       target: TEST_PARAM.target,
-      value: 1024,
+      value: [1024],
     });
   });
 
   it("should cancel the request when the component unmounts", async () => {
-    const abortSpy = jest.spyOn(AbortController.prototype, "abort");
+    const mockResolve = jest.fn();
+    const mockReject = jest.fn();
+
+    // Mock the defer module
+    jest.mock("metabase/lib/promise", () => ({
+      defer: jest.fn().mockReturnValue({
+        promise: Promise.resolve(),
+        resolve: mockResolve,
+        reject: mockReject,
+      }),
+    }));
 
     const { unmount } = setup();
     await act(async () => unmount());
@@ -178,9 +179,7 @@ describe("StaticQuestion", () => {
     // two requests should've been made initially
     expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
     expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
-
     // consequently, two abort calls should've been made for the two requests
-    expect(abortSpy).toHaveBeenCalledTimes(2);
-    abortSpy.mockRestore();
+    expect(mockReject).toHaveBeenCalled();
   });
 });

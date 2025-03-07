@@ -50,6 +50,7 @@ export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
     Omit<LoadSdkQuestionParams, "cardId"> & {
       cardId: InteractiveQuestionId;
+      variant?: "static" | "interactive";
     }
 >;
 
@@ -61,6 +62,7 @@ export type InteractiveQuestionContextType = Omit<
     InteractiveQuestionConfig,
     "onNavigateBack" | "isSaveEnabled" | "saveToCollection"
   > &
+  Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
