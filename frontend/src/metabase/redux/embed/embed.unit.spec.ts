@@ -1,7 +1,7 @@
 import { type Dispatch, configureStore } from "@reduxjs/toolkit";
 
-import embedReduer, {
-  DEFAULT_EMBED_OPTIONS,
+import embedReducer, {
+  DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
   setInitialUrlOptions,
 } from "./embed";
 
@@ -12,7 +12,9 @@ describe("embed reducer", () => {
 
       store.dispatch(setInitialUrlOptions({ search: "" }));
 
-      expect(store.getState().embed.options).toEqual(DEFAULT_EMBED_OPTIONS);
+      expect(store.getState().embed.options).toEqual(
+        DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+      );
     });
 
     it("should set options from search", () => {
@@ -42,7 +44,7 @@ describe("embed reducer", () => {
 
 const createMockStore = () => {
   const store = configureStore({
-    reducer: { embed: embedReduer },
+    reducer: { embed: embedReducer },
   });
   return store as typeof store & { dispatch: Dispatch };
 };
