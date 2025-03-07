@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import { color, lighten } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
@@ -53,9 +54,18 @@ export const ToggleLabel = styled.label`
   margin-right: 1rem;
 `;
 
-export const WarningIcon = styled((props: IconProps) => (
-  <Icon {...props} size={props.size ?? 18} name={props.name ?? "warning"} />
-))`
+export const WarningIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function WarningIcon(props, ref) {
+    return (
+      <Icon
+        {...props}
+        size={props.size ?? 18}
+        name={props.name ?? "warning"}
+        ref={ref}
+      />
+    );
+  }),
+)`
   margin-right: 0.25rem;
   color: var(--mb-color-text-light);
 `;
