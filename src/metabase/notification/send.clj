@@ -15,7 +15,7 @@
    [toucan2.core :as t2])
 
   (:import
-   (java.util.concurrent Callable Executors ExecutorService)
+   (java.util.concurrent ArrayBlockingQueue Callable ConcurrentHashMap Executors ExecutorService TimeUnit)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -187,34 +187,19 @@
   (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
 
 (deftype ^:private NotificationQueue
-         [^java.util.LinkedList                     ids-list
-          ^java.util.concurrent.ConcurrentHashMap   id->notification
-          ^java.util.concurrent.locks.ReentrantLock queue-lock
-          ^java.util.concurrent.locks.Condition     not-empty-cond]
+         [^ArrayBlockingQueue  queue
+          ^ConcurrentHashMap id->notification]
   NotificationQueueProtocol
   (put-notification! [_ notification]
     (let [id (or (:id notification) (str (random-uuid)))]
-      (.lock queue-lock)
-      (try
-        (when-not (.containsKey id->notification id)
-          (.add ids-list id))
-        (.put id->notification id notification)
-        ;; Signal that a notification is available
-        (.signal not-empty-cond)
-        (finally
-          (.unlock queue-lock)))))
+      (when-not (.putIfAbsent id->notification id notification)
+        (.put queue id))))
 
   (take-notification! [_]
-    (.lock queue-lock)
-    (try
-      ;; Wait until there's at least one notification
-      (while (.isEmpty ids-list)
-        (.await not-empty-cond))
-      (let [id           (.removeFirst ids-list)
-            notification (.remove id->notification id)]
-        notification)
-      (finally
-        (.unlock queue-lock)))))
+    (loop []
+      (let [id (.take queue)]
+        ;; In case of a race condition between taking and putting the same id, skip the duplicate.
+        (or (.remove id->notification id) (recur))))))
 
 (defn- create-notification-queue
   "A thread-safe, notification queue with the following properties:
@@ -223,12 +208,8 @@
   - Taking from an empty queue blocks until a notification is available
   - Multiple threads can safely add and take from the queue concurrently"
   []
-  (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
-        not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.LinkedList.)
-                         (java.util.concurrent.ConcurrentHashMap.)
-                         queue-lock
-                         not-empty-cond)))
+  (->NotificationQueue (ArrayBlockingQueue. 1000)
+                       (ConcurrentHashMap.)))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
@@ -248,7 +229,7 @@
      (Thread. ^Runnable (fn []
                           (.shutdownNow ^ExecutorService executor)
                           (try
-                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
+                            (.awaitTermination ^ExecutorService executor 30 TimeUnit/SECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
     (dotimes [_ pool-size]
