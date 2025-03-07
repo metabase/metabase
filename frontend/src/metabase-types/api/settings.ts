@@ -280,6 +280,7 @@ interface InstanceSettings {
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
+  "site-name": string;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
@@ -331,7 +332,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
 }

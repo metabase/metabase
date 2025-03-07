@@ -290,6 +290,7 @@ jobs:
     - name: Tag Release
       uses: actions/github-script@v7
       with:
+        github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         result-encoding: string
         script: | # js
           const { tagRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -412,19 +413,30 @@ jobs:
           sparse-checkout: release
       - name: prepare release scripts
         run: cd release && yarn && yarn build
-      - name: Publish draft release notes
+      - name: Publish draft release notes to github
         uses: actions/github-script@v7
         with:
           result-encoding: string
           script: | # js
-            const { publishRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              publishRelease,
+              getCanonicalVersion,
+              getGenericVersion,
+              getMilestoneIssues,
+              getWebsiteChangelog,
+              getMajorVersion
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
 
+            const issues = await getMilestoneIssues({ version, github, owner, repo });
+
+            // github release notes
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
+              issues,
               version,
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
@@ -432,6 +444,20 @@ jobs:
               console.error('Failed to publish release notes', '${{ inputs.version }}', err);
               process.exit(1);
             });
+
+            // website changelog
+            const changelogText = getWebsiteChangelog({ version, issues });
+
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: '${{ vars.WEBSITE_REPO }}',
+              event_type: 'update-changelog',
+              client_payload: {
+                version: getGenericVersion(version),
+                majorVersion: getMajorVersion(version),
+                text: changelogText,
+              }
+            }).catch(console.warn);
 
   publish-version-info:
     runs-on: ubuntu-22.04

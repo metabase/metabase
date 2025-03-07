@@ -46,7 +46,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
     cy.wait("@cardQuery").then(({ response }) => {
       const { body } = response ?? {};
 
-      const rows = tableInteractiveBody().findAllByRole("rowgroup");
+      const rows = tableInteractiveBody().findAllByRole("row");
 
       // There should be one row in the table
       rows.should("have.length", 1);
