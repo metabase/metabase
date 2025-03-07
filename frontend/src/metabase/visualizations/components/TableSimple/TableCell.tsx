@@ -106,7 +106,6 @@ export function TableCell({
   const clickedRowData = useMemo(
     () =>
       getTableClickedObjectRowData(
-        // @ts-expect-error -- visualizations/lib/table should be typed
         series,
         rowIndex,
         columnIndex,
