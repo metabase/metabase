@@ -1,6 +1,11 @@
 .dropdown {
   padding: 0;
-  overflow: auto;
+  /*
+  firefox has a known issue about overflow: auto, adding additional horizontal
+  scrollbar so we have to pass separately overflow-x: hidden to prevent this
+  */
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--mb-color-background);
   border-color: var(--mb-color-border);
   color: var(--mb-color-text-primary);
