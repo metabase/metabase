@@ -7,7 +7,7 @@ import type {
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   dataReferenceStack: null,
   isModifiedFromNotebook: false,
-  isShowingDataReference: true,
+  isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
   isRunning: false,
