@@ -301,9 +301,6 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
-      cy.findByLabelText("Public channel to store image files").type(
-        "metabase_files",
-      );
       cy.button("Save changes").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
