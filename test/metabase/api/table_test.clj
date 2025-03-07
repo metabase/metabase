@@ -1,12 +1,14 @@
 (ns ^:mb/driver-tests metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -195,6 +197,43 @@
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
+
+(deftest api-database-table-endpoint-test
+  (testing "GET /api/table/:table-id/data"
+    (mt/dataset test-data
+      (let [db-id (mt/id)
+            table-id (mt/id :orders)
+            published-events (atom [])]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
+          (testing "returns dataset in same format as POST /api/dataset"
+            (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
+              (is (contains? response :data))
+              (is (contains? response :row_count))
+              (is (contains? response :status))
+              (is (= #{"Created At"
+                       "Discount"
+                       "ID"
+                       "Product ID"
+                       "Quantity"
+                       "Subtotal"
+                       "Tax"
+                       "Total"
+                       "User ID"}
+                     (into #{} (map :display_name) (:cols (:data response)))))
+              (is (seq (:rows (:data response))))
+              (is (empty? (set/intersection #{:json_query :context :cached :average_execution_time} (set (keys response)))))
+              (is (= (mt/id :orders) (:table_id response)))))
+          (testing "we track a table-read event"
+            (is (= [["public" "orders"]]
+                   (->> @published-events
+                        (filter (comp #{:event/table-read} first))
+                        (map (comp #(mapv u/lower-case-en %)
+                                   (juxt :schema :name)
+                                   :object
+                                   second)))))))
+
+        (testing "returns 404 for tables that don't exist"
+          (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
