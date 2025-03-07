@@ -132,7 +132,7 @@
   [name]
   (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
 
-(def ^:private non-nullable-types ["Array" "Map" "Tuple"])
+(def ^:private non-nullable-types ["Array" "Map" "Tuple" "Nullable"])
 (defn- disallowed-as-nullable?
   [ch-type]
   (boolean (some #(str/starts-with? ch-type %) non-nullable-types)))
@@ -145,11 +145,12 @@
                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name (quote-name field-name)
         ch-col   (cond
-                   (or pk? (disallowed-as-nullable? ch-type))
+                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type))
                    (format "%s %s" col-name ch-type)
+
                    (= ch-type "Time")
                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
-                   ; _
+
                    :else (format "%s Nullable(%s)" col-name ch-type))]
     ch-col))
 
