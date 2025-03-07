@@ -111,6 +111,7 @@ class TableInteractive extends Component {
       contentWidths: null,
       showDetailShortcut: true,
     };
+
     this.columnHasResized = {};
 
     /** @type {React.RefObject<HTMLDivElement>[]} */
@@ -118,6 +119,8 @@ class TableInteractive extends Component {
 
     /** @type {React.RefObject<HTMLDivElement>[]} */
     this.resizeHandleRefs = [];
+
+    this._setupColumnHeaderDraggableRefs(props.data);
 
     this.detailShortcutRef = createRef();
 
@@ -203,7 +206,6 @@ class TableInteractive extends Component {
       document.body.appendChild(this._div);
     }
 
-    this._setupColumnHeaderDraggableRefs(this.props.data);
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
     this._showDetailShortcut(this.props.data, this.props.isPivoted);
