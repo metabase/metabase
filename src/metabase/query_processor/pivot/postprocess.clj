@@ -11,7 +11,6 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.streaming.common :as common]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
