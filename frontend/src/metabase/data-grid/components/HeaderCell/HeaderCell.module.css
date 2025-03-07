@@ -7,6 +7,7 @@
   cursor: default;
   font-weight: 700;
   padding: 0 12px;
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .content {

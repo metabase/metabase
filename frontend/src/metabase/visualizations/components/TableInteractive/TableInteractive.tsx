@@ -31,6 +31,7 @@ import {
 } from "metabase/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
@@ -174,7 +175,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const getCellClickedObject = useMemoizedCallback(
     (datasetColumnIndex: number, rowIndex: number) => {
       const clickedRowData = getTableClickedObjectRowData(
-        series as any,
+        series,
         rowIndex,
         datasetColumnIndex,
         isPivoted,
@@ -536,10 +537,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           align: "end",
         },
       );
-      dispatch({
-        type: "metabase/qb/SET_UI_CONTROLS",
-        payload: { scrollToLastColumn: false },
-      });
+      dispatch(setUIControls({ scrollToLastColumn: false }));
     } else if (
       scrollToColumn != null &&
       scrolledColumnRef.current !== scrollToColumn
@@ -583,16 +581,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }
 
   return (
-    <div
-      ref={ref}
-      className={cx(S.root, className)}
-      style={{
-        fontSize: "20px",
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-      }}
-    >
+    <div ref={ref} className={cx(S.root, className)}>
       <DataGrid
         {...tableProps}
         emptyState={emptyState}
