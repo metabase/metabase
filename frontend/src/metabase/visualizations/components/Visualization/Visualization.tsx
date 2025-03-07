@@ -142,6 +142,7 @@ type VisualizationOwnProps = {
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
+  onHeaderColumnReorder?: (columnName: string) => void;
   onChangeLocation?: (location: Location) => void;
   onUpdateQuestion?: () => void;
   onUpdateVisualizationSettings?: (
@@ -812,6 +813,7 @@ class Visualization extends PureComponent<
                   onUpdateVisualizationSettings={onUpdateVisualizationSettings}
                   onUpdateWarnings={onUpdateWarnings}
                   onVisualizationClick={this.handleVisualizationClick}
+                  onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                 />
               </div>
             )
