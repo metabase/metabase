@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { SortableDiv } from "metabase/core/components/Sortable";
 import { TabButton } from "metabase/core/components/TabButton";
 import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
@@ -32,7 +31,7 @@ export const TabList = styled(BaseTabList)`
     margin-right: 0.75rem;
   }
 
-  ${SortableDiv}:not(:last-child) {
+  ${TabButton.Renameable.Root}:not(:last-child) {
     margin-right: 0.75rem;
   }
 `;
