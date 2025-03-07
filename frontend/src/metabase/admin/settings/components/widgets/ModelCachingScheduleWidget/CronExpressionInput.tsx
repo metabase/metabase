@@ -49,15 +49,17 @@ export function CronExpressionInput({
       <TextInput
         placeholder="For example 5   0   *   Aug   ?"
         size="lg"
-        error={!!error}
-        type="text"
         fw={600}
+        error={error}
+        errorProps={{ fz: ".875rem", lh: "1.3rem" }}
+        type="text"
+        labelProps={{ fw: 600 }}
         value={value}
         onChange={event => handleChange(event.target.value)}
         onBlur={event => handleBlur(event.target.value)}
         rightSection={<CronFormatTooltip />}
       />
-      {error && <span className={S.errorMessage}>{error}</span>}
+
       {value && !error && <CustomScheduleExplainer cronExpression={value} />}
     </>
   );
@@ -81,9 +83,7 @@ function CustomScheduleInputHint() {
     >{t`cron syntax`}</ExternalLink>
   );
   return (
-    <span
-      className={S.customScheduleLabel}
-    >{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</span>
+    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</Text>
   );
 }
 

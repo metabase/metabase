@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Select } from "metabase/ui";
+import { Group, Select, Stack, Text } from "metabase/ui";
 
 import { CronExpressionInput } from "./CronExpressionInput";
-import S from "./ModelCachingScheduleWidget.module.css";
 
 interface ModelCachingScheduleWidgetProps {
   value: string;
@@ -56,27 +55,28 @@ export const ModelCachingScheduleWidget = ({
   );
 
   return (
-    <div className={S.root}>
-      <div className={S.widgetsRow}>
-        <div className={S.widgetContainer}>
-          <span className={S.selectLabel}>{t`Refresh models every…`}</span>
+    <Stack gap={0}>
+      <Group align="start">
+        <Stack gap={0}>
+          <Text fz="0.75rem" fw="700">{t`Refresh models every…`}</Text>
           <Select
-            className={S.styledSettingSelect}
+            w={120}
+            size="md"
             value={isCustom ? "custom" : value}
             onChange={handleScheduleChange}
             data={options}
           />
-        </div>
+        </Stack>
         {isCustom && customCronSchedule !== undefined && (
-          <div className={S.widgetContainer}>
+          <Stack gap={0}>
             <CronExpressionInput
               value={customCronSchedule}
               onChange={setCustomCronSchedule}
               onBlurChange={onChange}
             />
-          </div>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Group>
+    </Stack>
   );
 };

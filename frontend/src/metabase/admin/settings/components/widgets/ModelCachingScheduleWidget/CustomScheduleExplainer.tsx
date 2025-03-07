@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { explainCronExpression as _explainCronExpression } from "metabase/lib/cron";
-
-import S from "./CronExpressionInput.module.css";
+import { Text } from "metabase/ui";
 
 function lowerCaseFirstLetter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
@@ -33,5 +32,5 @@ export function CustomScheduleExplainer({
     return null;
   }
 
-  return <span className={S.explanation}>{explanation}</span>;
+  return <Text>{explanation}</Text>;
 }
