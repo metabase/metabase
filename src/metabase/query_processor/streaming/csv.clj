@@ -77,7 +77,8 @@
                             :rows []}
                      :timezone results_timezone
                      :format-rows? format-rows?
-                     :pivot-grouping-key pivot-grouping-key})
+                     :pivot-grouping-key pivot-grouping-key
+                     :pivot-export-options pivot-export-options})
             ;; Non-pivoted export of pivot table: sore the pivot-grouping-key so that the pivot group can be
             ;; removed from the exported data
             pivot-export-options
