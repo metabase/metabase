@@ -1,4 +1,4 @@
-const BRANCH_NAME = "main";
+const BRANCH_NAME = "release-x.52.x";
 
 const BASE_ENV = {
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
