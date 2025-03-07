@@ -1,7 +1,8 @@
 import { type Dispatch, configureStore } from "@reduxjs/toolkit";
 
-import embedReducer, {
+import {
   DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+  embed as embedReducer,
   setInitialUrlOptions,
 } from "./embed";
 
