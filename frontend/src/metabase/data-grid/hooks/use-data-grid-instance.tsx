@@ -250,7 +250,7 @@ export const useDataGridInstance = <TData, TValue>({
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   useUpdateEffect(() => {
-    measureGrid(true);
+    measureGrid();
   }, [sorting]);
 
   const handleColumnResize = useCallback(

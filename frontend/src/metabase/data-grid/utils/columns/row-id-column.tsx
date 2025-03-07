@@ -24,8 +24,14 @@ export const getRowIdColumn = <TRow, TValue>({
     enableSorting: false,
     enableResizing: false,
     enablePinning: true,
-    cell: ({ row }) => {
-      const value = shouldShowIndex ? row.index + 1 : null;
+    cell: ({ row, table }) => {
+      // HACK: When table has client-side sorting we cannot use row.index for the index column as it shows
+      // row index in the original dataset
+      const value = shouldShowIndex
+        ? table
+            .getSortedRowModel()
+            ?.flatRows?.findIndex(flatRow => flatRow.id === row.id) + 1
+        : null;
       return (
         <RowIdCell
           canExpand={canExpand}

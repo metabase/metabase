@@ -62,6 +62,8 @@ import type {
   RowValues,
   VisualizationSettings,
 } from "metabase-types/api";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import S from "./TableInteractive.module.css";
 import {
@@ -130,6 +132,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     width,
     isPivoted = false,
+    isNightMode,
     question,
     clicked,
     hasMetadataPopovers = true,
@@ -149,13 +152,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 ) {
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
-  const queryBuilderMode = useSelector(getQueryBuilderMode);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const queryBuilderMode = useSelector(getQueryBuilderMode);
   const isRawTable = useSelector(getIsShowingRawTable);
   const isClientSideSortingEnabled = isDashboard;
-  const scrollToLastColumn = useSelector(
-    state => getUiControls(state).scrollToLastColumn,
-  );
+  const scrollToLastColumn =
+    useSelector(state => getUiControls(state)?.scrollToLastColumn) ??
+    (() => {});
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { rows, cols } = data;
@@ -573,10 +576,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const dataGridTheme: DataGridTheme = useMemo(() => {
+    const backgroundColor = isNightMode
+      ? "var(--mb-base-color-gray-70)"
+      : undefined;
     return {
       fontSize: tableTheme.cell.fontSize,
       cell: {
-        backgroundColor: tableTheme.cell.backgroundColor,
+        backgroundColor: tableTheme.cell.backgroundColor ?? backgroundColor,
         textColor: tableTheme.cell.textColor,
       },
       pillCell: {
@@ -584,7 +590,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         textColor: tableTheme.idColumn?.textColor,
       },
     };
-  }, [tableTheme]);
+  }, [tableTheme, isNightMode]);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -664,7 +670,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   return (
     <div
       ref={ref}
-      className={cx(S.root, className)}
+      className={cx(
+        S.root,
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+        className,
+      )}
       style={{
         fontSize: "20px",
         width: "100%",
