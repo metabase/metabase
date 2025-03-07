@@ -1973,20 +1973,20 @@
                                              9998889978)))
           (testing "JSON export"
             (is (= "1" (-> (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/json"
-                                                          uuid
-                                                          dashcard-id
-                                                          card-id))
-                         first
-                         :ID))))
+                                                            uuid
+                                                            dashcard-id
+                                                            card-id))
+                           first
+                           :ID))))
           (testing "API export"
             (is (= "1" (-> (client/client :post 202 (format "public/dashboard/%s/dashcard/%d/card/%d/api"
-                                                          uuid
-                                                          dashcard-id
-                                                          card-id))
-                         :data
-                         :rows
-                         first
-                         first))))
+                                                            uuid
+                                                            dashcard-id
+                                                            card-id))
+                           :data
+                           :rows
+                           first
+                           first))))
 
           (testing "XLSX export"
             (is (= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
