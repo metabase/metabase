@@ -82,9 +82,9 @@
    {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
     :port     (tx/db-test-env-var-or-throw :clickhouse :port 8123)
     :timezone :America/Los_Angeles}
-   (when-let [user (tx/db-test-env-var :clickhouse :user)]
+   (when-let [user (tx/db-test-env-var :clickhouse :user "default")]
      {:user user})
-   (when-let [password (tx/db-test-env-var :clickhouse :password)]
+   (when-let [password (tx/db-test-env-var :clickhouse :password "password")]
      {:password password})
    (when (= context :db)
      {:db database-name})))
@@ -191,28 +191,28 @@
   [query-result]
   (map #(drop 1 %) (qp.test/rows query-result)))
 
-(def ^:private test-db-initialized? (atom false))
-(defn create-test-db!
-  "Create a ClickHouse database called `metabase_test` and initialize some test data"
-  [f]
-  (when (not @test-db-initialized?)
-    (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
+#_(def ^:private test-db-initialized? (atom false))
+#_(defn create-test-db!
+    "Create a ClickHouse database called `metabase_test` and initialize some test data"
+    [f]
+    (when (not @test-db-initialized?)
+      (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})
+            db (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
       ;; (println "### Executing create-test-db! with details:" details)
-      (sql-jdbc.execute/do-with-connection-with-options
-       :clickhouse details nil
-       (fn [^Connection conn]
-         (let [metadata (.getMetaData conn)
-               raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
-               statements (as-> raw-statements s
-                            (str/split s #";")
-                            (map str/trim s)
-                            (filter seq s))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :clickhouse db nil
+         (fn [^Connection _]
+           (let [raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
+                 statements (as-> raw-statements s
+                              (str/split s #";")
+                              (map str/trim s)
+                              (filter seq s))]
           ;; (println "## Executing statements " statements)
-           (jdbc/db-do-commands metadata false statements)
-           (reset! test-db-initialized? true))))
+             (jdbc/db-do-commands db false statements)
+             (reset! test-db-initialized? true))))
       ;; (println "### Done with executing create-test-db! with details:" details)
-      ))
-  (f))
+        ))
+    (f))
 
 #_{:clj-kondo/ignore [:warn-on-reflection]}
 (defn exec-statements

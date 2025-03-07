@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<clickhouse>
+
+  <http_port>8123</http_port>
+  <tcp_port>9000</tcp_port>
+
+  <users_config>users.xml</users_config>
+  <default_profile>default</default_profile>
+  <default_database>default</default_database>
+
+  <mark_cache_size>5368709120</mark_cache_size>
+
+  <path>/var/lib/clickhouse/</path>
+  <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+  <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+  <access_control_path>/var/lib/clickhouse/access/</access_control_path>
+  <timezone>UTC</timezone>
+
+  <logger>
+    <level>debug</level>
+    <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+    <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+    <size>1000M</size>
+    <count>10</count>
+    <console>1</console>
+  </logger>
+
+  <query_log>
+    <database>system</database>
+    <table>query_log</table>
+    <partition_by>toYYYYMM(event_date)</partition_by>
+    <flush_interval_milliseconds>1000</flush_interval_milliseconds>
+  </query_log>
+
+</clickhouse>
