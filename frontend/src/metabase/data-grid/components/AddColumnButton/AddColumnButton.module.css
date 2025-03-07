@@ -25,3 +25,12 @@
 .button:hover {
   background: var(--mb-base-color-brand-20) !important;
 }
+
+.button {
+  transition: background-color 200ms;
+  background-color: var(--mb-base-color-brand-10);
+}
+
+.button:hover {
+  background: var(--mb-base-color-brand-20) !important;
+}
