@@ -1663,3 +1663,30 @@
         (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
           (is (= "Custom Title"
                  (second (first res)))))))))
+
+(deftest json-exports-respect-column-order
+  (testing "JSON exports of tables with 8 more columns should preserve the column order"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :orders)
+                                                                            :limit        1}}
+                                        :visualization_settings {:table.columns
+                                                                 [{:name "ID" :enabled true}
+                                                                  {:name "USER_ID" :enabled true}
+                                                                  {:name "PRODUCT_ID" :enabled true}
+                                                                  {:name "SUBTOTAL" :enabled true}
+                                                                  {:name "TAX" :enabled true}
+                                                                  {:name "TOTAL" :enabled true}
+                                                                  {:name "DISCOUNT" :enabled true}
+                                                                  {:name "CREATED_AT" :enabled true}
+                                                                  {:name "QUANTITY" :enabled true}]}}]
+        (testing "for json"
+          (let [result (mt/user-http-request :crowberto :post 200
+                                             (format "card/%d/query/json" (:id card))
+                                             {:request-options {:as :byte-array}}
+                                             {:format_rows true})]
+            (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount ($)" "Created At" "Quantity"]
+                   ["TO DO"]))))))))
