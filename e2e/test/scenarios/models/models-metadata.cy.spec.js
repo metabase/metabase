@@ -288,7 +288,7 @@ describe("scenarios > models metadata", () => {
 
     cy.log("wait for the hint, otherwise scroll into view doesn't work ");
     cy.findByTestId("tab-hint-toast").should("be.visible");
-    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo("right");
+    H.tableInteractiveScrollContainer().scrollTo("right");
 
     cy.log("move Product -> Price before Products -> Vendor");
 
