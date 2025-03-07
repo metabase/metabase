@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import { lighten } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 import { LegendLabel as BaseLegendLabel } from "./LegendLabel";
 
@@ -20,7 +21,13 @@ export const LegendLabelIcon = styled(Icon)`
   padding-right: 0.25rem;
 `;
 
-export const LegendDescriptionIcon = styled(Icon)`
+export const LegendDescriptionIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(
+    function LegendDescriptionIcon(props, ref) {
+      return <Icon {...props} name={props.name ?? "info"} ref={ref} />;
+    },
+  ),
+)`
   color: ${({ theme }) => lighten(theme.fn?.themeColor("text-light"), 0.1)};
   margin: 0 0.375rem;
 
@@ -35,7 +42,3 @@ export const LegendRightContent = styled.div`
   margin-left: auto;
   align-items: center;
 `;
-
-LegendDescriptionIcon.defaultProps = {
-  name: "info",
-};
