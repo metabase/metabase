@@ -847,6 +847,7 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
 
+    // Wait for the refs to be set before rendering
     if (!this.headerRefs[columnIndex] || !this.resizeHandleRefs[columnIndex]) {
       return null;
     }
