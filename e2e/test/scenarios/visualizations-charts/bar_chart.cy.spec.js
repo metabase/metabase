@@ -662,7 +662,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(1).realHover();
     H.assertEChartsTooltip({
@@ -686,7 +686,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(2).realHover();
     H.assertEChartsTooltip({
@@ -710,7 +710,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(3).realHover();
     H.assertEChartsTooltip({
@@ -734,7 +734,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
 
     H.chartPathWithFillColor("#A989C5").eq(4).realHover();
     H.assertEChartsTooltip({
@@ -758,7 +758,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       ],
     });
-    resetHoverState();
+    H.echartsTriggerBlur();
   });
 
   it.skip("should allow grouping series into a single 'Other' series", () => {
@@ -962,7 +962,3 @@ describe("scenarios > visualizations > bar chart", () => {
     H.assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
   });
 });
-
-function resetHoverState() {
-  cy.findByTestId("main-logo").realHover();
-}
