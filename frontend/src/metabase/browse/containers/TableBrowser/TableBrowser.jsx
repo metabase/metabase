@@ -4,6 +4,7 @@ import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -35,7 +36,11 @@ const getSchemaName = props => {
 const getReloadInterval = (_state, _props, tables = []) =>
   tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 
-export const getTableUrl = (table, metadata) => {
+const getTableUrl = (table, metadata, dbId) => {
+  if (PLUGIN_DATA_EDITING.isEnabled()) {
+    return `/browse/databases/${dbId}/tables/${table.name.toLowerCase()}`;
+  }
+
   const metadataTable = metadata?.table(table.id);
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
