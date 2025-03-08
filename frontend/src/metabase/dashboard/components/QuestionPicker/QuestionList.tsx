@@ -178,6 +178,7 @@ export function QuestionList({
             setVisualizerModalCardId(null);
           }}
           onClose={() => setVisualizerModalCardId(null)}
+          allowSaveWhenPristine
         />
       )}
     </>

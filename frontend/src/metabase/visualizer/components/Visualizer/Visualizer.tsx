@@ -72,10 +72,11 @@ interface VisualizerProps {
   className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
+  allowSaveWhenPristine?: boolean;
 }
 
 export const Visualizer = (props: VisualizerProps) => {
-  const { className, onSave, saveLabel } = props;
+  const { className, onSave, saveLabel, allowSaveWhenPristine } = props;
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const draggedItem = useSelector(getDraggedItem);
@@ -165,7 +166,11 @@ export const Visualizer = (props: VisualizerProps) => {
           )}
 
           <Flex direction="column" w="100%">
-            <Header onSave={onSave} saveLabel={saveLabel} />
+            <Header
+              onSave={onSave}
+              saveLabel={saveLabel}
+              allowSaveWhenPristine={allowSaveWhenPristine}
+            />
             <Flex
               flex={1}
               direction="column"
