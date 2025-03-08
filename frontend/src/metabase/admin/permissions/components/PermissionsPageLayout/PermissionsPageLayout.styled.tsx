@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 export const PermissionPageRoot = styled.div`
   display: flex;
@@ -38,7 +39,11 @@ export const FullHeightContainer = styled.div`
   overflow: hidden;
 `;
 
-export const CloseSidebarButton = styled(Icon)`
+export const CloseSidebarButton = styled(
+  forwardRef<SVGSVGElement, IconProps>(function CloseSidebarButton(props, ref) {
+    return <Icon {...props} name={props.name ?? "close"} ref={ref} />;
+  }),
+)`
   top: 1.75rem;
   right: 1.5rem;
   color: var(--mb-color-text-light);
@@ -50,8 +55,6 @@ export const CloseSidebarButton = styled(Icon)`
     color: var(--mb-color-text-medium);
   }
 `;
-
-CloseSidebarButton.defaultProps = { name: "close" };
 
 export const ToolbarButtonsContainer = styled.div`
   display: flex;
