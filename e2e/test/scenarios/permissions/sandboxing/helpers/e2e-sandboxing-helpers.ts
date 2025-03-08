@@ -1,7 +1,12 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import type { GetFieldValuesResponse } from "metabase-types/api";
+import type {
+  FieldValue,
+  GetFieldValuesResponse,
+  ParameterValue,
+  ParameterValues,
+} from "metabase-types/api";
 
 import type {
   DashcardQueryResponse,
@@ -317,6 +322,21 @@ export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
   ).to.be.true;
 }
 
+export const valuesShouldContainGizmosAndWidgets = (
+  valuesArray: (FieldValue | ParameterValue)[],
+) => {
+  const values = valuesArray.map(val => val[0]);
+  expect(values).to.contain("Gizmo");
+  expect(values).to.contain("Widget");
+};
+
+export const valuesShouldContainOnlyGizmos = (
+  valuesArray: (FieldValue | ParameterValue)[],
+) => {
+  const values = valuesArray.map(val => val[0]);
+  expect(values).to.deep.equal(["Gizmo"]);
+};
+
 export const getDashcardResponses = (items: SandboxableItems) => {
   signInAsNormalUser();
 
@@ -342,8 +362,22 @@ export const getCardResponses = (items: SandboxableItems) => {
   ) as Cypress.Chainable<DatasetResponse[]>;
 };
 
-export const getFieldValues = () =>
+export const getFieldValuesForProductCategories = () =>
   cy.request<GetFieldValuesResponse>(
     "GET",
     `/api/field/${SAMPLE_DATABASE.PRODUCTS.CATEGORY}/values`,
   );
+
+export const getParameterValuesForProductCategories = () =>
+  cy.request<ParameterValues>("POST", "/api/dataset/parameter/values", {
+    parameter: {
+      id: "1234",
+      name: "Text",
+      slug: "text",
+      type: "string/=",
+      values_query_type: "list",
+      values_source_type: null,
+      values_source_config: {},
+    },
+    field_ids: [SAMPLE_DATABASE.PRODUCTS.CATEGORY],
+  });
