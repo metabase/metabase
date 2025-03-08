@@ -50,7 +50,7 @@ describe("issue 41133", () => {
   });
 
   it("object detail view should be scrollable on narrow screens (metabase#41133)", () => {
-    cy.findByTestId("detail-shortcut").eq(0).click();
+    H.openObjectDetail(0);
 
     H.modal().within(() => {
       cy.findByText("Created At").scrollIntoView().should("be.visible");

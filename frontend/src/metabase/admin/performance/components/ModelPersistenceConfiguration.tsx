@@ -130,7 +130,7 @@ export const ModelPersistenceConfiguration = () => {
         ? PersistedModelsApi.enablePersistence()
         : PersistedModelsApi.disablePersistence();
       await resolveWithToasts([promise]);
-      dispatch(refreshSiteSettings({}));
+      dispatch(refreshSiteSettings());
     },
     [resolveWithToasts, setModelPersistenceEnabled, dispatch],
   );
@@ -186,7 +186,7 @@ export const ModelPersistenceConfiguration = () => {
             onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                dispatch(refreshSiteSettings({})),
+                dispatch(refreshSiteSettings()),
               ]);
             }}
           />
