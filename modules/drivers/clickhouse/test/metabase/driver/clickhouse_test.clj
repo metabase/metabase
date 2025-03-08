@@ -26,8 +26,7 @@
     `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
 
 (deftest ^:parallel clickhouse-version
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (t2.with-temp/with-temp
       [:model/Database db
        {:engine  :clickhouse
@@ -38,8 +37,7 @@
         (is (string? (get    version :version)))))))
 
 (deftest ^:parallel clickhouse-server-timezone
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (is (= "UTC"
            (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})
                  spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
@@ -89,8 +87,7 @@
               {}))))))
 
 (deftest clickhouse-connection-fails-test
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (mt/with-temp [:model/Database db {:details (assoc (mt/db) :password "wrongpassword") :engine :clickhouse}]
       (testing "sense check that checking the cloud mode fails with a SQLException."
        ;; nil arg isn't tested here, as it will pick up the defaults, which is the same as the Docker instance credentials.
@@ -107,8 +104,7 @@
         (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse nil))))))))
 
 (deftest ^:parallel clickhouse-tls
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (let [working-dir (System/getProperty "user.dir")
           cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
           additional-options (str "sslrootcert=" cert-path)]
@@ -135,8 +131,7 @@
                   :additional-options additional-options}))))))))
 
 (deftest ^:parallel clickhouse-nippy
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (testing "UnsignedByte"
       (let [value (com.clickhouse.data.value.UnsignedByte/valueOf "214")]
         (is (= value (nippy/thaw (nippy/freeze value))))))
@@ -151,8 +146,7 @@
         (is (= value (nippy/thaw (nippy/freeze value))))))))
 
 (deftest ^:parallel clickhouse-query-formatting
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
           {compiled :query} (qp.compile/compile-with-inline-parameters query)
           pretty            (driver/prettify-native-form :clickhouse compiled)]
@@ -162,19 +156,18 @@
         (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
 
 (deftest ^:parallel clickhouse-can-connect
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (doall
      (for [[username password] [["default" ""] ["user_with_password" "foo@bar!"]]
            database            ["default" "Special@Characters~"]]
-       (testing (format "User `%s` can connect to `%s`" username database)
+       (testing (format "User `%s` can connect to `%s` with `%s`" username database password)
          (let [details (merge {:user username :password password}
                               (tx/dbdef->connection-details :clickhouse :db {:database-name database}))]
+           (tap> (pr-str details))
            (is (true? (driver/can-connect? :clickhouse details)))))))))
 
 (deftest clickhouse-qp-extract-datetime-timezone
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (is (= "utc" (#'clickhouse-qp/extract-datetime-timezone "datetime('utc')")))
     (is (= "utc" (#'clickhouse-qp/extract-datetime-timezone "datetime64(3, 'utc')")))
     (is (= "europe/amsterdam" (#'clickhouse-qp/extract-datetime-timezone "datetime('europe/amsterdam')")))
@@ -184,8 +177,7 @@
     (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
 
 (deftest ^:synchronized clickhouse-insert
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (t2.with-temp/with-temp
       [:model/Database db
        {:engine  :clickhouse

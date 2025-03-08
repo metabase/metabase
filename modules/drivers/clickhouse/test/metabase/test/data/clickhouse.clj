@@ -82,7 +82,7 @@
    {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
     :port     (tx/db-test-env-var-or-throw :clickhouse :port 8123)
     :timezone :America/Los_Angeles}
-   (when-let [user (tx/db-test-env-var :clickhouse :user "default")]
+   (when-let [user (tx/db-test-env-var :clickhouse :user)]
      {:user user})
    (when-let [password (tx/db-test-env-var :clickhouse :password)]
      {:password password})
@@ -235,15 +235,15 @@
             (.setDefaultQuerySettings clickhouse-conn query-settings)
             (.execute jdbcStmt statement))))))))
 
-(defn do-with-test-db!
-  "Execute a test function using the test dataset"
-  [f]
-  (t2.with-temp/with-temp
-    [:model/Database database
-     {:engine :clickhouse
-      :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
-    (sync/sync-db-metadata! database)
-    (f database)))
+#_(defn do-with-test-db!
+    "Execute a test function using the test dataset"
+    [f]
+    (t2.with-temp/with-temp
+      [:model/Database database
+       {:engine :clickhouse
+        :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
+      (sync/sync-db-metadata! database)
+      (f database)))
 
 (defmethod tx/dataset-already-loaded? :clickhouse
   [driver dbdef]

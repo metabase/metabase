@@ -38,8 +38,7 @@
 (s/defn ^:private local-date-time-now :- LocalDateTime [] (LocalDateTime/now clock))
 
 (deftest ^:parallel clickhouse-variables-field-filters-datetime-and-datetime64
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (mt/with-clock clock
       (letfn
        [(->clickhouse-input
@@ -166,8 +165,7 @@
                            (ctd/rows-without-index (qp/process-query (get-mbql "next12years" db)))))))))))))))
 
 (deftest ^:parallel clickhouse-variables-field-filters-date-and-date32
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (mt/with-clock clock
       (letfn
        [(->clickhouse-input
@@ -256,8 +254,7 @@
                            (ctd/rows-without-index (qp/process-query (get-mbql "next12years" db)))))))))))))))
 
 (deftest ^:parallel clickhouse-variables-field-filters-null-dates
-  (mt/test-driver
-    :clickhouse
+  (mt/test-driver :clickhouse
     (mt/with-clock clock
       (letfn
        [(->input-ld
@@ -277,13 +274,13 @@
               now-ldt    (local-date-time-now)
               table      ["test_table"
                           [{:field-name "d"
-                            :base-type {:native "Date"}}
+                            :base-type {:native "Nullable(Date)"}}
                            {:field-name "d32"
-                            :base-type {:native "Date32"}}
+                            :base-type {:native "Nullable(Date32)"}}
                            {:field-name "dt"
-                            :base-type {:native "DateTime"}}
+                            :base-type {:native "Nullable(DateTime)"}}
                            {:field-name "dt64"
-                            :base-type {:native "DateTime64"}}]
+                            :base-type {:native "Nullable(DateTime64)"}}]
                           [;; row 1
                            [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
                           ;; row 2
