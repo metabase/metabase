@@ -2,14 +2,12 @@
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
   (:require
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
@@ -26,7 +24,7 @@
     :status       200
     :headers      {"Content-Disposition" (format "attachment; filename=\"%s_%s.json\""
                                                  (or filename-prefix "query_result")
-                                                 (u.date/format (t/zoned-date-time)))}}))
+                                                 (common/export-filename-timestamp))}}))
 
 (defmethod qp.si/streaming-results-writer :json
   [_ ^OutputStream os]

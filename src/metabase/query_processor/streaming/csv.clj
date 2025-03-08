@@ -2,7 +2,6 @@
   (:require
    [clojure.data.csv]
    [clojure.string :as str]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
@@ -11,7 +10,6 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -27,7 +25,7 @@
     :status                    200
     :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.csv\""
                                                               (or filename-prefix "query_result")
-                                                              (u.date/format (t/zoned-date-time)))}
+                                                              (common/export-filename-timestamp))}
     :write-keepalive-newlines? false}))
 
 ;; As a first step towards hollistically solving this issue: https://github.com/metabase/metabase/issues/44556

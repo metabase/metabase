@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -12,6 +13,15 @@
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(defn export-filename-timestamp
+  "Generates the current timestamp as a string to use in export filenames."
+  []
+  (let [timezone (or (driver/report-timezone)
+                     (qp.timezone/system-timezone-id)
+                     "UTC")
+        zone-id (t/zone-id timezone)]
+    (u.date/format (t/zoned-date-time (t/instant) zone-id))))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
