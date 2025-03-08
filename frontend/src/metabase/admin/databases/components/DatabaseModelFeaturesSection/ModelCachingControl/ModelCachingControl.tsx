@@ -6,23 +6,15 @@ import {
   UNPERSIST_DATABASE,
 } from "metabase/admin/databases/database";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import ActionButton from "metabase/components/ActionButton";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import ButtonsS from "metabase/css/components/buttons.module.css";
+import Toggle from "metabase/core/components/Toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
+import { Box, Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
-import {
-  ControlContainer,
-  ErrorMessage,
-  FeatureDescriptionText,
-  FeatureTitle,
-  HoverableIcon,
-  PopoverContent,
-} from "./ModelCachingControl.styled";
+import { Description, Error, Label } from "../ModelFeatureToggles";
 
 interface Props {
   database: Database;
@@ -34,36 +26,16 @@ interface ErrorResponse {
   };
 }
 
-function FeatureDescription({ schemaName }: { schemaName: string }) {
-  const { url } = useDocsUrl("data-modeling/model-persistence");
-  const docsLink = (
-    <ExternalLink
-      key="model-caching-link"
-      href={url}
-    >{t`Learn more.`}</ExternalLink>
-  );
-  return (
-    <PopoverContent>
-      <FeatureTitle>{t`Persist models`}</FeatureTitle>
-      <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable model persistence, you need to grant this connection's credentials read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
-    </PopoverContent>
-  );
-}
-
 function isLackPermissionsError(response: ErrorResponse) {
   return response?.data?.message?.startsWith("Lack permissions");
 }
 
-function ModelCachingControl({ database }: Props) {
+export function ModelCachingControl({ database }: Props) {
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
 
   const databaseId = database.id;
   const isEnabled = database.isPersisted();
-
-  const normalText = isEnabled
-    ? t`Turn model persistence off`
-    : t`Turn model persistence on`;
 
   const siteUUID = useSetting("site-uuid");
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID || "");
@@ -91,27 +63,29 @@ function ModelCachingControl({ database }: Props) {
     }
   };
 
+  const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
+
   return (
     <div>
-      <ControlContainer>
-        <ActionButton
-          className={ButtonsS.Button}
-          normalText={normalText}
-          failedText={t`Failed`}
-          successText={t`Done`}
-          actionFn={handleCachingChange}
+      <Flex align="center" justify="space-between" mb="xs">
+        <Label htmlFor="model-persistence-toggle">{t`Model persistence`}</Label>
+        <Toggle
+          id="model-persistence-toggle"
+          value={isEnabled}
+          onChange={handleCachingChange}
         />
-        <TippyPopover
-          placement="right-end"
-          content={<FeatureDescription schemaName={cacheSchemaName} />}
-        >
-          <HoverableIcon name="info" />
-        </TippyPopover>
-      </ControlContainer>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+      </Flex>
+      <Box maw="22.5rem">
+        {error ? <Error>{error}</Error> : null}
+        <Description>
+          {jt`We'll create tables with model data and refresh them on a schedule you define. To enable model persistence, you need to grant this connection's credentials read and write permissions on the "${cacheSchemaName}" schema or grant create schema permissions. ${(
+            <ExternalLink
+              key="model-caching-link"
+              href={docsUrl}
+            >{t`Learn more.`}</ExternalLink>
+          )}`}
+        </Description>
+      </Box>
     </div>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ModelCachingControl;
