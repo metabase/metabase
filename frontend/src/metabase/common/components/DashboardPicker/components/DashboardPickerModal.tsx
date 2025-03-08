@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Modal, useModalStackContext } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { EntityPickerTab } from "../../EntityPicker";
@@ -188,7 +188,7 @@ export const DashboardPickerModal = ({
 
   const parentCollectionId = getCollectionId(selectedItem || value);
 
-  return (
+  const modal = (
     <>
       <EntityPickerModal
         title={title}
@@ -223,4 +223,12 @@ export const DashboardPickerModal = ({
       />
     </>
   );
+
+  const modalCtx = useModalStackContext();
+
+  if (modalCtx) {
+    return modal;
+  } else {
+    return <Modal.Stack>{modal}</Modal.Stack>;
+  }
 };
