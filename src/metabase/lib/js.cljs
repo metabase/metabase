@@ -2084,7 +2084,9 @@
     (let [column     (js.metadata/parse-column (col-fn cell))
           column-ref (when-let [a-ref (:field-ref column)]
                        (legacy-ref->pMBQL a-ref))]
-      {:column     (fix-column-with-ref column-ref column)
+      {:column     (conj (fix-column-with-ref column-ref column)
+                         (remove (comp nil? val)
+                                 (select-keys (second column-ref) [:base-type :effective-type])))
        :column-ref column-ref
        :value      (.-value cell)})))
 
