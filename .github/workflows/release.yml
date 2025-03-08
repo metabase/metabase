@@ -290,6 +290,7 @@ jobs:
     - name: Tag Release
       uses: actions/github-script@v7
       with:
+        github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         result-encoding: string
         script: | # js
           const { tagRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
