@@ -127,8 +127,7 @@ jobs:
               const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
 
               return {
-                // branch_name: branchName,
-                branch_name: 'main',
+                branch_name: branchName,
                 matrix: shouldRunTestsForVersion
                   ? releaseBranchTestSuites
                   : []
