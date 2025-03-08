@@ -225,7 +225,6 @@ describe("issue 53194", () => {
 
   it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
     H.startNewNativeQuestion();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
