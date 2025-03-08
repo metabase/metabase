@@ -66,18 +66,19 @@
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to
-             (zipmap
-              @col-names
-              (map (fn [formatter r]
-                     ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
-                     ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
-                     ;; does mean that all JSON values are strings. Any other strategy requires some level of
-                     ;; inference to know if we should or should not parse a string (or not stringify an object).
-                     (let [res (formatter (common/format-value r))]
-                       (if-some [num-str (:num-str res)]
-                         num-str
-                         res)))
-                   @ordered-formatters cleaned-row))
+             (apply array-map
+                    (interleave
+                     @col-names
+                     (map (fn [formatter r]
+                            ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
+                            ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
+                            ;; does mean that all JSON values are strings. Any other strategy requires some level of
+                            ;; inference to know if we should or should not parse a string (or not stringify an object).
+                            (let [res (formatter (common/format-value r))]
+                              (if-some [num-str (:num-str res)]
+                                num-str
+                                res)))
+                          @ordered-formatters cleaned-row)))
              writer {})
             (.flush writer))))
 
