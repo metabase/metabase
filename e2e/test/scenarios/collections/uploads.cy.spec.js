@@ -251,12 +251,12 @@ H.describeWithSnowplow(
 
       cy.findByRole("radio", { name: /Append to a model/ }).click();
 
-      cy.findByRole("textbox", { name: "Select a model" })
+      cy.findByRole("searchbox", { name: "Select a model" })
         .should("contain.value", H.VALID_CSV_FILES[1].humanName)
         .click();
 
       H.popover().findByText(H.VALID_CSV_FILES[0].humanName).click();
-      cy.findByRole("textbox", { name: "Select a model" })
+      cy.findByRole("searchbox", { name: "Select a model" })
         .should("have.value", H.VALID_CSV_FILES[0].humanName)
         .click();
     });
