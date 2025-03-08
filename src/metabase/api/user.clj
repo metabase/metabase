@@ -361,17 +361,9 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api.macros/defendpoint :post "/"
-  "Create a new `User`, return a 400 if the email address is already taken"
-  [_route-params
-   _query-params
-   {:keys [email user_group_memberships] :as body}
-   :- [:map
-       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-       [:email                  ms/Email]
-       [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+(defn invite-user
+  "Implementation for `POST /`, invites a user to Metabase."
+  [{:keys [email user_group_memberships] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -388,6 +380,18 @@
                                :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
+
+(api.macros/defendpoint :post "/"
+  "Create a new `User`, return a 400 if the email address is already taken"
+  [_route-params
+   _query-params
+   body :- [:map
+            [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+            [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+            [:email                  ms/Email]
+            [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+  (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
