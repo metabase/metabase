@@ -32,6 +32,7 @@ import {
 } from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
 
 export const CHANNEL_ICONS = {
@@ -61,7 +62,9 @@ const cardsFromDashboard = dashboard => {
     collection_id: card.card.collection_id,
     description: card.card.description,
     display: card.card.display,
-    name: card.card.name,
+    name: isVisualizerDashboardCard(card)
+      ? card.visualization_settings.visualization.settings["card.title"]
+      : card.card.name,
     include_csv: false,
     include_xls: false,
     dashboard_card_id: card.id,
@@ -78,7 +81,11 @@ export const getSupportedCardsForSubscriptions = dashboard => {
 
 const cardsToPulseCards = (cards, pulseCards) => {
   return cards.map(card => {
-    const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
+    const pulseCard =
+      pulseCards.find(
+        pc =>
+          pc.id === card.id && pc.dashboard_card_id === card.dashboard_card_id,
+      ) || card;
     return {
       ...card,
       format_rows: pulseCard.format_rows,
