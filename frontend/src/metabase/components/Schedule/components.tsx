@@ -8,11 +8,8 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type { SelectProps } from "metabase/ui";
-import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -20,6 +17,7 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
+import { AutoWidthSelect } from "./AutoWidthSelect";
 import {
   type Weekday,
   defaultHour,
@@ -27,9 +25,8 @@ import {
   getScheduleComponentLabel,
   getScheduleStrings,
   minutes,
-} from "./constants";
+} from "./strings";
 import type { UpdateSchedule } from "./types";
-import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
 
 export type SelectFrameProps = {
   schedule: ScheduleSettings;
@@ -137,6 +134,7 @@ export const SelectTime = ({
       <Group gap="sm">
         {isClock12Hour && (
           <SegmentedControl
+            lh="1rem"
             radius="sm"
             value={amPm.toString()}
             onChange={value =>
@@ -152,6 +150,7 @@ export const SelectTime = ({
         {timezone && (
           <Tooltip label={timezoneTooltipText}>
             <Box
+              role="note"
               aria-label={timezoneTooltipText}
               tabIndex={0} // Ensure tooltip can be triggered by the keyboard
             >
@@ -236,44 +235,6 @@ export const SelectMinute = ({
         updateSchedule("schedule_minute", Number(value))
       }
       aria-label={label}
-    />
-  );
-};
-
-export const AutoWidthSelect = <Value extends string>({
-  style,
-  value,
-  ...props
-}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
-  const fontFamily = useSelector(state =>
-    getSetting(state, "application-font"),
-  );
-  const maxWidth = useMemo(() => {
-    const longestLabel = getLongestSelectLabel(props.data);
-    const maxWidth = `${
-      measureTextWidthSafely(longestLabel, 50, {
-        family: fontFamily,
-        ...style,
-      }) + 60
-    }px`;
-    return maxWidth;
-  }, [props.data, style, fontFamily]);
-  return (
-    <Select
-      miw="5rem"
-      w={maxWidth}
-      styles={{
-        wrapper: {
-          paddingInlineEnd: 0,
-          marginTop: 0,
-        },
-        label: {
-          marginBottom: 0,
-        },
-        input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
-      }}
-      value={value}
-      {...props}
     />
   );
 };
