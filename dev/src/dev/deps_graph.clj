@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
@@ -155,6 +156,49 @@
   (find-dynamically-loaded-namespaces "src/metabase/xrays/automagic_dashboards/schema.clj")
   (find-dynamically-loaded-namespaces "src/metabase/api/open_api.clj"))
 
+(mu/defn find-defenterprises
+  "using rewrite-clj, find and return all the namespaces 'required' by defenterprise forms in a file."
+  [file]
+  ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
+  (if (str/includes? file "/metabase_enterprise/")
+    []
+    (let [defentz (atom #{})]
+      (walk/postwalk
+       (fn [x]
+         (when-let [target-ns (and (= (:tag x) :list)
+                                   (= (:string-value (first (:children x))) "defenterprise")
+                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+                                   (some->> x z/of-node z/down z/right z/right z/right z/sexpr))]
+           (swap! defentz conj target-ns))
+         x)
+       (z/of-node (r.parser/parse-file-all file)))
+      @defentz)))
+
+(mu/defn find-defenterprise-schemas
+  "using rewrite-clj, find and return all the namespaces 'required' by defenterprise-schema forms in a file."
+  [file]
+  ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
+  (if (str/includes? file "/metabase_enterprise/")
+    []
+    (let [defentz (atom #{})]
+      (walk/postwalk
+       (fn [x]
+         (when-let [target-ns (and (= (:tag x) :list)
+                                   (= (:string-value (first (:children x))) "defenterprise-schema")
+                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+                                   (some->> x z/of-node z/down z/right z/right z/right z/right z/right z/sexpr))]
+           (swap! defentz conj target-ns))
+         x)
+       (z/of-node (r.parser/parse-file-all file)))
+      @defentz)))
+
+(comment
+  ;; has 2 defenterprises
+  (find-defenterprises "src/metabase/query_processor/middleware/permissions.clj")
+
+  ;; has 2 defenterprise-schemas, both to the same ns:
+  (find-defenterprise-schemas "src/metabase/sso/ldap/default_implementation.clj"))
+
 (def ^:private ignored-dependencies
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
@@ -168,26 +212,35 @@
                                              [:map
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
-                                              [:dynamic {:optional true} :boolean]]]]]
+                                              [:dynamic {:optional true} :keyword]]]]]
   [file]
   (try
     (let [decl         (ns.file/read-file-ns-decl file)
           ns-symb      (ns.parse/name-from-ns-decl decl)
           static-deps  (ns.parse/deps-from-ns-decl decl)
           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
-                         (vary-meta symb assoc ::dynamic true))
-          deps         (into (sorted-set) cat [static-deps dynamic-deps])]
+                         (vary-meta symb assoc ::dynamic :require-and-friends))
+          defenterprise-deps (for [symb (find-defenterprises file)]
+                               (vary-meta symb assoc ::dynamic :defenterprise))
+          defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+                                      (vary-meta symb assoc ::dynamic :defenterprise-schema))
+          deps         (into (sorted-set) cat
+                             [static-deps
+                              dynamic-deps
+                              defenterprise-deps
+                              defenterprise-schema-deps])]
       {:namespace ns-symb
        :module    (module ns-symb)
-       :deps      (keep (fn [required-ns]
-                          (when-let [module (module required-ns)]
-                            (when-not (some-> ignored-dependencies ns-symb required-ns)
-                              (merge
-                               {:namespace required-ns
-                                :module    module}
-                               (when (::dynamic (meta required-ns))
-                                 {:dynamic true})))))
-                        deps)})
+       :deps      (sort-by pr-str
+                           (keep (fn [required-ns]
+                                   (when-let [module (module required-ns)]
+                                     (when-not (some-> ignored-dependencies ns-symb required-ns)
+                                       (merge
+                                        {:namespace required-ns
+                                         :module    module}
+                                        (when-let [dynamic-type (::dynamic (meta required-ns))]
+                                          {:dynamic dynamic-type})))))
+                                 deps))})
     (catch Throwable e
       (throw (ex-info (format "Error calculating dependencies for %s" file)
                       {:file file}
@@ -196,7 +249,9 @@
 (comment
   (file-dependencies "src/metabase/db/setup.clj")
   ;; should ignore the entries from [[ignored-dependencies]]
-  (file-dependencies "src/metabase/config.clj"))
+  (file-dependencies "src/metabase/config.clj")
+
+  (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
 (def ^{:arglists '([])} dependencies
   (memoize/ttl
