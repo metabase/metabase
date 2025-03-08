@@ -9,7 +9,6 @@ import { color } from "metabase/lib/colors";
 import { Sortable } from "../Sortable";
 import type { TabButtonMenuAction, TabButtonMenuItem } from "../TabButton";
 import { TabButton } from "../TabButton";
-import TabLink from "../TabLink";
 
 import { TabRow } from "./TabRow";
 
@@ -82,31 +81,6 @@ const Template: StoryFn<typeof TabRow> = args => {
 
 export const Default = {
   render: Template,
-
-  args: {
-    value: 1,
-  },
-};
-
-const LinkTemplate: StoryFn<typeof TabRow> = args => {
-  const [{ value }, updateArgs] = useArgs();
-  const handleChange = (value: unknown) => updateArgs({ value });
-
-  return (
-    <div style={sampleStyle}>
-      <TabRow {...args} value={value} onChange={handleChange}>
-        {[1, 2, 3, 4, 5, 6, 7].map(num => (
-          <TabLink value={num} to="" key={num}>
-            Tab {num}
-          </TabLink>
-        ))}
-      </TabRow>
-    </div>
-  );
-};
-
-export const WithLinks = {
-  render: LinkTemplate,
 
   args: {
     value: 1,
