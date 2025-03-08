@@ -5,27 +5,49 @@ import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
 
 export interface WellItemProps extends FlexProps {
   onRemove?: () => void;
+
+  highlightedForDrag?: boolean;
+  vertical?: boolean;
 }
 
 export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
-  function WellItem({ children, style, onRemove, ...props }, ref) {
+  function WellItem(
+    { children, style, onRemove, highlightedForDrag, vertical, ...props },
+    ref,
+  ) {
     return (
       <Flex
         direction="row"
         align="center"
         bg="var(--mb-color-bg-white)"
         px="sm"
-        h="24px"
         {...props}
         style={{
-          ...style,
           borderRadius: "var(--border-radius-xl)",
           border: `1px solid var(--mb-color-border)`,
           boxShadow: "0 0 1px var(--mb-color-shadow)",
+          cursor: "grab",
+          userSelect: "none",
+
+          ...(highlightedForDrag
+            ? {
+                border: "2px solid var(--mb-color-brand)",
+                boxShadow: "0px 1px 4px 1px var(--mb-color-shadow)",
+                cursor: "grab",
+                backgroundColor: "var(--mb-color-bg-light)",
+                borderRadius: "var(--border-radius-xl)",
+              }
+            : {}),
+
+          ...(vertical
+            ? {
+                transform: "rotate(-90deg)",
+              }
+            : {}),
         }}
         ref={ref}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+        {children}
         {!!onRemove && (
           <ActionIcon
             aria-label={t`Remove`}
