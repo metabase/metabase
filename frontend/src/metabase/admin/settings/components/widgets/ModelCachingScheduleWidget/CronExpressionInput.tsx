@@ -94,9 +94,9 @@ function CronFormatTooltip() {
     t`Minutes` + ": 0-59 , - * /",
     t`Hours` + ": 0-23 , - * /",
     ngettext(msgid`Day of month`, `Days of month`, 1) + ": 1-31 , - * ? / L W",
-    ngettext(msgid`Month`, `Months`, 1) + ": 1-12 or JAN-DEC , - * /",
+    ngettext(msgid`Month`, `Months`, 1) + `: 1-12 ${t`or`} JAN-DEC , - * /`,
     ngettext(msgid`Day of week`, `Days of week`, 1) +
-      ": 1-7 or SUN-SAT , - * ? / L #",
+      `: 1-7 ${t`or`} SUN-SAT , - * ? / L #`,
   ];
 
   return (
