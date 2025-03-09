@@ -83,3 +83,30 @@
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (task.notification/init-send-notification-triggers!)
             (is (empty? (notification.tu/send-notification-triggers subscription-id)))))))))
+
+(deftest init-send-notification-triggers-inactive-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp-scheduler!
+      (task/init! ::task.notification/SendNotifications)
+      (let [notification          (models.notification/create-notification!
+                                   {:payload_type :notification/testing
+                                    :active       true}
+                                   [{:type :notification-subscription/cron
+                                     :cron_schedule "0 0 * 1/1 * ? *"}]
+                                   [])
+            subscription-id       (-> notification models.notification/hydrate-notification :subscriptions first :id)
+            notification-triggers (notification.tu/send-notification-triggers subscription-id)]
+        (testing "sanity check that it has triggers to begin with"
+          (is (not-empty notification-triggers)))
+
+        (testing "skips triggers for inactive notifications"
+          ;; Deactivate the notification
+          (t2/update! :model/Notification (:id notification) {:active false})
+          (task.notification/init-send-notification-triggers!)
+          (is (empty? (notification.tu/send-notification-triggers subscription-id))))
+
+        (testing "recreates triggers when notification is reactivated"
+          ;; Reactivate the notification
+          (t2/update! :model/Notification (:id notification) {:active true})
+          (task.notification/init-send-notification-triggers!)
+          (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
