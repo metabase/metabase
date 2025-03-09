@@ -313,6 +313,8 @@ describe("scenarios > models", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+
+    H.modal().should("not.exist");
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {

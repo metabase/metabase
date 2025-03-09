@@ -1471,10 +1471,6 @@ describe("issue 31309", () => {
       cy.findByText("Duplicate").click();
     });
 
-    H.modal().within(() => {
-      cy.findByText("Not now").click();
-    });
-
     H.openQuestionActions();
     H.popover().within(() => {
       cy.findByText("Edit query definition").click();
