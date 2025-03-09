@@ -204,6 +204,11 @@
             {:payload_type :notification/system-event
              :active       true}))
 
+   :model/NotificationCard
+   (fn [_] (default-timestamped
+            {:send_once      false
+             :send_condition :has_result}))
+
    :model/NotificationSubscription
    (fn [_] (default-created-at-timestamped
             {}))
@@ -793,9 +798,9 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]})
-          ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-          (search/reindex! {:in-place? true}))))))
+            :where       [:and max-id-condition additional-conditions]}))
+        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
+        (search/reindex! {:in-place? true})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -1568,11 +1573,6 @@
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
 
-(defn random-string
-  "Returns a string of `n` random alphanumeric characters."
-  [n]
-  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
-
 (defmacro with-prometheus-system!
   "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
   be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
@@ -1598,3 +1598,21 @@
              :namespace (namespace metric)}
             (#'prometheus/qualified-vals labels))
            ops/read-value)))
+
+(defn- transitive*
+  "Borrows heavily from clojure.core/derive. Notably, however, this intentionally permits circular dependencies."
+  [h child parent]
+  (let [td (:descendants h {})
+        ta (:ancestors h {})
+        tf (fn [source sources target targets]
+             (reduce (fn [ret k]
+                       (assoc ret k
+                              (reduce conj (get targets k #{}) (cons target (targets target)))))
+                     targets (cons source (sources source))))]
+    {:ancestors   (tf child td parent ta)
+     :descendants (tf parent ta child td)}))
+
+(defn transitive
+  "Given a mapping from (say) parents to children, return the corresponding mapping from parents to descendants."
+  [adj-map]
+  (:descendants (reduce-kv (fn [h p children] (reduce #(transitive* %1 %2 p) h children)) nil adj-map)))

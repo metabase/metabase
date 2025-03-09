@@ -3,9 +3,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.events :as events]
-   [metabase.models.notification :as models.notification]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,7 +13,7 @@
 (derive :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
-                                  :event/alert-create
+                                  :event/notification-create
                                   :event/slack-token-invalid})
 
 (def ^:private hydrate-transformer

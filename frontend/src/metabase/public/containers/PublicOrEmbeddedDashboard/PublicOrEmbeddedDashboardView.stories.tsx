@@ -7,9 +7,6 @@ import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import LegacyTooltip from "metabase/core/components/Tooltip";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
@@ -17,7 +14,7 @@ import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -45,7 +42,7 @@ registerVisualization(Table);
 registerVisualization(BarChart);
 
 export default {
-  title: "embed/PublicOrEmbeddedDashboardView",
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
@@ -348,18 +345,6 @@ export function ComponentCompatibility() {
           Mantine Tooltip
         </Card>
       </Tooltip>
-      <LegacyTooltip
-        tooltip={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Label
-          </Text>
-        }
-        isOpen
-      >
-        <Card withBorder display="inline-block">
-          Legacy Tooltip
-        </Card>
-      </LegacyTooltip>
       <Popover withArrow shadow="md" opened>
         <Popover.Target>
           <Card withBorder display="inline-block">
@@ -372,40 +357,6 @@ export function ComponentCompatibility() {
           </Text>
         </Popover.Dropdown>
       </Popover>
-      <TippyPopoverWithTrigger
-        isInitiallyVisible
-        triggerContent={
-          <Card withBorder display="inline-block">
-            Tippy Popover
-          </Card>
-        }
-        popoverContent={
-          <Text size="sm" c="var(--mb-color-text-primary)">
-            Dropdown
-          </Text>
-        }
-        // loki couldn't make a screenshot of the tooltip in correct default position,
-        // so we have to specify it explicitly
-        offset={[8, 8]} // Add explicit offset
-      />
-      <PopoverWithTrigger
-        isInitiallyOpen
-        triggerElement={
-          <Card withBorder display="inline-block">
-            Legacy Popover
-          </Card>
-        }
-      >
-        {() =>
-          function Inner({ maxHeight, ...props }: { maxHeight: number }) {
-            return (
-              <Text size="sm" c="var(--mb-color-text-primary)" {...props}>
-                Dropdownnnnn
-              </Text>
-            );
-          }
-        }
-      </PopoverWithTrigger>
     </Box>
   );
 }

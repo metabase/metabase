@@ -1,19 +1,25 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import type { HTMLAttributes } from "react";
 
 import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
-export const HeaderContainer = styled.div<{ role?: string; tabIndex?: number }>`
+type HeaderContainerProps = HTMLAttributes<HTMLDivElement>;
+
+export const HeaderContainer = styled((props: HeaderContainerProps) => (
+  <div
+    {...props}
+    role={props.role ?? "button"}
+    tabIndex={props.tabIndex ?? 0}
+  />
+))`
   display: flex;
   align-items: center;
   cursor: pointer;
 `;
-
-HeaderContainer.defaultProps = {
-  role: "button",
-  tabIndex: 0,
-};
 
 export const Header = styled.span`
   display: flex;

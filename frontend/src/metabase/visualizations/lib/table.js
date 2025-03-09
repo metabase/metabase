@@ -1,5 +1,12 @@
 import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 
+/**
+ * @param {import("metabase-types/api").Series} series
+ * @param {number} rowIndex
+ * @param {number} columnIndex
+ * @param {boolean} isPivoted
+ * @param {import("metabase-types/api").DatasetData} data
+ */
 export function getTableClickedObjectRowData(
   [series],
   rowIndex,

@@ -1,0 +1,31 @@
+.root {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
+  padding: 0 12px;
+  background-color: var(--cell-bg-color);
+}
+
+.root:hover {
+  background-color: var(--cell-hover-bg-color);
+}
+
+.leftAligned {
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.rightAligned {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.centerAligned {
+  text-align: center;
+  justify-content: center;
+}

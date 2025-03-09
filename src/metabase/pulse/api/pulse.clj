@@ -3,10 +3,12 @@
   see [[metabase.pulse.api.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
    [hiccup.page :refer [html5]]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -18,12 +20,10 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.api.alert :as api.alert]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
@@ -42,6 +42,11 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.sandbox.api.util
                        'metabase-enterprise.advanced-permissions.common))
+
+(defn email-channel
+  "Get email channel from an alert."
+  [alert]
+  (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
@@ -176,7 +181,7 @@
   (if (perms/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                             (:recipients (api.alert/email-channel pulse-before-update)))]
+                             (:recipients (email-channel pulse-before-update)))]
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
                (if (= "email" (:channel_type channel))
@@ -211,8 +216,8 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (api.alert/email-channel pulse-updates))))
-                                          (set (map :id (:recipients (api.alert/email-channel pulse-before-update)))))
+      (let [to-add-recipients (difference (set (map :id (:recipients (email-channel pulse-updates))))
+                                          (set (map :id (:recipients (email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
@@ -370,7 +375,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (binding [notification/*default-options* {:notification/sync? true}]
+  (binding [notification.send/*default-options* {:notification/sync? true}]
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 

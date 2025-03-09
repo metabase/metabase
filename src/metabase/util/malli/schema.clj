@@ -67,6 +67,13 @@
   (assert (every? keyword? keywords))
   (vec (concat [:enum] keywords (map u/qualified-name keywords))))
 
+(defn enum-decode-keyword
+  "Returns an enum schema that decodes strings to keywords.
+    (enum-decode-keyword :foo :bar)
+    ;; => [:enum {:decode/json keyword} :foo :bar]"
+  [keywords]
+  (into [:enum {:decode/json keyword}] keywords))
+
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (def NonBlankString
@@ -394,7 +401,7 @@
     [:fn
      {:error/message "valid locale"}
      i18n/available-locale?]]
-   (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+   (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. ''en'' or ''en_US''.")))
 
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."

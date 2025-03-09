@@ -10,8 +10,8 @@ export const ModifyQuestion = ({
   onBeforeSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollectionId,
-}: InteractiveQuestionProps = {}) => (
+  saveToCollection,
+}: InteractiveQuestionProps) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}
@@ -19,6 +19,6 @@ export const ModifyQuestion = ({
     onBeforeSave={onBeforeSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollectionId={saveToCollectionId}
+    saveToCollection={saveToCollection}
   />
 );

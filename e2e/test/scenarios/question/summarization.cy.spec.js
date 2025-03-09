@@ -93,16 +93,19 @@ describe("scenarios > question > summarize sidebar", () => {
       toBinning: "10 bins",
     });
 
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    H.getDimensionByName({ name: "Quantity" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.getDimensionByName({ name: "Total" })
+      .scrollIntoView()
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Quantity" })
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
@@ -170,12 +173,10 @@ describe("scenarios > question > summarize sidebar", () => {
       });
     });
 
-    H.popover().within(() => {
-      cy.get(".ace_text-layer").should(
-        "have.text",
-        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
-      );
-    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+    );
   });
 
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
@@ -183,15 +184,13 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
 
-    H.enterCustomColumnDetails({ formula: "Distinct([R" });
+    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
 
     cy.log(
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    cy.findByTestId("expression-suggestions-list").within(() => {
-      cy.contains("Reviewer");
-    });
+    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
@@ -233,16 +232,22 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
+    H.tableHeaderColumn("Sum of Subtotal")
+      .closest("[data-testid=header-cell]")
+      .findByLabelText("chevrondown icon");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
-    cy.get("@sortedCell").its("length").should("eq", 1);
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 1);
 
     cy.log("Remove the sorted metric");
     removeMetricFromSidebar("Sum of Subtotal");
 
     cy.log('"Sum of Total" should not be sorted, nor any other header cell');
-    cy.get("@sortedCell").should("not.exist");
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 0);
 
     cy.findAllByTestId("header-cell")
       .should("have.length", 3)

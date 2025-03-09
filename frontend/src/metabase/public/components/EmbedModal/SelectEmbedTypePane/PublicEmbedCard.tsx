@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { PublicLinkCopyPanel } from "metabase/embedding/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { trackPublicEmbedCodeCopied } from "metabase/public/lib/analytics";
-import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
 import {
   Button,
   Center,
@@ -40,7 +40,6 @@ export const PublicEmbedCard = ({
     post.`}
       </Text>
       <Popover
-        width={200}
         position="bottom"
         withArrow
         shadow="md"

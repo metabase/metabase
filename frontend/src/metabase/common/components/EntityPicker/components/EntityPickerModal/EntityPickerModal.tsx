@@ -45,11 +45,7 @@ import { RecentsTab } from "../RecentsTab";
 import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
-import {
-  ModalBody,
-  ModalContent,
-  SinglePickerView,
-} from "./EntityPickerModal.styled";
+import S from "./EntitityPickerModal.module.css";
 import { TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
@@ -365,7 +361,11 @@ export function EntityPickerModal<
       yOffset="10dvh"
     >
       <Modal.Overlay />
-      <ModalContent aria-labelledby={titleId} w="57.5rem">
+      <Modal.Content
+        className={S.modalContent}
+        aria-labelledby={titleId}
+        w="57.5rem"
+      >
         <Modal.Header
           px="2.5rem"
           pt="1rem"
@@ -377,10 +377,11 @@ export function EntityPickerModal<
           </Modal.Title>
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
-        <ModalBody p="0">
+        <Modal.Body className={S.modalBody} p="0">
           {hydratedOptions.showSearch && (
             <Box px="2.5rem" mb="1.5rem">
               <TextInput
+                classNames={{ input: S.textInput }}
                 data-autofocus
                 type="search"
                 leftSection={<Icon name="search" size={16} />}
@@ -401,11 +402,14 @@ export function EntityPickerModal<
                   onTabChange={handleTabChange}
                 />
               ) : (
-                <SinglePickerView data-testid="single-picker-view">
+                <div
+                  className={S.singlePickerView}
+                  data-testid="single-picker-view"
+                >
                   {tabs[0]?.render({
                     onItemSelect: item => handleSelectItem(item, tabs[0].id),
                   }) ?? null}
-                </SinglePickerView>
+                </div>
               )}
               {!!hydratedOptions.hasConfirmButtons && onConfirm && (
                 <ButtonBar
@@ -426,8 +430,8 @@ export function EntityPickerModal<
             <EntityPickerLoadingSkeleton />
           )}
           {children}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Content>
     </Modal.Root>
   );
 }

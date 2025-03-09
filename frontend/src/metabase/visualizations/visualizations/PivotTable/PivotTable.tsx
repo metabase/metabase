@@ -8,8 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { findDOMNode } from "react-dom";
-import { useMount, usePrevious } from "react-use";
+import { usePrevious } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
 import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -86,12 +85,11 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       fontFamily,
       isEditing,
       onVisualizationClick,
-    }: VisualizationProps,
+    },
     ref,
   ) {
     const [viewPortWidth, setViewPortWidth] = useState(width);
     const [shouldOverflow, setShouldOverflow] = useState(false);
-    const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
     const columnWidthSettings = settings["pivot_table.column_widths"];
 
     const theme = useMantineTheme();
@@ -130,9 +128,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       ],
     );
 
-    const bodyRef = useRef(null);
-    const leftHeaderRef = useRef(null);
-    const topHeaderRef = useRef(null);
+    const gridRef = useRef<Grid>(null);
+    const gridContainerRef = useRef<HTMLDivElement>(null);
+    const leftHeaderRef = useRef<Collection>(null);
+    const topHeaderRef = useRef<Collection>(null);
 
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
@@ -166,7 +165,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       (
         topHeaderRef.current as Collection | null
       )?.recomputeCellSizesAndPositions?.();
-      (bodyRef.current as Grid | null)?.recomputeGridSize?.();
+      gridRef.current?.recomputeGridSize?.();
     }, [
       data,
       leftHeaderRef,
@@ -174,10 +173,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidths,
       valueHeaderWidths,
     ]);
-
-    useMount(() => {
-      setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
-    });
 
     const pivoted = useMemo(() => {
       if (data == null || !data.cols.some(isPivotGroupColumn)) {
@@ -207,13 +202,14 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
     // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
     function scrollBarOffsetSize() {
-      if (!gridElement) {
+      if (!gridContainerRef.current) {
         return 0;
       }
       // get the size of the scrollbars
       const scrollBarSize = getScrollBarSize();
       const scrollsHorizontally =
-        gridElement.scrollWidth > parseInt(gridElement.style.width);
+        gridContainerRef.current.scrollWidth >
+        parseInt(gridContainerRef.current.style.width);
 
       if (scrollsHorizontally && scrollBarSize > 0) {
         return scrollBarSize;
@@ -335,7 +331,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       !leftHeaderWidths ||
       (leftHeaderWidths?.length && columnsChanged)
     ) {
-      return null;
+      // We have to return an element to assign the ref to it
+      return <div ref={ref} />;
     }
 
     const {
@@ -550,7 +547,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                         onScroll={({ scrollLeft, scrollTop }) =>
                           onScroll({ scrollLeft, scrollTop } as OnScrollParams)
                         }
-                        ref={bodyRef}
+                        ref={gridRef}
+                        elementRef={gridContainerRef}
                         scrollTop={scrollTop}
                         scrollLeft={scrollLeft}
                       />

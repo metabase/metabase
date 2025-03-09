@@ -16,9 +16,8 @@ import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { QueryClickActionsMode } from "metabase/visualizations/types";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -44,7 +43,7 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  mode?: QueryClickActionsMode | Mode;
+  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -94,7 +93,7 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series,
-  mode,
+  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -192,6 +191,16 @@ export function DashCardVisualization({
     series,
   ]);
 
+  const token = useMemo(
+    () =>
+      isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
+    [dashcard],
+  );
+  const uuid = useMemo(
+    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    [dashcard],
+  );
+
   const actionButtons = useMemo(() => {
     if (!question) {
       return null;
@@ -253,7 +262,7 @@ export function DashCardVisualization({
       dashcard={dashcard}
       rawSeries={series}
       metadata={metadata}
-      mode={mode}
+      mode={getClickActionMode}
       getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
@@ -279,6 +288,8 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      token={token}
+      uuid={uuid}
     />
   );
 }

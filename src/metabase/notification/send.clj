@@ -3,26 +3,22 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
+   [metabase.config :as config]
    [metabase.models.setting :as setting]
    [metabase.models.task-history :as task-history]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
+
   (:import
    (java.util.concurrent Callable Executors ExecutorService)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
-
-(defn- hydrate-notification-handler
-  [notification-handlers]
-  (t2/hydrate notification-handlers
-              :channel
-              :template
-              :recipients))
 
 (defn- handler->channel-name
   [{:keys [channel_type channel_id]}]
@@ -37,15 +33,8 @@
   :type       :integer
   :visibility :internal)
 
-(defonce ^:private pool
-  (delay (Executors/newFixedThreadPool
-          (notification-thread-pool-size)
-          (.build
-           (doto (BasicThreadFactory$Builder.)
-             (.namingPattern "send-notification-thread-pool-%d"))))))
-
 (def ^:private default-retry-config
-  {:max-attempts            7
+  {:max-attempts            (if config/is-dev? 2 7)
    :initial-interval-millis 500
    :multiplier              2.0
    :randomization-factor    0.1
@@ -106,14 +95,15 @@
                                                                     :channel-type channel-type})
         (log/errorf e "[Notification %d] Error sending notification!" notification-id)))))
 
-(defn- noti-handlers
+(defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
-    (:notification/system-event :notification/testing)
-    (hydrate-notification-handler
-     (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
-    ;; pulse-based notifications: dashboard subs, alerts
-    (vec (:handlers notification-info))))
+    (:notification/system-event :notification/testing :notification/card)
+    (cond-> notification-info
+      (t2/instance? notification-info)
+      models.notification/hydrate-notification)
+    ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
+    notification-info))
 
 (defmulti do-after-notification-sent
   "Performs post-notification actions based on the notification type."
@@ -134,48 +124,51 @@
 (defmethod prometheus/known-labels :metabase-notification/channel-send-ok [_] payload-channel-labels)
 (defmethod prometheus/known-labels :metabase-notification/channel-send-error [_] payload-channel-labels)
 
-(defn- time-since-trigger-time
+(defn- since-trigger-ms
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
-(mu/defn send-notification-sync!
+(mu/defn ^:private send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
-  [{:keys [id payload_type] :as notification-info} :- notification.payload/Notification]
+  [{:keys [id payload_type] :as notification-info} :- ::notification.payload/Notification]
   (u/with-timer-ms
-    ;; TODO: write a hook for this
-    #_{:clj-kondo/ignore [:unresolved-symbol]}
     [duration-ms-fn]
-    (when-let [wait-time (time-since-trigger-time notification-info)]
-      (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} (u/since-ms wait-time)))
+    (when-let [wait-time (since-trigger-ms notification-info)]
+      (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
     (try
       (log/infof "[Notification %d] Sending" id)
       (prometheus/inc! :metabase-notification/concurrent-tasks)
-      (let [handlers (noti-handlers notification-info)]
+      (let [hydrated-notification (hydrate-notification notification-info)
+            handlers              (:handlers hydrated-notification)]
         (task-history/with-task-history {:task          "notification-send"
                                          :task_details {:notification_id       id
                                                         :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-          (let [notification-payload (notification.payload/notification-payload notification-info)]
+          (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
             (if (notification.payload/should-send-notification? notification-payload)
               (do
                 (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
                 (doseq [handler handlers]
-                  (let [channel-type (:channel_type handler)
-                        messages     (channel/render-notification
-                                      channel-type
-                                      notification-payload
-                                      (:template handler)
-                                      (:recipients handler))]
-                    (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                                id (count messages)
-                                (handler->channel-name handler)
-                                (-> handler :template :id))
-                    (doseq [message messages]
-                      (log/infof "[Notification %d] Sending message to channel %s"
-                                 id (:channel_type handler))
-                      (channel-send-retrying! id payload_type handler message))))
-                (do-after-notification-sent notification-info notification-payload)
-                (log/infof "[Notification %d] Sent successfully" id))
+                  (try
+                    (let [channel-type (:channel_type handler)
+                          messages     (channel/render-notification
+                                        channel-type
+                                        notification-payload
+                                        (:template handler)
+                                        (:recipients handler))]
+                      (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
+                                  id (count messages)
+                                  (handler->channel-name handler)
+                                  (-> handler :template :id))
+                      (doseq [message messages]
+                        (log/infof "[Notification %d] Sending message to channel %s"
+                                   id (:channel_type handler))
+                        (channel-send-retrying! id payload_type handler message)))
+                    (catch Exception e
+                      (log/warnf e "[Notification %d] Error sending to channel %s"
+                                 id (handler->channel-name handler))))))
               (log/infof "[Notification %d] Skipping" id))
+            (do-after-notification-sent notification-info notification-payload)
+            (log/infof "[Notification %d] Sent successfully" id)
             (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
       (catch Exception e
         (log/errorf e "[Notification %d] Failed to send" id)
@@ -184,14 +177,122 @@
       (finally
         (prometheus/dec! :metabase-notification/concurrent-tasks)))
     (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
-    (when-let [total-time (time-since-trigger-time notification-info)]
-      (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} (u/since-ms total-time)))
+    (when-let [total-time (since-trigger-ms notification-info)]
+      (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
-(mu/defn send-notification-async!
+(defprotocol NotificationQueueProtocol
+  "Protocol for notification queue implementations."
+  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
+
+(deftype ^:private NotificationQueue
+         [^java.util.LinkedList                     ids-list
+          ^java.util.concurrent.ConcurrentHashMap   id->notification
+          ^java.util.concurrent.locks.ReentrantLock queue-lock
+          ^java.util.concurrent.locks.Condition     not-empty-cond]
+  NotificationQueueProtocol
+  (put-notification! [_ notification]
+    (let [id (or (:id notification) (str (random-uuid)))]
+      (.lock queue-lock)
+      (try
+        (when-not (.containsKey id->notification id)
+          (.add ids-list id))
+        (.put id->notification id notification)
+        ;; Signal that a notification is available
+        (.signal not-empty-cond)
+        (finally
+          (.unlock queue-lock)))))
+
+  (take-notification! [_]
+    (.lock queue-lock)
+    (try
+      ;; Wait until there's at least one notification
+      (while (.isEmpty ids-list)
+        (.await not-empty-cond))
+      (let [id           (.removeFirst ids-list)
+            notification (.remove id->notification id)]
+        notification)
+      (finally
+        (.unlock queue-lock)))))
+
+(defn- create-notification-queue
+  "A thread-safe, notification queue with the following properties:
+  - Notifications are identified by unique IDs
+  - Adding a notification with an ID already in the queue replaces the existing one
+  - Taking from an empty queue blocks until a notification is available
+  - Multiple threads can safely add and take from the queue concurrently"
+  []
+  (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
+        not-empty-cond (.newCondition queue-lock)]
+    (->NotificationQueue (java.util.LinkedList.)
+                         (java.util.concurrent.ConcurrentHashMap.)
+                         queue-lock
+                         not-empty-cond)))
+
+(defn- create-notification-dispatcher
+  "Create a thread pool for sending notifications.
+  There can only be one notification with the same id in the queue.
+  - if a notification of the same id is already in the queue, then replace it
+    (we keep the latest version because it likely contains the most up-to-date information
+     such as: creator_id, active status, handlers info etc.)
+  - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
+  [pool-size queue]
+  (let [executor (Executors/newFixedThreadPool
+                  pool-size
+                  (.build
+                   (doto (BasicThreadFactory$Builder.)
+                     (.namingPattern "send-notification-thread-pool-%d"))))]
+    (.addShutdownHook
+     (Runtime/getRuntime)
+     (Thread. ^Runnable (fn []
+                          (.shutdownNow ^ExecutorService executor)
+                          (try
+                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
+                            (catch InterruptedException _
+                              (log/warn "Interrupted while waiting for notification executor to terminate"))))))
+    (dotimes [_ pool-size]
+      (.submit ^ExecutorService executor
+               ^Callable (fn []
+                           (while (not (Thread/interrupted))
+                             (try
+                               (let [notification (take-notification! queue)]
+                                 (send-notification-sync! notification))
+                               (catch InterruptedException _
+                                 (log/info "Notification worker interrupted, shutting down")
+                                 (throw (InterruptedException.)))
+                               (catch Exception e
+                                 (log/error e "Error in notification worker")))))))
+    (fn [notification]
+      (put-notification! queue notification))))
+
+(defonce ^{:private true
+           :doc "Do not use this queue directly, use the dispatcher instead."}
+  notification-queue (delay (create-notification-queue)))
+
+(defonce ^:private dispatcher
+  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
+
+(mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
-  [notification :- notification.payload/Notification]
-  (.submit ^ExecutorService @pool ^Callable
-           (fn []
-             (send-notification-sync! notification)))
+  [notification :- ::notification.payload/Notification]
+  (@dispatcher notification)
   nil)
+
+(def ^:private Options
+  [:map
+   [:notification/sync? :boolean]])
+
+(def ^:dynamic *default-options*
+  "The default options for sending a notification."
+  {:notification/sync? false})
+
+(mu/defn send-notification!
+  "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
+  [notification & {:keys [] :as options} :- [:maybe Options]]
+  (let [options      (merge *default-options* options)
+        notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+    (log/debugf "Sending notification: %s %s" (:id notification) (if (:notification/sync? options) "synchronously" "asynchronously"))
+    (if (:notification/sync? options)
+      (send-notification-sync! notification)
+      (send-notification-async! notification))))

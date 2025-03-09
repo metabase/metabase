@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.integrations.slack :as slack]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -16,11 +15,12 @@
 (defn send-alert-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
                                            :alert_condition "rows"}
-                   :model/PulseChannel _   {:pulse_id (:id pulse), :channel_type :email}
+                   :model/PulseChannel _  {:pulse_id (:id pulse), :channel_type :email}
                    :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
+
       (let [pulse-result      (atom nil)
             orig-execute-card @#'notification.payload.execute/execute-card]
         (with-redefs [channel/send!                             (constantly :noop)
@@ -51,7 +51,7 @@
 
 (defn do-with-site-url!
   [thunk]
-  (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+  (mt/with-temporary-setting-values [site-url "https://testmb.com"]
     (thunk)))
 
 (defmacro email-test-setup!
@@ -63,8 +63,7 @@
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (constantly :noop)
-                 slack/files-channel (constantly "FOO")]
+  `(with-redefs [channel/send!       (constantly :noop)]
      (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!

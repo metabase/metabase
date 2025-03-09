@@ -27,7 +27,7 @@
    (the-parameters dashboard-subscription-params dashboard-params)))
 
 (mu/defmethod notification.payload/payload :notification/dashboard
-  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- notification.payload/Notification]
+  [{:keys [creator_id dashboard_subscription] :as _notification-info} :- ::notification.payload/Notification]
   (let [dashboard-id (:dashboard_id dashboard_subscription)
         dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
         parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))]
@@ -55,7 +55,8 @@
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
-    (run! #(notification.temp-storage/cleanup! (get-in % [:result :data :rows]))
+    (run! #(when-let [rows (get-in % [:result :data :rows])]
+             (notification.temp-storage/cleanup! rows))
           (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))

@@ -1,4 +1,6 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import _ from "underscore";
 
@@ -128,7 +130,11 @@ export const SegmentedItemLabel = styled.label<SegmentedItemLabelProps>`
   }
 `;
 
-export const SegmentedControlRadio = styled.input`
+export const SegmentedControlRadio = styled(
+  (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input {...props} type={props.type ?? "radio"} />
+  ),
+)`
   cursor: inherit;
   position: absolute;
   opacity: 0;
@@ -140,8 +146,6 @@ export const SegmentedControlRadio = styled.input`
   padding: 0;
   z-index: 1;
 `;
-
-SegmentedControlRadio.defaultProps = { type: "radio" };
 
 function IconWrapper(props: IconProps & { iconOnly?: boolean }) {
   return <Icon {..._.omit(props, "iconOnly")} />;

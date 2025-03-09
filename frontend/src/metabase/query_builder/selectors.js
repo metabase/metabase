@@ -12,7 +12,6 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
-import { getAlerts } from "metabase/notifications/redux/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -609,13 +608,6 @@ export const getIsRunnable = createSelector(
   isQuestionRunnable,
 );
 
-export const getQuestionAlerts = createSelector(
-  [getAlerts, getCard],
-  (alerts, card) =>
-    (card && card.id && _.pick(alerts, alert => alert.card.id === card.id)) ||
-    {},
-);
-
 export const getResultsMetadata = createSelector(
   [getFirstQueryResult],
   result => result && result.data && result.data.results_metadata,
@@ -706,6 +698,8 @@ export const getRawSeries = createSelector(
             visualization_settings: {
               ...card.visualization_settings,
               "table.pivot": false,
+              "table.column_formatting": [],
+              column_settings: {},
             },
           },
         },
@@ -941,10 +935,7 @@ export const getIsVisualized = createSelector(
     question &&
     // table is the default
     ((question.display() !== "table" && question.display() !== "pivot") ||
-      // any "table." settings has been explcitly set
-      Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
-      // "table.pivot" setting has been implicitly set to true
-      (settings && settings["table.pivot"])),
+      (settings != null && settings["table.pivot"])),
 );
 
 export const getIsLiveResizable = createSelector(

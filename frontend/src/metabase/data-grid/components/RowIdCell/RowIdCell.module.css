@@ -1,0 +1,28 @@
+.root {
+  height: 100%;
+  padding: 0 0.5em;
+  text-align: right;
+  color: var(--mb-color-text-light);
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  cursor: pointer;
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
+}
+
+.rowNumber {
+  display: block;
+}
+
+.root:hover > .rowNumber {
+  display: none;
+}
+
+.expandButton {
+  display: none;
+  flex-shrink: 0;
+}
+
+.root:hover > .expandButton {
+  display: block;
+}

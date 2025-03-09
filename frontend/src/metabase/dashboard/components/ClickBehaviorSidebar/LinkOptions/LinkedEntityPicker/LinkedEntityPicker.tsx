@@ -19,7 +19,7 @@ import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, Icon, Select } from "metabase/ui";
+import { Button, Icon, Select } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -75,19 +75,30 @@ function PickerControl({
   }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
 
   return (
-    <SidebarItem.Selectable isSelected padded={false}>
-      <Flex align="center" w="100%" p="8px 12px" onClick={onClick}>
-        <SidebarItem.Icon
-          className={S.SelectedEntityPickerIcon}
-          name={pickerIcon}
-        />
-        <SidebarItem.Content className={S.SelectedEntityPickerContent}>
-          {renderLabel()}
-          <Icon name="chevrondown" size={12} className={CS.mlAuto} />
-        </SidebarItem.Content>
-      </Flex>
-      <SidebarItem.CloseIcon onClick={onCancel} />
-    </SidebarItem.Selectable>
+    <Button.Group>
+      <Button
+        onClick={onClick}
+        justify="flex-start"
+        leftSection={<Icon name={pickerIcon} />}
+        rightSection={<Icon name="chevrondown" size={12} />}
+        size="lg"
+        variant="filled"
+        classNames={{
+          root: S.ButtonRoot,
+          label: S.ButtonLabel,
+        }}
+        w="100%"
+      >
+        <SidebarItem.Name>{renderLabel()}</SidebarItem.Name>
+      </Button>
+      <Button
+        onClick={onCancel}
+        miw="3rem"
+        size="lg"
+        variant="filled"
+        rightSection={<Icon name="close" />}
+      />
+    </Button.Group>
   );
 }
 

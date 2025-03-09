@@ -15,10 +15,10 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -47,7 +47,9 @@
                            ;; card static-viz
                            pulse.test-util/png-attachment
                            ;; icon
-                           pulse.test-util/png-attachment]}
+                           pulse.test-util/png-attachment
+                           ;; alert always includes result as csv
+                           pulse.test-util/csv-attachment]}
          data))
 
 (defn do-with-pulse-for-card
@@ -120,10 +122,10 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (notification.tu/with-notification-testing-setup
-        (mt/with-temp [:model/Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                                  :display (or display :line)}
-                                                                 card)]
+      (notification.tu/with-notification-testing-setup!
+        (mt/with-temp [:model/Card {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                         :display (or display :line)}
+                                                        card)]
           (with-pulse-for-card [{pulse-id :id}
                                 {:card          card-id
                                  :pulse         pulse
@@ -134,7 +136,7 @@
                       (f {:card-id card-id, :pulse-id pulse-id}
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
-                            (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+                            (mt/with-temporary-setting-values [site-url "https://testmb.com"]
                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                     (thunk []
                       (if fixture
@@ -165,7 +167,7 @@
     (testing message
       (do-test! (merge-with merge common m)))))
 
-(def ^:private test-card-result {pulse.test-util/card-name true})
+#_(def ^:private test-card-result {pulse.test-util/card-name true})
 (def ^:private test-card-regex (re-pattern pulse.test-util/card-name))
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
@@ -199,9 +201,8 @@
                 {:title           pulse.test-util/card-name
                  :rendered-info   {:attachments false
                                    :content     true}
-                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                 :title_link      (str "https://testmb.com/question/" card-id)
                  :attachment-name "image.png"
-                 :channel-id      "FOO"
                  :fallback        pulse.test-util/card-name}]}
               (pulse.test-util/thunk->boolean pulse-results))))
 
@@ -238,14 +239,15 @@
               (is (= (rasta-alert-message {:message [{pulse.test-util/card-name                            true
                                                       "More results have been included"                    false
                                                       "ID</th>"                                            true
-                                                      "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
-                                                     pulse.test-util/png-attachment]})
+                                                      "<a href=\\\"https://testmb.com/dashboard/" false}
+                                                     pulse.test-util/png-attachment
+                                                     pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
                       email
                       test-card-regex
                       #"More results have been included"
                       #"ID</th>"
-                      #"<a href=\"https://metabase.com/testmb/dashboard/"))))
+                      #"<a href=\"https://testmb.com/dashboard/"))))
 
             :slack
             (fn [{:keys [card-id]} [pulse-results]]
@@ -258,9 +260,8 @@
                            {:title           pulse.test-util/card-name
                             :rendered-info   {:attachments false
                                               :content     true}
-                            :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                            :title_link      (str "https://testmb.com/question/" card-id)
                             :attachment-name "image.png"
-                            :channel-id      "FOO"
                             :fallback        pulse.test-util/card-name}]}
                          (pulse.test-util/thunk->boolean pulse-results))))
                 (testing "attached-results-text should be invoked exactly once"
@@ -279,75 +280,47 @@
               (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
                                                       "More results have been included" false
                                                       "ID</th>"                         true}
-                                                     pulse.test-util/png-attachment]})
+                                                     pulse.test-util/png-attachment
+                                                     pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
                       email
                       test-card-regex
                       #"More results have been included" #"ID</th>"))))}}))
 
-;; TODO we really expect alert to include csv???
-(deftest csv-test
-  (tests! {:pulse {}
-           :card  (merge
-                   (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                   {:visualization_settings {:graph.dimensions ["DATE"]
-                                             :graph.metrics    ["count"]}})}
-          "alert with a CSV"
-          {:pulse-card {:include_csv true}
+#_(deftest xls-test
+    (testing "If the pulse is already configured to send an XLS, no need to include a CSV"
+      (do-test!
+       {:card       {:dataset_query (mt/mbql-query checkins)}
+        :pulse-card {:include_xls true}
+        :display    :table
 
-           :assert
-           {:email
-            (fn [_ [email]]
-              (is (= (rasta-alert-message {:message [test-card-result
-                                                     pulse.test-util/png-attachment
-                                                     pulse.test-util/png-attachment
-                                                     pulse.test-util/csv-attachment]})
-                     (mt/summarize-multipart-single-email email test-card-regex))))}}
-
-          "With a \"rows\" type of pulse (table visualization) we should not include the CSV by default, per issue #36441"
-          {:card {:display :table :dataset_query (mt/mbql-query checkins)}
-
-           :assert
-           {:email
-            (fn [_ [email]]
-        ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-              (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true} pulse.test-util/png-attachment]})
-                     (mt/summarize-multipart-single-email email test-card-regex))))}}))
-
-(deftest xls-test
-  (testing "If the pulse is already configured to send an XLS, no need to include a CSV"
-    (do-test!
-     {:card       {:dataset_query (mt/mbql-query checkins)}
-      :pulse-card {:include_xls true}
-      :display    :table
-
-      :assert
-      {:email
-       (fn [_ [email]]
-         (is (= ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-              (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                              pulse.test-util/png-attachment
-                                              pulse.test-util/xls-attachment]})
-              (mt/summarize-multipart-single-email email test-card-regex))))}})))
-
-;; Not really sure how this is significantly different from `xls-test`
-(deftest xls-test-2
-  (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
-    (do-test!
-     {:card
-      (merge
-       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-       {:visualization_settings {:graph.dimensions ["DATE"]
-                                 :graph.metrics    ["count"]}})
-      :pulse-card {:include_xls true}
-      :assert
-      {:email
-       (fn [_ [email]]
-         (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                                pulse.test-util/png-attachment
+        :assert
+        {:email
+         (fn [_ [email]]
+           (is (= ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
+                (rasta-alert-message {:message [{pulse.test-util/card-name true}
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
+
+;; Not really sure how this is significantly different from `xls-test`
+#_(deftest xls-test-2
+    (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
+      (do-test!
+       {:card
+        (merge
+         (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+         {:visualization_settings {:graph.dimensions ["DATE"]
+                                   :graph.metrics    ["count"]}})
+        :pulse-card {:include_xls true}
+        :assert
+        {:email
+         (fn [_ [email]]
+           (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/png-attachment
+                                                  pulse.test-util/xls-attachment]})
+                  (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
@@ -358,7 +331,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
+        (mt/with-temporary-setting-values [limit/attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
@@ -416,7 +389,8 @@
                 (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true
                                                         "More results have been included" false}
                                                        pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment]})
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex #"More results have been included"))))
 
               :slack
@@ -426,9 +400,8 @@
                                       {:title           pulse.test-util/card-name
                                        :rendered-info   {:attachments false
                                                          :content     true}
-                                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                       :title_link      (str "https://testmb.com/question/" card-id)
                                        :attachment-name "image.png"
-                                       :channel-id      "FOO"
                                        :fallback        pulse.test-util/card-name}]}
                        (pulse.test-util/thunk->boolean result)))
                 (is (every? produces-bytes? (rest (:attachments result)))))}}
@@ -453,60 +426,11 @@
                 (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
                                                         "More results have been included" false
                                                         "ID</th>"                         true}
-                                                       pulse.test-util/png-attachment]})
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"More results have been included"
-                                                            #"ID</th>"))))}}
-
-            "with data and a CSV + XLS attachment"
-            {:card
-             (merge
-              (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-              {:visualization_settings {:graph.dimensions ["DATE"]
-                                        :graph.metrics    ["count"]}})
-
-             :pulse-card {:include_csv true, :include_xls true}
-
-             :assert
-             {:email
-              (fn [_ [email]]
-                (is (= (rasta-alert-message {:message [test-card-result
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment
-                                                       pulse.test-util/csv-attachment
-                                                       pulse.test-util/xls-attachment]})
-                       (mt/summarize-multipart-single-email email test-card-regex))))}})))
-
-(deftest alert-first-run-only-test
-  (tests! {:pulse {:alert_condition "rows", :alert_first_only true}}
-          "first run only with data"
-          {:card
-           (merge
-            (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-            {:visualization_settings {:graph.dimensions ["DATE"]
-                                      :graph.metrics    ["count"]}})
-
-           :assert
-           {:email
-            (fn [{pulse-id :pulse-id} [email]]
-              (is (= (rasta-alert-message)
-                     (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
-              (testing "Pulse should be deleted"
-                (is (= false
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}
-
-          "first run alert with no data"
-          {:card
-           (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                 :breakout [!day.date]})
-
-           :assert
-           {:email
-            (fn [{:keys [pulse-id]} emails]
-              (is (empty? emails))
-              (testing "Pulse should still exist"
-                (is (= true
-                       (t2/exists? :model/Pulse :id pulse-id)))))}}))
+                                                            #"ID</th>"))))}})))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -530,7 +454,8 @@
                                              :message [{pulse.test-util/card-name true
                                                         "This question has reached its goal of 5\\.9\\." true}
                                                        pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment]})
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has reached its goal of 5\.9\."))))}}
 
@@ -585,7 +510,8 @@
                                              :message [{pulse.test-util/card-name true
                                                         "This question has gone below its goal of 1\\.1\\." true}
                                                        pulse.test-util/png-attachment
-                                                       pulse.test-util/png-attachment]})
+                                                       pulse.test-util/png-attachment
+                                                       pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has gone below its goal of 1\.1\."))))}}
 
@@ -620,8 +546,8 @@
                        (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:alert_above_goal true}
-        alert-below-pulse {:alert_above_goal false}
+  (let [alert-above-pulse {:send_condition "goal_above"}
+        alert-below-pulse {:send_condition "goal_below"}
         progress-result   (fn [val] {:card   {:display                :progress
                                               :visualization_settings {:progress.goal    5}}
                                      :result {:data {:rows [[val]]}}})
@@ -788,8 +714,7 @@
 
 (def ^:private fake-slack-notification
   {:channel-id  "#test-channel"
-   :message     "test message body"
-   :attachments []})
+   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
@@ -927,7 +852,7 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (channel.http-test/with-server [url [endpoint]]
           (mt/with-temp
             [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}

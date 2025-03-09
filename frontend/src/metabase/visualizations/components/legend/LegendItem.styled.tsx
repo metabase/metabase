@@ -1,6 +1,8 @@
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
-import { Icon } from "metabase/ui";
+import { Icon, type IconProps } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
@@ -44,7 +46,20 @@ export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
   }
 `;
 
-export const LegendItemRemoveIcon = styled(Icon)`
+export const LegendItemRemoveIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(
+    function LegendItemRemoveIcon(props, ref) {
+      return (
+        <Icon
+          {...props}
+          name={props.name ?? "close"}
+          size={props.size ?? 12}
+          ref={ref}
+        />
+      );
+    },
+  ),
+)`
   color: var(--mb-color-text-light);
   cursor: pointer;
   margin-left: 0.5rem;
@@ -53,8 +68,3 @@ export const LegendItemRemoveIcon = styled(Icon)`
     color: var(--mb-color-text-medium);
   }
 `;
-
-LegendItemRemoveIcon.defaultProps = {
-  name: "close",
-  size: 12,
-};

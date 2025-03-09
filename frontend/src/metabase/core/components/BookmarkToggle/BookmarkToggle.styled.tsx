@@ -1,8 +1,11 @@
+// eslint-disable-next-line no-restricted-imports
 import { keyframes } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import Button from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -36,7 +39,20 @@ export const BookmarkIcon = styled(
   animation-timing-function: linear;
 `;
 
-export const BookmarkButton = styled(Button)`
+const BaseBookmarkButton = forwardRef<HTMLButtonElement, ButtonProps>(
+  function BookmarkButton(props, ref) {
+    return (
+      <Button
+        {...props}
+        ref={ref}
+        onlyIcon={props.onlyIcon ?? true}
+        iconSize={props.iconSize ?? 16}
+      />
+    );
+  },
+);
+
+export const BookmarkButton = styled(BaseBookmarkButton)`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   width: 2rem;
@@ -50,8 +66,3 @@ export const BookmarkButton = styled(Button)`
     vertical-align: middle;
   }
 `;
-
-BookmarkButton.defaultProps = {
-  onlyIcon: true,
-  iconSize: 16,
-};

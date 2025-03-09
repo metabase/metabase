@@ -1,9 +1,11 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import { alpha } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
-import TableS from "metabase/visualizations/components/TableInteractive/TableInteractive.module.css";
+import TableS from "metabase/visualizations/components/TableRoot/TableRoot.module.css";
 
 export const TableRoot = styled.div`
   .${TableS.TableID} .${TableS.cellData} {

@@ -5,6 +5,7 @@ import { FormCollectionAndDashboardPicker } from "metabase/collections/container
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import { FormFooter } from "metabase/core/components/FormFooter";
+import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
   FormErrorMessage,
@@ -13,28 +14,32 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { isNullOrUndefined } from "metabase/lib/types";
 import { Button, Radio, Stack, rem } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
+const labelStyles = {
+  fontWeight: 900,
+  fontSize: "0.77rem",
+  color: "var(--mb-color-text-medium)",
+  marginBottom: rem("7px"),
+};
+
 export const SaveQuestionForm = ({
   onCancel,
   onSaveSuccess,
-  saveToDashboard,
 }: {
   onCancel?: () => void;
   onSaveSuccess?: () => void;
-  saveToDashboard?: Dashboard | null | undefined;
 }) => {
   const {
     question,
     originalQuestion,
     showSaveType,
     values,
-    saveToCollectionId,
+    saveToCollection,
+    saveToDashboard,
   } = useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
@@ -47,13 +52,13 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollectionId);
   const models: CollectionPickerModel[] =
     question.type() === "question"
       ? ["collection", "dashboard"]
       : ["collection"];
 
-  const showPickerInput = values.saveType === "create" && !saveToDashboard;
+  const showPickerInput =
+    values.saveType === "create" && !saveToCollection && !saveToDashboard;
 
   return (
     <Form>
@@ -96,19 +101,12 @@ export const SaveQuestionForm = ({
         </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <Stack gap="md">
+        <Stack gap="md" mb="md">
           <FormTextInput
             name="name"
             label={t`Name`}
             placeholder={nameInputPlaceholder}
-            styles={{
-              label: {
-                fontWeight: 900,
-                fontSize: "0.77rem",
-                color: "var(--mb-color-text-medium)",
-                marginBottom: rem("7px"),
-              },
-            }}
+            styles={{ label: labelStyles }}
           />
 
           <FormTextarea
@@ -116,31 +114,39 @@ export const SaveQuestionForm = ({
             label={t`Description`}
             minRows={4}
             placeholder={t`It's optional but oh, so helpful`}
-            styles={{
-              label: {
-                fontWeight: 900,
-                fontSize: "0.77rem",
-                color: "var(--mb-color-text-medium)",
-                marginBottom: rem("7px"),
-              },
-            }}
+            styles={{ label: labelStyles }}
           />
-          {isCollectionPickerEnabled && showPickerInput && (
-            <FormCollectionAndDashboardPicker
-              collectionIdFieldName="collection_id"
-              dashboardIdFieldName="dashboard_id"
-              title={t`Where do you want to save this?`}
-              collectionPickerModalProps={{
-                models,
-                recentFilter: items =>
-                  items.filter(item => {
-                    // narrow type and make sure it's a dashboard or
-                    // collection that the user can write to
-                    return item.model !== "table" && item.can_write;
-                  }),
+
+          <div>
+            {showPickerInput && (
+              <FormCollectionAndDashboardPicker
+                collectionIdFieldName="collection_id"
+                dashboardIdFieldName="dashboard_id"
+                title={t`Where do you want to save this?`}
+                collectionPickerModalProps={{
+                  models,
+                  recentFilter: items =>
+                    items.filter(item => {
+                      // narrow type and make sure it's a dashboard or
+                      // collection that the user can write to
+                      return item.model !== "table" && item.can_write;
+                    }),
+                }}
+              />
+            )}
+
+            <FormDashboardTabSelect
+              name="dashboard_tab_id"
+              label="Which tab should this go on?"
+              dashboardId={values.dashboard_id}
+              styles={{
+                label: {
+                  ...labelStyles,
+                  marginBottom: rem("3px"),
+                },
               }}
             />
-          )}
+          </div>
         </Stack>
       )}
       <FormFooter>

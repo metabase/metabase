@@ -996,7 +996,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1008,7 +1008,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1020,7 +1020,7 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1235,5 +1235,38 @@ describe("issue 49160", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().findByText("Gizmo");
+  });
+});
+
+describe("issue 54271", () => {
+  const questionDetails = {
+    query: {
+      "source-table": REVIEWS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", REVIEWS.REVIEWER, null]],
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.dimensions": ["REVIEWER"],
+      "graph.metrics": [["count"]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash the app when rendering a line chart with broken viz settings and table metadata (metabase#54271)", () => {
+    cy.log("broken semantic type - the field cannot be parsed as a date");
+    cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
+      semantic_type: "type/CreationDate",
+    });
+
+    cy.log("broken viz settings - dimensions cannot have a text column");
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("no clear expectations but the app should not crash");
+    H.assertQueryBuilderRowCount(1076);
   });
 });

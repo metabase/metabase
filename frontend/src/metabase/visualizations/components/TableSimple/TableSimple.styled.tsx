@@ -1,7 +1,11 @@
+// eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import { alpha, color } from "metabase/lib/colors";
+import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
@@ -55,13 +59,13 @@ export const Table = styled.table`
   }
 `;
 
-export const SortIcon = styled(Icon)`
+export const SortIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function SortIcon(props, ref) {
+    return <Icon {...props} size={props.size ?? 8} ref={ref} />;
+  }),
+)`
   margin: 4px;
 `;
-
-SortIcon.defaultProps = {
-  size: 8,
-};
 
 export const TableHeaderCellContent = styled.button<{
   isSorted: boolean;
