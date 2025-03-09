@@ -31,7 +31,6 @@ import type {
 } from "metabase-types/store";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { setIsNativeEditorOpen } from "../native";
 import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
@@ -323,7 +322,7 @@ async function handleQBInit(
 
   if (isNative) {
     const isEditing = getIsEditingInDashboard(getState());
-    setIsNativeEditorOpen(isEditing || !question.isSaved());
+    uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
   }
 
   if (isNative && isEditable) {
