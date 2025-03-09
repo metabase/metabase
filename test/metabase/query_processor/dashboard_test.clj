@@ -36,16 +36,26 @@
                  :value  4
                  :target [:dimension [:field (mt/id :venues :price) nil]]}]
                (resolve-params [{:id "_PRICE_", :value 4}]))))
-      (testing "Should error if parameter doesn't exist"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\".*"
-             (resolve-params [{:id "_THIS_PARAMETER_DOES_NOT_EXIST_", :value 3}]))))
       (testing "Should error if parameter is of a different type"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))
+      (testing "If parameter doesn't exist, it means that this is a new parameter, just like in the preview scenario (#49319)"
+        (is (= [{:type   :category
+                 :id     "_PRICE_"
+                 :value  4
+                 :target [:dimension [:field (mt/id :venues :price) nil]]}
+                {:id "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                 :type :text
+                 :value "w"
+                 :target [:dimension [:field (mt/id :venues :name) nil]]}]
+               (resolve-params [{:id "_PRICE_"
+                                 :value 4}
+                                {:id "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                 :type :text
+                                 :value "w"
+                                 :target [:dimension [:field (mt/id :venues :name) nil]]}]))))))
   (testing "Resolves new operator type arguments without error (#25031)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
@@ -462,13 +472,3 @@
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
-
-
-(deftest resolve-param-for-card-test
-  (testing "When matching-param is null and request-param is not null, use request-param. (#49319)"
-    (let [card-id 1
-          dashcard-id 2
-          param-id->param {}
-          request-param {:id "88c10619" :value "month" :type :temporal-unit :target [:dimension [:field 14 {:base-type :type/DateTime :temporal-unit :month}] {:stage-number 0}]}
-          result (#'qp.dashboard/resolve-param-for-card card-id dashcard-id param-id->param request-param)]
-      (is (= "88c10619" (:id result))))))

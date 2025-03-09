@@ -3512,11 +3512,6 @@
                                                   {:parameters [{:id    "_PRICE_"
                                                                  :type  :number/=
                                                                  :value [1 2 3]}]}))))))
-          (testing "Should return error if parameter doesn't exist"
-            (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
-                   (mt/user-http-request :rasta :post 400 url
-                                         {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
-                                                        :value 3}]}))))
           (testing "Should return sensible error message for invalid parameter input"
             (is (= {:errors {:parameters "nullable sequence of value must be a parameter map with an id key"},
                     :specific-errors {:parameters ["invalid type, received: {:_PRICE_ 3}"]}}
@@ -3540,7 +3535,16 @@
                         (mt/user-http-request :rasta :post 202 url
                                               {:parameters [{:id     "_PRICE_"
                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
-                                                             :value  4}]})))))))))
+                                                             :value  4}]}))))
+          (testing "If parameter doesn't exist, it means that this is a new parameter"
+            (is (malli= (dashboard-card-query-expected-results-schema :row-count 1)
+                        (mt/user-http-request :rasta :post 202 url
+                                              {:parameters [{:id "_PRICE_"
+                                                             :value 4}
+                                                            {:id "_THIS_PARAMETER_DOES_NOT_EXIST_"
+                                                             :type :string/=,
+                                                             :target [:dimension [:field (mt/id :venues :name) nil]]
+                                                             :value "Sushi Yasuda"}]})))))))))
 
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-native-card-query-parameters-test
