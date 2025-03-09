@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Switch } from "metabase/ui";
 
 import { Description, Error, Label } from "../ModelFeatureToggles";
 
@@ -31,10 +30,14 @@ export function ModelActionsSection({
     <div>
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
-        <Toggle
+        <Switch
           id="model-actions-toggle"
-          value={hasModelActionsEnabled}
-          onChange={handleToggleModelActionsEnabled}
+          checked={hasModelActionsEnabled}
+          onChange={e =>
+            handleToggleModelActionsEnabled(e.currentTarget.checked)
+          }
+          labelPosition="left"
+          error={error}
         />
       </Flex>
       <Box maw="22.5rem">

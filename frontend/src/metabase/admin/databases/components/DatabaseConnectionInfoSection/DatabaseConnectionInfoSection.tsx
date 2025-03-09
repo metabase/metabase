@@ -104,7 +104,7 @@ export const DatabaseConnectionInfoSection = ({
         </Tooltip>
       </Flex>
 
-      <DatabaseInfoSectionDivider />
+      <DatabaseInfoSectionDivider condensed />
 
       <Flex gap="sm" wrap="wrap">
         {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}

@@ -85,6 +85,9 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
+    listUserAttributes: builder.query<string[], void>({
+      query: () => "/api/mt/user/attributes",
+    }),
   }),
 });
 
@@ -97,4 +100,5 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useListUserAttributesQuery,
 } = userApi;
