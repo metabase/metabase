@@ -2,24 +2,23 @@ import type { Location } from "history";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 
-import Modal from "metabase/components/Modal";
 import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
 
-import { LeaveConfirmationModalContent } from "./LeaveConfirmationModalContent";
+import { LeaveConfirmModal } from "./LeaveConfirmModal";
 
-interface Props {
+interface LeaveRouteConfirmModalProps {
   isEnabled: boolean;
   isLocationAllowed?: (location?: Location) => boolean;
   route: Route;
   router: InjectedRouter;
 }
 
-const LeaveConfirmationModalBase = ({
+const _LeaveRouteConfirmModal = ({
   isEnabled,
   isLocationAllowed,
   route,
   router,
-}: Props) => {
+}: LeaveRouteConfirmModalProps) => {
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
     isLocationAllowed,
@@ -28,11 +27,8 @@ const LeaveConfirmationModalBase = ({
   });
 
   return (
-    <Modal isOpen={opened}>
-      <LeaveConfirmationModalContent onAction={confirm} onClose={close} />
-    </Modal>
+    <LeaveConfirmModal onConfirm={confirm} onClose={close} opened={opened} />
   );
 };
 
-/** @deprecated use LeaveConfirmModal/LeaveRouteConfirmModal.tsx instead */
-export const LeaveConfirmationModal = withRouter(LeaveConfirmationModalBase);
+export const LeaveRouteConfirmModal = withRouter(_LeaveRouteConfirmModal);
