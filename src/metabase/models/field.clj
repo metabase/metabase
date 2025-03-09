@@ -124,7 +124,9 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (-> field
+      (dissoc :is_defective_duplicate :unique_field_helper)
+      serdes/add-entity-id))
 
 (t2/define-before-insert :model/Field
   [field]
