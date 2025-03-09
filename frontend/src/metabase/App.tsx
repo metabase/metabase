@@ -1,5 +1,7 @@
+import dayjs from "dayjs";
 import type { Location } from "history";
 import { KBarProvider } from "kbar";
+import OpenAI from "openai";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -29,10 +31,15 @@ import {
 import StatusListing from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
+import { Collections, Questions } from "../scripting/simple-api";
+
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { ScriptWizard } from "./components/ScriptEditor/ScriptWizard";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+
+import "@mantine/tiptap/styles.css";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -93,9 +100,13 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
+  (window as any).Scripting = { Collections, Questions, dayjs, OpenAI };
+
   useEffect(() => {
     initializeIframeResizer();
   }, []);
+
+  const [showScriptWizard, setShowScriptWizard] = useState(false);
 
   return (
     <ErrorBoundary onError={onError}>
@@ -103,8 +114,13 @@ function App({
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
+            {showScriptWizard && (
+              <ScriptWizard setShowScriptWizard={setShowScriptWizard} />
+            )}
             <AppBanner />
-            {isAppBarVisible && <AppBar />}
+            {isAppBarVisible && (
+              <AppBar setShowScriptWizard={setShowScriptWizard} />
+            )}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>
