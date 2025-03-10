@@ -65,7 +65,7 @@
   (deferred-tru "Information about Google Sheets Integration")
   :encryption :when-encryption-key-set
   :export? true
-  :visibility :public
+  :visibility :admin
   :type :json
   :getter (fn [] (or
                   ;; This NEEDS to be up to date between instances on a cluster, so:
