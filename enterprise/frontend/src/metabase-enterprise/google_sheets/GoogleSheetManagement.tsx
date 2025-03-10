@@ -52,8 +52,6 @@ export function GsheetConnectButton() {
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldGetServiceAccount ? undefined : skipToken);
 
-  const { status } = gSheetsSetting;
-
   if (
     !gSheetsEnabled ||
     !gSheetsSetting ||
@@ -63,6 +61,8 @@ export function GsheetConnectButton() {
   ) {
     return null;
   }
+
+  const { status } = gSheetsSetting;
 
   const buttonText = match(status)
     .with("not-connected", () => t`Connect Google Sheets`)
