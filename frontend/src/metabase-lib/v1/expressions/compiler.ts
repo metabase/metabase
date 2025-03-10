@@ -4,7 +4,6 @@ import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { getMBQLName } from "./config";
 import { fieldResolver } from "./field-resolver";
 import {
   adjustCaseOrIf,
@@ -76,7 +75,7 @@ export function compileExpression({
   }
 
   try {
-    let expression = compile(root, { getMBQLName });
+    let expression = compile(root);
     for (const pass of passes) {
       expression = pass(expression);
     }
