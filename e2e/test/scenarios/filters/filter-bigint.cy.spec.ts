@@ -17,8 +17,8 @@ import type {
 
 const { H } = cy;
 
-const bigIntPkTableName = "bigint_pk_table";
-const decimalPkTableName = "decimal_pk_table";
+const BIGINT_PK_TABLE_NAME = "bigint_pk_table";
+const DECIMAL_PK_TABLE_NAME = "decimal_pk_table";
 
 describe("scenarios > filters > bigint (metabase#5816)", () => {
   const minBigIntValue = "-9223372036854775808";
@@ -354,7 +354,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.log("BIGINT");
     cy.signInAsAdmin();
     setupDashboard({
-      tableName: bigIntPkTableName,
+      tableName: BIGINT_PK_TABLE_NAME,
       baseType: "type/BigInteger",
     });
     testBigIntFilters({ withDrillThru: true });
@@ -366,7 +366,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.log("DECIMAL");
     cy.signInAsAdmin();
     setupDashboard({
-      tableName: decimalPkTableName,
+      tableName: DECIMAL_PK_TABLE_NAME,
       baseType: "type/Decimal",
     });
     testDecimalFilters({ withDrillThru: true });
@@ -1012,7 +1012,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       cy.log("BIGINT");
       cy.signInAsAdmin();
       setupQuestion({
-        tableName: bigIntPkTableName,
+        tableName: BIGINT_PK_TABLE_NAME,
         baseType: "type/BigInteger",
       });
       H.visitQuestion("@questionId");
@@ -1025,7 +1025,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       cy.log("DECIMAL");
       cy.signInAsAdmin();
       setupQuestion({
-        tableName: decimalPkTableName,
+        tableName: DECIMAL_PK_TABLE_NAME,
         baseType: "type/Decimal",
       });
       H.visitQuestion("@questionId");
@@ -1068,14 +1068,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     setupTables();
 
     cy.log("BIGINT");
-    setupQuestion({ tableName: bigIntPkTableName });
+    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
     testObjectDetail({
       idValue: maxBigIntValue,
       nameValue: "Positive",
     });
 
     cy.log("DECIMAL");
-    setupQuestion({ tableName: decimalPkTableName });
+    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
     testObjectDetail({
       idValue: negativeDecimalValue,
       nameValue: "Negative",
@@ -1210,7 +1210,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     setupTables();
 
     cy.log("BIGINT");
-    setupTableQuestion({ tableName: bigIntPkTableName });
+    setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
     testExport({
       columnName: "ID",
       formattedMinValue: minBigIntValue,
@@ -1224,7 +1224,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
 
     cy.log("DECIMAL");
-    setupTableQuestion({ tableName: decimalPkTableName });
+    setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
     testExport({
       columnName: "ID",
       formattedMinValue: negativeDecimalValue,
@@ -1357,8 +1357,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 function setupTables() {
   const dialect = "postgres";
   H.restore("postgres-writable");
-  H.resetTestTable({ type: dialect, table: bigIntPkTableName });
-  H.resetTestTable({ type: dialect, table: decimalPkTableName });
+  H.resetTestTable({ type: dialect, table: BIGINT_PK_TABLE_NAME });
+  H.resetTestTable({ type: dialect, table: DECIMAL_PK_TABLE_NAME });
   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 }
 
