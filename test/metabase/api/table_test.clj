@@ -201,8 +201,7 @@
 (deftest api-database-table-endpoint-test
   (testing "GET /api/table/:table-id/data"
     (mt/dataset test-data
-      (let [db-id (mt/id)
-            table-id (mt/id :orders)
+      (let [table-id (mt/id :orders)
             published-events (atom [])]
         (mt/with-dynamic-fn-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
           (testing "returns dataset in same format as POST /api/dataset"

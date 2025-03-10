@@ -714,20 +714,6 @@
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
 
-;;; ----------------------------------------- GET /api/database/:id/table/:fqn ---------------------------------------
-
-(defn- check-unique [tables]
-  (when (seq tables)
-    (let [unique-combos (distinct (map (juxt :schema :name) tables))]
-      (when (> (count unique-combos) 1)
-        (throw (ex-info "Ambiguous table identifier"
-                        {:status-code       300
-                         :potential-matches (for [[schema table-name] unique-combos]
-                                              (if schema
-                                                (str schema "." table-name)
-                                                table-name))})))
-      (first tables))))
-
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
 (defn test-database-connection

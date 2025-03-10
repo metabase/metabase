@@ -41,7 +41,6 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
    (java.sql Connection)
    (org.quartz JobDetail TriggerKey)))
 
