@@ -1,5 +1,3 @@
-import { getMBQLName } from "../config";
-
 import { compile, lexify, parse } from ".";
 
 describe("pratt/compiler", () => {
@@ -8,9 +6,7 @@ describe("pratt/compiler", () => {
       throwOnError: true,
     });
 
-    return compile(ast.root, {
-      getMBQLName,
-    });
+    return compile(ast.root);
   }
 
   describe("(for an expression)", () => {

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { Expression } from "metabase-types/api";
 
+import { getMBQLName as defaultGetMBQLName } from "../config";
 import { unescapeString } from "../string";
 
 import {
@@ -27,13 +28,17 @@ import {
 } from "./syntax";
 import { CompileError, type Node, type NodeType, assert } from "./types";
 
-interface Options {
-  getMBQLName(expressionName: string): string | undefined;
-}
+export type CompileOptions = {
+  getMBQLName?: (expressionName: string) => string | undefined;
+};
 
+type Options = Required<CompileOptions>;
 type CompileFn = (node: Node, opts: Options) => Expression;
 
-export function compile(node: Node, opts: Options): Expression {
+export function compile(
+  node: Node,
+  { getMBQLName = defaultGetMBQLName }: CompileOptions = {},
+): Expression {
   assert(node.type === ROOT, "Must be root node");
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, {
@@ -42,7 +47,7 @@ export function compile(node: Node, opts: Options): Expression {
     });
   }
   const func = compileUnaryOp(node);
-  return func(node.children[0], opts);
+  return func(node.children[0], { getMBQLName });
 }
 
 // ----------------------------------------------------------------
