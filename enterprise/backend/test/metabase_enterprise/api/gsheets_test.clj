@@ -225,5 +225,7 @@
 
 (deftest url-type
   (is (= "gdrive" (#'gsheets.api/url-type "https://drive.google.com/drive/abc")))
+  (is (= "gdrive" (#'gsheets.api/url-type "http://drive.google.com/drive/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
+  (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
   (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
