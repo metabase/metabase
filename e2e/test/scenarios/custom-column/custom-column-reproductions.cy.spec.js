@@ -1112,7 +1112,6 @@ describe("issue 49882", () => {
       "equal",
       'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
     );
-    H.CustomExpressionEditor.nameInput().focus();
 
     H.popover()
       .findByText("Expecting comma but got case instead")
