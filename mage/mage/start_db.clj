@@ -19,7 +19,7 @@
         :mariadb "https://endoflife.date/api/mariadb.json"
         :mongo "https://endoflife.date/api/mongodb.json"} db))
 
-(defn- ->image-name [db] (str "mb-" (name db) "-db"))
+(defn- ->container-name [db version] (str "mb-" (name db) "-" (name version)))
 
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
@@ -52,17 +52,17 @@
 
 ;; Docker stuff:
 
-(defn- kill-existing! [image-name]
-  (println (c/red "killing existing image: ") image-name " ...")
-  (shell/sh* {:quiet? true} "docker" "kill" image-name)
-  (shell/sh* {:quiet? true} "docker" "rm" image-name))
+(defn- kill-existing! [container-name]
+  (println (c/red "killing existing image: ") container-name " ...")
+  (shell/sh* {:quiet? true} "docker" "kill" container-name)
+  (shell/sh* {:quiet? true} "docker" "rm" container-name))
 
 (defmulti ^:private docker-cmd
-  {:arglists '([db image-name resolved-version port])}
-  (fn [db _image-name _resolved-version _port] db))
+  {:arglists '([db container-name resolved-version port])}
+  (fn [db _container-name _resolved-version _port] db))
 
 (defmethod docker-cmd :postgres
-  [_db image-name resolved-version port]
+  [_db container-name resolved-version port]
   ["docker" "run"
    "-d"
    "-p" (str port ":5432")
@@ -72,43 +72,43 @@
    "-e" "POSTGRES_PASSWORD=password"
    "-e" "PGDATA=/var/lib/postgresql/data"
    ;; "-v" "${DATA_DIR}:/var/lib/postgresql/data:Z"
-   "--name" image-name
+   "--name" container-name
    (str "postgres:" resolved-version)])
 
 (defmethod docker-cmd :mysql
-  [_db image-name resolved-version port]
+  [_db container-name resolved-version port]
   ["docker" "run"
    "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
-   "--name" image-name
+   "--name" container-name
    (str "mysql:" resolved-version)])
 
 (defmethod docker-cmd :mariadb
-  [_db image-name resolved-version port]
+  [_db container-name resolved-version port]
   ["docker" "run"
    "-d"
    "-p" (str port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
-   "--name" image-name
+   "--name" container-name
    (str "mariadb:" resolved-version)])
 
 (defmethod docker-cmd :mongo
-  [_db image-name resolved-version port]
+  [_db container-name resolved-version port]
   ["docker" "run"
    "-d"
    "-p" (str port ":27017")
-   "--name" image-name
+   "--name" container-name
    (str "mongo:" resolved-version)])
 
 (defn- start-db!
   [database version resolved-version port]
-  (let [image-name (->image-name database)
-        _ (kill-existing! image-name)
-        _ (println (c/green "docker runing:") image-name "...")
-        cmd (docker-cmd database image-name resolved-version port)]
+  (let [container-name (->container-name database version)
+        _ (kill-existing! container-name)
+        _ (println (c/green "docker runing:") container-name "...")
+        cmd (docker-cmd database container-name resolved-version port)]
     (println "Running:" (c/magenta (str/join " " cmd)))
     (apply shell/sh cmd)
     (println (c/cyan (format "Started %s %s on port %s\n" (name database) (name version) port)))
