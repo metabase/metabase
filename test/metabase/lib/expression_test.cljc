@@ -288,6 +288,14 @@
   (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.00]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" 1.00)
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" false)
               (lib/expressions)))))
 
 (deftest ^:parallel expressionable-columns-test
