@@ -180,6 +180,7 @@ export const Visualizer = (props: VisualizerProps) => {
           onSave={onSave}
           saveLabel={saveLabel}
           allowSaveWhenPristine={allowSaveWhenPristine}
+          className={S.Header}
         />
 
         {/* main area */}
