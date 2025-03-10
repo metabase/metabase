@@ -6,7 +6,8 @@ import type {
 
 import { MBQL_CLAUSES } from "./config";
 import { isCaseOrIf, isCaseOrIfOperator, isOptionsObject } from "./matchers";
-import type { CompilerPass } from "./pratt/compiler";
+
+export type CompilerPass = (expr: Expression) => Expression;
 
 function isCallExpression(expr: unknown): expr is CallExpression {
   return Array.isArray(expr) && expr.length > 1;
