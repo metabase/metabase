@@ -8,6 +8,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
+   [metabase.channel.render.util :as render.util]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
@@ -388,11 +389,113 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- get-col-by-name
+  [cols col-name]
+  (->> (map-indexed (fn [idx m] [idx m]) cols)
+       (some (fn [[idx col]]
+               (when (= col-name (:name col))
+                 [idx col])))))
+
+(defn- extract-referenced-columns
+  "Extracts column references from mappings that aren't strings"
+  [mappings]
+  (->> mappings
+       vals
+       (apply concat)
+       (filter (complement string?))))
+
+(defn- parse-data-source-id
+  "Parses a data source ID string into type and source-id"
+  [id]
+  (let [[type source-id] (str/split id #":")]
+    {:type type
+     :source-id (Integer/parseInt source-id)}))
+
+(defn- is-data-source-name-ref?
+  "Checks if value is a data source name reference"
+  [value]
+  (and (string? value)
+       (str/starts-with? value "$_")
+       (str/ends-with? value "_name")))
+
+(defn- get-data-source-id-from-name-ref
+  "Gets data source ID from a name reference string"
+  [s]
+  (second (str/split s #"_")))
+
+(defn- build-data-source
+  "Build datasource metadata map"
+  [dataset]
+  (let [card (:card dataset)]
+    {:id (str "card:" (:id card))
+     :type "card"
+     :source-id (:id card)
+     :name (:name card)}))
+
+(defn- merge-visualizer-data
+  "Use visualizer column mapping metadata to repackage & merge column and row data"
+  [datasets dashcard-settings]
+  (let [{:keys [columns columnValuesMapping]} (:visualization dashcard-settings)
+        datasources (map build-data-source datasets)
+
+        ;; e.g. ({:sourceId "card:192", :originalName "count", :name "COLUMN_1"}, ...)
+        referenced-columns (extract-referenced-columns columnValuesMapping)
+
+        ;; e.g. {"COLUMN_1": [<values>], ...}
+        referenced-column-values-map (reduce
+                                      (fn [acc ref]
+                                        (let [{:keys [source-id]} (parse-data-source-id (:sourceId ref))
+                                              dataset (first (filter #(= (get-in % [:card :id]) source-id) datasets))]
+                                          (if dataset
+                                            ;; Get index of column from dataset whose :name matches :originalName
+                                            (let [column-index (or
+                                                                (first
+                                                                 (keep-indexed
+                                                                  (fn [idx col]
+                                                                    (when (= (:name col) (:originalName ref))
+                                                                      idx))
+                                                                  (get-in dataset [:data :cols])))
+                                                                -1)]
+                                              ;; Populate matched column's values list from row data of dataset
+                                              (if (>= column-index 0)
+                                                (let [values (mapv #(nth % column-index) (get-in dataset [:data :rows]))]
+                                                  (assoc acc (:name ref) values))
+                                                acc))
+                                            acc)))
+                                      {}
+                                      referenced-columns)
+
+        unzipped-rows (mapv
+                       (fn [column]
+                         (let [value-sources (get columnValuesMapping (keyword (:name column)) [])]
+                           (->> value-sources
+                                (mapcat
+                                 (fn [value-source]
+                                   (if (is-data-source-name-ref? value-source)
+                                     (let [id (get-data-source-id-from-name-ref value-source)
+                                           datasource (first (filter #(= id (:id %)) datasources))]
+                                       (if-let [name (:name datasource)]
+                                         [name]
+                                         []))
+                                     (let [values (get referenced-column-values-map (:name value-source))]
+                                       (if values values [])))))
+                                vec)))
+                       columns)]
+
+    {:viz-settings (get-in dashcard-settings [:visualization :settings])
+     :cols columns
+     :rows (apply mapv vector unzipped-rows)}))
+
+(defn- raise-data-one-level
+  "Raise the :data key inside the given result map up to the top level. This is the expected shape of `add-dashcard-timeline`."
+  [{:keys [result] :as m}]
+  (-> m
+      (assoc :data (:data result))
+      (dissoc :result)))
+
 (mu/defmethod render :row :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
+  [_chart-type render-type _timezone-id card _dashcard data]
   (let [viz-settings (get card :visualization_settings)
-        data {:rows rows
-              :cols cols}
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js.svg/row-chart viz-settings data))]
@@ -404,13 +507,6 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
-
-(defn- get-col-by-name
-  [cols col-name]
-  (->> (map-indexed (fn [idx m] [idx m]) cols)
-       (some (fn [[idx col]]
-               (when (= col-name (:name col))
-                 [idx col])))))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
@@ -429,12 +525,14 @@
       (h value)]
      :render/text (str value)}))
 
-(defn- raise-data-one-level
-  "Raise the :data key inside the given result map up to the top level. This is the expected shape of `add-dashcard-timeline`."
-  [{:keys [result] :as m}]
-  (-> m
-      (assoc :data (:data result))
-      (dissoc :result)))
+(defn- series-cards-with-data
+  "Take series results of dashcard and add timeline events"
+  [dashcard card data]
+  (->> (:series-results dashcard)
+       (map raise-data-one-level)
+       (cons {:card card :data data})
+       (map add-dashcard-timeline-events)
+       (m/distinct-by #(get-in % [:card :id]))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -444,14 +542,9 @@
 ;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
-  (let [series-cards-results                   (:series-results dashcard)
-        cards-with-data                        (->> series-cards-results
-                                                    (map raise-data-one-level)
-                                                    (cons {:card card :data data})
-                                                    (map add-dashcard-timeline-events)
-                                                    (m/distinct-by #(get-in % [:card :id])))
-        viz-settings                           (or (get dashcard :visualization_settings)
-                                                   (get card :visualization_settings))
+  (let [cards-with-data  (series-cards-with-data dashcard card data)
+        viz-settings     (or (get dashcard :visualization_settings)
+                             (get card :visualization_settings))
         {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
     (case rendered-type
       :svg
@@ -556,10 +649,22 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
+(defn- get-funnel-axis-fns
+  "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
+  [card dashcard data]
+  (if (render.util/is-visualizer-dashcard? dashcard)
+    ;; x-axis looks for :funnel.dimension
+    ;; y-axis looks for :funnel.metric
+    (let [x-axis-is-first (= (:name (first (:cols data))) (get-in data [:viz-settings :funnel.dimension]))]
+      (if x-axis-is-first
+        [first second]
+        [second first]))
+    (formatter/graphing-column-row-fns card data)))
+
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  [_chart-type render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
-         y-axis-rowfn] (formatter/graphing-column-row-fns card data)
+         y-axis-rowfn] (get-funnel-axis-fns card dashcard data)
         funnel-viz    (:funnel.rows viz-settings)
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
@@ -581,9 +686,20 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- get-funnel-data
+  "Return data for funnel, repackaging if for a visualizer built dashcard"
+  [card dashcard data]
+  (if (render.util/is-visualizer-dashcard? dashcard)
+    (let [cards-with-data (series-cards-with-data dashcard card data)]
+      (merge-visualizer-data cards-with-data (:visualization_settings dashcard)))
+    data))
+
 (mu/defmethod render :funnel :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
-  (let [viz-settings (get card :visualization_settings)]
+  (let [viz-settings   (if (render.util/is-visualizer-dashcard? dashcard)
+                         (get dashcard :visualization_settings)
+                         (get card :visualization_settings))
+        data       (get-funnel-data card dashcard data)]
     (if (= (get viz-settings :funnel.type) "bar")
       (render :javascript_visualization render-type timezone-id card dashcard data)
       (render :funnel_normal render-type timezone-id card dashcard data))))
