@@ -1,4 +1,7 @@
-// https://github.com/ramda/types/blob/develop/types/compose.d.ts
+/**
+ * The original types could be found at https://github.com/ramda/types/blob/13d36d597c51793627a7b0dc0d83c62f1236029b/types/compose.d.ts
+ * This version rearranges and the type in a logical way and adds an extra overrides to handle a case where we pass `any` type to `_.compose`.
+ */
 
 declare module _ {
   interface UnderscoreStatic {
