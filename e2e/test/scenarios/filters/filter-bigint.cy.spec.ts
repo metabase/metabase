@@ -13,9 +13,10 @@ import type {
 
 const { H } = cy;
 
+const bigIntPkTableName = "bigint_pk_table";
+const decimalPkTableName = "decimal_pk_table";
+
 describe("scenarios > filters > bigint (metabase#5816)", () => {
-  const bigIntPkTableName = "bigint_pk_table";
-  const decimalPkTableName = "decimal_pk_table";
   const minBigIntValue = "-9223372036854775808";
   const maxBigIntValue = "9223372036854775807";
   const negativeDecimalValue = "-9223372036854775809";
@@ -222,14 +223,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
   });
 
   it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
-    function setupTables() {
-      const dialect = "postgres";
-      H.restore("postgres-writable");
-      H.resetTestTable({ type: dialect, table: bigIntPkTableName });
-      H.resetTestTable({ type: dialect, table: decimalPkTableName });
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    }
-
     function setupDashboard({
       tableName,
       baseType,
@@ -928,14 +921,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     "query builder + native query + field filters",
     { tags: "@external" },
     () => {
-      function setupTables() {
-        const dialect = "postgres";
-        H.restore("postgres-writable");
-        H.resetTestTable({ type: dialect, table: bigIntPkTableName });
-        H.resetTestTable({ type: dialect, table: decimalPkTableName });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-      }
-
       function setupQuestion({
         tableName,
         baseType,
@@ -1043,7 +1028,62 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testDecimalFilter();
     },
   );
+
+  it("query builder + object detail", { tags: "@external" }, () => {
+    function setupQuestion({ tableName }: { tableName: string }) {
+      getTableId(tableName).then(tableId =>
+        H.createQuestion(
+          {
+            database: WRITABLE_DB_ID,
+            query: { "source-table": tableId },
+          },
+          { wrapId: true },
+        ),
+      );
+    }
+
+    function testObjectDetail({
+      idValue,
+      nameValue,
+    }: {
+      idValue: string;
+      nameValue: string;
+    }) {
+      H.tableInteractive().findByText(idValue).click();
+      H.modal().within(() => {
+        cy.findAllByText(idValue).should("have.length.gte", 1);
+        cy.findAllByText(nameValue).should("have.length.gte", 1);
+      });
+    }
+
+    cy.log("setup");
+    setupTables();
+
+    cy.log("BIGINT");
+    setupQuestion({ tableName: bigIntPkTableName });
+    H.visitQuestion("@questionId");
+    testObjectDetail({
+      idValue: maxBigIntValue,
+      nameValue: "Positive",
+    });
+
+    cy.log("DECIMAL");
+    setupQuestion({ tableName: decimalPkTableName });
+    H.visitQuestion("@questionId");
+    testObjectDetail({
+      idValue: negativeDecimalValue,
+      nameValue: "Negative",
+    });
+  });
 });
+
+function setupTables() {
+  const dialect = "postgres";
+  H.restore("postgres-writable");
+  H.resetTestTable({ type: dialect, table: bigIntPkTableName });
+  H.resetTestTable({ type: dialect, table: decimalPkTableName });
+  H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+}
 
 function getTableId(tableName: string) {
   return cy
