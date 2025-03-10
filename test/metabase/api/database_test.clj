@@ -763,7 +763,7 @@
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
     (testing " returns sane Cache-Control headers"
-      (is (=? {"Cache-Control" "public, max-age=60"
+      (is (=? {"Cache-Control" "public, max-age=70, stale-while-revalidate=60"
                "Vary"          "Cookie"}
               (-> (client/client-full-response (test.users/username->token :rasta) :get 200
                                                (format "database/%s/autocomplete_suggestions" (mt/id))
