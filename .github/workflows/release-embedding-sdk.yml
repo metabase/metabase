@@ -322,6 +322,7 @@ jobs:
       - name: Check out branch to prepare for a SDK version bump PR
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: ${{ inputs.branch}}
 
@@ -408,6 +409,7 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ inputs.branch }}
 
       # Lightweight tags don't need committer name and email
