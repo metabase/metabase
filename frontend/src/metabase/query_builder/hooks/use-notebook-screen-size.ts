@@ -8,18 +8,16 @@ const NOT_MOUNTED_YET = undefined;
 
 type NotMountedYet = typeof NOT_MOUNTED_YET;
 
-type NotebookScreenSize = {
-  isSmallScreen: boolean | NotMountedYet;
-  isLargeScreen: boolean | NotMountedYet;
-};
+type NotebookScreenSize = "small" | "large" | NotMountedYet;
 
 export const useNotebookScreenSize = (): NotebookScreenSize => {
   const { width: windowWidth } = useWindowSize(INITIAL_WINDOW_WIDTH);
   const isMounted = Number.isFinite(windowWidth);
   const isBelowBreakpoint = windowWidth < BREAKPOINT;
 
-  return {
-    isSmallScreen: isMounted ? isBelowBreakpoint : NOT_MOUNTED_YET,
-    isLargeScreen: isMounted ? !isBelowBreakpoint : NOT_MOUNTED_YET,
-  };
+  if (!isMounted) {
+    return NOT_MOUNTED_YET;
+  }
+
+  return isBelowBreakpoint ? "small" : "large";
 };

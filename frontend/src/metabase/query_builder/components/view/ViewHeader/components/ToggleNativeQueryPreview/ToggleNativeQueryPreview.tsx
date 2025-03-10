@@ -35,7 +35,7 @@ export const ToggleNativeQueryPreview = ({
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
 
-  const { isLargeScreen } = useNotebookScreenSize();
+  const screenSize = useNotebookScreenSize();
 
   const engineType = getEngineNativeType(question.database()?.engine);
   const buttonText = isShowingNotebookNativePreview
@@ -49,8 +49,8 @@ export const ToggleNativeQueryPreview = ({
       }),
     );
 
-    if (isLargeScreen) {
-      // the setting is intentionally remembered only for large screens
+    // the setting is intentionally remembered only for large screens
+    if (screenSize === "large") {
       dispatch(setNotebookNativePreviewState(!isShowingNotebookNativePreview));
     }
 

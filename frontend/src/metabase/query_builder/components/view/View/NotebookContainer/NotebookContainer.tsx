@@ -76,15 +76,15 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
-  const { isSmallScreen } = useNotebookScreenSize();
+  const screenSize = useNotebookScreenSize();
   const isNotebookNativePreviewShown = useSelector(
     getIsNotebookNativePreviewShown,
   );
 
   useEffect(() => {
-    if (isSmallScreen) {
+    if (screenSize === "small") {
       dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
-    } else {
+    } else if (screenSize === "large") {
       const currentSettingValue = isNotebookNativePreviewShown;
 
       dispatch(
@@ -93,7 +93,7 @@ export const NotebookContainer = ({
         }),
       );
     }
-  }, [dispatch, isSmallScreen, isNotebookNativePreviewShown]);
+  }, [dispatch, isNotebookNativePreviewShown, screenSize]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -163,15 +163,15 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && typeof isSmallScreen === "boolean" && (
+      {isShowingNotebookNativePreview && typeof screenSize === "boolean" && (
         <>
-          {isSmallScreen && (
+          {screenSize === "small" && (
             <Box pos="absolute" inset={0}>
               <NotebookNativePreview />
             </Box>
           )}
 
-          {!isSmallScreen && (
+          {screenSize === "large" && (
             <ResizableBox
               width={sidebarWidth}
               minConstraints={[minSidebarWidth, 0]}
