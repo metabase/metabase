@@ -1402,15 +1402,17 @@ describe("issue 48562", () => {
   it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
+
     H.getNotebookStep("expression").findByText("CustomColumn").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
-    cy.realPress("Escape");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
+    H.expressionEditorWidget().button("Cancel").click();
+
     H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
     H.popover().findByText("Custom Expression").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
-    cy.button("Cancel").click();
-    cy.realPress("Escape");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
+    H.expressionEditorWidget().button("Cancel").click();
+
     H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
   });
 });
