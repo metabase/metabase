@@ -65,7 +65,7 @@
            :else (str "`" d "`")))))
 
 (defn- format-prefix
-  "Formats an environment variable name with the 'MB_' prefix 
+  "Formats an environment variable name with the 'MB_' prefix
    Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
   (let [base-name (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var)))]
