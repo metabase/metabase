@@ -67,6 +67,11 @@ declare module _ {
         f1: (...args: TArgs) => R1,
       ]
     ): (...args: TArgs) => TResult;
+    /**
+     * This last overload is added to handle the case where passing a function with `any` type to `_.compose`,
+     * without this overload, the returned composed function type would be `unknown` rather than `any` which is
+     * expected.
+     */
     compose<T>(...funcs: T[]): any;
   }
 }
