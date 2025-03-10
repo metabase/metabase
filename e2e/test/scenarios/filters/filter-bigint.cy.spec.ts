@@ -20,24 +20,25 @@ const { H } = cy;
 const BIGINT_PK_TABLE_NAME = "bigint_pk_table";
 const DECIMAL_PK_TABLE_NAME = "decimal_pk_table";
 
-describe("scenarios > filters > bigint (metabase#5816)", () => {
-  const minBigIntValue = "-9223372036854775808";
-  const formattedMinBigIntValue = "-9,223,372,036,854,775,808";
-  const maxBigIntValue = "9223372036854775807";
-  const formattedMaxBigIntValue = "9,223,372,036,854,775,807";
-  const negativeDecimalValue = "-9223372036854775809";
-  const formattedNegativeDecimalValue = "-9,223,372,036,854,775,809";
-  const positiveDecimalValue = "9223372036854775808";
-  const formattedPositiveDecimalValue = "9,223,372,036,854,775,808";
+const MIN_BIGINT_VALUE = "-9223372036854775808";
+const FORMATTED_MIN_BIGINT_VALUE = "-9,223,372,036,854,775,808";
+const MAX_BIGINT_VALUE = "9223372036854775807";
+const FORMATTED_MAX_BIGINT_VALUE = "9,223,372,036,854,775,807";
 
+const NEGATIVE_DECIMAL_VALUE = "-9223372036854775809";
+const FORMATTED_NEGATIVE_DECIMAL_VALUE = "-9,223,372,036,854,775,809";
+const POSITIVE_DECIMAL_VALUE = "9223372036854775808";
+const FORMATTED_POSITIVE_DECIMAL_VALUE = "9,223,372,036,854,775,808";
+
+describe("scenarios > filters > bigint (metabase#5816)", () => {
   const bigIntQuestionDetails: NativeQuestionDetails = {
     name: "SQL NUMBER",
     native: {
-      query: `SELECT ${minBigIntValue} AS NUMBER
+      query: `SELECT ${MIN_BIGINT_VALUE} AS NUMBER
 UNION ALL
 SELECT 0 AS NUMBER
 UNION ALL
-SELECT ${maxBigIntValue} AS NUMBER`,
+SELECT ${MAX_BIGINT_VALUE} AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -46,11 +47,11 @@ SELECT ${maxBigIntValue} AS NUMBER`,
   const decimalQuestionDetails: NativeQuestionDetails = {
     name: "SQL NUMBER",
     native: {
-      query: `SELECT CAST('${negativeDecimalValue}' AS DECIMAL) AS NUMBER
+      query: `SELECT CAST('${NEGATIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER
 UNION ALL
 SELECT CAST(0 AS DECIMAL) AS NUMBER
 UNION ALL
-SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
+SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       "template-tags": {},
     },
     display: "table",
@@ -218,15 +219,15 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.log("BIGINT");
     testFilters({
       sourceQuestionDetails: bigIntQuestionDetails,
-      minValue: minBigIntValue,
-      maxValue: maxBigIntValue,
+      minValue: MIN_BIGINT_VALUE,
+      maxValue: MAX_BIGINT_VALUE,
     });
 
     cy.log("DECIMAL");
     testFilters({
       sourceQuestionDetails: decimalQuestionDetails,
-      minValue: negativeDecimalValue,
-      maxValue: positiveDecimalValue,
+      minValue: NEGATIVE_DECIMAL_VALUE,
+      maxValue: POSITIVE_DECIMAL_VALUE,
     });
   });
 
@@ -337,15 +338,15 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     function testBigIntFilters({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: minBigIntValue, withDrillThru });
-      testFilter({ value: maxBigIntValue, withDrillThru });
+      testFilter({ value: MIN_BIGINT_VALUE, withDrillThru });
+      testFilter({ value: MAX_BIGINT_VALUE, withDrillThru });
     }
 
     function testDecimalFilters({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: negativeDecimalValue, withDrillThru });
-      testFilter({ value: positiveDecimalValue, withDrillThru });
+      testFilter({ value: NEGATIVE_DECIMAL_VALUE, withDrillThru });
+      testFilter({ value: POSITIVE_DECIMAL_VALUE, withDrillThru });
     }
 
     cy.log("create tables");
@@ -625,10 +626,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
       testFilters({
-        minValue: minBigIntValue,
-        maxValue: maxBigIntValue,
-        formattedMinValue: formattedMinBigIntValue,
-        formattedMaxValue: formattedMaxBigIntValue,
+        minValue: MIN_BIGINT_VALUE,
+        maxValue: MAX_BIGINT_VALUE,
+        formattedMinValue: FORMATTED_MIN_BIGINT_VALUE,
+        formattedMaxValue: FORMATTED_MAX_BIGINT_VALUE,
         withDrillThru,
       });
     }
@@ -637,10 +638,10 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
       testFilters({
-        minValue: negativeDecimalValue,
-        maxValue: positiveDecimalValue,
-        formattedMinValue: formattedNegativeDecimalValue,
-        formattedMaxValue: formattedPositiveDecimalValue,
+        minValue: NEGATIVE_DECIMAL_VALUE,
+        maxValue: POSITIVE_DECIMAL_VALUE,
+        formattedMinValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
+        formattedMaxValue: FORMATTED_POSITIVE_DECIMAL_VALUE,
         withDrillThru,
       });
     }
@@ -750,13 +751,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     function testBitIntFilter({
       withRunButton,
     }: { withRunButton?: boolean } = {}) {
-      testFilter({ value: maxBigIntValue, withRunButton });
+      testFilter({ value: MAX_BIGINT_VALUE, withRunButton });
     }
 
     function testDecimalFilter({
       withRunButton,
     }: { withRunButton?: boolean } = {}) {
-      testFilter({ value: negativeDecimalValue, withRunButton });
+      testFilter({ value: NEGATIVE_DECIMAL_VALUE, withRunButton });
     }
 
     cy.log("BIGINT");
@@ -893,13 +894,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     function testBigIntFilter({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: maxBigIntValue, withDrillThru });
+      testFilter({ value: MAX_BIGINT_VALUE, withDrillThru });
     }
 
     function testDecimalFilter({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: positiveDecimalValue, withDrillThru });
+      testFilter({ value: POSITIVE_DECIMAL_VALUE, withDrillThru });
     }
 
     cy.log("BIGINT");
@@ -997,13 +998,13 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       function testBitIntFilter({
         withRunButton,
       }: { withRunButton?: boolean } = {}) {
-        testFilter({ value: maxBigIntValue, withRunButton });
+        testFilter({ value: MAX_BIGINT_VALUE, withRunButton });
       }
 
       function testDecimalFilter({
         withRunButton,
       }: { withRunButton?: boolean } = {}) {
-        testFilter({ value: negativeDecimalValue, withRunButton });
+        testFilter({ value: NEGATIVE_DECIMAL_VALUE, withRunButton });
       }
 
       cy.log("create tables");
@@ -1070,14 +1071,14 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.log("BIGINT");
     setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
     testObjectDetail({
-      idValue: maxBigIntValue,
+      idValue: MAX_BIGINT_VALUE,
       nameValue: "Positive",
     });
 
     cy.log("DECIMAL");
     setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
     testObjectDetail({
-      idValue: negativeDecimalValue,
+      idValue: NEGATIVE_DECIMAL_VALUE,
       nameValue: "Negative",
     });
   });
@@ -1124,15 +1125,15 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     cy.log("BIGINT");
     setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
     testDrill({
-      value: maxBigIntValue,
-      formattedValue: formattedMaxBigIntValue,
+      value: MAX_BIGINT_VALUE,
+      formattedValue: FORMATTED_MAX_BIGINT_VALUE,
     });
 
     cy.log("DECIMAL");
     setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
     testDrill({
-      value: negativeDecimalValue,
-      formattedValue: formattedNegativeDecimalValue,
+      value: NEGATIVE_DECIMAL_VALUE,
+      formattedValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
     });
   });
 
@@ -1213,28 +1214,28 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
     testExport({
       columnName: "ID",
-      formattedMinValue: minBigIntValue,
-      formattedMaxValue: maxBigIntValue,
+      formattedMinValue: MIN_BIGINT_VALUE,
+      formattedMaxValue: MAX_BIGINT_VALUE,
     });
     setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
     testExport({
       columnName: "NUMBER",
-      formattedMinValue: formattedMinBigIntValue,
-      formattedMaxValue: formattedMaxBigIntValue,
+      formattedMinValue: FORMATTED_MIN_BIGINT_VALUE,
+      formattedMaxValue: FORMATTED_MAX_BIGINT_VALUE,
     });
 
     cy.log("DECIMAL");
     setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
     testExport({
       columnName: "ID",
-      formattedMinValue: negativeDecimalValue,
-      formattedMaxValue: positiveDecimalValue,
+      formattedMinValue: NEGATIVE_DECIMAL_VALUE,
+      formattedMaxValue: POSITIVE_DECIMAL_VALUE,
     });
     setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
     testExport({
       columnName: "NUMBER",
-      formattedMinValue: formattedNegativeDecimalValue,
-      formattedMaxValue: formattedPositiveDecimalValue,
+      formattedMinValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
+      formattedMaxValue: FORMATTED_POSITIVE_DECIMAL_VALUE,
     });
   });
 
@@ -1338,8 +1339,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       baseType: "type/BigInteger",
     });
     testClickBehavior({
-      formattedMinValue: formattedMinBigIntValue,
-      formattedMaxValue: formattedMaxBigIntValue,
+      formattedMinValue: FORMATTED_MIN_BIGINT_VALUE,
+      formattedMaxValue: FORMATTED_MAX_BIGINT_VALUE,
     });
 
     cy.log("DECIMAL");
@@ -1348,8 +1349,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       baseType: "type/Decimal",
     });
     testClickBehavior({
-      formattedMinValue: formattedNegativeDecimalValue,
-      formattedMaxValue: formattedPositiveDecimalValue,
+      formattedMinValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
+      formattedMaxValue: FORMATTED_POSITIVE_DECIMAL_VALUE,
     });
   });
 });
