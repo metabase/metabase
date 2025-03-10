@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { forwardRef } from "react";
 
 import Button, { type ButtonProps } from "metabase/core/components/Button";
 
@@ -14,12 +15,17 @@ export interface EntityMenuIconButtonProps extends ButtonProps {
 }
 
 export const EntityMenuIconButton = styled(
-  (props: EntityMenuIconButtonProps) => (
-    <Button
-      {...props}
-      iconSize={props.iconSize ?? 16}
-      onlyIcon={props.onlyIcon ?? true}
-    />
+  forwardRef<HTMLButtonElement, EntityMenuIconButtonProps>(
+    function EntityMenuIconButton(props, ref) {
+      return (
+        <Button
+          ref={ref}
+          {...props}
+          iconSize={props.iconSize ?? 16}
+          onlyIcon={props.onlyIcon ?? true}
+        />
+      );
+    },
   ),
 )`
   width: 36px;
