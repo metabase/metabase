@@ -124,3 +124,6 @@ modules/drivers/*/.lsp/*
 
 # jar downloader
 /jars/
+
+# metabot
+llm-payloads

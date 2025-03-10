@@ -13,7 +13,7 @@ import {
 import { updateQuestion } from "./core";
 
 export const onUpdateVisualizationSettings =
-  (settings: VisualizationSettings) =>
+  (settings: Partial<VisualizationSettings>) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
