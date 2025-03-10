@@ -48,6 +48,15 @@ export const TableDataView = ({
         accessorFn: (row: RowValues) => row[columnIndex],
         formatter: value => formatValue(value, { column }),
         wrap: false,
+        header: function EditingHeader() {
+          return (
+            <Box className={S.headerCellContainer}>
+              <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
+                {column.display_name}
+              </Text>
+            </Box>
+          );
+        },
         editingCell: cellContext => (
           <EditingBodyCellConditional
             cellContext={cellContext}
@@ -57,16 +66,6 @@ export const TableDataView = ({
           />
         ),
         getIsCellEditing: (cellId: string) => editingCellId === cellId,
-      };
-
-      options.header = function EditingHeader(_props) {
-        return (
-          <Box className={S.headerCellContainer}>
-            <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
-              {column.display_name}
-            </Text>
-          </Box>
-        );
       };
 
       return options;
