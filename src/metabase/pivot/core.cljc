@@ -528,18 +528,20 @@
    - :span - How many leaf nodes this node spans
    - :hasChildren - Whether this node has any children
    - :path - The path of rawValues from root to this node
-   - :maxDepthBelow - Maximum depth of the subtree below this node"
+   - :maxDepthBelow - Maximum depth of the subtree below this node
+
+   Note - some keywords are camelCase to match expected object keys in TypeScript."
   [tree]
   (let [a (atom [])]
     (letfn [(process-tree [nodes depth offset path]
               (if (empty? nodes)
-                {:span 1 :maxDepth 0}
+                {:span 1 :max-depth 0}
                 (loop [remaining nodes
                        total-span 0
                        max-depth 0
                        current-offset offset]
                   (if (empty? remaining)
-                    {:span total-span :maxDepth (inc max-depth)}
+                    {:span total-span :max-depth (inc max-depth)}
                     (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (first remaining)
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
                           item            (-> (dissoc node :children)
@@ -552,10 +554,10 @@
                           result          (process-tree children (inc depth) current-offset path-with-value)
                           _               (swap! a update-in [item-index] assoc
                                                  :span (:span result)
-                                                 :maxDepthBelow (:maxDepth result))]
+                                                 :maxDepthBelow (:max-depth result))]
                       (recur (rest remaining)
                              (long (+ total-span (:span result)))
-                             (long (max max-depth (:maxDepth result)))
+                             (long (max max-depth (:max-depth result)))
                              (+ current-offset (:span result))))))))]
       (process-tree tree 0 0 [])
       @a)))
