@@ -154,7 +154,7 @@ export const DataGrid = function DataGrid<TData>({
           >
             <div
               data-testid="table-header"
-              className={S.headerContainer}
+              className={cx(S.headerContainer, classNames?.headerContainer)}
               style={styles?.headerContainer}
             >
               {table.getHeaderGroups().map(headerGroup => (
