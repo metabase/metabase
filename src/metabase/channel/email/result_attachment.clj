@@ -6,7 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -75,7 +75,7 @@
      :content-type content-type
      :file-name    (format "%s_%s.%s"
                            (or card-name "query_result")
-                           (common/export-filename-timestamp)
+                           (streaming.common/export-filename-timestamp)
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))

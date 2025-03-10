@@ -6,7 +6,7 @@
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.json :as json])
   (:import
@@ -24,7 +24,7 @@
     :status       200
     :headers      {"Content-Disposition" (format "attachment; filename=\"%s_%s.json\""
                                                  (or filename-prefix "query_result")
-                                                 (common/export-filename-timestamp))}}))
+                                                 (streaming.common/export-filename-timestamp))}}))
 
 (defmethod qp.si/streaming-results-writer :json
   [_ ^OutputStream os]
@@ -37,7 +37,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [cols           (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+        (let [cols           (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
@@ -71,7 +71,7 @@
                      ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
                      ;; does mean that all JSON values are strings. Any other strategy requires some level of
                      ;; inference to know if we should or should not parse a string (or not stringify an object).
-                     (let [res (formatter (common/format-value r))]
+                     (let [res (formatter (streaming.common/format-value r))]
                        (if-some [num-str (:num-str res)]
                          num-str
                          res)))

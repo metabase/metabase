@@ -10,7 +10,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util :as u]
    [metabase.util.currency :as currency]
@@ -59,7 +59,7 @@
   prefix (for symbols or codes)."
   [base-string format-settings]
   (let [currency-code (::mb.viz/currency format-settings "USD")
-        currency-identifier (common/currency-identifier format-settings)]
+        currency-identifier (streaming.common/currency-identifier format-settings)]
     (condp = (::mb.viz/currency-style format-settings "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
@@ -222,7 +222,7 @@
                     unit           :unit :as col}
    format-rows?]
   (when format-rows?
-    (let [col-type (common/col-type col)]
+    (let [col-type (streaming.common/col-type col)]
       (u/one-or-many
        (cond
          ;; Primary key or foreign key
@@ -268,7 +268,7 @@
   "Compute a sequence of cell styles for each column"
   [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows?]
   (for [col cols]
-    (let [settings       (common/viz-settings-for-col col viz-settings)
+    (let [settings       (streaming.common/viz-settings-for-col col viz-settings)
           format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
@@ -278,8 +278,8 @@
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
   []
-  {:datetime (datetime-format-string (common/merge-global-settings {} :type/Temporal))
-   :date     (datetime-format-string (common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+  {:datetime (datetime-format-string (streaming.common/merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (streaming.common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
@@ -334,11 +334,11 @@
 
 (defmethod set-cell! OffsetTime
   [^Cell cell t styles typed-styles]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t)) styles typed-styles))
+  (set-cell! cell (t/local-time (streaming.common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! OffsetDateTime
   [^Cell cell t styles typed-styles]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) styles typed-styles))
+  (set-cell! cell (t/local-date-time (streaming.common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! ZonedDateTime
   [^Cell cell t styles typed-styles]
@@ -607,7 +607,7 @@
         typed-cell-styles           (compute-typed-cell-styles wb data-format)
         data-sheet                  (spreadsheet/select-sheet "data" wb)
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        col-names                   (common/column-titles ordered-cols col-settings format-rows?)
+        col-names                   (streaming.common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
         ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
         ;; object small.
@@ -661,7 +661,7 @@
     (doseq [i (range (count ordered-cols))]
       (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
     (setup-header-row! sheet (count ordered-cols))
-    (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings format-rows?))
+    (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?))
     {:workbook workbook
      :sheet    sheet}))
 
@@ -685,7 +685,7 @@
                                    (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                    :pivot-rows []}
                                                                   pivot-export-options) ordered-cols))
-              col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              col-names          (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
           (if opts
