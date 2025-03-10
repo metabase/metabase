@@ -7,6 +7,8 @@ const http = require("http");
 const os = require("os");
 const path = require("path");
 
+const { delay } = require("./cypress-runner-utils");
+
 const CypressBackend = {
   server: null,
   createServer(port = process.env.BACKEND_PORT || 4000) {
@@ -106,11 +108,6 @@ const CypressBackend = {
 
     if (process.env.CI) {
       this.server.process.unref(); // detach console
-    }
-
-    // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
-    function delay(duration) {
-      return new Promise((resolve, reject) => setTimeout(resolve, duration));
     }
 
     async function isReady(host) {

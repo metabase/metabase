@@ -1,0 +1,46 @@
+.root {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  font-weight: 700;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.625em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--mb-color-brand);
+  border-radius: 5px;
+  overflow: auto;
+  outline: none;
+  gap: 0.25rem;
+}
+
+.alignRight {
+  flex-direction: row-reverse;
+}
+
+.light .content {
+  transition: background-color 200ms ease-in-out;
+  background-color: var(--mb-base-color-brand-10);
+  cursor: pointer;
+}
+
+.light .content:hover {
+  background-color: var(--mb-base-color-brand-20);
+}
+
+.outline .content {
+  border: 1px solid var(--mb-base-color-brand-20);
+}
+
+.sortIndicator {
+  flex-shrink: 0;
+}

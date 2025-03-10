@@ -65,8 +65,8 @@ describe("scenarios > question > custom column", () => {
     cy.button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[cre", blur: false });
 
-    cy.findAllByTestId("expression-suggestions-list-item")
-      .should("have.length", 1)
+    H.CustomExpressionEditor.completions()
+      .should("be.visible")
       .and("contain.text", "Created At")
       .and("not.contain.text", "Default period");
   });
@@ -273,7 +273,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".test-TableInteractive-cellWrapper--firstColumn")
-      .eq(1) // the second cell from the top in the first column (the first one is a header cell)
+      .eq(0)
       .findByText("1");
   });
 
@@ -548,7 +548,7 @@ describe("scenarios > question > custom column", () => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    cy.get(".ace_line").contains("Sum([MyCC \\[2027\\]]");
+    H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
@@ -637,7 +637,7 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "1 + 2" });
+    H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
 
     // next focus: the textbox for the name
     cy.realPress("Tab");
@@ -648,7 +648,7 @@ describe("scenarios > question > custom column", () => {
 
     // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "cm-content");
   });
 
   it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
@@ -661,32 +661,32 @@ describe("scenarios > question > custom column", () => {
     cy.realPress(["Shift", "Tab"]);
 
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
-    cy.findByDisplayValue("1 + 1").type("2");
+    H.CustomExpressionEditor.value().should("equal", "1 + 1");
+    H.CustomExpressionEditor.type("2");
 
     // Fix needed will prevent display value from being `1 +2 1`.
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
-    cy.findByDisplayValue("1 + 12");
+    H.CustomExpressionEditor.value().should("equal", "1 + 12");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "[C", blur: false });
+    H.enterCustomColumnDetails({ formula: "[Cre", blur: false });
 
-    // Suggestion popover shows up and this select the first one ([Created At])
+    H.CustomExpressionEditor.completions().should("be.visible");
+
+    // Suggestion popover shows up and this select the first one
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
-
-    // This really shouldn't be needed, but without interacting with the field, we can't tab away from it.
-    // TODO: Fix
-    cy.get(".ace_text-input").first().type(" ");
+    cy.focused().should("have.attr", "class").and("eq", "cm-content");
 
     // Tab to focus on the name box
     cy.realPress("Tab");
+
     cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
@@ -694,7 +694,7 @@ describe("scenarios > question > custom column", () => {
 
     // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "cm-content");
   });
 
   // TODO: fixme!
@@ -714,7 +714,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
-    H.clauseStepPopover().within(() => {
+    H.expressionEditorWidget().within(() => {
       H.enterCustomColumnDetails({
         formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
         name: "If",
@@ -769,7 +769,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
-    H.clauseStepPopover().within(() => {
+    H.expressionEditorWidget().within(() => {
       H.enterCustomColumnDetails({
         formula: 'in("Gadget", [Vendor], [Category])',
         name: "InColumn",
@@ -787,12 +787,12 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - notIn");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("InColumn").click();
-    H.clauseStepPopover().within(() => {
+    H.expressionEditorWidget().within(() => {
       H.enterCustomColumnDetails({
         formula: 'notIn("Gadget", [Vendor], [Category])',
         name: "InColumn",
       });
-      cy.button("Update").click();
+      cy.button("Update").should("not.be.disabled").click();
     });
     H.visualize();
     H.assertQueryBuilderRowCount(147);
@@ -853,7 +853,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("aggregations - notIn");
     H.openNotebook();
     H.getNotebookStep("summarize").findByText("CountIfIn").click();
-    H.clauseStepPopover().within(() => {
+    H.expressionEditorWidget().within(() => {
       H.enterCustomColumnDetails({
         formula: "countIf(notIn([ID], 1, 2))",
         name: "CountIfIn",
@@ -1060,31 +1060,16 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  /**
-   * We abuse {force: true} arguments below because AceEditor cannot be found
-   * on a second click and type commands (the first ones happen in the beforeEach block above )
-   */
   it("should not accidentally delete Custom Column formula value and/or Custom Column name (metabase#15734)", () => {
-    cy.get("@formula")
-      .click({ force: true })
-      .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}", {
-        force: true,
-      });
+    H.CustomExpressionEditor.type(
+      "{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}",
+    );
     cy.findByDisplayValue("Math").focus();
     cy.button("Done").should("not.be.disabled");
   });
 
-  /**
-   * 1. Explanation for `cy.get("@formula").click();`
-   *  - Without it, test runner is too fast and the test results in false positive.
-   *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
-   */
   it("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#16126)", () => {
-    cy.get("@formula")
-      .focus()
-      .click({ force: true })
-      .type("{movetoend}{backspace}", { force: true })
-      .blur();
+    H.CustomExpressionEditor.type("{movetoend}{backspace}").blur();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Expected expression");
@@ -1109,56 +1094,62 @@ describe("scenarios > question > custom column > help text", () => {
   });
 
   it("should appear while inside a function", () => {
-    H.enterCustomColumnDetails({ formula: "Lower(", blur: false });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("lower(text)");
+    H.enterCustomColumnDetails({ formula: "lower(", blur: false });
+    H.CustomExpressionEditor.helpTextHeader()
+      .should("be.visible")
+      .should("contain", "lower(text)");
   });
 
   it("should appear after a field reference", () => {
-    H.enterCustomColumnDetails({ formula: "Lower([Category]", blur: false });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("lower(text)");
+    H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
+    H.CustomExpressionEditor.helpTextHeader()
+      .should("be.visible")
+      .should("contain", "lower(text)");
   });
 
   it("should not appear while outside a function", () => {
-    H.enterCustomColumnDetails({ formula: "Lower([Category])", blur: false });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("lower(text)").should("not.exist");
+    H.enterCustomColumnDetails({ formula: "lower([Category])", blur: false });
+    H.CustomExpressionEditor.helpTextHeader().should("not.exist");
   });
 
   it("should not appear when formula field is not in focus (metabase#15891)", () => {
     H.enterCustomColumnDetails({
-      formula: "rou{enter}1.5){leftArrow}",
+      formula: "rou{enter}1.5{leftArrow}",
       blur: false,
     });
 
-    cy.findByTestId("expression-helper-popover").findByText(
-      "round([Temperature])",
-    );
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "round([Temperature])");
 
     cy.log("Blur event should remove the expression helper popover");
-    cy.get("@formula").blur();
-    cy.findByTestId("expression-helper-popover").should("not.exist");
+    H.CustomExpressionEditor.blur();
+    H.CustomExpressionEditor.helpText().should("not.exist");
 
-    cy.get("@formula").focus();
-    cy.findByTestId("expression-helper-popover").findByText(
-      "round([Temperature])",
-    );
+    H.CustomExpressionEditor.focus().type("{leftArrow}");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "round([Temperature])");
 
     cy.log(
       "Pressing `escape` key should also remove the expression helper popover",
     );
     cy.get("@formula").type("{esc}");
-    cy.findByTestId("expression-helper-popover").should("not.exist");
+    H.CustomExpressionEditor.helpText().should("not.exist");
   });
 
   it("should not disappear when clicked on (metabase#17548)", () => {
-    H.enterCustomColumnDetails({ formula: "rou{enter}", blur: false });
+    H.enterCustomColumnDetails({ formula: "round(", blur: false });
+
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "round([Temperature])");
 
     // Shouldn't hide on click
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("round([Temperature])").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("round([Temperature])");
+    H.CustomExpressionEditor.helpText().click();
+
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "round([Temperature])");
   });
 });

@@ -203,7 +203,6 @@
                                    :content     true}
                  :title_link      (str "https://testmb.com/question/" card-id)
                  :attachment-name "image.png"
-                 :channel-id      "FOO"
                  :fallback        pulse.test-util/card-name}]}
               (pulse.test-util/thunk->boolean pulse-results))))
 
@@ -263,7 +262,6 @@
                                               :content     true}
                             :title_link      (str "https://testmb.com/question/" card-id)
                             :attachment-name "image.png"
-                            :channel-id      "FOO"
                             :fallback        pulse.test-util/card-name}]}
                          (pulse.test-util/thunk->boolean pulse-results))))
                 (testing "attached-results-text should be invoked exactly once"
@@ -404,7 +402,6 @@
                                                          :content     true}
                                        :title_link      (str "https://testmb.com/question/" card-id)
                                        :attachment-name "image.png"
-                                       :channel-id      "FOO"
                                        :fallback        pulse.test-util/card-name}]}
                        (pulse.test-util/thunk->boolean result)))
                 (is (every? produces-bytes? (rest (:attachments result)))))}}
@@ -717,8 +714,7 @@
 
 (def ^:private fake-slack-notification
   {:channel-id  "#test-channel"
-   :message     "test message body"
-   :attachments []})
+   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync

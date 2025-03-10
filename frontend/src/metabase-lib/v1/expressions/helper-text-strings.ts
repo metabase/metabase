@@ -7,7 +7,9 @@ import type {
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { formatIdentifier, formatStringLiteral } from "./";
+import { formatStringLiteral } from "./string";
+
+import { formatIdentifier } from "./";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -99,12 +101,13 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "offset",
     structure: "Offset",
-    description: () => t`Returns the value of an expression in a different row`,
+    description: () =>
+      t`Returns the value of an aggregation expression in a different row`,
     args: [
       {
         name: t`expression`,
         description: t`The value to get from a different row.`,
-        example: formatIdentifier(t`Total`),
+        example: `Sum(${formatIdentifier(t`Total`)})`,
       },
       {
         name: t`rowOffset`,
@@ -596,7 +599,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`unit`,
-        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`,
         example: formatStringLiteral("month"),
       },
     ],
@@ -787,6 +790,39 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         name: t`text`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: formatStringLiteral("month"),
+      },
+    ],
+  },
+  {
+    name: "relative-time-interval",
+    structure: "intervalStartingFrom",
+    description: () =>
+      t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The date column to check.`,
+        example: formatIdentifier(t`Created At`),
+      },
+      {
+        name: t`value`,
+        description: t`Period of the interval, where negative numbers go back in time.`,
+        example: "-20",
+      },
+      {
+        name: t`unit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("month"),
+      },
+      {
+        name: t`offsetValue`,
+        description: t`The initial interval period to start from, where negative values are back in time.`,
+        example: "-10",
+      },
+      {
+        name: t`offsetUnit`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("year"),
       },
     ],
   },
@@ -1215,3 +1251,8 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
     ? `questions/query-builder/expressions/${docsPage}`
     : "questions/query-builder/expressions";
 };
+
+export const getFunctionByStructure = (structure: string) =>
+  HELPER_TEXT_STRINGS.find(
+    h => h.structure.toLowerCase() === structure.toLowerCase(),
+  )?.name;

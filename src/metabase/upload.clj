@@ -20,6 +20,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.card :as card]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -745,12 +746,12 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (some-> model :dataset_query lib/->pMBQL not-empty)]
+  (when-let [query (card/lib-query model)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
 (defn- invalidate-cached-models!
-  "Invalidate the model caches for all cards whose `:based_on_upload` value resolves to the given table."
+  "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
   (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query]
@@ -761,7 +762,15 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
-    (model-persistence/invalidate! {:card_id [:in model-ids]})))
+    (model-persistence/invalidate! {:card_id [:in model-ids]})
+    ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
+    (doseq [id model-ids]
+      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata] id)
+            ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
+            ;; the initial upload.
+            fix-name #(update % :display_name humanization/name->human-readable-name)
+            metadata (card.metadata/refresh-metadata card {:update-fn fix-name})]
+        (t2/update! :model/Card id {:result_metadata metadata})))))
 
 (defn- translate-type-keywords [m]
   (walk/postwalk

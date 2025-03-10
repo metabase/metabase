@@ -32,7 +32,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -40,7 +40,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
@@ -98,7 +97,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <Flex p="xl">
-        <InteractiveQuestion />
+        <InteractiveQuestion questionId="new" />
       </Flex>,
     );
 
@@ -106,7 +105,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().contains("Pick your starting data");
 
     popover().within(() => {
-      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 

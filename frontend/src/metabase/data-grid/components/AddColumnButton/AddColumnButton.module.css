@@ -1,0 +1,27 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  background-color: var(--mb-color-bg-white);
+  width: 35px;
+  height: 35px;
+  box-sizing: content-box;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.sticky {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.button {
+  transition: background-color 200ms;
+  background-color: var(--mb-base-color-brand-10);
+}
+
+.button:hover {
+  background: var(--mb-base-color-brand-20) !important;
+}

@@ -1,6 +1,3 @@
-import _ from "underscore";
-
-import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   LLMSuggestionQuestionInfo,
   SaveQuestionForm,
@@ -24,20 +21,12 @@ export const SaveQuestionModal = ({
   saveToCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  const saveToDashboardId = question.dashboardId();
-  const { data: saveToDashboard } = useGetDashboardQuery(
-    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
-  );
-
-  const initialDashboardTabId =
-    _.first(saveToDashboard?.tabs || [])?.id ?? null;
-
   return (
     <SaveQuestionProvider
       question={question}
       originalQuestion={originalQuestion}
-      onCreate={async question => {
-        const newQuestion = await onCreate(question);
+      onCreate={async (question, options) => {
+        const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
           modalProps.onClose();
@@ -49,7 +38,6 @@ export const SaveQuestionModal = ({
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       saveToCollection={saveToCollection}
-      initialDashboardTabId={initialDashboardTabId}
     >
       <Modal.Root padding="2.5rem" {...modalProps}>
         <Modal.Overlay />
@@ -65,7 +53,6 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
-              saveToDashboard={saveToDashboard}
               onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
               onCancel={modalProps.onClose}
             />
