@@ -1121,7 +1121,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [db (api/check-404 (t2/select-one :model/Database id))]
-    (api/check-403 (mi/can-write? db))
+    (or (api/check-403 (mi/can-write? db))
+        (:is_attached_dwh db))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)
