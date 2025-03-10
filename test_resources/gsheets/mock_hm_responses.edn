@@ -212,4 +212,28 @@
        :status 200,
        :length 60,
        :body {:email "service-account@elt-sync.iam.gserviceaccount.com"},
+       :trace-redirects []}]
+
+ {:method :post, :url "/api/v2/mb/connections/<connection-id>/sync", :body nil }
+ [:ok {:cached nil,
+       :request-time 12,
+       :repeatable? false,
+       :protocol-version {:name "HTTP", :major 1, :minor 1},
+       :streaming? true,
+       ;; :http-client #object[org.apache.http.impl.client.InternalHttpClient 0x4b1202cb "org.apache.http.impl.client.InternalHttpClient@4b1202cb"],
+       :chunked? false,
+       :reason-phrase "OK",
+       :headers
+       {"Date" "Mon, 27 Jan 2025 18:50:57 GMT",
+        "Connection" "close",
+        "Content-Type" "application/json;charset=utf-8",
+        "X-Frame-Options" "SAMEORIGIN",
+        "X-Content-Type-Options" "nosniff",
+        "Strict-Transport-Security" "max-age=31536000; includeSubDomains",
+        "Content-Length" "60",
+        "Server" "Jetty(11.0.24)"},
+       :orig-content-encoding nil,
+       :status 200,
+       :length 2,
+       :body {},
        :trace-redirects []}]}
