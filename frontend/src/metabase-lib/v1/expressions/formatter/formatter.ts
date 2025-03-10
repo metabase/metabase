@@ -14,6 +14,7 @@ import type {
   MetricAgg,
   OffsetExpression,
   SegmentFilter,
+  ValueClause,
 } from "metabase-types/api";
 
 import {
@@ -116,6 +117,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isValueClause(path)) {
+    return formatValueClause(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -143,6 +146,10 @@ function formatNumberLiteral(node: number): Doc {
 
 function formatBooleanLiteral(node: boolean): Doc {
   return node ? "True" : "False";
+}
+
+function formatValueClause(path: AstPath<ValueClause>, print: Print): Doc {
+  return recurse(path, print, path.node[1]);
 }
 
 function formatDimension(

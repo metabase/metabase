@@ -187,6 +187,18 @@ describe("format", () => {
       ]);
     });
   });
+
+  it("should handle value clauses", async () => {
+    const options = {
+      query,
+      startRule: "expression",
+      stageIndex: -1,
+    };
+
+    expect(await format(["value", 10], options)).toBe("10");
+    expect(await format(["value", "foo"], options)).toBe('"foo"');
+    expect(await format(["value", false], options)).toBe("False");
+  });
 });
 
 describe("if printWidth = Infinity, it should return the same results as the single-line formatter", () => {
