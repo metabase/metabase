@@ -14,18 +14,12 @@ export function resolverPass({
   stageIndex,
   startRule,
   database,
-  enabled = true,
 }: {
   query: Lib.Query;
   stageIndex: number;
   startRule: StartRule;
   database?: Database | null;
-  enabled?: boolean;
 }) {
-  if (!enabled) {
-    return (expression: Expression): Expression => expression;
-  }
-
   return (expression: Expression): Expression =>
     resolve({
       expression,

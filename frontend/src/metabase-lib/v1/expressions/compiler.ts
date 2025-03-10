@@ -58,13 +58,13 @@ export function compileExpression({
     adjustCaseOrIf,
     adjustMultiArgOptions,
     adjustTopLevelLiteral,
-    resolverPass({
-      enabled: shouldResolve,
-      database,
-      query,
-      stageIndex,
-      startRule,
-    }),
+    shouldResolve &&
+      resolverPass({
+        database,
+        query,
+        stageIndex,
+        startRule,
+      }),
     adjustBooleans,
   ].filter(isCompilerPass);
 
