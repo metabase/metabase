@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -13,10 +14,20 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- compute-new-visibility-type [db field-metadata]
+  (if (crufty/name? (:name field-metadata)
+                    (some-> db :settings :auto-cruft-columns))
+    :details-only
+    ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
+    ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
+    ;; again, you need to change the visibility-type to :normal via the fields :put api.
+    (:visibility-type field-metadata)))
+
 (mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
-  [table          :- i/TableInstance
+  [database       :- i/DatabaseInstance
+   table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
    metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
@@ -28,7 +39,8 @@
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
          old-db-partitioned             :database-partitioned
-         old-db-required                :database-required} metabase-field
+         old-db-required                :database-required
+         old-visibility-type            :visibility-type} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
@@ -37,6 +49,7 @@
          new-database-is-auto-increment :database-is-auto-increment
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
+        new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
         new-database-type               (or new-database-type "NULL")
@@ -67,6 +80,7 @@
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?         (not= old-db-required new-db-required)
+        new-visibility-type?     (not= old-visibility-type new-visibility-type)
 
         ;; calculate combined updates
         updates
@@ -136,7 +150,9 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-required
                       new-db-required)
-           {:database_required new-db-required}))]
+           {:database_required new-db-required})
+         (when new-visibility-type?
+           {:visibility_type new-visibility-type}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
@@ -147,24 +163,26 @@
 
 (mu/defn- update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
-  [table          :- i/TableInstance
+  [database       :- i/DatabaseInstance
+   table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
    metabase-field :- common/TableMetadataFieldWithID]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
-      (update-metadata! table (set nested-fields-metadata) (set metabase-nested-fields))
+      (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields))
       0)))
 
 (mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
-  [table        :- i/TableInstance
+  [database     :- i/DatabaseInstance
+   table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
   (sync-util/sum-for [metabase-field our-metadata]
     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
     ;; database) and that are still considered active (i.e., present in DB metadata)
     (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
-      (+ (update-field-metadata-if-needed! table field-metadata metabase-field)
-         (update-nested-fields-metadata! table field-metadata metabase-field)))))
+      (+ (update-field-metadata-if-needed! database table field-metadata metabase-field)
+         (update-nested-fields-metadata! database table field-metadata metabase-field)))))
