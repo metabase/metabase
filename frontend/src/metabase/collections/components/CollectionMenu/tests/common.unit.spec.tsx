@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, queryIcon, screen } from "__support__/ui";
+import { getIcon, queryIcon, screen, waitFor } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
@@ -163,19 +163,16 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(
-        fetchMock.called(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
-          { method: "PUT" },
-        ),
-      ).toBe(false);
-
-      expect(await screen.findByTestId("indicator")).toBeInTheDocument();
+      await waitFor(async () =>
+        expect(
+          await screen.findByTestId("menu-indicator-root"),
+        ).toHaveAttribute("data-show-indicator", "true"),
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
         fetchMock.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(1);
@@ -203,7 +200,10 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -219,10 +219,12 @@ describe("for your consideration", () => {
         collection: createMockCollection({ can_write: true }),
         dashboardQuestionCandidates: [dqCandidate],
         isAdmin: true,
-        collectionMenu: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -244,7 +246,10 @@ describe("for your consideration", () => {
         isAdmin: false,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -263,7 +268,10 @@ describe("for your consideration", () => {
         moveToDashboard: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -279,11 +287,13 @@ describe("for your consideration", () => {
         collection: createMockCollection({ can_write: true }),
         dashboardQuestionCandidates: [dqCandidate],
         isAdmin: true,
-        collectionMenu: true,
         moveToDashboard: true,
       });
 
-      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
+        "data-show-indicator",
+        "false",
+      );
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
