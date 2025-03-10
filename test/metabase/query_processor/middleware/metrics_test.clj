@@ -1535,3 +1535,35 @@
                     [:> {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"}
                      [:field {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 10]
                      [:value {:lib/uuid "59209c3c-e806-402e-89c6-95de0cb21230"} 100]])))))
+
+(deftest ^:parallel commutative-filter-ops-test
+  (testing (str "Query referencing metrics with equal filters with commutative ops with different argument order "
+                "are not rejected")
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-temp
+        [:model/Card
+         {mid-1 :id}
+         {:type :metric
+          :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                           (lib/filter $ (lib/> (lib/+ (m/find-first (comp #{"User ID"} :display-name)
+                                                                     (lib/filterable-columns $))
+                                                       2 1)
+                                                20))
+                           (lib/aggregate $ (lib/count))
+                           (lib.convert/->legacy-MBQL $))}
+
+         :model/Card
+         {mid-2 :id}
+         {:type :metric
+          :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                           (lib/filter $ (lib/> (lib/+ (m/find-first (comp #{"User ID"} :display-name)
+                                                                     (lib/filterable-columns $))
+                                                       1 2)
+                                                20))
+                           (lib/aggregate $ (lib/sum (m/find-first (comp #{"Total"} :display-name)
+                                                                   (lib/visible-columns $))))
+                           (lib.convert/->legacy-MBQL $))}]
+        (is (=? {:status :completed}
+                (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                      (lib/aggregate (lib.metadata/metric mp mid-1))
+                                      (lib/aggregate (lib.metadata/metric mp mid-2))))))))))
