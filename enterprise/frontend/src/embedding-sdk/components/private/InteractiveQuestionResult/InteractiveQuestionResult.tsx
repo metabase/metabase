@@ -144,10 +144,13 @@ export const InteractiveQuestionResult = ({
                 </>
               )}
             </Group>
-            <InteractiveQuestion.EditorButton
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
+            <Group gap="sm">
+              <InteractiveQuestion.DownloadWidgetDropdown />
+              <InteractiveQuestion.EditorButton
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+            </Group>
           </Group>
         </Stack>
       )}
