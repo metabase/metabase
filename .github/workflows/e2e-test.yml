@@ -13,7 +13,7 @@ on:
         default: ee
       specs:
         required: false
-        default: ./e2e/test/scenarios/**/*.cy.spec.*
+        default: ./e2e/test/scenarios/**/*.ci-test.cy.spec.*
         type: string
       tags:
         required: false
@@ -108,19 +108,20 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
+        # if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
-          SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          # SPLIT_FILE: "./e2e/support/timings.json"
+          # SPLIT_OUTPUT_FILE: "newTimes.json"
+          # SPLIT_TIME_THRESHOLD: 5.0
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
         shell: bash
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --spec './e2e/test/scenarios/**/*.ci-test.cy.spec.*' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -153,6 +154,13 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
+
+      - name: Upload Failed Tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
+          path: ./cypress/test-results
 
       - name: Publish Summary
         if: failure()
