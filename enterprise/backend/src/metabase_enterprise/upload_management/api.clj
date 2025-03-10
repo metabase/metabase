@@ -4,16 +4,27 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.upload :as upload]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- attached-dwh-tables
+  "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
+  google sheets uploads."
+  []
+  (when (premium-features/has-feature? :attached-dwh)
+    (when-let [dw-db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
+        dw-tables))))
 
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
   (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
         ;; See https://github.com/metabase/metabase/issues/41023
+    (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)
     (filterv mi/can-read? tables)))
 

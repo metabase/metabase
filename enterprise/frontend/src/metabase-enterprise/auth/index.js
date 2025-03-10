@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 import { FormSwitch } from "metabase/forms";
@@ -272,7 +272,8 @@ if (hasPremiumFeature("sso_ldap")) {
       <Stack gap="0.75rem" m="2.5rem 0">
         <SettingHeader
           id="ldap-user-provisioning-enabled?"
-          setting={settings["ldap-user-provisioning-enabled?"]}
+          title={settings["ldap-user-provisioning-enabled?"].display_name}
+          description={settings["ldap-user-provisioning-enabled?"].description}
         />
         <FormSwitch
           id="ldap-user-provisioning-enabled?"

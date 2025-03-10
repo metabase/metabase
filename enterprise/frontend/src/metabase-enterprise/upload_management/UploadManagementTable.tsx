@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import {
   BulkActionBar,
@@ -140,12 +140,7 @@ export function UploadManagementTable() {
           </BulkActionButton>
         </BulkActionBar>
       )}
-      <SettingHeader
-        id="upload-tables-list"
-        setting={{
-          display_name: t`Manage Uploads`,
-        }}
-      />
+      <SettingHeader id="upload-tables-list" title={t`Manage Uploads`} />
       <Text fw="bold" color="text-medium">
         {t`Uploaded Tables`}
       </Text>

@@ -325,6 +325,7 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
+        (@registered-settings (u/->kebab-case-en k))
         (throw (ex-info (tru "Unknown setting: {0}" k)
                         {::unknown-setting-error true
                          :registered-settings

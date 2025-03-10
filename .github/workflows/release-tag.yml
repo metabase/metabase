@@ -269,12 +269,15 @@ jobs:
     needs: check-version
     runs-on: ubuntu-22.04
     timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
     strategy:
       matrix:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
     - uses: actions/checkout@v4
       with:
+        token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         fetch-depth: 0 # we want all branches and tags
         fetch-tags: true
     - name: Add and push git tag for nightly/beta/latest
