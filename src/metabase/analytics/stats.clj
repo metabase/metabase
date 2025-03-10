@@ -189,8 +189,8 @@
             :dataset_query
             [:inline "one"]
             [:inline "$.native.\"template-tags\".*"]]
-    :postgres [:json_exists
-               [:cast :dataset_query :json]
+    :postgres [:jsonb_path_exists
+               [:cast :dataset_query :jsonb]
                [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
 
 (defn- contains-embedding-param
@@ -201,8 +201,8 @@
                  [:inline "one"]
                  [:inline param]]
             nil]
-    :postgres [:json_exists
-               [:cast :embedding_params :json]
+    :postgres [:jsonb_path_exists
+               [:cast :embedding_params :jsonb]
                [:inline (str "$.* ? (@ == \"" param "\")")]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
