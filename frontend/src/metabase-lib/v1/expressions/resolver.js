@@ -1,9 +1,8 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
-
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import { ResolverError } from "./pratt/types";
 import { OPERATOR as OP } from "./tokenizer";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
@@ -234,8 +233,9 @@ export function resolve({
       typeof expression === "boolean" ? "expression" : typeof expression,
     )
   ) {
-    throw new Error(
+    throw new ResolverError(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
+      expression.node,
     );
   }
   return expression;
