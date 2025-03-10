@@ -20,6 +20,8 @@ import {
 import { initializeDatabase, reset } from "../database";
 import { getEditingDatabase, getInitializeError } from "../selectors";
 
+import S from "./DatabaseConnectionModal.module.css";
+
 const mapStateToProps = (state: State) => {
   const database = getEditingDatabase(state);
 
@@ -81,6 +83,11 @@ export const DatabaseConnectionModalInner = ({
       opened
       onClose={handleCloseModal}
       padding="xl"
+      classNames={{
+        content: S.modalRoot,
+        header: S.modalHeader,
+        body: S.modalBody,
+      }}
     >
       <DatabaseEditConnectionForm
         database={database}
