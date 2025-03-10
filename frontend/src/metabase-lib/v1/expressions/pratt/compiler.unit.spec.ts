@@ -19,6 +19,13 @@ describe("pratt/compiler", () => {
     it("should compile literals", () => {
       expect(expr("42")).toEqual(["value", 42]);
       expect(expr("'Universe'")).toEqual(["value", "Universe"]);
+      expect(expr(`"Universe"`)).toEqual(["value", "Universe"]);
+      expect(expr(`"\\""`)).toEqual(["value", `"`]);
+      expect(expr(`'\\''`)).toEqual(["value", `'`]);
+      expect(expr(`"a\\"b"`)).toEqual(["value", `a"b`]);
+      expect(expr(`'a\\'b'`)).toEqual(["value", `a'b`]);
+      expect(expr(`"'"`)).toEqual(["value", `'`]);
+      expect(expr(`'"'`)).toEqual(["value", `"`]);
     });
 
     /// TODO: Fix w/ some type info

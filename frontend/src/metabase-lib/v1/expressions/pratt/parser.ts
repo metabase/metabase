@@ -68,6 +68,7 @@ export function lexify(expression: string) {
     }
     start = token.end;
     let text = expression.slice(token.start, token.end);
+    let value = undefined;
     const pos = token.start;
     let length = token.end - token.start;
     let type = BAD_TOKEN;
@@ -77,6 +78,7 @@ export function lexify(expression: string) {
         break;
       case TOKEN.String:
         type = STRING;
+        value = token.value;
         break;
       case TOKEN.Identifier:
         type = text[0] === "[" ? FIELD : IDENTIFIER;
@@ -144,7 +146,7 @@ export function lexify(expression: string) {
       }
     }
 
-    lexs.push({ type, text, length, pos });
+    lexs.push({ type, text, length, pos, value });
   }
 
   // This simplifies the parser
