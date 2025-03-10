@@ -11,6 +11,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.query-reference-validation.api]
    [metabase-enterprise.sandbox.api.routes]
@@ -27,8 +28,10 @@
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
+   :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :etl-connections            (deferred-tru "ETL Connections")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
@@ -58,6 +61,9 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
+   "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
+                                     (premium-handler :attached-dwh)
+                                     (premium-handler :etl-connections))
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
