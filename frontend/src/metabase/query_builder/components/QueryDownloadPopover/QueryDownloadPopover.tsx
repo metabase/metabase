@@ -5,7 +5,15 @@ import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsW
 import type { ExportFormat } from "metabase/common/types/export";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Icon,
+  Stack,
+  type StackProps,
+  Text,
+  Title,
+} from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -18,7 +26,7 @@ type QueryDownloadPopoverProps = {
     enableFormatting: boolean;
     enablePivot: boolean;
   }) => void;
-};
+} & StackProps;
 
 const canPivotResults = (format: string, display: string) =>
   display === "pivot" && format !== "json";
@@ -28,6 +36,7 @@ export const QueryDownloadPopover = ({
   question,
   result,
   onDownload,
+  ...stackProps
 }: QueryDownloadPopoverProps) => {
   const canDownloadPng = canSavePng(question.display());
   const formats = canDownloadPng
@@ -55,7 +64,11 @@ export const QueryDownloadPopover = ({
   }, [format, isFormatted, isPivoted, onDownload]);
 
   return (
-    <Stack w={hasTruncatedResults ? "18.75rem" : "16.25rem"} p={8}>
+    <Stack
+      w={hasTruncatedResults ? "18.75rem" : "16.25rem"}
+      p="sm"
+      {...stackProps}
+    >
       <Title order={4}>{t`Download`}</Title>
       <ExportSettingsWidget
         selectedFormat={format}

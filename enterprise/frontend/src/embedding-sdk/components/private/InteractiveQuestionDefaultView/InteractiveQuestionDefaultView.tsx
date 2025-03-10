@@ -147,12 +147,12 @@ export const InteractiveQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <Group>
+            <Group gap="sm">
+              <InteractiveQuestion.DownloadWidgetDropdown />
               <InteractiveQuestion.EditorButton
                 isOpen={isEditorOpen}
                 onClick={toggleEditor}
               />
-              <InteractiveQuestion.DownloadWidgetDropdown />
             </Group>
           </Group>
         </Stack>
