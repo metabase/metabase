@@ -182,10 +182,10 @@
 
 (defn- url-type [url]
   (cond
-    (re-matches #"^https://docs.google.com/spreadsheets/.*" url)
+    (re-matches #".*docs.google.com/spreadsheets/.*" url)
     "google_spreadsheet"
 
-    (re-matches #"^https://drive.google.com/drive/.*" url)
+    (re-matches #".*drive.google.com/drive/.*" url)
     "gdrive"
 
     :else
