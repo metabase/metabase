@@ -1216,16 +1216,6 @@ describe("scenarios > question > custom column > help text", () => {
       .should("be.visible")
       .should("contain", "round([Temperature])");
   });
-
-  it("should not be possible to close the custom expression editor by clicking outside of it", () => {
-    cy.realPress("Escape");
-    H.CustomExpressionEditor.get().should("be.visible");
-  });
-
-  it("should not be possible to close the custom expression editor by clicking outside of it", () => {
-    cy.button("View SQL").click();
-    H.CustomExpressionEditor.get().should("be.visible");
-  });
 });
 
 describe("scenarios > question > custom column > exiting the editor", () => {
@@ -1236,6 +1226,17 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.openProductsTable({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
+  });
+
+  it("should be possible to close the custom expression editor by pressing Escape when it is empty", () => {
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("not.exist");
+  });
+
+  it("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
+    H.CustomExpressionEditor.type("count(");
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("be.visible");
   });
 
   it("should be possible to exit the editor by clicking outside of it when there is no text", () => {
