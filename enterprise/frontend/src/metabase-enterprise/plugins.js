@@ -14,6 +14,7 @@ import "./auth";
 import "./caching";
 import "./collections";
 import "./content_verification";
+import "./database_routing";
 import "./whitelabel";
 import "./embedding";
 import "./embedding-sdk";

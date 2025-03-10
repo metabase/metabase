@@ -28,7 +28,6 @@ import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionI
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
 import type { DatabaseEditErrorType } from "../components/DatabaseEditConnectionForm";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
-import { DatabaseRoutingSection } from "../components/DatabaseRoutingSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import {
@@ -40,6 +39,7 @@ import {
   updateDatabase,
 } from "../database";
 import { getEditingDatabase, getInitializeError } from "../selectors";
+import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 
 interface DatabaseEditAppProps {
   children: React.ReactNode;
@@ -168,7 +168,9 @@ function DatabaseEditAppInner({
                     updateDatabase={updateDatabase}
                   />
 
-                  <DatabaseRoutingSection database={database} />
+                  <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                    database={database}
+                  />
 
                   <DatabaseDangerZoneSection
                     isAdmin={isAdmin}
