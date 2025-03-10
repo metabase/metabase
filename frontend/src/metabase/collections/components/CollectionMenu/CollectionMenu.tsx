@@ -9,11 +9,12 @@ import {
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { IndicatorMenu } from "metabase/core/components/IndicatorMenu";
 import { ForwardRefLink } from "metabase/core/components/Link";
+import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
+import { UserHasSeenAll } from "metabase/hoc/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { ActionIcon, Badge, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
-import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
 
 export interface CollectionMenuProps {
   collection: Collection;
@@ -58,12 +59,12 @@ export const CollectionMenu = ({
 
   if (canMove) {
     moveItems.push(
-      <IndicatorMenu.Item
+      <Menu.Item
         key="collection-move"
         leftSection={<Icon name="move" />}
         component={ForwardRefLink}
         to={`${url}/move`}
-      >{t`Move`}</IndicatorMenu.Item>,
+      >{t`Move`}</Menu.Item>,
     );
   }
 
@@ -78,12 +79,12 @@ export const CollectionMenu = ({
 
   if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
     editItems.push(
-      <IndicatorMenu.Item
+      <Menu.Item
         key="collection-edit"
         leftSection={<Icon name="lock" />}
         component={ForwardRefLink}
         to={`${url}/permissions`}
-      >{t`Edit permissions`}</IndicatorMenu.Item>,
+      >{t`Edit permissions`}</Menu.Item>,
     );
   }
 
@@ -94,23 +95,23 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      <IndicatorMenu.ItemWithBadge
-        key="collection-move-to-dashboards"
-        leftSection={<Icon name="add_to_dash" />}
-        component={ForwardRefLink}
-        to={`${url}/move-questions-dashboard`}
-        userAckKey="move-to-dashboard"
-        badgeLabel={t`New`}
-      >{t`Move questions into their dashboards`}</IndicatorMenu.ItemWithBadge>,
+      // <IndicatorMenu.ItemWithBadge
+      //   key="collection-move-to-dashboards"
+      //   leftSection={<Icon name="add_to_dash" />}
+      //   component={ForwardRefLink}
+      //   to={`${url}/move-questions-dashboard`}
+      //   userAckKey="move-to-dashboard"
+      //   badgeLabel={t`New`}
+      // >{t`Move questions into their dashboards`}</IndicatorMenu.ItemWithBadge>,
 
       <UserHasSeen key="move-to-dashboard" hasSeenKey="move-to-dashboard">
-        {({ show, ack }) => (
+        {({ isNew, ack }) => (
           <Menu.Item
             leftSection={<Icon name="add_to_dash" />}
             component={ForwardRefLink}
             to={`${url}/move-questions-dashboard`}
             onClick={ack}
-            rightSection={show ? <Badge>{t`New`}</Badge> : null}
+            rightSection={isNew ? <Badge>{t`New`}</Badge> : null}
           >{t`Move questions into their dashboards`}</Menu.Item>
         )}
       </UserHasSeen>,
@@ -119,12 +120,12 @@ export const CollectionMenu = ({
 
   if (canMove) {
     trashItems.push(
-      <IndicatorMenu.Item
+      <Menu.Item
         key="collection-trash"
         leftSection={<Icon name="trash" />}
         component={ForwardRefLink}
         to={`${url}/archive`}
-      >{t`Move to trash`}</IndicatorMenu.Item>,
+      >{t`Move to trash`}</Menu.Item>,
     );
   }
 
@@ -135,25 +136,32 @@ export const CollectionMenu = ({
   }
 
   return (
-    <IndicatorMenu
-      position="bottom-end"
-      menuKey="collection-menu"
-      opened={menuOpen}
-      onChange={setMenuOpen}
-    >
-      <IndicatorMenu.Target>
-        <Tooltip
-          label={t`Move, trash, and more...`}
-          position="bottom"
-          disabled={menuOpen}
+    <UserHasSeenAll menuKey="collection-menu">
+      {({ hasSeenAll, handleOpen }) => (
+        <Menu
+          position="bottom-end"
+          opened={menuOpen}
+          onChange={setMenuOpen}
+          keepMounted
+          onOpen={handleOpen}
         >
-          <ActionIcon size={32} variant="viewHeader">
-            <Icon name="ellipsis" color="text-dark" />
-          </ActionIcon>
-        </Tooltip>
-      </IndicatorMenu.Target>
+          <Menu.Target>
+            <Tooltip
+              label={t`Move, trash, and more...`}
+              position="bottom"
+              disabled={menuOpen}
+            >
+              <Indicator disabled={hasSeenAll} size={6}>
+                <ActionIcon size={32} variant="viewHeader">
+                  <Icon name="ellipsis" color="text-dark" />
+                </ActionIcon>
+              </Indicator>
+            </Tooltip>
+          </Menu.Target>
 
-      <IndicatorMenu.Dropdown>{items}</IndicatorMenu.Dropdown>
-    </IndicatorMenu>
+          <Menu.Dropdown>{items}</Menu.Dropdown>
+        </Menu>
+      )}
+    </UserHasSeenAll>
   );
 };

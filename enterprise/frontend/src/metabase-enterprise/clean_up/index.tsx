@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
-import { IndicatorMenu } from "metabase/core/components/IndicatorMenu";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { Icon } from "metabase/ui";
+import { Badge, Icon, Menu } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -52,15 +52,22 @@ if (hasPremiumFeature("collection_cleanup")) {
 
     return {
       menuItems: [
-        <IndicatorMenu.ItemWithBadge
+        <UserHasSeen
           key="collections-cleanup"
-          leftSection={<Icon name="archive" />}
-          component={ForwardRefLink}
-          to={`${Urls.collection(collection)}/cleanup`}
-          badgeLabel={t`Recommended`}
-          showBadge={() => hasStaleItems}
-          userAckKey="clean-stale-items"
-        >{t`Clear out unused items`}</IndicatorMenu.ItemWithBadge>,
+          hasSeenKey="clean-stale-items"
+          overrideFn={() => hasStaleItems}
+        >
+          {({ isNew }) => (
+            <Menu.Item
+              leftSection={<Icon name="archive" />}
+              component={ForwardRefLink}
+              to={`${Urls.collection(collection)}/cleanup`}
+              rightSection={isNew ? <Badge>{t`recommended`}</Badge> : null}
+            >
+              {t`Clear out unused items`}
+            </Menu.Item>
+          )}
+        </UserHasSeen>,
       ],
       showIndicator: hasStaleItems,
     };

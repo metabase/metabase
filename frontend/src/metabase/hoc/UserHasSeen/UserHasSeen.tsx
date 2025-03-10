@@ -1,11 +1,19 @@
-import { IndicatorMenuContext } from "metabase/core/components/IndicatorMenu/IndicatorMenuContext";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useContext, useEffect } from "react";
 import { useKeyPressEvent } from "react-use";
 
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
+
+import { UserHasSeenAllContext } from "./UserHasSeenAllContext";
+
 interface UserHasSeenProps {
   hasSeenKey: string;
-  children: ({ show, ack }: { show: boolean; ack: () => void }) => JSX.Element;
+  children: ({
+    isNew,
+    ack,
+  }: {
+    isNew: boolean;
+    ack: () => void;
+  }) => JSX.Element;
   overrideFn?: (hasSeen: boolean) => boolean;
 }
 
@@ -14,27 +22,25 @@ export const UserHasSeen = ({
   children,
   overrideFn = hasSeen => !hasSeen,
 }: UserHasSeenProps) => {
-  const indicatorContext = useContext(IndicatorMenuContext);
+  const indicatorContext = useContext(UserHasSeenAllContext);
 
   const [hasSeen, { ack, isLoading, unack }] = useUserAcknowledgement(
     hasSeenKey,
     true,
   );
 
-  console.log(hasSeenKey);
-
   useKeyPressEvent("q", unack);
 
-  const show = overrideFn(hasSeen);
+  const isNew = overrideFn(hasSeen);
 
   useEffect(() => {
     if (indicatorContext) {
-      if (!isLoading && show) {
+      if (!isLoading && isNew) {
         indicatorContext.upsertBadge({ key: hasSeenKey, value: hasSeen });
         return () => indicatorContext.removeBadge({ key: hasSeenKey });
       }
     }
-  }, [show]);
+  }, [isNew, indicatorContext, hasSeenKey, hasSeen, isLoading]);
 
-  return children({ show, ack });
+  return children({ isNew, ack });
 };
