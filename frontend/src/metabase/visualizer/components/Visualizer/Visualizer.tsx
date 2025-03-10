@@ -104,8 +104,8 @@ export const Visualizer = (props: VisualizerProps) => {
   });
 
   useKeyPressEvent("z", event => {
-    event.preventDefault();
     if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
       if (event.shiftKey) {
         if (canRedo) {
           redo();
