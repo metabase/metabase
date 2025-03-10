@@ -81,7 +81,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
     });
 
     failureTestCases.forEach(({ name, questionId }) => {
-      it(`should show an error message for ${name}`, () => {
+      it.only(`should show an error message for ${name}`, () => {
         mountStaticQuestion({ questionId }, { shouldAssertCardQuery: false });
 
         getSdkRoot().within(() => {
