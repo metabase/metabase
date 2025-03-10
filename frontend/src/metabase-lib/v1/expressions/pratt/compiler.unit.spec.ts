@@ -1,5 +1,4 @@
 import { getMBQLName } from "../config";
-import { ALL_PASSES } from "../passes";
 
 import { compile, lexify, parse } from ".";
 
@@ -10,7 +9,6 @@ describe("pratt/compiler", () => {
     });
 
     return compile(ast.root, {
-      passes: ALL_PASSES,
       getMBQLName,
     });
   }
