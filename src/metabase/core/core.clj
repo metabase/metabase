@@ -59,14 +59,14 @@
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------
 
-(defmethod prometheus/known-labels :metabase-info/build
+(defmethod analytics/known-labels :metabase-info/build
   [_]
   ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
   [(merge (select-keys config/mb-version-info [:tag :hash :date])
           {:version       config/mb-version-string
            :major-version (config/current-major-version)})])
 
-(defmethod prometheus/initial-value :metabase-info/build [_ _] 1)
+(defmethod analytics/initial-value :metabase-info/build [_ _] 1)
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
