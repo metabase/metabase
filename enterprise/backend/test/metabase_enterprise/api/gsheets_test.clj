@@ -229,3 +229,14 @@
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
   (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
+
+(deftest sync-folder-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (mt/with-temporary-setting-values [gsheets {:status "loading",
+                                                  :folder_url gdrive-link,
+                                                  :folder-upload-time 1741624582,
+                                                  :gdrive/conn-id "<connection-id>"}]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (is (partial= {:status "loading"}
+                        (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder/sync"))))))))
