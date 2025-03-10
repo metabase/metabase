@@ -37,20 +37,22 @@ export const CreateDashboardModal = ({
   );
 
   return (
-    <Modal
-      title={t`New dashboard`}
-      onClose={() => onClose?.()}
-      data-testid="new-dashboard-modal"
-      size="lg"
-      {...modalProps}
-    >
-      <CreateDashboardForm
-        onCreate={handleCreate}
-        onCancel={onClose}
-        initialValues={initialValues}
-        filterPersonalCollections={filterPersonalCollections}
-        collectionId={collectionId}
-      />
-    </Modal>
+    <Modal.Stack>
+      <Modal
+        title={t`New dashboard`}
+        onClose={() => onClose?.()}
+        data-testid="new-dashboard-modal"
+        size="lg"
+        {...modalProps}
+      >
+        <CreateDashboardForm
+          onCreate={handleCreate}
+          onCancel={onClose}
+          initialValues={initialValues}
+          filterPersonalCollections={filterPersonalCollections}
+          collectionId={collectionId}
+        />
+      </Modal>
+    </Modal.Stack>
   );
 };
