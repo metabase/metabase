@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId } from "metabase-types/api";
 import {
   Box,
   Button,
@@ -17,20 +16,19 @@ import {
 import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
-} from "../DatabaseInfoSection";
+} from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useState } from "react";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 
 export const DatabaseRoutingSection = ({
   database,
 }: {
-  isAdmin: boolean;
   database: Database;
-  deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
 }) => {
   const shouldHideSection = database.is_attached_dwh;
 
   const [isEnabled, setIsEnabled] = useState(false);
+
   const [isExpanded, setIsExpanded] = useState(false);
 
   // TODO: impl
