@@ -38,7 +38,7 @@ const getReloadInterval = (_state, _props, tables = []) =>
 
 const getTableUrl = (table, metadata, dbId) => {
   if (PLUGIN_DATA_EDITING.isEnabled()) {
-    return `/browse/databases/${dbId}/tables/${table.name.toLowerCase()}`;
+    return `/browse/databases/${dbId}/tables/${table.id}`;
   }
 
   const metadataTable = metadata?.table(table.id);

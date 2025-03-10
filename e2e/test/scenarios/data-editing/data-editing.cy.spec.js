@@ -4,10 +4,10 @@ describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.setTokenFeatures("all");
 
     cy.intercept("GET", "/api/database").as("getDatabases");
     cy.intercept("GET", "/api/table/*").as("getTable");
-    // TODO[WRK]: enable this check after this feature token is added on the BE
   });
 
   it("should allow to open table data view", () => {

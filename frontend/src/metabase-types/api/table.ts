@@ -133,7 +133,6 @@ export interface DeleteUploadTableRequest {
 }
 
 export interface GetTableDataRequest {
-  dbId: DatabaseId;
   tableId: TableId;
 }
 

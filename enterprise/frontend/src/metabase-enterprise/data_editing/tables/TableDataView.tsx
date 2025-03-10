@@ -1,15 +1,33 @@
 import type { ColumnSizingState } from "@tanstack/react-table";
-import { useMemo } from "react";
+import type React from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   type ColumnOptions,
   DataGrid,
+  type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
+import { formatValue } from "metabase/lib/formatting/value";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
-export const TableDataView = ({ data }: { data: Dataset }) => {
+import { EditingBodyCell } from "./EditingBodyCell";
+import type { UpdatedRowCellsHandlerParams } from "./types";
+import { useTableEditing } from "./use-table-editing";
+
+type TableDataViewProps = {
+  data: Dataset;
+  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+};
+
+export const TableDataView = ({
+  data,
+  onCellValueUpdate,
+}: TableDataViewProps) => {
   const { cols, rows } = data.data;
+
+  const { editingCellId, onCellClickToEdit, onCellEditCancel } =
+    useTableEditing();
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
@@ -21,28 +39,55 @@ export const TableDataView = ({ data }: { data: Dataset }) => {
   }, [cols]);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
-    return cols.map((col, columnIndex) => {
-      const columnName = col.display_name;
-
+    return cols.map((column, columnIndex) => {
       const options: ColumnOptions<RowValues, RowValue> = {
-        id: col.name,
-        name: columnName,
+        id: column.name,
+        name: column.display_name,
         accessorFn: (row: RowValues) => row[columnIndex],
+        formatter: value => formatValue(value, { column }),
         wrap: false,
-        cellVariant: col.name === "ID" ? "pill" : undefined,
+        editingCell: cellContext => (
+          <EditingBodyCell
+            cellContext={cellContext}
+            onCellValueUpdate={onCellValueUpdate}
+            onCellEditCancel={onCellEditCancel}
+          />
+        ),
+        getIsCellEditing: (cellId: string) => editingCellId === cellId,
       };
 
       return options;
     });
-  }, [cols]);
+  }, [cols, editingCellId, onCellEditCancel, onCellValueUpdate]);
+
+  const rowId: RowIdColumnOptions = useMemo(
+    () => ({
+      variant: "expandButton",
+    }),
+    [],
+  );
 
   const tableProps = useDataGridInstance({
     data: rows,
-    rowId: undefined,
+    rowId,
     columnOrder,
     columnSizingMap,
     columnsOptions,
   });
 
-  return <DataGrid {...tableProps} />;
+  const handleCellClick = useCallback(
+    (
+      e: React.MouseEvent<HTMLDivElement>,
+      {
+        cellId,
+      }: {
+        cellId: string;
+      },
+    ) => {
+      onCellClickToEdit(cellId);
+    },
+    [onCellClickToEdit],
+  );
+
+  return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
 };
