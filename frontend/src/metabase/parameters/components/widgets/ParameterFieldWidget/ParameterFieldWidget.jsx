@@ -1,6 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -45,9 +46,24 @@ export default function ParameterFieldWidget({
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
+  // prev value is needed to cover a case when some internal change cause an unnecessary update
+  // and old parameter value is passed again to the field widget
+  // e.g. we changed a value from 1 to 2, then take a pause and 2 is changed back to 1
+  const prevValue = usePrevious(value);
 
   const supportsMultipleValues =
     multi && !parameter.hasVariableTemplateTagTarget;
+
+  useEffect(
+    function updateValueOnChange() {
+      if (_.isEqual(value, prevValue)) {
+        return;
+      }
+
+      setUnsavedValue(normalizeValue(value));
+    },
+    [prevValue, value],
+  );
 
   const isValid =
     unsavedValue.every(value => value != null) &&
@@ -71,6 +87,7 @@ export default function ParameterFieldWidget({
                 newValues[index] = value;
                 setUnsavedValue(newValues);
               };
+
           return (
             <FieldValuesWidget
               key={`parameter-${parameter.id}-${index}`}
