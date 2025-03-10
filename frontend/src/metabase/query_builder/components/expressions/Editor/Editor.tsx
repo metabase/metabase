@@ -283,13 +283,17 @@ function useExpression<S extends StartRule = "expression">({
     handleUpdate(source, true);
   }, [handleUpdate, source]);
 
+  const handleFormatExpression = useCallback(() => {
+    formatExpression({ initial: false });
+  }, [formatExpression]);
+
   return {
     source,
     initialSource,
     hasSourceChanged: source !== initialSource,
     onSourceChange: handleSourceChange,
     onBlur: handleBlur,
-    formatExpression,
+    formatExpression: handleFormatExpression,
     isFormatting,
   };
 }
