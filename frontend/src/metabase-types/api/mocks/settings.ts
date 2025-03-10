@@ -131,6 +131,7 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  table_data_editing: false,
   ...opts,
 });
 

@@ -7,28 +7,25 @@ import {
 } from "react";
 
 import { Input } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type { RowValue, RowValues } from "metabase-types/api";
 
 import S from "./TableDataView.module.css";
-import type { RowCellsWithPkValue } from "./types";
+import type { UpdatedRowCellsHandlerParams } from "./types";
 
 interface EditingBodyCellProps<TRow, TValue> {
   cellContext: CellContext<TRow, TValue>;
-  columns: DatasetColumn[];
-  onCellValueUpdate: (params: RowCellsWithPkValue) => void;
+  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
 }
 
 export const EditingBodyCell = ({
   cellContext,
-  columns,
   onCellValueUpdate,
   onCellEditCancel,
 }: EditingBodyCellProps<RowValues, RowValue>) => {
   const {
     getValue,
-    row: { original: rowData },
+    row: { index: rowIndex },
     column: { id: columnName },
   } = cellContext;
   const initialValue = getValue<RowValue>();
@@ -36,26 +33,21 @@ export const EditingBodyCell = ({
 
   const doCellValueUpdate = useCallback(() => {
     if (value !== initialValue) {
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
-      if (rowPkValue !== undefined) {
-        onCellValueUpdate({
-          [pkColumn.name]: rowPkValue,
+      onCellValueUpdate({
+        data: {
           [columnName]: value,
-        });
-      }
+        },
+        rowIndex,
+      });
     }
 
     onCellEditCancel();
   }, [
     columnName,
-    columns,
     initialValue,
     onCellEditCancel,
     onCellValueUpdate,
-    rowData,
+    rowIndex,
     value,
   ]);
 
