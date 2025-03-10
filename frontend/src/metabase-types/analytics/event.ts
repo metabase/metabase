@@ -81,6 +81,16 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event_detail: "download-diagnostics" | "submit-report";
 }>;
 
+export type GsheetsConnectionClickedEvent = ValidateEvent<{
+  event: "sheets_connection_clicked";
+  triggered_from: "db-page" | "left-nav";
+}>;
+
+export type GsheetsImportClickedEvent = ValidateEvent<{
+  event: "sheets_import_by_url_clicked";
+  triggered_from: "sheets-url-popup";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -91,4 +101,6 @@ export type SimpleEvent =
   | OnboardingChecklistItemCTAClickedEvent
   | MoveToTrashEvent
   | ErrorDiagnosticModalOpenedEvent
-  | ErrorDiagnosticModalSubmittedEvent;
+  | ErrorDiagnosticModalSubmittedEvent
+  | GsheetsConnectionClickedEvent
+  | GsheetsImportClickedEvent;
