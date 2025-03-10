@@ -11,6 +11,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -30,7 +31,6 @@ import type { DashboardState } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
-  createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -158,7 +158,7 @@ export async function setup({
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
     entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
-    settings: createMockSettingsState({
+    settings: mockSettings({
       "uploads-settings": {
         db_id: hasDWHAttached || isUploadEnabled ? SAMPLE_DATABASE.id : null,
         schema_name: null,
@@ -167,7 +167,10 @@ export async function setup({
       "instance-creation": instanceCreationDate,
       "token-features": createMockTokenFeatures({
         attached_dwh: hasDWHAttached,
+        hosting: true,
+        upload_management: true,
       }),
+      "show-google-sheets-integration": true,
     }),
   });
 
