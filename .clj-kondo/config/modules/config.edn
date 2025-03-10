@@ -196,7 +196,7 @@
 
   embed
   {:api  #{metabase.embed.settings}
-   :uses #{analytics models premium-features util}}
+   :uses #{analytics models premium-features tiles util}}
 
   events
   {:api  #{metabase.events metabase.events.init metabase.events.notification}
@@ -271,6 +271,12 @@
   {:api  #{metabase.logger metabase.logger.init}
    :uses #{config plugins}}
 
+  login-history
+  {:api #{metabase.login-history.api
+          metabase.login-history.core
+          metabase.login-history.init}
+   :uses #{analytics api channel models request util}}
+
   models
   {:api #{metabase.models.api-key
           metabase.models.application-permissions-revision
@@ -294,7 +300,6 @@
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.login-history
           metabase.models.moderation-review
           metabase.models.native-query-snippet
           metabase.models.native-query-snippet.permissions
@@ -360,7 +365,7 @@
            metabase.notification.init
            metabase.notification.payload.core
            metabase.notification.payload.execute}
-   :uses #{api channel events models permissions premium-features public-settings query-processor request util}}
+   :uses #{analytics api channel events models permissions premium-features public-settings query-processor request util}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -383,6 +388,12 @@
   public-settings
   {:api  #{metabase.public-settings}
    :uses #{api config models plugins premium-features util enterprise/sso}}
+
+  public-sharing
+  {:api  #{metabase.public-sharing.api
+           metabase.public-sharing.core
+           metabase.public-sharing.init}
+   :uses #{actions analytics api db events lib models query-processor request tiles util}}
 
   pulse
   {:api  #{metabase.pulse.api
@@ -489,7 +500,7 @@
 
   session
   {:api  #{metabase.session.api metabase.session.init metabase.session.models.session}
-   :uses #{analytics api channel config db driver events integrations models public-settings request task util}}
+   :uses #{api channel config db driver events integrations login-history models public-settings request task util}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -510,7 +521,6 @@
            util}}
   sync
   {:api #{metabase.sync.api
-          metabase.sync.concurrent
           metabase.sync.core
           metabase.sync.init
           metabase.sync.schedules
@@ -576,10 +586,9 @@
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
-           metabase-enterprise.advanced-permissions.api.util
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
-   :uses #{api audit driver lib models permissions premium-features query-processor util}}
+   :uses #{api audit driver enterprise/impersonation lib models permissions premium-features query-processor util enterprise/sandbox}}
 
   enterprise/airgap
   {:api  #{}
@@ -636,6 +645,11 @@
            metabase-enterprise.enhancements.integrations.ldap}
    :uses #{integrations models premium-features util enterprise/sso}}
 
+  enterprise/impersonation
+  {:api #{metabase-enterprise.impersonation.core
+          metabase-enterprise.impersonation.api}
+   :uses #{api audit driver enterprise/sandbox lib models permissions premium-features query-processor util}}
+
   enterprise/llm
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api models query-processor util}}
@@ -659,7 +673,7 @@
            query-processor
            request
            util
-           enterprise/advanced-permissions
+           enterprise/impersonation
            enterprise/api}}
 
   enterprise/scim

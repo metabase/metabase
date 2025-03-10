@@ -121,6 +121,7 @@ module.exports = env => {
       ...mainConfig.externals,
       react: "react",
       "react-dom": "react-dom",
+      "react-dom/client": "react-dom/client",
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
@@ -145,7 +146,21 @@ module.exports = env => {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
+        GIT_BRANCH: require("child_process")
+          .execSync("git rev-parse --abbrev-ref HEAD")
+          .toString()
+          .trim(),
+        GIT_COMMIT: require("child_process")
+          .execSync("git rev-parse HEAD")
+          .toString()
+          .trim(),
         IS_EMBEDDING_SDK: true,
+      }),
+      new webpack.DefinePlugin({
+        "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(
+          () => JSON.stringify(new Date().toISOString()),
+          true, // This flag makes it update on each build
+        ),
       }),
       !skipDTS &&
         new ForkTsCheckerWebpackPlugin({

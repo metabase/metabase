@@ -1,6 +1,7 @@
 (ns metabase.channel.impl.email
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
@@ -59,12 +60,16 @@
                   :pulse-id pulse-id}))))
 
 (defn- unsubscribe-url-for-non-user
+  "Given a `dashboard-subscription-id` and a `non-user-email`, returns a URL that can be used to unsubscribe from a
+  pulse for a non-logged in user. If `dashboard-subscription-id` is `nil`, returns `nil`, since
+  there is nothing to unsubscribe from."
   [dashboard-subscription-id non-user-email]
-  (str (urls/unsubscribe-url)
-       "?"
-       (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
-                           :email    non-user-email
-                           :pulse-id dashboard-subscription-id})))
+  (when dashboard-subscription-id
+    (str (urls/unsubscribe-url)
+         "?"
+         (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
+                             :email    non-user-email
+                             :pulse-id dashboard-subscription-id}))))
 
 (defn- render-part
   [timezone part options]
@@ -108,13 +113,6 @@
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
-
-(defn- email-attachment
-  [rendered-cards parts]
-  (filter some?
-          ;; maybe we need to rewrite this into a transducer?
-          (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat email.result-attachment/result-attachment parts))))
 
 (defn- icon-bundle
   "Bundle an icon.
@@ -173,9 +171,11 @@
         timezone           (channel.render/defaulted-timezone card)
         rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
-        attachments        (concat [icon-attachment]
-                                   (email-attachment rendered-card
-                                                     (assoc-attachment-booleans [alert] [card_part])))
+        card-attachments   (map make-message-attachment (:attachments rendered-card))
+        result-attachments (email.result-attachment/result-attachment
+                            (first (assoc-attachment-booleans [alert] [card_part])))
+        attachments        (concat [icon-attachment] card-attachments result-attachments)
+        html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
@@ -185,7 +185,7 @@
                                                                   :rows  (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
                                                :goal_value      goal
-                                               :alert_content   (html (:content rendered-card))
+                                               :alert_content   html-content
                                                :alert_schedule  (messages/alert-schedule-text (:schedule alert))
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
@@ -247,16 +247,28 @@
                 parameters
                 dashboard]} payload
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
-        rendered-cards      (map #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
-        icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
-        attachments         (concat
-                             [icon-attachment]
-                             (email-attachment rendered-cards (assoc-attachment-booleans
-                                                               (:dashboard_subscription_dashcards dashboard_subscription)
-                                                               dashboard_parts)))
+        ;; We want to walk dashboard_parts once and not retain Hiccup structures in memory to reduce memory water mark
+        ;; and avoid OOMs. Hence, we:
+        ;; 1. Accumulate the attachments in an imperative way.
+        ;; 2. Convert Hiccup structure into HTML immediately.
+        ;; 3. Later, we combine all HTMLs using ordinary string mashing.
+        merged-attachments  (volatile! {})
+        result-attachments  (volatile! [])
+        html-contents       (->> dashboard_parts
+                                 (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription))
+                                 (mapv #(let [{:keys [attachments content]}
+                                              (render-part timezone % {:channel.render/include-title? true})
+                                              result-attachment (email.result-attachment/result-attachment %)]
+                                          (vswap! merged-attachments merge attachments)
+                                          (vswap! result-attachments into result-attachment)
+                                          (html content))))
+        icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
+        card-attachments    (map make-message-attachment @merged-attachments)
+        attachments         (concat [icon-attachment] card-attachments @result-attachments)
+        dashboard-content   (str "<div>" (str/join html-contents) "</div>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
-                                  (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
+                                  (assoc :computed {:dashboard_content  dashboard-content
                                                     :icon_cid           (:content-id icon-attachment)
                                                     :dashboard_has_tabs (some-> dashboard :tabs seq)
                                                     :management_text    (if (nil? non-user-email)

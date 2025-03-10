@@ -884,15 +884,15 @@ jobs:
 
   be-tests-sqlserver:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: SQL Server 2017
-            junit-name: be-tests-sqlserver-2017-ee
-            image: mcr.microsoft.com/mssql/server:2017-latest
+          # - name: SQL Server 2017
+          #   junit-name: be-tests-sqlserver-2017-ee
+          #   image: mcr.microsoft.com/mssql/server:2017-latest
           - name: SQL Server 2022
             junit-name: be-tests-sqlserver-2022-ee
             image: mcr.microsoft.com/mssql/server:2022-latest

@@ -2,22 +2,18 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.nonce :as nonce]
-   [metabase.analytics.snowplow :as snowplow]
-   [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events :as events]
-   [metabase.models.login-history :as login-history]
+   [metabase.login-history.core :as login-history]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
 (mu/defn- random-anti-csrf-token :- [:re {:error/message "valid anti-CSRF token"} #"^[0-9a-f]{32}$"]
@@ -42,24 +38,6 @@
   [{anti-csrf-token :anti_csrf_token, :as session}]
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
-
-(defn maybe-send-login-from-new-device-email
-  "If set to send emails on first login from new devices, that is the case, and its not the users first login, send an
-  email from a separate thread."
-  [history-record]
-  (when (and (login-history/send-email-on-first-login-from-new-device)
-             (login-history/first-login-on-this-device? history-record)
-             (not (login-history/first-login-ever? history-record)))
-    ;; if there's an existing open connection (and there seems to be one, but I'm not 100% sure why) we can't try to use
-    ;; it across threads since it can close at any moment! So unbind it so the future can get its own thread.
-    (binding [t2.conn/*current-connectable* nil]
-      (future
-        ;; off thread for both IP lookup and email sending. Either one could block and slow down user login (#16169)
-        (try
-          (let [[info] (login-history/human-friendly-infos [history-record])]
-            (messages/send-login-from-new-device-email! info))
-          (catch Throwable e
-            (log/error e "Error sending 'login from new device' notification email")))))))
 
 (def ^:private CreateSessionUserInfo
   [:map
@@ -92,12 +70,8 @@
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event)))
-    (let [history-entry (login-history/record-login-history! session-id (u/the-id user) device-info)]
-      (when-not (:embedded device-info)
-        (maybe-send-login-from-new-device-email history-entry))
-      (when-not (:last_login user)
-        (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
-      (assoc session :id session-id))))
+    (login-history/record-login-history! session-id user device-info)
+    (assoc session :id session-id)))
 
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type

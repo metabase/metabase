@@ -153,7 +153,7 @@
                   (filter #(str/starts-with? % "metabase_email_"))
                   set))))))
 
-(defn- approx=
+(defn approx=
   "Check that `actual` is within `epsilon` of `expected`.
 
   Useful for checking near-equality of floating-point values."
@@ -165,8 +165,10 @@
 (deftest inc!-test
   (testing "inc starts a system if it wasn't started"
     (with-redefs [prometheus/system nil]
-      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-      (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages)))))
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
+
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
@@ -175,7 +177,53 @@
   (testing "inc is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
-      (is (approx= 1 (mt/metric-value system :metabase-email/messages))))))
+      (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
+
+  (testing "inc with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
+      (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
+
+(deftest dec!-test
+  (testing "dec starts a system if it wasn't started"
+    (mt/with-temporary-setting-values [prometheus-server-port 0]
+      (with-redefs [prometheus/system nil]
+        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
+        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
+
+  (testing "dec throws when called with an unknown metric"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/dec! :metabase-email/unknown-metric)))))
+
+  (testing "dec is recorded for known metrics"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/dec! :metabase-search/queue-size)
+      (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
+
+  (testing "dec with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
+      (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
+
+(deftest observe!-test
+  (testing "observe! starts a system if it wasn't started"
+    (with-redefs [prometheus/system nil]
+      (mt/with-temporary-setting-values [prometheus-server-port 0]
+        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
+        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
+
+  (testing "observe! with labels is correctly recorded"
+    (mt/with-prometheus-system! [_ system]
+      (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type :notification/card} 2)
+      (is (approx= 2 (:sum (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type :notification/card}))))))
+
+  (testing "observe! throws when called with an unknown metric"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/observe! :metabase-email/unknown-metric 1))))))
 
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)

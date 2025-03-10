@@ -1,8 +1,16 @@
 export const ANALYTICS_CSS_SNIPPET = `
+body {
+  margin: 0;
+}
+
 .theme-switcher {
   width: 28px;
   height: 28px;
   cursor: pointer;
+}
+
+.analytics-root {
+  font-family: sans-serif;
 }
 
 .analytics-root.theme-light {

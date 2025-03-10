@@ -134,6 +134,10 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
 
   it.each([
     {
+      source: "contains(B, 'case-insensitive')",
+      expression: ["contains", B, "case-insensitive"],
+    },
+    {
       source: "contains(B, C, 'case-insensitive')",
       expression: ["contains", B, C, { "case-sensitive": false }],
     },
@@ -160,6 +164,10 @@ describe("metabase-lib/v1/expressions/recursive-parser", () => {
     {
       source: "interval(B, -1, 'days', 'include-current')",
       expression: ["time-interval", B, -1, "days", { "include-current": true }],
+    },
+    {
+      source: "intervalStartingFrom(B, -1, 'days', -5, 'years')",
+      expression: ["relative-time-interval", B, -1, "days", -5, "years"],
     },
   ])("should handle function options: $source", ({ source, expression }) => {
     expect(filter(source)).toEqual(expression);

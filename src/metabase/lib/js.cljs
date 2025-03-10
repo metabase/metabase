@@ -1164,7 +1164,7 @@
    created expression with [[relative-date-filter-parts]]."
   [column value unit offset-value offset-unit options]
   (lib.core/relative-date-filter-clause column
-                                        (if (string? value) (keyword value) value)
+                                        value
                                         (keyword unit)
                                         offset-value
                                         (some-> offset-unit keyword)
@@ -1177,7 +1177,7 @@
   (when-let [filter-parts (lib.core/relative-date-filter-parts a-query stage-number a-filter-clause)]
     (let [{:keys [column value unit offset-value offset-unit options]} filter-parts]
       #js {:column      column
-           :value       (if (keyword? value) (name value) value)
+           :value       value
            :unit        (name unit)
            :offsetValue offset-value
            :offsetUnit  (some-> offset-unit name)
@@ -1342,7 +1342,7 @@
   "Inner implementation for [[returned-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage          (lib.util/query-stage a-query stage-number)
-        unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider a-query))]
+        unique-name-fn (lib.util/unique-name-generator)]
     (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
          (map #(-> %
                    (assoc :selected? true)
@@ -2409,6 +2409,10 @@
   map. **Removes** any existing filters for either column.
 
   `bounds` is a JS object `{north: number, south: number, west: number, east: number}` giving the bounding rectangle.
+
+  This function expects that longitudes (west and east bounds) have been canonicalized into the range [-180, 180]. If
+  west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
+  ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and

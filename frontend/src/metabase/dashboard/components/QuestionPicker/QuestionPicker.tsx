@@ -11,6 +11,7 @@ import type { BaseSelectListItemProps } from "metabase/components/SelectList/Bas
 import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { isEmbeddingSdk } from "metabase/env";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -108,7 +109,7 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && (
+      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && (
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button

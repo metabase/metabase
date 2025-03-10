@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
@@ -183,7 +184,17 @@
         (lib.filter/= "A" column)
         (lib.filter/is-null column)
         (lib.expression/concat column "A")
-        (lib.filter/and (lib.filter/= column "A") true)))))
+        (lib.filter/and (lib.filter/= column "A") true)))
+    (testing "should correctly propagate `:id` when destructuring a filter clause in a nested query"
+      (let [query         lib.tu/venues-query
+            query         (-> query
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (m/find-first #(= (:name %) "NAME") (lib/breakoutable-columns query)))
+                              (lib/append-stage))
+            filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
+            filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
+        (is (=? {:field-id (meta/id :venues :name)}
+                (lib.field/field-values-search-info query (:column filter-parts))))))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query  lib.tu/venues-query
@@ -368,9 +379,9 @@
   (let [query  lib.tu/venues-query
         column (meta/field-metadata :checkins :date)]
     (testing "clause to parts roundtrip"
-      (doseq [[clause parts] {(lib.filter/time-interval column :current :day)
+      (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
-                               :value  :current
+                               :value  0
                                :unit   :day}
 
                               (lib.filter/time-interval column -10 :month)
@@ -411,6 +422,10 @@
                                                                            offset-value
                                                                            offset-unit
                                                                            options)))))))
+    (testing "should convert `:current` to `0` for backward compatibility"
+      (let [clause (lib.filter/time-interval column :current :day)
+            parts  {:column column, :value  0, :unit :day}]
+        (is (=? parts (lib.fe-util/relative-date-filter-parts query -1 clause)))))
     (testing "unsupported clauses"
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)

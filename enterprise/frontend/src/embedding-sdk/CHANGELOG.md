@@ -1,3 +1,89 @@
+## [0.53.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.8...embedding-sdk-0.53.9) (2025-02-27)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54313](https://github.com/metabase/metabase/issues/54313)) ([5626964](https://github.com/metabase/metabase/commit/56269648941587ddf2d10e1c69c442845a29698f)), closes [#54023](https://github.com/metabase/metabase/issues/54023)
+* **sdk:** deprecate the CreateQuestion component ([#54212](https://github.com/metabase/metabase/issues/54212)) ([#54287](https://github.com/metabase/metabase/issues/54287)) ([cf0d10c](https://github.com/metabase/metabase/commit/cf0d10c9fddcd944e2f92c89d190b56f96df2705))
+* **sdk:** expose the correct type for saveToCollection ([#54428](https://github.com/metabase/metabase/issues/54428)) ([#54432](https://github.com/metabase/metabase/issues/54432)) ([65ec0d4](https://github.com/metabase/metabase/commit/65ec0d4abc4a27df4a3a60e6be7b3d0a3a5cb15d))
+
+
+### Features
+
+* **sdk:** use new querying layout for create question flow ([#53976](https://github.com/metabase/metabase/issues/53976)) ([#54245](https://github.com/metabase/metabase/issues/54245)) ([559e43e](https://github.com/metabase/metabase/commit/559e43eccea521f14cc3c11253655128d3e11cfb))
+* **sdk:** use questionId={new} for creating new questions ([#54403](https://github.com/metabase/metabase/issues/54403)) ([98cdffb](https://github.com/metabase/metabase/commit/98cdffb15d7c7f141f4939ee165bf1ab338e3e99))
+
+
+
+## [0.53.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.7...embedding-sdk-0.53.8) (2025-02-26)
+
+
+### Bug Fixes
+
+* **sdk:** add forwardRef to remove 'Function components cannot be given ([#54280](https://github.com/metabase/metabase/issues/54280)) ([#54290](https://github.com/metabase/metabase/issues/54290)) ([8f652a1](https://github.com/metabase/metabase/commit/8f652a145bfd543ecf5245e14332ffe7ce8d6d1e))
+* **sdk:** improve example component import paths in cli ([#53473](https://github.com/metabase/metabase/issues/53473)) ([#54213](https://github.com/metabase/metabase/issues/54213)) ([40a0b9d](https://github.com/metabase/metabase/commit/40a0b9df6dfb1b66f1c32974e4030b9b1450c301))
+* **sdk:** move some emotion to css, scope it to .mb-wrapper and use it in the sdk ([#54202](https://github.com/metabase/metabase/issues/54202)) ([#54330](https://github.com/metabase/metabase/issues/54330)) ([e4a074b](https://github.com/metabase/metabase/commit/e4a074b4ca36cf4234dc3f7259252ba98fb218c6))
+* **sdk:** Rename saveToCollectionId => saveToCollection ([#54263](https://github.com/metabase/metabase/issues/54263)) ([3fa14f4](https://github.com/metabase/metabase/commit/3fa14f46062fbbf0568aae2c9886400e16b401ff)), closes [#54225](https://github.com/metabase/metabase/issues/54225)
+
+
+### Features
+
+* **sdk:** cli should ask to remove the instance early if one exists ([#53545](https://github.com/metabase/metabase/issues/53545)) ([#54321](https://github.com/metabase/metabase/issues/54321)) ([cf5480e](https://github.com/metabase/metabase/commit/cf5480e41acac454d90cca2bd52b866404f126db))
+
+
+
+## [0.53.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.6...embedding-sdk-0.53.7) (2025-02-25)
+
+
+### Bug Fixes
+
+* **sdk:** fix visual artifacts in binning options ([#53961](https://github.com/metabase/metabase/issues/53961)) ([#54129](https://github.com/metabase/metabase/issues/54129)) ([1a1679f](https://github.com/metabase/metabase/commit/1a1679ff4a57d11cf40860b063e5ba84d69349d8))
+
+
+
+## [0.53.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.5...embedding-sdk-0.53.6) (2025-02-20)
+
+
+### Bug Fixes
+
+* **sdk:** auto-select sample database tables in cli ([#53654](https://github.com/metabase/metabase/issues/53654)) ([#53862](https://github.com/metabase/metabase/issues/53862)) ([2846be2](https://github.com/metabase/metabase/commit/2846be2f66896cddb9bf240343bff0b7c234cd8d))
+* **sdk:** hide "New Question" in EditableDashboard sidebar ([#53908](https://github.com/metabase/metabase/issues/53908)) ([#53963](https://github.com/metabase/metabase/issues/53963)) ([cbe8360](https://github.com/metabase/metabase/commit/cbe83601c8dd4534f71cc15c708c649246e7d1da))
+
+
+
+## [0.53.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.4...embedding-sdk-0.53.5) (2025-02-18)
+
+
+### Features
+
+* **sdk:** add Next.js compatibility to embedding cli ([#50281](https://github.com/metabase/metabase/issues/50281)) ([#53691](https://github.com/metabase/metabase/issues/53691)) ([f263931](https://github.com/metabase/metabase/commit/f26393179e0e8789fdf93f7b71a1154961947b01))
+* **sdk:** asks whether to add a db right before adding db connection in the cli ([#53680](https://github.com/metabase/metabase/issues/53680)) ([#53856](https://github.com/metabase/metabase/issues/53856)) ([f8a5ef2](https://github.com/metabase/metabase/commit/f8a5ef2417cdd2403acb3d429598e0d8e7598401))
+* **sdk:** pro license setup in cli defaults to false ([#53655](https://github.com/metabase/metabase/issues/53655)) ([#53685](https://github.com/metabase/metabase/issues/53685)) ([4bb6b28](https://github.com/metabase/metabase/commit/4bb6b28e54c79973a49c0bf080ece569e6940318))
+
+
+
+## [0.53.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.3...embedding-sdk-0.53.4) (2025-02-17)
+
+
+### Bug Fixes
+
+* **sdk:**  handle 'personal' for collectionId when creating dashboards and in the collection browser ([#53553](https://github.com/metabase/metabase/issues/53553)) ([#53836](https://github.com/metabase/metabase/issues/53836)) ([9642e41](https://github.com/metabase/metabase/commit/9642e41078172b2ab8e416f49acaf2ac77b5dbb4))
+* **sdk:** better scope for SCOPED_CSS_RESET to fix transparent ([#53443](https://github.com/metabase/metabase/issues/53443)) ([#53462](https://github.com/metabase/metabase/issues/53462)) ([5c43cdd](https://github.com/metabase/metabase/commit/5c43cdda9cc9abadb0039de8e6373e413d5cdb24))
+* **sdk:** Clean up and enhance `InteractiveQuestion` docs ([#53283](https://github.com/metabase/metabase/issues/53283)) ([#53420](https://github.com/metabase/metabase/issues/53420)) ([9b6e0fb](https://github.com/metabase/metabase/commit/9b6e0fb82f93e24e0d050fe8a832a4caa5dd53c3))
+* **sdk:** dashboard not found when switching dashboards in cli ([#53452](https://github.com/metabase/metabase/issues/53452)) ([#53467](https://github.com/metabase/metabase/issues/53467)) ([48a9de8](https://github.com/metabase/metabase/commit/48a9de8ae229b1cd89681fa1611a981933196231))
+* **sdk:** filterout @types/react from the generated package.json ([#53747](https://github.com/metabase/metabase/issues/53747)) ([#53773](https://github.com/metabase/metabase/issues/53773)) ([950c605](https://github.com/metabase/metabase/commit/950c60564f0570ea72fbde15fa9a477e7f87ef46))
+* **sdk:** Fix question not found error showing briefly after navigating from dashboards ([#53284](https://github.com/metabase/metabase/issues/53284)) ([#53366](https://github.com/metabase/metabase/issues/53366)) ([46787ca](https://github.com/metabase/metabase/commit/46787cade65355665f53c103b3e44b6323ced866))
+* **sdk:** make headers in generated cli components responsive ([#53455](https://github.com/metabase/metabase/issues/53455)) ([#53457](https://github.com/metabase/metabase/issues/53457)) ([b4a61a9](https://github.com/metabase/metabase/commit/b4a61a9ff7434e0bb5b80c79d98a301c447265fb))
+
+
+### Features
+
+* **sdk:** abort cli with message when react version is unsupported ([#53656](https://github.com/metabase/metabase/issues/53656)) ([#53674](https://github.com/metabase/metabase/issues/53674)) ([6e9ab88](https://github.com/metabase/metabase/commit/6e9ab88eea58200cb2eed780b9ce5ef65736148e))
+* **sdk:** add the instance url to the cli's login json file ([#53469](https://github.com/metabase/metabase/issues/53469)) ([#53677](https://github.com/metabase/metabase/issues/53677)) ([e8e9fff](https://github.com/metabase/metabase/commit/e8e9fffba935e346822e8afc713894cd518d8727))
+* **sdk:** show clarification messages upon running the cli ([#53471](https://github.com/metabase/metabase/issues/53471)) ([#53514](https://github.com/metabase/metabase/issues/53514)) ([440914e](https://github.com/metabase/metabase/commit/440914eb58efc3e855d785edf9996eabb2899f75))
+
+
+
 ## [0.53.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.2...embedding-sdk-0.53.3) (2025-02-08)
 
 

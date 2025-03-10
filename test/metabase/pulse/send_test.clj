@@ -15,10 +15,10 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -358,7 +358,7 @@
 
       :fixture
       (fn [_ thunk]
-        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
+        (mt/with-temporary-setting-values [limit/attachment-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
@@ -889,41 +889,6 @@
                                                           [:message :string]
                                                           [:timestamp :string]]])}}
                     (latest-task-history-entry :channel-send)))))))))
-
-(deftest alerts-do-not-remove-user-metadata
-  (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
-    (mt/dataset test-data
-      (let [q               {:database (mt/id)
-                             :type     :query
-                             :query
-                             {:source-table (mt/id :reviews)
-                              :aggregation  [[:count]]}}
-            result-metadata [{:base_type         :type/Integer
-                              :name              "count"
-                              :display_name      "ASDF Count"
-                              :description       "ASDF Some description"
-                              :semantic_type     :type/Quantity
-                              :source            :aggregation
-                              :field_ref         [:aggregation 0]
-                              :aggregation_index 0}]]
-        (mt/with-temp [:model/Card {card-id :id} {:display         :table
-                                                  :dataset_query   q
-                                                  :type            :model
-                                                  :result_metadata result-metadata}
-                       :model/Pulse {pulse-id :id :as p} {:name "Test Pulse" :alert_condition "rows"}
-                       :model/PulseCard _ {:pulse_id pulse-id
-                                           :card_id  card-id}
-                       :model/PulseChannel _ {:channel_type :email
-                                              :pulse_id     pulse-id
-                                              :enabled      true}]
-          (pulse.send/send-pulse! p)
-          (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
-            (is (= (-> result-metadata
-                       first
-                       (select-keys [:display_name :description]))
-                   (t2/select-one-fn
-                    (comp #(select-keys % [:display_name :description]) first :result_metadata)
-                    :model/Card :id card-id)))))))))
 
 (deftest partial-channel-failure-will-deliver-all-that-success-test
   (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"

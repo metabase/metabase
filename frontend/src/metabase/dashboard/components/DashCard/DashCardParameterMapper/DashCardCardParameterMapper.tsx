@@ -77,7 +77,8 @@ export function DashCardCardParameterMapper({
 }: DashcardCardParameterMapperProps) {
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
-  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const isAction = isActionDashCard(dashcard);
+  const isDisabled = mappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
   const selectedMappingOption = getMappingOptionByTarget(
@@ -144,8 +145,12 @@ export function DashCardCardParameterMapper({
       {target && isParameterVariableTarget(target) && (
         <Warning>
           {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
-            ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
+            ? isAction
+              ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+              : t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : isAction
+              ? t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+              : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
       )}
     </Container>

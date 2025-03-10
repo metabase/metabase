@@ -80,33 +80,29 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it(
-      "clears custom metadata when a model is turned back into a question",
-      { tags: "@flaky" },
-      () => {
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("clears custom metadata when a model is turned back into a question", () => {
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
 
-        H.openColumnOptions("Subtotal");
-        H.renameColumn("Subtotal", "Pre-tax");
-        H.setColumnType("No special type", "Cost");
-        H.saveMetadataChanges();
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No special type", "Cost");
+      H.saveMetadataChanges();
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Pre-tax ($)")
-          .and("not.contain", "Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
 
-        H.openQuestionActions();
-        H.popover()
-          .findByTextEnsureVisible("Turn back to saved question")
-          .click();
-        cy.wait("@cardQuery");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      cy.wait("@cardQuery");
 
-        cy.findAllByTestId("header-cell")
-          .should("contain", "Subtotal")
-          .and("not.contain", "Pre-tax ($)");
-      },
-    );
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax ($)");
+    });
   });
 
   it("should edit native model metadata", () => {
@@ -264,6 +260,51 @@ describe("scenarios > models metadata", () => {
       .should("contain", "Subtotal ($)")
       .and("not.contain", "Tax ($)")
       .and("contain", "TAX");
+  });
+
+  it("should allow reordering columns by the edge of column header (metabase#41419)", () => {
+    const ordersJoinProductsQuery = {
+      type: "model",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        fields: [["field", ORDERS.ID, null]],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(ordersJoinProductsQuery, { visitQuestion: true });
+
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
+    cy.url().should("include", "/metadata");
+
+    cy.log("wait for the hint, otherwise scroll into view doesn't work ");
+    cy.findByTestId("tab-hint-toast").should("be.visible");
+    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo("right");
+
+    cy.log("move Product -> Price before Products -> Vendor");
+
+    cy.findAllByTestId("header-cell")
+      .contains("Products → Price")
+      .trigger("mousedown")
+      .trigger("mousemove", { clientX: 600, clientY: 0 })
+      .trigger("mouseup");
+
+    cy.findAllByTestId("header-cell")
+      .contains("Products → Vendor")
+      .should("be.visible");
   });
 
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {

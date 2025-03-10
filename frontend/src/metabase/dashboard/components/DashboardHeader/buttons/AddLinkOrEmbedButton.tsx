@@ -7,7 +7,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Group, Icon, Menu, Text } from "metabase/ui";
+import { Group, Icon, Menu } from "metabase/ui";
 
 export const AddLinkOrEmbedButton = () => {
   const dispatch = useDispatch();
@@ -52,15 +52,11 @@ export const AddLinkOrEmbedButton = () => {
         </ToolbarButton>
       </Menu.Target>
       <Menu.Dropdown miw="auto">
-        <Menu.Item onClick={onAddLinkCard}>
-          <Text pr="xl" fw="bold">
-            {t`Link`}
-          </Text>
+        <Menu.Item pr="xl" fw="bold" onClick={onAddLinkCard}>
+          {t`Link`}
         </Menu.Item>
-        <Menu.Item onClick={onAddIFrameCard}>
-          <Text pr="xl" fw="bold">
-            {t`Iframe`}
-          </Text>
+        <Menu.Item pr="xl" fw="bold" onClick={onAddIFrameCard}>
+          {t`Iframe`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

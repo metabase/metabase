@@ -14,6 +14,7 @@
    [metabase.events.init]
    [metabase.indexed-entities.init]
    [metabase.logger.init]
+   [metabase.login-history.init]
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.pulse.init]

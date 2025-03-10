@@ -1,8 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src"]
  :linters
- {
-  ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -183,7 +182,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -603,6 +602,7 @@
     medley.core                                                   m
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
+    metabase-enterprise.sandbox.api.util                          sandbox.api.util
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
@@ -668,6 +668,7 @@
     metabase.legacy-mbql.util                                     mbql.u
     metabase.lib.util                                             lib.util
     metabase.lib.util.match                                       lib.util.match
+    metabase.login-history.core                                   login-history
     metabase.models.dependency                                    dependency
     metabase.models.interface                                     mi
     metabase.notification.core                                    notification
@@ -827,6 +828,7 @@
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload-test/with-upload-table!                                               clojure.core/let
+  metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
@@ -980,7 +982,7 @@
    clojurewerkz.quartzite.schedule.cron/schedule                                 macros.quartz/schedule
    clojurewerkz.quartzite.schedule.simple/schedule                               macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                         macros.quartz/build-trigger
-   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!   macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.impersonation.util-test/with-impersonations!              macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                             macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -1032,7 +1034,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\.*"
    :name    metabase-lib}

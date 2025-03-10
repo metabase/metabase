@@ -163,6 +163,14 @@
   {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
+(defn- password-reset-disabled?
+  "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
+  in which case disable reset for them as long as the Google SSO feature is enabled."
+  [sso-source]
+  (if (and (= sso-source :google) (not (public-settings/sso-enabled?)))
+    (public-settings/google-auth-enabled?)
+    (some? sso-source)))
+
 (defn- forgot-password-impl
   [email]
   (future
@@ -172,8 +180,9 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (some? sso-source)
-        ;; If user uses any SSO method to log in, no need to generate a reset token
+      (if (password-reset-disabled? sso-source)
+        ;; If user uses any SSO method to log in, no need to generate a reset token. Some cases for Google SSO
+        ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
@@ -277,22 +286,24 @@
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
-  (if throttling-disabled?
-    (google/do-google-auth request)
+  (letfn [(do-login []
+            (let [user (google/do-google-auth request)
+                  {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
+                  response {:id (str session-uuid)}
+                  user (t2/select-one [:model/User :id :is_active], :email (:email user))]
+              (if (and user (:is_active user))
+                (request/set-session-cookies request
+                                             response
+                                             session
+                                             (t/zoned-date-time (t/zone-id "GMT")))
+                (throw (ex-info (str disabled-account-message)
+                                {:status-code 401
+                                 :errors      {:account disabled-account-snippet}})))))]
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-        (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
-              response {:id (str session-uuid)}
-              user (t2/select-one [:model/User :id :is_active], :email (:email user))]
-          (if (and user (:is_active user))
-            (request/set-session-cookies request
-                                         response
-                                         session
-                                         (t/zoned-date-time (t/zone-id "GMT")))
-            (throw (ex-info (str disabled-account-message)
-                            {:status-code 401
-                             :errors      {:account disabled-account-snippet}}))))))))
+      (if throttling-disabled?
+        (do-login)
+        (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
+          (do-login))))))
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

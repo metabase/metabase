@@ -15,7 +15,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
-   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
    [metabase.test :as mt]
@@ -24,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -64,7 +64,7 @@
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
+    (with-redefs [quick-task/submit-task! (fn [task] (task))]
       (binding [h2/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]

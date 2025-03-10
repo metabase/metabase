@@ -5,6 +5,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.email-test :as et]
    [metabase.channel.email.messages :as messages]
+   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
@@ -28,13 +29,13 @@
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" "google" "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" :google "http://localhost/some/url" true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
   (testing "password reset email tells user if they should log in with (non-Google) SSO"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" "SAML" nil true)
+      (messages/send-password-reset-email! "test@test.com" :saml nil true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "SSO")))))
@@ -142,3 +143,14 @@
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox))))))))
+
+(deftest all-admin-recipients
+  (mt/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
+                                  :name          "Test API key"
+                                  :user_id       (mt/user->id :crowberto)
+                                  :creator_id    (mt/user->id :crowberto)
+                                  :updated_by_id (mt/user->id :crowberto)}]
+    (testing "all-admin-recipients returns all admin emails"
+      (let [emails (#'messages/all-admin-recipients)]
+        (is (some #(= % "crowberto@metabase.com") emails))
+        (is (not (some #(str/starts-with? % "api-key-user") emails)))))))

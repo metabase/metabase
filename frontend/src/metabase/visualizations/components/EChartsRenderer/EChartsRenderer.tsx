@@ -72,10 +72,15 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
         chartRef.current?.on(h.eventName, h.handler);
       });
 
-      return () =>
+      return () => {
+        if (chartRef.current?.isDisposed()) {
+          return;
+        }
+
         eventHandlers?.forEach(h =>
           chartRef.current?.off(h.eventName, h.handler),
         );
+      };
     }, [eventHandlers]);
 
     useEffect(() => {
@@ -83,10 +88,15 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
         chartRef.current?.getZr().on(h.eventName, h.handler);
       });
 
-      return () =>
+      return () => {
+        if (chartRef.current?.isDisposed()) {
+          return;
+        }
+
         zrEventHandlers?.forEach(h =>
           chartRef.current?.getZr().off(h.eventName, h.handler),
         );
+      };
     }, [zrEventHandlers]);
 
     return (

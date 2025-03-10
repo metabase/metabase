@@ -22,7 +22,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -434,6 +434,49 @@
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                         (apply concat))))))))))
 
+(deftest ^:parallel pivot-with-multiple-columns-no-row-totals
+  (testing "A pivot table with multiple pivot columns and no row totals can export correctly (#54530)"
+    (let [pivot-rows-query "SELECT *
+                              FROM (SELECT 4 AS A UNION ALL SELECT 3)
+                              CROSS JOIN (SELECT 'BA' AS B)
+                              CROSS JOIN (SELECT 3 AS C UNION ALL SELECT 4)
+                              CROSS JOIN (SELECT 1 AS MEASURE)"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         pivot-rows-query}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["C"]
+                                                  :columns ["A", "B"]
+                                                  :values  ["MEASURE"]}
+                                                 :pivot.show_row_totals    false
+                                                 :pivot.show_column_totals false}
+                        :dataset_query          (mt/mbql-query nil
+                                                  {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                   :breakout
+                                                   [[:field "A" {:base-type :type/Integer}]
+                                                    [:field "B" {:base-type :type/Text}]
+                                                    [:field "C" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%s" pivot-data-card-id)})}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is
+             (= [["C" "3" "4"]
+                 ["C" "BA" "BA"]
+                 ["3" "1" "1"]
+                 ["4" "1" "1"]]
+                result))))))))
+
 (deftest ^:parallel simple-pivot-export-works-even-with-table-column-ordering-test
   (testing "Pivot table exports are not affected by table sort settings"
     (testing "Try some permutations with csv"
@@ -612,10 +655,10 @@
   (testing "Row and Column Values that collide with indices don't break (#50207)"
     (testing "Other aggregations will produce the correct values in Totals rows."
       (let [pivot-rows-query "SELECT *
-         FROM (SELECT    4 AS A UNION ALL SELECT 3)
-   CROSS JOIN (SELECT 'BA' AS B)
-   CROSS JOIN (SELECT    3 AS C UNION ALL SELECT 4)
-   CROSS JOIN (SELECT 1 AS MEASURE)"]
+                              FROM (SELECT 4 AS A UNION ALL SELECT 3)
+                              CROSS JOIN (SELECT 'BA' AS B)
+                              CROSS JOIN (SELECT 3 AS C UNION ALL SELECT 4)
+                              CROSS JOIN (SELECT 1 AS MEASURE)"]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)
@@ -957,38 +1000,37 @@
                     :subscription-attachment (first subscription-result)}))))))))
 
 (deftest downloads-row-limit-test
-  (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
+  (testing "Downloads row limit respects minimum (#52019)"
+    (mt/with-temporary-setting-values [limit/download-row-limit 100]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            106
-                  :unsaved-card-download    106
-                  :alert-attachment         106
-                  :dashcard-download        106
-                  :subscription-attachment  106
-                  :public-question-download 106
-                  :public-dashcard-download 106}
-                 (update-vals results count))))))))
-
-(deftest downloads-row-limit-default-test
-  (testing "Downloads row limit default works."
-    (with-redefs [qp.i/absolute-max-results 100]
-      (mt/with-temp [:model/Card card {:display       :table
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            101
-                  :unsaved-card-download    101
-                  :alert-attachment         101
-                  :dashcard-download        101
-                  :subscription-attachment  101
-                  :public-question-download 101
-                  :public-dashcard-download 101}
-                 (update-vals results count))))))))
+          (is (= {:card-download            110
+                  :unsaved-card-download    110
+                  :alert-attachment         110
+                  :dashcard-download        110
+                  :subscription-attachment  110
+                  :public-question-download 110
+                  :public-dashcard-download 110}
+                 (update-vals results count)))))))
+  (testing "Downloads row limit can be raised"
+    (binding [limit/*minimum-download-row-limit* 100]
+      (mt/with-temporary-setting-values [limit/download-row-limit 109]
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
+          (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+            (is (= {:card-download            110
+                    :unsaved-card-download    110
+                    :alert-attachment         110
+                    :dashcard-download        110
+                    :subscription-attachment  110
+                    :public-question-download 110
+                    :public-dashcard-download 110}
+                   (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."

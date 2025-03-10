@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.login-history.record]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -45,7 +46,7 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/User {user-id :id, email :email, first-name :first_name}]
         (let [device              (str (random-uuid))
-              original-maybe-send (var-get #'session/maybe-send-login-from-new-device-email)]
+              original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)]
           (testing "send email on first login from *new* device (but not first login ever)"
             (mt/with-fake-inbox
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
@@ -55,7 +56,7 @@
                                                                       [ip-address
                                                                        {:description "San Francisco, California, United States"
                                                                         :timezone    (t/zone-id "America/Los_Angeles")}])))
-                            session/maybe-send-login-from-new-device-email
+                            metabase.login-history.record/maybe-send-login-from-new-device-email
                             (fn [login-history]
                               (when-let [futur (original-maybe-send login-history)]
                                 ;; block in tests
@@ -65,10 +66,11 @@
                                :model/LoginHistory _ {:user_id   user-id
                                                       :device_id device
                                                       :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
-                  (session/maybe-send-login-from-new-device-email {:user_id user-id,
-                                                                   :device_id device,
-                                                                   :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]",
-                                                                   :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
+                  (#'metabase.login-history.record/maybe-send-login-from-new-device-email
+                   {:user_id user-id
+                    :device_id device
+                    :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
+                    :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
 
                   (is (malli= [:map-of [:= email]
                                [:sequential
@@ -112,7 +114,7 @@
 
 (deftest email-depending-on-embedded
   (let [email-sent (atom false)]
-    (with-redefs [session/maybe-send-login-from-new-device-email
+    (with-redefs [metabase.login-history.record/maybe-send-login-from-new-device-email
                   (fn [_] (reset! email-sent true))]
       (testing "don't send email if an embedded login"
         (mt/with-temp [:model/User {user-id :id}]

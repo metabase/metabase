@@ -3,6 +3,7 @@
    [clj-kondo.hooks-api :as hooks]
    [hooks.common :as common]))
 
+;;; TODO -- move this into
 (def ^:private ignored-implicit-export?
   '#{active-users-count
      admin-email

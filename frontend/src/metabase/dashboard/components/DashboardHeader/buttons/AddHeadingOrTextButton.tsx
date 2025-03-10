@@ -7,7 +7,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Group, Icon, Menu, Text } from "metabase/ui";
+import { Group, Icon, Menu } from "metabase/ui";
 
 export const AddHeadingOrTextButton = () => {
   const dispatch = useDispatch();
@@ -64,10 +64,8 @@ export const AddHeadingOrTextButton = () => {
       </Menu.Target>
       <Menu.Dropdown miw="auto">
         {TEXT_OPTIONS.map(({ title, action }) => (
-          <Menu.Item key={title} onClick={action}>
-            <Text pr="xl" fw="bold">
-              {title}
-            </Text>
+          <Menu.Item key={title} pr="xl" fw="bold" onClick={action}>
+            {title}
           </Menu.Item>
         ))}
       </Menu.Dropdown>

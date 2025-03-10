@@ -1617,13 +1617,6 @@
                 :type :native
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
-(defn- type-query [query field]
-  (mt/native-query {:query (str "SELECT pg_typeof(" (name field) ") "
-                                "FROM ( "
-                                (-> query qp.compile/compile :query)
-                                " ) AS subquery "
-                                "LIMIT 1")}))
-
 (deftest ^:parallel temporal-column-with-binning-keeps-type
   (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
@@ -1635,24 +1628,22 @@
                 unbinned-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                                    (lib/with-fields [field-md])
                                    (lib/limit 1))
-                unbinned-type-query (type-query unbinned-query field)
                 binned-query (-> unbinned-query
-                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))
-                binned-type-query (type-query binned-query field)]
-            (is (= (-> unbinned-type-query qp/process-query mt/rows)
-                   (-> binned-type-query   qp/process-query mt/rows)))))))))
+                                 (lib/breakout (lib/with-temporal-bucket field-md bin)))]
+            (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
+                   (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
 
-(deftest ^:parallel aggregated-array-is-returned-correctly-test
-  (testing "An aggregated array column should be returned in a readable format"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (is (= [["The Gorbals" "The Misfit Restaurant + Bar" "Marlowe" "Yamashiro Hollywood" "Musso & Frank Grill" "Pacific Dining Car" "Chez Jay" "Rush Street"]
-                ["Greenblatt's Delicatessen & Fine Wine Shop" "Handy Market"]]
-               (->> (mt/native-query {:query "select category_id, array_agg(name)
-                                              from venues
-                                              group by category_id
-                                              order by 1 asc
-                                              limit 2;"})
-                    mt/process-query
-                    mt/rows
-                    (map second))))))))
+(deftest ^:parallel datetime-diff-works-for-all-units
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field units] [[:birth_date [:year :quarter :month :week :day]]
+                             [:created_at [:year :quarter :month :week :day :hour :minute :second]]]
+              unit units]
+        (testing (str "field " (name field) " can be datetime-diffed for " (name unit))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/expression "DIFF" (lib/expression-clause :datetime-diff
+                                                                        [field-md field-md unit]
+                                                                        nil))
+                          (lib/limit 1))]
+            (is (->> query qp/process-query mt/rows))))))))

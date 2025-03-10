@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -133,8 +134,10 @@ describe("issue 33327", () => {
     getRunQueryButton().click();
     cy.wait("@dataset");
 
-    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
-    cy.findByTestId("scalar-value").should("not.exist");
+    cy.findByTestId("visualization-root").within(() => {
+      cy.icon("warning").should("be.visible");
+      cy.findByTestId("scalar-value").should("not.exist");
+    });
 
     H.focusNativeEditor()
       .should("contain", "SELECT --1")
@@ -215,5 +218,63 @@ describe("issue 53194", () => {
       cy.findByText("ORDERS").click();
       cy.findByText("ID").should("be.visible");
     });
+  });
+});
+
+describe("issue 52812", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("popovers should close when clicking outside (metabase#52812)", () => {
+    H.startNewNativeQuestion();
+    H.nativeEditor().type("{{x");
+    cy.findAllByLabelText("Variable type").filter(":visible").click();
+
+    H.popover().findByText("Field Filter").click();
+
+    cy.log(
+      "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
+    );
+    H.rightSidebar()
+      .findByText("Default filter widget value")
+      .should("not.exist");
+    cy.findByLabelText("Always require a value").should("not.exist");
+  });
+});
+
+describe("issue 52806", () => {
+  const questionDetails = {
+    name: "SQL",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+        "template-tags": {
+          id: {
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: "1",
+          },
+        },
+      },
+    },
+    visualization_settings: {},
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.location().should(location => expect(location.search).to.eq(""));
   });
 });
