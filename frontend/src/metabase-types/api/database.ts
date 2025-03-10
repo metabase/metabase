@@ -187,3 +187,24 @@ export interface SavedQuestionDatabase {
   name: "Saved Questions";
   is_saved_questions: true;
 }
+
+export interface CreateMirrorDatabaseRequest {
+  router_database_id: DatabaseId;
+  mirrors: { name: string; details: Record<string, unknown> }[];
+}
+
+export type DatabaseRouterId = number;
+
+export interface CreateDatabaseRouterRequest {
+  database_id: DatabaseId;
+  user_attribute: string;
+}
+
+export interface UpdateDatabaseRouterRequest {
+  id: DatabaseRouterId;
+  user_attribute: string;
+}
+
+export interface DeleteDatabaseRouterRequest {
+  id: DatabaseRouterId;
+}
