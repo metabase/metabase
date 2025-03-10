@@ -1,4 +1,9 @@
-import { type ComboboxItem, type TagsInputProps, Tooltip } from "@mantine/core";
+import {
+  type ComboboxItem,
+  type TagsInputProps,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import type React from "react";
@@ -8,6 +13,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Icon, SpecialTagsInput } from "metabase/ui";
 
+import Styles from "./MultiAutocomplete.module.css";
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<TagsInputProps, "shouldCreate"> & {
@@ -107,11 +113,9 @@ export function MultiAutocomplete({
   const infoIcon = isFocused ? (
     <Tooltip
       label={
-        <>
-          {t`Separate values with commas, tabs or newlines.`}
-          <br />
-          {t` Use double quotes for values containing commas.`}
-        </>
+        <Text c="inherit" maw="20rem">
+          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you’re searching for has commas — and if it itself includes quotes, use backslashes like this: “searching, you see, is a \\“simple\\” thing.”`}
+        </Text>
       }
     >
       <Icon name="info_filled" fill={color("text-light")} />
@@ -137,6 +141,14 @@ export function MultiAutocomplete({
   return (
     <SpecialTagsInput
       {...props}
+      classNames={{
+        pill: Styles.pill,
+        pillsList: Styles.pillList,
+        input: Styles.input,
+        empty: Styles.empty,
+        option: Styles.option,
+        options: Styles.optionList,
+      }}
       data={items}
       value={lastSelectedValues}
       searchValue={searchValue}

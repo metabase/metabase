@@ -196,6 +196,14 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                (setting/get-value-of-type :boolean :saml-slo-enabled)
                false)))
 
+(defsetting saml-identity-provider-slo-uri
+  (deferred-tru "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`")
+  :encryption :when-encryption-key-set
+  :feature    :sso-saml
+  :export?    false
+  :audit      :getter)
+
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
   :encryption :when-encryption-key-set

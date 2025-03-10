@@ -1,4 +1,5 @@
 import { pickEntity } from "./e2e-collection-helpers";
+import { modal } from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -276,11 +277,30 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
  */
 export function saveQuestion(
   name,
-  { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
+  {
+    addToDashboard = false,
+    wrapId = false,
+    idAlias = "questionId",
+    shouldReplaceOriginalQuestion = false,
+    shouldSaveAsNewQuestion = false,
+  } = {},
   pickEntityOptions = null,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
+  if (shouldReplaceOriginalQuestion) {
+    modal().within(() => {
+      cy.log("Ensure that 'Replace original question' is checked");
+      cy.findByLabelText(/Replace original question/i).should("be.checked");
+      cy.button("Save").click();
+    });
+  }
+  if (shouldSaveAsNewQuestion) {
+    modal().within(() => {
+      cy.log("Select 'Save as new question'");
+      cy.findByLabelText(/Save as new question/i).click();
+    });
+  }
 
   cy.findByTestId("save-question-modal").within(() => {
     if (name) {

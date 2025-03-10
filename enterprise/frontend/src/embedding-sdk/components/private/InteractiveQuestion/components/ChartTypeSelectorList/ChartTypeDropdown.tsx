@@ -67,7 +67,7 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
           variant="default"
           px={undefined}
           pr="md"
-          leftSection={<Icon ml="xs" size={10} name="chevrondown" />}
+          rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
         />
       </Menu.Target>

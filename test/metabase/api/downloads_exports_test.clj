@@ -442,6 +442,49 @@
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                         (apply concat))))))))))
 
+(deftest ^:parallel pivot-with-multiple-columns-no-row-totals
+  (testing "A pivot table with multiple pivot columns and no row totals can export correctly (#54530)"
+    (let [pivot-rows-query "SELECT *
+                              FROM (SELECT 4 AS A UNION ALL SELECT 3)
+                              CROSS JOIN (SELECT 'BA' AS B)
+                              CROSS JOIN (SELECT 3 AS C UNION ALL SELECT 4)
+                              CROSS JOIN (SELECT 1 AS MEASURE)"]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {pivot-data-card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native
+                                        {:template-tags {}
+                                         :query         pivot-rows-query}}
+                        :result_metadata
+                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                                   {:name         field-name
+                                    :display_name field-name
+                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :base_type    base-type}))}
+                       :model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    ["C"]
+                                                  :columns ["A", "B"]
+                                                  :values  ["MEASURE"]}
+                                                 :pivot.show_row_totals    false
+                                                 :pivot.show_column_totals false}
+                        :dataset_query          (mt/mbql-query nil
+                                                  {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
+                                                   :breakout
+                                                   [[:field "A" {:base-type :type/Integer}]
+                                                    [:field "B" {:base-type :type/Text}]
+                                                    [:field "C" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%s" pivot-data-card-id)})}]
+          (let [result (card-download pivot-card {:export-format :csv :pivot true})]
+            (is
+             (= [["C" "3" "4"]
+                 ["C" "BA" "BA"]
+                 ["3" "1" "1"]
+                 ["4" "1" "1"]]
+                result))))))))
+
 (deftest ^:parallel simple-pivot-export-works-even-with-table-column-ordering-test
   (testing "Pivot table exports are not affected by table sort settings"
     (testing "Try some permutations with csv"
@@ -620,10 +663,10 @@
   (testing "Row and Column Values that collide with indices don't break (#50207)"
     (testing "Other aggregations will produce the correct values in Totals rows."
       (let [pivot-rows-query "SELECT *
-         FROM (SELECT    4 AS A UNION ALL SELECT 3)
-   CROSS JOIN (SELECT 'BA' AS B)
-   CROSS JOIN (SELECT    3 AS C UNION ALL SELECT 4)
-   CROSS JOIN (SELECT 1 AS MEASURE)"]
+                              FROM (SELECT 4 AS A UNION ALL SELECT 3)
+                              CROSS JOIN (SELECT 'BA' AS B)
+                              CROSS JOIN (SELECT 3 AS C UNION ALL SELECT 4)
+                              CROSS JOIN (SELECT 1 AS MEASURE)"]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)

@@ -439,12 +439,14 @@ export const dashcardData = createReducer(
         const { cardId, dashcardId } = action.payload;
         return dissocIn(state, [dashcardId, cardId]);
       })
-      .addCase<string, { type: string; payload: { object: Card } }>(
+      .addCase<string, { type: string; payload: { object?: Card } }>(
         Questions.actionTypes.UPDATE,
-        (state, action) => {
-          const id = action.payload.object.id;
-          for (const dashcardId in state) {
-            delete state[dashcardId][id];
+        (state, { payload: { object: card } }) => {
+          if (card) {
+            const { id } = card;
+            for (const dashcardId in state) {
+              delete state[dashcardId][id];
+            }
           }
         },
       )
