@@ -18,7 +18,14 @@ describe("pratt/compiler", () => {
   describe("(for an expression)", () => {
     it("should compile literals", () => {
       expect(expr("42")).toEqual(42);
-      expect(expr("'Universe'")).toEqual("Universe");
+      expect(expr(`'Universe'`)).toEqual("Universe");
+      expect(expr(`"Universe"`)).toEqual("Universe");
+      expect(expr(`"\\""`)).toEqual(`"`);
+      expect(expr(`'\\''`)).toEqual(`'`);
+      expect(expr(`"a\\"b"`)).toEqual(`a"b`);
+      expect(expr(`'a\\'b'`)).toEqual(`a'b`);
+      expect(expr(`"'"`)).toEqual(`'`);
+      expect(expr(`'"'`)).toEqual(`"`);
     });
 
     /// TODO: Fix w/ some type info
