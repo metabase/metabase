@@ -221,13 +221,11 @@ describe("scenarios > models", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
     H.echartsContainer();
-    // TODO (styles): migrate
-    cy.get(".test-TableInteractive").should("not.exist");
+    H.tableInteractive().should("not.exist");
 
     turnIntoModel();
 
-    // TODO (styles): migrate
-    cy.get(".test-TableInteractive");
+    H.tableInteractive();
     H.echartsContainer().should("not.exist");
   });
 
@@ -709,7 +707,7 @@ describe("scenarios > models", () => {
       });
       cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@query");
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         cy.findByText("USER_ID");
         cy.findByText("PRODUCT_ID");
         cy.findByText("TAX");

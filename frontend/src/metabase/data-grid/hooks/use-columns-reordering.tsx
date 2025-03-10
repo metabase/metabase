@@ -4,6 +4,7 @@ import {
   type DragStartEvent,
   KeyboardSensor,
   MouseSensor,
+  PointerSensor,
   type SensorDescriptor,
   type SensorOptions,
   TouchSensor,
@@ -35,8 +36,15 @@ export const useColumnsReordering = <TData,>(
   const previousScrollTop = useRef<number>(0);
 
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { distance: 10 },
+    }),
     useSensor(KeyboardSensor),
   );
 

@@ -34,4 +34,5 @@ const LeaveConfirmationModalBase = ({
   );
 };
 
+/** @deprecated use LeaveConfirmModal/LeaveRouteConfirmModal.tsx instead */
 export const LeaveConfirmationModal = withRouter(LeaveConfirmationModalBase);

@@ -30,6 +30,7 @@
   padding: 0.2em;
   margin-right: 8px;
   transition: all 0.25s;
+  flex-shrink: 0;
 
   &.isSelected {
     background-color: var(--mb-color-bg-white);
@@ -76,7 +77,7 @@
   flex-direction: row;
   align-items: center;
   min-width: 35px;
-  margin: 24px 0.75em;
+  height: 26px;
   padding: 3px 0.5rem;
   white-space: nowrap;
   text-overflow: ellipsis;
