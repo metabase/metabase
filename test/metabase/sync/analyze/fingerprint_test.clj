@@ -10,7 +10,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import [com.mchange.v2.resourcepool CannotAcquireResourceException]))
 
