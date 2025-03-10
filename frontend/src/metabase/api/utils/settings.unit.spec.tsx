@@ -6,7 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -50,16 +50,15 @@ const setup = async () => {
   ]);
   setupUpdateSettingEndpoint();
   renderWithProviders(<TestComponent />);
-  expect(screen.getByText("Loading...")).toBeInTheDocument();
-  // this makes the act() related errors go away 🙃
-  await act(() => null);
 };
 
 describe("useAdminSetting", () => {
   it("should have loading state", async () => {
     await setup();
-    // the positive loading state assertion is in the setup function
-    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    });
   });
 
   it("should get setting value", async () => {
