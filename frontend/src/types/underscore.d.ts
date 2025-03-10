@@ -55,7 +55,7 @@ declare module _ {
     ): (...args: TArgs) => R7;
     // fallback overload if the number of composed functions is greater than 7
     compose<TArgs extends any[], R1, R2, R3, R4, R5, R6, R7, TResult>(
-      ...func: [
+      ...funcs: [
         fnLast: (a: any) => TResult,
         ...func: Array<(a: any) => any>,
         f7: (a: R6) => R7,
@@ -67,5 +67,6 @@ declare module _ {
         f1: (...args: TArgs) => R1,
       ]
     ): (...args: TArgs) => TResult;
+    compose<T>(...funcs: T[]): any;
   }
 }
