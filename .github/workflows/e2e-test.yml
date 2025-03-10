@@ -154,6 +154,13 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
+      - name: Upload Failed Tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
+          path: ./cypress/test-results
+
       - name: Publish Summary
         if: failure()
         uses: actions/github-script@v7

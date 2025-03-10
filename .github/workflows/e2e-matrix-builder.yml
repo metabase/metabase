@@ -39,7 +39,7 @@ jobs:
               edition: "ee",
             };
 
-            const allSpecs = "./e2e/test/scenarios/**/*.cy.spec.*";
+            const allSpecs = "./e2e/test/scenarios/**/*.ci-test.cy.spec.*";
 
             // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
             const specialTests = [
