@@ -489,6 +489,9 @@ describe("issue 21597", { tags: "@external" }, () => {
    *
    * The End
    */
+  const databaseName = "Sample Database";
+  const databaseCopyName = `${databaseName} copy`;
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -507,13 +510,19 @@ describe("issue 21597", { tags: "@external" }, () => {
       });
     }).as("saveNativeQuestion");
 
+    // Second DB (copy)
+    H.addPostgresDatabase(databaseCopyName);
+
     // Create a native query and run it
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("SELECT 1");
+    H.startNewNativeQuestion().as("editor");
+
+    cy.get("@editor").type("SELECT 1");
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    H.modal().within(() => {
+    cy.findByTestId("save-question-modal").within(modal => {
       cy.findByPlaceholderText("What is the name of your question?").type(
         "The question name",
       );
