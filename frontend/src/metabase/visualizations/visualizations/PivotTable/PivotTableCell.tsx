@@ -110,9 +110,7 @@ export function Cell({
           >
             <ResizeHandle
               data-testid="pivot-table-resize-handle"
-              ref={element => {
-                resizeHandleRef.current = element;
-              }}
+              ref={resizeHandleRef}
             />
           </Draggable>
         )}
