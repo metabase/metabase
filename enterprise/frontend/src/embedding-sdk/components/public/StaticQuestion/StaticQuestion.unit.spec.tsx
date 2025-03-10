@@ -6,7 +6,13 @@ import {
   setupCardQueryEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
@@ -103,17 +109,35 @@ describe("StaticQuestion", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
-  it("should render question if question is valid", async () => {
-    setup();
+  describe("table visualization", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
 
-    await waitForLoaderToBeRemoved();
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
 
-    expect(
-      within(screen.getByTestId("header-cell")).getByText(TEST_COLUMN.name),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
-    ).toBeInTheDocument();
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("should render question if question is valid", async () => {
+      setup();
+
+      await waitForLoaderToBeRemoved();
+
+      act(() => {
+        jest.runAllTimers();
+      });
+
+      expect(
+        within(screen.getByTestId("header-cell")).getByText(TEST_COLUMN.name),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should render an error if a question isn't found", async () => {

@@ -874,18 +874,13 @@ describe("issue 32032", () => {
   });
 
   it("should allow quick filter drills on custom columns", () => {
-    cy.findByTestId("TableInteractive-root")
-      .findAllByText("xavier")
-      .eq(1)
-      .click();
+    H.tableInteractive().findAllByText("xavier").eq(1).click();
     H.popover().findByText("Is xavier").click();
     cy.wait("@dataset");
     H.main()
       .findByText(/There was a problem/i)
       .should("not.exist");
-    cy.findByTestId("TableInteractive-root")
-      .findAllByText("xavier")
-      .should("have.length", 2);
+    H.tableInteractive().findAllByText("xavier").should("have.length", 2);
   });
 });
 
@@ -1360,5 +1355,38 @@ describe("issue 53527", () => {
     H.popover().button("Done").click();
     H.visualize();
     H.tableInteractive().findByText("ab").should("be.visible");
+  });
+});
+
+describe("issue 48562", () => {
+  const questionDetails = {
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        CustomColumn: ["contains", ["field", 10000, null], "abc"],
+      },
+      filter: ["segment", 10001],
+      aggregation: [["metric", 10002]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("CustomColumn").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
+    cy.realPress("Escape");
+    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
+    cy.button("Cancel").click();
+    cy.realPress("Escape");
+    H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
+    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
   });
 });

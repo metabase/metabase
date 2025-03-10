@@ -971,9 +971,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Year").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
-      cy.findByTestId("TableInteractive-root")
-        .findByText("Created At: Year")
-        .should("be.visible");
+      H.tableInteractive().findByText("Created At: Year").should("be.visible");
     });
   });
 

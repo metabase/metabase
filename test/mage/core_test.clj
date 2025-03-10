@@ -1,5 +1,6 @@
 (ns mage.core-test
   (:require
+   [babashka.tasks :as bt]
    [clojure.string :as str]
    [mage.start-db-test :as start-db-test]
    [mage.util :as u]))
@@ -10,10 +11,10 @@
   (doseq [help-cmds [[] [" "] ["  "]
                      ["-h"] ["--help"]
                      [" -h"] [" --help"]
-                     ["  -h"] ["  --help"]]]
-    (let [cmd (str "./bin/mage " (str/join " " help-cmds))
-          out (u/sh cmd)]
-      (println (str "Testing that bin/mage has help with '" (pr-str cmd) "'"))
+                     ["  -h"] ["  --help"]]
+          :let [cmd (str "./bin/mage " (str/join " " help-cmds))]]
+    (println (str "Testing that bin/mage has help with '" (pr-str cmd) "'"))
+    (let [out (u/sh cmd)]
       (when-not (str/includes? out "The following tasks are available:")
         (System/exit 1)))))
 
@@ -28,14 +29,19 @@
   (doseq [task-name ["foo" "bar" "baz"]]
     (let [cmd (str "./bin/mage " task-name)]
       (print "testing that" cmd "prints help")
-      (if (str/includes? (u/sh cmd) "The following tasks are available:")
-        (println " OK")
-        (System/exit 1)))))
+      (let [result (try (bt/shell {:err :string :out :string} "./bin/mage foo")
+                        (catch Exception e (:out (:proc (ex-data e)))))]
+        (if (str/includes? result "The following tasks are available:")
+          (println " OK")
+          (System/exit 1))))))
 
-(when (= *file* (System/getProperty "babashka.file"))
+(defn run-tests [& _args]
   (mapv bb-task-has-example? (u/public-bb-tasks-list))
   (bin-mage-has-help?)
   (invalid-task-names-print-help-test)
   (start-db-test/run-tests)
   (println "All tests passed")
   (System/exit 0))
+
+(when (= *file* (System/getProperty "babashka.file"))
+  (run-tests))
