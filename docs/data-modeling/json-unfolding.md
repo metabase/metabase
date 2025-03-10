@@ -41,8 +41,8 @@ To turn off JSON unfolding for a database:
 5. Click **Show advanced options**.
 6. Toggle **Allow unfolding of JSON columns**.
 7. Scroll down and click the **Save changes** button.
-8. Click **Sync database schema now**.
-9. Click **Re-scan field values now**.
+8. Click **Sync database schema**.
+9. Click **Re-scan field values**.
 
 ## Toggling JSON unfolding for a specific column
 

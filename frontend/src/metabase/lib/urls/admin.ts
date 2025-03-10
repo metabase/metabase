@@ -35,7 +35,7 @@ export function newDatabase() {
 }
 
 export function editDatabase(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}`;
+  return `/admin/databases/${databaseId}/edit`;
 }
 
 export function dataModelDatabase(databaseId: DatabaseId) {
