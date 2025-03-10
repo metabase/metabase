@@ -241,9 +241,9 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const folderValidationRegex = /(https|http)\:\/\/drive\.google\.com\/.+/;
+    const folderValidationRegex = /^(https|http):\/\/drive\.google\.com\/.+/;
     const sheetValidationRegex =
-      /(https|http)\:\/\/docs\.google\.com\/spreadsheets\/.+/;
+      /^(https|http):\/\/docs\.google\.com\/spreadsheets\/.+/;
 
     if (
       !folderValidationRegex.test(folderLink.trim()) &&
