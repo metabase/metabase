@@ -23,6 +23,7 @@ export const getDefaultCellTemplate = <TRow, TValue>(
     cellVariant,
     wrap,
     getCellClassName,
+    getCellStyle,
     getIsCellEditing,
     editingCell: EditingCellComponent,
   }: ColumnOptions<TRow, TValue>,
@@ -53,6 +54,7 @@ export const getDefaultCellTemplate = <TRow, TValue>(
         variant={cellVariant}
         wrap={wrap}
         className={getCellClassName?.(value, row.index)}
+        style={getCellStyle?.(value, row.index)}
       />
     );
   };

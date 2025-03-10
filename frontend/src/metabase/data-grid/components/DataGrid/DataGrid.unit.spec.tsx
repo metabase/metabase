@@ -3,6 +3,7 @@ import { type MouseEvent, useMemo } from "react";
 import {
   act,
   fireEvent,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   within,
@@ -151,31 +152,11 @@ const TestDataGrid = ({
 };
 
 describe("DataGrid", () => {
-  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-
   beforeAll(() => {
-    // Needed for virtual grid to work
-    Element.prototype.getBoundingClientRect = jest.fn(() => {
-      return {
-        width: 800,
-        height: 400,
-        top: 0,
-        left: 0,
-        bottom: 400,
-        right: 800,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      };
-    });
-  });
-
-  afterAll(() => {
-    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    mockGetBoundingClientRect();
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
     jest.useFakeTimers();
   });
 

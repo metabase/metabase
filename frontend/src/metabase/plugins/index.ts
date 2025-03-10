@@ -592,7 +592,7 @@ export const PLUGIN_DATA_EDITING = {
   PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
     params: {
       dbId: string;
-      tableName: string;
+      tableId: string;
     };
   }>,
 };

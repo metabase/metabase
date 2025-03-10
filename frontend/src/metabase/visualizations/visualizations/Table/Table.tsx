@@ -6,6 +6,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import {
@@ -31,11 +32,13 @@ import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isAvatarURL,
+  isCoordinate,
   isDimension,
   isEmail,
   isImageURL,
   isMetric,
   isNumber,
+  isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -45,13 +48,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
-import { TableSimple } from "../components/TableSimple";
+import { TableInteractive } from "../../components/TableInteractive";
+import { TableSimple } from "../../components/TableSimple";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
   VisualizationProps,
-} from "../types";
+} from "../../types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -87,6 +90,13 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.row_index": {
+      section: t`Columns`,
+      title: t`Show row index`,
+      inline: true,
+      widget: "toggle",
+      default: false,
+    },
     "table.pivot": {
       section: t`Columns`,
       title: t`Pivot table`,
@@ -110,6 +120,7 @@ class Table extends Component<TableProps, TableState> {
         return getDefaultPivotColumn(data.cols, data.rows) != null;
       },
     },
+
     "table.pivot_column": {
       section: t`Columns`,
       title: t`Pivot column`,
@@ -209,6 +220,23 @@ class Table extends Component<TableProps, TableState> {
         getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
+      text_align: {
+        title: t`Align`,
+        widget: "select",
+        getDefault: column => {
+          const baseColumn = column?.remapped_to_column ?? column;
+          return isNumber(baseColumn) || isCoordinate(baseColumn)
+            ? "right"
+            : "left";
+        },
+        props: {
+          options: [
+            { name: t`Left`, value: "left" },
+            { name: t`Right`, value: "right" },
+            { name: t`Middle`, value: "middle" },
+          ],
+        },
+      },
     };
 
     if (isNumber(column)) {
@@ -216,6 +244,25 @@ class Table extends Component<TableProps, TableState> {
         title: t`Show a mini bar chart`,
         widget: "toggle",
         inline: true,
+      };
+    }
+
+    if (isString(column)) {
+      const canWrapText = (columnSettings: OptionsType) => {
+        return (
+          columnSettings["view_as"] === null ||
+          columnSettings["view_as"] === "auto"
+        );
+      };
+
+      settings["text_wrapping"] = {
+        title: t`Wrap text`,
+        default: false,
+        widget: "toggle",
+        inline: true,
+        getHidden: (_column, columnSettings) => {
+          return !canWrapText(columnSettings);
+        },
       };
     }
 

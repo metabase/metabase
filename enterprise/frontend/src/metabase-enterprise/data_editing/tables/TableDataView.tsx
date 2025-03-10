@@ -9,15 +9,15 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
-import { EditingBodyCellConditional } from "metabase-enterprise/data_editing/tables/EditingBodyCell";
-import { useTableEditing } from "metabase-enterprise/data_editing/tables/use-table-editing";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
-import type { RowCellsWithPkValue } from "./types";
+import { EditingBodyCellConditional } from "./EditingBodyCell";
+import type { UpdatedRowCellsHandlerParams } from "./types";
+import { useTableEditing } from "./use-table-editing";
 
 type TableDataViewProps = {
   data: Dataset;
-  onCellValueUpdate: (params: RowCellsWithPkValue) => void;
+  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
 
 export const TableDataView = ({
@@ -49,7 +49,7 @@ export const TableDataView = ({
         editingCell: cellContext => (
           <EditingBodyCellConditional
             cellContext={cellContext}
-            columns={cols}
+            column={column}
             onCellValueUpdate={onCellValueUpdate}
             onCellEditCancel={onCellEditCancel}
           />

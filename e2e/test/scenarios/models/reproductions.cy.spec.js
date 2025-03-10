@@ -46,7 +46,7 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.get(".test-TableInteractive");
+          H.tableInteractive();
           cy.findByText("Here's where your results will appear").should(
             "not.exist",
           );
@@ -1391,15 +1391,6 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
       .click();
   };
 
-  const dragColumn = (index, distance) => {
-    cy.get(".react-draggable")
-      .should("have.length", 20) // 10 columns X 2 draggable elements
-      .eq(index)
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", distance, 0, { force: true })
-      .trigger("mouseup", distance, 0, { force: true });
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1419,8 +1410,8 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+    H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
 
-    dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
@@ -1532,7 +1523,7 @@ describe("issue 31663", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
-    cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
+    H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByLabelText("Foreign key target").click();
     H.popover().within(() => {

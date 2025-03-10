@@ -6,7 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -199,6 +199,70 @@ describe("table.pivot", () => {
       });
 
       expect(isHidden).toBe(false);
+    });
+  });
+});
+
+describe("text_wrapping", () => {
+  describe("in columnSettings", () => {
+    const createMockStringColumn = () =>
+      createMockColumn({ base_type: "type/Text" });
+
+    const createMockNumberColumn = () =>
+      createMockColumn({ base_type: "type/Number" });
+
+    it("should be available for string columns", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      expect(settings["text_wrapping"]).toBeDefined();
+    });
+
+    it("should not be available for non-string columns", () => {
+      const numberColumn = createMockNumberColumn();
+      const settings = Table.columnSettings(numberColumn);
+
+      expect(settings["text_wrapping"]).toBeUndefined();
+    });
+
+    it("should be hidden when view_as is not null or auto", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be visible when view_as is null", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+        view_as: null,
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be visible when view_as is auto", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      const isHidden = settings["text_wrapping"].getHidden(stringColumn, {
+        view_as: "auto",
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should default to false", () => {
+      const stringColumn = createMockStringColumn();
+      const settings = Table.columnSettings(stringColumn);
+
+      expect(settings["text_wrapping"].default).toBe(false);
     });
   });
 });

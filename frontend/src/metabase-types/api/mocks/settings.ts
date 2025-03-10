@@ -131,6 +131,7 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  table_data_editing: false,
   ...opts,
 });
 
@@ -260,10 +261,10 @@ export const createMockSettings = (
   "show-updated-permission-modal": false,
   "show-updated-permission-banner": false,
   "site-locale": "en",
+  "site-name": "Metabae",
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",
   "slack-app-token": null,
-  "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",

@@ -18,7 +18,6 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   FieldId,
@@ -27,12 +26,12 @@ import type {
 } from "metabase-types/api";
 
 import S from "./EditingBodyCell.module.css";
-import type { RowCellsWithPkValue } from "./types";
+import type { UpdatedRowCellsHandlerParams } from "./types";
 
 interface EditingBodyCellProps<TRow, TValue> {
+  column: DatasetColumn;
   cellContext: CellContext<TRow, TValue>;
-  columns: DatasetColumn[];
-  onCellValueUpdate: (params: RowCellsWithPkValue) => void;
+  onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
 }
 
@@ -42,46 +41,29 @@ export const EditingBodyCellConditional = (
   const {
     onCellEditCancel,
     onCellValueUpdate,
-    columns,
+    column,
     cellContext: {
       getValue,
       column: { id: columnName },
-      row: { original: rowData },
+      row: { index: rowIndex },
     },
   } = props;
 
   const initialValue = getValue<RowValue>();
-  const column = useMemo(
-    () => columns.find(column => column.name === columnName),
-    [columns, columnName],
-  );
 
   const doCellValueUpdate = useCallback(
     (value: RowValue) => {
       if (value !== initialValue) {
-        const pkColumnIndex = columns.findIndex(isPK);
-        const pkColumn = columns[pkColumnIndex];
-        const rowPkValue = rowData[pkColumnIndex];
-
-        if (rowPkValue !== undefined) {
-          onCellValueUpdate({
-            [pkColumn.name]: rowPkValue,
-            [columnName]: value,
-          });
-        }
+        onCellValueUpdate({
+          data: { [columnName]: value },
+          rowIndex,
+        });
       }
 
       // Hide the editing cell after submitting the value
       onCellEditCancel();
     },
-    [
-      columnName,
-      columns,
-      onCellEditCancel,
-      onCellValueUpdate,
-      rowData,
-      initialValue,
-    ],
+    [columnName, onCellEditCancel, onCellValueUpdate, rowIndex, initialValue],
   );
 
   switch (column?.semantic_type) {
@@ -110,7 +92,7 @@ export const EditingBodyCellConditional = (
 };
 
 interface EditingBodyPrimitiveProps {
-  datasetColumn?: DatasetColumn;
+  datasetColumn: DatasetColumn;
   initialValue: RowValue;
   onSubmit: (value: RowValue) => unknown;
   onCancel: () => unknown;
@@ -160,7 +142,7 @@ export const EditingBodyCellSelect = ({
   onSubmit,
   onCancel,
 }: EditingBodyPrimitiveProps) => {
-  const fieldId = datasetColumn?.field_ref?.[1] as FieldId | null;
+  const fieldId = datasetColumn.field_ref?.[1] as FieldId | null;
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(
     fieldId ?? skipToken,
   );
