@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import type { ComponentType } from "react";
+import { type ComponentType, useState } from "react";
 import { replace } from "react-router-redux";
 import { useInterval, useMount } from "react-use";
 import { t } from "ttag";
@@ -129,8 +129,14 @@ function DatabaseEditAppInner({
     database?.name && [database?.name],
   ]);
 
-  const isPermissionModalOpened = !!location.query.created || false;
-  const onPermissionModalClose = () => replace(location.pathname);
+  const [isPermissionModalOpened, setIsPermissionModalOpened] = useState(false);
+  useMount(() => {
+    if (location.query.created) {
+      setIsPermissionModalOpened(true);
+      replace(location.pathname);
+    }
+  });
+  const onPermissionModalClose = () => setIsPermissionModalOpened(false);
 
   return (
     <>

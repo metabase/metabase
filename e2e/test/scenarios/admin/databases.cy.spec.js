@@ -251,7 +251,7 @@ describe("admin > database > add", () => {
 
         cy.findAllByTestId("database-connection-info-section").should(
           "contain.text",
-          "No connection issues",
+          "Connected",
         );
 
         cy.findByLabelText("Choose when syncs and scans happen").should(
@@ -499,10 +499,10 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.findByTestId("main-logo");
     cy.findByTestId("breadcrumbs").findByText("Sample Database");
     cy.findByTestId("database-connection-info-section")
-      .findByRole("button", { name: "Edit" })
+      .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled");
     cy.findByTestId("database-connection-info-section")
-      .findByRole("button", { name: "Edit" })
+      .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled")
       .trigger("mouseenter", { force: true });
     H.tooltip().findByText(
@@ -597,7 +597,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.findAllByTestId("database-connection-info-section").should(
       "contain.text",
-      "No connection issues",
+      "Connected",
     );
 
     editDatabase();
@@ -729,14 +729,14 @@ describe("scenarios > admin > databases > sample database", () => {
     visitDatabase(SAMPLE_DB_ID);
 
     // lets you trigger the manual database schema sync
-    cy.button("Sync database schema now").click();
+    cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // lets you trigger the manual rescan of field values
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Re-scan field values now").click();
+    cy.findByText("Re-scan field values").click();
     cy.wait("@rescan_values");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Scan triggered!");
@@ -907,6 +907,6 @@ H.describeWithSnowplow("add database card", () => {
 
 function editDatabase() {
   cy.findByTestId("database-connection-info-section")
-    .findByRole("button", { name: "Edit" })
+    .findByRole("button", { name: "Edit connection details" })
     .click();
 }

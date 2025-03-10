@@ -135,7 +135,7 @@ describe("issue 41765", { tags: "@external" }, () => {
 
     H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema now").click();
+    cy.button("Sync database schema").click();
 
     exitAdmin();
     openWritableDatabaseQuestion();

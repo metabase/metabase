@@ -44,8 +44,8 @@ describe("scenarios > admin > permissions > database details permissions", () =>
     cy.findByText("Sample Database").click();
 
     cy.findByTestId("database-connection-info-section").within(() => {
-      cy.button("Sync database schema now").should("exist");
-      cy.button("Re-scan field values now").should("exist");
+      cy.button("Sync database schema").should("exist");
+      cy.button("Re-scan field values").should("exist");
     });
 
     cy.findByTestId("database-danger-zone-section").within(() => {

@@ -69,9 +69,7 @@ describe("DatabaseConnectionInfoSection", () => {
       await waitFor(() => {
         expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
       });
-      expect(
-        await screen.findByText("No connection issues"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Connected")).toBeInTheDocument();
     });
 
     it("should show error message if healthcheck returns errors", async () => {
@@ -106,7 +104,7 @@ describe("DatabaseConnectionInfoSection", () => {
   describe("actions", () => {
     it("syncs database schema", async () => {
       const { database } = setup();
-      await userEvent.click(screen.getByText(/Sync database schema now/i));
+      await userEvent.click(screen.getByText(/Sync database schema/i));
       await waitFor(() => {
         expect(
           fetchMock.called(`path:/api/database/${database.id}/sync_schema`),
@@ -116,7 +114,7 @@ describe("DatabaseConnectionInfoSection", () => {
 
     it("re-scans database field values", async () => {
       const { database } = setup();
-      await userEvent.click(screen.getByText(/Re-scan field values now/i));
+      await userEvent.click(screen.getByText(/Re-scan field values/i));
       await waitFor(() => {
         expect(
           fetchMock.called(`path:/api/database/${database.id}/rescan_values`),

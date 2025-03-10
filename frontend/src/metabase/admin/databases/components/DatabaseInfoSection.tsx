@@ -1,4 +1,12 @@
-import { Box, Card, Flex, type FlexProps, Text } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Divider,
+  Flex,
+  type FlexProps,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 interface DatabaseInfoSectionProps extends FlexProps {
   name: string;
@@ -15,20 +23,14 @@ export const DatabaseInfoSection = ({
   ...props
 }: DatabaseInfoSectionProps) => (
   <Flex gap="lg" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
-    <Flex
-      direction="column"
-      w="100%"
-      maw={{ sm: "16rem" }}
-      mt="md"
-      style={{ flexShrink: 0 }}
-    >
+    <Stack w="100%" maw={{ sm: "16rem" }} mt="md" style={{ flexShrink: 0 }}>
       <Text size="lg" fw="700" mb="xs" lh={1.4}>
         {name}
       </Text>
       <Text c="text-secondary" lh={1.4}>
         {description}
       </Text>
-    </Flex>
+    </Stack>
     <Box w="100%">
       <Card
         withBorder
@@ -47,7 +49,5 @@ export const DatabaseInfoSection = ({
 // NOTE: not using Card.Section since it won't work if
 // it's rendered within a React.Fragment: https://mantine.dev/core/card/#cardsection
 export const DatabaseInfoSectionDivider = () => {
-  return (
-    <Box h="1px" w="calc(100% + 3rem)" ml="-1.5rem" my="1rem" bg="border" />
-  );
+  return <Divider w="calc(100% + 3rem)" ml="-1.5rem" my="1rem" />;
 };

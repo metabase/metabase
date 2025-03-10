@@ -12,7 +12,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Box, Button, Flex, Text, Tooltip } from "metabase/ui";
+import { Badge, Button, Flex, Text, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -57,7 +57,7 @@ export const DatabaseConnectionInfoSection = ({
     return match(healthQuery)
       .with(
         { currentData: { status: "ok" } },
-        () => ({ message: t`No connection issues`, color: "success" }) as const,
+        () => ({ message: t`Connected`, color: "success" }) as const,
       )
       .with(
         { isUninitialized: true },
@@ -89,12 +89,7 @@ export const DatabaseConnectionInfoSection = ({
     >
       <Flex align="center" justify="space-between" gap="lg">
         <Flex align="center" gap="sm">
-          <Box
-            w=".75rem"
-            h=".75rem"
-            bg={health.color}
-            style={{ flexShrink: 0, borderRadius: "50%" }}
-          />
+          <Badge size="12" circle bg={health.color} style={{ flexShrink: 0 }} />
           <Text lh="1.4">{health.message}</Text>
         </Flex>
         <Tooltip
@@ -105,7 +100,7 @@ export const DatabaseConnectionInfoSection = ({
             onClick={openDbDetailsModal}
             style={{ flexShrink: 0 }}
             disabled={!isDbModifiable(database)}
-          >{t`Edit`}</Button>
+          >{t`Edit connection details`}</Button>
         </Tooltip>
       </Flex>
 
@@ -116,7 +111,7 @@ export const DatabaseConnectionInfoSection = ({
         <ActionButton
           className={S.actionButton}
           actionFn={handleSyncDatabaseSchema}
-          normalText={t`Sync database schema now`}
+          normalText={t`Sync database schema`}
           activeText={t`Starting…`}
           failedText={t`Failed to sync`}
           successText={t`Sync triggered!`}
@@ -124,7 +119,7 @@ export const DatabaseConnectionInfoSection = ({
         <ActionButton
           className={S.actionButton}
           actionFn={() => rescanDatabaseFieldValues(database.id)}
-          normalText={t`Re-scan field values now`}
+          normalText={t`Re-scan field values`}
           activeText={t`Starting…`}
           failedText={t`Failed to start scan`}
           successText={t`Scan triggered!`}

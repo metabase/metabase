@@ -2,6 +2,7 @@ import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -9,7 +10,6 @@ import { FormFooter } from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
@@ -179,14 +179,13 @@ const DatabaseFormFooter = ({
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
 
-  const docsUrl = useSelector(state =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
-    getDocsUrl(state, { page: "databases/connecting" }),
-  );
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
+  const { url: docsUrl } = useDocsUrl("databases/connecting");
 
   if (isAdvanced) {
     return (
-      <FormFooter>
+      <FormFooter data-testid="form-footer">
+        <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
             <ExternalLink
@@ -209,7 +208,6 @@ const DatabaseFormFooter = ({
             />
           </Flex>
         </Flex>
-        <FormErrorMessage />
       </FormFooter>
     );
   } else if (values.engine) {

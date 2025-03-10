@@ -59,6 +59,7 @@ export const databaseApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/database/${id}/healthcheck`,
       }),
+      // invalidate health check in the case db connection info changes
       providesTags: (_, __, id) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({

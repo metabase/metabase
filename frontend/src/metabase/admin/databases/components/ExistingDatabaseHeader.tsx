@@ -2,7 +2,7 @@ import { c } from "ttag";
 
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { Flex, Text, Title } from "metabase/ui";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 export const ExistingDatabaseHeader = ({
@@ -15,7 +15,7 @@ export const ExistingDatabaseHeader = ({
 
   return (
     <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">
-      <Flex direction="column" justify="space-between" gap="sm">
+      <Stack gap="sm">
         <Title>{database?.name}</Title>
         <Flex gap="sm">
           {driverName && (
@@ -25,7 +25,7 @@ export const ExistingDatabaseHeader = ({
           )}
           <Text size="sm" c="text-medium">
             {c(
-              "Time in which the database was added to Metabase (e.g. Added 3/4/2025)",
+              "Date on which the database was added to Metabase (e.g. Added 3/4/2025)",
             ).t`Added ${new Intl.DateTimeFormat(undefined, {
               year: "numeric",
               month: "long",
@@ -33,7 +33,7 @@ export const ExistingDatabaseHeader = ({
             }).format(new Date(database.created_at))}`}
           </Text>
         </Flex>
-      </Flex>
+      </Stack>
     </Flex>
   );
 };
