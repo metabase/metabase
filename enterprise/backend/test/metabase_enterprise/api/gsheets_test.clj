@@ -209,3 +209,14 @@
       (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response happy-responses))]
         (= {:status "not-connected"}
            (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))
+
+(deftest sync-folder-test
+  (with-sample-db-as-dwh
+    (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+      (mt/with-temporary-setting-values [gsheets {:status "loading",
+                                                  :folder_url gdrive-link,
+                                                  :folder-upload-time 1741624582,
+                                                  :gdrive/conn-id "<connection-id>"}]
+        (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
+          (is (partial= {:status "loading"}
+                        (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder/sync"))))))))
