@@ -5,7 +5,7 @@
   color: var(--mb-color-text-light);
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: flex-end;
   cursor: pointer;
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
 }
