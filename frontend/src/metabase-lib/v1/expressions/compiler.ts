@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
@@ -13,6 +12,7 @@ import {
   adjustOffset,
   adjustOptions,
   adjustTopLevelLiteral,
+  isCompilerPass,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import type { ErrorWithMessage, StartRule } from "./types";
@@ -58,7 +58,6 @@ export function compileExpression({
     adjustCaseOrIf,
     adjustMultiArgOptions,
     adjustTopLevelLiteral,
-    resolverPass,
     resolverPass({
       enabled: shouldResolve,
       database,
@@ -67,7 +66,7 @@ export function compileExpression({
       startRule,
     }),
     adjustBooleans,
-  ].filter(isNotNull);
+  ].filter(isCompilerPass);
 
   try {
     let expression = compile(root);

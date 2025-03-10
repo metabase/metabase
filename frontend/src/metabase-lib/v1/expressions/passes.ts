@@ -14,6 +14,10 @@ function isCallExpression(expr: unknown): expr is CallExpression {
   return Array.isArray(expr) && expr.length > 1;
 }
 
+export function isCompilerPass(value: unknown): value is CompilerPass {
+  return typeof value === "function";
+}
+
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
 export const adjustCaseOrIf: CompilerPass = tree =>
   modify(tree, node => {
