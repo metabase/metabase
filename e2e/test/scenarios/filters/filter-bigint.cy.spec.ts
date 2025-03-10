@@ -1,3 +1,5 @@
+import type { Sheet } from "xlsx";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   DashboardDetails,
@@ -1134,7 +1136,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it.skip("query builder + export", { tags: "@external" }, () => {
+  it("query builder + export", { tags: "@external" }, () => {
     function setupTableQuestion({ tableName }: { tableName: string }) {
       const getTargetQuestionDetails = (
         tableId: TableId,
@@ -1190,14 +1192,15 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       cy.get("@questionId").then(questionId => {
         H.downloadAndAssert(
           {
-            fileType: "xlsx",
+            fileType: "csv",
             questionId: Number(questionId),
             isDashboard: false,
+            enableFormatting: true,
           },
-          (sheet: any) => {
+          (sheet: Sheet) => {
             expect(sheet["A1"].v).to.eq(columnName);
-            expect(String(sheet["A2"].v)).to.eq(formattedMinValue);
-            expect(String(sheet["A4"].v)).to.eq(formattedMaxValue);
+            expect(sheet["A2"].w).to.eq(formattedMinValue);
+            expect(sheet["A4"].w).to.eq(formattedMaxValue);
           },
         );
       });
