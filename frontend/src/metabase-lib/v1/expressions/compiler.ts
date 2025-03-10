@@ -78,10 +78,10 @@ export function compileExpression({
   }
 
   try {
-    const expression = compile(root, {
-      getMBQLName,
-      passes,
-    });
+    let expression = compile(root, { getMBQLName });
+    for (const pass of passes) {
+      expression = pass(expression);
+    }
 
     const expressionClause = Lib.expressionClauseForLegacyExpression(
       query,

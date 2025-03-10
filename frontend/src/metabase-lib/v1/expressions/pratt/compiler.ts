@@ -27,11 +27,8 @@ import {
 } from "./syntax";
 import { CompileError, type Node, type NodeType, assert } from "./types";
 
-export type CompilerPass = (expr: Expression) => Expression;
-
 interface Options {
   getMBQLName(expressionName: string): string | undefined;
-  passes?: CompilerPass[];
 }
 
 type CompileFn = (node: Node, opts: Options) => Expression;
@@ -45,12 +42,7 @@ export function compile(node: Node, opts: Options): Expression {
     });
   }
   const func = compileUnaryOp(node);
-  let expr = func(node.children[0], opts);
-  const { passes = [] } = opts;
-  for (const pass of passes) {
-    expr = pass(expr);
-  }
-  return expr;
+  return func(node.children[0], opts);
 }
 
 // ----------------------------------------------------------------

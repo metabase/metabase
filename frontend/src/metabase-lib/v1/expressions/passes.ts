@@ -6,9 +6,9 @@ import type {
 
 import { MBQL_CLAUSES } from "./config";
 import { isCaseOrIf, isCaseOrIfOperator, isOptionsObject } from "./matchers";
-import type { CompilerPass } from "./pratt/compiler";
-import { OPERATOR } from "./tokenizer";
 import { isBooleanLiteral, isNumberLiteral, isStringLiteral } from "./matchers";
+
+export type CompilerPass = (expr: Expression) => Expression;
 
 function isCallExpression(expr: unknown): expr is CallExpression {
   return Array.isArray(expr) && expr.length > 1;
@@ -204,11 +204,3 @@ function withAST(
   }
   return result;
 }
-
-export const ALL_PASSES = [
-  adjustCaseOrIf,
-  adjustMultiArgOptions,
-  adjustOffset,
-  adjustOptions,
-  adjustTopLevelLiteral,
-];
