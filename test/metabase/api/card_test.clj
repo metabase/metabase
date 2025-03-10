@@ -40,6 +40,7 @@
    [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -4052,9 +4053,9 @@
                                      :collection_id coll-id
                                      :dashboard_id dash-id)))
       (testing "Specifying both fails if they're different"
-        (is (= (format "Mismatch detected between Dashboard's `collection_id` (%d) and `collection_id` (%d)"
-                       coll-id
-                       nil)
+        (is (= (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                    coll-id
+                    nil)
                (mt/user-http-request :rasta :post 400 "card/"
                                      (assoc (card-with-name-and-query)
                                             :collection_id nil
