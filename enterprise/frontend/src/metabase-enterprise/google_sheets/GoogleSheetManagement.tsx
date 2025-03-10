@@ -106,7 +106,6 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const gSheetsSetting = useSetting("gsheets");
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
-  const { status } = gSheetsSetting;
   const userIsAdmin = useSelector(getUserIsAdmin);
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
@@ -119,6 +118,8 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   ) {
     return null;
   }
+
+  const { status } = gSheetsSetting;
 
   const handleClick = () => {
     trackSheetConnectionClick({ from: "left-nav" });
