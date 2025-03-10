@@ -118,14 +118,17 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: metabase
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: mariadb:10.2.23
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: "metabase"
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (10.2)
@@ -144,14 +147,17 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: metabase
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: mariadb:latest
         ports:
           - "3306:3306"
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: "metabase"
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (latest)
