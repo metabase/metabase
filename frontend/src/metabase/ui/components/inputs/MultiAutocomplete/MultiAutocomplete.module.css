@@ -1,0 +1,33 @@
+.pill {
+  --multiselect-pill-font-size: 0.875rem;
+}
+
+.pillList {
+  padding-right: var(--input-right-section-width);
+}
+
+.input {
+  --input-fz: 0.875rem;
+
+  input::placeholder {
+    color: var(--mb-color-text-tertiary);
+  }
+}
+
+.empty {
+  font-size: 0.875rem;
+}
+
+.optionList {
+  padding: 0.75rem;
+}
+
+.option {
+  font-size: 0.875rem;
+  padding: 0.75rem 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-hover);
+  }
+}

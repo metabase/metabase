@@ -25,7 +25,7 @@ type NotificationChannelsAddMenuProps = {
   notificationHandlers: NotificationHandler[];
   channelsSpec: ChannelApiResponse["channels"];
   httpChannelsConfig: NotificationChannel[];
-  isAdmin: boolean;
+  userCanAccessSettings: boolean;
   onAddChannel: (channel: ChannelToAddOption) => void;
 };
 
@@ -33,14 +33,14 @@ export const NotificationChannelsAddMenu = ({
   notificationHandlers,
   channelsSpec,
   httpChannelsConfig,
-  isAdmin,
+  userCanAccessSettings,
   onAddChannel,
 }: NotificationChannelsAddMenuProps) => {
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(notificationHandlers);
 
   const notAddedHookChannels = useMemo(() => {
-    if (!channelsSpec.http?.configured || !isAdmin) {
+    if (!channelsSpec.http?.configured || !userCanAccessSettings) {
       return [];
     }
 
@@ -56,28 +56,30 @@ export const NotificationChannelsAddMenu = ({
   }, [
     channelsSpec.http?.configured,
     hookHandlers,
-    isAdmin,
+    userCanAccessSettings,
     httpChannelsConfig,
   ]);
 
   const hasAddedEmail = channelsSpec.email?.configured && !!emailHandler;
   const hasAddedSlack = channelsSpec.slack?.configured && !!slackHandler;
+  const canAddEmail = channelsSpec.email?.configured && !emailHandler;
+  const canAddSlack = channelsSpec.slack?.configured && !slackHandler;
   const hasChannelsToAdd =
-    !hasAddedEmail || !hasAddedSlack || notAddedHookChannels.length > 0;
+    canAddEmail || canAddSlack || notAddedHookChannels.length > 0;
   const hasAddedNoChannels = !notificationHandlers.length;
 
-  if (!isAdmin && !hasChannelsToAdd) {
+  if (!userCanAccessSettings && !hasChannelsToAdd) {
     return null;
   }
 
-  if (isAdmin && !hasChannelsToAdd) {
+  if (userCanAccessSettings && !hasChannelsToAdd) {
     return <ManageDestinationsButton />;
   }
 
   return (
     <Menu position="bottom-start">
       <Menu.Target>
-        <Button variant="subtle">
+        <Button variant="subtle" p={0} mt="-0.75rem" mb="-0.75rem">
           {hasAddedNoChannels
             ? t`Add a destination`
             : t`Add another destination`}
@@ -119,14 +121,14 @@ export const NotificationChannelsAddMenu = ({
           </>
         )}
 
-        {isAdmin && (
+        {userCanAccessSettings && (
           <Button
             variant="subtle"
             size="xs"
             component={Link}
             to="/admin/settings/notifications"
             target="_blank"
-            pl="0.5rem"
+            pl="sm"
           >
             <Text size="sm" c="inherit">{t`Manage destination channels`}</Text>
           </Button>
@@ -139,6 +141,9 @@ export const NotificationChannelsAddMenu = ({
 const ManageDestinationsButton = () => (
   <Button
     variant="subtle"
+    p={0}
+    mt="-0.75rem"
+    mb="-0.75rem"
     component={Link}
     to="/admin/settings/notifications"
     target="_blank"

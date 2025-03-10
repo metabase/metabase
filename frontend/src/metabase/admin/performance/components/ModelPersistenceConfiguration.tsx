@@ -130,7 +130,7 @@ export const ModelPersistenceConfiguration = () => {
         ? PersistedModelsApi.enablePersistence()
         : PersistedModelsApi.disablePersistence();
       await resolveWithToasts([promise]);
-      dispatch(refreshSiteSettings({}));
+      dispatch(refreshSiteSettings());
     },
     [resolveWithToasts, setModelPersistenceEnabled, dispatch],
   );
@@ -178,14 +178,15 @@ export const ModelPersistenceConfiguration = () => {
           />
         </DelayedLoadingAndErrorWrapper>
       </Box>
-      {modelPersistenceEnabled && (
+      {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
+      {modelPersistenceEnabled && modelCachingSchedule && (
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}
             onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                dispatch(refreshSiteSettings({})),
+                dispatch(refreshSiteSettings()),
               ]);
             }}
           />

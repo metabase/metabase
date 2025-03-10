@@ -55,43 +55,36 @@ export const AlertListModal = ({
   const sortedQuestionAlerts = [...ownAlerts, ...othersAlerts];
 
   return (
-    <Modal.Root
+    <Modal
       data-testid="alert-list-modal"
       opened={opened}
       size={rem(600)}
       onClose={onClose}
+      padding="xl"
+      title={t`Edit alerts`}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header p="2rem" pb="2rem">
-          <Modal.Title>{t`Edit alerts`}</Modal.Title>
-          <Modal.CloseButton />
-        </Modal.Header>
-        <Modal.Body p="2rem">
-          <Stack gap="1rem" mb="2rem">
-            {sortedQuestionAlerts.map(alert => {
-              const canEditAlert =
-                isAdmin ||
-                (canManageSubscriptions && isCreatedByCurrentUser(alert));
-              return (
-                <AlertListItem
-                  key={alert.id}
-                  alert={alert}
-                  users={users?.data}
-                  httpChannelsConfig={httpChannelsConfig}
-                  canEdit={canEditAlert}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onUnsubscribe={onUnsubscribe}
-                />
-              );
-            })}
-          </Stack>
-          <div>
-            <Button variant="filled" onClick={onCreate}>{t`New alert`}</Button>
-          </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+      <Stack gap="lg" mb="lg" mt="1rem">
+        {sortedQuestionAlerts.map(alert => {
+          const canEditAlert =
+            isAdmin ||
+            (canManageSubscriptions && isCreatedByCurrentUser(alert));
+          return (
+            <AlertListItem
+              key={alert.id}
+              alert={alert}
+              users={users?.data}
+              httpChannelsConfig={httpChannelsConfig}
+              canEdit={canEditAlert}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onUnsubscribe={onUnsubscribe}
+            />
+          );
+        })}
+      </Stack>
+      <div>
+        <Button variant="filled" onClick={onCreate}>{t`New alert`}</Button>
+      </div>
+    </Modal>
   );
 };

@@ -172,7 +172,7 @@ describe("scenarios > notebook > link to data source", () => {
         cy.findAllByTestId("header-cell")
           .should("have.length", "1")
           .and("have.text", "FOO");
-        cy.get("#main-data-grid")
+        H.tableInteractiveBody()
           .findByTestId("cell-data")
           .should("have.text", "1");
         cy.findByTestId("question-row-count").should(
@@ -531,7 +531,7 @@ describe("scenarios > notebook > link to data source", () => {
         );
         H.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
-          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
         });
       });
     });

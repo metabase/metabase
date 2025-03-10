@@ -139,7 +139,7 @@
                      :target-timezone target-timezone
                      :source-timezone source-timezone})))
   (when (and (not has-timezone?) (not source-timezone))
-    (throw (ex-info (tru "input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it.")
+    (throw (ex-info (tru "input column doesn''t have a set timezone. Please set the source parameter in convertTimezone to convert it.")
                     {:type            qp.error-type/invalid-query
                      :target-timezone target-timezone
                      :source-timezone source-timezone}))))

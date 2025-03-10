@@ -29,6 +29,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
+   [metabase.server.streaming-response]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -292,7 +293,7 @@
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:= "tables"]]
-                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
+                                                       (deferred-tru "include must be either empty or the value ''tables''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
@@ -612,7 +613,7 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
         " or turn autocompletions off."))
   :visibility :public
@@ -1205,6 +1206,16 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
+
+(api.macros/defendpoint :get "/:id/healthcheck"
+  "Reports whether the database can currently connect"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+    (binding [h2/*allow-testing-h2-connections* true]
+      (if-let [err-map (test-database-connection engine details)]
+        (merge err-map {:status "error"})
+        {:status "ok"}))))
 
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]

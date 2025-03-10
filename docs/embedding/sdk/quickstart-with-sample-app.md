@@ -12,7 +12,7 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a licences, check out [this quickstart](./quickstart.md))
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
 
 ## Overview of the quickstart
 
@@ -121,12 +121,12 @@ Your `.env` will look something like:
 
 ```txt
 # FRONTEND
-PORT=3100
+CLIENT_PORT=3100
 VITE_METABASE_INSTANCE_URL="http://localhost:3000"
 VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
-BACKEND_PORT=9090
+AUTH_PROVIDER_PORT=9090
 METABASE_INSTANCE_URL="http://localhost:3000"
 METABASE_JWT_SHARED_SECRET="TODO"
 ```

@@ -19,6 +19,7 @@
  [metabase.actions.actions
   cached-value
   check-actions-enabled!
+  perform-action!
   perform-action!*]
  [metabase.actions.error
   incorrect-value-type

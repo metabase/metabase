@@ -69,7 +69,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 (defsetting saml-identity-provider-certificate
   (deferred-tru "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,
-open it in a text editor, then copy and paste the certificate's contents here.")
+open it in a text editor, then copy and paste the certificate''s contents here.")
   :feature    :sso-saml
   :audit      :no-value
   :encryption :no
@@ -80,7 +80,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
                 (setting/set-value-of-type! :string :saml-identity-provider-certificate new-value)))
 
 (defsetting saml-identity-provider-issuer
-  (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
+  (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
   :encryption :when-encryption-key-set
   :feature    :sso-saml
@@ -196,6 +196,14 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                (setting/get-value-of-type :boolean :saml-slo-enabled)
                false)))
 
+(defsetting saml-identity-provider-slo-uri
+  (deferred-tru "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`")
+  :encryption :when-encryption-key-set
+  :feature    :sso-saml
+  :export?    false
+  :audit      :getter)
+
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
   :encryption :when-encryption-key-set
@@ -212,28 +220,28 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :audit      :no-value)
 
 (defsetting jwt-attribute-email
-  (deferred-tru "Key to retrieve the JWT user's email address")
+  (deferred-tru "Key to retrieve the JWT user''s email address")
   :encryption :when-encryption-key-set
   :default    "email"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-firstname
-  (deferred-tru "Key to retrieve the JWT user's first name")
+  (deferred-tru "Key to retrieve the JWT user''s first name")
   :encryption :when-encryption-key-set
   :default    "first_name"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-lastname
-  (deferred-tru "Key to retrieve the JWT user's last name")
+  (deferred-tru "Key to retrieve the JWT user''s last name")
   :encryption :when-encryption-key-set
   :default    "last_name"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-groups
-  (deferred-tru "Key to retrieve the JWT user's groups")
+  (deferred-tru "Key to retrieve the JWT user''s groups")
   :default    "groups"
   :feature    :sso-jwt
   :encryption :when-encryption-key-set

@@ -99,7 +99,7 @@ describe("BaseItemsTable", () => {
 
     await userEvent.hover(screen.getByText(lastEditedAt));
 
-    expect(screen.getByRole("tooltip")).toHaveTextContent(
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
       moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
   });

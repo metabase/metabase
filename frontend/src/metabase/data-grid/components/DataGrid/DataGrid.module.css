@@ -1,0 +1,114 @@
+.table {
+  position: relative;
+  color: var(--mb-color-text-dark);
+  width: 100%;
+  height: 100%;
+  font-size: 12.5px;
+}
+
+.tableGrid {
+  display: grid;
+  grid-template-rows: 36px;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.headerContainer {
+  position: sticky;
+  display: grid;
+  top: 0;
+  z-index: 2;
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.bodyContainer {
+  display: grid;
+  position: relative;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.headerCell {
+  position: relative;
+}
+
+.bodyCell {
+  position: relative;
+  cursor: pointer;
+}
+
+.rowHoverContent {
+  visibility: hidden;
+}
+
+.row:hover .rowHoverContent {
+  visibility: visible;
+}
+
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: transparent;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.resizer:hover {
+  opacity: 1;
+  background: var(--mb-color-brand);
+}
+
+.resizer:active {
+  opacity: 1;
+  background: var(--mb-color-brand);
+}
+
+.headerWrapper {
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.headerWrapper:hover {
+  cursor: grab;
+}
+
+.rowHoverVisible {
+  display: none;
+}
+
+.row:hover .rowHoverVisible {
+  display: unset;
+}
+
+.rowHoverHidden {
+  display: unset;
+}
+
+.row:hover .rowHoverHidden {
+  display: none;
+}
+
+.row:hover .headerCell {
+  box-shadow: inset -1px 0 0 var(--mb-color-border);
+}
+
+.cellHoverVisible {
+  visibility: hidden;
+}
+
+.bodyCell:hover .cellHoverVisible {
+  visibility: visible;
+}

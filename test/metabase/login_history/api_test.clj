@@ -1,6 +1,7 @@
 (ns metabase.login-history.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -14,10 +15,12 @@
 
 (deftest login-history-test
   (testing "GET /api/login-history/current"
-    (let [session-id (str (random-uuid))
-          device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"]
+    (let [session-key (session/generate-session-key)
+          session-id (session/generate-session-id)
+          device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"
+          session-key-hashed (session/hash-session-key session-key)]
       (mt/with-temp [:model/User         user {}
-                     :model/Session      _    {:id session-id, :user_id (u/the-id user)}
+                     :model/Session      _    {:id session-id :key_hashed session-key-hashed, :user_id (u/the-id user)}
                      :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                                :user_id            (u/the-id user)
                                                :device_id          device-id
@@ -87,4 +90,4 @@
                       [:active             [:= false]]
                       [:location           [:maybe [:re "Virginia, United States"]]]
                       [:timezone           [:maybe [:= "ET"]]]]]
-                    (mt/client session-id :get 200 "login-history/current")))))))
+                    (mt/client session-key :get 200 "login-history/current")))))))

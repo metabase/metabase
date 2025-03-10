@@ -35,7 +35,10 @@ export type FormValues = {
   saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;
   dashboard_id: DashboardId | null | undefined;
-  tab_id: DashboardTabId | null | undefined;
+  // specifically not using DashboardTabId type here, so that
+  // if that type is ever extended to be something beyond number
+  // we type error to avoid parsing a string as an int
+  dashboard_tab_id: `${number}` | null | undefined;
   name: string;
   description: string;
 };

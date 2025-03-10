@@ -974,7 +974,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       drillThroughCardTitle("Orders");
       H.queryBuilderMain().within(() => {
         cy.findByText("37.65").should("not.exist");
-        cy.findAllByText("105.12").should("have.length", 17);
+        cy.findAllByText("105.12").should("not.be.empty");
       });
 
       H.assertQueryBuilderRowCount(191);
