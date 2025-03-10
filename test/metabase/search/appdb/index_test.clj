@@ -554,3 +554,40 @@
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
           (#'search.index/delete-obsolete-tables!))))))
+
+(deftest pending-table-expiry-test
+  (when (search/supports-index?)
+    (binding [search.index/*index-version-id* "pending-timeout-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [active-table (search.index/active-table)
+              pending-old  (search.index/gen-table-name)
+              pending-new  (search.index/gen-table-name)
+              version      @#'search.index/*index-version-id*]
+
+          ;; Set up old pending table (more than a day old)
+          (search.index/create-table! pending-old)
+          (search-index-metadata/create-pending! :appdb version pending-old)
+          (t2/update! :model/SearchIndexMetadata
+                      {:index_name (name pending-old)}
+                      {:created_at (t/minus (t/offset-date-time) (t/days 2))})
+          (#'search.index/sync-tracking-atoms!)
+
+          (testing "Active table is returned"
+            (is (= active-table (search.index/active-table))))
+
+          (testing "Old pending table is ignored (more than a day old)"
+            (is (nil? (#'search.index/pending-table))))
+
+          ;; Create new pending table (less than a day old)
+          (search.index/create-table! pending-new)
+          (search-index-metadata/create-pending! :appdb version pending-new)
+          (#'search.index/sync-tracking-atoms!)
+
+          (testing "New pending table is included (less than a day old)"
+            (is (= active-table (search.index/active-table)))
+            (is (= pending-new (#'search.index/pending-table)))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
+          (#'search.index/delete-obsolete-tables!))))))

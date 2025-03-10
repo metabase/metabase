@@ -10,7 +10,7 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 Here are the different ways you can embed Metabase.
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 ## Embedded analytics SDK with React
 

@@ -1682,3 +1682,18 @@
                                  (lib/breakout (lib/with-temporal-bucket field-md bin)))]
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
+
+(deftest ^:parallel datetime-diff-works-for-all-units
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field units] [[:birth_date [:year :quarter :month :week :day]]
+                             [:created_at [:year :quarter :month :week :day :hour :minute :second]]]
+              unit units]
+        (testing (str "field " (name field) " can be datetime-diffed for " (name unit))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/expression "DIFF" (lib/expression-clause :datetime-diff
+                                                                        [field-md field-md unit]
+                                                                        nil))
+                          (lib/limit 1))]
+            (is (->> query qp/process-query mt/rows))))))))

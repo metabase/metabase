@@ -167,7 +167,7 @@
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.models.notification/create-notification!
+     metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -399,7 +399,7 @@
     metabase.driver.sql-jdbc.test-util                            sql-jdbc.tu
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
-    metabase.eid-translation                                      eid-translation
+    metabase.eid-translation.core                                 eid-translation
     metabase.formatter                                            formatter
     metabase.http-client                                          client
     metabase.legacy-mbql.normalize                                mbql.normalize
@@ -413,6 +413,7 @@
     metabase.models.interface                                     mi
     metabase.models.setting                                       setting
     metabase.notification.core                                    notification
+    metabase.notification.payload.core                            notification.payload
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
@@ -463,6 +464,7 @@
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
+    metabase.sync.sync-metadata.crufty                            crufty
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
     metabase.sync.util                                            sync-util
     metabase.sync.util-test                                       sync.util-test

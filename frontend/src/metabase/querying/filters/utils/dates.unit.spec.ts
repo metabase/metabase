@@ -217,7 +217,7 @@ describe("getDateFilterDisplayName", () => {
     },
     {
       value: { type: "relative", value: 0, unit: "year" },
-      displayName: "This Year",
+      displayName: "This year",
     },
     {
       value: { type: "relative", value: -1, unit: "day" },
@@ -225,7 +225,7 @@ describe("getDateFilterDisplayName", () => {
     },
     {
       value: { type: "relative", value: -2, unit: "year" },
-      displayName: "Previous 2 Years",
+      displayName: "Previous 2 years",
     },
     {
       value: {
@@ -235,11 +235,11 @@ describe("getDateFilterDisplayName", () => {
         offsetValue: -1,
         offsetUnit: "year",
       },
-      displayName: "Previous 3 Months, starting 1 year ago",
+      displayName: "Previous 3 months, starting 1 year ago",
     },
     {
       value: { type: "relative", value: 2, unit: "month" },
-      displayName: "Next 2 Months",
+      displayName: "Next 2 months",
     },
     {
       value: {
@@ -249,7 +249,7 @@ describe("getDateFilterDisplayName", () => {
         offsetValue: 1,
         offsetUnit: "year",
       },
-      displayName: "Next 3 Months, starting 1 year from now",
+      displayName: "Next 3 months, starting 1 year from now",
     },
     {
       value: {

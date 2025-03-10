@@ -1311,7 +1311,7 @@ describe("45252", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 44435", () => {
+describe("issue 44435", () => {
   // It is crucial that the string is without spaces!
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const longString = alphabet.repeat(10);
