@@ -11,7 +11,7 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { getDefaultCellTemplate } from "metabase/data-grid/utils/columns/data-column";
-import { Input } from "metabase/ui";
+import { Box, Input, Text } from "metabase/ui";
 import { useTableEditing } from "metabase-enterprise/data_editing/tables/use-table-editing";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
@@ -50,6 +50,15 @@ export const TableDataView = ({
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         wrap: false,
+        header: function EditingHeader() {
+          return (
+            <Box className={S.headerCellContainer}>
+              <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
+                {columnName}
+              </Text>
+            </Box>
+          );
+        },
       };
 
       options.cell = function EditingCell(props) {
@@ -122,6 +131,7 @@ export const TableDataView = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    defaultRowHeight: 32,
   });
 
   const handleCellDoubleClick = useCallback(
@@ -144,6 +154,19 @@ export const TableDataView = ({
   );
 
   return (
-    <DataGrid {...tableProps} onBodyCellDoubleClick={handleCellDoubleClick} />
+    <DataGrid
+      {...tableProps}
+      classNames={{
+        tableGrid: S.tableGrid,
+        headerCell: S.tableHeaderCell,
+        bodyCell: S.tableBodyCell,
+        row: S.tableRow,
+      }}
+      styles={{
+        // Overrides HEADER_HEIGHT JS const
+        row: { height: "32px" },
+      }}
+      onBodyCellDoubleClick={handleCellDoubleClick}
+    />
   );
 };
