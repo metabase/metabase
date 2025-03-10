@@ -1075,6 +1075,62 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       nameValue: "Negative",
     });
   });
+
+  it("query builder + drills", () => {
+    function setupQuestion({
+      sourceQuestionDetails,
+    }: {
+      sourceQuestionDetails: NativeQuestionDetails;
+    }) {
+      const getTargetQuestionDetails = (
+        cardId: number,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL",
+        query: {
+          "source-table": `card__${cardId}`,
+        },
+        display: "table",
+      });
+
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
+        H.createQuestion(getTargetQuestionDetails(card.id), {
+          wrapId: true,
+        });
+      });
+    }
+
+    function testDrill({
+      value,
+      formattedValue,
+    }: {
+      value: string;
+      formattedValue: string;
+    }) {
+      H.assertQueryBuilderRowCount(3);
+      H.tableInteractive().findByText(formattedValue).click();
+      H.popover().findByText("=").click();
+      H.queryBuilderFiltersPanel()
+        .findByText(`NUMBER is equal to ${value}`)
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(1);
+    }
+
+    cy.log("BIGINT");
+    setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
+    H.visitQuestion("@questionId");
+    testDrill({
+      value: maxBigIntValue,
+      formattedValue: "9,223,372,036,854,775,807",
+    });
+
+    cy.log("DECIMAL");
+    setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
+    H.visitQuestion("@questionId");
+    testDrill({
+      value: negativeDecimalValue,
+      formattedValue: "-9,223,372,036,854,775,809",
+    });
+  });
 });
 
 function setupTables() {
