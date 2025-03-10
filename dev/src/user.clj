@@ -56,8 +56,6 @@
 
   Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`"
   [& _args]
-  (future (nrepl.cmdline/-main "-p" "50605"))
-  (dev)
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (eval "(start!)")
+  (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
+  ((requiring-resolve 'dev/start!))
   (deref (promise)))

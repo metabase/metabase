@@ -279,7 +279,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".test-TableInteractive-cellWrapper--firstColumn")
-      .eq(1) // the second cell from the top in the first column (the first one is a header cell)
+      .eq(0)
       .findByText("1");
   });
 

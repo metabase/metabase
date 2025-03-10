@@ -533,7 +533,7 @@ describe("issue 17514", () => {
       cy.wait("@cardQuery");
 
       cy.findByTestId("parameter-value-widget-target")
-        .findByText("Previous 30 Years")
+        .findByText("Previous 30 years")
         .click();
 
       cy.findByTestId("parameter-value-dropdown")
@@ -548,7 +548,7 @@ describe("issue 17514", () => {
         .findByText("Showing first 2,000 rows")
         .should("be.visible");
 
-      cy.findByTestId("query-builder-main").findByText("79.37").click();
+      cy.findByTestId("query-builder-main").findByText("76.83").click();
 
       cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });

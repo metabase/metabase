@@ -235,16 +235,22 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
+    H.tableHeaderColumn("Sum of Subtotal")
+      .closest("[data-testid=header-cell]")
+      .findByLabelText("chevrondown icon");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
-    cy.get("@sortedCell").its("length").should("eq", 1);
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 1);
 
     cy.log("Remove the sorted metric");
     removeMetricFromSidebar("Sum of Subtotal");
 
     cy.log('"Sum of Total" should not be sorted, nor any other header cell');
-    cy.get("@sortedCell").should("not.exist");
+    H.tableInteractiveHeader("header-sort-indicator")
+      .findAllByTestId("header-sort-indicator")
+      .should("have.length", 0);
 
     cy.findAllByTestId("header-cell")
       .should("have.length", 3)

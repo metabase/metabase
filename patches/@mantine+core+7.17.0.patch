@@ -1,0 +1,65 @@
+diff --git a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
+index d3390e1..6157be7 100644
+--- a/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
++++ b/node_modules/@mantine/core/cjs/core/MantineProvider/MantineProvider.cjs
+@@ -13,7 +13,7 @@ var suppressNextjsWarning = require('./suppress-nextjs-warning.cjs');
+ var useProviderColorScheme = require('./use-mantine-color-scheme/use-provider-color-scheme.cjs');
+ var useRespectReduceMotion = require('./use-respect-reduce-motion/use-respect-reduce-motion.cjs');
+ 
+-suppressNextjsWarning.suppressNextjsWarning();
++// suppressNextjsWarning.suppressNextjsWarning();
+ function MantineProvider({
+   theme,
+   children,
+diff --git a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
+index 79fe05c..29f5854 100644
+--- a/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
++++ b/node_modules/@mantine/core/esm/core/MantineProvider/MantineProvider.mjs
+@@ -11,7 +11,7 @@ import { suppressNextjsWarning } from './suppress-nextjs-warning.mjs';
+ import { useProviderColorScheme } from './use-mantine-color-scheme/use-provider-color-scheme.mjs';
+ import { useRespectReduceMotion } from './use-respect-reduce-motion/use-respect-reduce-motion.mjs';
+ 
+-suppressNextjsWarning();
++// suppressNextjsWarning();
+ function MantineProvider({
+   theme,
+   children,
+diff --git a/node_modules/@mantine/core/styles.css b/node_modules/@mantine/core/styles.css
+index 2bd5e32..2a011a3 100644
+--- a/node_modules/@mantine/core/styles.css
++++ b/node_modules/@mantine/core/styles.css
+@@ -1,34 +1,4 @@
+-/* ----- CSS reset ----- */
+-*,
+-*::before,
+-*::after {
+-  box-sizing: border-box;
+-}
+-
+-input,
+-button,
+-textarea,
+-select {
+-  font: inherit;
+-}
+ 
+-button,
+-select {
+-  text-transform: none;
+-}
+-
+-/* ----- Global styles ----- */
+-body {
+-  margin: 0;
+-  font-family: var(--mantine-font-family);
+-  font-size: var(--mantine-font-size-md);
+-  line-height: var(--mantine-line-height);
+-  background-color: var(--mantine-color-body);
+-  color: var(--mantine-color-text);
+-
+-  -webkit-font-smoothing: var(--mantine-webkit-font-smoothing);
+-  -moz-osx-font-smoothing: var(--mantine-moz-font-smoothing);
+-}
+ @media screen and (max-device-width: 31.25em) {
+ body {
+     -webkit-text-size-adjust: 100%

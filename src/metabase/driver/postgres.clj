@@ -623,8 +623,7 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
-  (let [interval (h2x/- (date-trunc :day y) (date-trunc :day x))]
-    (h2x/->integer (extract :day interval))))
+  (h2x/- (h2x/cast :DATE y) (h2x/cast :DATE x)))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]

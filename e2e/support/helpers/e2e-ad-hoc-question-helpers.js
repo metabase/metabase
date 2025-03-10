@@ -73,6 +73,7 @@ function newNativeCardHash(
     query = "",
     collection_id = null,
     display = "scalar",
+    visualization_settings = {},
   } = {},
 ) {
   const card = {
@@ -84,7 +85,7 @@ function newNativeCardHash(
     },
     display,
     parameters: [],
-    visualization_settings: {},
+    visualization_settings,
     type,
   };
 
@@ -139,8 +140,11 @@ export function visitQuestionAdhoc(
   runQueryIfNeeded(question, autorun);
 
   if (mode !== "notebook" && !skipWaiting) {
-    cy.wait("@" + alias).then(xhr => callback && callback(xhr));
+    return cy.wait("@" + alias).then(xhr => callback && callback(xhr));
   }
+
+  // Ensure chainability
+  return cy.wrap(null);
 }
 
 /**

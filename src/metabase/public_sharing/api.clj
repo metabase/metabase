@@ -388,7 +388,7 @@
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api.macros/defendpoint :get "/oembed"
-  "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
+  "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
    {:keys [url maxheight maxwidth]}
    :- [:map
@@ -738,7 +738,8 @@
   (validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)]
-    (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
 (api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
@@ -756,7 +757,8 @@
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
         parameters   (json/decode+kw parameters)]
-    (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
+    (request/as-admin
+      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
