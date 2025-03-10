@@ -240,8 +240,6 @@
 
 ;;;; Rejection of incompatible metrics ===============================================================================
 
-;; TODO: Do we have something else?
-;; TODO: Where this should live?
 (def ^:private commutative-ops
   #{:+
     :*
@@ -256,17 +254,16 @@
   [f1 f2]
   (let [f1-args (vec (nthnext f1 2))
         f2-args (vec (nthnext f2 2))]
-    (loop [f1-indices (range (count f1-args))
-           f2-indices (range (count f2-args))]
+    (loop [f1-indices (vec (range (count f1-args)))
+           f2-indices (set (range (count f2-args)))]
       (cond
         (and (empty? f1-indices)
              (empty? f2-indices))
         true
 
-        ;; I believe the following is redundant! This function is inner to equal-filter?
-        ;; (or (empty? f1-indices)
-        ;;     (empty? f2-indices))
-        ;; false
+        (or (empty? f1-indices)
+            (empty? f2-indices))
+        false
 
         :else
         (let [f1-index (first f1-indices)
@@ -299,37 +296,6 @@
       :else
       false)))
 
-#_(defn- filters-for-subset?
-    "Check whether filter clause `f1` filters for subset of rows that filter clause `f2` filters for."
-    [f1 f2]
-    (every? #(m/find-first (partial equal-filter? %) f1) f2))
-
-;; Later will decide whether to go with this implementation
-#_(defn- assert-compatible-stage-filters
-    "Assert that stage filteres are compatible with filterse of every referenced metric. Returns nil."
-    [query stage-number metrics]
-    (let [query-filters (lib/filters query stage-number)]
-      (when (seq query-filters)
-        (loop [metric-ids (keys metrics)]
-          (when (seq metric-ids)
-            (let [metric-id (first metric-ids)
-                  metric-query (get metrics metric-id)
-                  metric-filters (lib/filters metric-query)]
-              (when-not (filters-for-subset? query-filters metric-filters)
-                (throw (ex-info (tru "Stage filter is not compatible with metric {0} filter."
-                                     metric-id)
-                                {:stage-filters query-filters
-                                 :metric-filters metric-filters}))))
-            (recur (rest metric-ids))))))
-    nil)
-
-;; list of aggregation operators
-
-;; (disj (set (metabase.lib.hierarchy/descendants :metabase.lib.schema.aggregation/aggregation-clause-tag))
-;;                                                :metric :offset)
-;; =>
-;;
-;; TODO: this should be turned into using the schema, and the following fuction should be adjusted.
 (def ^:private forbidden-aggregations #{:min
                                         :stddev
                                         :count-where
@@ -352,8 +318,8 @@
     (or (and (forbidden-aggregations tag) aggregation)
         (some non-metric-aggregation args))))
 
-(defn- assert-compatible-stage-filters-NUKE-THOSE-AGS
-  "Assert that stage filteres are compatible with filterse of every referenced metric. Returns nil."
+(defn- assert-compatible-stage-filters
+  "Assert that stage filters are compatible with filters of every referenced metric. Returns nil."
   [query stage-number metrics]
   (when-some [non-metric-ag (m/find-first non-metric-aggregation (lib/aggregations query stage-number))]
     (when-some [metric-id  (some (fn [[id metric-query]]
@@ -481,8 +447,7 @@
                                              (lib/query query))))]
           (assert-compatible-joins refq refq-stage-number metrics)
           (assert-compatible-filters-in-metrics metrics)
-          (assert-compatible-stage-filters-NUKE-THOSE-AGS refq refq-stage-number metrics)
-          #_(assert-compatible-stage-filters refq refq-stage-number metrics)))))
+          (assert-compatible-stage-filters refq refq-stage-number metrics)))))
   nil)
 
 (defn- assert-compatible-metrics
