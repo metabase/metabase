@@ -20,9 +20,13 @@ const decimalPkTableName = "decimal_pk_table";
 
 describe("scenarios > filters > bigint (metabase#5816)", () => {
   const minBigIntValue = "-9223372036854775808";
+  const formattedMinBigIntValue = "-9,223,372,036,854,775,808";
   const maxBigIntValue = "9223372036854775807";
+  const formattedMaxBigIntValue = "9,223,372,036,854,775,807";
   const negativeDecimalValue = "-9223372036854775809";
+  const formattedNegativeDecimalValue = "-9,223,372,036,854,775,809";
   const positiveDecimalValue = "9223372036854775808";
+  const formattedPositiveDecimalValue = "9,223,372,036,854,775,808";
 
   const bigIntQuestionDetails: NativeQuestionDetails = {
     name: "SQL NUMBER",
@@ -621,8 +625,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: minBigIntValue,
         maxValue: maxBigIntValue,
-        formattedMinValue: "-9,223,372,036,854,775,808",
-        formattedMaxValue: "9,223,372,036,854,775,807",
+        formattedMinValue: formattedMinBigIntValue,
+        formattedMaxValue: formattedMaxBigIntValue,
         withDrillThru,
       });
     }
@@ -633,8 +637,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: negativeDecimalValue,
         maxValue: positiveDecimalValue,
-        formattedMinValue: "-9,223,372,036,854,775,809",
-        formattedMaxValue: "9,223,372,036,854,775,808",
+        formattedMinValue: formattedNegativeDecimalValue,
+        formattedMaxValue: formattedPositiveDecimalValue,
         withDrillThru,
       });
     }
@@ -1119,14 +1123,115 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
     setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
     testDrill({
       value: maxBigIntValue,
-      formattedValue: "9,223,372,036,854,775,807",
+      formattedValue: formattedMaxBigIntValue,
     });
 
     cy.log("DECIMAL");
     setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
     testDrill({
       value: negativeDecimalValue,
-      formattedValue: "-9,223,372,036,854,775,809",
+      formattedValue: formattedNegativeDecimalValue,
+    });
+  });
+
+  it.skip("query builder + export", { tags: "@external" }, () => {
+    function setupTableQuestion({ tableName }: { tableName: string }) {
+      const getTargetQuestionDetails = (
+        tableId: TableId,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL",
+        database: WRITABLE_DB_ID,
+        query: {
+          "source-table": tableId,
+        },
+        display: "table",
+      });
+
+      getTableId(tableName).then(tableId => {
+        H.createQuestion(getTargetQuestionDetails(tableId), {
+          wrapId: true,
+          visitQuestion: true,
+        });
+      });
+    }
+
+    function setupNestedQuestion({
+      sourceQuestionDetails,
+    }: {
+      sourceQuestionDetails: NativeQuestionDetails;
+    }) {
+      const getTargetQuestionDetails = (
+        cardId: CardId,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL",
+        query: {
+          "source-table": `card__${cardId}`,
+        },
+        display: "table",
+      });
+
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
+        H.createQuestion(getTargetQuestionDetails(card.id), {
+          wrapId: true,
+          visitQuestion: true,
+        });
+      });
+    }
+
+    function testExport({
+      columnName,
+      formattedMinValue,
+      formattedMaxValue,
+    }: {
+      columnName: string;
+      formattedMinValue: string;
+      formattedMaxValue: string;
+    }) {
+      cy.get("@questionId").then(questionId => {
+        H.downloadAndAssert(
+          {
+            fileType: "xlsx",
+            questionId: Number(questionId),
+            isDashboard: false,
+          },
+          (sheet: any) => {
+            expect(sheet["A1"].v).to.eq(columnName);
+            expect(String(sheet["A2"].v)).to.eq(formattedMinValue);
+            expect(String(sheet["A4"].v)).to.eq(formattedMaxValue);
+          },
+        );
+      });
+    }
+
+    cy.log("setup");
+    setupTables();
+
+    cy.log("BIGINT");
+    setupTableQuestion({ tableName: bigIntPkTableName });
+    testExport({
+      columnName: "ID",
+      formattedMinValue: minBigIntValue,
+      formattedMaxValue: maxBigIntValue,
+    });
+    setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
+    testExport({
+      columnName: "NUMBER",
+      formattedMinValue: formattedMinBigIntValue,
+      formattedMaxValue: formattedMaxBigIntValue,
+    });
+
+    cy.log("DECIMAL");
+    setupTableQuestion({ tableName: decimalPkTableName });
+    testExport({
+      columnName: "ID",
+      formattedMinValue: negativeDecimalValue,
+      formattedMaxValue: positiveDecimalValue,
+    });
+    setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
+    testExport({
+      columnName: "NUMBER",
+      formattedMinValue: formattedNegativeDecimalValue,
+      formattedMaxValue: formattedPositiveDecimalValue,
     });
   });
 
@@ -1230,8 +1335,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       baseType: "type/BigInteger",
     });
     testClickBehavior({
-      formattedMinValue: "-9,223,372,036,854,775,808",
-      formattedMaxValue: "9,223,372,036,854,775,807",
+      formattedMinValue: formattedMinBigIntValue,
+      formattedMaxValue: formattedMaxBigIntValue,
     });
 
     cy.log("DECIMAL");
@@ -1240,8 +1345,8 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       baseType: "type/Decimal",
     });
     testClickBehavior({
-      formattedMinValue: "-9,223,372,036,854,775,809",
-      formattedMaxValue: "9,223,372,036,854,775,808",
+      formattedMinValue: formattedNegativeDecimalValue,
+      formattedMaxValue: formattedPositiveDecimalValue,
     });
   });
 });
