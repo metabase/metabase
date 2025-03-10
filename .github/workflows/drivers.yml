@@ -975,102 +975,114 @@ jobs:
       CI: 'true'
       DRIVERS: clickhouse
     name: Clickhouse
-    services:
-      clickhouse:
-        image: 'clickhouse/clickhouse-server:24.7-alpine'
-        # container_name: 'metabase-driver-clickhouse-server'
-        # hostname: clickhouse
-        ports:
-          - '8123:8123'
-          - '9000:9000'
-        # ulimits:
-        #   nofile:
-        #     soft: 262144
-        #     hard: 262144
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql'
-      clickhouse_tls:
-        image: 'clickhouse_tls'
-        # build:
-        #   context: '${{ github.workspace }}/modules/drivers/clickhouse/'
-        #   dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
-        # # container_name: 'metabase-driver-clickhouse-server-tls'
-        ports:
-          - '8443:8443'
-          - '9440:9440'
-        # ulimits:
-        #   nofile:
-        #     soft: 262144
-        #     hard: 262144
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'
-        # hostname: server.clickhouseconnect.test
-      clickhouse_older_version:
-        image: 'clickhouse/clickhouse-server:23.3-alpine'
-        # container_name: 'metabase-driver-clickhouse-server-older-version'
-        # hostname: clickhouse.older
-        ports:
-          - '8124:8123'
-          - '9001:9000'
-        # ulimits:
-        #   nofile:
-        #     soft: 262144
-        #     hard: 262144
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
-      clickhouse_cluster_node1:
-        image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
-        # ulimits:
-        #   nofile:
-        #     soft: 262144
-        #     hard: 262144
-        # hostname: clickhouse1
-        # container_name: metabase-driver-clickhouse-cluster-node-1
-        ports:
-          - '8125:8123'
-          - '9002:9000'
-          - '9181:9181'
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
-      clickhouse_cluster_node2:
-        image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
-        # ulimits:
-        #   nofile:
-        #     soft: 262144
-        #     hard: 262144
-        # hostname: clickhouse2
-        # container_name: metabase-driver-clickhouse-cluster-node-2
-        ports:
-          - '8126:8123'
-          - '9003:9000'
-          - '9182:9181'
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
-      nginx:
-        image: 'nginx:1.23.1-alpine'
-        # hostname: nginx
-        ports:
-          - '8127:8123'
-        volumes:
-          - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
-        # container_name: metabase-nginx
+    # services:
+    #   clickhouse:
+    #     image: 'clickhouse/clickhouse-server:24.7-alpine'
+    #     # container_name: 'metabase-driver-clickhouse-server'
+    #     # hostname: clickhouse
+    #     ports:
+    #       - '8123:8123'
+    #       - '9000:9000'
+    #     # ulimits:
+    #     #   nofile:
+    #     #     soft: 262144
+    #     #     hard: 262144
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql'
+    #   clickhouse_tls:
+    #     image: 'clickhouse_tls'
+    #     # build:
+    #     #   context: '${{ github.workspace }}/modules/drivers/clickhouse/'
+    #     #   dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
+    #     # # container_name: 'metabase-driver-clickhouse-server-tls'
+    #     ports:
+    #       - '8443:8443'
+    #       - '9440:9440'
+    #     # ulimits:
+    #     #   nofile:
+    #     #     soft: 262144
+    #     #     hard: 262144
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'
+    #     # hostname: server.clickhouseconnect.test
+    #   clickhouse_older_version:
+    #     image: 'clickhouse/clickhouse-server:23.3-alpine'
+    #     # container_name: 'metabase-driver-clickhouse-server-older-version'
+    #     # hostname: clickhouse.older
+    #     ports:
+    #       - '8124:8123'
+    #       - '9001:9000'
+    #     # ulimits:
+    #     #   nofile:
+    #     #     soft: 262144
+    #     #     hard: 262144
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
+    #   clickhouse_cluster_node1:
+    #     image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
+    #     # ulimits:
+    #     #   nofile:
+    #     #     soft: 262144
+    #     #     hard: 262144
+    #     # hostname: clickhouse1
+    #     # container_name: metabase-driver-clickhouse-cluster-node-1
+    #     ports:
+    #       - '8125:8123'
+    #       - '9002:9000'
+    #       - '9181:9181'
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+    #   clickhouse_cluster_node2:
+    #     image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
+    #     # ulimits:
+    #     #   nofile:
+    #     #     soft: 262144
+    #     #     hard: 262144
+    #     # hostname: clickhouse2
+    #     # container_name: metabase-driver-clickhouse-cluster-node-2
+    #     ports:
+    #       - '8126:8123'
+    #       - '9003:9000'
+    #       - '9182:9181'
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+    #   nginx:
+    #     image: 'nginx:1.23.1-alpine'
+    #     # hostname: nginx
+    #     ports:
+    #       - '8127:8123'
+    #     volumes:
+    #       - '${{ github.workspace }}/modules/drivers/clickhouse/.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
+    #     # container_name: metabase-nginx
     steps:
     - uses: actions/checkout@v4
-    # Add the build step for clickhouse_tls here
-    - name: Build ClickHouse TLS Image
-      run: |
-        docker build -t clickhouse_tls -f ${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/Dockerfile .
+    # # Add the build step for clickhouse_tls here
+    # - name: Build ClickHouse TLS Image
+    #   run: |
+    #     docker build -t clickhouse_tls -f ${{ github.workspace }}/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/Dockerfile .
     - name: Add ClickHouse TLS instance to /etc/hosts
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+    - name: Start ClickHouse in Docker
+      uses: hoverkraft-tech/compose-action@v2.0.0
+      with:
+        compose-file: "${{ github.workspace }}/modules/drivers/clickhouse/docker-compose.yml"
+        down-flags: "--volumes"
+        services: |
+          clickhouse
+          clickhouse_tls
+          clickhouse_older_version
+          clickhouse_cluster_node1
+          clickhouse_cluster_node2
+          nginx
     - name: Test Clickhouse driver
       uses: ./.github/actions/test-driver
       with:
