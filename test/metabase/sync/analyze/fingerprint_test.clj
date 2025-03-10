@@ -283,11 +283,12 @@
 (deftest fingerprint-failure-test
   (testing "if fingerprinting fails, the exception should be caught and included in the stats map"
     (mt/test-drivers (mt/normal-drivers)
-      (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw (Exception. "expected")))
-                    sync.fingerprint/*refingerprint?* true]
-        (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
-                       :throwable #(instance? Exception %))
-                (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues)))))))))
+      (let [mock-ex (Exception. "expected")]
+        (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw mock-ex))
+                      sync.fingerprint/*refingerprint?* true]
+          (is (= (assoc (sync.fingerprint/empty-stats-map 0)
+                        :throwable mock-ex)
+                 (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (data/id :venues))))))))))
 
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
@@ -340,5 +341,5 @@
                       sync.fingerprint/*refingerprint?* true]
           (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
                          :throwable #(instance? CannotAcquireResourceException %))
-                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (fn [_ _] (log/debug _)))))
+                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))
