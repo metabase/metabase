@@ -318,8 +318,9 @@
     (or (and (forbidden-aggregations tag) aggregation)
         (some non-metric-aggregation args))))
 
-(defn- assert-compatible-stage-filters
-  "Assert that stage filters are compatible with filters of every referenced metric. Returns nil."
+(defn- assert-compatible-stage-aggregations
+  "Assert that stage, specifically its aggregations, are compatible with referenced metrics. If there is aggregating
+  function called on referencing stage directly, referenced metrics can not contain any filters."
   [query stage-number metrics]
   (when-some [non-metric-ag (m/find-first non-metric-aggregation (lib/aggregations query stage-number))]
     (when-some [metric-id  (some (fn [[id metric-query]]
@@ -447,7 +448,7 @@
                                              (lib/query query))))]
           (assert-compatible-joins refq refq-stage-number metrics)
           (assert-compatible-filters-in-metrics metrics)
-          (assert-compatible-stage-filters refq refq-stage-number metrics)))))
+          (assert-compatible-stage-aggregations refq refq-stage-number metrics)))))
   nil)
 
 (defn- assert-compatible-metrics
