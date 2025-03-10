@@ -241,10 +241,15 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const validationRegex = /(https|http)\:\/\/drive\.google\.com\/.+/;
+    const folderValidationRegex = /(https|http)\:\/\/drive\.google\.com\/.+/;
+    const sheetValidationRegex =
+      /(https|http)\:\/\/docs\.google\.com\/spreadsheets\/.+/;
 
-    if (!validationRegex.test(folderLink.trim())) {
-      setErrorMessage(t`Invalid Google Drive folder link`);
+    if (
+      !folderValidationRegex.test(folderLink.trim()) &&
+      !sheetValidationRegex.test(folderLink.trim())
+    ) {
+      setErrorMessage(t`Invalid Google link`);
       return;
     }
 
