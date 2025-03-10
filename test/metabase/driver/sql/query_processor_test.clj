@@ -1139,14 +1139,15 @@
 
 (deftest ^:parallel query-with-literal-custom-expression-test
   (testing "literal custom expression support"
-    (is (= [[1 "" "foo" 0 12345 true false]
-            [2 "" "foo" 0 12345 true false]]
+    (is (= [[1 "" "foo" 0 12345 1.234M true false]
+            [2 "" "foo" 0 12345 1.234M true false]]
            (mt/rows
             (mt/run-mbql-query orders
               {:expressions {"empty"  [:value ""    nil]
                              "foo"    [:value "foo" nil]
                              "zero"   [:value 0     nil]
                              "12345"  [:value 12345 nil]
+                             "float"  [:value 1.234 nil]
                              "True"   [:value true  nil]
                              "False"  [:value false nil]}
                :fields [$id
@@ -1154,6 +1155,8 @@
                         [:expression "foo"   nil]
                         [:expression "zero"  nil]
                         [:expression "12345" nil]
+                        [:expression "float" nil]
                         [:expression "True"  nil]
-                        [:expression "False" nil]]
+                        [:expression "False" nil]
+                        [:expression "date"  nil]]
                :limit 2}))))))
