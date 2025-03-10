@@ -108,7 +108,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
+        # if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
