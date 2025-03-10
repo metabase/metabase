@@ -322,6 +322,7 @@ jobs:
       - name: Check out branch to prepare for a SDK version bump PR
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: ${{ inputs.branch}}
 
@@ -360,17 +361,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
       - name: Edit PR adding useful information (using Metabase bot app)
         run: |
           gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
         run: |
@@ -414,16 +409,21 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ inputs.branch }}
 
-      # Lightweight tags don't need committer name and email
+      - name: Setup git user
+        run: |
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
+
       - name: Create and push SDK version tag
         run: |
-          git tag ${{ env.tag }}
+          git tag -a ${{ env.tag }} -m "Tagging SDK version ${{ env.tag }}"
           git push origin ${{ env.tag }}
 
       - name: Create and push SDK stable version tag
         if: ${{ startsWith(inputs.branch, 'release-x.') }}
         run: |
-          git tag -f ${{ env.stable_tag }}
+          git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
           git push origin -f ${{ env.stable_tag }}
