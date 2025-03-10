@@ -23,7 +23,7 @@ export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
 
 export const MISSING_REACT_DEPENDENCY = `
   Your package.json file does not contain a dependency for React.
-  Please make sure your package.json file contains a dependency for React 18.
+  Please make sure your package.json file contains a dependency for React 17 - 19.
 `;
 
 export const UNSUPPORTED_REACT_VERSION = `
