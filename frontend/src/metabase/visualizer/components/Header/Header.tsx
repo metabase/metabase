@@ -22,12 +22,14 @@ interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
+  className?: string;
 }
 
 export function Header({
   onSave,
   saveLabel,
   allowSaveWhenPristine = false,
+  className,
 }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
@@ -49,7 +51,7 @@ export function Header({
   );
 
   return (
-    <Flex p="md" pb="sm" align="center">
+    <Flex p="md" pb="sm" align="center" className={className}>
       <ActionIcon onClick={() => dispatch(toggleFullscreenMode())}>
         <Icon name="sidebar_open" />
       </ActionIcon>
