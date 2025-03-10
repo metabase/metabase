@@ -199,8 +199,11 @@ export const CustomExpressionEditor = {
     cy.findByTestId("expression-editor").click("bottomRight", { force: true });
     return CustomExpressionEditor;
   },
+  formatButton() {
+    return cy.findByLabelText("Auto-format");
+  },
   format() {
-    cy.findByLabelText("Auto-format").click();
+    CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },
   selectAll() {

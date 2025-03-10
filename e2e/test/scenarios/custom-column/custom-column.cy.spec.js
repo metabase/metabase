@@ -716,8 +716,13 @@ describe("scenarios > question > custom column", () => {
     H.enterCustomColumnDetails({
       formula: "concat('foo', ",
     });
+    H.CustomExpressionEditor.formatButton().should("not.exist");
+  });
 
-    cy.findByLabelText("Format").should("be.disabled");
+  it("should show the format button when the expression editor is empty", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    H.CustomExpressionEditor.formatButton().should("not.exist");
   });
 
   it("should not allow saving the expression when it is invalid", () => {
