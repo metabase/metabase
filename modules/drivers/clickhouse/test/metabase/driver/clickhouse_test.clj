@@ -163,7 +163,6 @@
        (testing (format "User `%s` can connect to `%s` with `%s`" username database password)
          (let [details (merge {:user username :password password}
                               (tx/dbdef->connection-details :clickhouse :db {:database-name database}))]
-           (tap> (pr-str details))
            (is (true? (driver/can-connect? :clickhouse details)))))))))
 
 (deftest clickhouse-qp-extract-datetime-timezone

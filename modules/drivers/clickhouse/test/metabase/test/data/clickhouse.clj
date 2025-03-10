@@ -1,7 +1,6 @@
 (ns metabase.test.data.clickhouse
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
   (:require
-   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -15,7 +14,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.test-util :as qp.test]
-   [metabase.sync.core :as sync]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -23,10 +21,7 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.sql Connection)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -192,29 +187,6 @@
   [query-result]
   (map #(drop 1 %) (qp.test/rows query-result)))
 
-#_(def ^:private test-db-initialized? (atom false))
-#_(defn create-test-db!
-    "Create a ClickHouse database called `metabase_test` and initialize some test data"
-    [f]
-    (when (not @test-db-initialized?)
-      (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})
-            db (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
-      ;; (println "### Executing create-test-db! with details:" details)
-        (sql-jdbc.execute/do-with-connection-with-options
-         :clickhouse db nil
-         (fn [^Connection _]
-           (let [raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
-                 statements (as-> raw-statements s
-                              (str/split s #";")
-                              (map str/trim s)
-                              (filter seq s))]
-          ;; (println "## Executing statements " statements)
-             (jdbc/db-do-commands db false statements)
-             (reset! test-db-initialized? true))))
-      ;; (println "### Done with executing create-test-db! with details:" details)
-        ))
-    (f))
-
 #_{:clj-kondo/ignore [:warn-on-reflection]}
 (defn exec-statements
   ([statements details-map]
@@ -234,16 +206,6 @@
               (doseq [[k v] clickhouse-settings] (.setOption query-settings k v)))
             (.setDefaultQuerySettings clickhouse-conn query-settings)
             (.execute jdbcStmt statement))))))))
-
-#_(defn do-with-test-db!
-    "Execute a test function using the test dataset"
-    [f]
-    (t2.with-temp/with-temp
-      [:model/Database database
-       {:engine :clickhouse
-        :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
-      (sync/sync-db-metadata! database)
-      (f database)))
 
 (defmethod tx/dataset-already-loaded? :clickhouse
   [driver dbdef]

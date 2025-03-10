@@ -8,7 +8,6 @@
    [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.clickhouse :as ctd]
    [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
