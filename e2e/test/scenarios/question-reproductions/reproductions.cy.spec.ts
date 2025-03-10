@@ -340,3 +340,49 @@ describe("issue 53404", () => {
     });
   });
 });
+
+describe("issue 53170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it(
+    "should correctly position the add column popover (metabase#53170)",
+    { viewportWidth: 480, viewportHeight: 800 },
+    () => {
+      H.openOrdersTable();
+      cy.findByLabelText("Add column").click();
+      H.popover().within(() => {
+        cy.findByText("Combine columns").click();
+        cy.button("Done").then($button => {
+          const buttonRight = $button[0].getBoundingClientRect().right;
+          cy.window().its("innerWidth").should("be.gt", buttonRight);
+        });
+      });
+    },
+  );
+});
+
+describe("issue 54817", () => {
+  const placeholder = "Search for a column…";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to navigate to the search input in the filter modal via keyboard (metabase#54817)", () => {
+    H.openOrdersTable();
+    H.filter();
+    H.modal().within(() => {
+      cy.findByPlaceholderText(placeholder).should("not.be.focused");
+      cy.realPress(["Tab"]);
+      cy.findByPlaceholderText(placeholder).should("be.focused");
+      cy.realPress(["Tab"]);
+      cy.findByPlaceholderText(placeholder).should("not.be.focused");
+      cy.realPress(["Shift", "Tab"]);
+      cy.findByPlaceholderText(placeholder).should("be.focused");
+    });
+  });
+});
