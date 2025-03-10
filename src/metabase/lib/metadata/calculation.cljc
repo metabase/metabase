@@ -506,7 +506,11 @@
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
-       (returned-columns-method query stage-number x options)))))
+       (u/prog1 (returned-columns-method query stage-number x options)
+         (lib.metadata.ident/assert-idents-present! <> {:query        query
+                                                        :stage-number stage-number
+                                                        :target       x
+                                                        :options      options}))))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
@@ -590,7 +594,11 @@
     x
     options        :- [:maybe VisibleColumnsOptions]]
    (let [options (merge (default-visible-columns-options) options)]
-     (visible-columns-method query stage-number x options))))
+     (u/prog1 (visible-columns-method query stage-number x options)
+       (lib.metadata.ident/assert-idents-present! <> {:query        query
+                                                      :stage-number stage-number
+                                                      :target       x
+                                                      :options      options})))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."

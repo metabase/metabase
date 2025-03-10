@@ -68,7 +68,8 @@
                                       (when (or (:source-card  stage)
                                                 (:source-table stage)
                                                 (:expressions  stage)
-                                                (:fields       stage))
+                                                (:fields       stage)
+                                                (pos-int? previous-stage-number))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
                                       (log/warnf "Cannot resolve column %s: stage has no metadata"
                                                  (pr-str column-name)))]
@@ -177,7 +178,9 @@
   [query
    stage-number
    metadata
-   [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+   [_tag {source-uuid :lib/uuid
+          :keys [base-type binning effective-type ident join-alias source-field temporal-unit], :as opts}
+    :as field-ref]]
   (let [metadata (merge
                   {:lib/type        :metadata/column}
                   metadata
@@ -190,7 +193,8 @@
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
       source-field   (assoc :fk-field-id source-field)
-      join-alias     (lib.join/with-join-alias join-alias))))
+      join-alias     (lib.join/with-join-alias join-alias)
+      ident          (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
