@@ -1,0 +1,19 @@
+.comboboxOption {
+  padding: 0.75rem;
+
+  &:not([data-combobox-selected]):hover {
+    background-color: var(--mb-color-bg-medium);
+  }
+}
+
+.input {
+  transition: none;
+  outline: 2px solid var(--mb-base-color-blue-50);
+  border-color: transparent;
+  border-radius: 0.25rem;
+  box-sizing: border-box;
+
+  /* needed to avoid outline truncation for a focused cell */
+  z-index: 5;
+  position: relative;
+}

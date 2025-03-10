@@ -9,7 +9,7 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
-import { EditingBodyCell } from "metabase-enterprise/data_editing/tables/EditingBodyCell";
+import { EditingBodyCellConditional } from "metabase-enterprise/data_editing/tables/EditingBodyCell";
 import { useTableEditing } from "metabase-enterprise/data_editing/tables/use-table-editing";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
@@ -47,7 +47,7 @@ export const TableDataView = ({
         formatter: value => formatValue(value, { column }),
         wrap: false,
         editingCell: cellContext => (
-          <EditingBodyCell
+          <EditingBodyCellConditional
             cellContext={cellContext}
             columns={cols}
             onCellValueUpdate={onCellValueUpdate}
@@ -85,9 +85,13 @@ export const TableDataView = ({
         cellId: string;
       },
     ) => {
-      onCellClickToEdit(cellId);
+      // Prevents event from bubbling up inside editing cell
+      // Otherwise requires special handling in EditingBodyCell
+      if (editingCellId !== cellId) {
+        onCellClickToEdit(cellId);
+      }
     },
-    [onCellClickToEdit],
+    [onCellClickToEdit, editingCellId],
   );
 
   return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
