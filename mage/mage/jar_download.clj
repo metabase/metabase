@@ -36,6 +36,7 @@
   (try
     (println (str "Downloading from: " (url version)
                   "\n              to: " (dir->file version dir) " ..."))
+    (download version dir)
     (println (str "Downloaded " version ".jar to " dir))
     (catch Exception e
       (println (str "Error downloading version " version ". Do both the directory and version exist?"))
