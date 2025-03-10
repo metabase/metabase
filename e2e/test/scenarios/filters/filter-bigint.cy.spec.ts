@@ -5,10 +5,12 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type {
+  CardId,
   DashboardParameterMapping,
   Parameter,
   Table,
   TableId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -60,7 +62,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       sourceQuestionDetails: NativeQuestionDetails;
     }) {
       const getTargetQuestionDetails = (
-        cardId: number,
+        cardId: CardId,
       ): StructuredQuestionDetails => ({
         name: "MBQL",
         query: {
@@ -260,7 +262,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       });
 
       const getParameterMapping = (
-        cardId: number,
+        cardId: CardId,
         fieldId: number,
       ): DashboardParameterMapping => ({
         parameter_id: parameterDetails.id,
@@ -424,7 +426,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       };
 
       const getTargetQuestionDetails = (
-        cardId: number,
+        cardId: CardId,
       ): StructuredQuestionDetails => ({
         name: "MBQL",
         query: {
@@ -436,7 +438,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       const getParameterMapping = (
         parameterId: string,
-        cardId: number,
+        cardId: CardId,
       ): DashboardParameterMapping => ({
         parameter_id: parameterId,
         card_id: cardId,
@@ -673,7 +675,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       sourceQuestionDetails: NativeQuestionDetails;
     }) {
       const getTargetQuestionDetails = (
-        cardId: number,
+        cardId: CardId,
       ): NativeQuestionDetails => {
         const cardTagName = `#${cardId}-sql-number`;
         const cardTagDisplayName = `#${cardId} Sql Number`;
@@ -798,7 +800,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       };
 
       const getTargetQuestionDetails = (
-        cardId: number,
+        cardId: CardId,
       ): NativeQuestionDetails => {
         const cardTagName = `#${cardId}-sql-number`;
         const cardTagDisplayName = `#${cardId} Sql Number`;
@@ -828,7 +830,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       };
 
       const getParameterMapping = (
-        cardId: number,
+        cardId: CardId,
       ): DashboardParameterMapping => ({
         card_id: cardId,
         parameter_id: parameterDetails.id,
@@ -1037,7 +1039,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
             database: WRITABLE_DB_ID,
             query: { "source-table": tableId },
           },
-          { wrapId: true },
+          { visitQuestion: true },
         ),
       );
     }
@@ -1061,7 +1063,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     setupQuestion({ tableName: bigIntPkTableName });
-    H.visitQuestion("@questionId");
     testObjectDetail({
       idValue: maxBigIntValue,
       nameValue: "Positive",
@@ -1069,7 +1070,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("DECIMAL");
     setupQuestion({ tableName: decimalPkTableName });
-    H.visitQuestion("@questionId");
     testObjectDetail({
       idValue: negativeDecimalValue,
       nameValue: "Negative",
@@ -1083,7 +1083,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
       sourceQuestionDetails: NativeQuestionDetails;
     }) {
       const getTargetQuestionDetails = (
-        cardId: number,
+        cardId: CardId,
       ): StructuredQuestionDetails => ({
         name: "MBQL",
         query: {
@@ -1094,7 +1094,7 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
       H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
         H.createQuestion(getTargetQuestionDetails(card.id), {
-          wrapId: true,
+          visitQuestion: true,
         });
       });
     }
@@ -1117,7 +1117,6 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("BIGINT");
     setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    H.visitQuestion("@questionId");
     testDrill({
       value: maxBigIntValue,
       formattedValue: "9,223,372,036,854,775,807",
@@ -1125,10 +1124,124 @@ SELECT CAST('${positiveDecimalValue}' AS DECIMAL) AS NUMBER`,
 
     cy.log("DECIMAL");
     setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    H.visitQuestion("@questionId");
     testDrill({
       value: negativeDecimalValue,
       formattedValue: "-9,223,372,036,854,775,809",
+    });
+  });
+
+  it("dashboards + click behavior", () => {
+    function setupDashboard({
+      sourceQuestionDetails,
+      baseType,
+    }: {
+      sourceQuestionDetails: NativeQuestionDetails;
+      baseType: string;
+    }) {
+      const parameterDetails: Parameter = {
+        id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+        type: "number/=",
+        target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
+        name: "Number",
+        slug: "number",
+      };
+
+      const dashboardDetails: DashboardDetails = {
+        parameters: [parameterDetails],
+      };
+
+      const vizSettings: VisualizationSettings = {
+        column_settings: {
+          '["name","NUMBER"]': {
+            click_behavior: {
+              type: "crossfilter",
+              parameterMapping: {
+                [parameterDetails.id]: {
+                  id: parameterDetails.id,
+                  source: { id: "NUMBER", name: "NUMBER", type: "column" },
+                  target: {
+                    id: parameterDetails.id,
+                    type: "parameter",
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const getTargetQuestionDetails = (
+        cardId: CardId,
+      ): StructuredQuestionDetails => ({
+        name: "MBQL",
+        query: {
+          "source-table": `card__${cardId}`,
+        },
+        display: "table",
+      });
+
+      const getParameterMapping = (
+        cardId: CardId,
+      ): DashboardParameterMapping => ({
+        card_id: cardId,
+        parameter_id: parameterDetails.id,
+        target: ["dimension", ["field", "NUMBER", { "base-type": baseType }]],
+      });
+
+      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
+        H.createQuestionAndDashboard({
+          questionDetails: getTargetQuestionDetails(card.id),
+          dashboardDetails,
+        }).then(({ body: dashcard, questionId }) => {
+          const { dashboard_id } = dashcard;
+
+          H.editDashboardCard(dashcard, {
+            parameter_mappings: [getParameterMapping(questionId)],
+            visualization_settings: vizSettings,
+          });
+
+          H.visitDashboard(dashboard_id);
+        });
+      });
+    }
+
+    function testClickBehavior({
+      formattedMinValue,
+      formattedMaxValue,
+    }: {
+      formattedMinValue: string;
+      formattedMaxValue: string;
+    }) {
+      H.getDashboardCard().within(() => {
+        cy.findByText("0").should("be.visible");
+        cy.findByText(formattedMinValue).should("be.visible");
+        cy.findByText(formattedMaxValue).click();
+      });
+      H.filterWidget().findByText(formattedMaxValue).should("be.visible");
+      H.getDashboardCard().within(() => {
+        cy.findByText(formattedMinValue).should("not.exist");
+        cy.findByText(formattedMaxValue).should("be.visible");
+      });
+    }
+
+    cy.log("BIGINT");
+    setupDashboard({
+      sourceQuestionDetails: bigIntQuestionDetails,
+      baseType: "type/BigInteger",
+    });
+    testClickBehavior({
+      formattedMinValue: "-9,223,372,036,854,775,808",
+      formattedMaxValue: "9,223,372,036,854,775,807",
+    });
+
+    cy.log("DECIMAL");
+    setupDashboard({
+      sourceQuestionDetails: decimalQuestionDetails,
+      baseType: "type/Decimal",
+    });
+    testClickBehavior({
+      formattedMinValue: "-9,223,372,036,854,775,809",
+      formattedMaxValue: "9,223,372,036,854,775,808",
     });
   });
 });
