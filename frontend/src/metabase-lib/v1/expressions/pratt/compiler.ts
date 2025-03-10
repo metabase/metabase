@@ -78,9 +78,8 @@ function compileGroup(node: Node, opts: Options): Expression {
 
 function compileString(node: Node): Expression {
   assert(node.type === STRING, "Invalid Node Type");
-  assert(typeof node.token?.text === "string", "No token text");
-  // Slice off the leading and trailing quotes
-  return node.token.text.slice(1, node.token.text.length - 1);
+  assert(typeof node.token?.value === "string", "No token text");
+  return node.token.value;
 }
 
 // ----------------------------------------------------------------
