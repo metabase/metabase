@@ -54,6 +54,10 @@ export function multiLevelPivot(data, settings) {
     ),
   );
 
+  // makeCellBackgroundGetter is wrapped in another callback because `rows` is
+  // computed in CLJS by metabase.pivot.core/get-rows-from-pivot-data, and we
+  // want to avoid an extra round trip to CLJS (this can probably be improved,
+  // maybe by computing background color right before rendering)
   const makeColorGetter = rows => {
     return makeCellBackgroundGetter(
       rows,
