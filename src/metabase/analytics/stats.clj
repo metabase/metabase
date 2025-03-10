@@ -880,20 +880,70 @@
            (walk/stringify-keys)))
      features)))
 
+(defn- bool->default-or-changed
+  [changed]
+  (if changed "changed" "default"))
+
+(defn default-or-changed
+  [setting default]
+  (fn [_]
+    (-> (setting)
+        (= default)
+        bool->default-or-changed)))
+
+(def ^:private snowplow-settings-metric-defs
+  [{:key "is_embedding_app_origin_sdk_set" :value :embedding_app_origin_sdk_set :tags ["embedding"]}
+   {:key "is_embedding_app_origin_interactive_set" :value (comp boolean :embedding_app_origin_interactive_set) :tags ["embedding"]}
+   {:key "application_name" :value (comp bool->default-or-changed :appearance_site_name) :tags ["appearance"]}
+   {:key "help_link" :value (comp name :appearance_help_link) :tags ["appearance"]}
+   {:key "logo" :value (comp bool->default-or-changed :appearance_logo) :tags ["appearance"]}
+   {:key "favicon" :value (comp bool->default-or-changed :appearance_favicon) :tags ["appearance"]}
+   {:key "loading_message" :value (comp bool->default-or-changed :appearance_loading_message) :tags ["appearance"]}
+   {:key "show_metabot_greeting" :value :appearance_metabot_greeting :tags ["appearance"]}
+   {:key "show_login_page_illustration" :value :appearance_login_page_illustration :tags ["appearance"]}
+   {:key "show_landing_page_illustration" :value :appearance_landing_page_illustration :tags ["appearance"]}
+   {:key "show_no_data_illustration" :value :appearance_no_data_illustration :tags ["appearance"]}
+   {:key "show_no_object_illustration" :value :appearance_no_object_illustration :tags ["appearance"]}
+   {:key "ui_color" :value (comp bool->default-or-changed :appearance_ui_colors) :tags ["appearance"]}
+   {:key "chart_colors" :value (comp bool->default-or-changed :appearance_chart_colors) :tags ["appearance"]}
+   {:key "show_mb_links" :value :appearance_show_mb_links :tags ["appearance"]}
+   {:key "font"
+    :value (default-or-changed public-settings/application-font "Lato")
+    :tags ["appearance"]}
+   {:key "samesite"
+    :value (default-or-changed #(setting/get :session-cookie-samesite) :lax)
+    :tags ["embedding" "auth"]}
+   {:key "site_locale"
+    :value (default-or-changed public-settings/site-locale "en")
+    :tags []}
+   {:key "report_timezone"
+    :value (default-or-changed #(setting/get :report-timezone-long) (System/getProperty "user.timezone"))
+    :tags []}
+   {:key "start_of_week"
+    :value (default-or-changed public-settings/start-of-week :sunday)
+    :tags []}])
+
+(defn- snowplow-settings
+  [stats]
+  (letfn [(update-setting-value [setting-value-getter]
+            (setting-value-getter stats))]
+    (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)))
+
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
         grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
-        features            (snowplow-features)]
+        features            (snowplow-features)
+        settings            (snowplow-settings stats)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
     {"analytics_uuid"      (analytics.settings/analytics-uuid)
      "features"            features
      "grouped_metrics"     grouped-metrics
      "instance_attributes" instance-attributes
      "metrics"             metrics
-     "settings"            []}))
+     "settings"            settings}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"
