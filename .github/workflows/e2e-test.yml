@@ -121,6 +121,7 @@ jobs:
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --spec '${{ inputs.specs }}' \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
