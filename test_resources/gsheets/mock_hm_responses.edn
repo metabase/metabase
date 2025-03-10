@@ -94,7 +94,7 @@
        :trace-redirects []}]
  {:method :post,
   :url "/api/v2/mb/connections",
-  :body {:type "gdrive", :secret {:resources ["<expected-gdrive-link>"]}}}
+  :body {:type "gdrive", :secret {:resources ["https://drive.google.com/drive/expected-gdrive-link"]}}}
  [:ok {:cached nil,
        :request-time 1941,
        :repeatable? false,
@@ -121,6 +121,54 @@
         :last-sync-at nil,
         :error-detail nil,
         :type "gdrive",
+        :hosted-instance-resource
+        {:updated-at "2025-01-27T18:43:02Z",
+         :shared-resource-id nil,
+         :resource-id
+         "arn:aws:secretsmanager:us-west-2:373519213707:secret:hosting/development/instance/f390ec19-bd44-48ae-991c-66817182a376/conn-secret/049f3007-2146-4083-be38-f160c526aca7-C6UvyD",
+         :type "conn-secret",
+         :hosted-instance-id "f390ec19-bd44-48ae-991c-66817182a376",
+         :deleted-at nil,
+         :region "us-west-2",
+         :id 7,
+         :created-at "2025-01-27T18:43:02Z",
+         :provider "k8s"},
+        :hosted-instance-id "f390ec19-bd44-48ae-991c-66817182a376",
+        :last-sync-started-at nil,
+        :status "initializing",
+        :id "049f3007-2146-4083-be38-f160c526aca7",
+        :created-at "2025-01-27T18:43:02Z"},
+       :trace-redirects []}]
+
+ {:method :post,
+  :url "/api/v2/mb/connections",
+  :body {:type "google_spreadsheet", :secret {:resources ["https://docs.google.com/spreadsheets/expected-sheet-link"]}}}
+ [:ok {:cached nil,
+       :request-time 1941,
+       :repeatable? false,
+       :protocol-version {:name "HTTP", :major 1, :minor 1},
+       :streaming? true,
+       ;; :http-client #object[org.apache.http.impl.client.InternalHttpClient 0x5b19fc1e "org.apache.http.impl.client.InternalHttpClient@5b19fc1e"],
+       :chunked? false,
+       :reason-phrase "OK",
+       :headers
+       {"Date" "Mon, 27 Jan 2025 18:43:02 GMT",
+        "Connection" "close",
+        "Content-Type" "application/json;charset=utf-8",
+        "X-Frame-Options" "SAMEORIGIN",
+        "X-Content-Type-Options" "nosniff",
+        "Strict-Transport-Security" "max-age=31536000; includeSubDomains",
+        "Content-Length" "779",
+        "Server" "Jetty(11.0.24)"},
+       :orig-content-encoding nil,
+       :status 200,
+       :length 779,
+       :body
+       {:updated-at "2025-01-27T18:43:02Z",
+        :hosted-instance-resource-id 7,
+        :last-sync-at nil,
+        :error-detail nil,
+        :type "google_spreadsheet",
         :hosted-instance-resource
         {:updated-at "2025-01-27T18:43:02Z",
          :shared-resource-id nil,
