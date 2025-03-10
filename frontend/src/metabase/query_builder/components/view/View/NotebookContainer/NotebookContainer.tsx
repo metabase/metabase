@@ -163,7 +163,7 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && typeof screenSize === "boolean" && (
+      {isShowingNotebookNativePreview && screenSize && (
         <>
           {screenSize === "small" && (
             <Box pos="absolute" inset={0}>
