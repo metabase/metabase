@@ -2232,7 +2232,7 @@ msgid "Send password reset email"
 msgstr "Poslat e-mail pro reset hesla."
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "Instrukce pro reset hesla najdete ve své e-mailové schránce."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30
