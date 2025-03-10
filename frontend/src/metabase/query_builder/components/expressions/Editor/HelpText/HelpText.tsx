@@ -95,6 +95,7 @@ export function HelpText({
         className={S.usage}
         onMouseDown={handleMouseDown}
         data-testid="expression-helper-popover-structure"
+        role="button"
       >
         <Box>
           {structure}

@@ -2,8 +2,8 @@
   border-top: 1px solid var(--mb-color-border);
   overflow-y: auto;
   font-size: 14px;
-  flex-shrink: 0;
-  height: calc(100% - 2.5rem);
+  flex-shrink: 1;
+  height: 100%;
 }
 
 .item {
