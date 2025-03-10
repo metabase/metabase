@@ -192,7 +192,7 @@ export const decimal_pk_table = async dbClient => {
   await dbClient.schema.dropTableIfExists(tableName);
 
   await dbClient.schema.createTable(tableName, table => {
-    table.decimal("id", 38, 10).primary();
+    table.decimal("id", 38, 0).primary();
     table.string("name");
   });
 
