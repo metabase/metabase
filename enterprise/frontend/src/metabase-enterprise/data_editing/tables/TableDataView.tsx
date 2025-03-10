@@ -50,16 +50,15 @@ export const TableDataView = ({
         name: columnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         wrap: false,
-      };
-
-      options.header = function EditingHeader(_props) {
-        return (
-          <Box className={S.headerCellContainer}>
-            <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
-              {columnName}
-            </Text>
-          </Box>
-        );
+        header: function EditingHeader() {
+          return (
+            <Box className={S.headerCellContainer}>
+              <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
+                {columnName}
+              </Text>
+            </Box>
+          );
+        },
       };
 
       options.cell = function EditingCell(props) {
