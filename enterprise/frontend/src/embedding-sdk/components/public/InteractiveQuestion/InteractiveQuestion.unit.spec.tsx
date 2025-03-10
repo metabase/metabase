@@ -9,7 +9,13 @@ import {
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
@@ -125,30 +131,48 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
-  it("should render loading state when rerunning the query", async () => {
-    setup({ withCustomLayout: true });
+  describe("table visualization", () => {
+    beforeAll(() => {
+      mockGetBoundingClientRect();
+    });
 
-    await waitForLoaderToBeRemoved();
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
 
-    expect(
-      await within(screen.getByTestId("TableInteractive-root")).findByText(
-        TEST_COLUMN.display_name,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      await within(screen.getByRole("gridcell")).findByText("Test Row"),
-    ).toBeInTheDocument();
+    afterEach(() => {
+      jest.useRealTimers();
+    });
 
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+    it("should render loading state when rerunning the query", async () => {
+      setup({ withCustomLayout: true });
 
-    // Simulate drilling down by re-running the query again
-    act(() => screen.getByText("Run Query").click());
+      await waitForLoaderToBeRemoved();
 
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    expect(
-      within(await screen.findByRole("gridcell")).getByText("Test Row"),
-    ).toBeInTheDocument();
+      act(() => {
+        jest.runAllTimers();
+      });
+
+      expect(
+        await within(screen.getByTestId("table-root")).findByText(
+          TEST_COLUMN.display_name,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        await within(screen.getByRole("gridcell")).findByText("Test Row"),
+      ).toBeInTheDocument();
+
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      // Simulate drilling down by re-running the query again
+      act(() => screen.getByText("Run Query").click());
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("gridcell")).getByText("Test Row"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should render when question is valid", async () => {
@@ -156,8 +180,12 @@ describe("InteractiveQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
+    act(() => {
+      jest.runAllTimers();
+    });
+
     expect(
-      within(screen.getByTestId("TableInteractive-root")).getByText(
+      within(screen.getByTestId("table-root")).getByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();

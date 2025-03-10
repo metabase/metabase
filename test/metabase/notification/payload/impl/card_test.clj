@@ -74,7 +74,6 @@
                                                            :type "plain_text"}
                                                     :type "header"}]}
                                          {:attachment-name "image.png"
-                                          :channel-id "FOO"
                                           :fallback "Card notification test card",
                                           :rendered-info {:attachments false
                                                           :content true
@@ -129,7 +128,6 @@
                                                    :type "plain_text"}
                                             :type "header"}]}
                                  {:attachment-name "image.png"
-                                  :channel-id "FOO"
                                   :fallback "Card notification test card"
                                   :rendered-info {:attachments false :content true}
                                   :title "Card notification test card"}]

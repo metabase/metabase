@@ -996,7 +996,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1008,7 +1008,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1020,7 +1020,7 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
