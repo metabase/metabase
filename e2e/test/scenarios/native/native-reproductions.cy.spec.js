@@ -457,7 +457,7 @@ describe("issue 21550", () => {
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -622,7 +622,6 @@ describe("issue 23510", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("ORDERS");
@@ -669,7 +668,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     cy.findByTestId("query-visualization-root")
-      .findByText("Here's where your results will appear")
+      .findByText("Query results will appear here.")
       .should("be.visible");
 
     H.NativeEditor.type("SEAT", { delay: 10 });

@@ -319,18 +319,21 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.signInAsNormalUser();
 
     cy.visit("/");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByTestId("app-bar").findByLabelText("New").click();
     // Reproduces metabase#20499 issue
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Native query").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(MONGO_DB_NAME).click();
+    H.popover().findByText("Native query").click();
+    H.popover().findByText(MONGO_DB_NAME).click();
+    cy.log("Ensure the database was selected");
+    cy.findAllByTestId("gui-builder-data")
+      .first()
+      .should("contain", MONGO_DB_NAME);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select a table").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
+    cy.findAllByTestId("gui-builder-data")
+      .should("have.length", 2)
+      .last()
+      .findByText("Select a table")
+      .click();
+    H.popover().findByText("Orders").click();
   });
 
   it("can save a native MongoDB query", () => {
@@ -338,28 +341,14 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();
-
     cy.wait("@dataset");
 
     cy.findByTextEnsureVisible("18,760");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByTextEnsureVisible("Save new question");
-
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
-
-      cy.findByText("Save").should("not.be.disabled").click();
-    });
-
+    H.saveQuestion("mongo count");
     cy.wait("@createQuestion");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
-
-    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+    cy.location("pathname").should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });
 });
 

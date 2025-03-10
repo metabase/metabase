@@ -47,9 +47,7 @@ describe("issue 19180", () => {
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
           H.tableInteractive();
-          cy.findByText("Here's where your results will appear").should(
-            "not.exist",
-          );
+          cy.findByText("Query results will appear here.").should("not.exist");
         },
       );
     });
@@ -355,7 +353,7 @@ describe("issue 20963", () => {
 
     // Creat a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(

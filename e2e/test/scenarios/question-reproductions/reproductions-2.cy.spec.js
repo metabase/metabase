@@ -500,7 +500,7 @@ describe("issue 30165", () => {
     cy.get("@dataset.all").should("have.length", 0);
     cy.get("@cardQuery.all").should("have.length", 0);
     cy.findByTestId("query-builder-main")
-      .findByText("Here's where your results will appear")
+      .findByText("Query results will appear here.")
       .should("be.visible");
   });
 });
