@@ -8,7 +8,7 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
 import type { Series } from "metabase-types/api";
 
 import RAW_SERIES from "./stories-data/table-simple-orders-with-people.json";

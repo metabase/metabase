@@ -204,9 +204,9 @@ export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
 
   try {
     const rawAllowedDomains = allowedIframesSetting
-      .replaceAll(",", "")
-      .split("\n")
-      .map(host => host.trim());
+      .split(/[\r\n,]+/)
+      .map(host => host.trim())
+      .filter(Boolean);
 
     const parsedUrl = new URL(normalizeUrl(url));
     const hostname = parsedUrl.hostname;

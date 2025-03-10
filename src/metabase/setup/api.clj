@@ -65,7 +65,7 @@
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (let [session (session/create-session! :password new-user device-info)]
       ;; return user ID, session ID, and the Session object itself
-      {:session-id (:id session), :user-id user-id, :session session})))
+      {:session-key (:key session), :user-id user-id, :session session})))
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
@@ -141,13 +141,13 @@
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
                 (throw e))))]
-    (let [{:keys [user-id session-id session]} (create!)
+    (let [{:keys [user-id session-key session]} (create!)
           superuser (t2/select-one :model/User :id user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
       ;; return response with session ID and set the cookie as well
-      (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (request/set-session-cookies request {:id session-key} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 ;;; Admin Checklist
 

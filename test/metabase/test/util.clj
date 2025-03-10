@@ -798,9 +798,9 @@
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]})
-          ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-          (search/reindex! {:in-place? true}))))))
+            :where       [:and max-id-condition additional-conditions]}))
+        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
+        (search/reindex! {:in-place? true})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -1572,11 +1572,6 @@
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
-
-(defn random-string
-  "Returns a string of `n` random alphanumeric characters."
-  [n]
-  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
 
 (defmacro with-prometheus-system!
   "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
