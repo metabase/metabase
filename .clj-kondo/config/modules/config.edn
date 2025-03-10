@@ -675,6 +675,14 @@
   {:api #{metabase-enterprise.harbormaster.client}
    :uses #{api cloud-migration models util}}
 
+  enterprise/gsheets
+  {:api  #{metabase-enterprise.gsheets.api}
+   :uses #{api analytics enterprise/harbormaster models premium-features server util}}
+
+  enterprise/harbormaster
+  {:api #{metabase-enterprise.harbormaster.client}
+   :uses #{api cloud-migration models util}}
+
   enterprise/impersonation
   {:api #{metabase-enterprise.impersonation.core
           metabase-enterprise.impersonation.api}
