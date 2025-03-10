@@ -254,13 +254,17 @@
   this window, we'll error out, reset the gsheets status, and suggest trying again."
   (* 10 60))
 
+(defn- gsheets-safe
+  "Return the gsheets setting, or fetch it from the db if it's not in the cache."
+  []
+  (or (gsheets)
+      (do (log/warn "CACHE MISS ON GSHEETS")
+          (some-> (t2/select-one :model/Setting :key "gsheets")
+                  :value
+                  json/decode+kw))))
+
 (defn- handle-get-folder [attached-dwh]
-  (let [conn-id (or (:gdrive/conn-id (gsheets))
-                    (do (log/warn "CACHE MISS ON GSHEETS")
-                        (some-> (t2/select-one :model/Setting :key "gsheets")
-                                :value
-                                json/decode+kw
-                                :gdrive/conn-id)))
+  (let [conn-id (:gdrive/conn-id (gsheets-safe))
         [sstatus {conn :body}] (try (hm-get-gdrive-conn conn-id)
                                     ;; missing id:
                                     (catch Exception _
@@ -321,6 +325,27 @@
       (reset-gsheets-status!)
       (error-response-in-body (tru "No attached dwh found.")))
     (handle-get-folder attached-dwh)))
+
+(mu/defn- hm-sync-conn! :- :hm-client/http-reply
+  "Sync a (presumably a gdrive) connection on HM."
+  [conn-id]
+  (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
+
+(api.macros/defendpoint :post "/folder/sync"
+  "Force a sync of the folder now.
+
+  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
+  []
+  (let [sheet-config (gsheets-safe)]
+    (when-not (some? sheet-config)
+      (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
+      (error-response-in-body (tru "No attached google sheet(s) found.")))
+    (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
+    (analytics/inc! :metabase-gsheets/connection-manually-synced)
+    (hm-sync-conn! (:gdrive/conn-id sheet-config))
+    (gsheets! (assoc sheet-config
+                     :status "loading"
+                     :folder-upload-time (seconds-from-epoch-now)))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
