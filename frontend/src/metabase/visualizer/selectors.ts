@@ -2,10 +2,14 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { utf8_to_b64 } from "metabase/lib/encoding";
-import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  RawSeries,
+  SingleSeries,
+} from "metabase-types/api";
 import type {
   VisualizerHistoryItem,
   VisualizerState,
@@ -27,21 +31,6 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 const getCards = (state: State) => state.visualizer.cards;
 
 const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
-
-const getSettings = createSelector(
-  [getVisualizationType, getRawSettings],
-  (display, rawSettings) => {
-    if (display && isCartesianChart(display)) {
-      // Visualizer wells display labels
-      return {
-        ...rawSettings,
-        "graph.x_axis.labels_enabled": false,
-        "graph.y_axis.labels_enabled": false,
-      };
-    }
-    return rawSettings;
-  },
-);
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -126,7 +115,7 @@ const getVisualizerDatasetData = createSelector(
       columnValuesMapping,
       datasets,
       dataSources,
-    }),
+    }) as DatasetData,
 );
 
 export const getVisualizerDatasetColumns = createSelector(
@@ -135,7 +124,7 @@ export const getVisualizerDatasetColumns = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getSettings, getVisualizerDatasetData],
+  [getVisualizationType, getRawSettings, getVisualizerDatasetData],
   (display, settings, data): RawSeries => {
     if (!display) {
       return [];
@@ -145,13 +134,13 @@ export const getVisualizerRawSeries = createSelector(
         card: {
           display,
           visualization_settings: settings,
-        },
+        } as Card,
         data,
 
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-      },
+      } as SingleSeries,
     ];
   },
 );

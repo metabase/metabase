@@ -125,7 +125,7 @@ export const Visualizer = (props: VisualizerProps) => {
             data: {
               current: event.active.data.current,
             },
-          }),
+          } as DraggedItem),
         );
       }
     },
