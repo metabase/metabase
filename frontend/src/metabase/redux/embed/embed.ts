@@ -1,6 +1,7 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import { parseSearchOptions } from "metabase/lib/browser";
 import type { InteractiveEmbeddingOptions } from "metabase-types/store";
 
@@ -16,7 +17,7 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
-    entity_types: ["model", "table"],
+    entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
   } as const;
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(

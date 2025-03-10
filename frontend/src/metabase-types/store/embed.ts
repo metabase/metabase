@@ -1,3 +1,5 @@
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+
 export interface InteractiveEmbeddingOptions {
   font: string | undefined;
   top_nav: boolean;
@@ -9,10 +11,8 @@ export interface InteractiveEmbeddingOptions {
   header: boolean;
   additional_info: boolean;
   action_buttons: boolean;
-  entity_types: EntityType[];
+  entity_types: EmbeddingEntityType[];
 }
-
-type EntityType = "model" | "table";
 
 export interface EmbedState {
   options: InteractiveEmbeddingOptions;
