@@ -1,3 +1,13 @@
+## [0.52.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.15...embedding-sdk-0.52.16) (2025-03-10)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54314](https://github.com/metabase/metabase/issues/54314)) ([4514326](https://github.com/metabase/metabase/commit/4514326c0b0996c1a4bb2a437a876157f18e0f47))
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54616](https://github.com/metabase/metabase/issues/54616)) ([37fd560](https://github.com/metabase/metabase/commit/37fd560cf8e583f315cce6c8e5d86257d39ea51a))
+
+
+
 ## [0.52.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.14...embedding-sdk-0.52.15) (2025-02-27)
 
 
