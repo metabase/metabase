@@ -61,7 +61,7 @@ export function Cell({
   onResize,
   showTooltip = true,
 }: CellProps) {
-  const resizeHandleRef = React.useRef<HTMLDivElement>(null);
+  const resizeHandleRef = React.useRef<HTMLDivElement | null>(null);
 
   return (
     <PivotTableCell
