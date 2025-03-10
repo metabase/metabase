@@ -30,6 +30,7 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
+import { getVisualizerComputedSettings } from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -41,7 +42,7 @@ import {
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
-import { updateSettingsForDisplay } from "./utils/update-settings-for-display";
+import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
@@ -176,6 +177,14 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
+export const setDisplay = createAsyncThunk(
+  "visualizer/setDisplay",
+  (display: VisualizationDisplay | null, { getState }) => {
+    const computedSettings = getVisualizerComputedSettings(getState());
+    return { display, computedSettings };
+  },
+);
+
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
   initialState: getInitialVisualizerHistoryItem(),
@@ -185,21 +194,6 @@ const visualizerHistoryItemSlice = createSlice({
         state.settings = {};
       }
       state.settings["card.title"] = action.payload;
-    },
-    setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      const { columnValuesMapping, columns, settings } =
-        updateSettingsForDisplay(
-          state.columnValuesMapping,
-          state.columns,
-          state.settings,
-          state.display,
-          action.payload,
-        );
-
-      state.columnValuesMapping = columnValuesMapping;
-      state.columns = columns;
-      state.settings = settings;
-      state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -252,6 +246,22 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(setDisplay.fulfilled, (state, action) => {
+        const { display, computedSettings } = action.payload;
+        const { columnValuesMapping, columns, settings } =
+          getUpdatedSettingsForDisplay(
+            state.columnValuesMapping,
+            state.columns,
+            computedSettings,
+            state.display,
+            display,
+          );
+
+        state.columnValuesMapping = columnValuesMapping;
+        state.columns = columns;
+        state.settings = settings;
+        state.display = display;
+      })
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
         if (initialState) {
@@ -525,7 +535,7 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setTitle, setDisplay, updateSettings, addColumn, removeColumn } =
+export const { setTitle, updateSettings, addColumn, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {
