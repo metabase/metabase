@@ -75,15 +75,20 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, onBlur, formatExpression, isFormatting } =
-    useExpression({
-      ...props,
-      metadata,
-      error,
-    });
+  const {
+    source,
+    hasSourceChanged,
+    onSourceChange,
+    onBlur,
+    formatExpression,
+    isFormatting,
+  } = useExpression({
+    ...props,
+    metadata,
+    error,
+  });
 
-  const shouldPreventClosingPopover = source !== "";
-
+  const shouldPreventClosingPopover = source !== "" && hasSourceChanged;
   usePreventClosePopover({
     onEscape: shouldPreventClosingPopover,
     onClickOutside: shouldPreventClosingPopover,
@@ -181,33 +186,41 @@ function useExpression<S extends StartRule = "expression">({
   metadata: Metadata;
 }) {
   const [source, setSource] = useState("");
+  const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
 
-  const formatExpression = useCallback(() => {
-    const expression =
-      clause &&
-      Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-    if (!expression) {
-      setSource("");
-      setIsFormatting(false);
-      return;
-    }
+  const formatExpression = useCallback(
+    ({ initial = false }: { initial?: boolean }) => {
+      const expression =
+        clause &&
+        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
 
-    format(expression, {
-      query,
-      stageIndex,
-      expressionIndex,
-      printWidth: 55, // 60 is the width of the editor
-    })
-      .then(source => {
+      if (!expression) {
         setIsFormatting(false);
-        setSource(source);
-      })
-      .catch(() => {
         setSource("");
-        setIsFormatting(false);
-      });
-  }, [clause, query, stageIndex, expressionIndex]);
+        if (initial) {
+          setInitialSource("");
+        }
+        return;
+      }
+
+      format(expression, {
+        query,
+        stageIndex,
+        expressionIndex,
+        printWidth: 55, // 60 is the width of the editor
+      })
+        .catch(() => "")
+        .then(source => {
+          setIsFormatting(false);
+          setSource(source);
+          if (initial) {
+            setInitialSource(source);
+          }
+        });
+    },
+    [clause, query, stageIndex, expressionIndex],
+  );
 
   const debouncedOnChange = useMemo(
     () => _.debounce(onChange, DEBOUNCE_VALIDATION_MS, false),
@@ -254,7 +267,9 @@ function useExpression<S extends StartRule = "expression">({
 
   useMount(() => {
     // format the source when the component mounts
-    formatExpression();
+    formatExpression({
+      initial: true,
+    });
   });
 
   const handleSourceChange = useCallback(
@@ -270,6 +285,8 @@ function useExpression<S extends StartRule = "expression">({
 
   return {
     source,
+    initialSource,
+    hasSourceChanged: source !== initialSource,
     onSourceChange: handleSourceChange,
     onBlur: handleBlur,
     formatExpression,
