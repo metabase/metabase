@@ -42,4 +42,3 @@
     (let [generated-docs (sut/format-env-var-docs settings-filtered)]
       (is (= expected-docs
              (str/join "\n\n" generated-docs))))))
-
