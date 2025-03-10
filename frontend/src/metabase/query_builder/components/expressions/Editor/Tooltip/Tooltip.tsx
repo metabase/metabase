@@ -1,11 +1,9 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import cx from "classnames";
 import {
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
@@ -19,8 +17,6 @@ import { Listbox, useCompletions } from "../Listbox";
 import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
-
-const HEIGHT_THRESHOLD = 320;
 
 export function Tooltip({
   query,
@@ -59,9 +55,6 @@ export function Tooltip({
 
   const { options: completions } = useCompletions(state);
 
-  const maxHeight = usePopoverHeight(tooltipRef);
-  const canShowBoth = maxHeight > HEIGHT_THRESHOLD;
-
   const [isHelpTextOpen, setIsHelpTextOpen] = useState(false);
   const handleToggleHelpText = useCallback(
     () => setIsHelpTextOpen(open => !open),
@@ -72,10 +65,10 @@ export function Tooltip({
     if (completions.length === 0) {
       setIsHelpTextOpen(true);
     }
-    if (!canShowBoth && enclosingFn && completions.length > 0) {
+    if (enclosingFn && completions.length > 0) {
       setIsHelpTextOpen(false);
     }
-  }, [canShowBoth, enclosingFn, completions.length]);
+  }, [enclosingFn, completions.length]);
 
   return (
     <Popover
@@ -104,34 +97,16 @@ export function Tooltip({
             open={isHelpTextOpen}
             onToggle={handleToggleHelpText}
           />
-          {(canShowBoth || !isHelpTextOpen || !enclosingFn) && (
+          {(!isHelpTextOpen || !enclosingFn) && (
             <Listbox
               state={state}
               view={view}
               query={query}
               stageIndex={stageIndex}
-              className={cx(
-                enclosingFn && S.hasHelpText,
-                enclosingFn && isHelpTextOpen && S.isHelpTextOpen,
-              )}
             />
           )}
         </div>
       </Popover.Dropdown>
     </Popover>
   );
-}
-
-function usePopoverHeight(ref: RefObject<HTMLDivElement>) {
-  const [maxHeight, setMaxHeight] = useState(0);
-  // We want to explicitly read the max height everytime we render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    const px = ref.current?.parentElement?.style.maxHeight ?? "0";
-    const parsed = parseInt(px, 10);
-    if (!Number.isNaN(parsed)) {
-      setMaxHeight(parsed);
-    }
-  });
-  return maxHeight;
 }
