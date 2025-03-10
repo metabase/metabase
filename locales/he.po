@@ -2231,7 +2231,7 @@ msgid "Send password reset email"
 msgstr "שלח איפוס לאיפוס סיסמה"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "עיין בדוא\"ל שלך לקבלת הוראות כיצד לאפס את הסיסמה שלך."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30
