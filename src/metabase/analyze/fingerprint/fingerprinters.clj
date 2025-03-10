@@ -58,6 +58,22 @@
    (.offer acc x)
    acc))
 
+(defn- share
+  "Calculate the proportion of inputs for which `pred` returns true. An efficient version of `kixi.stats.core/share`."
+  [pred]
+  (fn
+    ([] (long-array 2))
+    ([^longs arr e]
+     (when (pred e)
+       (aset arr 0 (inc (aget arr 0))))
+     (aset arr 1 (inc (aget arr 1)))
+     arr)
+    ([^longs arr]
+     (let [n (aget arr 0)
+           d (aget arr 1)]
+       (when (pos? d)
+         (double (/ n d)))))))
+
 (defmacro robust-map
   "Wrap each map value in try-catch block."
   [& kvs]
@@ -128,7 +144,7 @@
 (defn- global-fingerprinter []
   (redux/post-complete
    (robust-fuse {:distinct-count cardinality
-                 :nil%           (stats/share nil?)})
+                 :nil%           (share nil?)})
    (partial hash-map :global)))
 
 (defmethod fingerprinter :default
@@ -253,10 +269,10 @@
   ((map str) ; we cast to str to support `field-literal` type overwriting:
              ; `[:field-literal "A_NUMBER" :type/Text]` (which still
              ; returns numbers in the result set)
-   (robust-fuse {:percent-json   (stats/share valid-serialized-json?)
-                 :percent-url    (stats/share u/url?)
-                 :percent-email  (stats/share u/email?)
-                 :percent-state  (stats/share u/state?)
+   (robust-fuse {:percent-json   (share valid-serialized-json?)
+                 :percent-url    (share u/url?)
+                 :percent-email  (share u/email?)
+                 :percent-state  (share u/state?)
                  :average-length ((map count) stats/mean)})))
 
 (defn fingerprint-fields
