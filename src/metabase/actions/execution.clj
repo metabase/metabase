@@ -5,7 +5,7 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -204,11 +204,11 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action
-                           {:event     :action-executed
-                            :source    :dashboard
-                            :type      (:type action)
-                            :action_id (:id action)})
+    (analytics/track-event! :snowplow/action
+                            {:event     :action-executed
+                             :source    :dashboard
+                             :type      (:type action)
+                             :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values

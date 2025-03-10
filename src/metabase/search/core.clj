@@ -1,7 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -43,25 +43,25 @@
  [search.spec
   define-spec])
 
-(defmethod prometheus/known-labels :metabase-search/index
+(defmethod analytics/known-labels :metabase-search/index
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod prometheus/known-labels :metabase-search/engine-default
+(defmethod analytics/known-labels :metabase-search/engine-default
   [_]
-  (prometheus/known-labels :metabase-search/engine-active))
+  (analytics/known-labels :metabase-search/engine-active))
 
-(defmethod prometheus/known-labels :metabase-search/engine-active
+(defmethod analytics/known-labels :metabase-search/engine-active
   [_]
   (for [e (search.engine/known-engines)]
     {:engine (name e)}))
 
-(defmethod prometheus/initial-value :metabase-search/engine-default
+(defmethod analytics/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
   (if (= engine (name (search.impl/default-engine))) 1 0))
 
-(defmethod prometheus/initial-value :metabase-search/engine-active
+(defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
   (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
 

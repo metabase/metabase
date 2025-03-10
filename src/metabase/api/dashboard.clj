@@ -6,7 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -142,9 +142,9 @@
                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dash)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dash)})
     (-> dash
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -497,9 +497,9 @@
                            (cond-> dash
                              (seq uncopied)
                              (assoc :uncopied uncopied))))]
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event        :dashboard-created
-                            :dashboard-id (u/the-id dashboard)})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
@@ -737,23 +737,23 @@
                            {:object dashboard :user-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
-      (snowplow/track-event! ::snowplow/dashboard
-                             {:event        :question-added-to-dashboard
-                              :dashboard-id dashboard-id
-                              :question-id  card_id})))
+      (analytics/track-event! :snowplow/dashboard
+                              {:event        :question-added-to-dashboard
+                               :dashboard-id dashboard-id
+                               :question-id  card_id})))
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-deleted
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count deleted-tab-ids)
-                            :total-num-tabs total-num-tabs}))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-deleted
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count deleted-tab-ids)
+                             :total-num-tabs total-num-tabs}))
   (when (seq created-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard
-                           {:event          :dashboard-tab-created
-                            :dashboard-id   dashboard-id
-                            :num-tabs       (count created-tab-ids)
-                            :total-num-tabs total-num-tabs})))
+    (analytics/track-event! :snowplow/dashboard
+                            {:event          :dashboard-tab-created
+                             :dashboard-id   dashboard-id
+                             :num-tabs       (count created-tab-ids)
+                             :total-num-tabs total-num-tabs})))
 
 ;;;;;;;;;;;; Bad pulse check & repair
 

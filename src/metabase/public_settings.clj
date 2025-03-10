@@ -229,7 +229,7 @@ x.com")
   site-wide UUID that we use for the EE/premium features token feature check API calls. It works in fundamentally the
   same way as [[site-uuid]] but should only be used by the token check logic
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
-  analytics/stats and if we sent it along with the premium features token check API request it would no longer be
+  analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
   :encryption :when-encryption-key-set
   :visibility :internal

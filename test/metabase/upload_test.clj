@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -1330,7 +1330,7 @@
       (testing "Driver error"
         (let [metrics (atom {})]
           (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
-                        prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+                        analytics/inc! #(swap! metrics update % (fnil inc 0))]
             (is (thrown-with-msg?
                  Exception
                  #"Boom"

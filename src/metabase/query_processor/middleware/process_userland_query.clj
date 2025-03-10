@@ -7,7 +7,7 @@
   event -- see [[metabase.events.view-log]]."
   (:require
    [java-time.api :as t]
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
@@ -87,7 +87,7 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info pmbql]
-  (let [execution-info' (sdk/include-analytics execution-info)]
+  (let [execution-info' (analytics/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant

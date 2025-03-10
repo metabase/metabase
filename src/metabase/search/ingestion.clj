@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
@@ -136,7 +136,7 @@
        consume!))
 
 (defn- track-queue-size! []
-  (prometheus/set! :metabase-search/queue-size (.size queue)))
+  (analytics/set! :metabase-search/queue-size (.size queue)))
 
 (defn get-next-batch!
   "Wait up for a batch to become ready, and take it off the queue.

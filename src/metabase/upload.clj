@@ -7,8 +7,7 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -642,14 +641,14 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csvupload
-                               (assoc stats
-                                      :event    :csv-upload-successful
-                                      :model-id (:id card)))
+        (analytics/track-event! :snowplow/csvupload
+                                (assoc stats
+                                       :event    :csv-upload-successful
+                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
-        (prometheus/inc! :metabase-csv-upload/failed)
-        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+        (analytics/inc! :metabase-csv-upload/failed)
+        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
         (throw e)))))
@@ -839,12 +838,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
+          (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (prometheus/inc! :metabase-csv-upload/failed)
-      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+      (analytics/inc! :metabase-csv-upload/failed)
+      (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))
 

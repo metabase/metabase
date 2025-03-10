@@ -1,6 +1,6 @@
 (ns metabase.indexed-entities.api
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
@@ -51,9 +51,9 @@
                                            :pk-ref     pk_ref
                                            :value-ref  value_ref
                                            :creator-id api/*current-user-id*})]
-      (snowplow/track-event! ::snowplow/model
-                             {:event    :index-model-entities-enabled
-                              :model-id model_id})
+      (analytics/track-event! :snowplow/model
+                              {:event    :index-model-entities-enabled
+                               :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
       (t2/select-one :model/ModelIndex :id (:id model-index)))))

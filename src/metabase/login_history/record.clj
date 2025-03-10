@@ -40,4 +40,4 @@
     (when-not (:embedded device-info)
       (maybe-send-login-from-new-device-email history-entry))
     (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))))
+      (snowplow/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))
