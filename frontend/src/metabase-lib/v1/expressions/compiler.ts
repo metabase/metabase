@@ -85,7 +85,7 @@ export function compileExpression({
       expressionClause,
     };
   } catch (error) {
-    if (isErrorWithMessage(error)) {
+    if (isErrorWithMessage(error) && error.friendly) {
       return { error };
     }
     return { error: { message: t`Invalid expression` } };
