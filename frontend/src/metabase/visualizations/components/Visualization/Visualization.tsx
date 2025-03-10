@@ -50,6 +50,7 @@ import {
   type Visualization as VisualizationType,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
@@ -150,6 +151,8 @@ type VisualizationOwnProps = {
     question?: Question,
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
+
+  getCard?: (cardId: string) => Promise<Card | undefined>;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -469,7 +472,7 @@ class Visualization extends PureComponent<
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({
+  handleOnChangeCardAndRun = async ({
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
@@ -477,7 +480,25 @@ class Visualization extends PureComponent<
       return;
     }
 
-    const { rawSeries = [] } = this.props;
+    const { dashcard, rawSeries = [] } = this.props;
+
+    if (isVisualizerDashboardCard(dashcard) && this.props.getCard) {
+      const cardId = nextCard.id;
+
+      if (!cardId) {
+        return;
+      }
+
+      const card = await this.props.getCard(`card:${cardId}`);
+      if (card) {
+        this.props.onChangeCardAndRun({
+          nextCard: card,
+          previousCard: card,
+          objectId,
+        });
+      }
+      return;
+    }
 
     const previousCard =
       rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
@@ -493,7 +514,8 @@ class Visualization extends PureComponent<
   onRender = ({ warnings = [] }: { warnings?: string[] } = {}) => {
     const currentWarnings = this.state.warnings;
     if (!_.isEqual(currentWarnings, warnings)) {
-      this.setState({ warnings });
+      // using requestAnimationFrame to avoid setting state in render
+      requestAnimationFrame(() => this.setState({ warnings }));
     }
   };
 
@@ -626,7 +648,7 @@ class Visualization extends PureComponent<
               />
             );
           } else if (e instanceof MinRowsError) {
-            noResults = true;
+            // noResults = true;
           }
         }
       }
@@ -679,6 +701,8 @@ class Visualization extends PureComponent<
 
     const CardVisualization = visualization as VisualizationType;
 
+    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
@@ -688,6 +712,11 @@ class Visualization extends PureComponent<
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
+
+    // We can't navigate a user to a particular card from a visualizer viz,
+    // so title selection is disabled in this case
+    const canSelectTitle =
+      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
 
     return (
       <ErrorBoundary
@@ -710,9 +739,7 @@ class Visualization extends PureComponent<
                 width={width}
                 getHref={getHref}
                 onChangeCardAndRun={
-                  this.props.onChangeCardAndRun && !replacementContent
-                    ? this.handleOnChangeCardAndRun
-                    : null
+                  canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
             </VisualizationHeader>
@@ -770,6 +797,7 @@ class Visualization extends PureComponent<
                   isEmbeddingSdk={isEmbeddingSdk}
                   isFullscreen={!!isFullscreen}
                   isMobile={!!isMobile}
+                  isVisualizerViz={isVisualizerViz}
                   isNightMode={!!isNightMode}
                   isObjectDetail={isObjectDetail}
                   isPlaceholder={isPlaceholder}

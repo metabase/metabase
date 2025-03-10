@@ -161,6 +161,7 @@ type OwnProps = {
   downloadsEnabled: boolean;
   autoScrollToDashcardId: DashCardId | undefined;
   reportAutoScrolledToDashcard: () => void;
+  handleSetEditing: (dashboard: Dashboard | null) => void;
 };
 
 type DashboardGridProps = OwnProps &
@@ -570,9 +571,14 @@ class DashboardGridInner extends Component<
         autoScroll={shouldAutoScrollTo}
         isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+        editDashboard={this.handleSetEditing}
       />
     );
   }
+
+  handleSetEditing = () => {
+    this.props.handleSetEditing(this.props.dashboard);
+  };
 
   get isEditingLayout() {
     const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =

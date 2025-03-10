@@ -32,12 +32,6 @@ export class LatitudeLongitudeError extends Error {
   }
 }
 
-export class NoBreakoutError extends Error {
-  constructor(message) {
-    super(message || t`This visualization requires you to group by a field.`);
-  }
-}
-
 export class ChartSettingsError extends Error {
   initial;
   buttonText;
