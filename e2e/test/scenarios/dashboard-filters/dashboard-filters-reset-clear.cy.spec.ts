@@ -4,7 +4,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { checkNotNull } from "metabase/lib/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { LocalFieldReference } from "metabase-types/api";
 
@@ -654,6 +653,58 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
     });
   });
+
+  describe("issue 46177", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+    });
+
+    it("should update value inside popover when resetting value to default (metabase#46177)", () => {
+      const ORDERS_QUESTION = {
+        name: "Orders question",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      };
+
+      const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
+      const numberFilter = {
+        name: "Number filter",
+        slug: "number_filter",
+        id: "10c0d4bc",
+        type: "number/=",
+        sectionId: "number",
+        default: 2.9,
+      };
+
+      createDashboardWithParameters(ORDERS_QUESTION, targetField, [
+        numberFilter,
+      ]);
+
+      cy.log("update filter value");
+
+      filter(numberFilter.name).click();
+      cy.findByTestId("token-field").icon("close").click();
+      cy.findByTestId("token-field").findByRole("textbox").type("3");
+      cy.realPress("Tab");
+      H.popover().findByText("Update filter").click();
+
+      filter(numberFilter.name).should("have.text", "3");
+
+      cy.log("reset value to default with filter widget open");
+      filter(numberFilter.name).click();
+      filter(numberFilter.name).icon("revert").click();
+
+      filter(numberFilter.name).should("have.text", numberFilter.default);
+      cy.findByTestId("token-field").should("have.text", numberFilter.default);
+    });
+  });
 });
 
 function createDashboardWithParameters(
@@ -671,9 +722,10 @@ function createDashboardWithParameters(
       dashboard_id,
       cards: [
         {
+          card_id,
           parameter_mappings: parameters?.map(parameter => ({
             parameter_id: parameter.id,
-            card_id: checkNotNull(card_id),
+            card_id,
             target: ["dimension", targetField],
           })),
         },
