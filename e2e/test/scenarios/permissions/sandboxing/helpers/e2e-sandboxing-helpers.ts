@@ -299,6 +299,8 @@ export function rowsShouldContainGizmosAndWidgets(
     rows.some(row => row.includes("Widget")),
     "at least one row should have a widget",
   ).to.be.true;
+
+  return cy.wrap(responses);
 }
 
 export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
@@ -315,11 +317,11 @@ export function rowsShouldContainOnlyGizmos(responses: DatasetResponse[]) {
     !rows.some(row => row.includes("Widget")),
     "no rows should have widgets",
   ).to.be.true;
+
+  return cy.wrap(responses);
 }
 
 export const getDashcardResponses = (items: SandboxableItems) => {
-  signInAsNormalUser();
-
   H.visitDashboard(items.dashboard.id);
 
   expect(items.questions.length).to.be.greaterThan(0);
@@ -342,8 +344,19 @@ export const getCardResponses = (items: SandboxableItems) => {
   ) as Cypress.Chainable<DatasetResponse[]>;
 };
 
-export const getFieldValues = () =>
+export const getFieldValuesForProductCategories = () =>
   cy.request<GetFieldValuesResponse>(
     "GET",
     `/api/field/${SAMPLE_DATABASE.PRODUCTS.CATEGORY}/values`,
   );
+
+export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
+  responses.forEach(response => {
+    expect(response.body.cached).not.to.be.null;
+    expect(response.body.json_query?.["cache-strategy"]?.type).to.equal(
+      "duration",
+    );
+  });
+
+  return cy.wrap(responses);
+};
