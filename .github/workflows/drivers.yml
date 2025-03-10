@@ -1074,7 +1074,7 @@ jobs:
     - name: Start ClickHouse in Docker
       uses: hoverkraft-tech/compose-action@v2.0.0
       with:
-        compose-file: "${{ github.workspace }}/modules/drivers/clickhouse/docker-compose.yml"
+        compose-file: "modules/drivers/clickhouse/docker-compose.yml"
         down-flags: "--volumes"
         services: |
           clickhouse
