@@ -16,7 +16,8 @@
 (defn- ->eol-url [db]
   (get {:postgres "https://endoflife.date/api/postgres.json"
         :mysql "https://endoflife.date/api/mysql.json"
-        :mariadb "https://endoflife.date/api/mariadb.json"} db))
+        :mariadb "https://endoflife.date/api/mariadb.json"
+        :mongo "https://endoflife.date/api/mongodb.json"} db))
 
 (defn- ->image-name [db] (str "mb-" (name db) "-db"))
 
@@ -94,6 +95,14 @@
    "--name" image-name
    (str "mariadb:" resolved-version)])
 
+(defmethod docker-cmd :mongo
+  [_db image-name resolved-version port]
+  ["docker" "run"
+   "-d"
+   "-p" (str port ":27017")
+   "--name" image-name
+   (str "mongo:" resolved-version)])
+
 (defn- start-db!
   [database version resolved-version port]
   (let [image-name (->image-name database)
@@ -127,13 +136,14 @@
 (defn start-db
   "Starts a db type + version in docker."
   [ports db version]
-  (let [port (get-in ports [db version])
+  (let [supported-dbs #{:postgres :mysql :mariadb :mongo}
+        port (get-in ports [db version])
         _ (u/debug "PORT:" port)
         _ (when-not (integer? port)
             (println (c/red "No port found for db: " (name db)  " version: " (name version) ". see :ports in bb.edn"))
             (usage {:ports ports}))
         db               (keyword db)
-        _ (when-not (#{:postgres :mysql :mariadb} db)
+        _ (when-not (supported-dbs db)
             (println (c/red "Invalid db."))
             (usage {:ports ports}))
         version          (cond-> version (string? version) keyword)
