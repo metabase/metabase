@@ -2,7 +2,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { createMockColumn } from "metabase-types/api/mocks";
 import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
-import { updateSettingsForDisplay } from "./update-settings-for-display";
+import { getUpdatedSettingsForDisplay } from "./get-updated-settings-for-display";
 
 registerVisualizations();
 
@@ -12,7 +12,10 @@ describe("updateSettingsForDisplay", () => {
       { sourceId: "card:45", originalName: "CREATED_AT", name: "COLUMN_1" },
     ],
     COLUMN_2: [
-      { sourceId: "card:45", originalName: "count", name: "COLUMN_2" },
+      { sourceId: "card:45", originalName: "category", name: "COLUMN_2" },
+    ],
+    COLUMN_3: [
+      { sourceId: "card:45", originalName: "count", name: "COLUMN_3" },
     ],
   } as Record<string, VisualizerColumnValueSource[]>;
 
@@ -31,12 +34,20 @@ describe("updateSettingsForDisplay", () => {
       base_type: "type/DateTime",
     }),
     createMockColumn({
+      display_name: "Category",
+      semantic_type: "type/Category",
+      field_ref: ["field", "COLUMN_2", { "base-type": "type/Text" }],
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      name: "COLUMN_2",
+    }),
+    createMockColumn({
       display_name: "Count",
       semantic_type: "type/Quantity",
       field_ref: ["field", "COLUMN_2", { "base-type": "type/BigInteger" }],
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
-      name: "COLUMN_2",
+      name: "COLUMN_3",
     }),
   ];
 
@@ -44,7 +55,7 @@ describe("updateSettingsForDisplay", () => {
     const settings = {};
     const sourceDisplay = null;
     const targetDisplay = null;
-    const result = updateSettingsForDisplay(
+    const result = getUpdatedSettingsForDisplay(
       columnValuesMapping,
       columns,
       settings,
@@ -58,24 +69,7 @@ describe("updateSettingsForDisplay", () => {
     const settings = {};
     const sourceDisplay = "bar";
     const targetDisplay = "bar";
-    const result = updateSettingsForDisplay(
-      columnValuesMapping,
-      columns,
-      settings,
-      sourceDisplay,
-      targetDisplay,
-    );
-    expect(result).toEqual({ columnValuesMapping, columns, settings });
-  });
-
-  it("should work if sourceDisplay is cartesian and targetDisplay is pie", () => {
-    const settings = {
-      "graph.metrics": ["COLUMN_2"],
-      "graph.dimensions": ["COLUMN_1"],
-    };
-    const sourceDisplay = "line";
-    const targetDisplay = "pie";
-    const result = updateSettingsForDisplay(
+    const result = getUpdatedSettingsForDisplay(
       columnValuesMapping,
       columns,
       settings,
@@ -85,53 +79,71 @@ describe("updateSettingsForDisplay", () => {
     expect(result).toEqual({
       columnValuesMapping,
       columns,
-      settings: {
-        "pie.metric": "COLUMN_2",
-        "pie.dimension": "COLUMN_1",
-      },
+      settings,
     });
   });
 
-  it("should remove unnecessary columns if sourceDisplay is cartesian and targetDisplay is pie", () => {
-    const settings = {
-      "graph.metrics": ["COLUMN_2"],
-      "graph.dimensions": ["COLUMN_1"],
-    };
-    const sourceDisplay = "line";
-    const targetDisplay = "pie";
-    const result = updateSettingsForDisplay(
-      {
-        ...columnValuesMapping,
-        COLUMN_3: [
-          { sourceId: "card:45", originalName: "category", name: "COLUMN_3" },
-        ],
-      },
-      [
-        ...columns,
-        createMockColumn({ name: "COLUMN_3", display_name: "Category" }),
-      ],
-      settings,
-      sourceDisplay,
-      targetDisplay,
-    );
-    expect(result).toEqual({
-      columnValuesMapping,
-      columns,
-      settings: {
-        "pie.metric": "COLUMN_2",
-        "pie.dimension": "COLUMN_1",
-      },
+  describe("cartesian -> pie", () => {
+    it("should work with a single dimension (and remove extraneous columns)", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_3"],
+        "graph.dimensions": ["COLUMN_1"],
+      };
+      const sourceDisplay = "line";
+      const targetDisplay = "pie";
+      const result = getUpdatedSettingsForDisplay(
+        columnValuesMapping,
+        columns,
+        settings,
+        sourceDisplay,
+        targetDisplay,
+      );
+      expect(result).toEqual({
+        columnValuesMapping: {
+          COLUMN_1: columnValuesMapping.COLUMN_1,
+          COLUMN_3: columnValuesMapping.COLUMN_3,
+        },
+        columns: [columns[0], columns[2]],
+        settings: {
+          "pie.metric": "COLUMN_3",
+          "pie.dimension": "COLUMN_1",
+        },
+      });
+    });
+
+    it("should work with multiple dimensions", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_3"],
+        "graph.dimensions": ["COLUMN_1", "COLUMN_2"],
+      };
+      const sourceDisplay = "line";
+      const targetDisplay = "pie";
+      const result = getUpdatedSettingsForDisplay(
+        columnValuesMapping,
+        columns,
+        settings,
+        sourceDisplay,
+        targetDisplay,
+      );
+      expect(result).toEqual({
+        columnValuesMapping,
+        columns,
+        settings: {
+          "pie.metric": "COLUMN_3",
+          "pie.dimension": ["COLUMN_1", "COLUMN_2"],
+        },
+      });
     });
   });
 
   it("should work if sourceDisplay is pie and targetDisplay is cartesian", () => {
     const settings = {
-      "pie.metric": "COLUMN_2",
+      "pie.metric": "COLUMN_3",
       "pie.dimension": "COLUMN_1",
     };
     const sourceDisplay = "pie";
     const targetDisplay = "line";
-    const result = updateSettingsForDisplay(
+    const result = getUpdatedSettingsForDisplay(
       columnValuesMapping,
       columns,
       settings,
@@ -142,7 +154,7 @@ describe("updateSettingsForDisplay", () => {
       columnValuesMapping,
       columns,
       settings: {
-        "graph.metrics": ["COLUMN_2"],
+        "graph.metrics": ["COLUMN_3"],
         "graph.dimensions": ["COLUMN_1"],
       },
     });
