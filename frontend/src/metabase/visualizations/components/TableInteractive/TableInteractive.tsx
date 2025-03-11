@@ -217,9 +217,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-      rowIndex: number,
-      columnId: string,
+      {
+        rowIndex,
+        columnId: columnIdParam,
+      }: {
+        rowIndex: number;
+        columnId: string;
+        cellId: string;
+      },
     ) => {
+      let columnId = columnIdParam;
       if (isPivoted) {
         columnId = getColumnIdFromPivotedColumnId(columnId);
       }
