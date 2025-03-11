@@ -12,6 +12,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           sparse-checkout: .github
+      - name: Install dependencies
+        run: npm install @octokit/rest
       - name: Run PR update script
         run: node .github/scripts/update-pr-with-issues.js
         env:
