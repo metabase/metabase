@@ -120,7 +120,7 @@ async function link_issues(github) {
       for (const attachment of linearIssue.attachments.nodes) {
         const url = attachment.url;
         console.log(`-->  checking url: ${url}`)
-        const match = url.match(/github\.com\/.*\/.*\/issues\/(\d+)/);
+        const match = url.match(/github\.com\/metabase\/metabase\/issues\/(\d+)/);
         if (match) {
           console.log(`-->  found match: ${match[1]}`)
           issueNumbers.push(match[1]);
