@@ -1,5 +1,5 @@
 ;; -*- comment-column: 100; -*-
-{:config-paths ["macros" "src" "config"]
+{:config-paths ["macros" "src"]
  :linters
  {;;
   ;; enabled optional linters (these are disabled by default)
@@ -60,9 +60,8 @@
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
-  :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/require-shape-checker                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
@@ -598,8 +597,6 @@
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
-   clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
-   clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -651,7 +648,6 @@
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
-   metabase.plugins.classloader/require                                                                                      hooks.clojure.core.require/lint-require
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
