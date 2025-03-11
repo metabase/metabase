@@ -26,7 +26,7 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
         source,
       });
 
-      if ("error" in res) {
+      if (res.error) {
         throw res.error;
       }
 

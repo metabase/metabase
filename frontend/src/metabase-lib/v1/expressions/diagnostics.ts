@@ -6,6 +6,7 @@ import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { isExpression } from "./matchers";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, StartRule, Token } from "./types";
 import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
@@ -16,9 +17,9 @@ export function diagnose(options: {
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
-}) {
+}): ErrorWithMessage | null {
   const result = diagnoseAndCompile(options);
-  if ("error" in result) {
+  if (result.error) {
     return result.error;
   }
   return null;
@@ -39,13 +40,19 @@ export function diagnoseAndCompile({
 }): CompileResult {
   if (!source || source.length === 0) {
     return {
+      expression: null,
+      expressionClause: null,
       error: { message: t`Expression is empty` },
     };
   }
 
   const { tokens, errors } = tokenize(source);
   if (errors && errors.length > 0) {
-    return { error: errors[0] };
+    return {
+      expression: null,
+      expressionClause: null,
+      error: errors[0],
+    };
   }
 
   const checks = [
@@ -57,7 +64,11 @@ export function diagnoseAndCompile({
   for (const check of checks) {
     const error = check(tokens, source);
     if (error) {
-      return { error };
+      return {
+        expression: null,
+        expressionClause: null,
+        error,
+      };
     }
   }
 
@@ -72,8 +83,12 @@ export function diagnoseAndCompile({
     database,
   });
 
-  if ("error" in result) {
-    return result;
+  if (!isExpression(result.expression) || result.expressionClause === null) {
+    return {
+      expression: null,
+      expressionClause: null,
+      error: result.error ?? { message: t`Invalid expression` },
+    };
   }
 
   const error = checkCompiledExpression({
@@ -83,7 +98,11 @@ export function diagnoseAndCompile({
     expression: result.expression,
   });
   if (error) {
-    return { error };
+    return {
+      expression: null,
+      expressionClause: null,
+      error,
+    };
   }
 
   return result;

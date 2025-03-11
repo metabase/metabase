@@ -27,7 +27,7 @@ function compile(expression: string, startRule: StartRule = "expression") {
     startRule,
     resolve: false,
   });
-  if ("error" in result) {
+  if (result.error) {
     throw result.error;
   }
 }

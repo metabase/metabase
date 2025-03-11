@@ -20,8 +20,11 @@ import { isErrorWithMessage } from "./utils";
 export type CompileResult =
   | {
       error: ErrorWithMessage;
+      expression: null;
+      expressionClause: null;
     }
   | {
+      error: null;
       expression: Expression;
       expressionClause: Lib.ExpressionClause;
     };
@@ -48,7 +51,11 @@ export function compileExpression({
   });
 
   if (errors.length > 0) {
-    return { error: errors[0] };
+    return {
+      expression: null,
+      expressionClause: null,
+      error: errors[0],
+    };
   }
 
   const passes = [
@@ -81,11 +88,20 @@ export function compileExpression({
     return {
       expression,
       expressionClause,
+      error: null,
     };
   } catch (error) {
     if (isErrorWithMessage(error) && error.friendly) {
-      return { error };
+      return {
+        expression: null,
+        expressionClause: null,
+        error,
+      };
     }
-    return { error: { message: t`Invalid expression` } };
+    return {
+      expression: null,
+      expressionClause: null,
+      error: { message: t`Invalid expression` },
+    };
   }
 }
