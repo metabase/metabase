@@ -23,6 +23,7 @@ export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
     <Select
       className={className}
       data={DATA}
+      nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a semantic type`}
       searchable
       value={stringifyValue(value)}
