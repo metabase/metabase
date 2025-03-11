@@ -1713,7 +1713,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", () => {
+describe("issue 45063", { tags: "@flaky" }, () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",
