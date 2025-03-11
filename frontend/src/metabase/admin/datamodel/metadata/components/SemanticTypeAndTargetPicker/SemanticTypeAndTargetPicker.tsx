@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
+import LegacySelect, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
@@ -100,7 +100,7 @@ const SemanticTypeAndTargetPicker = ({
       data-testid="semantic-type-target-picker"
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
-      <Select
+      <LegacySelect
         className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
@@ -113,7 +113,7 @@ const SemanticTypeAndTargetPicker = ({
       />
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
       {showCurrencyTypeSelect && (
-        <Select
+        <LegacySelect
           className={cx(
             AdminS.TableEditorFieldTarget,
             CS.inlineBlock,
@@ -136,11 +136,11 @@ const SemanticTypeAndTargetPicker = ({
               </span>
             </Option>
           ))}
-        </Select>
+        </LegacySelect>
       )}
       {showFKTargetSelect && hasSeparator && <FieldSeparator />}
       {showFKTargetSelect && (
-        <Select
+        <LegacySelect
           buttonProps={{
             "data-testid": "fk-target-select",
           }}
