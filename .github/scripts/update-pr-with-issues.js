@@ -74,7 +74,7 @@ async function link_issues(github) {
 
     console.log('PR Info:\n' + JSON.stringify(prInfo, null, 2) + "\n");
 
-    const prUrl = prInfo.data.url;
+    const prUrl = prInfo.data.html_url;
     console.log(`Processing PR: ${prUrl}`);
 
     // Query Linear API to find tasks linked to this PR
@@ -136,10 +136,12 @@ async function link_issues(github) {
       return;
     }
 
-    let linked_issues = getLinkedIssues(prInfo.body);
+    let body = prInfo.data.body || '';
+
+    let linked_issues = getLinkedIssues(body);
     console.log(`Linked issues: ${linked_issues}`);
 
-    let newBody = prInfo.body || '';
+    let newBody = body || '';
 
     // Filter out issue numbers that are already referenced in the PR body:
     let issueNumbersToAdd = [];
