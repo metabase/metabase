@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
@@ -6,7 +5,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
@@ -14,7 +12,7 @@ import {
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -23,7 +21,6 @@ import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   createDataSource,
   dashboardCardSupportsVisualizer,
@@ -45,7 +42,6 @@ import type {
   VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -103,6 +99,8 @@ interface DashCardVisualizationProps {
 
   downloadsEnabled: boolean;
   editDashboard: () => void;
+
+  onEditVisualization?: () => void;
 }
 
 // This is done to add the `getExtraDataForClick` prop.
@@ -141,12 +139,9 @@ export function DashCardVisualization({
   onUpdateVisualizationSettings,
   downloadsEnabled,
   editDashboard,
+  onEditVisualization,
 }: DashCardVisualizationProps) {
   const datasets = useSelector(state => getDashcardData(state, dashcard.id));
-  const [
-    isVisualizerModalOpen,
-    { open: openVisualizerModal, close: closeVisualizerModal },
-  ] = useDisclosure(false);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
@@ -154,8 +149,6 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
-
-  const dispatch = useDispatch();
 
   const series = useMemo(() => {
     if (
@@ -223,40 +216,16 @@ export function DashCardVisualization({
 
   const editVisualization = useMemo(() => {
     if (
+      onEditVisualization &&
       isVisualizerDashboardCard(dashcard) &&
       dashboardCardSupportsVisualizer(dashcard)
     ) {
       return () => {
-        openVisualizerModal();
+        onEditVisualization();
         editDashboard();
       };
     }
-  }, [editDashboard, dashcard, openVisualizerModal]);
-
-  const onVisualizerModalSave = useCallback(
-    (visualization: VisualizerHistoryItem) => {
-      dispatch(
-        replaceCardWithVisualization({
-          dashcardId: dashcard.id,
-          visualization,
-        }),
-      );
-      closeVisualizerModal();
-    },
-    [dashcard.id, dispatch, closeVisualizerModal],
-  );
-
-  const onVisualizerModalClose = useCallback(() => {
-    closeVisualizerModal();
-  }, [closeVisualizerModal]);
-
-  const visualizerModalInitialState = useMemo(
-    () => ({
-      state: dashcard.visualization_settings
-        ?.visualization as Partial<VisualizerHistoryItem>,
-    }),
-    [dashcard.visualization_settings],
-  );
+  }, [editDashboard, dashcard, onEditVisualization]);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -426,14 +395,6 @@ export function DashCardVisualization({
         token={token}
         uuid={uuid}
       />
-      {isVisualizerModalOpen && (
-        <VisualizerModal
-          onSave={onVisualizerModalSave}
-          onClose={onVisualizerModalClose}
-          initialState={visualizerModalInitialState}
-          saveLabel={t`Save`}
-        />
-      )}
     </>
   );
 }

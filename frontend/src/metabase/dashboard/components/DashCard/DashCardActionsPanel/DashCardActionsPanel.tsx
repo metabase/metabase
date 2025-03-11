@@ -7,7 +7,6 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { dashboardCardSupportsVisualizer } from "metabase/visualizer/utils";
 import type {
   DashCardId,
   Dashboard,
@@ -23,7 +22,6 @@ import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButto
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
-import { VisualizerButton } from "./VisualizerButton";
 import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
@@ -50,6 +48,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onEditVisualization?: () => void;
 }
 
 function DashCardActionsPanelInner({
@@ -70,6 +69,7 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onEditVisualization,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -153,14 +153,17 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
+    if (onEditVisualization) {
       buttons.push(
-        <VisualizerButton
+        <DashCardActionButton
+          as="div"
           key="visualizer-button"
-          card={series[0].card}
-          dashcard={dashcard}
-          columns={series[0].data?.cols ?? []}
-        />,
+          tooltip={t`Edit visualization`}
+          aria-label={t`Edit visualization`}
+          onClick={onEditVisualization}
+        >
+          <DashCardActionButton.Icon name="pencil" />
+        </DashCardActionButton>,
       );
     } else if (!disableSettingsConfig) {
       buttons.push(
