@@ -423,8 +423,8 @@ describe("issue 31926", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("display the relevant error message in save question modal (metabase#21597)", () => {
-    cy.intercept({ method: "POST", url: "/api/card" });
+  it("disables the run and save buttons (metabase#31926)", () => {
+    cy.intercept({ method: "POST", url: "/api/card" }).as("saveNativeQuestion");
 
     // Second DB (copy)
     H.addPostgresDatabase(databaseCopyName);
@@ -452,13 +452,14 @@ describe("issue 31926", { tags: "@external" }, () => {
     cy.contains("200");
 
     // Change DB
-    // and re-run the native query
     cy.findByTestId("native-query-editor-container")
       .findByText("Sample Database")
       .click();
     H.popover().within(() => {
       cy.findByText(databaseCopyName).click();
     });
+
+    cy.wait("@saveNativeQuestion");
     // run button disabled
     cy.findAllByTestId("run-button").filter(":visible").should("be.disabled");
 
