@@ -69,6 +69,7 @@
 
 (defn- check-prometheus-metrics!
   [& {expected-metrics-count  :metabase-query-processor/metrics-adjust
+      expected-metrics-incompatible-rejections :metabase-query-processor/metrics-adjust-incompatible-rejections
       expected-metrics-errors :metabase-query-processor/metrics-adjust-errors
       metric-and-mp           :metric-and-mp
       query-fn                :query-fn
@@ -80,12 +81,15 @@
     (mt/with-prometheus-system! [_ system]
       (check-fn query)
       (is (== expected-metrics-count (mt/metric-value system :metabase-query-processor/metrics-adjust)))
+      (is (== expected-metrics-incompatible-rejections
+              (mt/metric-value system :metabase-query-processor/metrics-adjust-incompatible-rejections)))
       (is (== expected-metrics-errors (mt/metric-value system :metabase-query-processor/metrics-adjust-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 0
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 0
      :metabase-query-processor/metrics-adjust-errors 0
      :query-fn (fn [_mp _metric]
                  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
@@ -96,6 +100,7 @@
   (testing "successful adjustment does not increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 0
      :metabase-query-processor/metrics-adjust-errors 0
      :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
                                    :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
@@ -103,6 +108,7 @@
   (testing "failure to adjust :metric clauses increments error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 0
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
                  (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
@@ -113,6 +119,7 @@
   (testing "exceptions from other libs also increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 0
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
                  (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
@@ -123,6 +130,7 @@
   (testing "metric missing aggregation increments counter and throws exception"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics-adjust 1
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 0
      :metabase-query-processor/metrics-adjust-errors 1
      :metric-and-mp (mock-metric (lib/query meta/metadata-provider (meta/table-metadata :products)))
      :query-fn (fn [mp metric]
@@ -133,6 +141,27 @@
                  (is (thrown-with-msg?
                       clojure.lang.ExceptionInfo
                       #"Source metric missing aggregation"
+                      (adjust query))))))
+  (testing "Processing of query referencing incompatible metrics increments all counters."
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics-adjust 1
+     :metabase-query-processor/metrics-adjust-incompatible-rejections 1
+     :metabase-query-processor/metrics-adjust-errors 1
+     :metric-and-mp (mock-metric (as-> (lib/query meta/metadata-provider
+                                                  (lib.metadata/table meta/metadata-provider (meta/id :orders)))
+                                       $
+                                   (lib/filter $ (lib/= (m/find-first (comp #{"User ID"} :display-name)
+                                                                      (lib/filterable-columns $))
+                                                        10))
+                                   (lib/aggregate $ (lib/count))))
+     :query-fn (fn [mp metric]
+                 (-> (lib/query mp (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                     (lib/aggregate (lib.metadata/metric mp (:id metric)))))
+     :check-fn (fn [query]
+                 (is (thrown-with-msg?
+                      Exception
+                      #"It's not allowed to combine metrics having filters with other aggregations"
                       (adjust query)))))))
 
 (deftest ^:parallel no-metric-should-result-in-exact-same-query
@@ -630,40 +659,40 @@
       (comment
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query after})
+                                            {:source-query after})
                   (expand-macros (lib.tu.macros/mbql-query nil
-                                   {:source-query before})))))
+                                                           {:source-query before})))))
         (testing "nested 2 levels"
           (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query after}})
+                                            {:source-query {:source-query after}})
                   (expand-macros
                    (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query before}})))))
+                                             {:source-query {:source-query before}})))))
         (testing "nested 3 levels"
           (is (=? (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-query {:source-query after}}})
+                                            {:source-query {:source-query {:source-query after}}})
                   (expand-macros
                    (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query {:source-query before}}}))))))
+                                             {:source-query {:source-query {:source-query before}}}))))))
       (testing "inside :source-query inside :joins"
         (is (=? (lib.tu.macros/mbql-query checkins
-                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
-                            :source-query after}]})
+                                          {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
+                                                    :source-query after}]})
                 (expand-macros
                  (lib.tu.macros/mbql-query checkins
-                   {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
-                             :source-query before}]})))))
+                                           {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
+                                                     :source-query before}]})))))
 
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
-                  {:source-query {:source-table (meta/id :checkins)
-                                  :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
-                                                  :source-query after}]}})
+                                          {:source-query {:source-table (meta/id :checkins)
+                                                          :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                                          :source-query after}]}})
                 (expand-macros (lib.tu.macros/mbql-query nil
-                                 {:source-query {:source-table (meta/id :checkins)
-                                                 :joins
-                                                 [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
-                                                   :source-query before}]}}))))))))
+                                                         {:source-query {:source-table (meta/id :checkins)
+                                                                         :joins
+                                                                         [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                                           :source-query before}]}}))))))))
 
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
@@ -808,13 +837,13 @@
                                              :type :model}
                    :model/Card metric {:dataset_query
                                        (mt/mbql-query
-                                         orders
-                                         {:source-table (str "card__" (:id source-model))
-                                          :expressions {"somedays" [:datetime-diff
-                                                                    [:field "CREATED_AT" {:base-type :type/DateTime}]
-                                                                    (t/offset-date-time 2024 10 16 0 0 0)
-                                                                    :day]}
-                                          :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                                        orders
+                                        {:source-table (str "card__" (:id source-model))
+                                         :expressions {"somedays" [:datetime-diff
+                                                                   [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                   (t/offset-date-time 2024 10 16 0 0 0)
+                                                                   :day]}
+                                         :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
                                        :database_id (mt/id)
                                        :name "somedays median"
                                        :type :metric}]
@@ -963,12 +992,12 @@
              {:type :metric
               :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                                (lib/join $ (lib/with-join-conditions
-                                            (lib/join-clause joined-metadata)
-                                            [(lib/=
-                                              (m/find-first (comp #{"Product ID"} :display-name)
-                                                            (lib/visible-columns $))
-                                              (m/find-first (comp #{"ID"} :display-name)
-                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                             (lib/join-clause joined-metadata)
+                                             [(lib/=
+                                               (m/find-first (comp #{"Product ID"} :display-name)
+                                                             (lib/visible-columns $))
+                                               (m/find-first (comp #{"ID"} :display-name)
+                                                             (lib/returned-columns (lib/query mp joined-metadata))))]))
                                (lib/aggregate $ (lib/count))
                                (lib.convert/->legacy-MBQL $))}]
             (testing (format "Referencing stage with fk join with different target provokes an exception (joining %s)"
@@ -982,12 +1011,12 @@
                            (qp/process-query
                             (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                               (lib/join $ (lib/with-join-conditions
-                                           (lib/join-clause joined-metadata)
-                                           [(lib/=
-                                             (m/find-first (comp #{"Product ID"} :display-name)
-                                                           (lib/visible-columns $))
-                                             (m/find-first (comp #{"ID"} :display-name)
-                                                           (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                            (lib/join-clause joined-metadata)
+                                            [(lib/=
+                                              (m/find-first (comp #{"Product ID"} :display-name)
+                                                            (lib/visible-columns $))
+                                              (m/find-first (comp #{"ID"} :display-name)
+                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
                               (lib/aggregate $ (lib.metadata/metric mp no-join-id)))))))))))))
 
 (deftest join-operator-is-:=-test

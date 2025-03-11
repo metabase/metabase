@@ -41,8 +41,8 @@
   ;; localhost:<prometheus-server-port>/metrics. Nothing we need to do but shutdown.
   PrometheusActions
   (stop-web-server [_this]
-    (when-let [^Server web-server web-server]
-      (.stop web-server))))
+                   (when-let [^Server web-server web-server]
+                     (.stop web-server))))
 
 (defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} ^PrometheusSystem system nil)
 
@@ -215,6 +215,8 @@
                        {:description "Number of error responses from SCIM endpoints"})
    (prometheus/counter :metabase-query-processor/metrics-adjust
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
+   (prometheus/counter :metabase-query-processor/metrics-adjust-incompatible-rejections
+                       {:description "Number of queries rejected due to referencing incompatible metrics."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
    (prometheus/counter :metabase-search/index
