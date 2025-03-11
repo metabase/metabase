@@ -13,11 +13,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent CountDownLatch CountDownLatch)))
-
-(set! *warn-on-reflection* true)
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

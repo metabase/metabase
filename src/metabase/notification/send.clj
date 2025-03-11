@@ -303,7 +303,7 @@
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.PriorityQueue. deadline-comparator)
+    (->NotificationQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
                          (java.util.concurrent.ConcurrentHashMap.)
                          queue-lock
                          not-empty-cond)))
