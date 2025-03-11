@@ -19,6 +19,7 @@ import {
 } from "./components";
 import { defaultDay, scheduleDefaults } from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
+import { removeCommasFromTranslation } from "./utils";
 
 export interface ScheduleProps {
   schedule: ScheduleSettings;
@@ -87,7 +88,7 @@ export const Schedule = ({
 
   const renderedSchedule = useMemo(() => {
     // Merge default values into the schedule
-    const scheduleWithDefaults = _.defaults(
+    const scheduleWithDefaults: ScheduleSettings = _.defaults(
       schedule,
       schedule.schedule_type ? scheduleDefaults[schedule.schedule_type] : {},
     );
@@ -151,17 +152,23 @@ export const Schedule = ({
     );
 
     return match(schedule_type)
-      .with("hourly", () =>
-        minutesOnHourPicker
+      .with("hourly", () => {
+        return minutesOnHourPicker
           ? // For example, "Send hourly at 15 minutes past the hour"
             c(
               "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
             )
               .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
           : // For example, "Send hourly"
-            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-              .jt`${verb} ${selectFrequency}`,
-      )
+            // HACK: Include a comma which is then removed from the
+            // translation, to work around the following bug in
+            // babel-ttag-plugin: the plugin will reject a string that only has
+            // placeholders even if context is provided
+            removeCommasFromTranslation(
+              c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+                .jt`${verb}, ${selectFrequency}`,
+            );
+      })
       .with(
         "daily",
         () =>
@@ -192,7 +199,9 @@ export const Schedule = ({
               selectWeekdayOfMonth
             } at ${selectTime}`,
       )
-      .otherwise(() => null);
+      .with(null, () => null)
+      .with(undefined, () => null)
+      .exhaustive();
   }, [
     minutesOnHourPicker,
     schedule,

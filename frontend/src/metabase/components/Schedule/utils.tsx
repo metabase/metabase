@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import _ from "underscore";
-import { match } from "ts-pattern";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
@@ -65,3 +64,8 @@ export const measureTextWidthSafely = _.memoize(
     return JSON.stringify(args);
   },
 );
+
+export const removeCommasFromTranslation = (translation: string | string[]) =>
+  typeof translation === "string"
+    ? translation.replace(/,/g, "")
+    : translation.map(t => t.replace(/,/g, ""));
