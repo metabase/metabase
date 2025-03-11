@@ -1,3 +1,5 @@
+import { ScheduleDefaults } from "./types";
+
 export const defaultDay = "mon";
 export const defaultHour = 8;
 

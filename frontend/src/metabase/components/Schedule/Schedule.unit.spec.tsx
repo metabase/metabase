@@ -34,9 +34,6 @@ describe("Schedule", () => {
         schedule_day: "mon",
       },
     });
-    screen.debug(undefined, 999999);
-    await waitFor(() => {
-      expect(getInputValues()).toEqual(["monthly", "first", "Monday", "8:00"]);
-    });
+    expect(getInputValues()).toEqual(["monthly", "first", "Monday", "8:00"]);
   });
 });
