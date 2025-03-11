@@ -9,7 +9,7 @@ function getLinkedIssues(body) {
     return matches.map(m => {
       const numberMatch = m.match(/\d+/);
       return numberMatch ? numberMatch[0] : null;
-    });
+    }) || [];
   }
 
   return [];
