@@ -16,7 +16,7 @@ type GsheetsStatus = Settings["gsheets"]["status"];
 type ErrorPayload = { data?: { message: string } };
 
 export const GsheetsSyncStatus = () => {
-  const gsheetsSetting = useSetting("gsheets");
+  const gsheetsSetting = useSetting("gsheets") ?? { status: "not-connected" };
   const { status: settingStatus } = gsheetsSetting;
   const previousSettingStatus = usePrevious(settingStatus);
   const dispatch = useDispatch();
