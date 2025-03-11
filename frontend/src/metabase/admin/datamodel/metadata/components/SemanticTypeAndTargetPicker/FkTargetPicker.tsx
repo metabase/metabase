@@ -65,6 +65,7 @@ export const FkTargetPicker = ({
           );
         });
       }}
+      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={item => {

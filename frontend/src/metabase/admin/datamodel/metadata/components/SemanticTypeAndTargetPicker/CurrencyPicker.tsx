@@ -17,6 +17,7 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
     <Select
       className={className}
       data={DATA}
+      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a currency type`}
       renderOption={item => {
