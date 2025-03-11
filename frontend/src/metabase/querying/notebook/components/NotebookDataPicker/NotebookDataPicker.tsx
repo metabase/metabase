@@ -196,4 +196,3 @@ function getModelFilterList(
     return modelsFilterList.filter(model => model !== "metric");
   }
 }
-export { DataPickerTarget };
