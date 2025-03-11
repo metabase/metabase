@@ -7,6 +7,22 @@ registerVisualizations();
 
 describe("convertQuestionToInitialState", () => {
   it("should work with a visualization supported by the visualizer", () => {
+    const createdAtColumn = createMockField({
+      semantic_type: "type/CreationTimestamp",
+      name: "CREATED_AT",
+      effective_type: "type/DateTime",
+      id: 13,
+      display_name: "Created At: Month",
+      base_type: "type/DateTime",
+    });
+    const countColumn = createMockField({
+      display_name: "Count",
+      semantic_type: "type/Quantity",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+      name: "count",
+    });
+
     expect(
       convertCardToInitialState(
         createMockCard({
@@ -23,23 +39,7 @@ describe("convertQuestionToInitialState", () => {
             },
             "graph.metrics": ["count"],
           },
-          result_metadata: [
-            createMockField({
-              semantic_type: "type/CreationTimestamp",
-              name: "CREATED_AT",
-              effective_type: "type/DateTime",
-              id: 13,
-              display_name: "Created At: Month",
-              base_type: "type/DateTime",
-            }),
-            createMockField({
-              display_name: "Count",
-              semantic_type: "type/Quantity",
-              base_type: "type/BigInteger",
-              effective_type: "type/BigInteger",
-              name: "count",
-            }),
-          ],
+          result_metadata: [createdAtColumn, countColumn],
         }),
       ),
     ).toEqual({
@@ -63,33 +63,18 @@ describe("convertQuestionToInitialState", () => {
         },
         columns: [
           {
-            base_type: "type/DateTime",
-            display_name: "Created At: Month",
-            effective_type: "type/DateTime",
-            field_ref: [
-              "field",
-              "COLUMN_1",
-              {
-                "base-type": "type/DateTime",
-              },
-            ],
-            id: 13,
+            ...createdAtColumn,
             name: "COLUMN_1",
-            semantic_type: "type/CreationTimestamp",
+            field_ref: ["field", "COLUMN_1", { "base-type": "type/DateTime" }],
           },
           {
-            base_type: "type/BigInteger",
-            display_name: "Count",
-            effective_type: "type/BigInteger",
+            ...countColumn,
+            name: "COLUMN_2",
             field_ref: [
               "field",
               "COLUMN_2",
-              {
-                "base-type": "type/BigInteger",
-              },
+              { "base-type": "type/BigInteger" },
             ],
-            name: "COLUMN_2",
-            semantic_type: "type/Quantity",
           },
         ],
         settings: {
