@@ -67,6 +67,7 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
+          metabase.api.database
           metabase.api.dataset
           metabase.api.field
           metabase.api.macros
@@ -665,6 +666,10 @@
   enterprise/dashboard-subscription-filters
   {:api  #{}
    :uses #{premium-features}}
+
+  enterprise/database-routing
+  {:api #{metabase-enterprise.database-routing.core metabase-enterprise.database-routing.api}
+   :uses #{analytics api driver events util}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
