@@ -429,7 +429,12 @@ jobs:
 
             const version = '${{ inputs.version }}';
 
-            const issues = await getMilestoneIssues({ version, github, owner, repo });
+            const issues = await getMilestoneIssues({
+              version,
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
 
             // github release notes
             await publishRelease({
