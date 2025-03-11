@@ -2235,7 +2235,7 @@ msgid "Send password reset email"
 msgstr "Verstuur e-mail voor wachtwoordreset"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "Controleer de instructies in e-mail inbox om je wachtwoord te wijzigen."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30

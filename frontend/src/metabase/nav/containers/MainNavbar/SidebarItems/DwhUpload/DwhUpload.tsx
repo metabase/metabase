@@ -1,5 +1,5 @@
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
-import { c } from "ttag";
+import { c, t } from "ttag";
 
 import {
   type CollectionOrTableIdProps,
@@ -9,18 +9,24 @@ import type { OnFileUpload } from "metabase/collections/types";
 import { UploadInput } from "metabase/components/upload";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Menu } from "metabase/ui";
 
 import { trackDWHUploadCSVClicked } from "./analytics";
 
-export const DwhUploadCSV = () => {
+export const DwhUploadMenu = () => {
   const [
     isModelUploadModalOpen,
     { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
+  ] = useToggle(false);
+
+  const [
+    isGsheetModalOpen,
+    { turnOn: openGsheetModal, turnOff: closeGsheetModal },
   ] = useToggle(false);
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -67,17 +73,36 @@ export const DwhUploadCSV = () => {
   const triggerUploadInput = () => uploadInputRef.current?.click();
 
   return (
-    <Box data-testid="dwh-upload-csv" mt="md" px="md">
-      <Button
-        color="brand"
-        fullWidth={true}
-        leftSection={<Icon name="upload" />}
-        onClick={triggerUploadInput}
-        radius="xl"
-        variant="outline"
-      >
-        {c("Text for a button that lets you upload a CSV file").t`Upload CSV`}
-      </Button>
+    <Box data-testid="dwh-upload" mt="md" px="md">
+      <Menu position="right">
+        <Menu.Target>
+          <Button
+            fullWidth
+            variant="outline"
+            styles={{ label: { width: "100%" } }}
+          >
+            <Flex justify="space-between" w="100%">
+              <span />
+              <Flex>
+                <Icon name="add_data" mr="sm" />
+                <Box>{t`Add Data`}</Box>
+              </Flex>
+              {/* need this on the far-right */}
+              <Icon name="chevrondown" ml="sm" />
+            </Flex>
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown miw="19rem">
+          <Menu.Item
+            fw="bold"
+            leftSection={<Icon name="upload" />}
+            onClick={triggerUploadInput}
+          >
+            {c("button label for uploading a CSV data file").t`Upload CSV`}
+          </Menu.Item>
+          <PLUGIN_UPLOAD_MANAGEMENT.GsheetMenuItem onClick={openGsheetModal} />
+        </Menu.Dropdown>
+      </Menu>
       <UploadInput
         id="dwh-upload-csv-input"
         ref={uploadInputRef}
@@ -88,6 +113,11 @@ export const DwhUploadCSV = () => {
         opened={isModelUploadModalOpen}
         onClose={closeModelUploadModal}
         onUpload={handleFileUpload}
+      />
+      <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectionModal
+        isModalOpen={isGsheetModalOpen}
+        onClose={closeGsheetModal}
+        reconnect={true}
       />
     </Box>
   );
