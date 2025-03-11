@@ -23,6 +23,8 @@ env:
     [
       "shoppy-e2e"
     ]
+  SAMPLE_APP_MAIN_BRANCH_NAME: 'main'
+  SAMPLE_APP_LATEST_RELEASE_BRANCH_NAME: 'latest'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -89,8 +91,10 @@ jobs:
       matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
+
       - name: Build sample app compatibility data
         uses: actions/github-script@v7
         id: build-sample-apps-data
@@ -105,14 +109,14 @@ jobs:
             const testSuitesToRunInMasterOnly = JSON.parse(process.env.TEST_SUITES_TO_RUN_IN_MASTER_ONLY);
 
             const ref = '${{ github.base_ref || github.ref }}';
-            const branchName = ref.replace(/^refs\/heads\//, "");
+            const branchName = ref.replace(/^refs\/heads\//, '');
 
             const isMainBranchRef = branchName === 'master';
             const isReleaseBranchRef = isReleaseBranch(branchName);
 
             if (isMainBranchRef) {
               return {
-                branch_name: 'main',
+                branch_name: '${{ env.SAMPLE_APP_MAIN_BRANCH_NAME }}',
                 matrix: testSuites,
               };
             }
@@ -123,11 +127,15 @@ jobs:
               const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
               const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
 
+              const isLatestMajorVersion = currentReleaseVersion === currentBranchVersion
+
               const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
               const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
 
               return {
-                branch_name: branchName,
+                branch_name: isLatestMajorVersion
+                  ? '${{ env.SAMPLE_APP_LATEST_RELEASE_BRANCH_NAME }}'
+                  : branchName,
                 matrix: shouldRunTestsForVersion
                   ? releaseBranchTestSuites
                   : []
@@ -236,16 +244,30 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Check if sample app branch exists
+        id: check-sample-app-branch
+        run: |
+          REPO_NAME="${TEST_SUITE%-e2e}"
+          REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
+          echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
+          if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
+            echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Prepare and launch Sample Apps
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
         run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts
 
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
         run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }} --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: ${{ steps.run-e2e-tests.outcome != 'success' }}
+        if: ${{ steps.check-sample-app-branch.outputs.branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-${{ matrix.test_suite }}-latest
           path: |
