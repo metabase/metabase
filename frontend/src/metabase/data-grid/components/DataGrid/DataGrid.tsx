@@ -5,8 +5,8 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
-import type React from "react";
 import cx from "classnames";
+import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
