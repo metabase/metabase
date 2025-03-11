@@ -62,7 +62,7 @@ The locale codes are relevant for setting the language in [static embeds](../emb
 
 ## Translations
 
-Our community contributes to Metabase translations on our [CrowdIn project](https://crowdin.com/project/metabase-i18n). If you'd like to help make Metabase available in a language you're fluent in, we'd love your help!
+Our community contributes to Metabase translations on our [Crowdin project](https://crowdin.com/project/metabase-i18n). If you'd like to help make Metabase available in a language you're fluent in, we'd love your help!
 
 For a new language to be added to Metabase, it must reach 100%. Once it does, we add it in the next major or minor release of Metabase. All _existing_ languages in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This rule ensures that no one encounters a confusing mishmash of English and another language when using Metabase.
 
