@@ -61,7 +61,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  targetCollection,
+  targetCollection: userTargetCollection,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -72,9 +72,9 @@ export const SaveQuestionProvider = ({
 
   const currentUser = useSelector(getCurrentUser);
   const targetCollection =
-    currentUser && targetCollection === "personal"
+    currentUser && userTargetCollection === "personal"
       ? currentUser.personal_collection_id
-      : targetCollection;
+      : userTargetCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -143,7 +143,7 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        targetCollection: targetCollection,
+        targetCollection,
       }),
     [originalQuestion, question, onSave, onCreate, targetCollection],
   );

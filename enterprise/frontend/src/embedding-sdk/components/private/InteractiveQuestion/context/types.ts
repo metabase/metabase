@@ -35,7 +35,7 @@ type InteractiveQuestionConfig = {
   initialSqlParameters?: ParameterValues;
 } & Pick<
   SaveQuestionProps<SDKCollectionReference>,
-  "targetCollection" | "targetCollection"
+  "targetCollection" | "saveToCollection"
 >;
 
 export type QuestionMockLocationParameters = {
