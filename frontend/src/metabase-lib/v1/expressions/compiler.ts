@@ -11,6 +11,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  applyPasses,
   isCompilerPass,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
@@ -75,9 +76,7 @@ export function compileExpression<S extends StartRule>({
 
   try {
     let expression = compile(root);
-    for (const pass of passes) {
-      expression = pass(expression);
-    }
+    expression = applyPasses(expression, passes);
 
     const expressionClause = Lib.expressionClauseForLegacyExpression(
       query,

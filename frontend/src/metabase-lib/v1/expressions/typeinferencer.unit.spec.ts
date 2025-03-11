@@ -1,5 +1,12 @@
 import type { FieldReference } from "metabase-types/api";
 
+import {
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
+  adjustOffset,
+  adjustOptions,
+  applyPasses,
+} from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import { resolve } from "./resolver";
 import { infer } from "./typeinferencer";
@@ -12,7 +19,12 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
   function expr(source: string) {
     try {
       const ast = parse(lexify(source), { throwOnError: true });
-      return compile(ast.root);
+      return applyPasses(compile(ast.root), [
+        adjustOptions,
+        adjustOffset,
+        adjustCaseOrIf,
+        adjustMultiArgOptions,
+      ]);
     } catch (err) {
       return null;
     }
