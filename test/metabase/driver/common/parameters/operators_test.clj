@@ -105,10 +105,19 @@
                 (catch Exception e
                   (ex-data e))))]
       (doseq [[op values] [[:number/>= [2 4]]
-                           [:number/between [1]]
                            [:number/between [1 2 3]]]]
         (is (=? {:param-type  op
                  :param-value values
                  :field-id    pos-int?
                  :type        qp.error-type/invalid-parameter}
                 (f op values)))))))
+
+(deftest ^:parallel to-clause-test-7
+  (testing "between normalization"
+    (are [values op] (= [op [:field 26 {:source-field 5}] 1]
+                        (params.ops/to-clause {:type   :number/between
+                                               :target [:dimension [:field 26 {:source-field 5}]]
+                                               :value  values}))
+      [1]     :>=
+      [1 nil] :>=
+      [nil 1] :<=)))
