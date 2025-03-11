@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import _ from "underscore";
+import { match } from "ts-pattern";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";

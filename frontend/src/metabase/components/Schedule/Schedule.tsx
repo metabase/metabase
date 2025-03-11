@@ -1,4 +1,4 @@
-import { type HTMLAttributes, useCallback } from "react";
+import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { c } from "ttag";
 
@@ -84,106 +84,114 @@ export const Schedule = ({
     [onScheduleChange, schedule],
   );
 
-  const selectFrequency = (
-    <SelectFrequency
-      key="frequency"
-      updateSchedule={updateSchedule}
-      scheduleType={schedule.schedule_type}
-      scheduleOptions={scheduleOptions}
-    />
-  );
+  const renderedSchedule = useMemo(() => {
+    const { schedule_type, schedule_frame } = schedule;
 
-  const selectMinute = (
-    <SelectMinute
-      key="minute"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-    />
-  );
+    const selectFrequency = (
+      <SelectFrequency
+        key="frequency"
+        updateSchedule={updateSchedule}
+        scheduleType={schedule.schedule_type}
+        scheduleOptions={scheduleOptions}
+      />
+    );
 
-  const selectTime = (
-    <SelectTime
-      key="time"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-      timezone={timezone}
-    />
-  );
+    const selectMinute = (
+      <SelectMinute
+        key="minute"
+        schedule={schedule}
+        updateSchedule={updateSchedule}
+      />
+    );
 
-  const selectWeekday = (
-    <SelectWeekday
-      key="weekday"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-    />
-  );
+    const selectTime = (
+      <SelectTime
+        key="time"
+        schedule={schedule}
+        updateSchedule={updateSchedule}
+        timezone={timezone}
+      />
+    );
 
-  const selectFrame = (
-    <SelectFrame
-      key="frame"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-    />
-  );
+    const selectWeekday = (
+      <SelectWeekday
+        key="weekday"
+        schedule={schedule}
+        updateSchedule={updateSchedule}
+      />
+    );
 
-  const selectWeekdayOfMonth = (
-    <SelectWeekdayOfMonth
-      key="wom"
-      schedule={schedule}
-      updateSchedule={updateSchedule}
-    />
-  );
+    const selectFrame = (
+      <SelectFrame
+        key="frame"
+        schedule={schedule}
+        updateSchedule={updateSchedule}
+      />
+    );
 
-  const { schedule_type, schedule_frame } = schedule;
+    const selectWeekdayOfMonth = (
+      <SelectWeekdayOfMonth
+        key="wom"
+        schedule={schedule}
+        updateSchedule={updateSchedule}
+      />
+    );
+
+    return match(schedule_type)
+      .with("hourly", () =>
+        minutesOnHourPicker
+          ? // For example, "Send hourly at 15 minutes past the hour"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+            )
+              .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
+          : // For example, "Send hourly"
+            c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
+              .jt`${verb} ${selectFrequency}`,
+      )
+      .with(
+        "daily",
+        () =>
+          // For example, "Send daily at 12:00pm"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
+          ).jt`${verb} ${selectFrequency} at ${selectTime}`,
+      )
+      .with(
+        "weekly",
+        () =>
+          // For example, "Send weekly on Tuesday at 12:00pm"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
+          ).jt`${verb} ${selectFrequency} on ${selectWeekday} at ${selectTime}`,
+      )
+      .with("monthly", () =>
+        schedule_frame === "mid"
+          ? // For example, "Send monthly on the 15th at 12:00pm"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
+            )
+              .jt`${verb} ${selectFrequency} on the ${selectFrame} at ${selectTime}`
+          : // For example, "Send monthly on the first Tuesday at 12:00pm"
+            c(
+              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
+            ).jt`${verb} ${selectFrequency} on the ${selectFrame} ${
+              selectWeekdayOfMonth
+            } at ${selectTime}`,
+      )
+      .otherwise(() => null);
+  }, [
+    minutesOnHourPicker,
+    schedule,
+    scheduleOptions,
+    timezone,
+    updateSchedule,
+    verb,
+  ]);
 
   return (
     <Box className={S.Schedule} {...boxProps}>
-      <GroupControlsTogether>
-        {match(schedule_type)
-          .with("hourly", () =>
-            minutesOnHourPicker
-              ? // For example, "Send hourly at 15 minutes past the hour"
-                c(
-                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-                )
-                  .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
-              : // For example, "Send hourly"
-                c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'.")
-                  .jt`${verb} ${selectFrequency}`,
-          )
-          .with(
-            "daily",
-            () =>
-              // For example, "Send daily at 12:00pm"
-              c(
-                "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'",
-              ).jt`${verb} ${selectFrequency} at ${selectTime}`,
-          )
-          .with(
-            "weekly",
-            () =>
-              // For example, "Send weekly on Tuesday at 12:00pm"
-              c(
-                "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'",
-              )
-                .jt`${verb} ${selectFrequency} on ${selectWeekday} at ${selectTime}`,
-          )
-          .with("monthly", () =>
-            schedule_frame === "mid"
-              ? // For example, "Send monthly on the 15th at 12:00pm"
-                c(
-                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'",
-                )
-                  .jt`${verb} ${selectFrequency} on the ${selectFrame} at ${selectTime}`
-              : // For example, "Send monthly on the first Tuesday at 12:00pm"
-                c(
-                  "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'",
-                ).jt`${verb} ${selectFrequency} on the ${selectFrame} ${
-                  selectWeekdayOfMonth
-                } at ${selectTime}`,
-          )
-          .otherwise(() => null)}
-      </GroupControlsTogether>
+      <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
     </Box>
   );
 };
