@@ -101,18 +101,12 @@ describe("diagnostics", () => {
     it("should handle valid input", () => {
       const expression = "1";
       const result = setup({ expression });
-      if (!("error" in result)) {
-        return;
-      }
       expect(result.error).toBeNull();
     });
 
     it("should handle invalid input", () => {
       const expression = "1+";
       const result = setup({ expression });
-      if (!("error" in result)) {
-        return;
-      }
       expect(result.error?.message).toEqual("Expected expression");
     });
   });
