@@ -30,13 +30,17 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
-  Pick<SaveQuestionProps, "targetCollection" | "saveToCollection"> &
+  Pick<
+    SaveQuestionProps<SDKCollectionReference>,
+    "targetCollection" | "saveToCollection"
+  > &
   Pick<
     InteractiveQuestionProviderProps,
     | "questionId"

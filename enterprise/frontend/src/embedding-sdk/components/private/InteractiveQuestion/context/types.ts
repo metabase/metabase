@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
+import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
@@ -32,7 +33,10 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "targetCollection" | "saveToCollection">;
+} & Pick<
+  SaveQuestionProps<SDKCollectionReference>,
+  "targetCollection" | "saveToCollection"
+>;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };

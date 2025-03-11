@@ -5,7 +5,7 @@ import type {
   DashboardTabId,
 } from "metabase-types/api";
 
-export type SaveQuestionProps = {
+export type SaveQuestionProps<C = CollectionId> = {
   question: Question;
   originalQuestion: Question | null;
   onCreate: (
@@ -24,7 +24,7 @@ export type SaveQuestionProps = {
   /**
    * @deprecated Use `targetCollection` instead
    */
-  saveToCollection: CollectionId;
+  saveToCollection?: C;
 
   /**
    * The target collection to save the question to.
@@ -33,7 +33,7 @@ export type SaveQuestionProps = {
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
    **/
-  targetCollection?: CollectionId;
+  targetCollection?: C;
 };
 
 export type FormValues = {
