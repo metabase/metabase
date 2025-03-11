@@ -13,7 +13,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export interface CreateDashboardModalProps {
-  initialCollectionId: SDKCollectionReference;
+  initialCollectionId?: SDKCollectionReference;
   isOpen?: boolean;
   onCreate: (dashboard: Dashboard) => void;
   onClose?: () => void;
@@ -49,6 +49,6 @@ const CreateDashboardModalCoreWithLoading = _.compose(
   }),
 )(CreateDashboardModalCore);
 
-export const CreateDashboardModal = _.compose(withPublicComponentWrapper)(
+export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,
 );

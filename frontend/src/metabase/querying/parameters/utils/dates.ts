@@ -172,7 +172,7 @@ const SERIALIZERS: Serializer[] = [
     deserialize: () => {
       return {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "day",
       };
     },
@@ -194,7 +194,7 @@ const SERIALIZERS: Serializer[] = [
   {
     regex: /^this(\w+)$/,
     serialize: value => {
-      if (value.type === "relative" && value.value === "current") {
+      if (value.type === "relative" && value.value === 0) {
         return `this${value.unit}`;
       }
     },
@@ -203,7 +203,7 @@ const SERIALIZERS: Serializer[] = [
       if (isDatePickerTruncationUnit(unit)) {
         return {
           type: "relative",
-          value: "current",
+          value: 0,
           unit,
         };
       }
@@ -231,7 +231,7 @@ const SERIALIZERS: Serializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value < 0 &&
         value.offsetValue == null &&
         value.offsetUnit == null
@@ -260,7 +260,7 @@ const SERIALIZERS: Serializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value > 0 &&
         value.offsetValue == null &&
         value.offsetUnit == null
@@ -289,7 +289,7 @@ const SERIALIZERS: Serializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value < 0 &&
         value.offsetValue != null &&
         value.offsetValue < 0 &&
@@ -325,7 +325,7 @@ const SERIALIZERS: Serializer[] = [
     serialize: value => {
       if (
         value.type === "relative" &&
-        value.value !== "current" &&
+        value.value !== 0 &&
         value.value > 0 &&
         value.offsetValue != null &&
         value.offsetValue > 0 &&

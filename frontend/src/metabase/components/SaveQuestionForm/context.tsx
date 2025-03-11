@@ -16,7 +16,7 @@ import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -32,6 +32,7 @@ type SaveQuestionContextType = {
   showSaveType: boolean;
   multiStep: boolean;
   saveToCollection?: CollectionId;
+  saveToDashboard?: DashboardId;
 };
 
 export const SaveQuestionContext =
@@ -62,7 +63,6 @@ export const SaveQuestionProvider = ({
   multiStep = false,
   saveToCollection,
   children,
-  initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
@@ -90,23 +90,22 @@ export const SaveQuestionProvider = ({
     }
   }, [isLoading]);
 
-  const defaultDashboard = useMemo(() => {
-    if (!recentItems || recentItems.length === 0) {
-      return undefined;
-    }
-    const lastUsedDashboardIndex = recentItems?.findIndex(
-      item => item.model === "dashboard",
-    );
-    const lastUsedEntityModelIndex = recentItems?.findIndex(
+  const lastSelectedEntityModel = useMemo(() => {
+    return recentItems?.find(
       item => item.model === "collection" || item.model === "dashboard",
     );
-
-    if (lastUsedDashboardIndex === lastUsedEntityModelIndex) {
-      return recentItems[lastUsedDashboardIndex] as RecentCollectionItem;
-    } else {
-      return undefined;
-    }
   }, [recentItems]);
+
+  // we only care about the most recently select dashboard or collection
+  const lastSelectedCollection =
+    lastSelectedEntityModel?.model === "collection"
+      ? lastSelectedEntityModel
+      : undefined;
+
+  const lastSelectedDashboard =
+    lastSelectedEntityModel?.model === "dashboard"
+      ? lastSelectedEntityModel
+      : undefined;
 
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
@@ -114,13 +113,16 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    defaultDashboard?.can_write
-      ? defaultDashboard?.id
+    lastSelectedDashboard?.can_write
+      ? lastSelectedDashboard?.id
       : undefined;
 
-  const initialCollectionId = isAnalytics
-    ? defaultCollectionId
-    : (defaultDashboard?.parent_collection.id ?? defaultCollectionId);
+  const initialCollectionId =
+    (!isAnalytics
+      ? lastSelectedDashboard?.parent_collection.id
+      : defaultCollectionId) ??
+    lastSelectedCollection?.id ??
+    defaultCollectionId;
 
   const initialValues: FormValues = useMemo(
     () =>
@@ -129,15 +131,8 @@ export const SaveQuestionProvider = ({
         question,
         initialCollectionId,
         initialDashboardId,
-        initialDashboardTabId,
       ),
-    [
-      originalQuestion,
-      initialCollectionId,
-      initialDashboardId,
-      question,
-      initialDashboardTabId,
-    ],
+    [originalQuestion, initialCollectionId, initialDashboardId, question],
   );
 
   const handleSubmit = useCallback(
@@ -166,6 +161,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
+  const saveToDashboard = originalQuestion
+    ? undefined
+    : (question.dashboardId() ?? undefined);
+
   return (
     <FormProvider
       initialValues={{ ...initialValues }}
@@ -185,6 +184,7 @@ export const SaveQuestionProvider = ({
             showSaveType,
             multiStep,
             saveToCollection,
+            saveToDashboard,
           }}
         >
           {children}

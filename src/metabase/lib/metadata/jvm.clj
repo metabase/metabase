@@ -3,8 +3,6 @@
   (:require
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
@@ -76,8 +74,7 @@
   [database]
   ;; ignore encrypted details that we cannot decrypt, because that breaks schema
   ;; validation
-  (let [database (instance->metadata database :metadata/database)
-        database (assoc database :lib/methods {:escape-alias (partial driver/escape-alias (:engine database))})]
+  (let [database (instance->metadata database :metadata/database)]
     (cond-> database
       (not (map? (:details database))) (dissoc :details))))
 

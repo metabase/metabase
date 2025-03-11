@@ -97,7 +97,7 @@ describe("serializeDateParameterValue", () => {
       text: "thisday",
       value: {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "day",
       },
     },
@@ -105,7 +105,7 @@ describe("serializeDateParameterValue", () => {
       text: "thisyear",
       value: {
         type: "relative",
-        value: "current",
+        value: 0,
         unit: "year",
       },
     },

@@ -57,6 +57,17 @@
              "See https://www.metabase.com/license/commercial/ for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
+;;; --------------------------------------------------- Info Metric---------------------------------------------------
+
+(defmethod prometheus/known-labels :metabase-info/build
+  [_]
+  ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
+  [(merge (select-keys config/mb-version-info [:tag :hash :date])
+          {:version       config/mb-version-string
+           :major-version (config/current-major-version)})])
+
+(defmethod prometheus/initial-value :metabase-info/build [_ _] 1)
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
@@ -107,6 +118,8 @@
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (init-status/set-progress! 0.2)
+  ;; Ensure the classloader is installed as soon as possible.
+  (classloader/the-classloader)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)

@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
+import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import Button from "metabase/core/components/Button";
@@ -11,6 +11,7 @@ import { FormFooter } from "metabase/core/components/FormFooter";
 import Dashboards from "metabase/entities/dashboards";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormObserver,
   FormProvider,
@@ -19,9 +20,11 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
+import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+import { isVirtualDashCard } from "../utils";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
@@ -33,6 +36,7 @@ const DASHBOARD_SCHEMA = Yup.object({
     .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
     .default(null),
   collection_id: Yup.number().nullable().default(null),
+  is_shallow_copy: Yup.boolean().default(false),
 });
 
 export interface CopyDashboardFormProperties {
@@ -42,12 +46,13 @@ export interface CopyDashboardFormProperties {
 }
 
 export interface CopyDashboardFormProps {
-  onSubmit?: (values: CopyDashboardFormProperties) => Dashboard;
+  onSubmit: (values: CopyDashboardFormProperties) => Promise<Dashboard>;
   onSaved?: (dashboard?: Dashboard) => void;
   onClose?: () => void;
   initialValues?: CopyDashboardFormProperties | null;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   onValuesChange?: (vals: CopyDashboardFormProperties) => void;
+  originalDashboardId: DashboardId;
 }
 
 function CopyDashboardForm({
@@ -57,7 +62,14 @@ function CopyDashboardForm({
   initialValues,
   filterPersonalCollections,
   onValuesChange,
+  originalDashboardId,
 }: CopyDashboardFormProps) {
+  const {
+    currentData: originalDashboard,
+    isLoading,
+    error,
+  } = useGetDashboardQuery({ id: originalDashboardId });
+
   const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
@@ -80,6 +92,16 @@ function CopyDashboardForm({
       onValuesChange?.(values);
     },
     [onValuesChange],
+  );
+
+  const hasDashboardQuestions = useMemo(() => {
+    return !!originalDashboard?.dashcards.some(
+      dc => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
+    );
+  }, [originalDashboard]);
+
+  const isShallowCopyDisabled = Boolean(
+    isLoading || error || hasDashboardQuestions,
   );
 
   return (
@@ -111,6 +133,15 @@ function CopyDashboardForm({
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
         />
+        <FormCheckbox
+          name="is_shallow_copy"
+          label={
+            <DashboardCopyModalShallowCheckboxLabel
+              hasDashboardQuestions={hasDashboardQuestions}
+            />
+          }
+          disabled={isShallowCopyDisabled}
+        />
         <FormFooter>
           <FormErrorMessage inline />
           {!!onClose && (
@@ -123,5 +154,4 @@ function CopyDashboardForm({
   );
 }
 
-export const CopyDashboardFormConnected =
-  _.compose(withRouter)(CopyDashboardForm);
+export const CopyDashboardFormConnected = withRouter(CopyDashboardForm);
