@@ -72,6 +72,8 @@ async function link_issues(github) {
       console.log("error getting prInfo:\n" + err);
     });
 
+    console.log('PR Info:\n' + JSON.stringify(prInfo, null, 2) + "\n");
+
     const prUrl = prInfo.html_url;
     console.log(`Processing PR: ${prUrl}`);
 
