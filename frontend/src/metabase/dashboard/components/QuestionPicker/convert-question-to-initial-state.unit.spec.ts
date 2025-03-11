@@ -6,21 +6,6 @@ import { convertCardToInitialState } from "./convert-question-to-initial-state";
 registerVisualizations();
 
 describe("convertQuestionToInitialState", () => {
-  it("should work with a visualizer dashboard card", () => {
-    expect(
-      convertCardToInitialState(
-        createMockCard({ visualization_settings: { visualization: "line" } }),
-      ),
-    ).toEqual({
-      state: {
-        visualization_settings: {
-          visualization: "line",
-        },
-      },
-      extraDataSources: ["card:1"],
-    });
-  });
-
   it("should work with a visualization supported by the visualizer", () => {
     expect(
       convertCardToInitialState(

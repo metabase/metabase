@@ -208,7 +208,7 @@ export const getTabularPreviewSeries = createSelector(
         card: {
           display: "table",
           visualization_settings: {},
-        },
+        } as Card,
       },
     ];
   },

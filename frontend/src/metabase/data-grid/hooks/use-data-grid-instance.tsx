@@ -40,6 +40,7 @@ export const useDataGridInstance = <TData, TValue>({
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
+  theme,
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
@@ -71,7 +72,7 @@ export const useDataGridInstance = <TData, TValue>({
       );
     });
 
-  const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure();
+  const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure(theme);
 
   useUpdateEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
@@ -209,8 +210,9 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     data,
     columnsOptions,
-    setMeasuredColumnSizingMap,
     truncateLongCellWidth,
+    theme,
+    setMeasuredColumnSizingMap,
     measurementRenderWrapper,
   );
 
@@ -267,6 +269,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   return {
     table,
+    theme,
     gridRef,
     virtualGrid,
     measureRoot,

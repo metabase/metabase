@@ -21,9 +21,14 @@ import S from "./Header.module.css";
 interface HeaderProps {
   onSave?: (visualization: VisualizerHistoryItem) => void;
   saveLabel?: string;
+  allowSaveWhenPristine?: boolean;
 }
 
-export function Header({ onSave, saveLabel }: HeaderProps) {
+export function Header({
+  onSave,
+  saveLabel,
+  allowSaveWhenPristine = false,
+}: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const visualization = useSelector(getCurrentVisualizerState);
@@ -65,7 +70,11 @@ export function Header({ onSave, saveLabel }: HeaderProps) {
             <Icon name="chevronright" />
           </ActionIcon>
         </Tooltip>
-        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+        <Button
+          variant="filled"
+          disabled={!isDirty && !allowSaveWhenPristine}
+          onClick={handleSave}
+        >
           {saveLabel ?? t`Add to dashboard`}
         </Button>
       </Flex>

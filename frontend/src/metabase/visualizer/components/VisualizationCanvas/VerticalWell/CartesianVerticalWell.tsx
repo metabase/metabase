@@ -58,10 +58,13 @@ export function CartesianVerticalWell() {
     >
       <Flex
         align="center"
-        justify="center"
         pos="relative"
         gap="sm"
-        style={{ transform: "rotate(-90deg)" }}
+        style={{
+          height: "100%",
+          overflow: "auto",
+          writingMode: "sideways-lr",
+        }}
       >
         {metrics.map(metric => (
           <MetricWellItem

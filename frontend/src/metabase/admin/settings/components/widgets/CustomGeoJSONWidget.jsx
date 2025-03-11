@@ -17,7 +17,7 @@ import { GeoJSONApi, SettingsApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
-import SettingHeader from "../SettingHeader";
+import { SettingHeader } from "../SettingHeader";
 
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {
@@ -161,7 +161,11 @@ export default class CustomGeoJSONWidget extends Component {
     return (
       <div className={CS.flexFull}>
         <div className={cx(CS.flex, CS.justifyBetween)}>
-          <SettingHeader setting={setting} />
+          <SettingHeader
+            id={setting.key}
+            title={setting.display_name}
+            description={setting.description}
+          />
           {!this.state.map && (
             <button
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
