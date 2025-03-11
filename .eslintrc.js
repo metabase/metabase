@@ -6,6 +6,10 @@
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
+const plugins = ["react", "no-only-tests"];
+if (shouldLintCssModules) {
+  plugins.push("postcss-modules");
+}
 
 module.exports = {
   rules: {
@@ -134,7 +138,7 @@ module.exports = {
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests", "postcss-modules"],
+  plugins,
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",

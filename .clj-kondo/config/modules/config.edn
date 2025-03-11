@@ -60,7 +60,8 @@
    :uses #{config driver legacy-mbql lib models sync util}}
 
   api
-  {:api #{metabase.api.cache
+  {:api #{metabase.api.auth
+          metabase.api.cache
           metabase.api.card
           metabase.api.collection
           metabase.api.common
@@ -606,7 +607,8 @@
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.models.pulse-channel
-           metabase-enterprise.advanced-config.file}
+           metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.crufty}
    :uses #{api db driver models premium-features setup sync util}}
 
   enterprise/advanced-permissions
@@ -667,6 +669,14 @@
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
    :uses #{models premium-features sso util enterprise/sso}}
+
+  enterprise/gsheets
+  {:api  #{metabase-enterprise.gsheets.api}
+   :uses #{api analytics enterprise/harbormaster models premium-features server util}}
+
+  enterprise/harbormaster
+  {:api #{metabase-enterprise.harbormaster.client}
+   :uses #{api cloud-migration models util}}
 
   enterprise/impersonation
   {:api #{metabase-enterprise.impersonation.core
@@ -741,7 +751,7 @@
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}
-   :uses #{api models upload util}}}
+   :uses #{api models premium-features upload util}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
