@@ -1,15 +1,5 @@
-import { t } from "ttag";
-
-import type * as Lib from "metabase-lib";
-import {
-  type ClauseType,
-  type StartRule,
-  isExpression,
-} from "metabase-lib/v1/expressions";
-import { diagnoseAndCompile } from "metabase-lib/v1/expressions/diagnostics";
 import { getFunctionByStructure } from "metabase-lib/v1/expressions/helper-text-strings";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 export function enclosingFunction(doc: string, pos: number) {
   const tree = parser.parse(doc);
@@ -55,46 +45,4 @@ export function enclosingFunction(doc: string, pos: number) {
   } while (cursor.next());
 
   return res;
-}
-
-export function diagnoseAndCompileExpression<
-  S extends StartRule = "expression",
->(
-  source: string,
-  {
-    startRule,
-    query,
-    stageIndex,
-    metadata,
-  }: {
-    startRule: S;
-    query: Lib.Query;
-    stageIndex: number;
-    metadata: Metadata;
-  },
-) {
-  const result = diagnoseAndCompile({
-    source,
-    startRule,
-    query,
-    stageIndex,
-    metadata,
-  });
-
-  if ("error" in result) {
-    return { clause: null, error: result.error };
-  }
-
-  const { expression, expressionClause: clause } = result;
-  if (!expression || !isExpression(expression) || !clause) {
-    return {
-      clause: null,
-      error: { message: t`Invalid expression` },
-    };
-  }
-
-  return {
-    clause: clause as ClauseType<S>,
-    error: null,
-  };
 }

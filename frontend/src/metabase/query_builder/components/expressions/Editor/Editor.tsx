@@ -19,6 +19,7 @@ import {
   type ErrorWithMessage,
   type StartRule,
   MBQL_CLAUSES,
+  diagnoseAndCompile,
   format,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
@@ -37,7 +38,6 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { diagnoseAndCompileExpression } from "./utils";
 
 type EditorProps<S extends StartRule> = {
   id?: string;
@@ -303,7 +303,8 @@ function useExpression<S extends StartRule = "expression">({
         return;
       }
 
-      const { clause, error } = diagnoseAndCompileExpression(source, {
+      const { error, expressionClause: clause } = diagnoseAndCompile({
+        source,
         startRule,
         query,
         stageIndex,
