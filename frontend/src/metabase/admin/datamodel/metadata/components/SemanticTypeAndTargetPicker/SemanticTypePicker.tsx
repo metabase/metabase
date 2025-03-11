@@ -25,7 +25,7 @@ export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
       data={DATA}
       placeholder={t`Select a semantic type`}
       searchable
-      value={value ?? undefined}
+      value={stringifyValue(value)}
       onChange={handleChange}
     />
   );
