@@ -496,8 +496,14 @@
     ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
      (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name liquibase))
            changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
-          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
-           ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
+           ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
+           ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)
+           latest-version (apply max (map #(-> % extract-numbers first) ids-to-drop))
+           current-version (config/current-major-version)]
+       (when (and current-version (> latest-version current-version))
+         (throw (IllegalArgumentException.
+                 (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
+                         latest-version (config/current-major-version) latest-version))))
        (log/infof "Rolling back app database schema to version %d" target-version)
        (.rollback liquibase (count ids-to-drop) "")))))
 
