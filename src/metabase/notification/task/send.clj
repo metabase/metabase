@@ -158,7 +158,7 @@
         existing-triggers-subscription-ids (map #(get-in % [:data "subscription-id"]) existing-triggers)
         subscription-id->cron              (t2/select-pk->fn identity :model/NotificationSubscription :type :notification-subscription/cron)
         db-subscription-ids                (keys subscription-id->cron)
-        [to-delete to-create _to-skip]     (diff existing-triggers-subscription-ids db-subscription-ids)]
+        [to-delete to-create _to-skip]     (diff (set existing-triggers-subscription-ids) (set db-subscription-ids))]
     (doseq [subscription-id to-delete]
       (delete-trigger-for-subscription! subscription-id))
     (doseq [subscription-id to-create]
