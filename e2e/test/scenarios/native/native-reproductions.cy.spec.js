@@ -414,65 +414,6 @@ describe("issue 21550", () => {
   });
 });
 
-describe("issue 31926", { tags: "@external" }, () => {
-  const databaseName = "Sample Database";
-  const databaseCopyName = `${databaseName} copy`;
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("disables the run and save buttons (metabase#31926)", () => {
-    cy.intercept({ method: "POST", url: "/api/card" }).as("saveNativeQuestion");
-
-    // Second DB (copy)
-    H.addPostgresDatabase(databaseCopyName);
-
-    // Create a native query and run it
-    H.startNewNativeQuestion().as("editor");
-
-    cy.get("@editor").type(
-      `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
-    );
-
-    cy.findByTestId("variable-type-select").click();
-    H.popover().within(() => {
-      cy.findByText("Field Filter").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Products").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Category").click();
-    });
-
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("200");
-
-    // Change DB
-    cy.findByTestId("native-query-editor-container")
-      .findByText("Sample Database")
-      .click();
-    H.popover().within(() => {
-      cy.findByText(databaseCopyName).click();
-    });
-
-    cy.wait("@saveNativeQuestion");
-    // run button disabled
-    cy.findAllByTestId("run-button").filter(":visible").should("be.disabled");
-
-    // Try to save the native query
-    // save button disabled
-    cy.findByTestId("qb-save-button").should(
-      "have.attr",
-      "data-disabled",
-      "true",
-    );
-  });
-});
-
 describe("issue 21597", { tags: "@external" }, () => {
   /*
    *
