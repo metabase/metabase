@@ -33,13 +33,17 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
+  getCards,
   getCurrentVisualizerState,
+  getDatasets,
   getVisualizerComputedSettings,
 } from "./selectors";
 import {
+  addColumnMapping,
   canCombineCard,
   copyColumn,
   createDataSource,
+  createDataSourceNameRef,
   createVisualizerColumnReference,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
@@ -159,7 +163,7 @@ export const addColumn = createAsyncThunk<
   const { display, columns, columnValuesMapping, settings } =
     getCurrentVisualizerState(getState());
 
-  const changes: Partial<VisualizerHistoryItem> = {};
+  const changes: Partial<VisualizerHistoryItem> = { settings };
 
   if (!display) {
     return changes;
@@ -184,14 +188,34 @@ export const addColumn = createAsyncThunk<
     [newColumn.name]: [columnRef],
   };
 
+  if (display === "pie") {
+    const metric = settings["pie.metric"];
+    if (!metric && isMetric(column)) {
+      changes.settings = {
+        ...changes.settings,
+        "pie.metric": columnRef.name,
+      };
+    }
+
+    if (isDimension(column)) {
+      const dimensions = settings["pie.dimension"] ?? [];
+      changes.settings = {
+        ...changes.settings,
+        "pie.dimension": [...dimensions, columnRef.name],
+      };
+    }
+  }
+
   if (dataSource.type !== "card") {
     return changes;
   }
 
-  const card = getState().visualizer.cards.find(
+  const card = getCards(getState()).find(
     card => card.id === dataSource.sourceId,
   );
-  if (!card) {
+  const dataset = getDatasets(getState())[dataSource.id];
+
+  if (!card || !dataset) {
     return changes;
   }
 
@@ -210,35 +234,57 @@ export const addColumn = createAsyncThunk<
 
     if (isMetric) {
       changes.settings = {
-        ...settings,
+        ...changes.settings,
         "graph.metrics": [...ownMetrics, columnRef.name],
       };
     }
 
     if (isDimension) {
       changes.settings = {
-        ...settings,
+        ...changes.settings,
         "graph.dimensions": [...ownDimensions, columnRef.name],
       };
     }
   }
 
-  if (display === "pie") {
-    const metric = settings["pie.metric"];
-    if (!metric && isMetric(column)) {
+  if (display === "funnel" && canCombineCardWithFunnel(card, dataset)) {
+    let metricName = settings["funnel.metric"];
+    if (!metricName) {
+      metricName = columnRef.name;
       changes.settings = {
-        ...settings,
-        "pie.metric": columnRef.name,
+        ...changes.settings,
+        "funnel.metric": metricName,
       };
     }
 
-    if (isDimension(column)) {
-      const dimensions = settings["pie.dimension"] ?? [];
+    if (!settings["funnel.dimension"]) {
+      const dimensionName = "DIMENSION";
+      changes.columns = [
+        ...changes.columns,
+        {
+          name: dimensionName,
+          display_name: dimensionName,
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          field_ref: ["field", dimensionName, { "base-type": "type/Text" }],
+          source: "artificial",
+        },
+      ];
       changes.settings = {
-        ...settings,
-        "pie.dimension": [...dimensions, columnRef.name],
+        ...changes.settings,
+        "funnel.dimension": dimensionName,
       };
     }
+
+    changes.columnValuesMapping[metricName] = addColumnMapping(
+      changes.columnValuesMapping[metricName],
+      columnRef,
+    );
+
+    changes.columnValuesMapping.DIMENSION = addColumnMapping(
+      changes.columnValuesMapping.DIMENSION,
+      createDataSourceNameRef(dataSource.id),
+    );
   }
 
   return changes;

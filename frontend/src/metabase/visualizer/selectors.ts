@@ -34,7 +34,7 @@ type State = { visualizer: VisualizerState };
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
-const getCards = (state: State) => state.visualizer.cards;
+export const getCards = (state: State) => state.visualizer.cards;
 
 const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
 
