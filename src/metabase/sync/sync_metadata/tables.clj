@@ -136,11 +136,16 @@
                                          :schema schema
                                          :name table-name
                                          :active false)]
-    (do (t2/select-one :model/Table existing-id)
-        ;; if the table already exists but is marked *inactive*, mark it as *active*
-        (t2/update! :model/Table existing-id (assoc
-                                              (cruft-dependent-cols table database ::reactivate)
-                                              :active true)))
+    (let [table (t2/select-one :model/Table existing-id)]
+      ;; if the table already exists but is marked *inactive*, mark it as *active*
+      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
+
+                                             ;; do not unhide tables w/ cruft settings
+                                             (some? (:visibility_type table))
+                                             (dissoc :visibility_type)
+
+                                             true
+                                             (assoc :active true))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -194,7 +199,11 @@
                                   (some? (:description old-table))
                                   (dissoc changes :description)
 
-                                  (some? (:visibility_type old-table))
+                                  (or
+                                   ;; don't unhide tables that were hidden w/ cruft settings
+                                   (some? (:visibility_type old-table))
+                                   ;; noop
+                                   (= (:visibility_type new-table) (:visibility_type old-table)))
                                   (dissoc changes :visibility_type))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
