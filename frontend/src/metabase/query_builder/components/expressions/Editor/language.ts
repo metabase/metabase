@@ -4,11 +4,11 @@ import type { EditorView } from "@codemirror/view";
 
 import type * as Lib from "metabase-lib";
 import type { ErrorWithMessage, StartRule } from "metabase-lib/v1/expressions";
+import { diagnoseAndCompile } from "metabase-lib/v1/expressions";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
-import { diagnoseAndCompileExpression } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
   parser,
@@ -30,7 +30,7 @@ const lint = (options: LintOptions) =>
       if (source === "") {
         return [];
       }
-      const { error } = diagnoseAndCompileExpression(source, options);
+      const { error } = diagnoseAndCompile({ source, ...options });
 
       if (!error) {
         return [];
