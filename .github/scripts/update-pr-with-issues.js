@@ -143,38 +143,26 @@ async function link_issues(github) {
 
     let newBody = body || '';
 
-    // Filter out issue numbers that are already referenced in the PR body:
-    let issueNumbersToAdd = [];
-    for (const num of issueNumbers) {
-      if (!containsIssueReference(newBody, num)) {
-        issueNumbersToAdd.push(num);
-      }
-    }
+    let issueNumbersToAdd = issueNumbers.filter(num => !linked_issues.includes(num));
+
+    console.log(`Issue numbers to add: ${issueNumbersToAdd}`);
 
     if (issueNumbersToAdd.length > 0) {
-      // Add references to the beginning of the PR body
-      if (newBody.trim()) {
-        newBody += '\n\n';
-      }
 
       // Generate closing references
-      const closingRefs = issueNumbersToAdd.map(num => `closes #${num}`).join(' ');
+      const closingRefs = issueNumbersToAdd.map(num => `closes #${num}`).join('\n');
 
-      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->${closingRefs}\n\n` + newBody;
+      newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->${closingRefs}\n` + newBody;
 
-      // Update the PR
-      const updateData = JSON.stringify({
-        body: newBody
-      });
-
+      // Update PR body with new closing references
       await github.rest.issues.update({
         owner: repoOwner,
         repo: repoName,
         issue_number: prNumber,
-        ...JSON.parse(updateData)
+        body: newBody
       });
 
-      console.log(`Updated PR #${prNumber} with issue references: ${closingRefs}`);
+      console.log(`Updated PR #${prNumber} with issue references:\n ${closingRefs}`);
     } else {
       console.log('PR already contains all closing references');
     }
