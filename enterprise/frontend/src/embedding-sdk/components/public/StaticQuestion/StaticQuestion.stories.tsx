@@ -35,6 +35,6 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollection: undefined,
+    targetCollection: undefined,
   },
 };

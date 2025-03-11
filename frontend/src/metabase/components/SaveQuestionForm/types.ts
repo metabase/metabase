@@ -63,7 +63,7 @@ export type CreateQuestionOptions = {
       dashboardTabId?: DashboardTabId | undefined;
     },
   ) => Promise<Question>;
-} & Pick<SaveQuestionProps, "saveToCollection">;
+} & Pick<SaveQuestionProps, "targetCollection">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
   originalQuestion: Question | null;

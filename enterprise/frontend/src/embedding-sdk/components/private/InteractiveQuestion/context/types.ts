@@ -35,7 +35,7 @@ type InteractiveQuestionConfig = {
   initialSqlParameters?: ParameterValues;
 } & Pick<
   SaveQuestionProps<SDKCollectionReference>,
-  "targetCollection" | "saveToCollection"
+  "targetCollection" | "targetCollection"
 >;
 
 export type QuestionMockLocationParameters = {
@@ -63,7 +63,7 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollection"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection"
   > &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;

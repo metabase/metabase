@@ -65,8 +65,8 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollection,
   targetCollection,
+  saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
@@ -79,8 +79,8 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollection={saveToCollection}
     targetCollection={targetCollection}
+    saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
