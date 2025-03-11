@@ -388,7 +388,7 @@
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api.macros/defendpoint :get "/oembed"
-  "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
+  "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
    {:keys [url maxheight maxwidth]}
    :- [:map
