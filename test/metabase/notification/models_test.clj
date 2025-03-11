@@ -362,3 +362,43 @@
       (testing "activate notification should restore triggers"
         (t2/update! :model/Notification id {:active true})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
+
+(deftest ui-display-type-test
+  (testing "ui_display_type field is set correctly"
+    (t2/with-transaction [_conn]
+      (let [notification (models.notification/create-notification!
+                          {:payload_type :notification/testing
+                           :active       true
+                           :creator_id   (mt/user->id :rasta)}
+                          [{:type :notification-subscription/cron
+                            :cron_schedule "0 0 * * *"
+                            :ui_display_type "cron"}]
+                          [])
+            hydrated (models.notification/hydrate-notification notification)]
+        (is (= "cron" (-> hydrated :subscriptions first :ui_display_type)))))))
+
+(deftest ui-display-type-default-test
+  (testing "ui_display_type field defaults correctly"
+    (t2/with-transaction [_conn]
+      (let [notification (models.notification/create-notification!
+                          {:payload_type :notification/testing
+                           :active       true
+                           :creator_id   (mt/user->id :rasta)}
+                          [{:type :notification-subscription/cron
+                            :cron_schedule "0 0 * * *"}]
+                          [])
+            hydrated (models.notification/hydrate-notification notification)]
+        (is (= "cron" (-> hydrated :subscriptions first :ui_display_type)))))))
+
+(deftest ui-display-type-regular-test
+  (testing "ui_display_type field defaults to regular for system events"
+    (t2/with-transaction [_conn]
+      (let [notification (models.notification/create-notification!
+                          {:payload_type :notification/testing
+                           :active       true
+                           :creator_id   (mt/user->id :rasta)}
+                          [{:type :notification-subscription/system-event
+                            :event_name :event/database-create}]
+                          [])
+            hydrated (models.notification/hydrate-notification notification)]
+        (is (= "regular" (-> hydrated :subscriptions first :ui_display_type)))))))
