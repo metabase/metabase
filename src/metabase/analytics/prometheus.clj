@@ -41,8 +41,8 @@
   ;; localhost:<prometheus-server-port>/metrics. Nothing we need to do but shutdown.
   PrometheusActions
   (stop-web-server [_this]
-                   (when-let [^Server web-server web-server]
-                     (.stop web-server))))
+    (when-let [^Server web-server web-server]
+      (.stop web-server))))
 
 (defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} ^PrometheusSystem system nil)
 
