@@ -4,6 +4,7 @@ import { currency } from "cljs/metabase.util.currency";
 import { Flex, Select, SelectItem, Text } from "metabase/ui";
 
 const DATA = getData();
+const SYMBOLS = getSymbols();
 
 interface Props {
   className?: string;
@@ -24,7 +25,7 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
             <span>{item.option.label}</span>
 
             <Text c={item.checked ? "text-white" : "text-light"}>
-              {getSymbol(item.option.value)}
+              {SYMBOLS[item.option.value]}
             </Text>
           </Flex>
         </SelectItem>
@@ -52,6 +53,6 @@ function getData() {
   }));
 }
 
-function getSymbol(code: Currency["code"]): Currency["symbol"] | undefined {
-  return DATA.find(item => item.value === code)?.symbol;
+function getSymbols() {
+  return Object.fromEntries(getData().map(item => [item.value, item.symbol]));
 }
