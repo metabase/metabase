@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: x
+      - name: Run the link script
         uses: actions/github-script@v7
         env:
            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

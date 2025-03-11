@@ -49,7 +49,6 @@ function httpsRequest(options, data = null) {
 }
 
 async function link_issues(github) {
-  console.log(github);
 
   try {
     // Get environment variables
@@ -66,8 +65,8 @@ async function link_issues(github) {
 
     // Get PR details from GitHub API
     const prInfo = await github.rest.issues.get({
-      owner: context.owner,
-      repo: context.repo,
+      owner: repoOwner,
+      repo: repoName,
       issue_number: prNumber
     }).catch((err) => {
       console.log("error getting prInfo:\n" + err);
