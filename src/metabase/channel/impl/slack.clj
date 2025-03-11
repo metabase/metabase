@@ -26,8 +26,8 @@
       (str/replace "<" "&lt;")
       (str/replace ">" "&gt;")))
 
-(defn- truncate-mrkdwn
-  "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
+(defn- truncate
+  "If a string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
   [mrkdwn limit]
   (if (> (count mrkdwn) limit)
@@ -36,6 +36,7 @@
         (str "…"))
     mrkdwn))
 
+(def ^:private header-text-limit 150)
 (def ^:private block-text-length-limit 3000)
 (def ^:private attachment-text-length-limit 2000)
 
@@ -45,7 +46,7 @@
     (when (not (str/blank? mrkdwn))
       {:blocks [{:type "section"
                  :text {:type "mrkdwn"
-                        :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
+                        :text (truncate mrkdwn block-text-length-limit)}}]})))
 
 (defn- part->attachment-data
   [part]
@@ -130,7 +131,7 @@
   [_channel-type {:keys [payload]} _template recipients]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
-                                       :text (str "🔔 " (-> payload :card :name))
+                                       :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                        :emoji true}}]}
                      (part->attachment-data (:card_part payload))]]
     (for [channel-id (map notification-recipient->channel-id recipients)]
@@ -143,7 +144,7 @@
 
 (defn- filter-text
   [filter]
-  (truncate-mrkdwn
+  (truncate
    (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
@@ -153,14 +154,10 @@
   [dashboard creator-name parameters]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
-                                :text (:name dashboard)
+                                :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
-                                   :text (format "<%s | *Sent from %s by %s*>"
-                                                 (urls/dashboard-url (:id dashboard) parameters)
-                                                 (public-settings/site-name)
-                                                 creator-name)}]}
                                    :text (mkdwn-link-text
                                           (urls/dashboard-url (:id dashboard) parameters)
                                           (format "*Sent from %s by %s*"
