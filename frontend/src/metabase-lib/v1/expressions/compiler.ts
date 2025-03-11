@@ -14,10 +14,10 @@ import {
   isCompilerPass,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
-import type { ErrorWithMessage, StartRule } from "./types";
+import type { ClauseType, ErrorWithMessage, StartRule } from "./types";
 import { isErrorWithMessage } from "./utils";
 
-export type CompileResult =
+export type CompileResult<S extends StartRule> =
   | {
       error: ErrorWithMessage;
       expression: null;
@@ -26,10 +26,10 @@ export type CompileResult =
   | {
       error: null;
       expression: Expression;
-      expressionClause: Lib.ExpressionClause;
+      expressionClause: ClauseType<S>;
     };
 
-export function compileExpression({
+export function compileExpression<S extends StartRule>({
   source,
   startRule,
   query,
@@ -38,12 +38,12 @@ export function compileExpression({
   resolve: shouldResolve = true,
 }: {
   source: string;
-  startRule: StartRule;
+  startRule: S;
   query: Lib.Query;
   stageIndex: number;
   database?: Database | null;
   resolve?: boolean;
-}): CompileResult {
+}): CompileResult<S> {
   const tokens = lexify(source);
 
   const { root, errors } = parse(tokens, {
@@ -83,7 +83,7 @@ export function compileExpression({
       query,
       stageIndex,
       expression,
-    );
+    ) as ClauseType<S>;
 
     return {
       expression,
