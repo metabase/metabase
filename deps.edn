@@ -897,16 +897,5 @@
    ["-Dmb.db.type=mysql"
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}
 
-  ;; ./bin/mage start-db mongo oldest
-  :db/mongo-oldest
-  {:jvm-opts
-   ["-Dmb.db.type=mongo"
-    "-Dmb.db.connection.uri=jdbc:mongo://localhost:27017"]}
-  ;; ./bin/mage start-db mongo latest
-  :db/mongo-latest
-  {:jvm-opts
-   ["-Dmb.db.type=mongo"
-    "-Dmb.db.connection.uri=jdbc:mongo://localhost:27018"]}}
-
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.
