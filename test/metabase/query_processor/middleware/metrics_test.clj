@@ -659,40 +659,40 @@
       (comment
         (testing "nested 1 level"
           (is (=? (lib.tu.macros/mbql-query nil
-                                            {:source-query after})
+                    {:source-query after})
                   (expand-macros (lib.tu.macros/mbql-query nil
-                                                           {:source-query before})))))
+                                   {:source-query before})))))
         (testing "nested 2 levels"
           (is (=? (lib.tu.macros/mbql-query nil
-                                            {:source-query {:source-query after}})
+                    {:source-query {:source-query after}})
                   (expand-macros
                    (lib.tu.macros/mbql-query nil
-                                             {:source-query {:source-query before}})))))
+                     {:source-query {:source-query before}})))))
         (testing "nested 3 levels"
           (is (=? (lib.tu.macros/mbql-query nil
-                                            {:source-query {:source-query {:source-query after}}})
+                    {:source-query {:source-query {:source-query after}}})
                   (expand-macros
                    (lib.tu.macros/mbql-query nil
-                                             {:source-query {:source-query {:source-query before}}}))))))
+                     {:source-query {:source-query {:source-query before}}}))))))
       (testing "inside :source-query inside :joins"
         (is (=? (lib.tu.macros/mbql-query checkins
-                                          {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
-                                                    :source-query after}]})
+                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
+                            :source-query after}]})
                 (expand-macros
                  (lib.tu.macros/mbql-query checkins
-                                           {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
-                                                     :source-query before}]})))))
+                   {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
+                             :source-query before}]})))))
 
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
-                                          {:source-query {:source-table (meta/id :checkins)
-                                                          :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
-                                                                          :source-query after}]}})
+                  {:source-query {:source-table (meta/id :checkins)
+                                  :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                  :source-query after}]}})
                 (expand-macros (lib.tu.macros/mbql-query nil
-                                                         {:source-query {:source-table (meta/id :checkins)
-                                                                         :joins
-                                                                         [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
-                                                                           :source-query before}]}}))))))))
+                                 {:source-query {:source-table (meta/id :checkins)
+                                                 :joins
+                                                 [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                   :source-query before}]}}))))))))
 
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
@@ -837,13 +837,13 @@
                                              :type :model}
                    :model/Card metric {:dataset_query
                                        (mt/mbql-query
-                                        orders
-                                        {:source-table (str "card__" (:id source-model))
-                                         :expressions {"somedays" [:datetime-diff
-                                                                   [:field "CREATED_AT" {:base-type :type/DateTime}]
-                                                                   (t/offset-date-time 2024 10 16 0 0 0)
-                                                                   :day]}
-                                         :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                                         orders
+                                         {:source-table (str "card__" (:id source-model))
+                                          :expressions {"somedays" [:datetime-diff
+                                                                    [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                    (t/offset-date-time 2024 10 16 0 0 0)
+                                                                    :day]}
+                                          :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
                                        :database_id (mt/id)
                                        :name "somedays median"
                                        :type :metric}]
@@ -992,12 +992,12 @@
              {:type :metric
               :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                                (lib/join $ (lib/with-join-conditions
-                                             (lib/join-clause joined-metadata)
-                                             [(lib/=
-                                               (m/find-first (comp #{"Product ID"} :display-name)
-                                                             (lib/visible-columns $))
-                                               (m/find-first (comp #{"ID"} :display-name)
-                                                             (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                            (lib/join-clause joined-metadata)
+                                            [(lib/=
+                                              (m/find-first (comp #{"Product ID"} :display-name)
+                                                            (lib/visible-columns $))
+                                              (m/find-first (comp #{"ID"} :display-name)
+                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
                                (lib/aggregate $ (lib/count))
                                (lib.convert/->legacy-MBQL $))}]
             (testing (format "Referencing stage with fk join with different target provokes an exception (joining %s)"
@@ -1011,12 +1011,12 @@
                            (qp/process-query
                             (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                               (lib/join $ (lib/with-join-conditions
-                                            (lib/join-clause joined-metadata)
-                                            [(lib/=
-                                              (m/find-first (comp #{"Product ID"} :display-name)
-                                                            (lib/visible-columns $))
-                                              (m/find-first (comp #{"ID"} :display-name)
-                                                            (lib/returned-columns (lib/query mp joined-metadata))))]))
+                                           (lib/join-clause joined-metadata)
+                                           [(lib/=
+                                             (m/find-first (comp #{"Product ID"} :display-name)
+                                                           (lib/visible-columns $))
+                                             (m/find-first (comp #{"ID"} :display-name)
+                                                           (lib/returned-columns (lib/query mp joined-metadata))))]))
                               (lib/aggregate $ (lib.metadata/metric mp no-join-id)))))))))))))
 
 (deftest join-operator-is-:=-test
