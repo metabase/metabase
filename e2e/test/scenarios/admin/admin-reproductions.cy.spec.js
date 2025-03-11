@@ -62,10 +62,8 @@ describe("issue 21532", () => {
     cy.visit("/");
 
     cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Getting set up");
+    H.popover().findByText("Admin settings").click();
+    cy.findByTestId("admin-layout-content");
 
     cy.go("back");
     cy.location().should(location => {
