@@ -52,7 +52,7 @@ describe("ForgotPassword", () => {
     });
 
     await userEvent.click(screen.getByText("Send password reset email"));
-    expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
+    expect(await screen.findByText(/If the email exists/)).toBeInTheDocument();
   });
 
   it("should show an error message when the user cannot reset their password", () => {
