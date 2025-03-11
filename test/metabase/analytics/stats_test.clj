@@ -522,11 +522,11 @@
                      [:ui_color [:enum "default" "changed"]]
                      [:chart_colors [:enum "default" "changed"]]
                      [:show_mb_links :boolean]
-                     [:font [:enum "default" "changed"]]
-                     [:samesite [:enum "default" "changed"]]
-                     [:site_locale [:enum "default" "changed"]]
-                     [:report_timezone [:enum "default" "changed"]]
-                     [:start_of_week [:enum "default" "changed"]]]
+                     [:font :string]
+                     [:samesite :string]
+                     [:site_locale :string]
+                     [:report_timezone :string]
+                     [:start_of_week :string]]
                     (zipmap (map (comp keyword :key) snowplow-settings) (map :value snowplow-settings)))))
       (testing "is_embedding_app_origin_sdk_set"
         (is (= false (get-in snowplow-settings [0 :value]))))

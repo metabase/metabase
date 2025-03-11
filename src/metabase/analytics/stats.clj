@@ -21,6 +21,7 @@
    [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
+   [metabase.request.cookies :as cookies]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
@@ -884,13 +885,6 @@
   [changed]
   (if changed "changed" "default"))
 
-(defn default-or-changed
-  [setting default]
-  (fn [_]
-    (-> (setting)
-        (= default)
-        bool->default-or-changed)))
-
 (def ^:private snowplow-settings-metric-defs
   [{:key "is_embedding_app_origin_sdk_set" :value :embedding_app_origin_sdk_set :tags ["embedding"]}
    {:key "is_embedding_app_origin_interactive_set" :value (comp boolean :embedding_app_origin_interactive_set) :tags ["embedding"]}
@@ -908,20 +902,20 @@
    {:key "chart_colors" :value (comp bool->default-or-changed :appearance_chart_colors) :tags ["appearance"]}
    {:key "show_mb_links" :value :appearance_show_mb_links :tags ["appearance"]}
    {:key "font"
-    :value (default-or-changed public-settings/application-font "Lato")
+    :value (fn [_] (public-settings/application-font))
     :tags ["appearance"]}
    {:key "samesite"
-    :value (default-or-changed #(setting/get :session-cookie-samesite) :lax)
+    :value (fn [_] (str (or (setting/get :session-cookie-samesite) "lax")))
     :tags ["embedding" "auth"]}
    {:key "site_locale"
-    :value (default-or-changed public-settings/site-locale "en")
-    :tags []}
+    :value (fn [_] (public-settings/site-locale))
+    :tags ["locale"]}
    {:key "report_timezone"
-    :value (default-or-changed #(setting/get :report-timezone-long) (System/getProperty "user.timezone"))
-    :tags []}
+    :value (fn [_] (or (setting/get :report-timezone) (System/getProperty "user.timezone")))
+    :tags ["locale"]}
    {:key "start_of_week"
-    :value (default-or-changed public-settings/start-of-week :sunday)
-    :tags []}])
+    :value (fn [_] (str (public-settings/start-of-week)))
+    :tags ["locale"]}])
 
 (defn- snowplow-settings
   [stats]
