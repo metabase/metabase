@@ -479,6 +479,26 @@
   [s]
   (map #(Integer/parseInt %) (re-seq #"\d+" s)))
 
+(defn latest-available-major-version
+  "Get the latest version that Liquibase would apply if we ran migrations right now."
+  [^Liquibase liquibase]
+  (->> liquibase
+       (.getDatabaseChangeLog)
+       (.getChangeSets)
+       (map #(.getId ^ChangeSet %))
+       last
+       extract-numbers
+       first))
+
+(defn latest-applied-major-version
+  "Gets the latest version applied to the database."
+  [conn ^Database database]
+  (when-not (fresh-install? conn database)
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1"
+                                  (.getDatabaseChangeLogTableName database))
+          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
+      (some-> changeset-id extract-numbers first))))
+
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   ;; default rollback to previous version
@@ -498,31 +518,11 @@
            changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
            ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
            ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)
-           latest-version (apply max (map #(-> % extract-numbers first) ids-to-drop))
-           current-version (config/current-major-version)]
-       (when (and current-version (> latest-version current-version))
+           latest-available (latest-available-major-version liquibase)
+           latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))]
+       (when (> latest-applied latest-available)
          (throw (IllegalArgumentException.
                  (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
-                         latest-version (config/current-major-version) latest-version))))
+                         latest-applied latest-available latest-applied))))
        (log/infof "Rolling back app database schema to version %d" target-version)
        (.rollback liquibase (count ids-to-drop) "")))))
-
-(defn latest-applied-major-version
-  "Gets the latest version applied to the database."
-  [conn ^Database database]
-  (when-not (fresh-install? conn database)
-    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1"
-                                  (.getDatabaseChangeLogTableName database))
-          changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
-      (some-> changeset-id extract-numbers first))))
-
-(defn latest-available-major-version
-  "Get the latest version that Liquibase would apply if we ran migrations right now."
-  [^Liquibase liquibase]
-  (->> liquibase
-       (.getDatabaseChangeLog)
-       (.getChangeSets)
-       (map #(.getId ^ChangeSet %))
-       last
-       extract-numbers
-       first))
