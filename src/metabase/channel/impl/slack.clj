@@ -71,6 +71,15 @@
   many columns) is truncated."
   1200)
 
+(defn- mkdwn-link-text [url label]
+  (let [url-length       (count url)
+        const-length     3
+        max-label-length (- block-text-length-limit url-length const-length)
+        label' (escape-mkdwn label)]
+    (if (< max-label-length 10)
+      (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
+      (format "<%s|%s>" url (truncate label' max-label-length)))))
+
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
   Attachments containing `:blocks` lists containing text cards are returned unmodified."
@@ -81,7 +90,7 @@
     (:render/text rendered-info)
     {:blocks [{:type "section"
                :text {:type     "mrkdwn"
-                      :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                      :text     (mkdwn-link-text title_link title)
                       :verbatim true}}
               {:type "section"
                :text {:type "plain_text"
@@ -92,7 +101,7 @@
           {file-id :id} (slack/upload-file! image-bytes attachment-name)]
       {:blocks [{:type "section"
                  :text {:type     "mrkdwn"
-                        :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                        :text     (mkdwn-link-text title_link title)
                         :verbatim true}}
                 {:type       "image"
                  :slack_file {:id file-id}
@@ -152,6 +161,11 @@
                                                  (urls/dashboard-url (:id dashboard) parameters)
                                                  (public-settings/site-name)
                                                  creator-name)}]}
+                                   :text (mkdwn-link-text
+                                          (urls/dashboard-url (:id dashboard) parameters)
+                                          (format "*Sent from %s by %s*"
+                                                  (public-settings/site-name)
+                                                  creator-name))}]}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
