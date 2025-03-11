@@ -106,3 +106,22 @@
                       {:type "section"
                        :text {:type "plain_text", :text "hi again"}}]}]
            processed))))
+
+(deftest link-truncation-test
+  (let [render-image-link
+        (fn [url label char-limit]
+          (let [attachments [{:title           label
+                              :title_link      url
+                              :attachment-name "a.png"
+                              :rendered-info   {:attachments nil
+                                                :content     [:div "hi"]}}]
+                processed   (with-redefs [channel.slack/block-text-length-limit char-limit
+                                          slack/upload-file!                    (constantly {:url "a.com", :id "id"})]
+                              (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
+            (-> processed first :blocks first :text :text)))]
+    (are [url label mkdwn]
+         (= mkdwn (render-image-link url label 32))
+      "a.com"                "a"                "<a.com|a>"
+      "a.com"                "abcdefghij"       "<a.com|abcdefghij>"
+      "abcdefghijk.com"      "abcdefghijklmnop" "<abcdefghijk.com|abcdefghijklm…>"
+      "abcdefghijklmnop.com" "abcdefghij"       "(URL exceeds slack limits) abcd…")))
