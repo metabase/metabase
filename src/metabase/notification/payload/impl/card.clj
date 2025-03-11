@@ -11,11 +11,16 @@
 
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
-  (let [card_id (:card_id alert)]
-    {:card_part   (notification.execute/execute-card creator_id card_id
-                                                     ;; for query_execution's context purposes
-                                                     ;; TODO: check whether we can remove this or name it?
-                                                     :pulse-id (:id alert))
+  (let [card-id     (:card_id payload)
+        part        (notification.execute/execute-card creator_id card-id)
+        card-result (:result part)]
+    (when (not= :completed (:status card-result))
+      (throw (ex-info (format "Failed to execute card with error: %s" (:error card-result))
+                      {:card_id card-id
+                       :status (:status card-result)
+                       :error  (:error card-result)})))
+
+    {:card_part   part
      :card        (t2/select-one :model/Card card_id)
      :style       {:color_text_dark   channel.render/color-text-dark
                    :color_text_light  channel.render/color-text-light

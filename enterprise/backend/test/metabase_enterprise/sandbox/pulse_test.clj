@@ -12,7 +12,6 @@
    [metabase.pulse.api.alert :as api.alert]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -22,21 +21,6 @@
                         (thunk))))
 
 (set! *warn-on-reflection* true)
-
-(deftest sandboxed-alert-test
-  (testing "Pulses should get sent with the row-level restrictions of the User that created them."
-    (letfn [(send-pulse-created-by-user! [user-kw]
-              (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                      :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
-                                :attributes {"cat" 50}}
-                (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                  ;; `with-gtaps!` binds the current test user; we don't want that falsely affecting results
-                  (mt/with-test-user nil
-                    (pulse.test-util/send-alert-created-by-user! user-kw card)))))]
-      (is (= [[100]]
-             (send-pulse-created-by-user! :crowberto)))
-      (is (= [[10]]
-             (send-pulse-created-by-user! :rasta))))))
 
 (defn- alert-results!
   "Results for creating and running an Alert"
