@@ -53,7 +53,7 @@
 ;; Docker stuff:
 
 (defn- kill-existing! [container-name]
-  (println (c/red "killing existing image: ") container-name " ...")
+  (println (c/red "killing existing container: ") container-name " ...")
   (shell/sh* {:quiet? true} "docker" "kill" container-name)
   (shell/sh* {:quiet? true} "docker" "rm" container-name))
 
