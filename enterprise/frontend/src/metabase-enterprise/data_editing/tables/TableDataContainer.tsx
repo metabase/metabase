@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
+import { Box, Flex } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
@@ -92,17 +93,24 @@ export const TableDataContainer = ({
   }
 
   return (
-    <div className={S.container} data-testid="table-data-view-root">
+    <Flex
+      className={S.container}
+      data-testid="table-data-view-root"
+      direction="column"
+      justify="stretch"
+    >
       {database && table && (
         <TableDataViewHeader
           database={database}
           tableName={table?.display_name}
         />
       )}
-      <TableDataView
-        data={datasetData}
-        onCellValueUpdate={handleCellValueUpdate}
-      />
-    </div>
+      <Box pos="relative" className={S.gridWrapper}>
+        <TableDataView
+          data={datasetData}
+          onCellValueUpdate={handleCellValueUpdate}
+        />
+      </Box>
+    </Flex>
   );
 };

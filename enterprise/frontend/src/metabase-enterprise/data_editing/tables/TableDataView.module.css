@@ -3,3 +3,8 @@
   width: 100%;
   overflow: hidden;
 }
+
+.gridWrapper {
+  overflow: hidden;
+  flex: 1 1 auto;
+}
