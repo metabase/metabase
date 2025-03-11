@@ -44,6 +44,15 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
       });
 
+      it('should not show "saved questions" in the database list when `entity_types=["table"]`', async () => {
+        setup({
+          entityTypes: ["table"],
+        });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+      });
+
       it('should show both models and tables when `entity_types=["models", "table"]`', async () => {
         setup({
           entityTypes: ["model", "table"],
