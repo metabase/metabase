@@ -31,7 +31,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
         .click();
       // link opens in new tab
       H.expectGoodSnowplowEvent({
-        event: "upsell_clicked",
+        event: "upsell_viewed",
         promoted_feature: "cloud",
       });
       H.expectNoBadSnowplowEvents();
