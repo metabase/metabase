@@ -136,14 +136,13 @@
 (defn start-db
   "Starts a db type + version in docker."
   [ports db version]
-  (let [supported-dbs #{:postgres :mysql :mariadb :mongo}
-        port (get-in ports [db version])
+  (let [port (get-in ports [db version])
         _ (u/debug "PORT:" port)
         _ (when-not (integer? port)
             (println (c/red "No port found for db: " (name db)  " version: " (name version) ". see :ports in bb.edn"))
             (usage {:ports ports}))
         db               (keyword db)
-        _ (when-not (supported-dbs db)
+        _ (when-not (contains? ports db)
             (println (c/red "Invalid db."))
             (usage {:ports ports}))
         version          (cond-> version (string? version) keyword)
