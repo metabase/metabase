@@ -13,19 +13,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;l
 ;; Normalize between db types:
 
-(defn- ->eol-url [db]
-  (get {:postgres "https://endoflife.date/api/postgres.json"
-        :mysql "https://endoflife.date/api/mysql.json"
-        :mariadb "https://endoflife.date/api/mariadb.json"
-        :mongo "https://endoflife.date/api/mongodb.json"} db))
-
 (defn- ->container-name [db version] (str "mb-" (name db) "-" (name version)))
 
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
-(defn- fetch-supported-versions [database]
+(defn- fetch-supported-versions [db-info database]
   (let [now (java.time.LocalDate/now)
-        all-versions (-> (http/get (->eol-url database)) :body (json/parse-string true))
+        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
         _ (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
         supported (->> all-versions
                        (mapv (fn [m]
@@ -39,15 +33,15 @@
     (u/debug "supported: \n" (with-out-str (t/table supported)))
     supported))
 
-(defn- fetch-oldest-supported-version [database]
-  (let [versions (fetch-supported-versions database)
+(defn- fetch-oldest-supported-version [db-info database]
+  (let [versions (fetch-supported-versions db-info database)
         oldest-version (-> versions first :cycle)]
     (u/debug "OLDEST VERSION:" oldest-version)
     oldest-version))
 
-(defn- resolve-version [database version]
+(defn- resolve-version [db-info database version]
   (if (= version :oldest)
-    (fetch-oldest-supported-version database)
+    (fetch-oldest-supported-version db-info database)
     (cond-> version (keyword? version) name)))
 
 ;; Docker stuff:
@@ -119,32 +113,37 @@
       (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'")))))
 
 (defn- usage
-  [{:keys [ports]}]
-  (let [tbl (for [[db m] ports
-                  [stamp port] m]
-              {:port port
-               :start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))})]
+  [{:keys [db-info]}]
+  (let [tbl (for [[db m] db-info
+                  [stamp port] (:ports m)]
+              {:start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))
+               :port port})]
     (str "\nAvailable DBs:\n"
-         (with-out-str (t/table tbl {:sort [:start-db-cmd :port] :style :github-markdown}))
+         (with-out-str (t/table tbl {:style :github-markdown}))
          (str/join "\n"
                    ["Note that we scrape https://endoflife.date/api to determine oldest supported versions,"
-                    "So this script always have the correct oldest version. 🎉"]))))
+                    "so this script always has the correct oldest version. 🎉"]))))
 
 ;; TODOs:
 ;; - [ ] Swap out the db name
 
 (defn start-db
   "Starts a db type + version in docker."
-  [ports db version]
-  (let [port (get-in ports [db version])
-        _ (u/debug "PORT:" port)
-        _ (when-not (integer? port)
-            (println (c/red "No port found for db: " (name db)  " version: " (name version) ". see :ports in bb.edn"))
-            (usage {:ports ports}))
+  [db-info db version]
+  (let [port             (get-in db-info [db :ports version])
         db               (keyword db)
-        _ (when-not (contains? ports db)
-            (println (c/red "Invalid db."))
-            (usage {:ports ports}))
         version          (cond-> version (string? version) keyword)
-        resolved-version (resolve-version db version)]
-    (start-db! db version resolved-version port)))
+        resolved-version (resolve-version db-info db version)]
+    (u/debug "PORT:" port)
+    (cond (not (contains? db-info db))
+          (do
+            (println (c/red "Invalid DB: " (name db)))
+            (println (usage {:db-info db-info})))
+
+          (not (integer? port))
+          (do
+            (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
+            (println (usage {:db-info db-info})))
+
+          :else
+          (start-db! db version resolved-version port))))
