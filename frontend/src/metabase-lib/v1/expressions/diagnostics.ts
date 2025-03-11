@@ -25,7 +25,7 @@ export function diagnose(options: {
   return null;
 }
 
-export function diagnoseAndCompile({
+export function diagnoseAndCompile<S extends StartRule = "expression">({
   source,
   startRule,
   query,
@@ -33,11 +33,11 @@ export function diagnoseAndCompile({
   metadata,
 }: {
   source: string;
-  startRule: StartRule;
+  startRule: S;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
-}): CompileResult {
+}): CompileResult<S> {
   if (!source || source.length === 0) {
     return {
       expression: null,
