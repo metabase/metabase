@@ -10,6 +10,7 @@
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -249,44 +250,24 @@
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
-;; TODO - this should be done async
-;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
   [creator-id :- pos-int?
-   card-id :- pos-int?
-   & {:as options}]
-  (try
-    (when-let [{query     :dataset_query
-                metadata  :result_metadata
-                card-type :type
-                :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
-      (let [query         (assoc query :async? false)
-            process-fn (if (= :pivot (:display card))
-                         qp.pivot/run-pivot-query
-                         qp/process-query)
-            process-query (fn []
-                            (binding [qp.perms/*card-id* card-id]
-                              (process-fn
-                               (qp/userland-query
-                                (assoc query
-                                       :middleware {:skip-results-metadata?            false
-                                                    :process-viz-settings?             true
-                                                    :js-int-to-string?                 false
-                                                    :add-default-userland-constraints? false})
-                                (merge (cond-> {:executed-by creator-id
-                                                :context     :pulse
-                                                :card-id     card-id}
-                                         (= card-type :model)
-                                         (assoc :metadata/model-metadata metadata))
-                                       {:visualization-settings (:visualization_settings card)}
-                                       options)))))
-            result        (if creator-id
-                            (request/with-current-user creator-id
-                              (process-query))
-                            (process-query))]
-        {:card   card
-         :result result
-         :type   :card}))
-    (catch Throwable e
-      (log/warnf e "Error running query for Card %s" card-id))))
+   card-id :- pos-int?]
+  (let [result (request/with-current-user creator-id
+                 (qp.card/process-query-for-card card-id :api
+                                                 ;; TODO rename to :notification?
+                                                 :context    :pulse
+                                                 :middleware {:skip-results-metadata?            false
+                                                              :process-viz-settings?             true
+                                                              :js-int-to-string?                 false
+                                                              :add-default-userland-constraints? false}
+                                                 :make-run      (fn make-run [qp _export-format]
+                                                                  (^:once fn* [query info]
+                                                                    (qp
+                                                                     (qp/userland-query query info)
+                                                                     nil)))))]
+
+    {:card   (t2/select-one :model/Card card-id)
+     :result result
+     :type   :card}))

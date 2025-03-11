@@ -379,10 +379,10 @@
                 (get-in (notification/notification-payload notification)
                         [:payload :card_part :result])))]
       (testing "rasta has no permissions and will get error"
-        (let [rasta-result (payload! :rasta)]
-          (is (= 0 (:row_count rasta-result)))
-          (is (re-find #"You do not have permissions to view Card \d+"
-                       (:error rasta-result)))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You don't have permissions"
+             (payload! :rasta))))
       (testing "crowberto can see the card"
         (is (pos-int? (:row_count (payload! :crowberto))))))))
 
@@ -420,3 +420,18 @@
        {:channel/email
         (fn [emails]
           (is (empty? emails)))}))))
+
+(deftest notification-with-invalid-card-should-fail-test
+  (testing "If the card is failed to execute, the notification should fail (#54495)"
+    (notification.tu/with-card-notification
+      [notification {:card     {:dataset_query (mt/native-query {:query "select 1/0"})}
+                     :handlers [@notification.tu/default-email-handler]}]
+      (t2/delete! :model/TaskHistory)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Failed to execute card with error: Division by zero: " 1 ""
+           (#'notification.send/send-notification-sync! notification)))
+      (is (=? [{:status :failed
+                :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
+              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+                         {:order-by [[:started_at :asc]]}))))))
