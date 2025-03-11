@@ -22,11 +22,6 @@ export type SaveQuestionProps<C = CollectionId> = {
   initialDashboardTabId?: number | null | undefined;
 
   /**
-   * @deprecated Use `targetCollection` instead
-   */
-  saveToCollection?: C;
-
-  /**
    * The target collection to save the question to.
    * Currently used for the embedding SDK.
    *

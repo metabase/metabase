@@ -37,10 +37,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
-  Pick<
-    SaveQuestionProps<SDKCollectionReference>,
-    "targetCollection" | "saveToCollection"
-  > &
+  Pick<SaveQuestionProps<SDKCollectionReference>, "targetCollection"> &
   Pick<
     InteractiveQuestionProviderProps,
     | "questionId"
@@ -66,7 +63,6 @@ export const _InteractiveQuestion = ({
   entityTypeFilter,
   isSaveEnabled,
   targetCollection,
-  saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
@@ -80,7 +76,6 @@ export const _InteractiveQuestion = ({
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
-    saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
