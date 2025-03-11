@@ -14,6 +14,7 @@ import {
   getColumnVizSettings,
   isCartesianChart,
 } from "metabase/visualizations";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -31,7 +32,10 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import { getVisualizerComputedSettings } from "./selectors";
+import {
+  getCurrentVisualizerState,
+  getVisualizerComputedSettings,
+} from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -145,6 +149,101 @@ export const addDataSource = createAsyncThunk<
   throw new Error(`Unsupported data source type: ${type}`);
 });
 
+export const addColumn = createAsyncThunk<
+  Partial<VisualizerHistoryItem>,
+  {
+    dataSource: VisualizerDataSource;
+    column: DatasetColumn;
+  }
+>("metabase/visualizer/addColumn", ({ dataSource, column }, { getState }) => {
+  const { display, columns, columnValuesMapping, settings } =
+    getCurrentVisualizerState(getState());
+
+  const changes: Partial<VisualizerHistoryItem> = {};
+
+  if (!display) {
+    return changes;
+  }
+
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    extractReferencedColumns(columnValuesMapping),
+  );
+
+  const newColumn = copyColumn(
+    columnRef.name,
+    column,
+    dataSource.name,
+    columns,
+  );
+
+  changes.columns = [...columns, newColumn];
+  changes.columnValuesMapping = {
+    ...columnValuesMapping,
+    [newColumn.name]: [columnRef],
+  };
+
+  if (dataSource.type !== "card") {
+    return changes;
+  }
+
+  const card = getState().visualizer.cards.find(
+    card => card.id === dataSource.sourceId,
+  );
+  if (!card) {
+    return changes;
+  }
+
+  if (
+    ["area", "bar", "line"].includes(display) &&
+    canCombineCard(display, columns, settings, card)
+  ) {
+    const ownMetrics = settings["graph.metrics"] ?? [];
+    const ownDimensions = settings["graph.dimensions"] ?? [];
+
+    const metrics = card.visualization_settings["graph.metrics"] ?? [];
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+
+    const isMetric = metrics.includes(column.name);
+    const isDimension = dimensions.includes(column.name);
+
+    if (isMetric) {
+      changes.settings = {
+        ...settings,
+        "graph.metrics": [...ownMetrics, columnRef.name],
+      };
+    }
+
+    if (isDimension) {
+      changes.settings = {
+        ...settings,
+        "graph.dimensions": [...ownDimensions, columnRef.name],
+      };
+    }
+  }
+
+  if (display === "pie") {
+    const metric = settings["pie.metric"];
+    if (!metric && isMetric(column)) {
+      changes.settings = {
+        ...settings,
+        "pie.metric": columnRef.name,
+      };
+    }
+
+    if (isDimension(column)) {
+      const dimensions = settings["pie.dimension"] ?? [];
+      changes.settings = {
+        ...settings,
+        "pie.dimension": [...dimensions, columnRef.name],
+      };
+    }
+  }
+
+  return changes;
+});
+
 export const removeDataSource = createAction<VisualizerDataSource>(
   "metabase/visualizer/removeDataSource",
 );
@@ -202,34 +301,6 @@ const visualizerHistoryItemSlice = createSlice({
         ...state.settings,
         ...action.payload,
       };
-    },
-    addColumn: (
-      state,
-      action: PayloadAction<{
-        dataSource: VisualizerDataSource;
-        column: DatasetColumn;
-      }>,
-    ) => {
-      const { dataSource, column } = action.payload;
-
-      if (!state.display) {
-        return;
-      }
-
-      const columnRef = createVisualizerColumnReference(
-        dataSource,
-        column,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-
-      const newColumn = copyColumn(
-        columnRef.name,
-        column,
-        dataSource.name,
-        state.columns,
-      );
-      state.columns.push(newColumn);
-      state.columnValuesMapping[newColumn.name] = [columnRef];
     },
     removeColumn: (state, action: PayloadAction<{ name: string }>) => {
       const { name } = action.payload;
@@ -297,6 +368,10 @@ const visualizerHistoryItemSlice = createSlice({
         } else if (state.display === "map") {
           mapDropHandler(state, event);
         }
+      })
+      .addCase(addColumn.fulfilled, (state, action) => {
+        const changes = action.payload;
+        Object.assign(state, copy(changes));
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
@@ -549,7 +624,7 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setTitle, updateSettings, addColumn, removeColumn } =
+export const { setTitle, updateSettings, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {
