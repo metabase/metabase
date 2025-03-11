@@ -12,7 +12,8 @@
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.streaming.common :as common]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -130,78 +131,77 @@
 
 (defn- build-left-headers
   [left-header-items]
-  (let [max-depth (if (empty? left-header-items)
-                    0
-                    (apply max (map :depth left-header-items)))
-        spans-by-depth (group-by :depth left-header-items)
-        max-span-positions (for [depth (range (inc max-depth))]
-                             (if-let [items (get spans-by-depth depth)]
-                               (apply max (map (fn [item]
-                                                 (+ (:offset item) (:span item)))
-                                               items))
-                               0))
-        result-height (if (empty? max-span-positions)
-                        0
-                        (apply max max-span-positions))
-        result (vec (repeat result-height
-                            (vec (repeat (inc max-depth) nil))))]
-    (reduce
-     (fn [acc item]
-       (let [{:keys [depth value span offset]} item
-             new-acc (reduce (fn [grid row-idx]
-                               (assoc-in grid [row-idx depth] value))
-                             acc
-                             (range offset (+ offset span)))]
-         new-acc))
-     result
-     left-header-items)))
+  (if (empty? left-header-items)
+    []
+    (let [max-depth        (apply max (map :depth left-header-items))
+          span-by-position (reduce (fn [acc {:keys [depth offset span]}]
+                                     (update acc depth
+                                             (fnil #(max % (+ offset span)) 0)))
+                                   {}
+                                   left-header-items)
+          result-height    (apply max (vals span-by-position))
+          column-count     (inc max-depth)]
+      ;; Fill in the header values
+      (reduce
+       (fn [grid {:keys [depth value span offset]}]
+         ;; For each row this header spans, set the value at the correct depth
+         (reduce (fn [g row-idx]
+                   (assoc-in g [row-idx depth] value))
+                 grid
+                 (range offset (+ offset span))))
+       ;; Start with an empty grid of appropriate dimensions
+       (vec (repeat result-height (vec (repeat column-count nil))))
+       left-header-items))))
 
 (defn- build-full-pivot
   [get-row-section left-headers top-headers measure-count]
   (let [row-count (count left-headers)
         left-width (count (first left-headers))
         col-count (- (count (first top-headers)) left-width)
-        result (concat top-headers
-                      ;; For each row in left-headers...
-                       (for [row-idx (range (max row-count 1))]
-                         (let [left-row (nth left-headers row-idx [])
-                              ;; ...get cell values for this row
-                               cell-values (mapcat (fn [col-idx]
-                                                     (let [values (get-row-section col-idx row-idx)]
-                                                       (map :value values)))
-                                                   (range (/ col-count measure-count)))]
-                           ;; Combine left headers with cell values
-                           (into left-row cell-values))))]
+        result (perf/concat
+                top-headers
+                ;; For each row in left-headers...
+                (for [row-idx (range (max row-count 1))]
+                  (let [left-row (nth left-headers row-idx [])
+                        ;; ...get cell values for this row
+                        cell-values (mapcat (fn [col-idx]
+                                              (let [values (get-row-section col-idx row-idx)]
+                                                (map :value values)))
+                                            (range (/ col-count measure-count)))]
+                    ;; Combine left headers with cell values
+                    (into left-row cell-values))))]
     (vec result)))
 
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports."
   [{:keys [data settings timezone format-rows? pivot-export-options]}]
   (let [columns (pivot/columns-without-pivot-group (:cols data))
-        column-split (:pivot_table.column_split settings)
-        row-indexes (:pivot-rows pivot-export-options)
-        col-indexes (:pivot-cols pivot-export-options)
-        val-indexes (:pivot-measures pivot-export-options)
-        col-settings (merge-column-settings columns settings)
+        column-split             (:pivot_table.column_split settings)
+        row-indexes              (:pivot-rows pivot-export-options)
+        col-indexes              (:pivot-cols pivot-export-options)
+        val-indexes              (:pivot-measures pivot-export-options)
+        col-settings             (merge-column-settings columns settings)
         {:keys [row-formatters
                 col-formatters
                 val-formatters]} (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
         {:keys [leftHeaderItems
                 topHeaderItems
-                getRowSection]} (pivot/process-pivot-table data
-                                                           row-indexes
-                                                           col-indexes
-                                                           val-indexes
-                                                           columns
-                                                           col-formatters
-                                                           row-formatters
-                                                           val-formatters
-                                                           format-rows?
-                                                           settings
-                                                           col-settings
-                                                           nil)
-        top-left-header (map (fn [i] (pivot/display-name-for-col (nth columns i) (nth col-settings i) format-rows?))
-                             row-indexes)
-        top-headers (build-top-headers top-left-header topHeaderItems)
-        left-headers (build-left-headers leftHeaderItems)]
+                getRowSection]}  (pivot/process-pivot-table data
+                                                            row-indexes
+                                                            col-indexes
+                                                            val-indexes
+                                                            columns
+                                                            col-formatters
+                                                            row-formatters
+                                                            val-formatters
+                                                            format-rows?
+                                                            settings
+                                                            col-settings
+                                                            nil)
+        top-left-header          (map (fn [i] (pivot/display-name-for-col (nth columns i)
+                                                                          (nth col-settings i)
+                                                                          format-rows?))
+                                      row-indexes)
+        top-headers              (build-top-headers top-left-header topHeaderItems)
+        left-headers             (build-left-headers leftHeaderItems)]
     (build-full-pivot getRowSection left-headers top-headers (count (:values column-split)))))

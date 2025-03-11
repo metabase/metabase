@@ -579,13 +579,15 @@
                                          formatted-row-tree)
         row-paths (->> formatted-row-tree-with-totals
                        (mapcat enumerate-paths)
-                       maybe-add-empty-path)
+                       maybe-add-empty-path
+                       (into []))
         top-index-columns (select-indexes columns col-indexes)
         formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns))
         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)
         col-paths (->> formatted-col-tree-with-totals
                        (mapcat enumerate-paths)
-                       maybe-add-empty-path)
+                       maybe-add-empty-path
+                       (into []))
         formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
         subtotal-values (get-subtotal-values pivot-data val-indexes)]
     {:columnIndex col-paths
