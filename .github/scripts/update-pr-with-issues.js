@@ -1,4 +1,3 @@
-const github = new Octokit({ auth: GITHUB_TOKEN });
 const https = require('https');
 
 function getLinkedIssues(body) {
@@ -49,7 +48,9 @@ function httpsRequest(options, data = null) {
   });
 }
 
-async function main() {
+export async function link_issues(github) {
+  console.log(github);
+
   try {
     // Get environment variables
     const githubToken = process.env.GITHUB_TOKEN;
@@ -180,4 +181,4 @@ async function main() {
   }
 }
 
-main();
+link_issues(github);
