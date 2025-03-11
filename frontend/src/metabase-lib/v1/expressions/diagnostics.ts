@@ -62,6 +62,13 @@ export function diagnoseAndCompile({
     }
   }
 
+  {
+    const error = checkMissingCommasInArgumentList(tokens, source);
+    if (error) {
+      return { error };
+    }
+  }
+
   const database = getDatabase(query, metadata);
 
   // make a simple check on expression syntax correctness
@@ -186,5 +193,54 @@ function checkCompiledExpression({
     }
     return { message: t`Invalid expression` };
   }
+  return null;
+}
+
+function checkMissingCommasInArgumentList(
+  tokens: Token[],
+  source: string,
+): ErrorWithMessage | null {
+  const CALL = 1;
+  const GROUP = 2;
+  const stack = [];
+
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const prevToken = tokens[index - 1];
+    if (token.type === TOKEN.Operator && token.op === "(") {
+      if (!prevToken) {
+        continue;
+      }
+      if (prevToken.type === TOKEN.Identifier) {
+        stack.push(CALL);
+        continue;
+      } else {
+        stack.push(GROUP);
+        continue;
+      }
+    }
+    if (token.type === TOKEN.Operator && token.op === ")") {
+      stack.pop();
+      continue;
+    }
+
+    const isCall = stack.at(-1) === CALL;
+    if (!isCall) {
+      continue;
+    }
+
+    const nextToken = tokens[index + 1];
+    if (token.type === TOKEN.Identifier) {
+      if (nextToken && nextToken.type !== TOKEN.Operator) {
+        const text = source.slice(nextToken.start, nextToken.end);
+        return {
+          message: `Expecting operator but got ${text} instead`,
+          pos: nextToken.start,
+          len: nextToken.end - nextToken.start,
+        };
+      }
+    }
+  }
+
   return null;
 }
