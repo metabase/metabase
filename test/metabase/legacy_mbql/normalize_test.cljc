@@ -605,6 +605,12 @@
    {{:query {:expressions {"abc" [+ 1 2]}
              :fields      [[:expression "abc" {"base-type" "type/Number"}]]}}
     {:query {:expressions {"abc" [+ 1 2]}
+             :fields      [[:expression "abc" {:base-type :type/Number}]]}}}
+
+   "expressions can be a literal :value"
+   {{:query {:expressions {"abc" [:value 123 nil]}
+             :fields      [[:expression "abc" {"base-type" "type/Number"}]]}}
+    {:query {:expressions {"abc" [:value 123 nil]}
              :fields      [[:expression "abc" {:base-type :type/Number}]]}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -774,6 +780,16 @@
 
     {:query {:breakout [[:field 1000 nil]]}}
     {:query {:breakout [[:field 1000 nil]]}}}))
+
+;;; ----------------------------------------------------- expressions ------------------------------------------------
+
+(t/deftest ^:parallel canonicalize-expressions-test
+  (canonicalize-tests
+   "expressions can be a literal :value"
+   {{:query {:expressions {"abc" [:value false nil]}
+             :fields      [[:expression "abc" {:base-type :type/Boolean}]]}}
+    {:query {:expressions {"abc" [:value false nil]}
+             :fields      [[:expression "abc" {:base-type :type/Boolean}]]}}}))
 
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
