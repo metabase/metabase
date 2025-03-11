@@ -205,9 +205,8 @@
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
 ;;
-;; :value clauses are also used to wrapped literal values in expression clauses.
-;; TODO: remove ^:internal ?
-(defclause ^:internal value
+;; :value clauses are also used to wrap top-level literal values in expression clauses.
+(defclause value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
