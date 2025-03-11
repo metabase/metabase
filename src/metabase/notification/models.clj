@@ -181,10 +181,15 @@
   #{:notification-subscription/system-event
     :notification-subscription/cron})
 
+(def ^:private subscription-ui-display-types
+  #{:raw_cron
+    :schedule_builder
+    nil})
+
 (t2/deftransforms :model/NotificationSubscription
   {:type            (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
    :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
-   :ui_display_type mi/transform-keyword})
+   :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 
 (mr/def ::NotificationSubscription
   "Schema for :model/NotificationSubscription."
@@ -201,7 +206,7 @@
       [:cron_schedule                    :string]
       [:event_name      {:optional true} nil?]
       ;; enum values can change depending on UI
-      [:ui_display_type {:optional true} [:maybe [:enum :custom :raw_cron]]]]]]])
+      [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
 
 (defn- validate-subscription
   "Validate a NotificationSubscription."

@@ -23,7 +23,7 @@
                      :notification_card {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type          :notification-subscription/cron
                                           :cron_schedule "0 0 0 * * ?"
-                                          :ui_display_type :custom}
+                                          :ui_display_type :schedule_builder}
                                          {:type          :notification-subscription/cron
                                           :cron_schedule "1 1 1 * * ?"
                                           :ui_display_type :raw_cron}]
@@ -45,7 +45,7 @@
                    :subscriptions [{:notification_id notification-id
                                     :type            "notification-subscription/cron"
                                     :cron_schedule   "0 0 0 * * ?"
-                                    :ui_display_type "custom"}
+                                    :ui_display_type "schedule_builder"}
                                    {:notification_id notification-id
                                     :type            "notification-subscription/cron"
                                     :cron_schedule   "1 1 1 * * ?"
@@ -249,8 +249,8 @@
         (testing "can update subscription schedule"
           (is (=? [{:type          "notification-subscription/cron"
                     :cron_schedule "1 1 1 * * ?"
-                    :ui_display_type "custom"}]
-                  (:subscriptions (update-notification (update-cron-subscription @notification "1 1 1 * * ?" "custom"))))))
+                    :ui_display_type "schedule_builder"}]
+                  (:subscriptions (update-notification (update-cron-subscription @notification "1 1 1 * * ?" "schedule_builder"))))))
 
         (testing "can update payload info"
           (is (= "has_result" (get-in @notification [:payload :send_condition])))
