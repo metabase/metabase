@@ -151,7 +151,7 @@
   (.local value))
 
 (def ^:private parse-time-formats
-  #js ["HH:mm:ss.SSS[Z]"
+  #js ["HH:mm:ss.SSSZ"
        "HH:mm:ss.SSS"
        "HH:mm:ss"
        "HH:mm"])
@@ -356,10 +356,10 @@
 
 (def ^:private temporal-formats
   {:offset-date-time {:regex   common/offset-datetime-regex
-                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"
-                                    "YYYY-MM-DDTHH:mm:ss[Z]"
-                                    "YYYY-MM-DDTHH:mm[Z]"
-                                    "YYYY-MM-DDTHH[Z]"]}
+                      :formats #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"
+                                    "YYYY-MM-DDTHH:mm:ssZ"
+                                    "YYYY-MM-DDTHH:mmZ"
+                                    "YYYY-MM-DDTHHZ"]}
    :local-date-time  {:regex   common/local-datetime-regex
                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
                                     "YYYY-MM-DDTHH:mm:ss"
@@ -370,10 +370,10 @@
                                     "YYYY-MM"
                                     "YYYY"]}
    :offset-time      {:regex   common/offset-time-regex
-                      :formats #js ["HH:mm:ss.SSS[Z]"
-                                    "HH:mm:ss[Z]"
-                                    "HH:mm[Z]"
-                                    "HH[Z]"]}
+                      :formats #js ["HH:mm:ss.SSSZ"
+                                    "HH:mm:ssZ"
+                                    "HH:mmZ"
+                                    "HHZ"]}
    :local-time       {:regex   common/local-time-regex
                       :formats #js ["HH:mm:ss.SSS"
                                     "HH:mm:ss"
@@ -388,6 +388,22 @@
               (when (.isValid parsed)
                 [parsed value-type]))))
         temporal-formats))
+
+(comment
+  (moment "01:49:10.858Z" "HH:mm:ss.SSSZ")
+
+  (let [s "1982-03-16T01:49:10.858Z"
+        formats #js ["YYYY-MM-DDTHH:mm:ss.SSS[Z]"]
+        formatz #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"]
+        s-parsed (moment/parseZone s formats #_strict? true)
+        z-parsed (moment/parseZone s formatz #_strict? true)]
+    {:tz (.. (js/Intl.DateTimeFormat) resolvedOptions -timeZone)
+     :tzo (.getTimezoneOffset (js/Date.)) #_mins
+     :s s-parsed
+     :z z-parsed
+     :fz (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSSZ")
+     :fs (.format z-parsed "YYYY-MM-DDTHH:mm:ss.SSS[Z]")})
+  -)
 
 (defmulti ^:private moment+type->iso-8601
   {:arglists '([moment+type])}
