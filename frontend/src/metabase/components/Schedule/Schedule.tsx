@@ -1,6 +1,7 @@
 import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { c } from "ttag";
+import _ from "underscore";
 
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, type BoxProps } from "metabase/ui";
@@ -16,7 +17,7 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { defaultDay, defaults } from "./constants";
+import { defaultDay, scheduleDefaults } from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
 
 export interface ScheduleProps {
@@ -64,7 +65,7 @@ export const Schedule = ({
       if (field === "schedule_type") {
         newSchedule = {
           ...newSchedule,
-          ...defaults[value as ScheduleType],
+          ...scheduleDefaults[value as ScheduleType],
         };
       } else if (field === "schedule_frame") {
         // when the monthly schedule frame is the 15th, clear out the schedule_day
@@ -85,13 +86,25 @@ export const Schedule = ({
   );
 
   const renderedSchedule = useMemo(() => {
-    const { schedule_type, schedule_frame } = schedule;
+    // Merge default values into the schedule
+    const scheduleWithDefaults = _.defaults(
+      schedule,
+      schedule.schedule_type ? scheduleDefaults[schedule.schedule_type] : {},
+    );
+
+    const {
+      schedule_type,
+      schedule_frame,
+      schedule_day,
+      schedule_hour,
+      schedule_minute,
+    } = scheduleWithDefaults;
 
     const selectFrequency = (
       <SelectFrequency
         key="frequency"
         updateSchedule={updateSchedule}
-        scheduleType={schedule.schedule_type}
+        scheduleType={schedule_type}
         scheduleOptions={scheduleOptions}
       />
     );
@@ -99,7 +112,7 @@ export const Schedule = ({
     const selectMinute = (
       <SelectMinute
         key="minute"
-        schedule={schedule}
+        schedule_minute={schedule_minute}
         updateSchedule={updateSchedule}
       />
     );
@@ -107,7 +120,7 @@ export const Schedule = ({
     const selectTime = (
       <SelectTime
         key="time"
-        schedule={schedule}
+        schedule_hour={schedule_hour}
         updateSchedule={updateSchedule}
         timezone={timezone}
       />
@@ -116,7 +129,7 @@ export const Schedule = ({
     const selectWeekday = (
       <SelectWeekday
         key="weekday"
-        schedule={schedule}
+        schedule_day={schedule_day}
         updateSchedule={updateSchedule}
       />
     );
@@ -124,7 +137,7 @@ export const Schedule = ({
     const selectFrame = (
       <SelectFrame
         key="frame"
-        schedule={schedule}
+        schedule_frame={schedule_frame}
         updateSchedule={updateSchedule}
       />
     );
@@ -132,7 +145,7 @@ export const Schedule = ({
     const selectWeekdayOfMonth = (
       <SelectWeekdayOfMonth
         key="wom"
-        schedule={schedule}
+        schedule_day={schedule_day}
         updateSchedule={updateSchedule}
       />
     );

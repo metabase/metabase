@@ -1,9 +1,9 @@
-import { ScheduleDefaults } from "./types";
+import type { ScheduleDefaults } from "./types";
 
 export const defaultDay = "mon";
 export const defaultHour = 8;
 
-export const defaults: ScheduleDefaults = {
+export const scheduleDefaults: ScheduleDefaults = {
   hourly: {
     schedule_day: null,
     schedule_frame: null,

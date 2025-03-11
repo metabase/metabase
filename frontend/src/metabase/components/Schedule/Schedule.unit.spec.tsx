@@ -1,4 +1,4 @@
-import { screen, waitFor } from "__support__/ui";
+import { screen } from "__support__/ui";
 import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
@@ -26,7 +26,7 @@ describe("Schedule", () => {
     expect(getInputValues()).toEqual(["weekly", "Monday", "8:00"]);
   });
 
-  it.only("shows first/last/mid value, day, and time when schedule is monthly", async () => {
+  it("shows first/last/mid value, day, and time when schedule is monthly", async () => {
     setup({
       schedule: {
         schedule_type: "monthly",

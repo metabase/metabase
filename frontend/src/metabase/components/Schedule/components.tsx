@@ -18,9 +18,9 @@ import type {
 } from "metabase-types/api";
 
 import { AutoWidthSelect } from "./AutoWidthSelect";
+import { defaultHour } from "./constants";
 import {
   type Weekday,
-  defaultHour,
   getHours,
   getScheduleComponentLabel,
   getScheduleStrings,
@@ -29,7 +29,7 @@ import {
 import type { UpdateSchedule } from "./types";
 
 export type SelectFrameProps = {
-  schedule: ScheduleSettings;
+  schedule_frame: ScheduleSettings["schedule_frame"];
   updateSchedule: UpdateSchedule;
   frames?: { label: string; value: ScheduleFrameType }[];
 };
@@ -72,14 +72,14 @@ export const SelectFrequency = ({
 };
 
 export const SelectFrame = ({
-  schedule,
+  schedule_frame,
   updateSchedule,
   frames = getScheduleStrings().frames,
 }: SelectFrameProps) => {
   const label = useMemo(() => getScheduleComponentLabel("frame"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_frame ?? "first"}
+      value={schedule_frame ?? "first"}
       onChange={(value: ScheduleFrameType) =>
         updateSchedule("schedule_frame", value)
       }
@@ -91,21 +91,21 @@ export const SelectFrame = ({
 };
 
 export const SelectTime = ({
-  schedule,
+  schedule_hour,
   updateSchedule,
   timezone,
 }: {
-  schedule: ScheduleSettings;
+  schedule_hour: ScheduleSettings["schedule_hour"];
   updateSchedule: UpdateSchedule;
   timezone?: string | null;
 }) => {
   const { amAndPM } = getScheduleStrings();
   const isClock12Hour = !has24HourModeSetting();
   const hourIn24HourFormat =
-    schedule.schedule_hour !== undefined &&
-    schedule.schedule_hour !== null &&
-    !isNaN(schedule.schedule_hour)
-      ? schedule.schedule_hour
+    schedule_hour !== undefined &&
+    schedule_hour !== null &&
+    !isNaN(schedule_hour)
+      ? schedule_hour
       : defaultHour;
   const hour = isClock12Hour
     ? hourToTwelveHourFormat(hourIn24HourFormat)
@@ -168,19 +168,19 @@ export const SelectTime = ({
 };
 
 export type SelectWeekdayProps = {
-  schedule: ScheduleSettings;
+  schedule_day: ScheduleSettings["schedule_day"];
   updateSchedule: UpdateSchedule;
 };
 
 export const SelectWeekday = ({
-  schedule,
+  schedule_day,
   updateSchedule,
 }: SelectWeekdayProps) => {
   const { weekdays } = getScheduleStrings();
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
     <AutoWidthSelect<ScheduleDayType>
-      value={schedule.schedule_day ?? "sun"}
+      value={schedule_day ?? "sun"}
       onChange={(value: ScheduleDayType) =>
         updateSchedule("schedule_day", value)
       }
@@ -192,7 +192,7 @@ export const SelectWeekday = ({
 };
 
 export type SelectWeekdayOfMonthProps = {
-  schedule: ScheduleSettings;
+  schedule_day: ScheduleSettings["schedule_day"];
   updateSchedule: UpdateSchedule;
   weekdayOfMonthOptions?: (
     | Weekday
@@ -204,14 +204,14 @@ export type SelectWeekdayOfMonthProps = {
   (The SelectFrame component offers a choice between 'first', '15th' and 'last'.
   This component offers a choice of weekday.) */
 export const SelectWeekdayOfMonth = ({
-  schedule,
+  schedule_day,
   updateSchedule,
   weekdayOfMonthOptions = getScheduleStrings().weekdayOfMonthOptions,
 }: SelectWeekdayOfMonthProps) => {
   const label = useMemo(() => getScheduleComponentLabel("weekdayOfMonth"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_day || "calendar-day"}
+      value={schedule_day || "calendar-day"}
       onChange={(value: ScheduleDayType | "calendar-day") =>
         updateSchedule("schedule_day", value === "calendar-day" ? null : value)
       }
@@ -223,15 +223,13 @@ export const SelectWeekdayOfMonth = ({
 };
 
 export const SelectMinute = ({
-  schedule,
+  schedule_minute,
   updateSchedule,
 }: {
-  schedule: ScheduleSettings;
+  schedule_minute: ScheduleSettings["schedule_minute"];
   updateSchedule: UpdateSchedule;
 }) => {
-  const minuteOfHour = isNaN(schedule.schedule_minute as number)
-    ? 0
-    : schedule.schedule_minute;
+  const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect

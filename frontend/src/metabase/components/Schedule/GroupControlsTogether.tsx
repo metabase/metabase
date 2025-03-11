@@ -47,7 +47,11 @@ export const GroupControlsTogether = ({
 
       if (!isValidElement(compactChildren[index + 1])) {
         // Flush current group
-        groupedNodes.push(<div className={S.ControlGroup}>{currentGroup}</div>);
+        groupedNodes.push(
+          <div className={S.ControlGroup} key={`node-${index}`}>
+            {currentGroup}
+          </div>,
+        );
         currentGroup = [];
       }
     } else {
@@ -66,7 +70,11 @@ export const GroupControlsTogether = ({
         isTextLong || isTextNodeLast
           ? S.TextInSecondColumn
           : S.TextInFirstColumn;
-      groupedNodes.push(<div className={className}>{child}</div>);
+      groupedNodes.push(
+        <div className={className} key={`node-${index}`}>
+          {child}
+        </div>,
+      );
     }
   });
 
