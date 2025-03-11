@@ -33,7 +33,11 @@ export interface CodeMirrorEditorRef {
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions, useHighlightLines } from "./extensions";
-import { convertSelectionToRange, matchCardIdAtCursor } from "./util";
+import {
+  convertSelectionToRange,
+  getPlaceholderText,
+  matchCardIdAtCursor,
+} from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
@@ -53,6 +57,9 @@ export const CodeMirrorEditor = forwardRef<
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const extensions = useExtensions(query);
   useHighlightLines(editorRef, highlightedLineNumbers);
+
+  const engine = Lib.engine(query);
+  const placeholder = getPlaceholderText(engine);
 
   useImperativeHandle(ref, () => {
     return {
@@ -129,6 +136,7 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      placeholder={placeholder}
     />
   );
 });

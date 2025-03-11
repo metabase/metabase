@@ -54,6 +54,7 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingChartTypeSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
+  isShowingDataReference: false,
 };
 
 // this is used to close other sidebar when one is updated

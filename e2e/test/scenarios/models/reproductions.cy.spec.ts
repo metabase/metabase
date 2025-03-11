@@ -1134,9 +1134,7 @@ describe("issue 34514", () => {
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   }
 });
