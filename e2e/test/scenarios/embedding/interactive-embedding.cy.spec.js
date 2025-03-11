@@ -1263,11 +1263,21 @@ describe("scenarios > embedding > full app", () => {
       });
 
       it('should show models and tables as a default value when not providing "entity_types"', () => {
+        cy.log("Test providing `entity_types` as an empty string");
         startNewEmbeddingQuestion({
           isMultiStageDataPicker: true,
           qs: {
             entity_types: "",
           },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
+        });
+
+        cy.log("Test not providing `entity_types`");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
         });
         H.popover().within(() => {
           cy.findByText("Models").should("be.visible");
