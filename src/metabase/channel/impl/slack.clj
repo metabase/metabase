@@ -36,9 +36,9 @@
         (str "…"))
     mrkdwn))
 
-(def ^:private header-text-limit 150)
-(def ^:private block-text-length-limit 3000)
-(def ^:private attachment-text-length-limit 2000)
+(def header-text-limit       "Header block character limit"    150)
+(def block-text-length-limit "Section block character limit"   3000)
+(def ^:private attachment-text-length-limit                    2000)
 
 (defn- text->markdown-block
   [text]
