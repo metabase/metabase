@@ -144,15 +144,15 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
-(mu/defn perform-action!
-  "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
-  implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
-  `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
-  `action`."
-  [action
-   arg-map :- [:map
-               [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
-               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
+(defn prepare-perform-action
+  "Takes the same public API level args to [[perform-action!]] and provides the requirements of [[do-perform-action!]].
+
+  [[do-perform-action!]] allows a caller more control over policy decisions around execution:
+  In the context of data editing, different settings and error messages are used - despite the underlying implementation being the same.
+
+  Callers should make the appropriate policy decisions ahead of calling [[do-perform-action!]]. They should not call perform-action directly.
+  Otherwise they should continue to use higher-level [[perform-action!]]."
+  [action arg-map]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
@@ -161,11 +161,36 @@
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
                                                    (lib.metadata/database (qp.store/metadata-provider))))]
-      (check-actions-enabled-for-database! db)
-      (binding [*misc-value-cache* (atom {})]
-        (qp.perms/check-query-action-permissions* arg-map)
-        (driver/with-driver driver
-          (perform-action!* driver action db arg-map))))))
+      {:driver driver
+       :action action
+       :db db
+       :arg-map arg-map})))
+
+(defn do-perform-action!
+  "Takes the args to perform-action!* establishes the pre-requisite context and applies it.
+
+  Does not perform any policy checks such as whether or not actions or enabled, or the user has permissions."
+  [{:keys [driver action db arg-map]}]
+  (binding [*misc-value-cache* (atom {})]
+    (driver/with-driver driver
+      (perform-action!* driver action db arg-map))))
+
+(mu/defn perform-action!
+  "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
+  implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
+  `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
+  `action`.
+
+  Applies default policy for permissions and setttings suitable for model actions only.
+  If using actions in another context e.g data editing, see [[do-perform-action!]], [[prepare-perform-action]]."
+  [action
+   arg-map :- [:map
+               [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
+               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
+  (let [pre-reqs (prepare-perform-action action arg-map)]
+    (check-actions-enabled-for-database! (:db pre-reqs))
+    (qp.perms/check-query-action-permissions* (:arg-map pre-reqs))
+    (do-perform-action! pre-reqs)))
 
 ;;;; Action definitions.
 

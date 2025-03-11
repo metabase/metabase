@@ -19,8 +19,10 @@
  [metabase.actions.actions
   cached-value
   check-actions-enabled!
+  do-perform-action!
   perform-action!
-  perform-action!*]
+  perform-action!*
+  prepare-perform-action]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint
