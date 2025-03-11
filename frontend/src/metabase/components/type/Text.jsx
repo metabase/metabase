@@ -4,14 +4,10 @@ import PropTypes from "prop-types";
 import { color } from "metabase/lib/colors";
 
 const Text = styled.div`
-  color: ${props => color(`text-${props.color}`)};
+  color: ${props => color(`text-${props.color ?? "medium"}`)};
   font-size: ${props => props.fontSize};
   font-weight: ${props => props.fontWeight};
 `;
-
-Text.defaultProps = {
-  color: "medium",
-};
 
 Text.propTypes = {
   color: PropTypes.string,

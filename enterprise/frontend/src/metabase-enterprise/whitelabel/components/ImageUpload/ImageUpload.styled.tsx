@@ -1,6 +1,10 @@
 import styled from "@emotion/styled";
 
-export const FileInput = styled.input`
+export const FileInput = styled(
+  (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input {...props} type={props.type ?? "file"} />
+  ),
+)`
   &::file-selector-button {
     padding: 0.75rem 1rem;
     margin-right: 1rem;
@@ -18,7 +22,3 @@ export const FileInput = styled.input`
     background-color: var(--mb-color-bg-light);
   }
 `;
-
-FileInput.defaultProps = {
-  type: "file",
-};
