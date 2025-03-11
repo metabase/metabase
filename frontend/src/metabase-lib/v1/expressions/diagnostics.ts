@@ -16,6 +16,7 @@ export function diagnose(options: {
   startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex?: number;
   metadata?: Metadata;
 }): ErrorWithMessage | null {
   const result = diagnoseAndCompile(options);
@@ -31,12 +32,14 @@ export function diagnoseAndCompile<S extends StartRule = "expression">({
   query,
   stageIndex,
   metadata,
+  expressionIndex,
 }: {
   source: string;
   startRule: S;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
+  expressionIndex?: number;
 }): CompileResult<S> {
   if (!source || source.length === 0) {
     return {
@@ -96,6 +99,7 @@ export function diagnoseAndCompile<S extends StartRule = "expression">({
     stageIndex,
     startRule,
     expression: result.expression,
+    expressionIndex,
   });
   if (error) {
     return {
