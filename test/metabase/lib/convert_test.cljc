@@ -424,6 +424,91 @@
                             {:name "Additional Information", :display-name "Additional Information"}]]
              :aggregation-idents {0 (u/generate-nano-id)}}}))
 
+(deftest ^:parallel round-trip-literal-expression-test
+  ;; Some cases of literal expressions are already covered in round-trip-test, above.
+  (are [query] (test-round-trip query)
+    [:value false {:base_type :type/Boolean}]
+
+    [:value true nil]
+
+    [:value false nil]
+
+    [:value "123" {:base_type :type/Text}]
+
+    [:value "" nil]
+
+    [:value "foo" nil]
+
+    [:value 12345 {:base_type :type/Integer}]
+
+    [:value -1 nil]
+
+    [:value 0 nil]
+
+    [:value 1 nil]
+
+    [:value 1e10 {:base_type :type/Float}]
+
+    [:value 1.23 nil]
+
+    {:database 123
+     :query {:middleware {:disable-remaps? true}
+             :source-card-id 1301
+             :source-query {:source-table 224
+                            :expressions {"a" [:value 1 nil]
+                                          "b" [:value false nil]}
+                            :expression-idents {"a" (u/generate-nano-id)
+                                                "b" (u/generate-nano-id)}}
+             :expressions {"c" [:value "cee" nil]
+                           "d" [:value 1.23 nil]}
+             :expression-idents {"c" (u/generate-nano-id)
+                                 "d" (u/generate-nano-id)}}
+     :type :query}
+
+    {:database 1
+     :type     :query
+     :query    {:source-table 224
+                :expressions {"a" [:value 1 nil]
+                              "b" [:value 0 nil]
+                              "c" [:value true nil]
+                              "d" [:value false nil]
+                              "e" [:value 2.71828 nil]
+                              "f" [:value "foo" nil]
+                              "g" [:value "" nil]}
+                :expression-idents {"a" (u/generate-nano-id)
+                                    "b" (u/generate-nano-id)
+                                    "c" (u/generate-nano-id)
+                                    "d" (u/generate-nano-id)
+                                    "e" (u/generate-nano-id)
+                                    "f" (u/generate-nano-id)
+                                    "g" (u/generate-nano-id)}}}
+
+    {:type :query
+     :database 5
+     :query {:source-table 5822
+             :expressions {"literal expression" [:value false nil]
+                           "coalesce"           [:coalesce
+                                                 [:expression "literal expression"]
+                                                 [:field 519196 nil]
+                                                 "None"]
+                           "case expression 1"  [:case
+                                                 [[[:= [:expression "literal expression"] false]
+                                                   "No"]]
+                                                 {:default "Yes"}]
+                           "case expression 2"  [:case
+                                                 [[[:expression "literal expression"]
+                                                   "No"]]
+                                                 {:default "Yes"}]}
+             :expression-idents {"literal expression" (u/generate-nano-id)
+                                 "coalesce"           (u/generate-nano-id)
+                                 "case expression 1"  (u/generate-nano-id)
+                                 "case expression 2"  (u/generate-nano-id)}
+             :filter [:= [:field 518086 nil] [:expression "literal expression"]]
+             :aggregation [[:aggregation-options
+                            [:share [:= [:expression "literal expression"] true]]
+                            {:name "Additional Information", :display-name "Additional Information"}]]
+             :aggregation-idents {0 (u/generate-nano-id)}}}))
+
 (deftest ^:parallel round-trip-segments-test
   (test-round-trip {:database 282
                     :type :query
@@ -985,7 +1070,7 @@
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel convert-with-broken-expression-types-test
-  (testing "be flexible when converting from legacy, metadata type overrides are soometimes dropped (#41122)"
+  (testing "be flexible when converting from legacy, metadata type overrides are sometimes dropped (#41122)"
     (let [legacy {:database (meta/id)
                   :type     :query
                   :query    {:filter [:between [:+
