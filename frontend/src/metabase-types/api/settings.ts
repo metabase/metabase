@@ -195,6 +195,7 @@ export const tokenFeatures = [
   "cache_granular_controls",
   "disable_password_login",
   "content_verification",
+  // "data_editing", // TODO[WRK]: enable this check after this feature token is added on the BE
   "embedding",
   "embedding_sdk",
   "hosting",
@@ -363,6 +364,11 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
+  gsheets: {
+    status: "not-connected" | "loading" | "complete" | "error";
+    folder_url: string | null;
+    error?: string;
+  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
@@ -385,6 +391,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;
