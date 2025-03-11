@@ -1,4 +1,4 @@
-const BRANCH_NAME = "release-x.52.x"; // Affects the `local` testing only. On CI is passed as an ENV variable.
+const BRANCH_NAME = "52-stable"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
