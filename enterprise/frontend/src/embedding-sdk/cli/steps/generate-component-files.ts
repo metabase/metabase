@@ -4,9 +4,9 @@ import { input } from "@inquirer/prompts";
 
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
+import { getComponentSnippets } from "../snippets/get-component-snippets";
 import type { CliStepMethod } from "../types/cli";
 import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
-import { getComponentSnippets } from "../utils/get-component-snippets";
 import {
   checkIfNextJsCustomAppOrRootLayoutExists,
   checkIfNextJsProjectUsesSrcDirectory,

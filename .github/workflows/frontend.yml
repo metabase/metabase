@@ -12,6 +12,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   fe-lint:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
@@ -89,6 +104,29 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  fe-tests-embedding-sdk-snippets:
+    needs: [files-changed]
+    if: |
+      !inputs.skip &&
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Run frontend embedding SDK snippets tests
+        run: yarn run test-unit:embedding-sdk-snippets
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}

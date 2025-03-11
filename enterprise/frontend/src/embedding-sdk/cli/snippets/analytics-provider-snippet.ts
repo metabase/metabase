@@ -1,14 +1,28 @@
 export const ANALYTICS_PROVIDER_SNIPPET_MINIMAL = `
 import {createContext, useState} from 'react'
 
-// Used for the example theme switcher component
-export const AnalyticsContext = createContext({})
+/**
+ * @typedef {Object} AnalyticsContextType
+ * @property {'light'|'dark'} themeKey - The current theme key.
+ * @property {null} [email] - Email of the user.
+ * @property {(themeKey: 'light'|'dark') => void} setThemeKey - Function to update the theme.
+ */
+
+/**
+ * @type {React.Context<AnalyticsContextType>}
+ */
+export const AnalyticsContext = createContext(
+  /** @type {AnalyticsContextType} */ ({})
+);
 
 // Demo provider that adds the state for the example theme switcher component.
 // Delete this once you've played around with the theme switcher, and use your
 // own application's theming instead.
 export const AnalyticsProvider = ({children}) => {
-  const [themeKey, setThemeKey] = useState('light')
+  /**
+   * @type {['light'|'dark', React.Dispatch<React.SetStateAction<'light'|'dark'>>]}
+   */
+  const [themeKey, setThemeKey] = useState(/** @type {'light'|'dark'} */ ('light'));
 
   return (
     <AnalyticsContext.Provider value={{themeKey, setThemeKey}}>
@@ -23,8 +37,19 @@ import {createContext, useCallback, useEffect, useState} from 'react'
 
 export const BASE_SSO_API = 'http://localhost:4477'
 
-// Used for the example theme switcher and user switcher components
-export const AnalyticsContext = createContext({})
+/**
+ * @typedef {Object} AnalyticsContextType
+ * @property {'light'|'dark'} themeKey - The current theme key.
+ * @property {(themeKey: 'light'|'dark') => void} setThemeKey - Function to update the theme.
+ * @property {string|null} [email] - Email of the user.
+ * @property {(user: string) => void} [switchUser] - Function to switch users.
+ * @property {string|null} [authError] - Optional auth error message.
+ */
+
+/**
+ * @type {React.Context<AnalyticsContextType>}
+ */
+export const AnalyticsContext = createContext(/** @type {AnalyticsContextType} */ ({}));
 
 const AUTH_SERVER_DOWN_MESSAGE = \`
   Auth server is down.
@@ -34,9 +59,9 @@ const AUTH_SERVER_DOWN_MESSAGE = \`
 // Demo provider that adds the state for the example user and theme switcher component.
 // Delete this once you've implemented user authentication and theming in your application.
 export const AnalyticsProvider = ({children}) => {
-  const [email, setEmail] = useState(null)
-  const [authError, setAuthError] = useState(null)
-  const [themeKey, setThemeKey] = useState('light')
+  const [email, setEmail] = useState(/** @type {string|null} */ (null))
+  const [authError, setAuthError] = useState(/** @type {string|null} */ (null))
+  const [themeKey, setThemeKey] = useState(/** @type {'light'|'dark'} */ ('light'));
 
   const switchUser = useCallback(async (email) => {
     localStorage.setItem('user-email', email)
@@ -56,7 +81,9 @@ export const AnalyticsProvider = ({children}) => {
 
       setEmail(email)
     } catch (error) {
-      const message = error instanceof Error ? error.message : error
+      const message = error instanceof Error
+      ? error.message
+      : /** @type {string} */ (error);
 
       if (message.includes('Failed to fetch')) {
         setAuthError(AUTH_SERVER_DOWN_MESSAGE)
