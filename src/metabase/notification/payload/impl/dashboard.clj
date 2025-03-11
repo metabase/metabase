@@ -47,12 +47,9 @@
 (mu/defmethod notification.payload/should-send-notification? :notification/dashboard
   [{:keys [payload] :as _noti-payload}]
   (let [{:keys [dashboard_parts dashboard_subscription]} payload]
-    (cond
-      (:skip_if_empty dashboard_subscription)
+    (if (:skip_if_empty dashboard_subscription)
       (not (every? notification.execute/is-card-empty? dashboard_parts))
-
-      (true? (-> dashboard_subscription :dashboard :archived))
-      false)))
+      true)))
 
 (defmethod notification.send/do-after-notification-sent :notification/dashboard
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
