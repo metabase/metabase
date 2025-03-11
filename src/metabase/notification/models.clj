@@ -182,8 +182,8 @@
     :notification-subscription/cron})
 
 (def ^:private subscription-ui-display-types
-  #{:raw_cron
-    :schedule_builder
+  #{:cron/raw
+    :cron/builder
     nil})
 
 (t2/deftransforms :model/NotificationSubscription
