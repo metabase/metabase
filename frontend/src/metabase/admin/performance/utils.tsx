@@ -155,10 +155,13 @@ export const cronToScheduleSettings_unmemoized = (
       schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }
+
+  const scheduleMinute = minute === Cron.AllValues ? null : parseInt(minute);
+  const scheduleHour = hour === Cron.AllValues ? null : parseInt(hour);
   return {
     schedule_type,
-    schedule_minute: parseInt(minute),
-    schedule_hour: parseInt(hour),
+    schedule_minute: scheduleMinute,
+    schedule_hour: scheduleHour,
     schedule_day,
     schedule_frame,
   };

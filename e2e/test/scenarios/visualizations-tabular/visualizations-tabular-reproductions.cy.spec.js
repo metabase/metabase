@@ -918,7 +918,7 @@ describe.skip("issue 25415", () => {
     cy.findByTestId("qb-filters-panel").should("contain", "Product ID is 1");
 
     // there is a table with data
-    cy.findByTestId("TableInteractive-root").should("exist");
+    H.tableInteractive().should("exist");
   });
 });
 

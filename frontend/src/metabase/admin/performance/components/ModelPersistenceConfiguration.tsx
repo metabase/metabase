@@ -23,31 +23,31 @@ const modelCachingOptions = [
     value: "0 0 0/1 * * ? *",
     // this has to be plural because it's plural elsewhere and it cannot be both a singular message ID and a
     // plural message ID
-    name: ngettext(msgid`Hour`, `Hours`, 1),
+    label: ngettext(msgid`Hour`, `Hours`, 1),
   },
   {
     value: "0 0 0/2 * * ? *",
-    name: t`2 hours`,
+    label: t`2 hours`,
   },
   {
     value: "0 0 0/3 * * ? *",
-    name: t`3 hours`,
+    label: t`3 hours`,
   },
   {
     value: "0 0 0/6 * * ? *",
-    name: t`6 hours`,
+    label: t`6 hours`,
   },
   {
     value: "0 0 0/12 * * ? *",
-    name: t`12 hours`,
+    label: t`12 hours`,
   },
   {
     value: "0 0 0 ? * * *",
-    name: t`24 hours`,
+    label: t`24 hours`,
   },
   {
     value: "custom",
-    name: t`Custom…`,
+    label: t`Custom…`,
   },
 ];
 
@@ -65,10 +65,6 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const modelCachingSetting = {
-    value: modelCachingSchedule,
-    options: modelCachingOptions,
-  };
   const dispatch = useDispatch();
 
   const showLoadingToast = useCallback(async () => {
@@ -130,7 +126,7 @@ export const ModelPersistenceConfiguration = () => {
         ? PersistedModelsApi.enablePersistence()
         : PersistedModelsApi.disablePersistence();
       await resolveWithToasts([promise]);
-      dispatch(refreshSiteSettings({}));
+      dispatch(refreshSiteSettings());
     },
     [resolveWithToasts, setModelPersistenceEnabled, dispatch],
   );
@@ -182,11 +178,12 @@ export const ModelPersistenceConfiguration = () => {
       {modelPersistenceEnabled && modelCachingSchedule && (
         <div>
           <ModelCachingScheduleWidget
-            setting={modelCachingSetting}
+            value={modelCachingSchedule}
+            options={modelCachingOptions}
             onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                dispatch(refreshSiteSettings({})),
+                dispatch(refreshSiteSettings()),
               ]);
             }}
           />

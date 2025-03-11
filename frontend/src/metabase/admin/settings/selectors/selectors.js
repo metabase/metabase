@@ -97,7 +97,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Site URL`,
         type: "string",
         widget: SiteUrlWidget,
-        warningMessage: t`Only change this if you know what you're doing!`,
+        description: (
+          <>
+            <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}
+            {t`This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.`}
+          </>
+        ),
       },
       {
         key: "custom-homepage",
@@ -322,7 +327,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        description: (
+          <>
+            <div>
+              {t`URL of the map tile server to use for rendering maps. If you're using a custom map tile server, you can set it here.`}
+            </div>
+            <div>{t`Metabase uses OpenStreetMaps by default.`}</div>
+          </>
+        ),
         type: "string",
       },
       {
@@ -361,7 +373,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
           { name: t`Database Default`, value: "" },
           ...(MetabaseSettings.get("available-timezones") || []),
         ],
-        note: t`Not all databases support timezones, in which case this setting won't take effect.`,
+        description: (
+          <>
+            <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
+            <div>{t`Not all databases support timezones, in which case this setting won't take effect.`}</div>
+          </>
+        ),
         allowValueCollection: true,
         searchProp: "name",
         defaultValue: "",
@@ -473,7 +490,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "ee-ai-features-enabled",
         display_name: t`AI features enabled`,
-        note: t`You must supply an API key before AI features can be enabled.`,
+        description: (
+          <>
+            <div>{t`Enable AI features.`}</div>
+            <div>{t`You must supply an API key before AI features can be enabled.`}</div>
+          </>
+        ),
         type: "boolean",
       },
       {
