@@ -39,7 +39,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
    **/
-  saveToCollection?: SDKCollectionReference;
+  targetCollection?: SDKCollectionReference;
 }> &
   Pick<
     InteractiveQuestionProviderProps,
@@ -64,7 +64,7 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollection,
+  targetCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
@@ -77,7 +77,7 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (

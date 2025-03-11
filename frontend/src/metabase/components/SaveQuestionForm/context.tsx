@@ -31,7 +31,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollection?: CollectionId;
+  targetCollection?: CollectionId;
   saveToDashboard?: DashboardId;
 };
 
@@ -61,7 +61,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollection,
+  targetCollection: userTargetCollection,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -72,9 +72,9 @@ export const SaveQuestionProvider = ({
 
   const currentUser = useSelector(getCurrentUser);
   const targetCollection =
-    currentUser && saveToCollection === "personal"
+    currentUser && userTargetCollection === "personal"
       ? currentUser.personal_collection_id
-      : saveToCollection;
+      : userTargetCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -143,7 +143,7 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollection: targetCollection,
+        targetCollection: targetCollection,
       }),
     [originalQuestion, question, onSave, onCreate, targetCollection],
   );
@@ -183,7 +183,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollection,
+            targetCollection,
             saveToDashboard,
           }}
         >
