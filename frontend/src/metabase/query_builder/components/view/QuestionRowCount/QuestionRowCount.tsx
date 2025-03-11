@@ -1,79 +1,47 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
+import { noop } from "underscore";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
 import { formatNumber } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
-import { setLimit } from "metabase/query_builder/actions";
-import LimitPopover from "metabase/query_builder/components/LimitPopover";
+import { useSelector } from "metabase/lib/redux";
+import {
+  LimitPopover,
+  useCustomQuestionRowLimit,
+} from "metabase/query_builder/components/LimitPopover";
 import {
   getFirstQueryResult,
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
-import type { Limit } from "metabase-lib";
+import { Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
-import QuestionRowCountS from "./QuestionRowCount.module.css";
 
 const POPOVER_ID = "limit-popover";
 
-interface OwnProps {
-  className?: string;
-}
-
-interface StateProps {
-  question: Question;
-  result: Dataset;
-  isResultDirty: boolean;
-}
-
-interface EntityLoaderProps {
-  loading: boolean;
-}
-
-interface DispatchProps {
-  onChangeLimit: (limit: Limit) => void;
-}
-
-type QuestionRowCountProps = OwnProps &
-  StateProps &
-  DispatchProps &
-  EntityLoaderProps;
-
-function mapStateToProps(state: State) {
+export function QuestionRowCount({ className }: { className?: string }) {
   // Not expected to render before question is loaded
-  const question = getQuestion(state) as Question;
+  const question = useSelector(getQuestion) as Question;
+  const result = useSelector(getFirstQueryResult);
+  const isResultDirty = useSelector(getIsResultDirty);
 
-  return {
-    question,
-    result: getFirstQueryResult(state),
-    isResultDirty: getIsResultDirty(state),
-  };
-}
+  const { isLoading } = useGetDatabaseQuery(
+    question?.databaseId()
+      ? {
+          id: question.databaseId() as number,
+        }
+      : skipToken,
+  );
 
-const mapDispatchToProps = {
-  onChangeLimit: setLimit,
-};
+  const [opened, { close, toggle }] = useDisclosure();
 
-function QuestionRowCount({
-  question,
-  result,
-  isResultDirty,
-  loading,
-  className,
-  onChangeLimit,
-}: QuestionRowCountProps) {
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative } = Lib.queryDisplayInfo(question.query());
   const message = useMemo(() => {
     if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result);
@@ -83,79 +51,49 @@ function QuestionRowCount({
       : getRowCountMessage(result);
   }, [question, result, isResultDirty, isNative]);
 
-  const handleLimitChange = (limit: number) => {
-    onChangeLimit(limit > 0 ? limit : null);
-  };
+  const { limit, canChangeLimit } = useCustomQuestionRowLimit({ question });
+  const disabled = !canChangeLimit;
 
-  const canChangeLimit = !isNative && isEditable;
-
-  const limit = canChangeLimit ? Lib.currentLimit(question.query(), -1) : null;
-
-  if (loading) {
+  if (isLoading) {
     return null;
   }
 
   return (
-    <PopoverWithTrigger
-      triggerElement={
-        <RowCountLabel
-          className={className}
+    <Popover
+      disabled={disabled}
+      id={POPOVER_ID}
+      opened={opened}
+      onChange={toggle}
+      position="top-end"
+    >
+      <Popover.Target>
+        <Text
           data-testid="question-row-count"
-          highlighted={limit != null}
-          disabled={!canChangeLimit}
+          fw="bold"
+          lh="normal"
+          ta="center"
+          className={cx(
+            CS.textMedium,
+            CS.textBrandHover,
+            {
+              [CS.textBrand]: limit !== null,
+              [CS.cursorPointer]: !disabled,
+              [CS.cursorDefault]: disabled,
+            },
+            className,
+          )}
+          aria-label={t`Row count`}
+          aria-haspopup="dialog"
+          aria-controls={POPOVER_ID}
+          onClick={!disabled ? toggle : noop}
         >
           {message}
-        </RowCountLabel>
-      }
-      id={POPOVER_ID}
-      aria-role="dialog"
-      disabled={!canChangeLimit}
-    >
-      {({ onClose }: { onClose: () => void }) => (
-        <LimitPopover
-          className={CS.p2}
-          limit={limit}
-          onChangeLimit={handleLimitChange}
-          onClose={onClose}
-        />
-      )}
-    </PopoverWithTrigger>
-  );
-}
-
-function RowCountLabel({
-  disabled,
-  className,
-  ...props
-}: {
-  children: string;
-  highlighted: boolean;
-  disabled: boolean;
-  className?: string;
-}) {
-  const label = t`Row count`;
-  const { highlighted, ...propsForChild } = props;
-  return disabled ? (
-    <Box
-      component="span"
-      className={cx(QuestionRowCountS.RowCountStaticLabel, className)}
-      {...propsForChild}
-      aria-label={label}
-    />
-  ) : (
-    <button
-      className={cx(
-        QuestionRowCountS.RowCountButton,
-        {
-          [QuestionRowCountS.isHighlighted]: highlighted,
-        },
-        className,
-      )}
-      {...propsForChild}
-      aria-label={label}
-      aria-haspopup="dialog"
-      aria-controls={POPOVER_ID}
-    />
+        </Text>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <LimitPopover question={question} onClose={close} p="md" />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -195,18 +133,6 @@ function getRowCountMessage(result: Dataset): string {
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
 
-function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
-  return question.databaseId();
-}
-
-const ConnectedQuestionRowCount = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Database.load({
-    id: getDatabaseId,
-    loadingAndErrorWrapper: false,
-  }),
-)(QuestionRowCount);
-
 export type QuestionRowCountOpts = {
   result?: Dataset;
   isObjectDetail: boolean;
@@ -216,5 +142,4 @@ function shouldRender({ result, isObjectDetail }: QuestionRowCountOpts) {
   return result?.data && !isObjectDetail;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ConnectedQuestionRowCount, { shouldRender });
+QuestionRowCount.shouldRender = shouldRender;
