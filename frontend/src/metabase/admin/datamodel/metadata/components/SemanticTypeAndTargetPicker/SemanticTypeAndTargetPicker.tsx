@@ -87,7 +87,7 @@ const SemanticTypeAndTargetPicker = ({
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
       <SemanticTypePicker
-        // className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)} // TODO
+        className={className}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
       />
