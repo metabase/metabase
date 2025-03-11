@@ -194,7 +194,7 @@
                                   (some? (:description old-table))
                                   (dissoc changes :description)
 
-                                  (= (:visibility_type new-table) (:visibility_type old-table))
+                                  (some? (:visibility_type old-table))
                                   (dissoc changes :visibility_type))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
