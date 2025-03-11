@@ -157,7 +157,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText('Expecting comma but got "test" instead');
+      await screen.findByText('Expecting operator but got "test" instead');
     });
   });
 });

@@ -73,6 +73,12 @@ describe("diagnostics", () => {
         setup({ expression: "between([Tax])", startRule: "boolean" })?.message,
       ).toEqual("Function between expects 3 arguments");
     });
+
+    it("should catch missing comma in function arguments", () => {
+      expect(setup({ expression: 'concat([Tax] "test")' })?.message).toEqual(
+        'Expecting operator but got "test" instead',
+      );
+    });
   });
 
   describe("diagnoseAndCompile", () => {
