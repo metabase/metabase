@@ -59,6 +59,7 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
+            :type          :question
             :dataset-query {:database (meta/id)
                             :type     :query
                             :query    {:source-table (meta/id :checkins)
@@ -91,6 +92,14 @@
   'exports' two columns, `USER_ID` and `count`."
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
+   :database     (meta/id)
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
+
+(def query-with-source-model
+  "Like [[query-with-source-card]], but where the card's type is :model"
+  {:lib/type     :mbql/query
+   :lib/metadata metadata-provider-with-model
    :database     (meta/id)
    :stages       [{:lib/type    :mbql.stage/mbql
                    :source-card 1}]})
