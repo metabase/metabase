@@ -19,7 +19,8 @@
                                         notification.payload/payload
                                         :card_part
                                         :result
-                                        :data :rows))]
+                                        :data
+                                        :rows))]
 
           (is (= [[100]]
                  (send-alert-by-user! :crowberto)))
