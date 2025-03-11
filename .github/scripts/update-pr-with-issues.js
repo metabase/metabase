@@ -1,3 +1,4 @@
+const github = new Octokit({ auth: GITHUB_TOKEN });
 const https = require('https');
 
 function getLinkedIssues(body) {
