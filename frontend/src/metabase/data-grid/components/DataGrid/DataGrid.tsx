@@ -143,6 +143,7 @@ export const DataGrid = function DataGrid<TData>({
           <div
             data-testid="table-scroll-container"
             className={cx(S.tableGrid, classNames?.tableGrid)}
+            role="grid"
             ref={gridRef}
             style={{
               paddingRight: isAddColumnButtonSticky
