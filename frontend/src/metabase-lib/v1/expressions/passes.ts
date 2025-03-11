@@ -14,6 +14,17 @@ function isCallExpression(expr: unknown): expr is CallExpression {
   return Array.isArray(expr) && expr.length > 1;
 }
 
+export function applyPasses(
+  expression: Expression,
+  passes: CompilerPass[],
+): Expression {
+  let res = expression;
+  for (const pass of passes) {
+    res = pass(res);
+  }
+  return res;
+}
+
 export function isCompilerPass(value: unknown): value is CompilerPass {
   return typeof value === "function";
 }
