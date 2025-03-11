@@ -252,9 +252,9 @@
 
 (defn- equal-commutative-op?
   [f1 f2]
-  (let [f1-args (vec (nthnext f1 2))
-        f2-args (vec (nthnext f2 2))]
-    (loop [f1-indices (vec (range (count f1-args)))
+  (let [f1-args (subvec f1 2)
+        f2-args (subvec f2 2)]
+    (loop [f1-indices (range (count f1-args))
            f2-indices (set (range (count f2-args)))]
       (cond
         (and (empty? f1-indices)
@@ -267,8 +267,8 @@
 
         :else
         (let [f1-index (first f1-indices)
-              f1-elm (nth f1-args f1-index)
-              matching (m/find-first #(equal-filter? f1-elm (nth f2-args %)) f2-indices)]
+              f1-elm (f1-args f1-index)
+              matching (m/find-first #(equal-filter? f1-elm (f2-args %)) f2-indices)]
           (if-not matching
             false
             (recur (next f1-indices)
