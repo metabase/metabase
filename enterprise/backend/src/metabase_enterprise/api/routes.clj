@@ -12,6 +12,7 @@
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.data-editing.api]
+   [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.query-reference-validation.api]
@@ -38,7 +39,8 @@
    :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
-   :upload-management          (deferred-tru "Upload Management")})
+   :upload-management          (deferred-tru "Upload Management")
+   :database-routing           (deferred-tru "Database Routing")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -67,6 +69,7 @@
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
+   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
