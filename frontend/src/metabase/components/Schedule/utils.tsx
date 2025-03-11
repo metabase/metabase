@@ -64,8 +64,3 @@ export const measureTextWidthSafely = _.memoize(
     return JSON.stringify(args);
   },
 );
-
-export const removeCommasFromTranslation = (translation: string | string[]) =>
-  typeof translation === "string"
-    ? translation.replace(/,/g, "")
-    : translation.map(t => t.replace(/,/g, ""));
