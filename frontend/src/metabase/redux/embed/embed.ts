@@ -72,6 +72,9 @@ const interactiveEmbedSlice = createSlice({
   },
 });
 
+/**
+ * this functions turns a string like `param=value1,value2` into `param=value1&param=value2` that matches the URLSearchParams format
+ */
 function normalizeCommaSeparatedSearchOptions(
   options: (keyof InteractiveEmbeddingOptions)[],
 ): (search: string) => string {
@@ -104,13 +107,22 @@ function excludeNonInteractiveEmbeddingOptions(
   return pick(embeddingOptions, ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS);
 }
 
+/**
+ * this function is key to ensure that we won't end up with invalid `entity_types` values.
+ * As it could not be empty, it needs at least a single valid value. e.g. `["model"]`, or `["model", "table"]`,
+ * but never `[]`.
+ */
 function normalizeEntityTypes(
   searchOptions: Partial<InteractiveEmbeddingOptions>,
 ): Partial<InteractiveEmbeddingOptions> {
-  const ALLOWED_ENTITY_TYPES: NonNullable<
-    InteractiveEmbeddingOptions["entity_types"]
-  > = ["model", "table"];
+  const ALLOWED_ENTITY_TYPES: InteractiveEmbeddingOptions["entity_types"] = [
+    "model",
+    "table",
+  ];
 
+  /**
+   * `parseSearchOptions` would return either a string or an array of strings.
+   */
   const { entity_types: entityTypesValueOrArray } = searchOptions;
   if (entityTypesValueOrArray) {
     const entityTypes = Array.isArray(entityTypesValueOrArray)
@@ -123,8 +135,7 @@ function normalizeEntityTypes(
     if (filteredEntityTypes.length === 0) {
       return {
         ...searchOptions,
-        // Default value
-        entity_types: ["model", "table"],
+        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
       };
     }
 
@@ -133,6 +144,7 @@ function normalizeEntityTypes(
       entity_types: filteredEntityTypes,
     };
   }
+
   return searchOptions;
 }
 
