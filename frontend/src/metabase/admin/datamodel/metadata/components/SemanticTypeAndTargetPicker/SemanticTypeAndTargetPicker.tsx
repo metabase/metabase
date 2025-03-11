@@ -7,33 +7,19 @@ import type { SelectChangeEvent } from "metabase/core/components/Select";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
 import FieldSeparator from "../FieldSeparator";
 
-const TYPE_OPTIONS = [
-  ...MetabaseCore.field_semantic_types,
-  {
-    id: null,
-    name: t`No semantic type`,
-    section: t`Other`,
-  },
-];
+import { SemanticTypePicker } from "./SemanticTypePicker";
 
 const SEARCH_PROPS = [
   "display_name",
   "table.display_name",
   "table.schema_name",
 ];
-
-interface TypeOption {
-  id: string | null;
-  name: string;
-  section: string;
-}
 
 interface CurrencyOption {
   name: string;
@@ -65,15 +51,15 @@ const SemanticTypeAndTargetPicker = ({
   const showCurrencyTypeSelect = field.isCurrency();
 
   const handleChangeSemanticType = useCallback(
-    ({ target: { value: semanticType } }: SelectChangeEvent<string>) => {
+    (value: string | null) => {
       // If we are changing the field from a FK to something else, we should delete any FKs present
       if (field.target && field.target.id != null && field.isFK()) {
         onUpdateField(field, {
-          semantic_type: semanticType,
+          semantic_type: value,
           fk_target_field_id: null,
         });
       } else {
-        onUpdateField(field, { semantic_type: semanticType });
+        onUpdateField(field, { semantic_type: value });
       }
     },
     [field, onUpdateField],
@@ -100,17 +86,12 @@ const SemanticTypeAndTargetPicker = ({
       data-testid="semantic-type-target-picker"
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
-      <LegacySelect
-        className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)}
+      <SemanticTypePicker
+        // className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)} // TODO
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
-        options={TYPE_OPTIONS}
-        optionValueFn={getTypeOptionId}
-        optionSectionFn={getTypeOptionSection}
-        placeholder={t`Select a semantic type`}
-        searchProp="name"
-        globalSearch
       />
+
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
       {showCurrencyTypeSelect && (
         <LegacySelect
@@ -206,14 +187,6 @@ const getFkFieldPlaceholder = (field: Field, idFields: Field[]) => {
   }
 
   return hasIdFields ? t`Select a target` : t`No key available`;
-};
-
-const getTypeOptionId = (option: TypeOption) => {
-  return option.id;
-};
-
-const getTypeOptionSection = (option: TypeOption) => {
-  return option.section;
 };
 
 const hasMultipleSchemas = (field: Field[]) => {
