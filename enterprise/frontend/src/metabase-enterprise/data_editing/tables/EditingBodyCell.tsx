@@ -1,11 +1,6 @@
 import type { CellContext } from "@tanstack/react-table";
-import {
-  type ChangeEvent,
-  type KeyboardEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { skipToken, useGetFieldValuesQuery } from "metabase/api";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
@@ -14,16 +9,10 @@ import {
   Combobox,
   Icon,
   Input,
-  InputBase,
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import type {
-  DatasetColumn,
-  FieldId,
-  RowValue,
-  RowValues,
-} from "metabase-types/api";
+import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./EditingBodyCell.module.css";
 import type { UpdatedRowCellsHandlerParams } from "./types";
@@ -103,35 +92,23 @@ export const EditingBodyCellText = ({
   onSubmit,
   onCancel,
 }: EditingBodyPrimitiveProps) => {
-  const [value, setValue] = useState<RowValue>(initialValue);
-
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => setValue(e.target.value),
-    [setValue],
-  );
-
-  const handleKeyUp = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        onSubmit(value);
-      }
-      if (e.key === "Escape") {
-        onCancel();
-      }
-    },
-    [onSubmit, onCancel, value],
-  );
-
   return (
     <Input
-      value={value as any} // TODO [Milestone 2]: fixup this type after adding specific inputs based on data type
+      defaultValue={(initialValue ?? "").toString()}
       className={S.input}
       variant="unstyled"
       size="xs"
       autoFocus
-      onChange={handleChange}
-      onKeyUp={handleKeyUp}
-      onBlur={() => onSubmit(value)}
+      onKeyUp={event => {
+        if (event.key === "Escape") {
+          onCancel();
+        } else if (event.key === "Enter") {
+          onSubmit(event.currentTarget.value);
+        }
+      }}
+      onBlur={event => {
+        onSubmit(event.currentTarget.value);
+      }}
     />
   );
 };
@@ -142,17 +119,14 @@ export const EditingBodyCellSelect = ({
   onSubmit,
   onCancel,
 }: EditingBodyPrimitiveProps) => {
-  const fieldId = datasetColumn.field_ref?.[1] as FieldId | null;
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(
-    fieldId ?? skipToken,
+    datasetColumn.id ?? skipToken,
   );
 
   const [search, setSearch] = useState("");
   const combobox = useCombobox({
     defaultOpened: true,
-    onDropdownClose: () => {
-      onCancel();
-    },
+    onDropdownClose: onCancel,
   });
 
   const options = useMemo(
@@ -172,16 +146,15 @@ export const EditingBodyCellSelect = ({
       onOptionSubmit={onSubmit}
     >
       <Combobox.Target>
-        <InputBase
-          component="button"
+        <Input
+          value={(initialValue ?? "").toString()}
           variant="unstyled"
           pointer
           onClick={() => combobox.toggleDropdown()}
+          onMouseDown={onCancel}
           className={S.input}
           size="xs"
-        >
-          {initialValue}
-        </InputBase>
+        />
       </Combobox.Target>
 
       <Combobox.Dropdown mah="none" miw={250}>
@@ -189,7 +162,7 @@ export const EditingBodyCellSelect = ({
           <TextInput
             value={search}
             onChange={event => setSearch(event.currentTarget.value)}
-            placeholder="Search the list"
+            placeholder={t`Search the list`}
             leftSection={<Icon name="search" />}
             autoFocus
           />
@@ -199,7 +172,6 @@ export const EditingBodyCellSelect = ({
           {options.length > 0 ? (
             options.map(item => (
               <Combobox.Option
-                className={S.comboboxOption}
                 selected={initialValue === item.value}
                 value={item.value}
                 key={item.value}
@@ -208,12 +180,10 @@ export const EditingBodyCellSelect = ({
               </Combobox.Option>
             ))
           ) : isLoading ? (
-            <Combobox.Empty p="0.75rem" c="var(--mb-color-text-light)">
-              Loading values...
-            </Combobox.Empty>
+            <Combobox.Empty>{t`Loading values...`}</Combobox.Empty>
           ) : (
-            <Combobox.Option className={S.comboboxOption} value={search}>
-              {`+ Create: "${search}"`}
+            <Combobox.Option value={search}>
+              {t`Add option:`} <strong>{search}</strong>
             </Combobox.Option>
           )}
         </Combobox.Options>

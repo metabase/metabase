@@ -20,3 +20,4 @@ export * from "./TextInput";
 export * from "./TextInputBlurChange";
 export * from "./Textarea";
 export * from "./TimeInput";
+export * from "./Combobox";

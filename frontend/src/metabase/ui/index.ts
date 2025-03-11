@@ -1,10 +1,4 @@
-export {
-  rem,
-  useMantineTheme,
-  Combobox,
-  InputBase,
-  useCombobox,
-} from "@mantine/core";
+export { rem, useMantineTheme } from "@mantine/core";
 export type {
   MantineTheme,
   MantineThemeOverride,
