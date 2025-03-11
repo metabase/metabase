@@ -4,6 +4,8 @@ import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldId } from "metabase-types/api";
 
+import S from "./FkTargetPicker.module.css";
+
 interface Props {
   className?: string;
   field: Field;
@@ -81,7 +83,11 @@ export const FkTargetPicker = ({
                 {item.option.label}
               </Text>
 
-              {field?.description && <span>{field.description}</span>}
+              {field?.description && (
+                <Text c="text-tertiary" className={S.description} lh="1rem">
+                  {field.description}
+                </Text>
+              )}
             </Flex>
           </SelectItem>
         );
