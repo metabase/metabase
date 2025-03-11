@@ -22,7 +22,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
+import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
 interface SetupOpts {
   hasModels?: boolean;
