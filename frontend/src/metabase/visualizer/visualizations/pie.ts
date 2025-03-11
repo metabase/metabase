@@ -31,12 +31,19 @@ export const pieDropHandler = (
 
     if (!metricColumnName) {
       metricColumnName = columnRef.name;
-      state.columns.push(copyColumn(metricColumnName, column));
+      state.columns.push(
+        copyColumn(metricColumnName, column, dataSource.name, state.columns),
+      );
     } else {
       const index = state.columns.findIndex(
         col => col.name === metricColumnName,
       );
-      state.columns[index] = copyColumn(metricColumnName, column);
+      state.columns[index] = copyColumn(
+        metricColumnName,
+        column,
+        dataSource.name,
+        state.columns,
+      );
     }
 
     if (metricColumnName) {
@@ -51,7 +58,12 @@ export const pieDropHandler = (
       return;
     }
 
-    const newDimension = copyColumn(columnRef.name, column);
+    const newDimension = copyColumn(
+      columnRef.name,
+      column,
+      dataSource.name,
+      state.columns,
+    );
     state.columns.push(newDimension);
     state.columnValuesMapping[newDimension.name] = [columnRef];
     state.settings = {

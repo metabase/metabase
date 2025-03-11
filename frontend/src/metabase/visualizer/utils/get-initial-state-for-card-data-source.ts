@@ -28,7 +28,9 @@ export function getInitialStateForCardDataSource(
       column,
       extractReferencedColumns(state.columnValuesMapping),
     );
-    state.columns.push(copyColumn(columnRef.name, column));
+    state.columns.push(
+      copyColumn(columnRef.name, column, dataSource.name, state.columns),
+    );
     state.columnValuesMapping[columnRef.name] = [columnRef];
   });
 

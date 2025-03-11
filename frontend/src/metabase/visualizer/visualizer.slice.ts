@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { copy } from "metabase/lib/utils";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -44,6 +45,7 @@ import {
 } from "./utils";
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
+  addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
   removeColumnFromCartesianChart,
@@ -121,7 +123,7 @@ export const initializeVisualizer = createAsyncThunk(
         })
         .flat(),
     );
-    return initialState;
+    return copy(initialState);
   },
 );
 
@@ -220,7 +222,12 @@ const visualizerHistoryItemSlice = createSlice({
         extractReferencedColumns(state.columnValuesMapping),
       );
 
-      const newColumn = copyColumn(columnRef.name, column);
+      const newColumn = copyColumn(
+        columnRef.name,
+        column,
+        dataSource.name,
+        state.columns,
+      );
       state.columns.push(newColumn);
       state.columnValuesMapping[newColumn.name] = [columnRef];
     },
@@ -514,14 +521,21 @@ function maybeCombineDataset(
     canCombineCard(state.display, state.columns, state.settings, card)
   ) {
     const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const columns = dataset.data.cols.filter(col => metrics.includes(col.name));
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+    const columns = dataset.data.cols.filter(
+      col => metrics.includes(col.name) || dimensions.includes(col.name),
+    );
     columns.forEach(column => {
       const columnRef = createVisualizerColumnReference(
         source,
         column,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      addMetricColumnToCartesianChart(state, column, columnRef);
+      if (metrics.includes(column.name)) {
+        addMetricColumnToCartesianChart(state, column, columnRef, source);
+      } else {
+        addDimensionColumnToCartesianChart(state, column, columnRef, source);
+      }
     });
     return state;
   }

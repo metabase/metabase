@@ -111,6 +111,7 @@ export interface VisualizationProps {
   data: DatasetData;
   metadata?: Metadata;
   rawSeries: RawSeries;
+  visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
@@ -166,8 +167,6 @@ export interface VisualizationProps {
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
-
-  getCard?: (cardName: string) => Promise<Card | undefined>;
 
   dispatch: Dispatch;
 }
