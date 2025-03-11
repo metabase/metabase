@@ -12,7 +12,7 @@ function getLinkedIssues(body) {
     });
   }
 
-  return null;
+  return [];
 }
 
 // Function to make HTTPS requests
