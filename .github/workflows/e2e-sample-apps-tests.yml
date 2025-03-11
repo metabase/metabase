@@ -24,7 +24,7 @@ env:
       "shoppy-e2e"
     ]
   SAMPLE_APP_MAIN_BRANCH_NAME: 'main'
-  SAMPLE_APP_LATEST_RELEASE_BRANCH_NAME: 'latest'
+  SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX: 'stable'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -127,15 +127,13 @@ jobs:
               const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
               const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
 
-              const isLatestMajorVersion = currentReleaseVersion === currentBranchVersion
+              const sampleAppBranchName = `${currentBranchVersion}-${{ env.SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX }}`
 
               const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
               const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
 
               return {
-                branch_name: isLatestMajorVersion
-                  ? '${{ env.SAMPLE_APP_LATEST_RELEASE_BRANCH_NAME }}'
-                  : branchName,
+                branch_name: sampleAppBranchName,
                 matrix: shouldRunTestsForVersion
                   ? releaseBranchTestSuites
                   : []
