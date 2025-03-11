@@ -1,6 +1,6 @@
 const https = require('https');
 
-export function getLinkedIssues(body) {
+function getLinkedIssues(body) {
   const matches = body.match(
     /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?)(:?) (#|https?:\/\/github\.com\/.+metabase\/issues\/)(\d+)/gi,
   );
