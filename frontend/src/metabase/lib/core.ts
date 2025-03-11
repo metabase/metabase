@@ -1,8 +1,17 @@
 import { t } from "ttag";
 
+import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-export const field_semantic_types = [
+interface FieldSemanticType {
+  id: string;
+  name: string;
+  section: string;
+  description?: string;
+  icon: IconName;
+}
+
+export const field_semantic_types: FieldSemanticType[] = [
   /* Overall Row */
   {
     id: TYPE.PK,
