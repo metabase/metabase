@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
-import { Flex, Select, SelectItem, Text } from "metabase/ui";
+import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
 
 const DATA = getData();
 const SYMBOLS = getSymbols();
@@ -19,17 +19,23 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
       data={DATA}
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a currency type`}
-      renderOption={item => (
-        <SelectItem selected={item.option.value === value}>
-          <Flex align="center" flex="1" gap="xs" justify="space-between">
-            <span>{item.option.label}</span>
+      renderOption={item => {
+        const selected = item.option.value === value;
 
-            <Text c={item.checked ? "text-white" : "text-light"}>
-              {SYMBOLS[item.option.value]}
-            </Text>
-          </Flex>
-        </SelectItem>
-      )}
+        return (
+          <SelectItem selected={selected}>
+            <Icon name={selected ? "check" : "empty"} />
+
+            <Flex align="center" flex="1" gap="xs" justify="space-between">
+              <span>{item.option.label}</span>
+
+              <Text c={item.checked ? "text-white" : "text-light"}>
+                {SYMBOLS[item.option.value]}
+              </Text>
+            </Flex>
+          </SelectItem>
+        );
+      }}
       searchable
       value={value}
       onChange={onChange}
