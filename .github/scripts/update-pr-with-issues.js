@@ -1,8 +1,18 @@
 const https = require('https');
 
-function containsIssueReference(text, issueNumber) {
-  const regex = new RegExp(`(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved):?\\s*#?${issueNumber}\\b`, 'i');
-  return regex.test(text);
+export function getLinkedIssues(body) {
+  const matches = body.match(
+    /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?)(:?) (#|https?:\/\/github\.com\/.+metabase\/issues\/)(\d+)/gi,
+  );
+
+  if (matches) {
+    return matches.map(m => {
+      const numberMatch = m.match(/\d+/);
+      return numberMatch ? numberMatch[0] : null;
+    });
+  }
+
+  return null;
 }
 
 // Function to make HTTPS requests
@@ -53,18 +63,15 @@ async function main() {
     }
 
     // Get PR details from GitHub API
-    const prData = await httpsRequest({
-      hostname: 'api.github.com',
-      path: `/repos/${repoOwner}/${repoName}/pulls/${prNumber}`,
-      method: 'GET',
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${githubToken}`,
-        'User-Agent': 'Linear-GitHub-Action'
-      }
+    const prInfo = await github.rest.issues.get({
+      owner: context.owner,
+      repo: context.repo,
+      issue_number: prNumber
+    }).catch((err) => {
+      console.log("error getting prInfo:\n" + err);
     });
 
-    const prUrl = prData.html_url;
+    const prUrl = prInfo.html_url;
     console.log(`Processing PR: ${prUrl}`);
 
     // Query Linear API to find tasks linked to this PR
@@ -126,7 +133,10 @@ async function main() {
       return;
     }
 
-    let newBody = prData.body || '';
+    let linked_issues = getLinkedIssues(prInfo.body);
+    console.log(`Linked issues: ${linked_issues}`);
+
+    let newBody = prInfo.body || '';
 
     // Filter out issue numbers that are already referenced in the PR body:
     let issueNumbersToAdd = [];
@@ -152,18 +162,12 @@ async function main() {
         body: newBody
       });
 
-      await httpsRequest({
-        hostname: 'api.github.com',
-        path: `/repos/${repoOwner}/${repoName}/pulls/${prNumber}`,
-        method: 'PATCH',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Authorization': `token ${githubToken}`,
-          'User-Agent': 'Linear-GitHub-Action',
-          'Content-Type': 'application/json',
-          'Content-Length': updateData.length
-        }
-      }, updateData);
+      await github.rest.issues.update({
+        owner: repoOwner,
+        repo: repoName,
+        issue_number: prNumber,
+        ...JSON.parse(updateData)
+      });
 
       console.log(`Updated PR #${prNumber} with issue references: ${closingRefs}`);
     } else {
