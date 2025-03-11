@@ -32,7 +32,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "saveToCollection">;
+} & Pick<SaveQuestionProps, "targetCollection" | "saveToCollection">;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };

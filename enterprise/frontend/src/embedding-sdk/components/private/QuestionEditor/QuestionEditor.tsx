@@ -144,6 +144,7 @@ export const QuestionEditor = ({
   plugins,
   entityTypeFilter,
   saveToCollection,
+  targetCollection,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
@@ -153,6 +154,7 @@ export const QuestionEditor = ({
     isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
     saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>
