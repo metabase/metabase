@@ -1343,3 +1343,56 @@ describe("admin > settings > updates", () => {
     });
   });
 });
+
+describe("admin > upload settings", () => {
+  describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should show the uploads settings page", () => {
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+  });
+
+  describe("scenarios > admin > uploads (EE)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+    });
+
+    it("without attached-dwh should show the uploads settings page", () => {
+      H.mockSessionPropertiesTokenFeatures({
+        hosting: false,
+        attached_dwh: false,
+        upload_management: true,
+      });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+      cy.findByTestId("upload-tables-table").findByText("Uploaded Tables");
+    });
+
+    it("with attached-dwh should not show the uploads settings page", () => {
+      H.mockSessionPropertiesTokenFeatures({
+        hosting: true,
+        attached_dwh: true,
+        upload_management: true,
+      });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items")
+        .findByText("Uploads")
+        .should("not.exist");
+
+      cy.findByTestId("upload-tables-table").findByText("Uploaded Tables");
+    });
+  });
+});
