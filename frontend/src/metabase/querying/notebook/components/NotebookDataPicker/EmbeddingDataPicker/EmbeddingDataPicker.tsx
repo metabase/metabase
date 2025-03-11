@@ -9,7 +9,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
-import { DataPickerTarget } from "../NotebookDataPicker";
+import { DataPickerTarget } from "../DataPickerTarget";
 
 type EmbeddingDataPickerProps = {
   query: Lib.Query;
