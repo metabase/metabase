@@ -82,6 +82,7 @@ export function Editor<S extends StartRule = "expression">(
     onBlur,
     formatExpression,
     isFormatting,
+    isValidated,
   } = useExpression({
     ...props,
     metadata,
@@ -149,7 +150,7 @@ export function Editor<S extends StartRule = "expression">(
       )}
 
       <Flex className={S.toolbar} pr="md" gap="sm">
-        {source.trim() !== "" && error == null && (
+        {source.trim() !== "" && error == null && isValidated && (
           <ButtonTooltip label={t`Auto-format`}>
             <Button
               aria-label={t`Auto-format`}
@@ -188,6 +189,7 @@ function useExpression<S extends StartRule = "expression">({
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
+  const [isValidated, setIsValidated] = useState(false);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
@@ -222,18 +224,27 @@ function useExpression<S extends StartRule = "expression">({
     [clause, query, stageIndex, expressionIndex],
   );
 
-  const debouncedOnChange = useMemo(
-    () => _.debounce(onChange, DEBOUNCE_VALIDATION_MS, false),
+  const handleChange = useCallback<typeof onChange>(
+    (clause, error) => {
+      setIsValidated(true);
+      onChange(clause, error);
+    },
     [onChange],
+  );
+
+  const debouncedOnChange = useMemo(
+    () => _.debounce(handleChange, DEBOUNCE_VALIDATION_MS, false),
+    [handleChange],
   );
 
   const handleUpdate = useCallback(
     (source: string, immediate: boolean = false) => {
       setSource(source);
+      setIsValidated(false);
 
       if (source.trim() === "") {
         debouncedOnChange.cancel();
-        onChange(null, null);
+        handleChange(null, null);
         return;
       }
 
@@ -247,7 +258,7 @@ function useExpression<S extends StartRule = "expression">({
       });
       if (immediate || prevError) {
         debouncedOnChange.cancel();
-        onChange(clause, error);
+        handleChange(clause, error);
       } else {
         debouncedOnChange(clause, error);
       }
@@ -259,7 +270,7 @@ function useExpression<S extends StartRule = "expression">({
       startRule,
       metadata,
       expressionIndex,
-      onChange,
+      handleChange,
       debouncedOnChange,
       prevError,
     ],
@@ -295,6 +306,7 @@ function useExpression<S extends StartRule = "expression">({
     onBlur: handleBlur,
     formatExpression: handleFormatExpression,
     isFormatting,
+    isValidated,
   };
 }
 
