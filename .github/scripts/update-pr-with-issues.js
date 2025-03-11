@@ -48,7 +48,7 @@ function httpsRequest(options, data = null) {
   });
 }
 
-export async function link_issues(github) {
+async function link_issues(github) {
   console.log(github);
 
   try {
@@ -181,4 +181,4 @@ export async function link_issues(github) {
   }
 }
 
-link_issues(github);
+module.exports = {link_issues};
