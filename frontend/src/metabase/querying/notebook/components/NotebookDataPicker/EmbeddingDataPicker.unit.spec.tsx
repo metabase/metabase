@@ -1,99 +1,65 @@
-import fetchMock from "fetch-mock";
+import { screen } from "__support__/ui";
 
-import { createMockMetadata } from "__support__/metadata";
-import {
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
-import { createQuery } from "metabase-lib/test-helpers";
-import {
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
-
-import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-
-function setup() {
-  const metadata = createMetadata();
-  const query = createQuery({ metadata });
-  fetchMock.get(
-    {
-      name: "entity-count",
-      url: "path:/api/search",
-      query: {
-        models: ["dataset", "table"],
-        limit: 0,
-      },
-    },
-    {
-      total: 100,
-    },
-  );
-  setupSearchEndpoints(createSearchResults());
-  setupDatabasesEndpoints([createDatabase()]);
-
-  renderWithProviders(
-    <EmbeddingDataPicker
-      query={query}
-      stageIndex={0}
-      canChangeDatabase={true}
-      isDisabled={false}
-      onChange={jest.fn()}
-      placeholder="Pick your starting data"
-      table={undefined}
-    />,
-  );
-}
+import { setup } from "./setup";
 
 describe("EmbeddingDataPicker", () => {
   describe("multi-stage data picker", () => {
-    it("should render", async () => {
-      setup();
+    it("should show tables when there is no models", async () => {
+      setup({ hasModels: false });
 
       expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it('should show "BUCKET" step when there are both models and tables', async () => {
+      setup();
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    describe("entity_types", () => {
+      it('should show only models when `entity_types=["models", "table"]`', async () => {
+        setup({
+          entityTypes: ["model"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      });
+
+      it('should show only tables when `entity_types=["table"]`', async () => {
+        setup({
+          entityTypes: ["table"],
+        });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      });
+
+      it('should show both models and tables when `entity_types=["models", "table"]`', async () => {
+        setup({
+          entityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      });
+
+      /**
+       * We don't test invalid `entityTypes` values here as the redux state is set via a slice which has proper validations and tests in place.
+       *
+       * @see frontend/src/metabase/redux/embed/embed.unit.spec.ts
+       */
     });
   });
 });
-
-function createMetadata() {
-  return createMockMetadata({
-    databases: [createDatabase()],
-  });
-}
-
-function createDatabase() {
-  return createSampleDatabase({
-    tables: [
-      createOrdersTable(),
-      createPeopleTable(),
-      createProductsTable(),
-      createReviewsTable(),
-    ],
-  });
-}
-
-function createSearchResults() {
-  return [
-    createMockModelResult({
-      id: 1,
-      name: "Orders",
-    }),
-    createMockModelResult({
-      id: 2,
-      name: "People",
-    }),
-    createMockModelResult({
-      id: 3,
-      name: "Products",
-    }),
-    createMockModelResult({
-      id: 4,
-      name: "Reviews",
-    }),
-  ];
-}
