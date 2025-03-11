@@ -1,0 +1,9 @@
+.empty {
+  color: var(--mb-color-text-light);
+}
+
+.option {
+  &:not([data-combobox-selected]):hover {
+    background-color: var(--mb-color-bg-medium);
+  }
+}
