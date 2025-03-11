@@ -922,9 +922,9 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
-   {:name :sdk-embedding
+   {:name      :sdk-embedding
     :available true
-    :enabled? (setting/get :enable-embedding-sdk)}])
+    :enabled   (setting/get :enable-embedding-sdk)}])
 
 (defn- snowplow-features
   []
