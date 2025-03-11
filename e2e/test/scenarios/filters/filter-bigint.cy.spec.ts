@@ -1038,6 +1038,55 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     },
   );
 
+  it("query builder + expression editor", { tags: "@external" }, () => {
+    function setupQuestion({ tableName }: { tableName: string }) {
+      const getQuestionDetails = (tableId: TableId) => ({
+        database: WRITABLE_DB_ID,
+        query: {
+          "source-table": tableId,
+        },
+      });
+
+      getTableId(tableName).then(tableId => {
+        H.createQuestion(getQuestionDetails(tableId), { visitQuestion: true });
+      });
+    }
+
+    function testExpression({ value }: { value: string }) {
+      H.assertQueryBuilderRowCount(3);
+
+      H.openNotebook();
+      H.getNotebookStep("data").button("Filter").click();
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({ formula: `[ID] = "${value}"` });
+      cy.button("Done").click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(1);
+
+      H.openNotebook();
+      H.getNotebookStep("filter").findByText(`ID is ${value}`).click();
+      H.popover().within(() => {
+        cy.findByLabelText("Back").click();
+        cy.findByText("Custom Expression").click();
+      });
+      H.enterCustomColumnDetails({ formula: `[ID] != "${value}"` });
+      cy.button("Done").click();
+      H.visualize();
+      H.assertQueryBuilderRowCount(2);
+    }
+
+    cy.log("setup");
+    setupTables();
+
+    cy.log("BIGINT");
+    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
+    testExpression({ value: MAX_BIGINT_VALUE });
+
+    cy.log("DECIMAL");
+    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
+    testExpression({ value: NEGATIVE_DECIMAL_VALUE });
+  });
+
   it("query builder + object detail", { tags: "@external" }, () => {
     function setupQuestion({ tableName }: { tableName: string }) {
       getTableId(tableName).then(tableId =>
