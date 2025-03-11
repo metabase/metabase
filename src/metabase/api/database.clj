@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
@@ -826,18 +826,18 @@
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database
-                               {:event        :database-connection-successful
-                                :database     engine
-                                :database-id  (u/the-id <>)
-                                :source       connection_source
-                                :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+        (analytics/track-event! :snowplow/database
+                                {:event        :database-connection-successful
+                                 :database     engine
+                                 :database-id  (u/the-id <>)
+                                 :source       connection_source
+                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! ::snowplow/database
-                               {:event    :database-connection-failed
-                                :database engine
-                                :source   connection_source})
+        (analytics/track-event! :snowplow/database
+                                {:event    :database-connection-failed
+                                 :database engine
+                                 :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 

@@ -11,10 +11,10 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.server.core :as server]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
@@ -31,20 +31,6 @@
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
-
-(defsetting prometheus-server-port
-  (deferred-trs (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
-                     " and served from `localhost:<port>/metrics`."))
-  :type       :integer
-  :visibility :internal
-  ;; settable only through environmental variable
-  :setter     :none
-  :getter     (fn reading-prometheus-port-setting []
-                (let [parse (fn [raw-value]
-                              (if-let [parsed (parse-long raw-value)]
-                                parsed
-                                (log/warnf "MB_PROMETHEUS_SERVER_PORT value of '%s' is not parseable as an integer." raw-value)))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (p.types/defprotocol+ PrometheusActions
   (stop-web-server [this]))
@@ -76,7 +62,7 @@
 
 ;;; Collectors
 
-(defn c3p0-stats
+(defn- c3p0-stats
   "Takes `raw-stats` from [[connection-pool-info]] and groups by each property type rather than each database.
   {\"metabase-postgres-app-db\" {:numConnections 15,
                                  :numIdleConnections 15,
@@ -154,7 +140,7 @@
   []
   (reduce conn-pool-bean-diag-info {} (jmx/mbean-names "com.mchange.v2.c3p0:type=PooledDataSource,*")))
 
-(def c3p0-collector
+(def ^:private c3p0-collector
   "c3p0 collector delay"
   (letfn [(collect-metrics []
             (-> (connection-pool-info)
@@ -334,7 +320,8 @@
                          :port        port
                          :max-threads 8}))
 
-;;; API: call [[setup!]] once, call [[shutdown!]] on shutdown
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
 (defn setup!
   "Start the prometheus metric collector and web-server."
