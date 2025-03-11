@@ -5,7 +5,6 @@ import * as MetabaseCore from "metabase/lib/core"; // TODO: fix import
 import { Select } from "metabase/ui";
 
 const NULL_VALUE = "null";
-
 const DATA = getData();
 
 interface Props {
@@ -47,7 +46,7 @@ function getData() {
       id: null,
       name: t`No semantic type`,
       section: t`Other`,
-      icon: "empty",
+      icon: "empty" as const,
     },
   ].map(option => ({
     label: option.name,
