@@ -82,28 +82,27 @@
   (let [mock-upload-file!
         (fn [_bytes attachment-name]
           {:url (str "http://uploaded/" attachment-name)
-           :id (str "ID_" attachment-name)})]
-    (testing "Uploads files"
-      (let [attachments [{:title           "&amp;a"
-                          :title_link      "a.com"
-                          :attachment-name "a.png"
-                          :rendered-info   {:attachments nil
-                                            :content     [:div "hi"]}}
-                         {:title           "> click <https://c.com|here>"
-                          :title_link      "b.com"
-                          :attachment-name "b.png"
-                          :rendered-info   {:attachments nil
-                                            :content     [:div "hi again"]
-                                            :render/text "hi again"}}]
-            processed   (with-redefs [slack/upload-file! mock-upload-file!]
-                          (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
-        (is (= [{:blocks [{:type "section"
-                           :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
-                          {:type "image"
-                           :alt_text "&amp;a",
-                           :slack_file {:id "ID_a.png"}}]}
-                {:blocks [{:type "section"
-                           :text {:text "<b.com|&gt; click &lt;https://c.com|here&gt;>", :type "mrkdwn", :verbatim true}}
-                          {:type "section"
-                           :text {:type "plain_text", :text "hi again"}}]}]
-               processed))))))
+           :id (str "ID_" attachment-name)})
+        attachments [{:title           "&amp;a"
+                      :title_link      "a.com"
+                      :attachment-name "a.png"
+                      :rendered-info   {:attachments nil
+                                        :content     [:div "hi"]}}
+                     {:title           "> click <https://c.com|here>"
+                      :title_link      "b.com"
+                      :attachment-name "b.png"
+                      :rendered-info   {:attachments nil
+                                        :content     [:div "hi again"]
+                                        :render/text "hi again"}}]
+        processed   (with-redefs [slack/upload-file! mock-upload-file!]
+                      (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
+    (is (= [{:blocks [{:type "section"
+                       :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
+                      {:type "image"
+                       :alt_text "&amp;a",
+                       :slack_file {:id "ID_a.png"}}]}
+            {:blocks [{:type "section"
+                       :text {:text "<b.com|&gt; click &lt;https://c.com|here&gt;>", :type "mrkdwn", :verbatim true}}
+                      {:type "section"
+                       :text {:type "plain_text", :text "hi again"}}]}]
+           processed))))
