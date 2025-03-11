@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.test :as met]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -413,7 +414,6 @@
   (testing "should not send for archived cards"
     (notification.tu/with-card-notification
       [notification {:card     {:archived true}
-
                      :handlers [@notification.tu/default-email-handler]}]
       (notification.tu/test-send-notification!
        notification
@@ -435,3 +435,24 @@
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
               (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
                          {:order-by [[:started_at :asc]]}))))))
+
+(deftest sandboxed-alert-test
+  (mt/when-ee-evailable
+   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
+     (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
+                                             :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                       :attributes {"cat" 50}}
+       (notification.tu/with-card-notification
+         [notification {:card     {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                        :handlers [@notification.tu/default-email-handler]}]
+         (let [send-alert-by-user! (fn [user-kw]
+                                     (-> (assoc notification :creator_id (mt/user->id user-kw))
+                                         notification.payload/payload
+                                         :card_part
+                                         :result
+                                         :data :rows))]
+
+           (is (= [[100]]
+                  (send-alert-by-user! :crowberto)))
+           (is (= [[10]]
+                  (send-alert-by-user! :rasta)))))))))

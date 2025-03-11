@@ -47,6 +47,9 @@
   (let [{:keys [notification_card card_part]} payload
         send-condition                        (:send_condition notification_card)]
     (cond
+      (true? (-> notification_card :card :archived))
+      false
+
       (= :has_result send-condition)
       (not (notification.execute/is-card-empty? card_part))
 

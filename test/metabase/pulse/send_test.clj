@@ -622,24 +622,6 @@
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
          (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe")))))))
 
-(deftest pulse-permissions-test
-  (testing "Pulses should be sent with the Permissions of the user that created them."
-    (letfn [(send-pulse-created-by-user!* [user-kw]
-              (mt/with-temp [:model/Collection coll {}
-                             :model/Card       card {:dataset_query (mt/mbql-query checkins
-                                                                      {:order-by [[:asc $id]]
-                                                                       :limit    1})
-                                                     :collection_id (:id coll)}]
-                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
-                (pulse.test-util/send-alert-created-by-user! user-kw card)))]
-      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
-             (send-pulse-created-by-user!* :crowberto)))
-      (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You do not have permissions to view Card [\d,]+."
-             (send-pulse-created-by-user!* :rasta)))))))
-
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}

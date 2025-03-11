@@ -84,12 +84,12 @@
                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]]]
     [:notification/card
      [:map
-      [:payload [:map
-                 [:card_part         [:maybe ::notification.payload.execute/Part]]
-                 [:card              :map]
-                 [:style             :map]
-                 [:notification_card ::models.notification/NotificationCard]
-                 [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
+      [:payload [:maybe [:map
+                         [:card_part         [:maybe ::notification.payload.execute/Part]]
+                         [:card              :map]
+                         [:style             :map]
+                         [:notification_card ::models.notification/NotificationCard]
+                         [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]]
     [:notification/testing   :map]]])
 
 (defn- logo-url
