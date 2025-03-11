@@ -64,6 +64,7 @@ export function getInitialStateForCardDataSource(
   state.settings = {
     ...card.visualization_settings,
     ...Object.fromEntries(entries),
+    "card.title": card.name,
   };
 
   return state;
