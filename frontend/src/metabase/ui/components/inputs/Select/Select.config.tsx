@@ -2,6 +2,7 @@ import { Select } from "@mantine/core";
 
 import S from "./Select.module.css";
 import { SelectItem } from "./SelectItem";
+
 export const selectOverrides = {
   Select: Select.extend({
     defaultProps: {
