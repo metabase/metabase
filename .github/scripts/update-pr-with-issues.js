@@ -150,7 +150,7 @@ async function link_issues(github) {
     if (issueNumbersToAdd.length > 0) {
 
       // Generate closing references
-      const closingRefs = issueNumbersToAdd.map(num => `closes #${num}`).join('\n');
+      const closingRefs = issueNumbersToAdd.map(num => `closes #${num}`).join(' ');
 
       newBody = `<!-- Added by 'Add Issue References to PR' GitHub Action -->${closingRefs}\n` + newBody;
 
