@@ -895,10 +895,10 @@
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
                        :subject "You unsubscribed from an alert"
-                       :body    [{"You're no longer receiving alerts about" true
+                       :body    [{"You’re no longer receiving alerts about" true
                                   a-href                                    true}]}
                       (mt/summarize-multipart-single-email email
-                                                           #"You're no longer receiving alerts about"
+                                                           #"You’re no longer receiving alerts about"
                                                            (re-pattern a-href)))))))))))
 
 (deftest unsubscribe-notification-audit-test
@@ -951,7 +951,7 @@
                     card-url-tag (make-card-url-tag notification)]
                 (check-email :email email
                              :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
-                             :expected-subject "You've been unsubscribed from an alert"
+                             :expected-subject "You’ve been unsubscribed from an alert"
                              :card-url-tag card-url-tag))))
 
           (testing "when notification is unarchived (inactive -> active)"
@@ -981,7 +981,7 @@
                 (testing "sends unsubscribe email to removed recipients"
                   (check-email :email removed-email
                                :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
-                               :expected-subject "You've been unsubscribed from an alert"
+                               :expected-subject "You’ve been unsubscribed from an alert"
                                :card-url-tag card-url-tag))
 
                 (testing "sends subscription email to new recipients"
