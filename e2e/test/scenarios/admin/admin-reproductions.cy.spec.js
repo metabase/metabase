@@ -8,13 +8,32 @@ describe("issue 26470", { tags: "@external" }, () => {
     cy.request("POST", "/api/persist/enable");
   });
 
-  it("Model Cache enable / disable button should update button text", () => {
+  it("Model Cache enable / disable toggle should reflect current state", () => {
+    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/persist`).as(
+      "persist",
+    );
+    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/unpersist`).as(
+      "unpersist",
+    );
+
     cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.button("Turn model persistence on").click();
-    cy.button(/Done/).should("exist");
-    cy.tick(6000);
-    cy.button("Turn model persistence off").should("exist");
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("not.be.checked")
+      .click();
+    cy.wait("@persist").its("response.statusCode").should("eq", 204);
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("be.checked")
+      .click();
+    cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("not.be.checked");
   });
 });
 
@@ -116,7 +135,7 @@ describe("issue 41765", { tags: "@external" }, () => {
 
     H.appBar().findByText("Databases").click();
     cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema now").click();
+    cy.button("Sync database schema").click();
 
     exitAdmin();
     openWritableDatabaseQuestion();
