@@ -1,7 +1,10 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
 
-import type { DatePickerUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import {
   Box,
   Button,
@@ -13,7 +16,6 @@ import {
   Text,
 } from "metabase/ui";
 
-import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,
   getInterval,
@@ -33,10 +35,10 @@ import {
 } from "./utils";
 
 interface DateOffsetIntervalPickerProps {
-  value: DateOffsetIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
   submitButtonLabel: string;
-  onChange: (value: DateIntervalValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
 
@@ -100,6 +102,7 @@ export function DateOffsetIntervalPicker({
           onChange={handleIntervalChange}
         />
         <Select
+          w="max-content"
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
@@ -114,6 +117,7 @@ export function DateOffsetIntervalPicker({
           onChange={handleOffsetIntervalChange}
         />
         <Select
+          w="max-content"
           data={offsetUnitOptions}
           value={value.offsetUnit}
           aria-label={t`Starting from unit`}

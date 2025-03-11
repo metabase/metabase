@@ -4275,3 +4275,120 @@ describe("issue 54236", () => {
     });
   });
 });
+
+describe("issue 17061", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PEOPLE_ID,
+      "order-by": [["asc", ["field", PEOPLE.ID, null]]],
+      limit: 1,
+    },
+  };
+
+  const parameterDetails = {
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  const getParameterMapping = cardId => ({
+    parameter_id: parameterDetails.id,
+    card_id: cardId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashcardData",
+    );
+  });
+
+  it("should not send multiple query requests for the same dashcards when opening a public dashboard with parameters (metabase#17061)", () => {
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard, questionId }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashcard.dashboard_id,
+        cards: [
+          {
+            card_id: questionId,
+            parameter_mappings: [getParameterMapping(questionId)],
+          },
+        ],
+      });
+      H.visitPublicDashboard(dashcard.dashboard_id);
+    });
+
+    H.getDashboardCard().findByText("1").should("be.visible");
+    cy.get("@publicDashcardData.all").should("have.length", 1);
+  });
+});
+
+describe("issue 48824", () => {
+  const dateParameter = {
+    id: "abc",
+    name: "Date filter",
+    slug: "filter-date",
+    type: "date/all-options",
+    default: "past30days-from-7days",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should correctly translate relative filters in dashboards (metabase#48824)", () => {
+    cy.log("set locale");
+    cy.request("GET", "/api/user/current").then(({ body: user }) => {
+      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
+    });
+
+    cy.log("add a date parameter with a relative default value to a dashboard");
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      parameters: [dateParameter],
+    });
+    H.updateDashboardCards({
+      dashboard_id: ORDERS_DASHBOARD_ID,
+      cards: [
+        {
+          card_id: ORDERS_QUESTION_ID,
+          parameter_mappings: [
+            {
+              card_id: ORDERS_QUESTION_ID,
+              parameter_id: dateParameter.id,
+              target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            },
+          ],
+        },
+      ],
+    });
+
+    cy.log("check translations");
+    H.visitDashboard(ORDERS_DASHBOARD_ID, {
+      params: { [dateParameter.slug]: "past30days" },
+    });
+
+    cy.log("Previous 30 days");
+    H.filterWidget().findByText("Vorheriger 30 Tage").should("be.visible");
+    H.filterWidget().icon("revert").click();
+
+    cy.log("Previous 30 days, starting 7 days ago");
+    H.filterWidget()
+      .findByText("Vorheriger 30 Tage, ab vor 7 tage")
+      .should("be.visible");
+  });
+});

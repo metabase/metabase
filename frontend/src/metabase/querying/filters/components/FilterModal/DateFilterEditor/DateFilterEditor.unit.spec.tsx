@@ -68,7 +68,7 @@ describe("DateFilterEditor", () => {
       stageIndex,
       Lib.relativeDateFilterClause({
         column,
-        value: "current",
+        value: 0,
         unit: "day",
         offsetValue: null,
         offsetUnit: null,

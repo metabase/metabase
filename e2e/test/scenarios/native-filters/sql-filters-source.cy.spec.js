@@ -137,6 +137,9 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.wait("@parameterValues");
       checkFilterValueInList("A");
 
+      cy.log("close the popover");
+      cy.realPress("Escape");
+
       H.saveQuestion("SQL filter", undefined, {
         tab: "Browse",
         path: ["Our analytics"],
@@ -724,7 +727,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       });
 
       FieldFilter.openEntryForm();
-      H.fieldValuesInput().type("Tw");
+      H.popover().findByRole("searchbox").type("Tw");
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
       // eslint-disable-next-line no-unsafe-element-filtering

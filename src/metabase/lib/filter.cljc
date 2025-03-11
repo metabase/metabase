@@ -323,6 +323,7 @@
   [query stage-number [_tag _opts expr n unit] style]
   (if (clojure.core/or
        (clojure.core/= n :current)
+       (clojure.core/= n 0)
        (clojure.core/and
         (clojure.core/= (abs n) 1)
         (clojure.core/= unit :day)))

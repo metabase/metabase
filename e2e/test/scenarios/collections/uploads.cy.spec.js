@@ -1,6 +1,7 @@
 const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { FIXTURE_PATH } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -223,6 +224,42 @@ H.describeWithSnowplow(
         });
       });
     });
+
+    it("should allow you to choose a model to append to if there are multiple (metabase#53824)", () => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.enableTracking();
+
+      H.enableUploads("postgres");
+      H.headlessUpload(FIRST_COLLECTION_ID, H.VALID_CSV_FILES[0]);
+      H.headlessUpload(FIRST_COLLECTION_ID, H.VALID_CSV_FILES[1]);
+
+      H.visitCollection(FIRST_COLLECTION_ID);
+
+      cy.fixture(`${FIXTURE_PATH}/${H.VALID_CSV_FILES[2].fileName}`).then(
+        file => {
+          cy.get("#upload-input").selectFile(
+            {
+              contents: Cypress.Buffer.from(file),
+              fileName: H.VALID_CSV_FILES[2].fileName,
+              mimeType: "text/csv",
+            },
+            { force: true },
+          );
+        },
+      );
+
+      cy.findByRole("radio", { name: /Append to a model/ }).click();
+
+      cy.findByRole("searchbox", { name: "Select a model" })
+        .should("contain.value", H.VALID_CSV_FILES[1].humanName)
+        .click();
+
+      H.popover().findByText(H.VALID_CSV_FILES[0].humanName).click();
+      cy.findByRole("searchbox", { name: "Select a model" })
+        .should("have.value", H.VALID_CSV_FILES[0].humanName)
+        .click();
+    });
   },
 );
 
@@ -360,14 +397,14 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
   });
 });
 
-function uploadFileToCollection(testFile) {
+function uploadFileToCollection(testFile, viewModel = true) {
   cy.get("@collectionId").then(collectionId =>
     cy.visit(`/collection/${collectionId}`),
   );
 
   H.uploadFile("#upload-input", "Uploads Collection", testFile);
 
-  if (testFile.valid) {
+  if (testFile.valid && viewModel) {
     cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
     cy.findByTestId("collection-table").within(() => {

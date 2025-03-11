@@ -57,6 +57,17 @@
              "See https://www.metabase.com/license/commercial/ for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
+;;; --------------------------------------------------- Info Metric---------------------------------------------------
+
+(defmethod prometheus/known-labels :metabase-info/build
+  [_]
+  ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
+  [(merge (select-keys config/mb-version-info [:tag :hash :date])
+          {:version       config/mb-version-string
+           :major-version (config/current-major-version)})])
+
+(defmethod prometheus/initial-value :metabase-info/build [_ _] 1)
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url

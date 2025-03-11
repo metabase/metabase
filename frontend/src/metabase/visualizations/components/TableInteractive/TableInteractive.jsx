@@ -111,8 +111,17 @@ class TableInteractive extends Component {
       contentWidths: null,
       showDetailShortcut: true,
     };
+
     this.columnHasResized = {};
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
     this.headerRefs = [];
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
+    this.resizeHandleRefs = [];
+
+    this._setupColumnHeaderDraggableRefs(props.data);
+
     this.detailShortcutRef = createRef();
 
     this.gridRef = createRef();
@@ -291,6 +300,10 @@ class TableInteractive extends Component {
   }
 
   componentDidUpdate(prevProps) {
+    if (prevProps.data?.cols?.length !== this.props.data?.cols?.length) {
+      this._setupColumnHeaderDraggableRefs(this.props.data);
+    }
+
     if (
       !this.state.contentWidths ||
       prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
@@ -315,6 +328,19 @@ class TableInteractive extends Component {
       this.props.height
     ) {
       this.props.dispatch(setUIControls({ scrollToLastColumn: false }));
+    }
+  }
+
+  _setupColumnHeaderDraggableRefs(data) {
+    const columnCount = data?.cols?.length;
+
+    // Initialize refs for each column headers.
+    // Without this, the draggable components will crash on React 19.
+    // This is because react-draggable uses ReactDOM.findDOMNode
+    // when `nodeRef` is falsey, which no longer exists on React 19.
+    if (columnCount !== undefined) {
+      this.headerRefs = [...Array(columnCount)].map(() => createRef());
+      this.resizeHandleRefs = [...Array(columnCount)].map(() => createRef());
     }
   }
 
@@ -438,7 +464,7 @@ class TableInteractive extends Component {
     setTimeout(() => this.recomputeGridSize(), 1);
   }
 
-  onColumnReorder(columnIndex, newColumnIndex) {
+  handleColumnReorder(columnIndex, newColumnIndex) {
     const { settings, onUpdateVisualizationSettings } = this.props;
     const columns = settings["table.columns"].slice(); // copy since splice mutates
 
@@ -823,8 +849,14 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
 
+    // Wait for the refs to be set before rendering
+    if (!this.headerRefs[columnIndex] || !this.resizeHandleRefs[columnIndex]) {
+      return null;
+    }
+
     return (
       <TableDraggable
+        nodeRef={this.headerRefs[columnIndex]}
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
         /* needs to be index+name+counter so Draggable resets after each drag */
@@ -840,7 +872,7 @@ class TableInteractive extends Component {
           });
           onActionDismissal();
         }}
-        onDrag={(e, data) => {
+        onDrag={(event, data) => {
           const newIndex = this.getDragColNewIndex(data);
           if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
             this.setState({
@@ -849,7 +881,7 @@ class TableInteractive extends Component {
             });
           }
         }}
-        onStop={(e, d) => {
+        onStop={(event, d) => {
           const { dragColIndex, dragColNewIndex } = this.state;
           DRAG_COUNTER++;
           if (
@@ -857,11 +889,19 @@ class TableInteractive extends Component {
             dragColNewIndex != null &&
             dragColIndex !== dragColNewIndex
           ) {
-            this.onColumnReorder(dragColIndex, dragColNewIndex);
+            this.handleColumnReorder(dragColIndex, dragColNewIndex);
+
+            // if the column is dragged, we need to tell DatasetEditor know that
+            // this specific column needs to be marked as selected to be able to
+            // scroll to it in a virtual table
+            this.props.onHeaderColumnReorder?.(dragColIndex);
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
-              this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
+              this.onVisualizationClick(
+                clicked,
+                this.headerRefs[columnIndex]?.current,
+              );
             });
           }
           this.setState({
@@ -874,7 +914,13 @@ class TableInteractive extends Component {
         }}
       >
         <Box
-          ref={e => (this.headerRefs[columnIndex] = e)}
+          ref={element => {
+            // We cannot have `null` in `nodeRef` as it will fallback to
+            // `findDOMNode` which no longer exists in React 19.
+            if (element) {
+              this.headerRefs[columnIndex].current = element;
+            }
+          }}
           style={{
             ...style,
             overflow: "visible" /* ensure resize handle is visible */,
@@ -969,8 +1015,16 @@ class TableInteractive extends Component {
               this.onColumnResize(columnIndex, x);
               this.setState({ dragColIndex: null });
             }}
+            nodeRef={this.resizeHandleRefs[columnIndex]}
           >
             <ResizeHandle
+              ref={element => {
+                // We cannot have `null` in `nodeRef` as it will fallback to
+                // `findDOMNode` which no longer exists in React 19.
+                if (element) {
+                  this.resizeHandleRefs[columnIndex].current = element;
+                }
+              }}
               style={{
                 zIndex: 99,
                 position: "absolute",
@@ -1239,7 +1293,9 @@ class TableInteractive extends Component {
                   />
                 )}
                 <Grid
-                  ref={ref => (this.header = ref)}
+                  ref={ref => {
+                    this.header = ref;
+                  }}
                   style={{
                     top: 0,
                     left: 0,
