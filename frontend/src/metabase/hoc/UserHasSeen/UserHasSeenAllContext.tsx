@@ -5,9 +5,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useKeyPressEvent } from "react-use";
 
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
+
+const EMPTY_ARRAY: string[] = [];
 
 export interface UserHasSeenAllContextProps {
   upsertBadge: ({ key, value }: { key: string; value: boolean }) => void;
@@ -37,7 +38,15 @@ const useUserHasSeenAll = (menuKey: string) => {
 
   const upsertBadge = useCallback(
     ({ value, key }: { value: boolean; key: string }) => {
-      setBadges(s => [...s.filter(([k]) => k !== key), [key, value]]);
+      setBadges(s => {
+        const badgeAlreadyInArray =
+          s.findIndex(([k, v]) => k === key && v === value) >= 0;
+        if (badgeAlreadyInArray) {
+          return s;
+        }
+
+        return [...s.filter(([k]) => k !== key), [key, value]];
+      });
     },
     [],
   );
@@ -48,16 +57,14 @@ const useUserHasSeenAll = (menuKey: string) => {
   const { value: seenBadges, setValue: setSeenBadges } = useUserKeyValue({
     namespace: "indicator-menu",
     key: menuKey,
-    defaultValue: [],
+    defaultValue: EMPTY_ARRAY,
   });
 
-  useKeyPressEvent("q", () => setSeenBadges([]));
-
-  const unseenBadges = useMemo(
-    () =>
-      badges.filter(([key]) => !seenBadges.includes(key)).map(([key]) => key),
-    [badges, seenBadges],
-  );
+  const unseenBadges = useMemo(() => {
+    return badges
+      .filter(([key]) => !seenBadges.includes(key))
+      .map(([key]) => key);
+  }, [badges, seenBadges]);
 
   const handleOpen = useCallback(() => {
     if (!unseenBadges.every(b => seenBadges.includes(b))) {

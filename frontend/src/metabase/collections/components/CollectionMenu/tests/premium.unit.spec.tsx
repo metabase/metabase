@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen, waitFor } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
-import { setup } from "./setup";
+import { assertIndicatorHidden, assertIndicatorVisible, setup } from "./setup";
 
 const setupPremium = (opts?: SetupOpts) => {
   return setup({
@@ -124,11 +124,7 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 10,
       });
 
-      await waitFor(async () =>
-        expect(
-          await screen.findByTestId("menu-indicator-root"),
-        ).toHaveAttribute("data-show-indicator", "true"),
-      );
+      await assertIndicatorVisible();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -150,10 +146,7 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 10,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -189,10 +182,7 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1);
@@ -218,10 +208,7 @@ describe("CollectionMenu", () => {
         isAdmin: false,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("path:/api/collection/1/items")).toHaveLength(0);
@@ -240,10 +227,7 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);

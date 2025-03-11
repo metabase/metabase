@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, queryIcon, screen, waitFor } from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setup } from "./setup";
+import { assertIndicatorHidden, assertIndicatorVisible, setup } from "./setup";
 
 describe("CollectionMenu", () => {
   it("should be able to edit collection permissions with admin access", async () => {
@@ -163,11 +163,7 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      await waitFor(async () =>
-        expect(
-          await screen.findByTestId("menu-indicator-root"),
-        ).toHaveAttribute("data-show-indicator", "true"),
-      );
+      await assertIndicatorVisible();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -200,10 +196,8 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
+
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -221,10 +215,8 @@ describe("for your consideration", () => {
         isAdmin: true,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
+
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -246,10 +238,7 @@ describe("for your consideration", () => {
         isAdmin: false,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -268,10 +257,7 @@ describe("for your consideration", () => {
         moveToDashboard: true,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
@@ -290,10 +276,7 @@ describe("for your consideration", () => {
         moveToDashboard: true,
       });
 
-      expect(await screen.findByTestId("menu-indicator-root")).toHaveAttribute(
-        "data-show-indicator",
-        "false",
-      );
+      await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(

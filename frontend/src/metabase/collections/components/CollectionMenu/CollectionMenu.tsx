@@ -7,7 +7,6 @@ import {
   isRootPersonalCollection,
 } from "metabase/collections/utils";
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
-import { IndicatorMenu } from "metabase/core/components/IndicatorMenu";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
 import { UserHasSeenAll } from "metabase/hoc/UserHasSeen/UserHasSeenAll";
@@ -28,7 +27,7 @@ const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
   return filteredArr.length === 0
     ? []
     : filteredArr.reduce((acc, val, index) =>
-        acc.concat(<IndicatorMenu.Divider key={`divider-${index}`} />, ...val),
+        acc.concat(<Menu.Divider key={`divider-${index}`} />, ...val),
       );
 };
 
@@ -95,15 +94,6 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      // <IndicatorMenu.ItemWithBadge
-      //   key="collection-move-to-dashboards"
-      //   leftSection={<Icon name="add_to_dash" />}
-      //   component={ForwardRefLink}
-      //   to={`${url}/move-questions-dashboard`}
-      //   userAckKey="move-to-dashboard"
-      //   badgeLabel={t`New`}
-      // >{t`Move questions into their dashboards`}</IndicatorMenu.ItemWithBadge>,
-
       <UserHasSeen key="move-to-dashboard" hasSeenKey="move-to-dashboard">
         {({ isNew, ack }) => (
           <Menu.Item
@@ -151,7 +141,11 @@ export const CollectionMenu = ({
               position="bottom"
               disabled={menuOpen}
             >
-              <Indicator disabled={hasSeenAll} size={6}>
+              <Indicator
+                disabled={hasSeenAll}
+                size={6}
+                data-testid="menu-indicator-root"
+              >
                 <ActionIcon size={32} variant="viewHeader">
                   <Icon name="ellipsis" color="text-dark" />
                 </ActionIcon>

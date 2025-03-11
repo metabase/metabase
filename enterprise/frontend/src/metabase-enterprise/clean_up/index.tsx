@@ -62,7 +62,7 @@ if (hasPremiumFeature("collection_cleanup")) {
               leftSection={<Icon name="archive" />}
               component={ForwardRefLink}
               to={`${Urls.collection(collection)}/cleanup`}
-              rightSection={isNew ? <Badge>{t`recommended`}</Badge> : null}
+              rightSection={isNew ? <Badge>{t`Recommended`}</Badge> : null}
             >
               {t`Clear out unused items`}
             </Menu.Item>

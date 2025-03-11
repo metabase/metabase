@@ -9,7 +9,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   Collection,
   DashboardQuestionCandidate,
@@ -101,4 +101,22 @@ export const setup = ({
   );
 
   return { onUpdateCollection };
+};
+
+export const assertIndicatorVisible = async () => {
+  await waitFor(async () =>
+    expect(
+      (await screen.findByTestId("menu-indicator-root")).querySelector(
+        "[class*=indicator]",
+      ),
+    ).toBeInTheDocument(),
+  );
+};
+
+export const assertIndicatorHidden = async () => {
+  expect(
+    (await screen.findByTestId("menu-indicator-root")).querySelector(
+      "[class*=indicator]",
+    ),
+  ).not.toBeInTheDocument();
 };

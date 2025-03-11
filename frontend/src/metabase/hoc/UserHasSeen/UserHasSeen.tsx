@@ -1,5 +1,4 @@
 import { useContext, useEffect } from "react";
-import { useKeyPressEvent } from "react-use";
 
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
@@ -23,24 +22,23 @@ export const UserHasSeen = ({
   overrideFn = hasSeen => !hasSeen,
 }: UserHasSeenProps) => {
   const indicatorContext = useContext(UserHasSeenAllContext);
+  const { upsertBadge, removeBadge } = indicatorContext ?? {};
 
-  const [hasSeen, { ack, isLoading, unack }] = useUserAcknowledgement(
+  const [hasSeen, { ack, isLoading }] = useUserAcknowledgement(
     hasSeenKey,
     true,
   );
 
-  useKeyPressEvent("q", unack);
-
   const isNew = overrideFn(hasSeen);
 
   useEffect(() => {
-    if (indicatorContext) {
+    if (upsertBadge && removeBadge) {
       if (!isLoading && isNew) {
-        indicatorContext.upsertBadge({ key: hasSeenKey, value: hasSeen });
-        return () => indicatorContext.removeBadge({ key: hasSeenKey });
+        upsertBadge({ key: hasSeenKey, value: hasSeen });
+        return () => removeBadge({ key: hasSeenKey });
       }
     }
-  }, [isNew, indicatorContext, hasSeenKey, hasSeen, isLoading]);
+  }, [isNew, hasSeenKey, hasSeen, isLoading, upsertBadge, removeBadge]);
 
   return children({ isNew, ack });
 };
