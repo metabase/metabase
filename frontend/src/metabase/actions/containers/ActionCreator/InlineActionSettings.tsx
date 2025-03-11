@@ -1,9 +1,8 @@
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import CopyWidget from "metabase/components/CopyWidget";
-import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import FormField from "metabase/core/components/FormField";
 import TextArea from "metabase/core/components/TextArea";
@@ -161,14 +160,13 @@ const InlineActionSettings = ({
           </CopyWidgetContainer>
         )}
         {isModalOpen && (
-          <Modal>
-            <ConfirmContent
-              title={t`Disable this public link?`}
-              content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-              onAction={handleDisablePublicLink}
-              onClose={closeModal}
-            />
-          </Modal>
+          <ConfirmModal
+            opened
+            title={t`Disable this public link?`}
+            content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+            onConfirm={handleDisablePublicLink}
+            onClose={closeModal}
+          />
         )}
         <FormField title={t`Success message`} htmlFor={`${id}-message`}>
           <TextArea
