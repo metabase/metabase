@@ -2,9 +2,8 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { currency } from "cljs/metabase.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
-import LegacySelect, { Option } from "metabase/core/components/Select";
+import LegacySelect from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
@@ -13,6 +12,7 @@ import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
 import FieldSeparator from "../FieldSeparator";
 
+import { CurrencyPicker } from "./CurrencyPicker";
 import { SemanticTypePicker } from "./SemanticTypePicker";
 
 const SEARCH_PROPS = [
@@ -20,12 +20,6 @@ const SEARCH_PROPS = [
   "table.display_name",
   "table.schema_name",
 ];
-
-interface CurrencyOption {
-  name: string;
-  code: string;
-  symbol: string;
-}
 
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
@@ -51,22 +45,22 @@ const SemanticTypeAndTargetPicker = ({
   const showCurrencyTypeSelect = field.isCurrency();
 
   const handleChangeSemanticType = useCallback(
-    (value: string | null) => {
+    (semanticType: string | null) => {
       // If we are changing the field from a FK to something else, we should delete any FKs present
       if (field.target && field.target.id != null && field.isFK()) {
         onUpdateField(field, {
-          semantic_type: value,
+          semantic_type: semanticType,
           fk_target_field_id: null,
         });
       } else {
-        onUpdateField(field, { semantic_type: value });
+        onUpdateField(field, { semantic_type: semanticType });
       }
     },
     [field, onUpdateField],
   );
 
   const handleChangeCurrency = useCallback(
-    ({ target: { value: currency } }: SelectChangeEvent<string>) => {
+    (currency: string) => {
       onUpdateField(field, {
         settings: { ...field.settings, currency },
       });
@@ -93,8 +87,9 @@ const SemanticTypeAndTargetPicker = ({
       />
 
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
+
       {showCurrencyTypeSelect && (
-        <LegacySelect
+        <CurrencyPicker
           className={cx(
             AdminS.TableEditorFieldTarget,
             CS.inlineBlock,
@@ -103,23 +98,11 @@ const SemanticTypeAndTargetPicker = ({
           )}
           value={getFieldCurrency(field)}
           onChange={handleChangeCurrency}
-          placeholder={t`Select a currency type`}
-          searchProp="name"
-          searchCaseSensitive={false}
-        >
-          {currency.map(([_symbol, c]: CurrencyOption[]) => (
-            <Option name={c.name} value={c.code} key={c.code}>
-              <span className={cx(CS.flex, CS.full, CS.alignCenter)}>
-                <span>{c.name}</span>
-                <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
-                  {c.symbol}
-                </span>
-              </span>
-            </Option>
-          ))}
-        </LegacySelect>
+        />
       )}
+
       {showFKTargetSelect && hasSeparator && <FieldSeparator />}
+
       {showFKTargetSelect && (
         <LegacySelect
           buttonProps={{
