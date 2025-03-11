@@ -13,8 +13,6 @@
    [metabase.integrations.slack :as slack]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]

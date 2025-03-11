@@ -12,8 +12,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
