@@ -48,22 +48,14 @@ export function diagnoseAndCompile({
     return { error: errors[0] };
   }
 
-  {
-    const error = checkOpenParenthesisAfterFunction(source, tokens);
-    if (error) {
-      return { error };
-    }
-  }
+  const checks = [
+    checkOpenParenthesisAfterFunction,
+    checkMatchingParentheses,
+    checkMissingCommasInArgumentList,
+  ];
 
-  {
-    const error = checkMatchingParentheses(tokens);
-    if (error) {
-      return { error };
-    }
-  }
-
-  {
-    const error = checkMissingCommasInArgumentList(tokens, source);
+  for (const check of checks) {
+    const error = check(tokens, source);
     if (error) {
       return { error };
     }
@@ -98,8 +90,8 @@ export function diagnoseAndCompile({
 }
 
 function checkOpenParenthesisAfterFunction(
-  source: string,
   tokens: Token[],
+  source: string,
 ): ErrorWithMessage | null {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
