@@ -858,8 +858,8 @@ export function verifyDashcardCellValues({
 
     // eslint-disable-next-line no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findAllByRole("row")
-      .findAllByTestId("cell-data")
+      .findByRole("row")
+      .findAllByRole("gridcell")
       .eq(valueIndex)
       .should("have.text", value);
   }
@@ -871,9 +871,8 @@ export function verifyDashcardCellValues({
 
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
-    const cellIndex = valueIndex + values.length; // values.length to skip header row
 
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
+    cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
   }
 }
