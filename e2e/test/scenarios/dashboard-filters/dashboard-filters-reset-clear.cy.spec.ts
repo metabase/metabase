@@ -248,7 +248,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           cy.button("Update filter").click();
         });
       },
-      setSidebarValue: (label, value) => {
+      setDefaultValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
@@ -257,7 +257,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           cy.button("Add filter").click();
         });
       },
-      updateSidebarValue: (label, value) => {
+      updateDefaultValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
@@ -314,10 +314,10 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           cy.button("Update filter").click();
         });
       },
-      // we use setSidebarValue here as e2e tests setup shows options
+      // we use setDefaultValue here as e2e tests setup shows options
       // differently than in UI and with a local sample database. Maybe it's a
       // sign of a bug in setup
-      setSidebarValue: (label, value) => {
+      setDefaultValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
@@ -327,7 +327,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           cy.button("Add filter").click();
         });
       },
-      updateSidebarValue: (label, value) => {
+      updateDefaultValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
@@ -766,16 +766,16 @@ function checkDashboardParameters<T = string>({
   otherValueFormatted,
   setValue,
   updateValue = setValue,
-  setSidebarValue = setValue,
-  updateSidebarValue = updateValue,
+  setDefaultValue = setValue,
+  updateDefaultValue = updateValue,
 }: {
   defaultValueFormatted: string;
   otherValue: T;
   otherValueFormatted: string;
   setValue: (label: string, value: T) => void;
   updateValue?: (label: string, value: T) => void;
-  setSidebarValue?: (label: string, value: T) => void;
-  updateSidebarValue?: (label: string, value: T) => void;
+  setDefaultValue?: (label: string, value: T) => void;
+  updateDefaultValue?: (label: string, value: T) => void;
 }) {
   cy.log("no default value, non-required, no current value");
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
@@ -888,8 +888,8 @@ function checkDashboardParameters<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
-    setValue: setSidebarValue,
-    updateValue: updateSidebarValue,
+    setValue: setDefaultValue,
+    updateValue: updateDefaultValue,
   });
 }
 
