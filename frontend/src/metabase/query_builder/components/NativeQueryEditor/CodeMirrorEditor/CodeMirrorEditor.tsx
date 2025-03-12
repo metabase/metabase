@@ -32,7 +32,11 @@ export interface CodeMirrorEditorRef {
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import { convertSelectionToRange, matchCardIdAtCursor } from "./util";
+import {
+  convertSelectionToRange,
+  getPlaceholderText,
+  matchCardIdAtCursor,
+} from "./util";
 
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
@@ -49,6 +53,9 @@ export const CodeMirrorEditor = forwardRef<
   } = props;
 
   const extensions = useExtensions(query);
+
+  const engine = Lib.engine(query);
+  const placeholder = getPlaceholderText(engine);
 
   useImperativeHandle(ref, () => {
     return {
@@ -129,6 +136,7 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      placeholder={placeholder}
     />
   );
 });

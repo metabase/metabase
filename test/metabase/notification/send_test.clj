@@ -1,6 +1,7 @@
 (ns metabase.notification.send-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
@@ -189,6 +190,68 @@
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
 
+(deftest cron->next-execution-times-test
+  (t/with-clock (t/mock-clock (t/instant "2023-01-01T10:00:00Z"))
+    (let [cron-schedule "0 0 12 * * ? *"] ; noon every day
+      (is (= [(t/instant "2023-01-01T12:00:00Z")
+              (t/instant "2023-01-02T12:00:00Z")
+              (t/instant "2023-01-03T12:00:00Z")]
+             (#'notification.send/cron->next-execution-times cron-schedule 3))))
+    (testing "handles one-off cron expressions that don't repeat"
+      ;; Use a real cron expression that only executes once in the future
+      (let [specific-date-cron "0 0 12 2 1 ? 2023"] ; Noon on Jan 2, 2023 only
+        (is (= [(t/instant "2023-01-02T12:00:00Z")]
+               (#'notification.send/cron->next-execution-times specific-date-cron 5)))))))
+
+(deftest avg-interval-seconds-test
+  (testing "avg-interval-seconds calculates correct average"
+    (let [hourly-cron "0 0 * * * ? *"
+          daily-cron "0 0 12 * * ? *"
+          minutely-cron "0 * * * * ? *"]
+
+      (testing "hourly schedule"
+        (is (= 3600 (#'notification.send/avg-interval-seconds hourly-cron 5))))
+
+      (testing "daily schedule"
+        (is (= 86400 (#'notification.send/avg-interval-seconds daily-cron 5))))
+
+      (testing "minutely schedule"
+        (is (= 60 (#'notification.send/avg-interval-seconds minutely-cron 5))))))
+
+  (testing "throws assertion error when n < 1"
+    (is (thrown? AssertionError (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 0))))
+
+  (testing "handles one-off schedules correctly"
+    (with-redefs [notification.send/cron->next-execution-times (fn [_ _] [(t/instant)])]
+      (is (= 10 (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 5))))))
+
+(deftest subscription->deadline-test
+  (t/with-clock (t/mock-clock (t/instant))
+    (let [now (t/local-date-time)]
+      (testing "subscription->deadline returns appropriate deadlines based on frequency"
+        (let [deadline (#'notification.send/subscription->deadline
+                        {:type :notification-subscription/cron
+                         :cron_schedule "* * * * * ? *"})]
+          (is (t/before? now deadline))
+          (is (t/before? deadline (t/plus now (t/seconds 10))))))
+
+      (testing "non-cron subscription types get default deadline"
+        (let [deadline (#'notification.send/subscription->deadline {:type :some-other-type})]
+          (is (t/before? now deadline))
+          (is (t/before? deadline (t/plus now (t/seconds 35)))))))))
+
+(deftest deadline-comparator-test
+  (testing "deadline-comparator sorts notifications by deadline"
+    (let [now        (t/instant)
+          later      (t/plus now (t/minutes 5))
+          even-later (t/plus now (t/minutes 10))
+          items      (->> [{:id 3 :deadline even-later}
+                           {:id 1 :deadline now}
+                           {:id 2 :deadline later}]
+                          (map #(#'notification.send/->NotificationQueueEntry (:id %) (:deadline %)))
+                          (sort @#'notification.send/deadline-comparator))]
+      (is (= [1 2 3] (map #(.id %) items))))))
+
 (deftest notification-dispatcher-test
   (testing "notification dispatcher"
     (let [sent-notifications  (atom [])
@@ -247,6 +310,52 @@
                 (is @error-thrown)
                 (is (= 1 (count @sent-notifications)))
                 (is (= "G" (:test-value (first @sent-notifications))))))))))))
+
+(deftest notification-priority-test
+  (testing "notifications are processed in priority order (by deadline)"
+    (let [queue (#'notification.send/create-notification-queue)
+          low-priority    {:id "low-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 0 * * ? *"}} ; daily schedule
+          middle-priority {:id "middle-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 * * * ? *"}} ; hourly schedule
+          high-priority   {:id "high-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 * * * * ? *"}}] ; minutely schedule
+      (#'notification.send/put-notification! queue middle-priority)
+      (#'notification.send/put-notification! queue low-priority)
+      (#'notification.send/put-notification! queue high-priority)
+
+      (is (= [high-priority middle-priority low-priority]
+             (for [_ (range 3)]
+               (#'notification.send/take-notification! queue)))))))
+
+(deftest notification-queue-preserves-deadline-on-replacement-test
+  (testing "notifications with same ID are replaced in queue while preserving original deadline"
+    (let [queue (#'notification.send/create-notification-queue)
+          ;; Create a notification with a daily schedule (lower priority)
+          notification-v1 {:id "same-id"
+                           :version 1
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 0 * * ? *"}} ;; daily schedule
+          notification-v2 {:id "same-id"
+                           :version 2
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "* * * * * ? *"}} ;; every second
+          high-priority   {:id "high-priority"
+                           :triggering_subscription {:type :notification-subscription/cron
+                                                     :cron_schedule "0 * * * * ? *"}}] ;; every minute
+
+      (#'notification.send/put-notification! queue notification-v1)
+      (#'notification.send/put-notification! queue high-priority)
+      (#'notification.send/put-notification! queue notification-v2)
+
+      (is (= [high-priority notification-v2]
+             ;; If deadline is preserved, high-priority should come first since it was added after notification-v1
+             ;; If deadline was recalculated, notification-v2 would come first due to its minutely schedule
+             (for [_ (range 2)]
+               (#'notification.send/take-notification! queue)))))))
 
 (deftest notification-queue-test
   (let [queue (#'notification.send/create-notification-queue)]
