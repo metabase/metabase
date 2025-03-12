@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import type { ScheduleSettings } from "metabase-types/api";
+
+import { defaultDay, defaultHour } from "./constants";
 
 export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   return arr.reduce<ReactNode[]>((acc, node) => {
@@ -64,3 +68,40 @@ export const measureTextWidthSafely = _.memoize(
     return JSON.stringify(args);
   },
 );
+
+export const getScheduleDefaults = (
+  schedule: ScheduleSettings,
+): ScheduleSettings => {
+  return match<ScheduleSettings>(schedule)
+    .with({ schedule_type: "hourly" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: null,
+      schedule_minute: 0,
+    }))
+    .with({ schedule_type: "daily" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
+    .with({ schedule_type: "weekly" }, () => ({
+      schedule_day: defaultDay,
+      schedule_frame: null,
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
+    .with({ schedule_type: "monthly", schedule_frame: "mid" }, () => ({
+      schedule_day: null,
+      schedule_frame: "mid",
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
+    .with({ schedule_type: "monthly" }, () => ({
+      schedule_day: defaultDay,
+      schedule_frame: "first",
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
+    .otherwise(() => ({}));
+};

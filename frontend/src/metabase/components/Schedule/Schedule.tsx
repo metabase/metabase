@@ -17,8 +17,8 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { defaultDay, scheduleDefaults } from "./constants";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
+import { getScheduleDefaults } from "./utils";
 
 export interface ScheduleProps {
   schedule: ScheduleSettings;
@@ -54,33 +54,30 @@ export const Schedule = ({
 } & BoxProps &
   HTMLAttributes<HTMLDivElement>) => {
   const updateSchedule: UpdateSchedule = useCallback(
-    (field: keyof ScheduleSettings, value: ScheduleSettings[typeof field]) => {
+    (
+      updatedField: keyof ScheduleSettings,
+      newValue: ScheduleSettings[typeof updatedField],
+    ) => {
       let newSchedule: ScheduleSettings = {
         ...schedule,
-        [field]: value,
+        [updatedField]: newValue,
       };
+      const defaults = getScheduleDefaults(newSchedule);
 
-      newSchedule = removeNullAndUndefinedValues(newSchedule);
-
-      if (field === "schedule_type") {
+      if (updatedField === "schedule_type") {
+        // When a new schedule type is selected, use the default values for that type
         newSchedule = {
-          ...newSchedule,
-          ...scheduleDefaults[value as ScheduleType],
+          schedule_type: newValue as ScheduleType,
+          ...defaults,
         };
-      } else if (field === "schedule_frame") {
-        // when the monthly schedule frame is the 15th, clear out the schedule_day
-        if (value === "mid") {
-          newSchedule = { ...newSchedule, schedule_day: null };
-        } else {
-          // first or last, needs a day of the week
-          newSchedule = {
-            schedule_day: newSchedule.schedule_day || defaultDay,
-            ...newSchedule,
-          };
-        }
+      } else {
+        newSchedule = _.defaults(
+          removeNullAndUndefinedValues(newSchedule),
+          defaults,
+        );
       }
 
-      onScheduleChange(newSchedule, { name: field, value });
+      onScheduleChange(newSchedule, { name: updatedField, value: newValue });
     },
     [onScheduleChange, schedule],
   );
@@ -89,7 +86,7 @@ export const Schedule = ({
     // Merge default values into the schedule
     const scheduleWithDefaults: ScheduleSettings = _.defaults(
       schedule,
-      schedule.schedule_type ? scheduleDefaults[schedule.schedule_type] : {},
+      getScheduleDefaults(schedule),
     );
 
     const {
