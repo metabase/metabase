@@ -19,50 +19,28 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
   }
 
-  function getFieldType(type) {
-    return cy
-      .findByText("Field Type")
-      .closest("section")
-      .find("[data-testid='select-button-content']")
-      .contains(type);
+  function getFieldType() {
+    return cy.findByPlaceholderText("Select a semantic type");
   }
 
   function setFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      cy.findByText(oldValue).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-      searchFieldType(newValue);
       cy.findByText(newValue).click();
     });
   }
 
   function checkNoFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      searchFieldType(newValue);
       cy.findByText(newValue).should("not.exist");
     });
   }
 
-  function searchFieldType(value) {
-    // .type() is flaky when used for ListSearchField - typed characters can
-    // sometimes get rearranged while typing.
-    // Unclear why. Possibly because it's rendered as a virtualized list item.
-    cy.findByPlaceholderText("Find...").invoke("val", value).trigger("blur");
-  }
-
-  function getFKTargetField(targetField) {
-    return cy
-      .findByTestId("fk-target-select")
-      .as("targetField")
-      .invoke("text")
-      .should("eq", targetField);
-  }
-
   function setFKTargetField(field) {
-    cy.findByText("Select a target").click();
+    cy.findByPlaceholderText("Select a target").click();
 
     H.popover().contains(field).click();
   }
@@ -93,7 +71,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.reload();
     cy.wait("@metadata");
 
-    getFieldType("No semantic type");
+    getFieldType().should("have.value", "No semantic type");
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
@@ -112,7 +90,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.wait(["@metadata", "@metadata"]);
 
     getFieldType("Foreign Key");
-    getFKTargetField("Products → ID");
+    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
   it("should not let you change the type to 'Number' (metabase#16781)", () => {

@@ -40,9 +40,6 @@ export const FkTargetPicker = ({
 
   return (
     <Select
-      // buttonProps={{
-      //   "data-testid": "fk-target-select", // TODO
-      // }}
       className={className}
       classNames={{
         dropdown: S.dropdown,
@@ -51,6 +48,7 @@ export const FkTargetPicker = ({
         position: "bottom-start",
       }}
       data={data}
+      data-testid="fk-target-select"
       disabled={!hasIdFields}
       filter={({ options, search }) => {
         const query = search.toLowerCase().trim();
