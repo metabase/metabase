@@ -51,6 +51,8 @@ const CUSTOM_COLORS = [
   "text-tertiary",
   "background",
   "background-disabled",
+  "accent-gray",
+  "accent-gray-light",
 ] as const;
 
 export function getColorShades(colorName: string): ColorShades {

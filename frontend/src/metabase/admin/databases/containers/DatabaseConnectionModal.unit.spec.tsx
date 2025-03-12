@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { IndexRoute, Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
@@ -8,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -22,7 +24,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import DatabaseEditApp from "./DatabaseEditApp";
+import { DatabaseConnectionModal } from "./DatabaseConnectionModal";
 
 const ENGINES_MOCK: Record<string, Engine> = {
   H2: {
@@ -70,9 +72,9 @@ async function setup({
   const { history } = renderWithProviders(
     <Route path="/">
       <Route path="/home" component={MockComponent} />
-      <Route path="/admin/databases" component={MockComponent} />
-      <IndexRoute component={DatabaseEditApp} />
-      <Route path=":databaseId" component={DatabaseEditApp} />
+      <Route path="/admin/databases/:id" component={MockComponent} />
+      <IndexRoute component={DatabaseConnectionModal} />
+      <Route path=":databaseId" component={DatabaseConnectionModal} />
     </Route>,
     {
       withRouter: true,
@@ -91,8 +93,8 @@ async function setup({
   };
 }
 
-describe("DatabaseEditApp", () => {
-  describe("Database connections", () => {
+describe("DatabaseConnectionModal", () => {
+  describe("edit existing connection", () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
@@ -138,7 +140,9 @@ describe("DatabaseEditApp", () => {
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
@@ -146,7 +150,9 @@ describe("DatabaseEditApp", () => {
       await userEvent.type(displayNameInput, "ab");
       await userEvent.type(displayNameInput, "{backspace}{backspace}");
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -156,14 +162,18 @@ describe("DatabaseEditApp", () => {
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       await userEvent.type(displayNameInput, "Test database");
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         await screen.findByTestId("leave-confirmation"),
@@ -173,7 +183,9 @@ describe("DatabaseEditApp", () => {
     it("does not show custom warning modal after creating new database connection", async () => {
       const { history } = await setup({ initialRoute: "/home" });
 
-      history.push("/");
+      act(() => {
+        history.push("/");
+      });
 
       await waitForLoaderToBeRemoved();
 
@@ -186,16 +198,24 @@ describe("DatabaseEditApp", () => {
         "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
       );
 
+      // need to add an id to the mocked db result so redirect can go the the correct location
+      fetchMock.post(
+        "path:/api/database",
+        async url => {
+          const lastCall = fetchMock.lastCall(url);
+          return { ...(await lastCall?.request?.json()), id: 1 };
+        },
+        { overwriteRoutes: true },
+      );
+
       await userEvent.click(await screen.findByText("Save"));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toEqual(
-          "/admin/databases",
+          "/admin/databases/1",
         );
       });
-
       expect(history.getCurrentLocation().search).toContain("created=true");
-      expect(history.getCurrentLocation().search).toContain("createdDbId"); //Enpoint doesn't return an ID
 
       expect(
         screen.queryByTestId("leave-confirmation"),
