@@ -13,6 +13,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -694,6 +696,24 @@
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
          (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe")))))))
 
+(deftest pulse-permissions-test
+  (testing "Pulses should be sent with the Permissions of the user that created them."
+    (letfn [(send-pulse-created-by-user!* [user-kw]
+              (mt/with-temp [:model/Collection coll {}
+                             :model/Card       card {:dataset_query (mt/mbql-query checkins
+                                                                      {:order-by [[:asc $id]]
+                                                                       :limit    1})
+                                                     :collection_id (:id coll)}]
+                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
+                (pulse.test-util/send-alert-created-by-user! user-kw card)))]
+      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
+             (send-pulse-created-by-user!* :crowberto)))
+      (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to view Card [\d,]+."
+             (send-pulse-created-by-user!* :rasta)))))))
+
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
@@ -948,3 +968,21 @@
     (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
+
+(deftest alert-with-invalid-card-should-fail-test
+  (testing "If the card is failed to execute, the notification should fail (#54495)"
+    (mt/with-temp
+      [:model/Card         {card-id :id}  {:dataset_query (mt/native-query {:query "select 1/0"})}
+       :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                           :alert_condition "rows"}
+       :model/PulseCard    _              {:pulse_id pulse-id
+                                           :card_id  card-id}
+       :model/PulseChannel _              {:pulse_id pulse-id
+                                           :channel_type "email"
+                                           :details      {:emails ["foo@metabase.com"]}}]
+      (t2/delete! :model/TaskHistory)
+      (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
+      (is (=? [{:status :failed
+                :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
+              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+                         {:order-by [[:started_at :asc]]}))))))

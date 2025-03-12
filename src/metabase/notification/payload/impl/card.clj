@@ -11,7 +11,7 @@
 
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
-  (let [card-id     (:card_id payload)
+  (let [card-id     (:card_id alert)
         part        (notification.execute/execute-card creator_id card-id)
         card-result (:result part)]
     (when (not= :completed (:status card-result))
@@ -21,7 +21,7 @@
                        :error  (:error card-result)})))
 
     {:card_part   part
-     :card        (t2/select-one :model/Card card_id)
+     :card        (t2/select-one :model/Card card-id)
      :style       {:color_text_dark   channel.render/color-text-dark
                    :color_text_light  channel.render/color-text-light
                    :color_text_medium channel.render/color-text-medium}
