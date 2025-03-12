@@ -349,7 +349,7 @@
       "spec": "../test/scenarios/dashboard-filters/dashboard-filter-defaults.cy.spec.ts"
     },
     {
-      "duration": 7000,
+      "duration": 43000,
       "spec": "../test/scenarios/dashboard-filters/dashboard-filters-auto-apply.cy.spec.js"
     },
     {
@@ -457,7 +457,7 @@
       "spec": "../test/scenarios/dashboard/dashboard-management.cy.spec.js"
     },
     {
-      "duration": 74000,
+      "duration": 215000,
       "spec": "../test/scenarios/dashboard/dashboard-questions.cy.spec.js"
     },
     {
