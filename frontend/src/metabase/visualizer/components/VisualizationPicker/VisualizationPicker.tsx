@@ -48,11 +48,14 @@ export function VisualizationPicker({
   return (
     <>
       <SegmentedControl
+        classNames={{
+          label: S.SegmentedControlLabel,
+        }}
         value={selectedOption?.value}
         data={sensibleOptions.map((o, i) => ({
           value: o.value,
           label: (
-            <Center key={i} onClick={() => onChange(o.value)}>
+            <Center key={i} onClick={() => onChange(o.value)} p="sm">
               <Icon name={o.icon} />
             </Center>
           ),
