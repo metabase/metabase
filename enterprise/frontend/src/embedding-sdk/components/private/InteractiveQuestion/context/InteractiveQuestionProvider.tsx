@@ -43,7 +43,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  cardId: initialQuestionId,
+  questionId: initialQuestionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
