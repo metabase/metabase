@@ -128,6 +128,7 @@ function getSections(
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
 ) {
+  const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const columnGroups = Lib.groupColumns(columns);
@@ -158,7 +159,9 @@ function getSections(
       });
 
       return {
-        name: getGroupName(groupInfo, stageIndex),
+        name: withMultipleStages
+          ? getGroupName(groupInfo, stageIndex)
+          : groupInfo.displayName,
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
         items: [...segmentItems, ...columnItems],
       };
