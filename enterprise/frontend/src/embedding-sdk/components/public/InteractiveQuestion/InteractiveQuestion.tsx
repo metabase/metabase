@@ -33,7 +33,7 @@ import { withPublicComponentWrapper } from "embedding-sdk/components/private/Pub
 import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
   /**
    * When this is defined, the collection picker will be hidden and
@@ -71,7 +71,7 @@ export const _InteractiveQuestion = ({
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
-    cardId={questionId}
+    questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
