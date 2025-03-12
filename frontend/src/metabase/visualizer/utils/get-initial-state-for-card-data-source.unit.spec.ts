@@ -1,5 +1,5 @@
 import { registerVisualization } from "metabase/visualizations";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
 import {
   createMockCard,
   createMockColumn,

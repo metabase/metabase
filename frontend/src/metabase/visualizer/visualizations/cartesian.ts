@@ -11,6 +11,7 @@ import {
 import type { DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
+  VisualizerDataSource,
   VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
@@ -67,23 +68,11 @@ export const cartesianDropHandler = (
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
-    const dimensions = state.settings["graph.dimensions"] ?? [];
-    const isInUse = dimensions.includes(columnRef.name);
-    if (isInUse) {
-      return;
-    }
-
-    const newDimension = copyColumn(columnRef.name, column);
-    state.columns.push(newDimension);
-    state.columnValuesMapping[newDimension.name] = [columnRef];
-    state.settings = {
-      ...state.settings,
-      "graph.dimensions": [...dimensions, newDimension.name],
-    };
+    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
-    addMetricColumnToCartesianChart(state, column, columnRef);
+    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
@@ -91,7 +80,9 @@ export const cartesianDropHandler = (
 
     if (!bubbleColumnName) {
       bubbleColumnName = columnRef.name;
-      state.columns.push(copyColumn(bubbleColumnName, column));
+      state.columns.push(
+        copyColumn(bubbleColumnName, column, dataSource.name, state.columns),
+      );
       state.settings["scatter.bubble"] = bubbleColumnName;
     }
 
@@ -103,6 +94,7 @@ export function addMetricColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
 ) {
   const metrics = state.settings["graph.metrics"] ?? [];
   const isInUse = metrics.includes(columnRef.name);
@@ -110,12 +102,43 @@ export function addMetricColumnToCartesianChart(
     return;
   }
 
-  const newMetric = copyColumn(columnRef.name, column);
+  const newMetric = copyColumn(
+    columnRef.name,
+    column,
+    dataSource.name,
+    state.columns,
+  );
   state.columns.push(newMetric);
   state.columnValuesMapping[newMetric.name] = [columnRef];
   state.settings = {
     ...state.settings,
     "graph.metrics": [...metrics, newMetric.name],
+  };
+}
+
+export function addDimensionColumnToCartesianChart(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
+) {
+  const dimensions = state.settings["graph.dimensions"] ?? [];
+  const isInUse = dimensions.includes(columnRef.name);
+  if (isInUse) {
+    return;
+  }
+
+  const newDimension = copyColumn(
+    columnRef.name,
+    column,
+    dataSource.name,
+    state.columns,
+  );
+  state.columns.push(newDimension);
+  state.columnValuesMapping[newDimension.name] = [columnRef];
+  state.settings = {
+    ...state.settings,
+    "graph.dimensions": [...dimensions, newDimension.name],
   };
 }
 

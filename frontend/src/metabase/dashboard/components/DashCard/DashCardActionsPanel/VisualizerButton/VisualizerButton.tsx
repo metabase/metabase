@@ -5,7 +5,10 @@ import { t } from "ttag";
 import { replaceCardWithVisualization } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import { getInitialStateForCardDataSource } from "metabase/visualizer/utils";
+import {
+  getInitialStateForCardDataSource,
+  isVisualizerDashboardCard,
+} from "metabase/visualizer/utils";
 import type {
   Card,
   DashboardCard,
@@ -32,9 +35,9 @@ export function VisualizerButton({
 
   const initialState = useMemo(() => {
     if (isOpen) {
-      if (dashcard?.visualization_settings?.visualization) {
+      if (isVisualizerDashboardCard(dashcard)) {
         return {
-          state: dashcard?.visualization_settings?.visualization,
+          state: dashcard.visualization_settings.visualization,
         };
       } else {
         return {

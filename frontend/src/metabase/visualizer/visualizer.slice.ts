@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { copy } from "metabase/lib/utils";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -30,6 +31,7 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
+import { getVisualizerComputedSettings } from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -41,8 +43,9 @@ import {
   getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
-import { updateSettingsForDisplay } from "./utils/update-settings-for-display";
+import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
+  addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   cartesianDropHandler,
   removeColumnFromCartesianChart,
@@ -120,7 +123,7 @@ export const initializeVisualizer = createAsyncThunk(
         })
         .flat(),
     );
-    return initialState;
+    return copy(initialState);
   },
 );
 
@@ -176,6 +179,14 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
+export const setDisplay = createAsyncThunk(
+  "visualizer/setDisplay",
+  (display: VisualizationDisplay | null, { getState }) => {
+    const computedSettings = getVisualizerComputedSettings(getState());
+    return { display, computedSettings };
+  },
+);
+
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
   initialState: getInitialVisualizerHistoryItem(),
@@ -185,21 +196,6 @@ const visualizerHistoryItemSlice = createSlice({
         state.settings = {};
       }
       state.settings["card.title"] = action.payload;
-    },
-    setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      const { columnValuesMapping, columns, settings } =
-        updateSettingsForDisplay(
-          state.columnValuesMapping,
-          state.columns,
-          state.settings,
-          state.display,
-          action.payload,
-        );
-
-      state.columnValuesMapping = columnValuesMapping;
-      state.columns = columns;
-      state.settings = settings;
-      state.display = action.payload;
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -226,7 +222,12 @@ const visualizerHistoryItemSlice = createSlice({
         extractReferencedColumns(state.columnValuesMapping),
       );
 
-      const newColumn = copyColumn(columnRef.name, column);
+      const newColumn = copyColumn(
+        columnRef.name,
+        column,
+        dataSource.name,
+        state.columns,
+      );
       state.columns.push(newColumn);
       state.columnValuesMapping[newColumn.name] = [columnRef];
     },
@@ -252,6 +253,22 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(setDisplay.fulfilled, (state, action) => {
+        const { display, computedSettings } = action.payload;
+        const { columnValuesMapping, columns, settings } =
+          getUpdatedSettingsForDisplay(
+            state.columnValuesMapping,
+            state.columns,
+            computedSettings,
+            state.display,
+            display,
+          );
+
+        state.columnValuesMapping = columnValuesMapping;
+        state.columns = columns;
+        state.settings = settings;
+        state.display = display;
+      })
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
         if (initialState) {
@@ -501,14 +518,21 @@ function maybeCombineDataset(
     canCombineCard(state.display, state.columns, state.settings, card)
   ) {
     const metrics = card.visualization_settings["graph.metrics"] ?? [];
-    const columns = dataset.data.cols.filter(col => metrics.includes(col.name));
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+    const columns = dataset.data.cols.filter(
+      col => metrics.includes(col.name) || dimensions.includes(col.name),
+    );
     columns.forEach(column => {
       const columnRef = createVisualizerColumnReference(
         source,
         column,
         extractReferencedColumns(state.columnValuesMapping),
       );
-      addMetricColumnToCartesianChart(state, column, columnRef);
+      if (metrics.includes(column.name)) {
+        addMetricColumnToCartesianChart(state, column, columnRef, source);
+      } else {
+        addDimensionColumnToCartesianChart(state, column, columnRef, source);
+      }
     });
     return state;
   }
@@ -522,7 +546,7 @@ function maybeCombineDataset(
   return state;
 }
 
-export const { setTitle, setDisplay, updateSettings, addColumn, removeColumn } =
+export const { setTitle, updateSettings, addColumn, removeColumn } =
   visualizerHistoryItemSlice.actions;
 
 export const {
