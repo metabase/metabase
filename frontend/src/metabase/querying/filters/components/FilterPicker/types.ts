@@ -20,10 +20,10 @@ export interface PickerOperatorOption<Operator> {
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
-  query: Lib.Query;
   stageIndex: number;
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {
   segment: Lib.SegmentMetadata;
+  stageIndex: number;
 };

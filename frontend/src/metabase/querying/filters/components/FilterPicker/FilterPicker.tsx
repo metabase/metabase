@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import { useToggle } from "metabase/hooks/use-toggle";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
@@ -41,15 +41,15 @@ export function FilterPicker({
   withCustomExpression,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
-
   const [column, setColumn] = useState(
     getInitialColumn(query, stageIndex, filter),
   );
+  const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
 
   const [
     isEditingExpression,
-    { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
+    { open: openExpressionEditor, close: closeExpressionEditor },
+  ] = useDisclosure(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
 
   const isNewFilter = !initialFilter;
 
@@ -110,7 +110,7 @@ export function FilterPicker({
       <FilterColumnPicker
         className={className}
         query={query}
-        stageIndex={stageIndex}
+        stageIndexes={stageIndexes}
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleChange}

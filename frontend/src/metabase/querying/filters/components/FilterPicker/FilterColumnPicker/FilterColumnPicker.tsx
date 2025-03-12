@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
@@ -20,10 +20,10 @@ import S from "./FilterColumnPicker.module.css";
 export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
-  stageIndex: number;
+  stageIndexes: number[];
   checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
-  onColumnSelect: (column: Lib.ColumnMetadata) => void;
-  onSegmentSelect: (segment: Lib.SegmentMetadata) => void;
+  onColumnSelect: (column: Lib.ColumnMetadata, stageIndex: number) => void;
+  onSegmentSelect: (segment: Lib.SegmentMetadata, stageIndex: number) => void;
   onExpressionSelect: () => void;
 
   withCustomExpression?: boolean;
@@ -60,7 +60,7 @@ export const isSegmentListItem = (
 export function FilterColumnPicker({
   className,
   query,
-  stageIndex,
+  stageIndexes,
   checkItemIsSelected,
   onColumnSelect,
   onSegmentSelect,
@@ -70,40 +70,42 @@ export function FilterColumnPicker({
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
   const sections = useMemo(() => {
-    const columns = Lib.filterableColumns(query, stageIndex);
-    const columnGroups = Lib.groupColumns(columns);
+    const columnSections = stageIndexes.flatMap(stageIndex => {
+      const columns = Lib.filterableColumns(query, stageIndex);
+      const columnGroups = Lib.groupColumns(columns);
 
-    const sections = columnGroups.map(group => {
-      const groupInfo = Lib.displayInfo(query, stageIndex, group);
+      return columnGroups.map(group => {
+        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+        const columnItems = Lib.getColumnsFromColumnGroup(group).map(
+          column => ({
+            ...Lib.displayInfo(query, stageIndex, column),
+            column,
+            query,
+            stageIndex,
+          }),
+        );
+        const includeSegments = groupInfo.isSourceTable;
+        const segmentItems = includeSegments
+          ? Lib.availableSegments(query, stageIndex).map(segment => ({
+              ...Lib.displayInfo(query, stageIndex, segment),
+              segment,
+              stageIndex,
+            }))
+          : [];
 
-      const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => ({
-        ...Lib.displayInfo(query, stageIndex, column),
-        column,
-        query,
-        stageIndex,
-      }));
-
-      const includeSegments = groupInfo.isSourceTable;
-
-      const segmentItems = includeSegments
-        ? Lib.availableSegments(query, stageIndex).map(segment => ({
-            ...Lib.displayInfo(query, stageIndex, segment),
-            segment,
-          }))
-        : [];
-
-      return {
-        name: groupInfo.displayName,
-        icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
-      };
+        return {
+          name: groupInfo.displayName,
+          icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
+          items: [...segmentItems, ...columnItems],
+        };
+      });
     });
 
     return [
-      ...sections,
+      ...columnSections,
       ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
     ];
-  }, [query, stageIndex, withColumnGroupIcon, withCustomExpression]);
+  }, [query, stageIndexes, withColumnGroupIcon, withCustomExpression]);
 
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
@@ -113,9 +115,9 @@ export function FilterColumnPicker({
 
   const handleSelect = (item: ColumnListItem | SegmentListItem) => {
     if (isSegmentListItem(item)) {
-      onSegmentSelect(item.segment);
+      onSegmentSelect(item.segment, item.stageIndex);
     } else {
-      onColumnSelect(item.column);
+      onColumnSelect(item.column, item.stageIndex);
     }
   };
 
@@ -131,7 +133,7 @@ export function FilterColumnPicker({
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
         renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
-          withColumnItemIcon ? renderItemIcon(item) : null
+          withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
         style={{ overflow: "visible", "--accordion-list-width": `${WIDTH}px` }}
@@ -155,13 +157,16 @@ function omitItemDescription() {
   return null;
 }
 
-function renderItemIcon(item: ColumnListItem | SegmentListItem) {
+function renderItemIcon(
+  query: Lib.Query,
+  item: ColumnListItem | SegmentListItem,
+) {
   if (isSegmentListItem(item)) {
     return <Icon name="star" size={18} />;
   }
 
   if (item.column) {
-    const { query, stageIndex, column } = item;
+    const { column, stageIndex } = item;
     return (
       <QueryColumnInfoIcon
         query={query}
@@ -174,6 +179,6 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   }
 }
 
-function renderItemWrapper(content: React.ReactNode) {
+function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
