@@ -17,7 +17,6 @@ import {
   valuesShouldContainOnlyGizmos,
 } from "./helpers/e2e-sandboxing-helpers";
 import type { DatasetResponse, SandboxableItems } from "./helpers/types";
-import { CacheConfig, CacheDurationUnit, DurationStrategy } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -51,28 +50,6 @@ describe(
       });
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
-
-      cy.log(
-        "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached",
-      );
-      if (shouldCacheResults) {
-        // TODO: Cache results here
-        // Then ensure that the sandboxed results are not cached
-      }
-      const strategy: DurationStrategy = {
-        type: "duration",
-        duration: 1,
-        unit: CacheDurationUnit.hours,
-        refresh_automatically: false;
-      }
-
-      const cacheConfig: CacheConfig = {
-        model: "root",
-        model_id: 0,
-        strategy
-      }
-
-      cy.request("PUT", "/api/cache", cacheConfig);
 
       // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
@@ -111,7 +88,7 @@ describe(
         cy.signInAsAdmin();
       });
 
-      it.only("to a table filtered using a question as a custom view", () => {
+      it("to a table filtered using a question as a custom view", () => {
         configureSandboxPolicy({
           filterTableBy: "custom_view",
           customViewType: "Question" as const,
