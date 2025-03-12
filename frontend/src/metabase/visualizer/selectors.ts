@@ -9,7 +9,12 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { Card, DatasetData, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  RawSeries,
+  SingleSeries,
+} from "metabase-types/api";
 import type {
   VisualizerHistoryItem,
   VisualizerState,
@@ -32,21 +37,6 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 const getCards = (state: State) => state.visualizer.cards;
 
 const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
-
-const getSettings = createSelector(
-  [getVisualizationType, getRawSettings],
-  (display, rawSettings) => {
-    if (display && isCartesianChart(display)) {
-      // Visualizer wells display labels
-      return {
-        ...rawSettings,
-        "graph.x_axis.labels_enabled": false,
-        "graph.y_axis.labels_enabled": false,
-      };
-    }
-    return rawSettings;
-  },
-);
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -132,7 +122,7 @@ const getVisualizerDatasetData = createSelector(
       columnValuesMapping,
       datasets,
       dataSources,
-    }),
+    }) as DatasetData,
 );
 
 export const getVisualizerDatasetColumns = createSelector(
@@ -144,7 +134,7 @@ export const getVisualizerRawSeries = createSelector(
   [
     getVisualizationType,
     getVisualizerColumnValuesMapping,
-    getSettings,
+    getRawSettings,
     getVisualizerDatasetData,
   ],
   (display, columnValuesMapping, settings, data): RawSeries => {
@@ -163,7 +153,7 @@ export const getVisualizerRawSeries = createSelector(
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-      },
+      } as SingleSeries,
     ];
 
     if (isCartesianChart(display)) {
