@@ -104,13 +104,14 @@
               :else
               role)))))))
 
-(defenterprise hash-key-for-impersonation
+(defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
   :feature :advanced-permissions
-  [field-id]
+  [field]
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
-  (let [db-id (field/field-id->database-id field-id)]
-    (str (hash [field-id (connection-impersonation-role db-id)]))))
+  (let [db-id (field/field-id->database-id (u/the-id field))]
+    (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
+      {:impersonation-role role})))
 
 (defenterprise set-role-if-supported!
   "Executes a `USE ROLE` or similar statement on the given connection, if connection impersonation is enabled for the
