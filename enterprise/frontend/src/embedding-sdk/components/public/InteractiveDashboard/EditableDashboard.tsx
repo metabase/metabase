@@ -28,7 +28,7 @@ export type EditableDashboardProps = {
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 export const EditableDashboard = ({
-  dashboardId,
+  dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,
   drillThroughQuestionHeight,
@@ -45,8 +45,10 @@ export const EditableDashboard = ({
     refreshPeriod,
     onRefreshPeriodChange,
     setRefreshElapsedHook,
-  } = useSdkDashboardParams({
+    isLoading,
     dashboardId,
+  } = useSdkDashboardParams({
+    dashboardId: initialDashboardId,
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
@@ -85,6 +87,7 @@ export const EditableDashboard = ({
         >
           <ConnectedDashboard
             dashboardId={dashboardId}
+            isLoading={isLoading}
             parameterQueryParams={initialParameters}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}

@@ -39,7 +39,6 @@ import type {
   DashboardLoaderWrapperProps,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { connect } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
@@ -91,6 +90,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type ConnectedDashboardProps = {
   dashboardId: DashboardId;
+  isLoading: boolean;
   parameterQueryParams: Query;
 
   downloadsEnabled?: boolean;
@@ -130,29 +130,22 @@ const ConnectedDashboardInner = ({
 
 export const ConnectedDashboard = connector<
   ComponentType<ConnectedDashboardProps & ReduxProps>
->(({ dashboardId: initialDashboardId, ...rest }) => {
-  const { id: resolvedDashboardId, isLoading } = useValidatedEntityId({
-    type: "dashboard",
-    id: initialDashboardId,
-  });
-
+>(({ dashboardId, isLoading, ...rest }) => {
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
-    if (resolvedDashboardId) {
+    if (dashboardId) {
       dispatch(setErrorPage(null));
     }
-  }, [dispatch, resolvedDashboardId]);
+  }, [dispatch, dashboardId]);
 
   if (isLoading) {
     return <SdkLoader />;
   }
 
-  if (!resolvedDashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
+  if (!dashboardId || errorPage?.status === 404) {
+    return <DashboardNotFoundError id={dashboardId} />;
   }
 
-  return (
-    <ConnectedDashboardInner dashboardId={resolvedDashboardId} {...rest} />
-  );
+  return <ConnectedDashboardInner dashboardId={dashboardId} {...rest} />;
 }) as FC<ConnectedDashboardProps>;

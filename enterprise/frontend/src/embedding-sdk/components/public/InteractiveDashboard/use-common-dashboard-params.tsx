@@ -17,7 +17,7 @@ import type { DashboardId, QuestionDashboardCard } from "metabase-types/api";
 export const useCommonDashboardParams = ({
   dashboardId,
 }: {
-  dashboardId: DashboardId;
+  dashboardId: DashboardId | null;
 }) => {
   const dispatch = useSdkDispatch();
   const store = useSdkStore();
