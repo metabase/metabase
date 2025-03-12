@@ -268,7 +268,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     });
   });
 
-  it.skip("location parameters - multiple values", () => {
+  it("location parameters - multiple values", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_CITY_FIELD, [
       {
         name: NO_DEFAULT_NON_REQUIRED,
@@ -298,7 +298,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "{backspace}{backspace}Dike,",
+      otherValue: "{backspace}{backspace}Dike",
       otherValueFormatted: "Dike",
       setValue: (label, value) => {
         filter(label).click();
@@ -314,23 +314,29 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           cy.button("Update filter").click();
         });
       },
-      // setSidebarValue: (label, value) => {
-      //   filter(label).click();
-      //   H.dashboardParametersPopover().within(() => {
-      //     cy.findByPlaceholderText("Search the list").type(value);
-      //     // select filtered value
-      //     cy.findAllByRole("checkbox").eq(1).click();
-      //     cy.button("Add filter").click();
-      //   });
-      // },
-      // updateSidebarValue: (label, value) => {
-      //   filter(label).click();
-      //   H.dashboardParametersPopover().within(() => {
-      //     cy.findByPlaceholderText("Search the list").type(value);
-      //     cy.findAllByRole("checkbox").eq(1).click();
-      //     cy.button("Update filter").click();
-      //   });
-      // },
+      // we use setSidebarValue here as e2e tests setup shows options
+      // differently than in UI and with a local sample database. Maybe it's a
+      // sign of a bug in setup
+      setSidebarValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 1);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Add filter").click();
+        });
+      },
+      updateSidebarValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 1);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Update filter").click();
+        });
+      },
     });
   });
 
