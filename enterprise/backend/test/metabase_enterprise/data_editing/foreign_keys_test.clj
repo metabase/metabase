@@ -38,7 +38,7 @@
                            :owned-by  [:programme/skunk-works]}
    :programme/skunk-works {:part-of [:project/gamma]}
    :project/gamma         {:belongs-to [:task/foo]}
-   :user/em               {:manages [:team/alpha]}
+   :user/em               {:managed-by [:team/alpha]}
    :user/alice            {:assigned-to [:task/foo]}})
 
 (defn- bulk-children [xs]
