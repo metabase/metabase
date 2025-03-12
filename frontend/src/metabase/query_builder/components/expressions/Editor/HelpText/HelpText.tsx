@@ -154,7 +154,7 @@ export function HelpText({
           {example && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
-              <HighlightExpression expression={example} />
+              <HighlightExpression expression={example} printWidth={50} />
             </>
           )}
 
