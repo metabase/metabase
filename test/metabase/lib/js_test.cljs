@@ -233,14 +233,15 @@
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "simple values can be converted properly (#36459)"
     (let [query (lib.tu/venues-query)
-          legacy-expr 0
+          legacy-expr #js ["value" 0 nil]
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
           query-with-expr (lib/expression query 0 "expr" expr)
           expr-from-query (first (lib/expressions query-with-expr 0))
           legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
           named-expr (lib/with-expression-name expr "named")]
-      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
+      (is (=? [:value {:effective-type :type/Integer, :lib/uuid string?} 0] expr))
+      (is (= (js->clj legacy-expr) (js->clj legacy-expr') (js->clj legacy-expr-from-query)))
       (is (= "named" (lib/display-name query named-expr)))))
   (testing "simple expressions can be converted properly (#37173)"
     (let [query (lib.tu/venues-query)
