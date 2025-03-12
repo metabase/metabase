@@ -984,33 +984,44 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.log("ID");
-      cy.findAllByPlaceholderText("Select a semantic type")
-        .eq(0)
-        .should("have.value", "Entity Key");
+      cy.findByTestId("column-ID").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Entity Key",
+        );
+      });
 
-      cy.log("User ID");
-      cy.findAllByPlaceholderText("Select a semantic type")
-        .eq(1)
-        .should("have.value", "Foreign Key");
-      cy.findAllByPlaceholderText("Select a target")
-        .eq(0)
-        .should("have.value", "People → ID");
+      cy.findByTestId("column-USER_ID").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Foreign Key",
+        );
+        cy.findByPlaceholderText("Select a target").should(
+          "have.value",
+          "People → ID",
+        );
+      });
 
-      cy.log("Tax");
-      cy.findAllByPlaceholderText("Select a semantic type")
-        .eq(4)
-        .should("have.value", "No semantic type");
+      cy.findByTestId("column-TAX").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "No semantic type",
+        );
+      });
 
-      cy.log("Discount");
-      cy.findAllByPlaceholderText("Select a semantic type")
-        .eq(6)
-        .should("have.value", "Discount");
+      cy.findByTestId("column-DISCOUNT").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Discount",
+        );
+      });
 
-      cy.log("Created At");
-      cy.findAllByPlaceholderText("Select a semantic type")
-        .eq(7)
-        .should("have.value", "Creation timestamp");
+      cy.findByTestId("column-CREATED_AT").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Creation timestamp",
+        );
+      });
     });
   });
 

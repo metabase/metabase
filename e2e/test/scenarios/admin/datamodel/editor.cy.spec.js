@@ -195,14 +195,22 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field semantic type and currency", () => {
       visitTableMetadata();
-      getFieldSection("TAX").findByText("No semantic type").click();
+      getFieldSection("TAX")
+        .findByPlaceholderText("Select a semantic type")
+        .should("have.value", "No semantic type")
+        .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
-      getFieldSection("TAX").findByText("Currency").should("be.visible");
+      getFieldSection("TAX")
+        .findByPlaceholderText("Select a currency type")
+        .should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      getFieldSection("TAX").findByText("US Dollar").click();
+      getFieldSection("TAX")
+        .findByPlaceholderText("Select a currency type")
+        .should("have.value", "US Dollar")
+        .click();
       searchAndSelectValue("Canadian Dollar");
       cy.wait("@updateField");
 
@@ -213,12 +221,16 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field foreign key target", () => {
       visitTableMetadata();
-      getFieldSection("USER_ID").findByText("People → ID").click();
+      getFieldSection("USER_ID")
+        .findByPlaceholderText("Select a target")
+        .should("have.value", "People → ID")
+        .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
       getFieldSection("USER_ID")
-        .findByText("Products → ID")
-        .should("be.visible");
+        .findByPlaceholderText("Select a target")
+        .should("have.value", "Products → ID")
+        .and("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
@@ -379,17 +391,18 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field semantic type and currency", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No semantic type").click();
+      cy.findByPlaceholderText("Select a semantic type")
+        .should("have.value", "No semantic type")
+        .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Currency").should("be.visible");
+      cy.findByPlaceholderText("Select a currency type").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("US Dollar").click();
+      cy.findByPlaceholderText("Select a currency type")
+        .should("have.value", "US Dollar")
+        .click();
       searchAndSelectValue("Canadian Dollar");
       cy.wait("@updateField");
 
@@ -400,12 +413,14 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field foreign key target", () => {
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → ID").click();
+      cy.findByPlaceholderText("Select a target")
+        .should("have.value", "People → ID")
+        .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products → ID").should("be.visible");
+      cy.findByPlaceholderText("Select a target")
+        .should("have.value", "Products → ID")
+        .should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
@@ -516,15 +531,17 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signIn("none");
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → ID").click();
+      cy.findByPlaceholderText("Select a target")
+        .should("have.value", "People → ID")
+        .click();
       H.popover().within(() => {
         cy.findByText("Reviews → ID").should("not.exist");
         cy.findByText("Products → ID").click();
       });
       cy.wait("@updateField");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products → ID").should("be.visible");
+      cy.findByPlaceholderText("Select a target")
+        .should("have.value", "Products → ID")
+        .and("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
@@ -680,11 +697,7 @@ const clearAndBlurInput = oldValue => {
 };
 
 const searchAndSelectValue = (newValue, searchText = newValue) => {
-  H.popover().within(() => {
-    cy.findByRole("grid").scrollTo("top", { ensureScrollable: false });
-    cy.findByPlaceholderText("Find...").type(searchText, { delay: 50 });
-    cy.findByText(newValue).click();
-  });
+  H.popover().findByText(newValue).click();
 };
 
 const getFieldSection = fieldName => {
