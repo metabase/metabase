@@ -96,9 +96,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:git/sha "d7dd536976b07f52ab3cdb86b29ef03eb769a1bd"
-                                             :git/url "http://github.com/metabase/saml20-clj"
-                                             ;;:mvn/version "4.0.0"
+  metabase/saml20-clj                       {:mvn/version "4.1.0"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
