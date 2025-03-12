@@ -4,6 +4,7 @@ import path from "node:path";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
+import { collectFailingTests } from "./collectFailedTests";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -146,6 +147,7 @@ const defaultConfig = {
 
     if (isCI) {
       cypressSplit(on, config, getSplittableSpecs);
+      collectFailingTests(on, config);
     }
 
     // this is an official workaround to keep recordings of the failed specs only
