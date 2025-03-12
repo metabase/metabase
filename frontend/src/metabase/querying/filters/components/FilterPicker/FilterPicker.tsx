@@ -93,20 +93,18 @@ export function FilterPicker({
     [onSelect, onClose],
   );
 
-  const renderExpressionEditor = () => (
-    <ExpressionWidget
-      query={query}
-      stageIndex={stageIndex}
-      clause={filter}
-      startRule="boolean"
-      header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-      onChangeClause={handleClauseChange}
-      onClose={closeExpressionEditor}
-    />
-  );
-
   if (isEditingExpression) {
-    return renderExpressionEditor();
+    return (
+      <ExpressionWidget
+        query={query}
+        stageIndex={stageIndex}
+        clause={filter}
+        startRule="boolean"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeClause={handleClauseChange}
+        onClose={closeExpressionEditor}
+      />
+    );
   }
 
   if (!column) {
