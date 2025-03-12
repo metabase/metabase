@@ -36,10 +36,10 @@
     (if-let [mirror-db-id (:mirror-database/id query)]
       (let [current-database (lib.metadata/database (qp.store/metadata-provider))
             rff* (fn [metadata]
-                   (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
+                   (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
                      (qp.store/with-metadata-provider (u/id current-database)
                        (rff metadata))))]
-        (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
+        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
           (qp.store/with-metadata-provider mirror-db-id
             (qp query rff*))))
       (qp query rff))))
