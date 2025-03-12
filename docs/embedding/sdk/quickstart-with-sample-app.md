@@ -12,11 +12,43 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md))
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup)
+- (Optional): [Docker](https://www.docker.com/) 
 
-## Overview of the quickstart
+## Two ways to set up the sample app with Metabase
 
-We're going to do some setup in Metabase, and in the sample application.
+- [Quick setup with Docker](#quick-setup-with-docker)
+- [Walkthrough setup](#walkthrough-setup)
+
+## Quick setup with Docker
+
+This quick setup will run a Docker container with the sample app and a sample Metabase.
+
+1. Copy `.env.docker.example` to `.env.docker`.
+2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
+3. In the top-level directory, run: 
+    ```bash
+    yarn start
+    ```
+
+This script will:
+
+- Pull a Metabase Docker image and run it in a container.
+- Set up JWT SSO in Metabase.
+- Build and run the sample application with an embedded interactive question.
+
+The app will start on [http://localhost:4400](http://localhost:4400).
+
+- email: rene@example.com
+- password: foobarbaz
+
+That its! You can start messing around with the application code, see [next steps](#next-steps).
+
+## Walkthrough setup
+
+We're going to do some setup in Metabase, and then in the sample application. You can also bring your own Metabase, in which case you can skip the installation step.
+
+Here's a quick overview of what you'll be doing:
 
 ### Set up Metabase for embedding
 
@@ -29,7 +61,7 @@ We're going to do some setup in Metabase, and in the sample application.
 
 5. [Get the sample application](#set-up-the-sample-application).
 6. [Set up the application environment](#set-up-the-application-environment).
-7. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and server the embedded Metabase components.
+7. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and serve the embedded Metabase components.
 8. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
 
 And then fiddle around with styling.
@@ -85,7 +117,7 @@ In **JWT IDENTITY PROVIDER URI** field, paste
 localhost:9090/sso/metabase
 ```
 
-Or substitute your Cloud URL for `/localhost`.
+Or substitute your Cloud URL for `localhost`.
 
 ### String used by the JWT signing key
 
@@ -105,6 +137,18 @@ Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/m
 
 ```sh
 git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
+```
+
+### Check out the branch that corresponds to your Metabase version
+
+Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample) repo that corresponds to your Metabase version.
+
+E.g., if you're running Metabase 1.53, make sure the sample app repo is on the `53-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
+
+To switch to another branch, run `git checkout <branch-name>`, e.g.:
+
+```
+git checkout 52-stable
 ```
 
 ## Set up the application environment
@@ -189,4 +233,6 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ![Embedded Metabase components](../images/interactive-question-sample-app.png)
 
-Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.
+## Next steps
+
+To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](./appearance.md).
