@@ -1,4 +1,4 @@
-This directory (`/modules/drivers/clickhouse`) includes code from the
+This directory (modules/drivers/clickhouse/) includes code from the
 Clickhouse Metabase Driver (https://github.com/ClickHouse/metabase-clickhouse-driver)
 that is licensed under the Apache License, Version 2.0.
 
