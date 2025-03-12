@@ -50,4 +50,5 @@
   (println)
   (println "Known issues:")
   (println "  If the connection over nc is hanging and not connecting within a second or so,")
-  (println "  then we need to 'hit start' on the stats' store page. Contact @Filipe"))
+  (println "  then we need to 'hit start' on the stats' store page.")
+  (println "  See: https://metaboat.slack.com/archives/CKZEMT1MJ/p1741801604570149"))
