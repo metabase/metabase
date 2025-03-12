@@ -27,9 +27,10 @@
   {:user/ceo              {:reports-to [:user/cto
                                         :user/cpo]}
    :user/cto              {:belongs-to [:team/alpha
-                                        :team/bravo]}
-   :user/cpo              {:lead-by  [:programme/skunk-works]
-                           :managing [:user/pm]}
+                                        :team/bravo]
+                           :reports-to [:team/em]}
+   :user/cpo              {:lead-by    [:programme/skunk-works]
+                           :reports-to [:user/pm]}
    :team/alpha            {:member-of [:user/em
                                        :user/alice
                                        :user/bob
@@ -69,20 +70,46 @@
           {:table :user, :pks [:cpo]}
           {:table :team, :pks [:alpha]}
           {:table :team, :pks [:bravo]}
+          {:table :team, :pks [:em]}
           {:table :user, :pks [:pm]}
           {:table :programme, :pks [:skunk-works]}
+          {:table :user, :pks [:em]}
+          {:table :user, :pks [:alice]}
+          {:table :user, :pks [:bob]}
+          {:table :user, :pks [:clarence]}
           ::too-many-queries]
          (into []
                (map kw->row)
                (fks/reducible-batch-bfs bulk-children [:user/ceo]
-                                        {:max-chunk-size       4
-                                         :max-thunk-executions 5
+                                        {:max-chunk-size       1
+                                         :max-thunk-executions 7
                                          :max-thunks-sentinel  ::too-many-queries}))))
 
   (is (= [{:table :user, :pks [:cto]}
           {:table :user, :pks [:cpo]}
           {:table :team, :pks [:alpha]}
           {:table :team, :pks [:bravo]}
+          {:table :team, :pks [:em]}
+          {:table :user, :pks [:pm]}
+          {:table :programme, :pks [:skunk-works]}
+          {:table :user, :pks [:em]}
+          {:table :user, :pks [:alice]}
+          {:table :user, :pks [:bob]}
+          {:table :user, :pks [:clarence]}
+          {:table :project, :pks [:gamma]}
+          ::too-many-queries]
+         (into []
+               (map kw->row)
+               (fks/reducible-batch-bfs bulk-children [:user/ceo]
+                                        {:max-chunk-size       4
+                                         :max-thunk-executions 7
+                                         :max-thunks-sentinel  ::too-many-queries}))))
+
+  (is (= [{:table :user, :pks [:cto]}
+          {:table :user, :pks [:cpo]}
+          {:table :team, :pks [:alpha]}
+          {:table :team, :pks [:bravo]}
+          {:table :team, :pks [:em]}
           {:table :user, :pks [:pm]}
           {:table :programme, :pks [:skunk-works]}
           {:table :user, :pks [:em]}
