@@ -38,7 +38,7 @@ export function FilterHeaderButton({
 
   const handleQueryChange = (newQuery: Lib.Query) => {
     const newQuestion = question.setQuery(newQuery);
-    dispatch(updateQuestion(newQuestion, { run: true }));
+    dispatch(updateQuestion(newQuestion));
   };
 
   return (
@@ -51,7 +51,7 @@ export function FilterHeaderButton({
             onClick={toggle}
             data-testid="question-filter-header"
           >
-            {t`Filter`}
+            {t`Add filter`}
           </Button>
         </Popover.Target>
         <Popover.Dropdown>
