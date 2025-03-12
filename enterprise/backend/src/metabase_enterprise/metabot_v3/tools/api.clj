@@ -22,6 +22,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -80,6 +81,11 @@
                                    :content assistant-message})
             (throw ex)))))))
 
+(mr/def ::bucket
+  (into [:enum {:error/message "Valid bucket"}]
+        (map name)
+        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+
 (mr/def ::existence-filter
   [:map
    [:field_id :string]
@@ -117,6 +123,7 @@
 (mr/def ::temporal-filter
   [:map
    [:field_id :string]
+   [:bucket {:optional true} ::bucket]
    [:operation [:enum
                 "equals"       "not-equals"
                 "greater-than" "greater-than-or-equal"
@@ -124,7 +131,17 @@
                 "date-equals"  "date-not-equals"
                 "date-before"  "date-on-or-before"
                 "date-after"   "date-on-or-after"]]
-   [:value :string]])
+   [:value [:or :string :int]]])
+
+(mr/def ::disjunctive-temporal-filter
+  [:map
+   [:field_id :string]
+   [:bucket {:optional true} ::bucket]
+   [:operation [:enum
+                "equals"       "not-equals"
+                "greater-than" "greater-than-or-equal"
+                "less-than"    "less-than-or-equal"]]
+   [:values [:sequential [:or :string :int]]]])
 
 (mr/def ::string-filter
   [:map
@@ -141,8 +158,6 @@
    [:field_id :string]
    [:operation [:enum
                 "equals"             "not-equals"
-                "date-equals"        "date-not-equals"
-                "string-equals"      "string-not-equals"
                 "string-contains"    "string-not-contains"
                 "string-starts-with" "string-ends-with"]]
    [:values [:sequential :string]]])
@@ -171,7 +186,7 @@
   [:or
    ::existence-filter
    ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
-   ::temporal-filter
+   ::temporal-filter ::disjunctive-temporal-filter
    ::string-filter ::disjunctive-string-date-filter
    ::numeric-filter ::disjunctive-numeric-filter])
 

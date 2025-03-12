@@ -57,6 +57,7 @@
                          {:field_id "q2a/3", :operation "equals", :values ["3" "4"]}
                          {:field_id "q2a/5", :operation "not-equals", :values [3 4]}
                          {:field_id "q2a/6", :operation "month-equals", :values [4 5 9]}
+                         {:field_id "c2a/6", :bucket "week-of-year" :operation "not-equals", :values [14 15 19]}
                          {:field_id "q2a/6", :operation "year-equals", :value 2008}]
                 response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/filter-records"
                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
@@ -149,6 +150,8 @@
                        {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2/5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
                        {:field_id "c2/6", :operation "year-equals", :value 2008}]
               breakouts [{:field_id "c2/4", :field_granularity "week"}
                          {:field_id "c2/6", :field_granularity "day"}]
