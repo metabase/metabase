@@ -990,8 +990,8 @@ describe("issue 34382", () => {
 
     H.getDashboardCard().within(() => {
       // only products with category "Gizmo" are filtered
-      cy.findAllByTestId("table-row")
-        .find("td")
+      cy.findAllByRole("row")
+        .findByTestId("cell-data")
         .eq(3)
         .should("contain", "Gizmo");
     });

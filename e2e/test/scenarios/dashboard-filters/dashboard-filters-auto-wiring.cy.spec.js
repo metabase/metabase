@@ -794,12 +794,12 @@ function removeFilterFromDashCard(dashcardIndex = 0) {
 }
 
 function getTableCell(columnName, rowIndex) {
-  cy.findAllByTestId("column-header").then($columnHeaders => {
+  cy.findAllByRole("columnheader").then($columnHeaders => {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex($columnHeader => $columnHeader.textContent === columnName);
     // eslint-disable-next-line no-unsafe-element-filtering
-    const row = cy.findAllByTestId("table-row").eq(rowIndex);
+    const row = cy.findAllByRole("row").eq(rowIndex);
     // eslint-disable-next-line no-unsafe-element-filtering
     row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
   });

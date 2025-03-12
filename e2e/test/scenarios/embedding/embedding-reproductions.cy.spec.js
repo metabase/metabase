@@ -440,7 +440,7 @@ describe("issues 20845, 25031", () => {
           });
         });
 
-        cy.findByTestId("column-header").should("contain", "COUNT(*)");
+        H.tableInteractiveHeader("COUNT(*)");
         cy.findByTestId("cell-data").should("contain", "5");
       });
     });

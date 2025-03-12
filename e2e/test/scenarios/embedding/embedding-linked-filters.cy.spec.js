@@ -339,9 +339,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?category=Gizmo&id_filter=1");
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
     });
 
     it("works when main filter's value is set through URL", () => {
@@ -369,7 +367,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.location("search").should("eq", "?category=Doohickey&id_filter=4");
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
@@ -384,14 +382,14 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           .and("contain", "2 selections")
           .and("contain", "Widget");
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Widget")
           .and("contain", "Durable Steel Toucan");
 
         removeValueForFilter("Category");
 
-        cy.findAllByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 2)
           .and("contain", "Widget")
           .and("contain", "Doohickey")
@@ -404,7 +402,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.button("Update filter").click();
 
-        cy.findByTestId("table-row")
+        cy.findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
@@ -433,9 +431,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)
@@ -467,9 +463,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         H.visitEmbeddedPage(payload);
       });
 
-      cy.findByTestId("table-row")
-        .should("have.length", 1)
-        .and("contain", "Gizmo");
+      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)
