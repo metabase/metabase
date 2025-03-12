@@ -423,7 +423,7 @@ export const getSettings = createSelector(
   (settings, warnings) =>
     settings.map((setting) =>
       warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] }
+        ? { ...setting, warning: warnings[setting.key] } // ??? what do warnings do?
         : setting,
     ),
 );
@@ -479,6 +479,12 @@ export const getSections = createSelector(
     const sections = getSectionsWithPlugins();
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
+    // const adminSettingInfo = Object.fromEntries(settings.map(setting => ([setting.key, setting.value])));
+    // const adminKeys = Object.keys(adminSettingInfo);
+    // const propertiesKeys = Object.keys(derivedSettingValues);
+    // const adminNotProps = adminKeys.filter(key => !propertiesKeys.includes(key));
+    // const propsNotAdmin = propertiesKeys.filter(key => !adminKeys.includes(key));
+
     for (const [slug, section] of Object.entries(sections)) {
       const isHidden = section.getHidden?.(derivedSettingValues);
 
