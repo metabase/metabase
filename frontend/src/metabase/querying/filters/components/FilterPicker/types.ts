@@ -23,6 +23,7 @@ export type ColumnListItem = {
   displayName: string;
   column: Lib.ColumnMetadata;
   stageIndex: number;
+  filterPositions?: number[];
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {

@@ -21,10 +21,10 @@ export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndexes: number[];
-  checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
+  checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect: () => void;
+  onExpressionSelect?: () => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -82,7 +82,7 @@ export function FilterColumnPicker({
 
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
-      onExpressionSelect();
+      onExpressionSelect?.();
     }
   };
 
