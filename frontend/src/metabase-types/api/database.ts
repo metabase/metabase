@@ -60,6 +60,7 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  router_user_attribute?: string | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -114,6 +115,7 @@ export interface ListDatabasesRequest {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_mirror_databases?: DatabaseId;
 }
 
 export interface ListDatabasesResponse {
@@ -190,21 +192,10 @@ export interface SavedQuestionDatabase {
 
 export interface CreateMirrorDatabaseRequest {
   router_database_id: DatabaseId;
-  mirrors: { name: string; details: Record<string, unknown> }[];
-}
-
-export type DatabaseRouterId = number;
-
-export interface CreateDatabaseRouterRequest {
-  database_id: DatabaseId;
-  user_attribute: string;
+  mirrors: { name: string; details?: Record<string, unknown> }[];
 }
 
 export interface UpdateDatabaseRouterRequest {
-  id: DatabaseRouterId;
-  user_attribute: string;
-}
-
-export interface DeleteDatabaseRouterRequest {
-  id: DatabaseRouterId;
+  id: DatabaseId;
+  user_attribute: string | null;
 }

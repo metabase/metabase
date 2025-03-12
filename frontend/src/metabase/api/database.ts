@@ -44,6 +44,7 @@ export const databaseApi = Api.injectEndpoints({
         url: "/api/database",
         params,
       }),
+      // TODO: need to invalidate primary db if include_mirror_databases is provided
       providesTags: response => provideDatabaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({

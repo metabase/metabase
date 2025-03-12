@@ -69,7 +69,7 @@
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
-   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :serialization)
    "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)

@@ -49,6 +49,7 @@ import {
   PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
+  PLUGIN_DB_ROUTING,
 } from "metabase/plugins";
 
 import { PerformanceTabId } from "./performance/types";
@@ -75,6 +76,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} />
+          {PLUGIN_DB_ROUTING.mirrorDatabaseRoutes}
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
