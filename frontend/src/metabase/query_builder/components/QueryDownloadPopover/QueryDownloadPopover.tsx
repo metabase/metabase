@@ -26,6 +26,7 @@ type QueryDownloadPopoverProps = {
     enableFormatting: boolean;
     enablePivot: boolean;
   }) => void;
+  disabled?: boolean;
 } & StackProps;
 
 const canPivotResults = (format: string, display: string) =>
@@ -36,6 +37,7 @@ export const QueryDownloadPopover = ({
   question,
   result,
   onDownload,
+  disabled = false,
   ...stackProps
 }: QueryDownloadPopoverProps) => {
   const canDownloadPng = canSavePng(question.display());
@@ -99,6 +101,7 @@ export const QueryDownloadPopover = ({
         leftSection={<Icon name="download" />}
         variant="filled"
         onClick={handleDownload}
+        disabled={disabled}
       >{t`Download`}</Button>
     </Stack>
   );

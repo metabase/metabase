@@ -16,14 +16,11 @@ const DownloadWidgetInner = ({
   ...rest
 }: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
+  const { withDownloads } = useInteractiveQuestionContext();
   const [, handleDownload] = useDownloadData({
     question,
     result,
   });
-
-  if (!question || !result) {
-    return null;
-  }
 
   return (
     <QueryDownloadPopover
@@ -31,6 +28,7 @@ const DownloadWidgetInner = ({
       result={result}
       onDownload={handleDownload}
       p="md"
+      disabled={!withDownloads}
       {...rest}
     />
   );

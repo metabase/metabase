@@ -48,6 +48,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "entityTypeFilter"
     | "isSaveEnabled"
     | "initialSqlParameters"
+    | "withDownloads"
   >;
 
 export const _InteractiveQuestion = ({
@@ -66,6 +67,7 @@ export const _InteractiveQuestion = ({
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
+  withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
   InteractiveQuestionDefaultViewProps &
@@ -79,6 +81,7 @@ export const _InteractiveQuestion = ({
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
     {children ?? (
       <InteractiveQuestionDefaultView
