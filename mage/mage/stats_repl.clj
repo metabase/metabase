@@ -13,7 +13,7 @@
                    (json/parse-string true)
                    :version
                    :hash)]
-    (if-not (str/starts-with? ours theirs)
+    (if (str/starts-with? ours theirs)
       (println (c/green "You're on the same metabase version as stats."))
       (do
         (println (c/yellow "\n******************** WARNING ********************"))
