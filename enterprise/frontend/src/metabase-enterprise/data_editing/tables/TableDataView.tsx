@@ -13,14 +13,16 @@ import { Box, Text } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import { EditingBodyCellConditional } from "./EditingBodyCell";
+import S from "./TableDataView.module.css";
 import type { UpdatedRowCellsHandlerParams } from "./types";
 import { useTableEditing } from "./use-table-editing";
-import S from "./TableDataView.module.css";
 
 type TableDataViewProps = {
   data: Dataset;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
+
+const TABLE_DATA_VIEW_HEADER_HEIGHT = 32;
 
 export const TableDataView = ({
   data,
@@ -117,7 +119,11 @@ export const TableDataView = ({
       }}
       styles={{
         // Overrides HEADER_HEIGHT JS const
-        row: { height: "32px" },
+        row: { height: TABLE_DATA_VIEW_HEADER_HEIGHT },
+        // Overrides theme constants and default white bg
+        bodyCell: {
+          backgroundColor: undefined,
+        },
       }}
       onBodyCellClick={handleCellClick}
     />

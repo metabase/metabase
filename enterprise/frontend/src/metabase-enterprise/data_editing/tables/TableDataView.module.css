@@ -19,6 +19,14 @@
 
 .tableRow {
   border-bottom: 1px solid var(--mb-color-border);
+
+  &:hover .tableBodyCell {
+    background-color: var(--mb-base-color-blue-10);
+  }
+
+  &:hover .tableHeaderCell {
+    box-shadow: none;
+  }
 }
 
 .tableHeaderCell {
@@ -28,16 +36,8 @@
 }
 
 .tableBodyCell {
+  background-color: var(--mb-color-bg-white);
   border-right: 1px solid var(--mb-color-border);
-  background-color: transparent;
-}
-
-.tableRow:hover {
-  background-color: var(--mb-base-color-blue-10);
-}
-
-.tableRow:hover .tableHeaderCell {
-  box-shadow: none;
 }
 
 .headerCellContainer {
