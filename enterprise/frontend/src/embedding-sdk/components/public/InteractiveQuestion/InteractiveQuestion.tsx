@@ -43,6 +43,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
 }> &
   Pick<
     InteractiveQuestionProviderProps,
+    | "questionId"
     | "onBeforeSave"
     | "onSave"
     | "entityTypeFilter"
