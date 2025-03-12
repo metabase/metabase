@@ -98,6 +98,19 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Download failed test artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
+          path: failed-tests
+
+      - name: Process failed tests
+        id: process-failed-tests
+        env:
+          TEST_GROUP: ${{ inputs.name }}-${{ inputs.edition }}
+        run: node .github/scripts/process-failed-tests.js
+
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
@@ -119,17 +132,22 @@ jobs:
           SPLIT_SUMMARY: false
         shell: bash
         run: |
+          SPEC_PATH="${{ steps.process-failed-tests.outputs.specs || inputs.specs }}"
+          echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
         shell: bash
         run: |
+          SPEC_PATH="${{ steps.process-failed-tests.outputs.specs || inputs.specs }}"
+          echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
-          --spec '${{ inputs.specs }}' \
+          --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Test Results
@@ -153,6 +171,13 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
+
+      - name: Upload Failed Tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
+          path: ./cypress/test-results
 
       - name: Publish Summary
         if: failure()

@@ -4,6 +4,7 @@ import path from "node:path";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
+import { collectFailingTests } from "./collectFailedTests";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -159,6 +160,8 @@ const defaultConfig = {
         }
       }
     });
+
+    collectFailingTests(on, config);
 
     return config;
   },
