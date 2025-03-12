@@ -42,7 +42,6 @@ export function ClausePopover({
       offset={{ mainAxis: 4 }}
       trapFocus
       onChange={handleChange}
-      canPreventCloseHandlers
     >
       <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
       <Popover.Dropdown data-testid="clause-popover">
