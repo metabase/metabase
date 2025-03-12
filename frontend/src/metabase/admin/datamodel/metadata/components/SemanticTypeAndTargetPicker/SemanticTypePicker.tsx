@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import * as MetabaseCore from "metabase/lib/core"; // TODO: fix import
+import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
 import { Select } from "metabase/ui";
 
 const NULL_VALUE = "null";
@@ -43,7 +43,7 @@ function stringifyValue(value: string | null): string {
 
 function getData() {
   const options = [
-    ...MetabaseCore.field_semantic_types,
+    ...FIELD_SEMANTIC_TYPES,
     {
       id: null,
       name: t`No semantic type`,

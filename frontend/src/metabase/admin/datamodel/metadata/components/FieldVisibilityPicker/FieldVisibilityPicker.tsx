@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
-import * as MetabaseCore from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldVisibilityType } from "metabase-types/api";
 
@@ -29,7 +29,7 @@ const FieldVisibilityPicker = ({
     <Select
       className={className}
       value={field.visibility_type}
-      options={MetabaseCore.field_visibility_types}
+      options={FIELD_VISIBILITY_TYPES}
       optionValueFn={getFieldId}
       placeholder={t`Select a field visibility`}
       onChange={handleChange}
