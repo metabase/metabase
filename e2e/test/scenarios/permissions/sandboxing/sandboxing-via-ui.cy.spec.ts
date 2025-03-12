@@ -14,6 +14,7 @@ import {
   rowsShouldContainOnlyGizmos,
   signInAsNormalUser,
   sandboxingUser as user,
+  valuesShouldContainOnlyGizmos,
 } from "./helpers/e2e-sandboxing-helpers";
 import type { DatasetResponse, SandboxableItems } from "./helpers/types";
 
@@ -25,7 +26,7 @@ const preparePermissions = () => {
   H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
 };
 
-const SIMPLE_CACHE_CONFIGURATION: CacheConfig = {
+const simpleCacheConfiguration: CacheConfig = {
   model: "root",
   model_id: 0,
   strategy: {
@@ -61,7 +62,7 @@ describe(
         cy.log(
           "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
         );
-        cy.request("PUT", "/api/cache", SIMPLE_CACHE_CONFIGURATION).then(() => {
+        cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
           cy.log("Populate the caches");
           getCardResponses(items);
         });
