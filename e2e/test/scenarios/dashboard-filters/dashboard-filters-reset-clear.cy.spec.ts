@@ -322,7 +322,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
           // select filtered value
-          cy.findAllByRole("checkbox").should("have.length", 1);
+          cy.findAllByRole("checkbox").should("have.length", 2);
           cy.findAllByRole("checkbox").eq(1).click();
           cy.button("Add filter").click();
         });
@@ -332,7 +332,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.dashboardParametersPopover().within(() => {
           cy.findByPlaceholderText("Search the list").type(value);
           // select filtered value
-          cy.findAllByRole("checkbox").should("have.length", 1);
+          cy.findAllByRole("checkbox").should("have.length", 2);
           cy.findAllByRole("checkbox").eq(1).click();
           cy.button("Update filter").click();
         });
