@@ -47,7 +47,7 @@ export const useCommonDashboardParams = ({
       const state = store.getState();
       const metadata = getMetadata(state);
       const { dashboards, parameterValues } = state.dashboard;
-      const dashboard = dashboards[dashboardId];
+      const dashboard = dashboardId && dashboards[dashboardId];
 
       if (dashboard) {
         const url = getNewCardUrl({
