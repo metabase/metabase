@@ -1095,7 +1095,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
-      H.setupSMTP();
+      // H.setupSMTP();
 
       cy.sandboxTable({
         table_id: ORDERS_ID,

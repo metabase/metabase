@@ -176,7 +176,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
 
         H.visitDashboard(dashboard_id);
-        cy.findByTextEnsureVisible("Created At");
+        H.tableInteractiveHeader("Created At");
       },
     );
 
@@ -503,7 +503,7 @@ describe("scenarios > dashboard > parameters", () => {
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.findByTextEnsureVisible("Created At");
+      H.tableInteractiveHeader("Created At");
 
       H.editDashboard();
       H.setFilter("ID");
