@@ -45,6 +45,12 @@
         ks         (into #{} (mapcat keys) child-maps)]
     (mapv #(constantly (mapcat % child-maps)) ks)))
 
+(defn- kw->row [kw]
+  (if (= (namespace ::this-ns) (namespace kw))
+    kw
+    {:table (keyword (namespace kw))
+     :pks   [(keyword (name kw))]}))
+
 (deftest reducible-batch-bfs-test
   (is (= [{:table :user, :pks [:cto]}
           {:table :user, :pks [:cpo]}
@@ -54,19 +60,11 @@
           {:table :programme, :pks [:skunk-works]}
           ::too-many-queries]
          (into []
-               (comp (fks/take-with-sentinel 80 ::too-many-items)
-                     (map (fn [kw] (if (= (namespace ::this-ns) (namespace kw))
-                                     kw
-                                     {:table (keyword (namespace kw))
-                                      :pks   [(keyword (name kw))]}))))
-               (fks/reducible-batch-bfs
-                bulk-children
-                ;; nodes to query children for at a time
-                4
-                ;; max queries to run in total
-                5
-                ::too-many-queries
-                [:user/ceo]))))
+               (map kw->row)
+               (fks/reducible-batch-bfs bulk-children [:user/ceo]
+                                        {:max-chunk-size       4
+                                         :max-thunk-executions 5
+                                         :max-thunks-sentinel  ::too-many-queries}))))
 
   (is (= [{:table :user, :pks [:cto]}
           {:table :user, :pks [:cpo]}
@@ -81,15 +79,6 @@
           {:table :project, :pks [:gamma]}
           {:table :task, :pks [:foo]}]
          (into []
-               (comp (fks/take-with-sentinel 80 ::too-many-items)
-                     (map (fn [kw] (if (= (namespace ::this-ns) (namespace kw))
-                                     kw
-                                     {:table (keyword (namespace kw)) :pks [(keyword (name kw))]}))))
-               (fks/reducible-batch-bfs
-                bulk-children
-                ;; nodes to query children for at a time
-                100
-                ;; max queries to run in total
-                100
-                ::too-many-queries
-                [:user/ceo])))))
+               (map kw->row)
+               (fks/reducible-batch-bfs bulk-children [:user/ceo]
+                                        {:max-thunks-sentinel ::too-many-queries})))))
