@@ -117,10 +117,8 @@ export function addScalarToFunnel(
   let dimensionColumnName = state.settings["funnel.dimension"];
 
   if (!metricColumnName) {
-    metricColumnName = columnRef.name;
-    state.columns.push(
-      copyColumn(metricColumnName, column, dataSource.name, state.columns),
-    );
+    metricColumnName = "METRIC";
+    state.columns.push(createMetricColumn(metricColumnName, column.base_type));
     state.settings["funnel.metric"] = metricColumnName;
   }
   if (!dimensionColumnName) {
@@ -139,6 +137,20 @@ export function addScalarToFunnel(
   );
 }
 
+function createMetricColumn(
+  name: string,
+  type = "type/Integer",
+): DatasetColumn {
+  return {
+    name,
+    display_name: name,
+    base_type: type,
+    effective_type: type,
+    field_ref: ["field", name, { "base-type": type }],
+    source: "artificial",
+  };
+}
+
 function createDimensionColumn(name: string): DatasetColumn {
   return {
     name,
@@ -154,11 +166,29 @@ export function removeColumnFromFunnel(
   state: VisualizerHistoryItem,
   columnName: string,
 ) {
-  if (state.settings["funnel.dimension"] === columnName) {
-    delete state.settings["funnel.dimension"];
-  }
+  const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
 
-  if (state.settings["funnel.metric"] === columnName) {
-    delete state.settings["funnel.metric"];
+  if (isMadeOfScalars) {
+    if (columnName === "METRIC") {
+      state.columns = [];
+      state.columnValuesMapping = {};
+      state.settings = {};
+      return;
+    }
+
+    const index = state.columnValuesMapping.METRIC.findIndex(
+      mapping => typeof mapping !== "string" && mapping.name === columnName,
+    );
+    if (index >= 0) {
+      state.columnValuesMapping.METRIC.splice(index, 1);
+      state.columnValuesMapping.DIMENSION.splice(index, 1);
+    }
+  } else {
+    if (state.settings["funnel.metric"] === columnName) {
+      delete state.settings["funnel.metric"];
+    }
+    if (state.settings["funnel.dimension"] === columnName) {
+      delete state.settings["funnel.dimension"];
+    }
   }
 }
