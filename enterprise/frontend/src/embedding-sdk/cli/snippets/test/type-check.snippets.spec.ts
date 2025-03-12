@@ -48,7 +48,7 @@ describe("Embedding CLI snippets", () => {
       const snippets = getComponentSnippets({
         instanceUrl: "https://example.com",
         apiKey: "key",
-        dashboards: [{ id: "1", name: "Test dashboard" }],
+        dashboards: [{ id: 1, name: "Test dashboard" }],
         userSwitcherEnabled,
         isNextJs: false,
       });

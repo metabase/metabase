@@ -28,7 +28,7 @@ ${imports}
 export const AnalyticsDashboard = () => {
   /** @type {import('./analytics-provider').AnalyticsContextType} */
   const {email, themeKey} = useContext(AnalyticsContext)
-  const [dashboardId, setDashboardId] = useState(Number(DASHBOARDS[0].id))
+  const [dashboardId, setDashboardId] = useState(DASHBOARDS[0].id)
 
   const [isCreateQuestion, toggleCreateQuestion] = useReducer((s) => !s, false)
 
