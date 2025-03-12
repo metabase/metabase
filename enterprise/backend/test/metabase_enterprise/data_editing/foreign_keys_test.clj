@@ -52,12 +52,13 @@
           {:table :team, :pks [:bravo]}
           {:table :user, :pks [:pm]}
           {:table :programme, :pks [:skunk-works]}
-          :metabase-enterprise.data-editing.foreign-keys-test/too-many-queries]
+          ::too-many-queries]
          (into []
                (comp (fks/take-with-sentinel 80 ::too-many-items)
                      (map (fn [kw] (if (= (namespace ::this-ns) (namespace kw))
                                      kw
-                                     {:table (keyword (namespace kw)) :pks [(keyword (name kw))]}))))
+                                     {:table (keyword (namespace kw))
+                                      :pks   [(keyword (name kw))]}))))
                (fks/reducible-batch-bfs
                 bulk-children
                 ;; nodes to query children for at a time
