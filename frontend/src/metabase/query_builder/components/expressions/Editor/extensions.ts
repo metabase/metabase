@@ -72,6 +72,7 @@ export function useExtensions(options: Options): Extension[] {
         "data-autofocus": "",
       }),
       highlighting(),
+      EditorView.lineWrapping,
       customExpression({
         startRule,
         query,

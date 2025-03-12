@@ -1036,7 +1036,7 @@ describe("issue 49342", () => {
     H.CustomExpressionEditor.nameInput().focus();
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class", "cm-content");
+    cy.focused().should("have.attr", "class").and("contains", "cm-content");
 
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");

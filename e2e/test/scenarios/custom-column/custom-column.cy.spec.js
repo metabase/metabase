@@ -766,7 +766,7 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+    cy.focused().should("have.attr", "class").and("contains", "cm-content");
   });
 
   // TODO: fixme!
