@@ -8,7 +8,12 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
 import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 export const pieDropHandler = (
@@ -72,6 +77,21 @@ export const pieDropHandler = (
     };
   }
 };
+
+export function addColumnToPieChart(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+) {
+  const metric = state.settings["pie.metric"];
+  if (!metric && isMetric(column)) {
+    state.settings["pie.metric"] = column.name;
+  }
+
+  if (isDimension(column) && !isMetric(column)) {
+    const dimensions = state.settings["pie.dimension"] ?? [];
+    state.settings["pie.dimension"] = [...dimensions, column.name];
+  }
+}
 
 export function removeColumnFromPieChart(
   state: VisualizerHistoryItem,
