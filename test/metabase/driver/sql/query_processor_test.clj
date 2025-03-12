@@ -1157,6 +1157,5 @@
                         [:expression "12345" nil]
                         [:expression "float" nil]
                         [:expression "True"  nil]
-                        [:expression "False" nil]
-                        [:expression "date"  nil]]
+                        [:expression "False" nil]]
                :limit 2}))))))
