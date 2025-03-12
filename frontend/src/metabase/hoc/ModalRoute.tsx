@@ -84,6 +84,7 @@ interface ModalRouteProps {
   path: string;
   modal: React.ComponentType<ComposedModalProps>;
   modalProps?: unknown;
+  noWrap?: boolean;
 }
 
 // react-router Route wrapper that handles routed modals
