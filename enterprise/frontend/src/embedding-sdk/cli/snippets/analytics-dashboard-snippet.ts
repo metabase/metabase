@@ -26,6 +26,7 @@ import { AnalyticsContext } from "./analytics-provider"
 ${imports}
 
 export const AnalyticsDashboard = () => {
+  /** @type {import('./analytics-provider').AnalyticsContextType} */
   const {email, themeKey} = useContext(AnalyticsContext)
   const [dashboardId, setDashboardId] = useState(Number(DASHBOARDS[0].id))
 

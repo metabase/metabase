@@ -8,6 +8,7 @@ import { AnalyticsContext } from './analytics-provider'
 // In a real app, this would be implemented by your application.
 // See https://www.metabase.com/docs/latest/embedding/sdk/appearance
 export const ThemeSwitcher = () => {
+  /** @type {import('./analytics-provider').AnalyticsContextType} */
   const { themeKey, setThemeKey } = useContext(AnalyticsContext)
 
   const ThemeIcon = ICONS[themeKey]
