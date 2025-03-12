@@ -17,7 +17,7 @@ import { VisualizationPicker } from "../VisualizationPicker";
 
 import S from "./Footer.module.css";
 
-export function Footer() {
+export function Footer({ className }: { className?: string }) {
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
   const datasets = useSelector(getDatasets);
@@ -30,7 +30,7 @@ export function Footer() {
     [dispatch],
   );
   return (
-    <Flex className={S.footer} px="xl" py="md">
+    <Flex className={`${S.footer} ${className}`} px="xl" py="md">
       <VisualizationPicker value={display} onChange={handleChangeDisplay} />
       {hasDatasets && (
         <Button

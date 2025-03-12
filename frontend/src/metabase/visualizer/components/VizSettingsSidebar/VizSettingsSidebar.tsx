@@ -16,7 +16,7 @@ const HIDDEN_SETTING_WIDGETS = [
   "card.hide_empty",
 ];
 
-export function VizSettingsSidebar() {
+export function VizSettingsSidebar({ className }: { className?: string }) {
   const series = useSelector(getVisualizerRawSeries);
   const transformedSeries = useSelector(getVisualizerRawSeries);
   const settings = useSelector(getVisualizerComputedSettings);
@@ -47,6 +47,7 @@ export function VizSettingsSidebar() {
       chartSettings={settings}
       widgets={widgets}
       onChange={handleChangeSettings}
+      className={className}
     />
   );
 }
