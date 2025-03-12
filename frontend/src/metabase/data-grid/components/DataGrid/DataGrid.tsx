@@ -146,9 +146,10 @@ export const DataGrid = function DataGrid<TData>({
             role="grid"
             ref={gridRef}
             style={{
-              paddingRight: isAddColumnButtonSticky
-                ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-                : 0,
+              paddingRight:
+                hasAddColumnButton && isAddColumnButtonSticky
+                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                  : 0,
               ...styles?.tableGrid,
             }}
             onScroll={onScroll}
@@ -162,7 +163,11 @@ export const DataGrid = function DataGrid<TData>({
                 <div
                   key={headerGroup.id}
                   className={cx(S.row, classNames?.row)}
-                  style={{ height: `${HEADER_HEIGHT}px`, ...styles?.row }}
+                  style={{
+                    height: `${HEADER_HEIGHT}px`,
+                    backgroundColor,
+                    ...styles?.row,
+                  }}
                 >
                   {virtualPaddingLeft ? (
                     <div style={{ width: virtualPaddingLeft }} />
@@ -199,7 +204,7 @@ export const DataGrid = function DataGrid<TData>({
                       ) : (
                         <SortableHeader
                           className={cx(S.headerCell, classNames?.headerCell)}
-                          style={styles?.headerCell}
+                          style={{ backgroundColor, ...styles?.headerCell }}
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -243,7 +248,9 @@ export const DataGrid = function DataGrid<TData>({
                     role="row"
                     key={row.id}
                     ref={rowMeasureRef}
+                    data-dataset-index={row.index}
                     data-index={virtualRow.index}
+                    data-allow-page-break-after="true"
                     className={cx(S.row, classNames?.row)}
                     style={{
                       position: "absolute",

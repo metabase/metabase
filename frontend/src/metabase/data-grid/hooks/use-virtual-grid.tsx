@@ -69,7 +69,7 @@ export const useVirtualGrid = <TData,>({
     estimateSize: () => defaultRowHeight,
     overscan: 3,
     measureElement: element => {
-      const rowIndexRaw = element?.getAttribute("data-index");
+      const rowIndexRaw = element?.getAttribute("data-dataset-index");
       const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;
       if (rowIndex == null || !isFinite(rowIndex)) {
         return defaultRowHeight;

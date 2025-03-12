@@ -7,7 +7,3 @@
   cursor: default;
   border-bottom: 1px solid var(--mb-color-border);
 }
-
-.withName {
-  background-color: var(--mb-color-bg-white);
-}

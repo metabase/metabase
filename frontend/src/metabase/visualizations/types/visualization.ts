@@ -128,11 +128,16 @@ export interface VisualizationProps {
   isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  isRawTable?: boolean;
+  scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
+  queryBuilderMode?: QueryBuilderMode;
+  uuid?: string;
+  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;

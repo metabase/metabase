@@ -6,7 +6,6 @@ import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 import DataGridS from "metabase/data-grid/components/DataGrid/DataGrid.module.css";
 import { useDataGridTheme } from "metabase/data-grid/hooks";
 import type { BodyCellBaseProps } from "metabase/data-grid/types";
-import { alpha } from "metabase/lib/colors";
 
 import { ExpandButton } from "../ExpandButton/ExpandButton";
 
@@ -48,17 +47,15 @@ export const BodyCell = memo(function BodyCell<TValue>({
   const hasExpandButton = variant === "text" && canExpand;
 
   const contentStyle = useMemo(() => {
-    if (theme?.pillCell && variant === "pill") {
-      const backgroundColor = theme?.pillCell?.backgroundColor;
-      const borderColor = backgroundColor
-        ? alpha(backgroundColor, 0.14)
-        : undefined;
-
+    if (variant === "pill") {
+      const color = "var(--mb-color-brand)";
+      const backgroundColor = `color-mix(in srgb, ${color}, transparent 92%)`;
+      const border = `1px solid color-mix(in srgb, ${color}, transparent 86%)`;
       return {
         ...style,
         color: theme?.pillCell?.textColor,
         backgroundColor,
-        borderColor,
+        border,
       };
     }
     return style;

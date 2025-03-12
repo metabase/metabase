@@ -41,9 +41,9 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const style = useMemo<CSSProperties>(() => {
+  const rootStyle = useMemo<CSSProperties>(() => {
     if (isPinned) {
-      return {};
+      return styleProp ?? {};
     }
     return {
       position: "relative",
@@ -104,7 +104,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
     <div
       ref={setNodeRef}
       className={cx(S.root, className)}
-      style={style}
+      style={rootStyle}
       onMouseDown={handleDragStart}
       onMouseUp={handleDragEnd}
     >
