@@ -55,6 +55,19 @@
   (is (= [{:table :user, :pks [:cto]}
           {:table :user, :pks [:cpo]}
           {:table :team, :pks [:alpha]}
+          ::too-many-items]
+         (into []
+               (map kw->row)
+               (fks/reducible-batch-bfs bulk-children [:user/ceo]
+                                        {:max-results          3
+                                         :max-results-sentinel ::too-many-items
+                                         :max-chunk-size       4
+                                         :max-thunk-executions 5
+                                         :max-thunks-sentinel  ::too-many-queries}))))
+
+  (is (= [{:table :user, :pks [:cto]}
+          {:table :user, :pks [:cpo]}
+          {:table :team, :pks [:alpha]}
           {:table :team, :pks [:bravo]}
           {:table :user, :pks [:pm]}
           {:table :programme, :pks [:skunk-works]}
