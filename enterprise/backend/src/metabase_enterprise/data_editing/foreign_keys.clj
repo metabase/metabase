@@ -38,7 +38,9 @@
     :complete? true}
    reducible))
 
-(defn reducible-process [process-item-fn next-thunk-fn skip-fn state]
+(defn reducible-process
+  "Wrap a potentially complex recursive process in simple reducible."
+  [process-item-fn next-thunk-fn skip-fn state]
   (reify clojure.core.protocols/CollReduce
     (coll-reduce [_ reducing-fn init]
       (loop [acc   init
@@ -81,7 +83,9 @@
               (ensure-reduced (rf result sentinel))))))))))
 
 (defn reducible-batch-bfs
-  [items->thunks items
+  "Fold over a graph in breadth-first order, skipping duplicates, and terminating based on various limits.
+  Batch the look-up of children to minimize things like database queries."
+  [items->child-thunks items
    & {:keys [max-results max-results-sentinel max-chunk-size max-thunk-executions max-thunks-sentinel]
       :or   {max-results          10000
              max-results-sentinel :bfs/too-many-results
@@ -103,7 +107,7 @@
             (update :pending-descent conj item)
             ((fn [{:keys [pending-descent] :as state}]
                (if (> (count pending-descent) max-chunk-size)
-                 (let [new-thunks (some-> (take max-chunk-size pending-descent) seq items->thunks)]
+                 (let [new-thunks (some-> (take max-chunk-size pending-descent) seq items->child-thunks)]
                    (-> state
                        (update :pending-descent subvec max-chunk-size)
                        (update :thunks concat new-thunks)))
@@ -113,7 +117,7 @@
         (if (and hit-limit? (seq (:thunks state)))
           [(fn [] [max-thunks-sentinel])
            (assoc state :thunks [] :pending-descent [])]
-          (let [next-thunks (some-> state :pending-descent seq items->thunks)
+          (let [next-thunks (some-> state :pending-descent seq items->child-thunks)
                 thunks      (concat (:thunks state) next-thunks)]
             (if (and hit-limit? (seq thunks))
               [(fn [] [max-thunks-sentinel])
@@ -127,6 +131,6 @@
     (fn skip-fn [state item]
       (contains? (:visited state) item))
     {:visited         (set items)
-     :thunks          (items->thunks items)
+     :thunks          (items->child-thunks items)
      :executed-thunks 0
      :pending-descent []})))
