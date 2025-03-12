@@ -5,7 +5,10 @@ import {
   useState,
 } from "react";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  CollectionNotFoundError,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SDKCollectionReference,
   getCollectionIdSlugFromReference,
@@ -138,6 +141,15 @@ const CollectionBrowserWrapper = ({
 
   if (isLoading) {
     return null;
+  }
+
+  if (
+    !id &&
+    typeof collectionId !== "number" &&
+    collectionId !== "personal" &&
+    collectionId !== "root"
+  ) {
+    return <CollectionNotFoundError id={collectionId} />;
   }
 
   return (
