@@ -156,7 +156,12 @@ const DatabaseFormBody = ({
           />
         </>
       )}
-      {engine && <DatabaseNameField engine={engine} />}
+      {engine && (
+        <DatabaseNameField
+          engine={engine}
+          autoFocus={autofocusFieldName === "name"}
+        />
+      )}
       {fields.map(field => (
         <DatabaseDetailField
           key={field.name}

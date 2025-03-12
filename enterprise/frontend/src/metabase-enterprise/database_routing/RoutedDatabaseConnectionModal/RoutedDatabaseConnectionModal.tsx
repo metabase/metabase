@@ -1,22 +1,22 @@
+import { useMemo } from "react";
+import type { Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import title from "metabase/hoc/Title";
-import { Modal } from "metabase/ui";
-import type { DatabaseData } from "metabase-types/api";
-import type { Route } from "react-router";
-
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
+import { useGetDatabaseQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Databases from "metabase/entities/databases";
+import title from "metabase/hoc/Title";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+import { Modal } from "metabase/ui";
+import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
+import Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseData } from "metabase-types/api";
 
 import S from "./RoutedDatabaseConnectionModal.module.css";
-import { useGetDatabaseQuery } from "metabase/api";
-import { useMemo } from "react";
-import Database from "metabase-lib/v1/metadata/Database";
-import Databases from "metabase/entities/databases";
-import { push } from "react-router-redux";
 import { paramIdToGetQuery } from "./utils";
-import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
-import { addUndo } from "metabase/redux/undo";
 
 export const RoutedDatabaseConnectionModalInner = ({
   params: { databaseId, mirrorDatabaseId },
@@ -59,16 +59,23 @@ export const RoutedDatabaseConnectionModalInner = ({
     dispatch(push(`/admin/databases${dbPath}`));
   };
 
-  const handleSaveDatabase = async (database: DatabaseData) => {
+  const handleCreateMirrorDatabase = async (database: DatabaseData) => {
     // TODO: handle error case
     const result = await createMirrorDatabase({
       router_database_id: parseInt(databaseId, 10),
       mirrors: [database],
     });
     const db = result.data?.[0];
-    if (!db) throw new Error("expected a db to have been created");
+    if (!db) {
+      throw new Error("expected a db to have been created");
+    }
     return db;
   };
+
+  const handleSaveDatabase = isNewDatabase
+    ? handleCreateMirrorDatabase
+    : undefined;
+
   const handleOnSubmit = () => {
     handleCloseModal();
     dispatch(
@@ -76,25 +83,8 @@ export const RoutedDatabaseConnectionModalInner = ({
     );
   };
 
-  // TODO;
-  if (error) {
-    return (
-      <Modal title="Error" opened onClose={handleCloseModal}>
-        <div>{JSON.stringify(error)}</div>;
-      </Modal>
-    );
-  }
-
-  // TODO:
-  if (!mirrorDatabase || isLoading) {
-    return (
-      <Modal title="Loading" opened onClose={handleCloseModal}>
-        <div>Loading</div>;
-      </Modal>
-    );
-  }
-
-  // TODO: make name the initial input focused on open
+  // TODO: when coming from the "Add" button, intial focus somehow ends up on the body
+  // this isn't the case if you refresh the page (initial page load correctly places it on the name input)
   return (
     <Modal
       title={
@@ -109,15 +99,18 @@ export const RoutedDatabaseConnectionModalInner = ({
         body: S.modalBody,
       }}
     >
-      <DatabaseEditConnectionForm
-        database={mirrorDatabase}
-        isMirrorDatabase
-        initializeError={undefined /* TODO */}
-        handleSaveDb={handleSaveDatabase}
-        onSubmitted={handleOnSubmit}
-        onCancel={handleCloseModal}
-        route={route}
-      />
+      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+        <DatabaseEditConnectionForm
+          database={mirrorDatabase}
+          isMirrorDatabase
+          initializeError={undefined /* TODO */}
+          handleSaveDb={handleSaveDatabase}
+          onSubmitted={handleOnSubmit}
+          onCancel={handleCloseModal}
+          route={route}
+          autofocusFieldName="name"
+        />
+      </LoadingAndErrorWrapper>
     </Modal>
   );
 };
