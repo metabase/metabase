@@ -326,9 +326,12 @@ function DashCardInner({
 
   const onEditVisualization = useMemo(() => {
     if (dashcard && dashboardCardSupportsVisualizer(dashcard)) {
-      return openVisualizerModal;
+      return () => {
+        openVisualizerModal();
+        editDashboard();
+      };
     }
-  }, [dashcard, openVisualizerModal]);
+  }, [dashcard, openVisualizerModal, editDashboard]);
 
   const onVisualizerModalSave = useCallback(
     (visualization: VisualizerHistoryItem) => {
@@ -463,7 +466,6 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
-          editDashboard={editDashboard}
           onEditVisualization={onEditVisualization}
         />
       </Box>
