@@ -17,16 +17,26 @@ import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
+import { Dispatch } from "metabase-types/store";
+
+const makeDefaultSaveFn =
+  (dispatch: Dispatch) =>
+  async (database: DatabaseData): Promise<any> =>
+    await dispatch(saveDatabase(database));
 
 export const DatabaseEditConnectionForm = ({
   database,
   initializeError,
+  isMirrorDatabase,
+  handleSaveDb,
   onSubmitted,
   onCancel,
   route,
 }: {
   database?: Database;
   initializeError?: DatabaseEditErrorType;
+  isMirrorDatabase?: boolean;
+  handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
   onSubmitted: (savedDB: { id: DatabaseId }) => void;
   onCancel: () => void;
   route: Route;
@@ -45,7 +55,9 @@ export const DatabaseEditConnectionForm = ({
 
   const handleSubmit = async (database: DatabaseData) => {
     try {
-      const savedDB = await dispatch(saveDatabase(database));
+      // TODO: think this through a bit more...
+      const saveFn = handleSaveDb ?? makeDefaultSaveFn(dispatch);
+      const savedDB = await saveFn(database);
       scheduleCallback(() => {
         onSubmitted(savedDB);
       });
@@ -61,6 +73,7 @@ export const DatabaseEditConnectionForm = ({
           <DatabaseForm
             initialValues={database}
             isAdvanced
+            isMirrorDatabase={isMirrorDatabase}
             onCancel={onCancel}
             onSubmit={handleSubmit}
             setIsDirty={setIsDirty}

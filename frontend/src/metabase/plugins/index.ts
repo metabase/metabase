@@ -602,4 +602,5 @@ export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: Database;
   }>,
+  mirrorDatabaseRoutes: null as React.ReactElement | null,
 };

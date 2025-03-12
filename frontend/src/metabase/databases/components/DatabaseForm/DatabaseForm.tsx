@@ -31,6 +31,7 @@ interface DatabaseFormProps {
   initialValues?: DatabaseData;
   autofocusFieldName?: string;
   isAdvanced?: boolean;
+  isMirrorDatabase?: boolean;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -41,6 +42,7 @@ export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,
   isAdvanced = false,
+  isMirrorDatabase = false,
   onSubmit,
   onCancel,
   onEngineChange,
@@ -92,6 +94,7 @@ export const DatabaseForm = ({
         autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
+        isMirrorDatabase={isMirrorDatabase}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
@@ -107,6 +110,7 @@ interface DatabaseFormBodyProps {
   autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
+  isMirrorDatabase: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
@@ -119,6 +123,7 @@ const DatabaseFormBody = ({
   autofocusFieldName,
   isHosted,
   isAdvanced,
+  isMirrorDatabase,
   onEngineChange,
   onCancel,
   setIsDirty,
@@ -135,18 +140,22 @@ const DatabaseFormBody = ({
 
   return (
     <Form data-testid="database-form">
-      <DatabaseEngineField
-        engineKey={engineKey}
-        engines={engines}
-        isHosted={isHosted}
-        isAdvanced={isAdvanced}
-        onChange={onEngineChange}
-      />
-      <DatabaseEngineWarning
-        engineKey={engineKey}
-        engines={engines}
-        onChange={onEngineChange}
-      />
+      {!isMirrorDatabase && (
+        <>
+          <DatabaseEngineField
+            engineKey={engineKey}
+            engines={engines}
+            isHosted={isHosted}
+            isAdvanced={isAdvanced}
+            onChange={onEngineChange}
+          />
+          <DatabaseEngineWarning
+            engineKey={engineKey}
+            engines={engines}
+            onChange={onEngineChange}
+          />
+        </>
+      )}
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField
