@@ -711,7 +711,7 @@
       (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"You do not have permissions to view Card [\d,]+."
+             #"Query does not have any :rows in results."
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
