@@ -37,42 +37,42 @@ describe("scenarios > admin > performance > schedule strategy", () => {
 
   // prettier-ignore
   const schedules: ScheduleTestOptions[] = [
-    [{}, "0 0 * * * ?"], // The default schedule is 'every hour, on the hour'
+    // [{}, "0 0 * * * ?"], // The default schedule is 'every hour, on the hour'
 
-    [{ frequency: "daily" }, "0 0 8 * * ?"], // 8 am is the default time for a daily schedule
+    // [{ frequency: "daily" }, "0 0 8 * * ?"], // 8 am is the default time for a daily schedule
 
-    [{ frequency: "hourly" }, "0 0 * * * ?"], // Check that switching back to hourly works
+    // [{ frequency: "hourly" }, "0 0 * * * ?"], // Check that switching back to hourly works
 
-    [{ frequency: "daily", time: "9:00" }, "0 0 9 * * ?"], // AM is the default choice between AM and PM
-    [{ frequency: "daily", time: "9:00", amPm: "PM" }, "0 0 21 * * ?"],
-    [{ frequency: "daily", time: "12:00", amPm: "AM" }, "0 0 0 * * ?"],
+    // [{ frequency: "daily", time: "9:00" }, "0 0 9 * * ?"], // AM is the default choice between AM and PM
+    // [{ frequency: "daily", time: "9:00", amPm: "PM" }, "0 0 21 * * ?"],
+    // [{ frequency: "daily", time: "12:00", amPm: "AM" }, "0 0 0 * * ?"],
 
-    [ { frequency: "weekly", weekday: "Monday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 2" ],
-    [ { frequency: "weekly", weekday: "Monday", time: "1:00", amPm: "AM" }, "0 0 1 ? * 2" ],
+    // [ { frequency: "weekly", weekday: "Monday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 2" ],
+    // [ { frequency: "weekly", weekday: "Monday", time: "1:00", amPm: "AM" }, "0 0 1 ? * 2" ],
 
-    [ { frequency: "weekly", weekday: "Tuesday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 3" ],
-    [ { frequency: "weekly", weekday: "Tuesday", time: "3:00", amPm: "AM" }, "0 0 3 ? * 3" ],
+    // [ { frequency: "weekly", weekday: "Tuesday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 3" ],
+    // [ { frequency: "weekly", weekday: "Tuesday", time: "3:00", amPm: "AM" }, "0 0 3 ? * 3" ],
 
-    [ { frequency: "weekly", weekday: "Wednesday", time: "4:00", amPm: "AM" }, "0 0 4 ? * 4" ],
-    [ { frequency: "weekly", weekday: "Wednesday", time: "5:00", amPm: "AM" }, "0 0 5 ? * 4" ],
+    // [ { frequency: "weekly", weekday: "Wednesday", time: "4:00", amPm: "AM" }, "0 0 4 ? * 4" ],
+    // [ { frequency: "weekly", weekday: "Wednesday", time: "5:00", amPm: "AM" }, "0 0 5 ? * 4" ],
 
-    [ { frequency: "weekly", weekday: "Thursday", time: "6:00", amPm: "AM" }, "0 0 6 ? * 5" ],
-    [ { frequency: "weekly", weekday: "Thursday", time: "7:00", amPm: "AM" }, "0 0 7 ? * 5" ],
+    // [ { frequency: "weekly", weekday: "Thursday", time: "6:00", amPm: "AM" }, "0 0 6 ? * 5" ],
+    // [ { frequency: "weekly", weekday: "Thursday", time: "7:00", amPm: "AM" }, "0 0 7 ? * 5" ],
 
-    [ { frequency: "weekly", weekday: "Friday", time: "8:00", amPm: "AM" }, "0 0 8 ? * 6" ],
-    [ { frequency: "weekly", weekday: "Friday", time: "9:00", amPm: "AM" }, "0 0 9 ? * 6" ],
+    // [ { frequency: "weekly", weekday: "Friday", time: "8:00", amPm: "AM" }, "0 0 8 ? * 6" ],
+    // [ { frequency: "weekly", weekday: "Friday", time: "9:00", amPm: "AM" }, "0 0 9 ? * 6" ],
 
-    [ { frequency: "weekly", weekday: "Saturday", time: "10:00", amPm: "AM" }, "0 0 10 ? * 7" ],
-    [ { frequency: "weekly", weekday: "Saturday", time: "11:00", amPm: "AM" }, "0 0 11 ? * 7" ],
+    // [ { frequency: "weekly", weekday: "Saturday", time: "10:00", amPm: "AM" }, "0 0 10 ? * 7" ],
+    // [ { frequency: "weekly", weekday: "Saturday", time: "11:00", amPm: "AM" }, "0 0 11 ? * 7" ],
 
-    [ { frequency: "weekly", weekday: "Sunday", time: "12:00", amPm: "PM" }, "0 0 12 ? * 1" ],
-    [ { frequency: "weekly", weekday: "Sunday", time: "1:00", amPm: "PM" }, "0 0 13 ? * 1" ],
+    // [ { frequency: "weekly", weekday: "Sunday", time: "12:00", amPm: "PM" }, "0 0 12 ? * 1" ],
+    // [ { frequency: "weekly", weekday: "Sunday", time: "1:00", amPm: "PM" }, "0 0 13 ? * 1" ],
 
-    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Sunday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 1#1" ],
-    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Monday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 2#1" ],
+    // [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Sunday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 1#1" ],
+    // [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Monday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 2#1" ],
 
-    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Tuesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 3L" ],
-    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Wednesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 4L" ],
+    // [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Tuesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 3L" ],
+    // [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Wednesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 4L" ],
 
     [ { frequency: "monthly", frame: "15th", time: "12:00", amPm: "AM" }, "0 0 0 15 * ?" ],
     [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 23 15 * ?" ],

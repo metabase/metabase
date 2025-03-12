@@ -1,5 +1,5 @@
 .Schedule {
-  line-height: 40px;
+  line-height: 2.5rem;
   display: grid;
   grid-template-columns: fit-content(100%) auto;
   gap: 0.5rem;
@@ -14,7 +14,10 @@
 }
 
 .TextInFirstColumn {
-  text-align: right;
+  display: flex;
+  flex-flow: row wrap;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .TextInSecondColumn {
