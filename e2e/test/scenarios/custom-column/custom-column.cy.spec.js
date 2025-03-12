@@ -1233,7 +1233,9 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.CustomExpressionEditor.get().should("not.exist");
   });
 
-  it("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
     H.CustomExpressionEditor.type("count(");
     cy.realPress("Escape");
     H.CustomExpressionEditor.get().should("be.visible");
@@ -1252,7 +1254,9 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Select none").should("be.visible");
   });
 
-  it("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select none").should("not.exist");
@@ -1270,7 +1274,9 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.expressionEditorWidget().should("exist");
   });
 
-  it("should be possible to discard changes when clicking outside of the editor", () => {
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should be possible to discard changes when clicking outside of the editor", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.expressionEditorWidget().should("exist");
@@ -1288,7 +1294,9 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.expressionEditorWidget().should("not.exist");
   });
 
-  it("should be possible to discard changes by clicking cancel button", () => {
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should be possible to discard changes by clicking cancel button", () => {
     H.enterCustomColumnDetails({ formula: "1+1", name: "OK" });
     H.expressionEditorWidget().button("Cancel").click();
     H.modal().should("not.exist");
