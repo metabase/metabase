@@ -984,15 +984,23 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.get("input[value='User ID']");
-      cy.findAllByText("Foreign Key");
+      cy.log("User ID");
+      cy.findAllByPlaceholderText("Select a semantic type")
+        .eq(1)
+        .should("have.value", "Foreign Key");
+      cy.findAllByPlaceholderText("Select a target")
+        .eq(0)
+        .should("have.value", "People → ID");
 
-      cy.get("input[value='Tax']");
-      cy.findAllByText("No semantic type");
+      cy.log("Tax");
+      cy.findAllByPlaceholderText("Select a semantic type")
+        .eq(4)
+        .should("have.value", "No semantic type");
 
-      cy.get("input[value='Discount']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount");
+      cy.log("Discount");
+      cy.findAllByPlaceholderText("Select a semantic type")
+        .eq(6)
+        .should("have.value", "Discount");
     });
 
     it("should see the id field", () => {
