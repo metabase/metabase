@@ -156,7 +156,6 @@ function DashCardActionsPanelInner({
     if (onEditVisualization) {
       buttons.push(
         <DashCardActionButton
-          as="div"
           key="visualizer-button"
           tooltip={t`Edit visualization`}
           aria-label={t`Edit visualization`}
