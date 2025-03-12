@@ -447,13 +447,6 @@ export default class AccordionList extends Component {
             });
           }
         }
-      } else {
-        rows.push({
-          type: "header-hidden",
-          section,
-          sectionIndex,
-          isLastSection,
-        });
       }
       if (
         sectionIsSearchable(sectionIndex) &&
