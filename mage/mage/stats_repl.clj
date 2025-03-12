@@ -25,12 +25,12 @@
         (println "looking at the same code that is currently running up there.\n")
         (println (str "Checkout the same version as stats with: \n"))
         (println (str "git checkout " theirs "\n"))
-        (System/exit 1)))))
+        (System/exit 0)))))
 
 (defn ikwid-check []
   (if (u/env "MAGE_IKWID" (constantly nil))
     (println (c/green "You know what you're doing."))
-    (let [ack (atom "")]
+    (do
       (println "Make sure you know what you're doing!")
       (println "Any code you change will be running in stats.")
       (println "We reccomend you do read-only type of operations, and if you setup some kind of")
@@ -38,11 +38,7 @@
       (println)
       (println "If you're a little unsure, please read more about Socket REPLs before proceeeding:")
       (println "https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775")
-      (while (not (#{"y" "Y"} @ack))
-        (println "Type 'y' to acknowledge that you know what you're doing:")
-        (print "> ") (flush)
-        (reset! ack (str/trim (read-line))))
-      (println "Tip: Set MAGE_IKWID=y in your environment to acknowledge that you know what you're doing."))))
+      (println "export MAGE_IKWID=y in your environment to acknowledge that you know what you're doing."))))
 
 (defn connect [_]
   (println "Doing some checks to make sure you're good to connect...")
