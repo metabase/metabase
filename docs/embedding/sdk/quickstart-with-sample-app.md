@@ -39,10 +39,12 @@ This script will:
 
 The app will start on [http://localhost:4400](http://localhost:4400).
 
+That its! You should be [up and running](#at-this-point-you-should-be-up-and-running).
+
+If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
+
 - email: rene@example.com
 - password: foobarbaz
-
-That its! You can start messing around with the application code, see [next steps](#next-steps).
 
 ## Walkthrough setup
 
