@@ -271,8 +271,8 @@
   (put-notification! [_ notification]
     (let [id   (or (:id notification) (str (random-uuid)))
           item (NotificationQueueEntry. id (subscription->deadline (:triggering_subscription notification)))]
+      (.lock queue-lock)
       (try
-        (.lock queue-lock)
         (when-not (.containsKey id->notification id)
           (.offer items-list item))
         (.put id->notification id notification)
