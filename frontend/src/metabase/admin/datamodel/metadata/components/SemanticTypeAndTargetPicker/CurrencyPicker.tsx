@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
-import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
+import { Combobox, Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
 
 import S from "./CurrencyPicker.module.css";
 
@@ -48,6 +48,21 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
           </SelectItem>
         );
       }}
+      rightSection={
+        <Flex align="center" gap="xs" pos="relative">
+          <Text
+            bg="var(--input-bg)"
+            c="text-light"
+            pos="absolute"
+            px="sm"
+            right="100%"
+          >
+            {SYMBOLS[value]}
+          </Text>
+
+          <Combobox.Chevron />
+        </Flex>
+      }
       searchable
       value={value}
       onChange={onChange}
