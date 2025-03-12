@@ -1,6 +1,7 @@
 .wrapper {
   position: relative;
   height: 220px;
+  width: 100%;
   border-bottom: 1px solid var(--mb-color-border);
 
   &.formatting {
@@ -26,6 +27,7 @@
   overflow: auto;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   color: var(--mb-color-text-dark);
 
   :global {

@@ -180,7 +180,8 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
   return (
     <Box
-      w={EDITOR_WIDGET_WIDTH}
+      w="calc(100vw - 2 * var(--mantine-spacing-lg))"
+      maw={EDITOR_WIDGET_WIDTH}
       data-testid="expression-editor"
       data-ignore-editor-clicks="true"
     >
