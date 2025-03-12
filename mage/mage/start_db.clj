@@ -114,15 +114,15 @@
 
 (defn- usage
   [{:keys [db-info]}]
-  (let [tbl (for [[db m] db-info
-                  [stamp port] (:ports m)]
+  (let [tbl (for [[db info] db-info
+                  [stamp port] (:ports info)]
               {:start-db-cmd (str "./bin/mage start-db " (name db) " " (name stamp))
                :port port})]
     (str "\nAvailable DBs:\n"
          (with-out-str (t/table tbl {:style :github-markdown}))
          (str/join "\n"
                    ["Note that we scrape https://endoflife.date/api to determine oldest supported versions,"
-                    "so this script always has the correct oldest version. 🎉"]))))
+                    "So this script always has the correct oldest version. 🎉"]))))
 
 ;; TODOs:
 ;; - [ ] Swap out the db name
