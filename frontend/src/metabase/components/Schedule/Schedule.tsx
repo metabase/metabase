@@ -152,14 +152,19 @@ export const Schedule = ({
 
     return match(schedule_type)
       .with("hourly", () => {
-        return minutesOnHourPicker
-          ? // For example, "Send hourly at 15 minutes past the hour"
-            c(
-              "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
-            )
-              .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
-          : // For example, "Send hourly"
-            `${verb} ${selectFrequency}`;
+        return minutesOnHourPicker ? (
+          // For example, "Send hourly at 15 minutes past the hour"
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes",
+          )
+            .jt`${verb} ${selectFrequency} at ${selectMinute} minutes past the hour`
+        ) : (
+          // For example, "Send hourly"
+          // NOTE: babel-ttag-plugin prevents us from localizing this JSX because it consists only of placeholders
+          <>
+            {verb} {selectFrequency}
+          </>
+        );
       })
       .with(
         "daily",
