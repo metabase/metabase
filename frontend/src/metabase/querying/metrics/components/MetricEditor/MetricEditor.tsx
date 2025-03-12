@@ -1,6 +1,6 @@
 import { forwardRef, useState } from "react";
 
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import { LeaveConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Modal from "metabase/components/Modal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Flex } from "metabase/ui";
@@ -63,7 +63,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       await onSave(question.setDefaultDisplay());
     };
 
-    const handleCancel = () => {
+    const handleConfirmCancel = () => {
       onCancel(question);
     };
 
@@ -71,7 +71,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       if (question.isSaved() && isDirty) {
         setModalType("leave");
       } else {
-        handleCancel();
+        handleConfirmCancel();
       }
     };
 
@@ -120,8 +120,9 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
         )}
         {modalType === "leave" && (
           <Modal isOpen>
-            <LeaveConfirmationModalContent
-              onAction={handleCancel}
+            <LeaveConfirmModal
+              opened
+              onConfirm={handleConfirmCancel}
               onClose={handleModalClose}
             />
           </Modal>
