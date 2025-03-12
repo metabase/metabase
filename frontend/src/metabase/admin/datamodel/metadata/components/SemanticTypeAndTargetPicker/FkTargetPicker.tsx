@@ -44,6 +44,12 @@ export const FkTargetPicker = ({
       //   "data-testid": "fk-target-select", // TODO
       // }}
       className={className}
+      classNames={{
+        dropdown: S.dropdown,
+      }}
+      comboboxProps={{
+        position: "bottom-start",
+      }}
       data={data}
       disabled={!hasIdFields}
       filter={({ options, search }) => {

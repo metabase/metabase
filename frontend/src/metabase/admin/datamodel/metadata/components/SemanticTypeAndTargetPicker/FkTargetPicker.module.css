@@ -1,3 +1,7 @@
+.dropdown {
+  width: 300px !important;
+}
+
 .description {
   [aria-selected="true"] & {
     /* override styling from SelectItem.module.css */

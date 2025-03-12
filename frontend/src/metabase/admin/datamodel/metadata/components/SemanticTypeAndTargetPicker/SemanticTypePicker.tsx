@@ -4,6 +4,8 @@ import _ from "underscore";
 import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
 import { Select } from "metabase/ui";
 
+import S from "./SemanticTypePicker.module.css";
+
 const NULL_VALUE = "null";
 const DATA = getData();
 
@@ -22,6 +24,12 @@ export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
   return (
     <Select
       className={className}
+      classNames={{
+        dropdown: S.dropdown,
+      }}
+      comboboxProps={{
+        position: "bottom-start",
+      }}
       data={DATA}
       fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
