@@ -289,9 +289,9 @@
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.00]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
           (-> (lib.tu/venues-query)
-              (lib/expression "expr" 1.00)
+              (lib/expression "expr" 1.23)
               (lib/expressions))))
   (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
           (-> (lib.tu/venues-query)
