@@ -44,7 +44,6 @@
    (triggers/with-identity (send-notification-trigger-key subscription-id))
    (triggers/using-job-data {"subscription-id" subscription-id})
    (triggers/for-job send-notification-job-key)
-   (triggers/start-now)
    (triggers/with-schedule
     (cron/schedule
      (cron/cron-schedule cron-schedule)
