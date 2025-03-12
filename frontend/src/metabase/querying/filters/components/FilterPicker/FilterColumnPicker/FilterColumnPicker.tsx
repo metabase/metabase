@@ -8,6 +8,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -104,7 +105,6 @@ export function FilterColumnPicker({
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
-        renderItemDescription={omitItemDescription}
         renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
@@ -158,7 +158,7 @@ function getSections(
       });
 
       return {
-        name: groupInfo.displayName,
+        name: getGroupName(groupInfo, stageIndex),
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
         items: [...segmentItems, ...columnItems],
       };
@@ -173,10 +173,6 @@ function getSections(
 
 function renderItemName(item: ColumnListItem) {
   return item.displayName;
-}
-
-function omitItemDescription() {
-  return null;
 }
 
 function renderItemIcon(
