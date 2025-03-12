@@ -886,7 +886,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+  it("should open only one bucketing popover at a time (metabase#45036)", () => {
     H.visitQuestionAdhoc(
       {
         dataset_query: {
@@ -906,11 +906,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.popover()
       .findByRole("option", { name: "Created At" })
       .findByText("by month")
+      .realHover()
       .click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
-      .last()
+      .eq(1)
       .within(() => {
         cy.findByText("Year").should("be.visible");
         cy.findByText("Hour of day").should("not.exist");
@@ -919,14 +919,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
 
     H.popover()
-      .first()
+      .eq(0)
       .findByRole("option", { name: "Price" })
       .findByText("Auto bin")
+      .realHover()
       .click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
-      .last()
+      .eq(1)
       .within(() => {
         cy.findByText("Auto bin").should("be.visible");
         cy.findByText("50 bins").should("be.visible");
@@ -936,6 +936,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.findByText("Hour of day").should("not.exist");
         cy.findByText("More…").should("not.exist");
       });
+
+    H.popover().should("have.length", 2);
   });
 
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
