@@ -1,3 +1,20 @@
+## [0.53.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.9...embedding-sdk-0.53.10) (2025-03-12)
+
+
+### Bug Fixes
+
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54615](https://github.com/metabase/metabase/issues/54615)) ([ed511f9](https://github.com/metabase/metabase/commit/ed511f94bbf53746b4991fc64f7cadc4c114873e))
+* **sdk:** Improve _.compose type + fix SDK type ([#54850](https://github.com/metabase/metabase/issues/54850)) ([#54951](https://github.com/metabase/metabase/issues/54951)) ([16d2f76](https://github.com/metabase/metabase/commit/16d2f76ae63cc58663f1ec8b9a93631bbc3492ed))
+* **sdk:** mark react-dom/client as external to fix warnings in React 19 ([#54919](https://github.com/metabase/metabase/issues/54919)) ([#54923](https://github.com/metabase/metabase/issues/54923)) ([8f47f13](https://github.com/metabase/metabase/commit/8f47f1399f08da150d7e9e3e225eea0c58f70c47))
+* **sdk:** remove react-router console error in LegendLabel when in React 19 ([#54926](https://github.com/metabase/metabase/issues/54926)) ([#54952](https://github.com/metabase/metabase/issues/54952)) ([a8ca5db](https://github.com/metabase/metabase/commit/a8ca5dbf3dd632128a1b9a9031c4933c43333832))
+
+
+### Features
+
+* **sdk:** experimental react 19 version range support ([#54904](https://github.com/metabase/metabase/issues/54904)) ([#55001](https://github.com/metabase/metabase/issues/55001)) ([8450f01](https://github.com/metabase/metabase/commit/8450f0159d67192b039cd9ac08174d380a715aea))
+
+
+
 ## [0.53.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.8...embedding-sdk-0.53.9) (2025-02-27)
 
 
