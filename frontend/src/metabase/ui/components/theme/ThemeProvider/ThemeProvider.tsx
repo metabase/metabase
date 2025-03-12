@@ -9,6 +9,8 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useMemo } from "react";
 
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
+
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
 
@@ -72,6 +74,9 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     <MantineProvider
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
+      getRootElement={() =>
+        document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID)!
+      }
       classNamesPrefix="mb-mantine"
       {...props.mantineProviderProps}
     >
