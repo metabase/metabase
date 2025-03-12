@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { usePreventPopoverExit } from "metabase/ui/components/utils/PreventPopoverExit";
+
 export function useCloseModal({
   enabled = true,
 }: {
   enabled?: boolean;
 } = {}) {
   const [showModal, setShowModal] = useState(false);
+  usePreventPopoverExit({
+    popoverIsExitable: !enabled,
+  });
   useEffect(() => {
     if (!enabled) {
       return;
