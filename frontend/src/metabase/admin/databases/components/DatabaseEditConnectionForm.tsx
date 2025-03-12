@@ -14,10 +14,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
-import { Dispatch } from "metabase-types/store";
 
 const makeDefaultSaveFn =
   (dispatch: Dispatch) =>
@@ -32,6 +32,7 @@ export const DatabaseEditConnectionForm = ({
   onSubmitted,
   onCancel,
   route,
+  ...props
 }: {
   database?: Database;
   initializeError?: DatabaseEditErrorType;
@@ -40,12 +41,14 @@ export const DatabaseEditConnectionForm = ({
   onSubmitted: (savedDB: { id: DatabaseId }) => void;
   onCancel: () => void;
   route: Route;
+  autofocusFieldName?: string;
 }) => {
   const dispatch = useDispatch();
 
   const [isDirty, setIsDirty] = useState(false);
 
-  const autofocusFieldName = window.location.hash.slice(1);
+  const autofocusFieldName =
+    window.location.hash.slice(1) || props.autofocusFieldName;
 
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled

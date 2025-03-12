@@ -1,15 +1,14 @@
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   CreateMirrorDatabaseRequest,
   Database,
   UpdateDatabaseRouterRequest,
 } from "metabase-types/api";
-import { idTag, listTag, invalidateTags } from "metabase/api/tags";
 
 import { EnterpriseApi } from "./api";
 
 export const dbRoutingApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
-    // TODO: find response type
     updateRouterDatabase: builder.mutation<void, UpdateDatabaseRouterRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",

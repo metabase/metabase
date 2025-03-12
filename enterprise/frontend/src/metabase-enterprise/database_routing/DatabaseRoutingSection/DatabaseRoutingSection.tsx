@@ -1,6 +1,18 @@
+import { useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import type Database from "metabase-lib/v1/metadata/Database";
+import {
+  DatabaseInfoSection,
+  DatabaseInfoSectionDivider,
+} from "metabase/admin/databases/components/DatabaseInfoSection";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import {
   Button,
   Flex,
@@ -10,23 +22,10 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-
-import {
-  DatabaseInfoSection,
-  DatabaseInfoSectionDivider,
-} from "metabase/admin/databases/components/DatabaseInfoSection";
-import { useMemo, useState } from "react";
-import {
-  skipToken,
-  useGetDatabaseQuery,
-  useListUserAttributesQuery,
-} from "metabase/api";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
-import { Link } from "react-router";
-import { RoutedDatabaesList } from "../RoutedDatabasesList";
+import type Database from "metabase-lib/v1/metadata/Database";
 
-// TODO: remove
-const DB_ROUTER_USER_ATTRIBUTE = "test";
+import { RoutedDatabaesList } from "../RoutedDatabasesList";
 
 // TODO: make a smart component and loading state for this component as a parent
 // that way this component can be a bit more dumb and focus solely on the presentation
@@ -36,6 +35,7 @@ export const DatabaseRoutingSection = ({
 }: {
   database: Database;
 }) => {
+  const dispatch = useDispatch();
   const rtkDatabaseReq = useGetDatabaseQuery({
     id: database.id,
   });
@@ -45,39 +45,35 @@ export const DatabaseRoutingSection = ({
 
   const [updateRouterDatabase] = useUpdateRouterDatabaseMutation();
 
-  const shouldHideSection = database.is_attached_dwh;
-
-  // TODO: add a loading state, it's weird that this value changes and you see the toggle animate between values
+  const userAttribute =
+    rtkDatabaseReq.currentData?.router_user_attribute ?? undefined;
   const [tempEnabled, setTempEnabled] = useState(false);
-  const isEnabled = useMemo(() => {
-    return tempEnabled || !!rtkDatabaseReq.currentData?.router_user_attribute;
-  }, [tempEnabled, rtkDatabaseReq.currentData?.router_user_attribute]);
-
+  const isFeatureEnabled = !!userAttribute;
+  const isToggleEnabled = tempEnabled || isFeatureEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // TODO: impl
-  const [userAttribute, setUserAttribute] = useState(DB_ROUTER_USER_ATTRIBUTE);
-  const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
-    isEnabled && !shouldHideSection ? undefined : skipToken,
-  );
+  const shouldHideSection = database.is_attached_dwh;
 
   const handleUserAttributeChange = async (attribute: string) => {
-    // TODO: handle loading / error states
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
-    setUserAttribute(attribute);
+    if (!isFeatureEnabled) {
+      dispatch(addUndo({ message: t`Database routing enabled` }));
+    } else {
+      dispatch(addUndo({ message: t`Database routing updated` }));
+    }
   };
 
-  // TODO: impl
-  const handleAddMirrorDatabase = () => {};
+  const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
+    isToggleEnabled && !shouldHideSection ? undefined : skipToken,
+  );
 
   const handleToggle = async (enabled: boolean) => {
-    // TODO: replace with a db update
-    // setIsEnabled(enabled);
     setIsExpanded(enabled);
     setTempEnabled(enabled);
     // TODO: error handling
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
+      dispatch(addUndo({ message: t`Database routing disabled` }));
     }
   };
 
@@ -99,10 +95,10 @@ export const DatabaseRoutingSection = ({
           <Switch
             id="database-routing-toggle"
             labelPosition="left"
-            checked={isEnabled}
+            checked={isToggleEnabled}
             onChange={e => handleToggle(e.currentTarget.checked)}
           />
-          {isEnabled && (
+          {isToggleEnabled && (
             <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
               <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
             </UnstyledButton>
