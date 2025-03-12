@@ -80,7 +80,12 @@
               result
               (ensure-reduced (rf result sentinel))))))))))
 
-(defn reducible-batch-bfs [items->thunks max-chunk-size max-thunk-executions max-thunks-sentinel items]
+(defn reducible-batch-bfs
+  [items->thunks items
+   & {:keys [max-chunk-size max-thunk-executions max-thunks-sentinel]
+      :or   {max-chunk-size       50
+             max-thunk-executions 50
+             max-thunks-sentinel  :bfs/too-many-look-ups}}]
   (assert (pos? max-thunk-executions))
   (reducible-process
    (fn process-item [state item]
