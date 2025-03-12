@@ -22,8 +22,8 @@ export interface FilterColumnPickerProps {
   query: Lib.Query;
   stageIndexes: number[];
   checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
-  onColumnSelect: (column: Lib.ColumnMetadata, stageIndex: number) => void;
-  onSegmentSelect: (segment: Lib.SegmentMetadata, stageIndex: number) => void;
+  onColumnSelect: (item: ColumnListItem) => void;
+  onSegmentSelect: (item: SegmentListItem) => void;
   onExpressionSelect: () => void;
 
   withCustomExpression?: boolean;
@@ -115,9 +115,9 @@ export function FilterColumnPicker({
 
   const handleSelect = (item: ColumnListItem | SegmentListItem) => {
     if (isSegmentListItem(item)) {
-      onSegmentSelect(item.segment, item.stageIndex);
+      onSegmentSelect(item);
     } else {
-      onColumnSelect(item.column, item.stageIndex);
+      onColumnSelect(item);
     }
   };
 

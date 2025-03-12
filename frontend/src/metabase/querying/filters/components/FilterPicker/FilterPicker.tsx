@@ -67,9 +67,13 @@ export function FilterPicker({
     onBack?.();
   };
 
-  const handleColumnSelect = (column: Lib.ColumnMetadata) => {
-    setColumn(column);
+  const handleColumnSelect = (item: ColumnListItem) => {
+    setColumn(item.column);
     setFilter(undefined);
+  };
+
+  const handleSegmentSelect = (item: SegmentListItem) => {
+    handleChange(item.segment);
   };
 
   const checkItemIsSelected = useCallback(
@@ -113,7 +117,7 @@ export function FilterPicker({
         stageIndexes={stageIndexes}
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
-        onSegmentSelect={handleChange}
+        onSegmentSelect={handleSegmentSelect}
         onExpressionSelect={openExpressionEditor}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
