@@ -11,8 +11,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(setting/defsetting database-enable-editing
-  (i18n/deferred-tru "Whether to enable data editing for a specific Database.")
+(setting/defsetting database-enable-table-editing
+  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
   :default false
   :type :boolean
   :visibility :public
@@ -29,7 +29,7 @@
 
 (defn- check-data-editing-enabled! [{db-id :id db-settings :settings}]
   (binding [setting/*database-local-values* db-settings]
-    (when-not (database-enable-editing)
+    (when-not (database-enable-table-editing)
       (throw (ex-info (i18n/tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id})))))
 

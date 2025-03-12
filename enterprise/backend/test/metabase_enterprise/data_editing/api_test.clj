@@ -76,7 +76,7 @@
       (with-open [table-ref (open-test-table!)]
         (let [table-id @table-ref
               url      (table-url table-id)]
-          (t2/update! :model/Database (mt/id) {:settings {:database-enable-editing true}})
+          (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
 
@@ -124,8 +124,8 @@
                         editing-enabled (:d flags)
                         superuser       (:s flags)
                         url             (table-url @table-ref)
-                        settings        {:database-enable-editing (boolean editing-enabled)
-                                         :database-enable-actions (boolean actions-enabled)}
+                        settings        {:database-enable-table-editing (boolean editing-enabled)
+                                         :database-enable-actions       (boolean actions-enabled)}
                         _               (t2/update! :model/Database (mt/id) {:settings settings})
                         user            (if superuser :crowberto :rasta)
                         req             mt/user-http-request-full-response
