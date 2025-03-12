@@ -6,7 +6,7 @@ title: Embedded analytics SDK - quickstart with sample app
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
+This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
 ## Prerequisites
 
@@ -135,7 +135,7 @@ Be sure to hit the **Save and enable** button, or all is void.
 
 ## Set up the sample application
 
-Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample).
+Clone the [Metabase Node JS React SDK embedding sample app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable).
 
 ```sh
 git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
@@ -143,7 +143,7 @@ git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
 
 ### Check out the branch that corresponds to your Metabase version
 
-Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample) repo that corresponds to your Metabase version.
+Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable) repo that corresponds to your Metabase version.
 
 E.g., if you're running Metabase 1.53, make sure the sample app repo is on the `53-stable` branch. You can find your Metabase version in the Metabase UI by clicking on the gears icon in the upper right and selecting **About Metabase**.
 
