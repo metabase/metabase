@@ -2,6 +2,7 @@ import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,
@@ -9,7 +10,7 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Box, Text } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import { EditingBodyCellConditional } from "./EditingBodyCell";
@@ -53,9 +54,7 @@ export const TableDataView = ({
         header: function EditingHeader() {
           return (
             <Box className={S.headerCellContainer}>
-              <Text style={{ textOverflow: "ellipsis", overflow: "hidden" }}>
-                {column.display_name}
-              </Text>
+              <Ellipsified>{column.display_name}</Ellipsified>
             </Box>
           );
         },
@@ -87,7 +86,7 @@ export const TableDataView = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
-    defaultRowHeight: 32,
+    defaultRowHeight: TABLE_DATA_VIEW_HEADER_HEIGHT,
   });
 
   const handleCellClick = useCallback(

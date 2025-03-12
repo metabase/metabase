@@ -11,7 +11,9 @@
 
 /** DataGrid overrides */
 .tableGrid {
-  /* Defined in pixels since `DataGrid` component prop `defaultRowHeight` is also in PX */
+  /* Defined in pixels since `DataGrid` component prop `defaultRowHeight` is also in PX
+   * Should be in sync with TABLE_DATA_VIEW_HEADER_HEIGHT const
+   */
   --editing-row-height: 32px;
 
   grid-template-rows: none;
