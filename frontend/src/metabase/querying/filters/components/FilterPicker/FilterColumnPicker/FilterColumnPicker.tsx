@@ -69,43 +69,16 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
-  const sections = useMemo(() => {
-    const columnSections = stageIndexes.flatMap(stageIndex => {
-      const columns = Lib.filterableColumns(query, stageIndex);
-      const columnGroups = Lib.groupColumns(columns);
-
-      return columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
-        const columnItems = Lib.getColumnsFromColumnGroup(group).map(
-          column => ({
-            ...Lib.displayInfo(query, stageIndex, column),
-            column,
-            query,
-            stageIndex,
-          }),
-        );
-        const includeSegments = groupInfo.isSourceTable;
-        const segmentItems = includeSegments
-          ? Lib.availableSegments(query, stageIndex).map(segment => ({
-              ...Lib.displayInfo(query, stageIndex, segment),
-              segment,
-              stageIndex,
-            }))
-          : [];
-
-        return {
-          name: groupInfo.displayName,
-          icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-          items: [...segmentItems, ...columnItems],
-        };
-      });
-    });
-
-    return [
-      ...columnSections,
-      ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
-    ];
-  }, [query, stageIndexes, withColumnGroupIcon, withCustomExpression]);
+  const sections = useMemo(
+    () =>
+      getSections(
+        query,
+        stageIndexes,
+        withColumnGroupIcon,
+        withCustomExpression,
+      ),
+    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+  );
 
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
@@ -147,6 +120,55 @@ export function FilterColumnPicker({
       />
     </DelayGroup>
   );
+}
+
+function getSections(
+  query: Lib.Query,
+  stageIndexes: number[],
+  withColumnGroupIcon: boolean,
+  withCustomExpression: boolean,
+) {
+  const columnSections = stageIndexes.flatMap(stageIndex => {
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const columnGroups = Lib.groupColumns(columns);
+
+    return columnGroups.map(group => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
+      const columnItems = Lib.getColumnsFromColumnGroup(group).map(column => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        return {
+          name: columnInfo.name,
+          displayName: columnInfo.displayName,
+          column,
+          query,
+          stageIndex,
+        };
+      });
+      const segments = groupInfo.isSourceTable
+        ? Lib.availableSegments(query, stageIndex)
+        : [];
+      const segmentItems = segments.map(segment => {
+        const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
+        return {
+          name: segmentInfo.name,
+          displayName: segmentInfo.displayName,
+          segment,
+          stageIndex,
+        };
+      });
+
+      return {
+        name: groupInfo.displayName,
+        icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
+        items: [...segmentItems, ...columnItems],
+      };
+    });
+  });
+
+  return [
+    ...columnSections,
+    ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
+  ];
 }
 
 function renderItemName(item: ColumnListItem) {
