@@ -3,7 +3,7 @@
 
 ## API tutorial
 
-Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
+Check out an introduction to the [Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## API keys
 
