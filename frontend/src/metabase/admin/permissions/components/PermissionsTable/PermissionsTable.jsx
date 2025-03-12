@@ -146,14 +146,12 @@ export function PermissionsTable({
         </tbody>
       </PermissionsTableRoot>
       {!hasItems && emptyState}
-      {confirmations?.length > 0 && (
-        <ConfirmModal
-          opened
-          {...confirmations[0]}
-          onConfirm={handleConfirm}
-          onClose={handleCancelConfirm}
-        />
-      )}
+      <ConfirmModal
+        opened={confirmations?.length > 0}
+        {...confirmations[0]}
+        onConfirm={handleConfirm}
+        onClose={handleCancelConfirm}
+      />
     </>
   );
 }

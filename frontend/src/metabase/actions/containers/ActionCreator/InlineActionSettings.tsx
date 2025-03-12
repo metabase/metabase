@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent, ChangeEventHandler } from "react";
 import { t } from "ttag";
 
@@ -7,7 +8,6 @@ import Button from "metabase/core/components/Button";
 import FormField from "metabase/core/components/FormField";
 import TextArea from "metabase/core/components/TextArea";
 import Actions from "metabase/entities/actions/actions";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -92,7 +92,8 @@ const InlineActionSettings = ({
   onBack,
 }: ActionSettingsInlineProps) => {
   const id = useUniqueId();
-  const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] = useToggle();
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
   const hasSharingPermission = isAdmin && isPublicSharingEnabled;
 
   const handleTogglePublic: ChangeEventHandler<HTMLInputElement> = event => {
@@ -111,6 +112,7 @@ const InlineActionSettings = ({
     if (isSavedAction(action)) {
       onDeletePublicLink({ id: action.id });
     }
+    closeModal();
   };
 
   const handleSuccessMessageChange = (
@@ -159,15 +161,13 @@ const InlineActionSettings = ({
             />
           </CopyWidgetContainer>
         )}
-        {isModalOpen && (
-          <ConfirmModal
-            opened
-            title={t`Disable this public link?`}
-            content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-            onConfirm={handleDisablePublicLink}
-            onClose={closeModal}
-          />
-        )}
+        <ConfirmModal
+          opened={modalOpened}
+          title={t`Disable this public link?`}
+          content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+          onConfirm={handleDisablePublicLink}
+          onClose={closeModal}
+        />
         <FormField title={t`Success message`} htmlFor={`${id}-message`}>
           <TextArea
             id={`${id}-message`}
