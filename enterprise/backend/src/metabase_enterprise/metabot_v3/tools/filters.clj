@@ -254,7 +254,9 @@
       (metabot-v3.tools.u/handle-agent-error ex))))
 
 (comment
-  (toucan2.core/select :model/Field)
+  (require '[metabase.query-processor :as qp]
+           '[toucan2.core :as t2])
+  (t2/select :model/Field)
   (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
@@ -267,5 +269,5 @@
                      :bucket "month-of-year"
                      :field_id "t1/3"
                      :value #_"2020-01-01" 1}]})
-        :structured-output :query metabase.query-processor/process-query :data :native_form :query))
+        :structured-output :query qp/process-query :data :native_form :query))
   -)
