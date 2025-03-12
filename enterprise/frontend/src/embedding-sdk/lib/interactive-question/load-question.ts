@@ -12,7 +12,7 @@ export const loadQuestionSdk =
   ({
     options = {},
     deserializedCard,
-    cardId,
+    questionId: cardId,
     initialSqlParameters,
   }: LoadSdkQuestionParams) =>
   async (
