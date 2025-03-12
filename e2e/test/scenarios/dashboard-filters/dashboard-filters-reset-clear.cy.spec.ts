@@ -4,7 +4,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { checkNotNull } from "metabase/lib/types";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { LocalFieldReference } from "metabase-types/api";
 
@@ -43,7 +46,7 @@ const PEOPLE_CITY_FIELD: LocalFieldReference = [
   },
 ];
 
-const ORDERS_COUNT_OVER_TIME: H.StructuredQuestionDetails = {
+const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   display: "line",
   query: {
     "source-table": ORDERS_ID,
@@ -52,14 +55,14 @@ const ORDERS_COUNT_OVER_TIME: H.StructuredQuestionDetails = {
   },
 };
 
-const PEOPLE_QUESTION: H.StructuredQuestionDetails = {
+const PEOPLE_QUESTION: StructuredQuestionDetails = {
   query: {
     "source-table": PEOPLE_ID,
     limit: 1,
   },
 };
 
-const ORDERS_QUESTION: H.StructuredQuestionDetails = {
+const ORDERS_QUESTION: StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
     limit: 1,
@@ -229,8 +232,8 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Bassett",
-      otherValue: "{backspace}Thomson",
-      otherValueFormatted: "Thomson",
+      otherValue: "{backspace}Dike",
+      otherValueFormatted: "Dike",
       setValue: (label, value) => {
         filter(label).click();
         H.popover()
@@ -248,6 +251,23 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           .type(value)
           .blur();
         H.popover().button("Update filter").click();
+      },
+      setDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findByRole("listitem").click();
+          cy.button("Add filter").click();
+        });
+      },
+      updateDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          cy.findByRole("listitem").click();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -282,8 +302,8 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "{backspace}{backspace}Washington,",
-      otherValueFormatted: "Washington",
+      otherValue: "{backspace}{backspace}Dike",
+      otherValueFormatted: "Dike",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").focus().type(value).blur();
@@ -297,6 +317,29 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           .type(value)
           .blur();
         H.popover().button("Update filter").click();
+      },
+      // we use setDefaultValue here as e2e tests setup shows options
+      // differently than in UI and with a local sample database. Maybe it's a
+      // sign of a bug in setup
+      setDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 2);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Add filter").click();
+        });
+      },
+      updateDefaultValue: (label, value) => {
+        filter(label).click();
+        H.dashboardParametersPopover().within(() => {
+          cy.findByPlaceholderText("Search the list").type(value);
+          // select filtered value
+          cy.findAllByRole("checkbox").should("have.length", 2);
+          cy.findAllByRole("checkbox").eq(1).click();
+          cy.button("Update filter").click();
+        });
       },
     });
   });
@@ -333,9 +376,9 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     ]);
 
     checkDashboardParameters({
-      defaultValueFormatted: "1",
+      defaultValueFormatted: "Hudson Borer - 1",
       otherValue: "{backspace}2",
-      otherValueFormatted: "2",
+      otherValueFormatted: "Domenica Williamson - 2",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").focus().type(value).blur();
@@ -384,7 +427,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "{backspace}{backspace}3",
-      otherValueFormatted: "3",
+      otherValueFormatted: "Lina Heaney - 3",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").focus().type(value).blur();
@@ -431,9 +474,9 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     ]);
 
     checkDashboardParameters({
-      defaultValueFormatted: "1",
+      defaultValueFormatted: "Hudson Borer - 1",
       otherValue: "{backspace}2",
-      otherValueFormatted: "2",
+      otherValueFormatted: "Domenica Williamson - 2",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").focus().type(value).blur();
@@ -525,12 +568,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Gadget",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("textbox").type(value);
+        H.popover().findByRole("textbox").type(value).blur();
+        H.popover().findByRole("listitem").eq(0).click();
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.popover().findByRole("textbox").type(value);
+        H.popover().findByRole("listitem").eq(0).click();
         H.popover().button("Update filter").click();
       },
     });
@@ -566,16 +611,34 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "{backspace}{backspace}Doohickey,Widget,",
+      otherValue: "Doohickey,Widget,",
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("textbox").type(value);
+        H.popover().within(() => {
+          value
+            .split(",")
+            .filter(Boolean)
+            .forEach(value => {
+              cy.findAllByRole("listitem").contains(value).click();
+            });
+        });
+        // H.popover().findByRole("textbox").type(value);
         H.popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        H.popover().findByRole("textbox").type(value);
+        H.popover().within(() => {
+          cy.findAllByRole("listitem").contains("Select all").click();
+          cy.findAllByRole("listitem").contains("Select none").click();
+
+          value
+            .split(",")
+            .filter(Boolean)
+            .forEach(value => {
+              cy.findAllByRole("listitem").contains(value).click();
+            });
+        });
         H.popover().button("Update filter").click();
       },
     });
@@ -661,23 +724,24 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
 });
 
 function createDashboardWithParameters(
-  questionDetails: H.StructuredQuestionDetails,
+  questionDetails: StructuredQuestionDetails,
   targetField: LocalFieldReference,
-  parameters: H.DashboardDetails["parameters"],
+  parameters: DashboardDetails["parameters"],
 ) {
   H.createQuestionAndDashboard({
     questionDetails,
     dashboardDetails: {
       parameters,
     },
-  }).then(({ body: { dashboard_id, card_id } }) => {
+  }).then(({ body: { dashboard_id }, questionId }) => {
     H.updateDashboardCards({
       dashboard_id,
       cards: [
         {
+          card_id: questionId,
           parameter_mappings: parameters?.map(parameter => ({
             parameter_id: parameter.id,
-            card_id: checkNotNull(card_id),
+            card_id: questionId,
             target: ["dimension", targetField],
           })),
         },
@@ -706,12 +770,16 @@ function checkDashboardParameters<T = string>({
   otherValueFormatted,
   setValue,
   updateValue = setValue,
+  setDefaultValue = setValue,
+  updateDefaultValue = updateValue,
 }: {
   defaultValueFormatted: string;
   otherValue: T;
   otherValueFormatted: string;
   setValue: (label: string, value: T) => void;
   updateValue?: (label: string, value: T) => void;
+  setDefaultValue?: (label: string, value: T) => void;
+  updateDefaultValue?: (label: string, value: T) => void;
 }) {
   cy.log("no default value, non-required, no current value");
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
@@ -772,6 +840,7 @@ function checkDashboardParameters<T = string>({
   cy.log(
     "has default value, non-required, current value different than default",
   );
+
   updateValue(DEFAULT_NON_REQUIRED, otherValue);
   filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
@@ -823,8 +892,8 @@ function checkDashboardParameters<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
-    setValue,
-    updateValue,
+    setValue: setDefaultValue,
+    updateValue: updateDefaultValue,
   });
 }
 
