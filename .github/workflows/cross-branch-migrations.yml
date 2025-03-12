@@ -60,7 +60,7 @@ jobs:
       MB_DB_USER: circle_test
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
