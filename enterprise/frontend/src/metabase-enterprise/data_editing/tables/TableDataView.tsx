@@ -2,6 +2,7 @@ import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,
@@ -9,9 +10,11 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
+import { Box } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import { EditingBodyCellConditional } from "./EditingBodyCell";
+import S from "./TableDataView.module.css";
 import type { UpdatedRowCellsHandlerParams } from "./types";
 import { useTableEditing } from "./use-table-editing";
 
@@ -19,6 +22,8 @@ type TableDataViewProps = {
   data: Dataset;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
+
+const TABLE_DATA_VIEW_HEADER_HEIGHT = 32;
 
 export const TableDataView = ({
   data,
@@ -46,6 +51,13 @@ export const TableDataView = ({
         accessorFn: (row: RowValues) => row[columnIndex],
         formatter: value => formatValue(value, { column }),
         wrap: false,
+        header: function EditingHeader() {
+          return (
+            <Box className={S.headerCellContainer}>
+              <Ellipsified>{column.display_name}</Ellipsified>
+            </Box>
+          );
+        },
         editingCell: cellContext => (
           <EditingBodyCellConditional
             cellContext={cellContext}
@@ -74,6 +86,7 @@ export const TableDataView = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
+    defaultRowHeight: TABLE_DATA_VIEW_HEADER_HEIGHT,
   });
 
   const handleCellClick = useCallback(
@@ -94,5 +107,24 @@ export const TableDataView = ({
     [onCellClickToEdit, editingCellId],
   );
 
-  return <DataGrid {...tableProps} onBodyCellClick={handleCellClick} />;
+  return (
+    <DataGrid
+      {...tableProps}
+      classNames={{
+        tableGrid: S.tableGrid,
+        headerCell: S.tableHeaderCell,
+        bodyCell: S.tableBodyCell,
+        row: S.tableRow,
+      }}
+      styles={{
+        // Overrides HEADER_HEIGHT JS const
+        row: { height: TABLE_DATA_VIEW_HEADER_HEIGHT },
+        // Overrides theme constants and default white bg
+        bodyCell: {
+          backgroundColor: undefined,
+        },
+      }}
+      onBodyCellClick={handleCellClick}
+    />
+  );
 };

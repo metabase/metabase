@@ -8,3 +8,43 @@
   overflow: hidden;
   flex: 1 1 auto;
 }
+
+/** DataGrid overrides */
+.tableGrid {
+  /* Defined in pixels since `DataGrid` component prop `defaultRowHeight` is also in PX
+   * Should be in sync with TABLE_DATA_VIEW_HEADER_HEIGHT const
+   */
+  --editing-row-height: 32px;
+
+  grid-template-rows: none;
+}
+
+.tableRow {
+  border-bottom: 1px solid var(--mb-color-border);
+
+  &:hover .tableBodyCell {
+    background-color: var(--mb-base-color-blue-10);
+  }
+
+  &:hover .tableHeaderCell {
+    box-shadow: none;
+  }
+}
+
+.tableHeaderCell {
+  background-color: var(--mb-base-color-orion-5);
+  height: var(--editing-row-height);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.tableBodyCell {
+  background-color: var(--mb-color-bg-white);
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.headerCellContainer {
+  height: var(--editing-row-height);
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+}
