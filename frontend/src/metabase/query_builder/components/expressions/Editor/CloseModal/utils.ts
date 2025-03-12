@@ -3,16 +3,16 @@ import { useCallback, useEffect, useState } from "react";
 import { usePreventPopoverExit } from "metabase/ui/components/utils/PreventPopoverExit";
 
 export function useCloseModal({
-  enabled = true,
+  allowPopoverExit = false,
 }: {
-  enabled?: boolean;
+  allowPopoverExit?: boolean;
 } = {}) {
   const [showModal, setShowModal] = useState(false);
   usePreventPopoverExit({
-    popoverIsExitable: !enabled,
+    popoverIsExitable: allowPopoverExit,
   });
   useEffect(() => {
-    if (!enabled) {
+    if (allowPopoverExit) {
       return;
     }
 
@@ -28,7 +28,7 @@ export function useCloseModal({
     return () => {
       window.removeEventListener("click", handler, { capture: true });
     };
-  }, [enabled]);
+  }, [allowPopoverExit]);
 
   const closeModal = useCallback(() => {
     setShowModal(false);

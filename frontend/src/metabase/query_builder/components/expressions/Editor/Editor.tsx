@@ -83,9 +83,8 @@ export function Editor<S extends StartRule = "expression">(
     error,
   });
 
-  const shouldPreventClosingPopover = source !== "" && hasSourceChanged;
   const { showModal, closeModal } = useCloseModal({
-    enabled: shouldPreventClosingPopover,
+    allowPopoverExit: source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
