@@ -858,7 +858,7 @@ export function verifyDashcardCellValues({
 
     // eslint-disable-next-line no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findByTestId("table-row")
+      .findAllByRole("row")
       .findAllByTestId("cell-data")
       .eq(valueIndex)
       .should("have.text", value);

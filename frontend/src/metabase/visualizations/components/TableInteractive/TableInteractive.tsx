@@ -77,8 +77,8 @@ const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   return "text";
 };
 
-const getColumnIdFromPivotedColumnId = (pivotedColumnId: string) =>
-  pivotedColumnId.split(":")[0];
+const getColumnIndexFromPivotedColumnId = (pivotedColumnId: string) =>
+  parseInt(pivotedColumnId.split(":")[1]);
 
 interface TableProps extends VisualizationProps {
   rowIndexToPkMap?: Record<number, string>;
@@ -240,10 +240,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       rowIndex: number,
       columnId: string,
     ) => {
-      if (isPivoted) {
-        columnId = getColumnIdFromPivotedColumnId(columnId);
-      }
-
       if (columnId === ROW_ID_COLUMN_ID) {
         if (!isDashboard) {
           onOpenObjectDetail(rowIndex);
@@ -251,7 +247,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         return;
       }
 
-      const columnIndex = data.cols.findIndex(col => col.name === columnId);
+      const columnIndex = isPivoted
+        ? getColumnIndexFromPivotedColumnId(columnId)
+        : data.cols.findIndex(col => col.name === columnId);
+
       const formatter = columnFormatters[columnIndex];
       const formattedValue = formatter(
         data.rows[rowIndex][columnIndex],
@@ -310,11 +309,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         return;
       }
 
-      if (isPivoted) {
-        columnId = getColumnIdFromPivotedColumnId(columnId);
-      }
+      const columnIndex = isPivoted
+        ? getColumnIndexFromPivotedColumnId(columnId)
+        : data.cols.findIndex(col => col.name === columnId);
 
-      const columnIndex = data.cols.findIndex(col => col.name === columnId);
       if (columnIndex === -1) {
         return;
       }
