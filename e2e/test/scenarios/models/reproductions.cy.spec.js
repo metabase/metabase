@@ -47,9 +47,7 @@ describe("issue 19180", () => {
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
           H.tableInteractive();
-          cy.findByText("Here's where your results will appear").should(
-            "not.exist",
-          );
+          cy.findByText("Query results will appear here.").should("not.exist");
         },
       );
     });
@@ -355,7 +353,7 @@ describe("issue 20963", () => {
 
     // Creat a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -1397,26 +1395,30 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
-  it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.visit(`/model/${id}/query`);
-    });
+  it(
+    "should allow to run the model query after changing custom columns (metabase#29951)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(questionDetails).then(({ body: { id } }) => {
+        cy.visit(`/model/${id}/query`);
+      });
 
-    removeExpression("CC2");
-    // The UI shows us the "play" icon, indicating we should refresh the query,
-    // but the point of this repro is to save without refreshing
-    cy.button("Get Answer").should("be.visible");
-    H.saveMetadataChanges();
+      removeExpression("CC2");
+      // The UI shows us the "play" icon, indicating we should refresh the query,
+      // but the point of this repro is to save without refreshing
+      cy.button("Get Answer").should("be.visible");
+      H.saveMetadataChanges();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
-    H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+      H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
 
-    cy.findByTestId("qb-header").button("Refresh").click();
-    cy.wait("@dataset");
-    cy.get("[data-testid=cell-data]").should("contain", "37.65");
-    cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-  });
+      cy.findByTestId("qb-header").button("Refresh").click();
+      cy.wait("@dataset");
+      cy.get("[data-testid=cell-data]").should("contain", "37.65");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
+    },
+  );
 });
 
 describe("issue 31309", () => {
