@@ -21,6 +21,7 @@
   top: 0;
   z-index: 2;
   border-bottom: 1px solid var(--mb-color-border);
+  height: 37px;
 }
 
 .bodyContainer {
