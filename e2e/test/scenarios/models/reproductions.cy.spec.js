@@ -46,10 +46,8 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.get(".test-TableInteractive");
-          cy.findByText("Here's where your results will appear").should(
-            "not.exist",
-          );
+          H.tableInteractive();
+          cy.findByText("Query results will appear here.").should("not.exist");
         },
       );
     });
@@ -351,11 +349,11 @@ describe("issue 20963", () => {
   it("should allow converting questions with static snippets to models (metabase#20963)", () => {
     cy.visit("/");
 
-    H.startNewNativeQuestion().as("editor");
+    H.startNewNativeQuestion();
 
     // Creat a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -365,7 +363,7 @@ describe("issue 20963", () => {
       cy.findByText("Save").click();
     });
 
-    cy.get("@editor").type("{moveToStart}select ");
+    H.NativeEditor.type("{moveToStart}select ");
 
     H.saveQuestion(
       questionName,
@@ -430,7 +428,7 @@ describe("issue 22517", () => {
 
     // This will edit the original query and add the `SIZE` column
     // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.focusNativeEditor().type(
+    H.NativeEditor.focus().type(
       "{leftarrow}".repeat(" from orders".length) +
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
@@ -470,7 +468,7 @@ describe("issue 22518", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
-    H.focusNativeEditor().type(", 'b' bar");
+    H.NativeEditor.focus().type(", 'b' bar");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -735,7 +733,7 @@ describe("issue 23421", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
-    H.nativeEditor().should("be.visible").and("contain", query);
+    H.NativeEditor.get().should("be.visible").and("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
@@ -748,7 +746,7 @@ describe("issue 23421", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
-    H.nativeEditor().should("be.visible").and("contain", query);
+    H.NativeEditor.get().should("be.visible").and("contain", query);
     cy.findByTestId("visualization-root")
       .findByText("Every field is hidden right now")
       .should("be.visible");
@@ -1391,41 +1389,36 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
       .click();
   };
 
-  const dragColumn = (index, distance) => {
-    cy.get(".react-draggable")
-      .should("have.length", 20) // 10 columns X 2 draggable elements
-      .eq(index)
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", distance, 0, { force: true })
-      .trigger("mouseup", distance, 0, { force: true });
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
-  it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.visit(`/model/${id}/query`);
-    });
+  it(
+    "should allow to run the model query after changing custom columns (metabase#29951)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(questionDetails).then(({ body: { id } }) => {
+        cy.visit(`/model/${id}/query`);
+      });
 
-    removeExpression("CC2");
-    // The UI shows us the "play" icon, indicating we should refresh the query,
-    // but the point of this repro is to save without refreshing
-    cy.button("Get Answer").should("be.visible");
-    H.saveMetadataChanges();
+      removeExpression("CC2");
+      // The UI shows us the "play" icon, indicating we should refresh the query,
+      // but the point of this repro is to save without refreshing
+      cy.button("Get Answer").should("be.visible");
+      H.saveMetadataChanges();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+      H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
 
-    dragColumn(0, 100);
-    cy.findByTestId("qb-header").button("Refresh").click();
-    cy.wait("@dataset");
-    cy.get("[data-testid=cell-data]").should("contain", "37.65");
-    cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-  });
+      cy.findByTestId("qb-header").button("Refresh").click();
+      cy.wait("@dataset");
+      cy.get("[data-testid=cell-data]").should("contain", "37.65");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
+    },
+  );
 });
 
 describe("issue 31309", () => {
@@ -1532,7 +1525,7 @@ describe("issue 31663", () => {
     cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
-    cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
+    H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByLabelText("Foreign key target").click();
     H.popover().within(() => {
@@ -1803,7 +1796,7 @@ describe("issues 35039 and 37009", () => {
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
     // The repro requires that we update the query in a minor, non-impactful way.
     cy.log("Update the query and save");
-    H.focusNativeEditor().type("{backspace}");
+    H.NativeEditor.focus().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
@@ -1875,7 +1868,7 @@ describe("issue 37009", () => {
 
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
-    H.focusNativeEditor().type(" WHERE CATEGORY = 'Gadget'");
+    H.NativeEditor.focus().type(" WHERE CATEGORY = 'Gadget'");
     cy.findByTestId("dataset-edit-bar")
       .button("Save changes")
       .should("be.disabled")
