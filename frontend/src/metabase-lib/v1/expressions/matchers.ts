@@ -106,7 +106,7 @@ export function isOffset(expr: unknown): expr is OffsetExpression {
 
 // RawDimension is only used internally while parsing an expression.
 // It can also be used in examples when there is no query to reference.
-type RawDimension = ["dimension", string];
+export type RawDimension = ["dimension", string];
 
 // Matches internal dimension reference clause, for use in ie. examples.
 export function isRawDimension(expr: unknown): expr is RawDimension {

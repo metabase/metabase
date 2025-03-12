@@ -29,7 +29,12 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { isFunction, isOperator, isOptionsObject } from "../matchers";
+import {
+  type RawDimension,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "../matchers";
 import { formatStringLiteral } from "../string";
 
 import { pathMatchers as check } from "./utils";
@@ -130,6 +135,8 @@ function print(
     return formatSegment(path, options.extra);
   } else if (check.isCaseOrIf(path)) {
     return formatCaseOrIf(path, print);
+  } else if (check.isRawDimension(path)) {
+    return formatDimensionReference(path);
   } else if (check.isOptionsObject(path)) {
     return "";
   }
@@ -473,4 +480,8 @@ function formatCallExpression(callee: string, args: Doc[]): Doc {
     softline,
     ")",
   ]);
+}
+
+function formatDimensionReference(path: AstPath<RawDimension>) {
+  return formatIdentifier(path.node[1]);
 }
