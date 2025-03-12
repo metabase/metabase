@@ -2341,7 +2341,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (#{:aggregation-options #_:value} (first legacy-expr)))
+                      (#{:aggregation-options} (first legacy-expr)))
                  (get 1))
                :keyword-fn u/qualified-name))))
 
