@@ -4,7 +4,7 @@ licensed under the Apache License, Version 2.0.
 
 Modifications and additional code by `Metabase` are licensed under the GNU 
 Affero General Public License, Version 3 (AGPL-3.0).  The rest of the project
-is licensed under the license terms described in theroot directory [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt).  
+is licensed under the license terms described in the root directory [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt).  
 
 The full text of the Apache License, Version 2.0 follows:
 
