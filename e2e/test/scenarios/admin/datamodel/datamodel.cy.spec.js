@@ -984,6 +984,11 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
+      cy.log("ID");
+      cy.findAllByPlaceholderText("Select a semantic type")
+        .eq(0)
+        .should("have.value", "Entity Key");
+
       cy.log("User ID");
       cy.findAllByPlaceholderText("Select a semantic type")
         .eq(1)
@@ -1001,17 +1006,11 @@ describe("scenarios > admin > databases > table", () => {
       cy.findAllByPlaceholderText("Select a semantic type")
         .eq(6)
         .should("have.value", "Discount");
-    });
 
-    it("should see the id field", () => {
-      cy.get("input[value='ID']");
-      cy.findAllByText("Entity Key");
-    });
-
-    it("should see the created_at timestamp field", () => {
-      cy.get("input[value='Created At']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Creation timestamp");
+      cy.log("Created At");
+      cy.findAllByPlaceholderText("Select a semantic type")
+        .eq(7)
+        .should("have.value", "Creation timestamp");
     });
   });
 
