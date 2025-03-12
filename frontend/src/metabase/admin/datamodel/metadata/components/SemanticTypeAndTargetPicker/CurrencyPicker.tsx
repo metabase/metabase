@@ -41,6 +41,7 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
               <Text
                 c={item.checked ? "text-white" : "text-light"}
                 flex="0 0 auto"
+                lh="1rem"
               >
                 {SYMBOLS[item.option.value]}
               </Text>

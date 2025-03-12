@@ -9,11 +9,11 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-import FieldVisibilityPicker from "../FieldVisibilityPicker";
+import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
 
 import { ColumnContainer, ColumnInput } from "./MetadataTableColumn.styled";

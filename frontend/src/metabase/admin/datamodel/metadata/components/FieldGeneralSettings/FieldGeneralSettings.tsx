@@ -21,7 +21,7 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldValuesType } from "metabase-types/api";
 
 import FieldRemappingSettings from "../FieldRemappingSettings";
-import FieldVisibilityPicker from "../FieldVisibilityPicker";
+import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
