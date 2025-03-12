@@ -23,7 +23,6 @@ import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/sett
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import {
   createDataSource,
-  dashboardCardSupportsVisualizer,
   isVisualizerDashboardCard,
   mergeVisualizerData,
   splitVisualizerSeries,
@@ -97,7 +96,6 @@ interface DashCardVisualizationProps {
   onTogglePreviewing: () => void;
 
   downloadsEnabled: boolean;
-  editDashboard: () => void;
 
   onEditVisualization?: () => void;
 }
@@ -137,7 +135,6 @@ export function DashCardVisualization({
   onChangeLocation,
   onUpdateVisualizationSettings,
   downloadsEnabled,
-  editDashboard,
   onEditVisualization,
 }: DashCardVisualizationProps) {
   const datasets = useSelector(state => getDashcardData(state, dashcard.id));
@@ -208,19 +205,6 @@ export function DashCardVisualization({
 
     return series;
   }, [rawSeries, dashcard, datasets]);
-
-  const editVisualization = useMemo(() => {
-    if (
-      onEditVisualization &&
-      isVisualizerDashboardCard(dashcard) &&
-      dashboardCardSupportsVisualizer(dashcard)
-    ) {
-      return () => {
-        onEditVisualization();
-        editDashboard();
-      };
-    }
-  }, [editDashboard, dashcard, onEditVisualization]);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -326,7 +310,7 @@ export function DashCardVisualization({
             : undefined
         }
         uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
-        onEditVisualization={editVisualization}
+        onEditVisualization={onEditVisualization}
       />
     );
   }, [
@@ -339,7 +323,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
-    editVisualization,
+    onEditVisualization,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
