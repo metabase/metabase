@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, Chip, Group, Radio, Stack, Text } from "metabase/ui";
 
@@ -31,6 +32,14 @@ export const ExportSettingsWidget = ({
 }: ExportSettingsWidgetProps) => {
   const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
   const applicationName = useSelector(getApplicationName);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const formattingLabelParts = isFormattingEnabled
+    ? [t`E.g. September 6, 2024 or $187.50`, `, like in ${applicationName}`]
+    : [t`E.g. 2024-09-06 or 187.50`, `, like in the database`];
+  const formattingLabel = isEmbeddingSdk
+    ? formattingLabelParts[0]
+    : formattingLabelParts.join();
+
   return (
     <Stack>
       <Chip.Group
@@ -68,9 +77,7 @@ export const ExportSettingsWidget = ({
             size="sm"
             color="text-medium"
           >
-            {isFormattingEnabled
-              ? t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`
-              : t`E.g. 2024-09-06 or 187.50, like in the database`}
+            {formattingLabel}
           </Text>
         </Stack>
       ) : null}
