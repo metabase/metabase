@@ -18,7 +18,7 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ## Embedded analytics SDK prerequisites
 
-- React application using React 17, 18, or 19.
+- React application using React 17 or React 18.
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
@@ -72,9 +72,9 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 View the SDK's changelog:
 
-- [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+* [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+* [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+* [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Embedded analytics SDK on NPM
 
@@ -94,12 +94,12 @@ The SDK doesn't support:
 
 ## Issues, feature requests and support
 
-[Bugs](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AType%3ABug%20label%3AEmbedding%2FSDK) and [feature requests](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AEmbedding%2FSDK%20label%3A%22Type%3ANew%20Feature%22) are tracked on GitHub.
+[Bugs](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AType%3ABug%20label%3AEmbedding%2FSDK) and [feature requests](https://github.com/metabase/metabase/issues/?q=is%3Aissue%20state%3Aopen%20label%3AEmbedding%2FSDK%20label%3A%22Type%3ANew%20Feature%22) are tracked on GitHub. 
 
 You can upvote an existing feature request by leaving a thumbs up emoji reaction on the issue. Feel free to leave comments with context that could be useful. [Read more](https://www.metabase.com/docs/latest/troubleshooting-guide/requesting-new-features).
 
 Before creating new issues, please make sure an issue for your problem or feature request doesn't already exist.
-
+ 
 To seek help:
 
 - Paid customers can contact our success team through the usual channels.
