@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { usePreventClosePopover } from "metabase/ui";
-
 export function useCloseModal({
   enabled = true,
 }: {
   enabled?: boolean;
 } = {}) {
-  usePreventClosePopover({
-    onEscape: enabled,
-    onClickOutside: enabled,
-  });
-
   const [showModal, setShowModal] = useState(false);
   useEffect(() => {
     if (!enabled) {

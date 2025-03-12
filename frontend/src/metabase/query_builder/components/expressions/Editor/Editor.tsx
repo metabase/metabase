@@ -8,7 +8,13 @@ import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
+import {
+  Button,
+  Tooltip as ButtonTooltip,
+  Flex,
+  Icon,
+  usePreventClosePopover,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
@@ -84,6 +90,11 @@ export function Editor<S extends StartRule = "expression">(
   });
 
   const shouldPreventClosingPopover = source !== "" && hasSourceChanged;
+  usePreventClosePopover({
+    onEscape: shouldPreventClosingPopover,
+    onClickOutside: shouldPreventClosingPopover,
+  });
+
   const { showModal, closeModal } = useCloseModal({
     enabled: shouldPreventClosingPopover,
   });
