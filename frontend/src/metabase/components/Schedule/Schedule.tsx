@@ -76,17 +76,11 @@ export const Schedule = ({
           defaults,
         );
       }
-      console.log("@m86hy9jk", "newSchedule", newSchedule);
 
       // when the monthly schedule frame is the 15th, clear out the schedule_day
       if (newSchedule.schedule_frame === "mid") {
         newSchedule.schedule_day = null;
       }
-
-      // FIXME: "calendar day" doesn't work
-      // FIXME: "calendar day" doesn't work
-      // FIXME: "calendar day" doesn't work
-      // FIXME: "calendar day" doesn't work
 
       onScheduleChange(newSchedule, { name: updatedField, value: newValue });
     },

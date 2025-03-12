@@ -11,16 +11,10 @@ import { defaultDay, defaultHour } from "./constants";
 
 export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   return arr.reduce<ReactNode[]>((acc, node) => {
-    const prevNode = _.last(acc);
-    if (typeof node === "string" && typeof prevNode === "string") {
-      acc[acc.length - 1] += ` ${node}`;
-    } else {
-      if (typeof node === "string" && !node.trim()) {
-        return acc;
-      }
-      acc.push(node);
-    }
-    return acc;
+    const prevNode = acc.at(-1);
+    return typeof node === "string" && typeof prevNode === "string"
+      ? [...acc.slice(0, acc.length - 1), prevNode + ` ${node}`]
+      : _.compact([...acc, typeof node === "string" ? node.trim() : node]);
   }, []);
 };
 
@@ -98,7 +92,6 @@ export const getScheduleDefaults = (
       schedule_minute: 0,
     }))
     .with({ schedule_type: "monthly" }, () => ({
-      schedule_day: defaultDay,
       schedule_frame: "first",
       schedule_hour: defaultHour,
       schedule_minute: 0,
