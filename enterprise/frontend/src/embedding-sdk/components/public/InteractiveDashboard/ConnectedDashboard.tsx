@@ -1,14 +1,9 @@
 import type { Query } from "history";
-import { type ComponentType, type FC, useEffect } from "react";
+import type { ComponentType, FC } from "react";
 import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
-import {
-  DashboardNotFoundError,
-  SdkLoader,
-} from "embedding-sdk/components/private/PublicComponentWrapper";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import * as dashboardActions from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -43,7 +38,7 @@ import { connect } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
-import { getErrorPage, getIsNavbarOpen } from "metabase/selectors/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
@@ -130,22 +125,4 @@ const ConnectedDashboardInner = ({
 
 export const ConnectedDashboard = connector<
   ComponentType<ConnectedDashboardProps & ReduxProps>
->(({ dashboardId, isLoading, ...rest }) => {
-  const errorPage = useSdkSelector(getErrorPage);
-  const dispatch = useSdkDispatch();
-  useEffect(() => {
-    if (dashboardId) {
-      dispatch(setErrorPage(null));
-    }
-  }, [dispatch, dashboardId]);
-
-  if (isLoading) {
-    return <SdkLoader />;
-  }
-
-  if (!dashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={dashboardId} />;
-  }
-
-  return <ConnectedDashboardInner dashboardId={dashboardId} {...rest} />;
-}) as FC<ConnectedDashboardProps>;
+>(ConnectedDashboardInner) as FC<ConnectedDashboardProps>;

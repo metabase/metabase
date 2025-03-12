@@ -1,19 +1,25 @@
-import type { CSSProperties } from "react";
+import { type CSSProperties, useEffect } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import {
+  DashboardNotFoundError,
+  SdkLoader,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import { useSdkSelector } from "embedding-sdk/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
+import { setErrorPage } from "metabase/redux/app";
+import { getErrorPage } from "metabase/selectors/app";
 
 import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
@@ -68,6 +74,22 @@ export const EditableDashboard = ({
   const dashboardActions = isEditing
     ? DASHBOARD_EDITING_ACTIONS
     : SDK_DASHBOARD_VIEW_ACTIONS;
+
+  const errorPage = useSdkSelector(getErrorPage);
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dispatch, dashboardId]);
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!dashboardId || errorPage?.status === 404) {
+    return <DashboardNotFoundError id={dashboardId} />;
+  }
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
