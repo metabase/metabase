@@ -41,6 +41,7 @@ export const TableBrowser = ({
   showSchemaInHeader = true,
 }) => {
   const databaseCrumb = useDatabaseCrumb(dbId);
+  const { database } = databaseCrumb;
 
   return (
     <>
@@ -60,7 +61,7 @@ export const TableBrowser = ({
               <TableLink
                 to={
                   !isSyncInProgress(table)
-                    ? getTableUrl(table, metadata, dbId)
+                    ? getTableUrl({ table, metadata, database })
                     : ""
                 }
                 onClick={() => trackTableClick(table.id)}

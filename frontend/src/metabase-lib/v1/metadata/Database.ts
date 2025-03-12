@@ -121,6 +121,10 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
+  hasTableEditingEnabled() {
+    return Boolean(this.settings?.["database-enable-table-editing"]);
+  }
+
   newQuestion() {
     return this.question().setDefaultDisplay();
   }
