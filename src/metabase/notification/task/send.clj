@@ -14,7 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -111,7 +111,7 @@
                                                         :notification_subscription_id subscription-id
                                                         :cron_schedule                (:cron_schedule subscription)
                                                         :notification_ids             [notification-id]}}
-          (notification.send/send-notification! notification))
+          (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
         (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
         (catch Exception e
           (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
@@ -178,7 +178,8 @@
 (jobs/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."}
+    Run once on startup."
+    DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]
   (log/info "Initializing SendNotification triggers")
