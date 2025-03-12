@@ -255,18 +255,21 @@ const visualizerHistoryItemSlice = createSlice({
     builder
       .addCase(setDisplay.fulfilled, (state, action) => {
         const { display, computedSettings } = action.payload;
-        const { columnValuesMapping, columns, settings } =
-          getUpdatedSettingsForDisplay(
-            state.columnValuesMapping,
-            state.columns,
-            computedSettings,
-            state.display,
-            display,
-          );
+        const updatedSettings = getUpdatedSettingsForDisplay(
+          state.columnValuesMapping,
+          state.columns,
+          computedSettings,
+          state.display,
+          display,
+        );
 
-        state.columnValuesMapping = columnValuesMapping;
-        state.columns = columns;
-        state.settings = settings;
+        if (updatedSettings) {
+          const { columnValuesMapping, columns, settings } = updatedSettings;
+          state.columnValuesMapping = columnValuesMapping;
+          state.columns = columns;
+          state.settings = settings;
+        }
+
         state.display = display;
       })
       .addCase(initializeVisualizer.fulfilled, (state, action) => {

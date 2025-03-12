@@ -30,6 +30,10 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
   );
 
   const widgets = useMemo(() => {
+    if (transformedSeries.length === 0) {
+      return [];
+    }
+
     const widgets = getSettingsWidgetsForSeries(
       transformedSeries,
       handleChangeSettings,

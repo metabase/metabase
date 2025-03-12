@@ -14,32 +14,21 @@ export function getUpdatedSettingsForDisplay(
   settings: VisualizationSettings,
   sourceDisplay: VisualizationDisplay | null,
   targetDisplay: VisualizationDisplay | null,
-): {
-  columnValuesMapping: ColumnValuesMapping;
-  columns: DatasetColumn[];
-  settings: VisualizationSettings;
-} {
+):
+  | {
+      columnValuesMapping: ColumnValuesMapping;
+      columns: DatasetColumn[];
+      settings: VisualizationSettings;
+    }
+  | undefined {
   if (!sourceDisplay || !targetDisplay) {
-    return {
-      columnValuesMapping,
-      columns,
-      settings,
-    };
+    return undefined;
   }
 
   const sourceIsCartesian = isCartesianChart(sourceDisplay);
   const targetIsCartesian = isCartesianChart(targetDisplay);
 
   if (sourceIsCartesian) {
-    // cartesian -> cartesian
-    if (targetIsCartesian) {
-      return {
-        columnValuesMapping,
-        columns,
-        settings,
-      };
-    }
-
     // cartesian -> pie
     if (targetDisplay === "pie") {
       const {
@@ -92,19 +81,6 @@ export function getUpdatedSettingsForDisplay(
           "graph.dimensions": [dimensions].filter(Boolean) as string[],
         },
       };
-    } else {
-      // pie -> pie
-      return {
-        columnValuesMapping,
-        columns,
-        settings,
-      };
     }
   }
-
-  return {
-    columnValuesMapping,
-    columns,
-    settings,
-  };
 }

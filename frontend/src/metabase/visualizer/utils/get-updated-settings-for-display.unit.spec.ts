@@ -51,7 +51,7 @@ describe("updateSettingsForDisplay", () => {
     }),
   ];
 
-  it("should return the same settings if sourceDisplay or targetDisplay is null", () => {
+  it("should return undefined if sourceDisplay or targetDisplay is null", () => {
     const settings = {};
     const sourceDisplay = null;
     const targetDisplay = null;
@@ -62,10 +62,10 @@ describe("updateSettingsForDisplay", () => {
       sourceDisplay,
       targetDisplay,
     );
-    expect(result).toEqual({ columnValuesMapping, columns, settings });
+    expect(result).toBeUndefined();
   });
 
-  it("should return the same settings if sourceDisplay and targetDisplay are cartesian", () => {
+  it("should return undefined if sourceDisplay and targetDisplay are cartesian", () => {
     const settings = {};
     const sourceDisplay = "bar";
     const targetDisplay = "bar";
@@ -76,11 +76,7 @@ describe("updateSettingsForDisplay", () => {
       sourceDisplay,
       targetDisplay,
     );
-    expect(result).toEqual({
-      columnValuesMapping,
-      columns,
-      settings,
-    });
+    expect(result).toBeUndefined();
   });
 
   describe("cartesian -> pie", () => {
