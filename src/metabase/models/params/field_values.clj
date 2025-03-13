@@ -47,6 +47,20 @@
         (update-vals (field-values/batched-get-latest-full-field-values field-ids)
                      #(select-keys % [:field_id :human_readable_values :values]))))))
 
+(defn hash-input-for-field-values [field constraints]
+  (merge
+   {:field-id (u/the-id field)}
+   (field-values/hash-input-for-sandbox field)
+   (field-values/hash-input-for-impersonation field)
+   (field-values/hash-input-for-linked-filters field constraints)
+   (field-values/hash-input-for-database-routing field)))
+
+(defn- requires-advanced-field-value?
+  "Given a field, returns falsey if this field should use the normal batched implementation to get field values."
+  [field]
+  (not= (hash-input-for-field-values field nil)
+        {:field-id (u/the-id field)}))
+
 (defn field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
     {field-id FieldValues-instance}
@@ -105,20 +119,6 @@
        :has_more_values       has_more_values
        :human_readable_values human-readable-values
        :values                values})))
-
-(defn hash-input-for-field-values [field constraints]
-  (merge
-   {:field-id (u/the-id field)}
-   (field-values/hash-input-for-sandbox field)
-   (field-values/hash-input-for-impersonation field)
-   (field-values/hash-input-for-linked-filters field constraints)
-   (field-values/hash-input-for-database-routing field)))
-
-(defn- requires-advanced-field-value?
-  "Given a field, returns falsey if this field should use the normal batched implementation to get field values."
-  [field]
-  (not= (hash-input-for-field-values field nil)
-        {:field-id (u/the-id field)}))
 
 (defn get-or-create-field-values!
   "Gets or creates field values."
