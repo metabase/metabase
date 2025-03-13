@@ -601,6 +601,7 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: Database;
+    refetchDatabase: () => void;
   }>,
   mirrorDatabaseRoutes: null as React.ReactElement | null,
 };
