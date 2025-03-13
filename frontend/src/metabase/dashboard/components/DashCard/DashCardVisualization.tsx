@@ -29,6 +29,7 @@ import {
   dashboardCardSupportsVisualizer,
   isVisualizerDashboardCard,
   mergeVisualizerData,
+  shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
@@ -209,7 +210,11 @@ export function DashCardVisualization({
       },
     ];
 
-    if (display && isCartesianChart(display)) {
+    if (
+      display &&
+      isCartesianChart(display) &&
+      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+    ) {
       return splitVisualizerSeries(series, columnValuesMapping);
     }
 
