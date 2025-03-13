@@ -110,7 +110,7 @@
 
 (def ^:private ^:dynamic *db* nil)
 
-(defn- delete-items! [items]
+(defn- delete-items [items]
   (swap! *db* (fn [db]
                 (reduce
                  (fn [db [item-type items]]
@@ -125,10 +125,9 @@
      ~@body
      @*db*))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- after-delete [table rows]
   (with-mutable-db db
-    (fks/delete-recursively table rows metadata lookup-children delete-items!)))
+    (fks/delete-recursively table rows metadata lookup-children delete-items)))
 
 (deftest delete-recursively-test
   (is (= {:orders [{:id 43}], :order-items [{:id 1339, :order-id 43}]}
