@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
-   [metabase.models :refer [APIKey User]]
+   [metabase.models.api-key :refer [APIKey]]
+   [metabase.models.user :refer [User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
