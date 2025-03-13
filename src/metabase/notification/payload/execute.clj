@@ -251,8 +251,7 @@
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
   [creator-id :- pos-int?
-   card-id :- pos-int?
-   & {:as options}]
+   card-id :- pos-int?]
   (let [result (request/with-current-user creator-id
                  (qp.card/process-query-for-card card-id :api
                                                  ;; TODO rename to :notification?
