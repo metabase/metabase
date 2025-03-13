@@ -15,7 +15,6 @@ import {
 import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
 import type { Shortcut } from "./Editor/Shortcuts";
-import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
@@ -152,14 +151,12 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   if (startRule === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
-        <ExpressionWidgetHeader
-          title={t`Select columns to combine`}
-          onBack={handleCancel}
-        />
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
+          withTitle
         />
       </Box>
     );
