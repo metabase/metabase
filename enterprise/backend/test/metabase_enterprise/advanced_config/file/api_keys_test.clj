@@ -18,14 +18,14 @@
 
 (defn- cleanup-config! []
   (u/ignore-exceptions
-    (doseq [api-key (t2/select :model/APIKey)]
-      (t2/delete! :model/APIKey :id (:id api-key)))
+    (doseq [api-key (t2/select :model/ApiKey)]
+      (t2/delete! :model/ApiKey :id (:id api-key)))
     (doseq [user (t2/select :model/User :type :api-key)]
       (t2/delete! :model/User :id (:id user)))
     (.delete (java.io.File. "config.yml"))))
 
 (defn- api-key-exists? [name]
-  (t2/exists :model/ApiKey :name name))
+  (t2/exists? :model/ApiKey :name name))
 
 (defn- api-key-user-exists? [name]
   (t2/exists? :model/User :first_name name :type :api-key))
@@ -33,22 +33,22 @@
 (deftest api-keys-config-test
   (mt/with-temp-env-var-value [mb-config-file-path "config.yml"]
     (mt/with-premium-features #{:config-text-file}
-      (mt/with-temp/with-temp [:model/User {:email "admin@test.com"
-                                            :first_name "Admin"
-                                            :is_superuser true}]
+      (mt/with-temp [:model/User {:email "admin@test.com"
+                                 :first_name "Admin"
+                                 :is_superuser true}]
         (testing "should create API keys from config"
           (try
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                   :key "test_api_key_123"
-                                   :creator "admin@test.com"
-                                   :group "admin"
-                                   :description "Test API key"}
-                                  {:name "All Users API Key"
-                                   :key "test_api_key_456"
-                                   :creator "admin@test.com"
-                                   :group "all-users"}]}})
+                                 :key "test_api_key_123"
+                                 :creator "admin@test.com"
+                                 :group "admin"
+                                 :description "Test API key"}
+                                {:name "All Users API Key"
+                                 :key "test_api_key_456"
+                                 :creator "admin@test.com"
+                                 :group "all-users"}]}})
             (is (= :ok (config.file/initialize!)))
             (testing "API keys should be created"
               (is (api-key-exists? "Test API Key"))
@@ -57,7 +57,7 @@
               (is (api-key-user-exists? "Test API Key"))
               (is (api-key-user-exists? "All Users API Key")))
             (testing "API key should have correct properties"
-              (let [api-key (t2/select-one :model/APIKey :name "Test API Key")]
+              (let [api-key (t2/select-one :model/ApiKey :name "Test API Key")]
                 (is (string? (:key_prefix api-key)))
                 (is (= "Test API key" (:description api-key)))))
             (finally
@@ -105,9 +105,9 @@
                                    :creator "admin@test.com"
                                    :group "admin"}]}})
             (config.file/initialize!)
-            (let [first-key (t2/select-one :model/APIKey :name "Test API Key")
+            (let [first-key (t2/select-one :model/ApiKey :name "Test API Key")
                   _ (config.file/initialize!)
-                  second-key (t2/select-one :model/APIKey :name "Test API Key")]
+                  second-key (t2/select-one :model/ApiKey :name "Test API Key")]
               (is (= (:id first-key) (:id second-key))))
             (finally
               (cleanup-config!))))
