@@ -17,8 +17,8 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 
 ## Two ways to set up the sample app with Metabase
 
-- [Quick setup with Docker](#quick-setup-with-docker)
-- [Walkthrough setup](#walkthrough-setup)
+- [Quick setup with Docker](#quick-setup-with-docker) (includes a sample Metabase)
+- [Walkthrough setup](#walkthrough-setup) (bring your own Metabase, or spin up a new one)
 
 ## Quick setup with Docker
 
@@ -39,7 +39,7 @@ This script will:
 
 The app will start on [http://localhost:4400](http://localhost:4400).
 
-That its! You should be [up and running](#at-this-point-you-should-be-up-and-running).
+That's it! You should be [up and running](#at-this-point-you-should-be-up-and-running).
 
 If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
 

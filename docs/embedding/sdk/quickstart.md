@@ -22,7 +22,7 @@ If you want to use the SDK in production, however, you'll also need to [set up J
 
 If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
-If you _do_ have a Metabase, but _don't_ want to use your own code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
+If you _don't_ want to use your own application code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
 
 ## Overview
 
