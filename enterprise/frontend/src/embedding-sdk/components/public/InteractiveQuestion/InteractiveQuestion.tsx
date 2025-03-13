@@ -34,7 +34,7 @@ import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<
@@ -72,7 +72,7 @@ export const _InteractiveQuestion = ({
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
-    cardId={questionId}
+    questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
