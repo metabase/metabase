@@ -404,7 +404,7 @@ export function setup1stStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 0).click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply1stStageExplicitJoinFilter() {
@@ -432,7 +432,7 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
     getPopoverItem("Price", 0).click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -458,7 +458,7 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -485,7 +485,7 @@ export function setup1stStageCustomColumnFilter() {
     getPopoverItem("Net").click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -515,7 +515,7 @@ export function setup1stStageAggregationFilter() {
     getPopoverItem("Count").click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -543,7 +543,7 @@ export function setup1stStageBreakoutFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -568,7 +568,7 @@ export function setup2ndStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 1).click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -597,7 +597,7 @@ export function setup2ndStageCustomColumnFilter() {
     getPopoverItem("5 * Count").click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageCustomColumnFilter() {
@@ -641,7 +641,7 @@ export function setup2ndStageAggregationFilter() {
     getPopoverItem("Count").click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageAggregationFilter() {
@@ -683,7 +683,7 @@ export function setup2ndStageBreakoutFilter() {
     getPopoverItem("Products Via Product ID Category").click();
   });
 
-  H.saveDashboard();
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageBreakoutFilter() {

@@ -354,7 +354,7 @@ describe("scenarios > embedding > questions > downloads", () => {
           setFilters: { text: "Foo" },
         });
 
-        cy.get("[data-testid=cell-data]").should("have.text", "Foo");
+        cy.findByRole("gridcell").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download").click();
 
         H.popover().within(() => {
