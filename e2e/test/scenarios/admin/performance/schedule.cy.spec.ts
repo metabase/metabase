@@ -1,7 +1,5 @@
-import _ from "underscore";
-
-const { H } = cy;
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
+import { checkNotNull } from "metabase/lib/types";
 import type { CacheableModel } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "./helpers/e2e-performance-helpers";
@@ -12,6 +10,8 @@ import {
   saveCacheStrategyForm,
   scheduleRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
+
+const { H } = cy;
 
 /** These tests check that the schedule strategy form fields (in Admin /
  * Performance) send the correct cron expressions to the API. They do not check
@@ -76,6 +76,7 @@ describe("scenarios > admin > performance > schedule strategy", () => {
 
     [ { frequency: "monthly", frame: "15th", time: "12:00", amPm: "AM" }, "0 0 0 15 * ?" ],
     [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 23 15 * ?" ],
+    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "calendar day", time: "3:00", amPm: "PM" }, "0 0 15 1 * ?" ],
 
   ];
 
@@ -89,18 +90,18 @@ describe("scenarios > admin > performance > schedule strategy", () => {
           "No caching",
         );
         scheduleRadioButton().click();
-        _.pairs(schedule).forEach(([componentType, optionToClick]) => {
+        Object.entries(schedule).forEach(([componentType, optionToClick]) => {
           if (componentType === "amPm") {
             // AM/PM is a segmented control, not a select
             cacheStrategyForm()
               .findByLabelText("AM/PM")
-              .findByText(optionToClick)
+              .findByText(checkNotNull(optionToClick))
               .click();
           } else {
             getScheduleComponent(componentType).click();
 
             H.popover().within(() => {
-              cy.findByText(optionToClick).click();
+              cy.findByText(checkNotNull(optionToClick)).click();
             });
           }
         });
