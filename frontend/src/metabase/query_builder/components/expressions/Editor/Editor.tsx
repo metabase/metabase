@@ -303,7 +303,6 @@ function useExpression<S extends StartRule = "expression">({
         startRule,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
       });
       if (immediate || errorRef.current) {
@@ -318,7 +317,6 @@ function useExpression<S extends StartRule = "expression">({
       stageIndex,
       startRule,
       metadata,
-      expressionIndex,
       handleChange,
       debouncedOnChange,
       // prevError,
