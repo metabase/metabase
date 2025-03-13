@@ -7,6 +7,7 @@ import {
 
 import {
   CollectionNotFoundError,
+  SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
@@ -140,15 +141,16 @@ const CollectionBrowserWrapper = ({
   });
 
   if (isLoading) {
-    return null;
+    return <SdkLoader />;
   }
 
-  if (
-    !id &&
-    typeof collectionId !== "number" &&
-    collectionId !== "personal" &&
-    collectionId !== "root"
-  ) {
+  const isValidId =
+    id ||
+    typeof collectionId === "number" ||
+    collectionId === "personal" ||
+    collectionId === "root";
+
+  if (!isValidId) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
