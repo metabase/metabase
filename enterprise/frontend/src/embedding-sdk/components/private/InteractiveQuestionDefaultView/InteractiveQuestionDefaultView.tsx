@@ -54,7 +54,7 @@ export const InteractiveQuestionDefaultView = ({
     onCreate,
     onSave,
     isSaveEnabled,
-    saveToCollection,
+    targetCollection,
     isCardIdError,
   } = useInteractiveQuestionContext();
 
@@ -177,7 +177,7 @@ export const InteractiveQuestionDefaultView = ({
             await onSave(question);
             closeSaveModal();
           }}
-          saveToCollection={saveToCollection}
+          targetCollection={targetCollection}
         />
       )}
     </FlexibleSizeComponent>
