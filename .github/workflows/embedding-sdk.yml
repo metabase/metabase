@@ -28,31 +28,6 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  sdk-build:
-    if: contains(github.event.pull_request.labels.*.name, 'embedding-sdk-build')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
-      - name: Generate SDK package.json
-        run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-      - name: Generate .npmrc for Github npm registry
-        uses: actions/setup-node@v4
-        with:
-          registry-url: "https://npm.pkg.github.com"
-      - name: Publish package
-        run: yarn run embedding-sdk:publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   embedding-sdk-snippets-type-check:
     needs: [ files-changed ]
     if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
@@ -71,5 +46,5 @@ jobs:
         shell: bash
       - name: Build Embedding SDK package
         run: yarn build-embedding-sdk
-      - name: Run frontend embedding SDK snippets tests
-        run: yarn run test-unit:embedding-sdk-snippets
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run type-check:embedding-sdk-snippets
