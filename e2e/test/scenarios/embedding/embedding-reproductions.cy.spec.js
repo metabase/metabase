@@ -690,7 +690,7 @@ describe("issue 30535", () => {
       cy.visit(iframe.src);
     });
 
-    cy.findByRole("table").within(() => {
+    cy.findByRole("grid").within(() => {
       // The sandboxed user has an attribute cat="Widget"
       cy.findAllByText("Widget");
       // Sandboxing shouldn't affect results so we should see other product categories as well

@@ -1319,7 +1319,7 @@ describe("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
-      cy.findAllByRole("cell").first().click();
+      cy.findAllByRole("gridcell").first().click();
       cy.wait("@getCardQuery");
 
       // I don't know why this test starts to fail, but this command
