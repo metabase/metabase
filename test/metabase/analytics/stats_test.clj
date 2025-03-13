@@ -524,16 +524,46 @@
             "There are never more query executions in the 24h version than all-of-time.")))))
 
 (deftest query-execution-24h-filtering-test
-  (let [before (#'stats/->snowplow-grouped-metric-info)]
-    ;; run 2 internal queries, set one to happen a year ago:
-    (mt/with-temp [:model/QueryExecution _internal-year-ago
-                   (merge query-execution-defaults
-                          {:started_at (-> (t/offset-date-time) (t/minus (t/years 1)))})
-                   :model/QueryExecution _internal-new query-execution-defaults]
+  (let [before (#'stats/->snowplow-grouped-metric-info)
+        one-year-ago-defaults (assoc query-execution-defaults
+                                     :started_at (-> (t/offset-date-time)
+                                                     (t/minus (t/years 1))))]
+    (mt/with-temp [:model/User           u {}
+                   :model/QueryExecution _ one-year-ago-defaults
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-sdk-react")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults
+                                                  :embedding_client "embedding-iframe"
+                                                  :executor_id (u/the-id u))
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-question)
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-csv-download)
+                   :model/QueryExecution _ query-execution-defaults
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
+                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
       (let [after (#'stats/->snowplow-grouped-metric-info)
-            before-internal (-> before :query-executions (get "internal"))
-            after-internal (-> after :query-executions (get "internal"))
-            before-24h-internal (-> before :query-executions-24h (get "internal"))
-            after-24h-internal (-> after :query-executions-24h (get "internal"))]
+            before-internal (-> before :query-executions :internal)
+            after-internal (-> after :query-executions :internal)
+            before-24h-internal (-> before :query-executions-24h :internal)
+            after-24h-internal (-> after :query-executions-24h :internal)]
         (is (= 2 (- after-internal before-internal)))
-        (is (= 1 (- after-24h-internal before-24h-internal)))))))
+        (is (= 1 (- after-24h-internal before-24h-internal)))
+        (is (= 2 (- (-> after :query-executions :sdk_embed)
+                    (-> before :query-executions :sdk_embed))))
+        (is (= 4 (- (-> after :query-executions :static_embed)
+                    (-> before :query-executions :static_embed))))
+        (is (= 4 (- (-> after :query-executions :public_link)
+                    (-> before :query-executions :public_link))))
+        (is (= 1 (- (-> after :query-executions :interactive_embed)
+                    (-> before :query-executions :interactive_embed))))
+        (is (= 1 (- (-> after :query-executions-24h :sdk_embed)
+                    (-> before :query-executions-24h :sdk_embed))))
+        (is (= 2 (- (-> after :query-executions-24h :static_embed)
+                    (-> before :query-executions-24h :static_embed))))
+        (is (= 2 (- (-> after :query-executions-24h :public_link)
+                    (-> before :query-executions-24h :public_link))))
+        (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
+                    (-> before :query-executions-24h :interactive_embed))))))))
