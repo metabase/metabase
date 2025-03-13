@@ -30,7 +30,7 @@ describe(
     let items = {} as SandboxableItems;
 
     before(() => {
-      H.restore("postgres-12");
+      H.restore("mongo-5");
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
       preparePermissions();
@@ -48,7 +48,7 @@ describe(
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
       // this setup is a bit heavy, so let's just do it once
-      H.snapshot("sandboxing-on-postgres-12");
+      H.snapshot("sandboxing-on-mongo-5");
     });
 
     beforeEach(() => {
@@ -57,7 +57,7 @@ describe(
         "dashcardQuery",
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      H.restore("sandboxing-on-postgres-12" as any);
+      H.restore("sandboxing-on-mongo-5" as any);
     });
 
     it("shows all data before sandboxing policy is applied", () => {
