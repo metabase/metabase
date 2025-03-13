@@ -376,7 +376,6 @@ export const SessionApi = {
   createWithGoogleAuth: POST("/api/session/google_auth"),
   delete: DELETE("/api/session"),
   slo: POST("/auth/sso/logout"),
-  properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
 };
@@ -413,7 +412,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
 };
 

@@ -278,6 +278,7 @@ interface InstanceSettings {
   "show-homepage-data": boolean;
   "show-homepage-pin-message": boolean;
   "show-homepage-xrays": boolean;
+  "site-name": string;
   "site-uuid": string;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
@@ -329,7 +330,6 @@ interface SettingsManagerSettings {
   "session-cookie-samesite": SessionCookieSameSite;
   "slack-app-token": string | null;
   "slack-bug-report-channel": string | null;
-  "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
 }
@@ -362,9 +362,15 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
+  gsheets: {
+    status: "not-connected" | "loading" | "complete" | "error";
+    folder_url: string | null;
+    error?: string;
+  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
+  "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "ldap-configured?": boolean;
@@ -384,6 +390,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;

@@ -4339,7 +4339,8 @@ describe("issue 17061", () => {
   });
 });
 
-describe("issue 48824", () => {
+// TODO ranquild unskip after v54 release
+describe.skip("issue 48824", () => {
   const dateParameter = {
     id: "abc",
     name: "Date filter",

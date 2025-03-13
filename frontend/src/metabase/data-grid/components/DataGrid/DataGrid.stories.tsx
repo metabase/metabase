@@ -8,6 +8,7 @@ import type {
 } from "metabase/data-grid/types";
 
 import { DataGrid } from "./DataGrid";
+import classes from "./DataGrid.module.css";
 
 export default {
   title: "DataGrid/DataGrid",
@@ -36,10 +37,10 @@ const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
     id: rowIndex + 1,
     name: `Item ${rowIndex + 1}`,
     category: ["Electronics", "Clothing", "Books", "Food"][rowIndex % 4],
-    price: Math.round(Math.random() * 1000) / 10,
-    quantity: Math.round(Math.random() * 100),
+    price: (rowIndex % 10) + 100,
+    quantity: (rowIndex % 10) + 5,
     description: `This is a sample description for item ${rowIndex + 1}. ${"It can be longer to demonstrate text wrapping. ".repeat(
-      Math.floor(Math.random() * 18) + 1,
+      1 + (rowIndex % 17),
     )}`,
   };
 });
@@ -92,6 +93,67 @@ export const BasicGrid: Story = () => {
   });
 
   return <DataGrid {...tableProps} />;
+};
+
+export const CustomStylesGrid: Story = () => {
+  const getHeaderTemplate = (name: string) => {
+    return function Header() {
+      return (
+        <strong style={{ padding: "0px 12px", fontWeight: "bold" }}>
+          {name}
+        </strong>
+      );
+    };
+  };
+
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: row => row.id,
+        header: getHeaderTemplate("ID"),
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: row => row.name,
+        header: getHeaderTemplate("Name"),
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: row => row.category,
+        header: getHeaderTemplate("Category"),
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+  });
+
+  return (
+    <DataGrid
+      {...tableProps}
+      classNames={{ bodyCell: classes.__storybookStylesApiBodyCellExample }}
+      styles={{
+        root: { border: "1px solid #000" },
+        headerCell: {
+          backgroundColor: "#FAFAFB",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "auto",
+        },
+        tableGrid: { gridTemplateRows: "none" },
+        row: { height: "auto" },
+        headerContainer: { borderBottom: "2px solid #000", height: "auto" },
+      }}
+    />
+  );
 };
 
 export const CombinedFeatures: Story = () => {

@@ -1,0 +1,156 @@
+{:min-bb-version "1.12.196"
+ ;; we put path as bin, and everything is in the ./mage subdirectory,
+ ;; so the namespaces are mage.cli, mage.format, etc.
+ :paths          ["mage" "test"]
+ :deps           {metosin/malli {:mvn/version "0.17.0"}
+                  table/table   {:mvn/version "0.5.0"}}
+ :tasks
+ {:requires [[mage.cli :as cli]]
+
+  cljfmt-staged
+  {:doc      "Runs cljfmt on staged files"
+   :requires [[mage.format :as format]]
+   :examples [["./bin/mage cljfmt-staged" "Format staged files"]
+              ["./bin/mage cljfmt-staged -c" "Check staged files"]]
+   :options  [["-c" "--force-check" "Check staged files"]]
+   :task     (format/staged (cli/parse! (current-task)))}
+
+  cljfmt-files
+  {:doc        "Runs cljfmt on the given files/directories"
+   :requires   [[mage.format :as format]]
+   :examples   [["./bin/mage cljfmt-files src/metabase/events.clj" "Format events.clj"]
+                ["./bin/mage cljfmt-files src" "Format all files in src"]
+                ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
+   :options    [["-c" "--force-check" "Check staged files"]]
+   :arg-schema [:sequential [:string {:description "Files or directories to format."}]]
+   :task       (format/files (cli/parse! (current-task)))}
+
+  cljfmt-all
+  {:doc      "Runs cljfmt on all (clojure) files"
+   :requires [[mage.format :as format]]
+   :examples [["./bin/mage cljfmt-all" "Format all files"]]
+   :options  [["-c" "--force-check" "Check staged files"]]
+   :task     (format/all (cli/parse! (current-task)))}
+
+  cljfmt-updated
+  {:doc        "Runs cljfmt on all (Clojure) files relative to a git ref (default HEAD)"
+   :requires   [[mage.format :as format]]
+   :examples   [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
+                ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
+   :options    [["-c" "--force-check" "Check staged files"]]
+   :arg-schema [:or [:tuple] [:tuple :string]]
+   :task       (format/updated (cli/parse! (current-task)))}
+
+  kondo
+  {:doc      "Runs Kondo against a file, directory, or everything we usually lint"
+   :examples [["./bin/mage kondo" "run Kondo against everything we usually lint"]
+              ["./bin/mage kondo src/metabase/db.clj" "run Kondo against a file"]
+              ["./bin/mage kondo src/metabase/db.clj src/metabase/config.clj" "run Kondo against 2 files"]
+              ["./bin/mage kondo src/metabase/api/macros" "run Kondo against a directory"]]
+   :requires [[mage.kondo :as kondo]]
+   :task     (kondo/kondo (:arguments (cli/parse! (current-task))))}
+
+  kondo-updated
+  {:doc      "Runs kondo against files changed compared to a git ref"
+   :examples [["./bin/mage kondo-updated" "run Kondo on files with changes relative to HEAD"]
+              ["./bin/mage kondo-updated master" "run Kondo on files with changes relative to master"]]
+   :requires [[mage.kondo :as kondo]]
+   :task     (kondo/kondo-updated (:arguments (cli/parse! (current-task))))}
+
+  start-db
+  {:doc        "Start a db on a default port in docker"
+   :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
+                ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
+   :requires   [[mage.start-db :as start-db]]
+   :arg-schema [:tuple
+                [:enum :postgres :mysql :mariadb]
+                [:enum :oldest :latest]]
+   :ports      {:postgres {:oldest 5432 :latest 5433}
+                :mysql    {:oldest 3308 :latest 3309}
+                :mariadb  {:oldest 3306 :latest 3307}}
+   :usage-fn   start-db/usage
+   :task       (let [[db version] (:arguments (cli/parse! (current-task)))]
+                 (start-db/start-db (:ports (current-task)) db version))}
+
+  nrepl
+  {:doc      "Starts the babashka nrepl: helpful for for mage development"
+   :requires [[babashka.nrepl.server :as nrepl.server]
+              [mage.color :as c]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
+   :task     (do
+               (cli/parse! (current-task))
+               (spit ".nrepl-port" 1667)
+               (nrepl.server/start-server!)
+               (deref (promise)))}
+
+  jar-download
+  {:doc        "Given a version, downloads a metabase jar"
+   :examples   [["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
+                ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
+                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
+   :requires   [[mage.jar-download :as jar-download]]
+   :arg-schema [:or
+                [:tuple [:string {:desc "version"}]]
+                [:tuple
+                 [:string {:desc "version"}]
+                 [:string {:desc "path"}]]]
+   :task       (do
+                 (cli/parse! (current-task))
+                 (jar-download/jar-download *command-line-args*))}
+
+  setup-stats-repl
+  {:doc "Connect to the stats repl"
+   :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
+   :requires [[mage.stats-repl :as stats-repl]]
+   :task     (stats-repl/connect (cli/parse! (current-task)))}
+
+  setup-autocomplete
+  {:doc      "Prints instructions to setup autocomplete"
+   :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
+   :requires [[mage.autotab :as autotab]]
+   :task     (do
+               (cli/parse! (current-task))
+               (autotab/instructions))}
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Private Tasks:
+  ;; - hidden from `./bin/mage` listing and `bb tasks`
+  ;; - start with a `-`
+
+  -example-calculator
+  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
+   :doc        "The sample task docstring"
+   ;; examples get printed out when you pass -h or --help.
+   :examples   [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
+                ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
+   ;; The task is the actual code that runs when you run the task.
+   :task       (let [{:keys [arguments data]} (cli/parse! (current-task))
+                     [a op b]                 arguments]
+                 (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b))))
+   ;; (optional) `:require` lazily libraries for just your task:
+   :requires   [[mage.color :as c]]
+   ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
+   ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
+   :options    [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
+                ["-p" "--port PORT" "Some port we care about in -example (not actually used)"]]
+   ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
+   :arg-schema [:tuple :int [:enum :+ :-] :int]
+   ;; (optional) `:usage-fn` is a function called with the current-task map
+   ;; and returns a string containing extra-detailed usage information.
+   :usage-fn   (fn [{:keys [doc]}]
+                 (println "Optional extra usage information, if you want.")
+                 (println "Reversed docstring:" (apply str (reverse doc))))
+   ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
+   ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
+   ;; map of ports.
+   :data       {:a [:b :c] :b [:d]}}
+
+  -test-help {:doc      "run all mage tests"
+              :requires [[mage.core-test :as core-test]]
+              :task     (System/exit
+                         (if (= :ok (core-test/run-tests)) 0 1))}
+
+  -test-examples
+  {:doc      "Runs every example and checks that it exits with 0"
+   :requires [[mage.examples-test :as examples-test]]
+   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}}}

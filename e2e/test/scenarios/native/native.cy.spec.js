@@ -300,7 +300,7 @@ describe("scenarios > question > native", () => {
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Here's where your results will appear").should("be.visible");
+    cy.findByText("Query results will appear here.").should("be.visible");
   });
 
   it("should allow to preview a fully parameterized query", () => {
@@ -500,7 +500,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.startNewNativeQuestion();
       cy.findByTestId("gui-builder-data").click();
       cy.findByLabelText(MONGO_DB_NAME).click();
-      cy.findByLabelText("Format query").should("not.exist");
+      cy.findByLabelText("Auto-format").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
 
@@ -514,7 +514,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // It should load the formatter chunk only when used
       cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
 
-      cy.findByLabelText("Format query").click();
+      cy.findByLabelText("Auto-format").click();
 
       cy.wait("@sqlFormatter");
 
@@ -536,8 +536,6 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   it("should show tables", () => {
     H.startNewNativeQuestion();
-    referenceButton().click();
-
     sidebarHeaderTitle().should("have.text", "Sample Database");
 
     dataReferenceSidebar().within(() => {
@@ -578,7 +576,6 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
 
     H.startNewNativeQuestion();
-    referenceButton().click();
 
     dataReferenceSidebar().within(() => {
       cy.findByText("2 models");
@@ -594,7 +591,6 @@ describe("scenarios > native question > data reference sidebar", () => {
   describe("metrics", () => {
     it("should not show metrics when they are not defined on the selected table", () => {
       H.startNewNativeQuestion();
-      referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
       dataReferenceSidebar().within(() => {
@@ -607,7 +603,6 @@ describe("scenarios > native question > data reference sidebar", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
 
       H.startNewNativeQuestion();
-      referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
       dataReferenceSidebar().within(() => {
@@ -623,10 +618,6 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
   });
 });
-
-function referenceButton() {
-  return cy.icon("reference");
-}
 
 function sidebarHeaderTitle() {
   return cy.findByTestId("sidebar-header-title");

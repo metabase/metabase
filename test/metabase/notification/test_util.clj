@@ -7,12 +7,12 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
-   [metabase.integrations.slack :as slack]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.task.send :as task.notification]
    [metabase.task :as task]
-   [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -47,7 +47,7 @@
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
-  `(binding [notification/*default-options* {:notification/sync? true}]
+  `(binding [notification.send/*default-options* {:notification/sync? true}]
      ~@body))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -186,8 +186,7 @@
                                                                  email-smtp-port 587
                                                                  site-url        "https://testmb.com/"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
-                                (thunk)))})
+   :channel/slack (fn [thunk] (thunk))})
 
 (defn apply-channel-fixtures
   [channel-types thunk]
