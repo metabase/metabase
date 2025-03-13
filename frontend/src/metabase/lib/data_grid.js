@@ -97,6 +97,7 @@ export function multiLevelPivot(data, settings) {
     rowIndexes: rowIndexes,
     columnIndexes: columnIndexes,
     valueIndexes: valueIndexes,
+    columnsWithoutPivotGroup: columns,
   };
 }
 

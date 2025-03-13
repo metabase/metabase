@@ -101,6 +101,7 @@
               {:keys [pivot-grouping-key]} @pivot-data
               group                    (get ordered-row pivot-grouping-key)]
           (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
+            ;; TODO: try using a transient
             (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))

@@ -65,10 +65,11 @@
      :primary-rows-key (into [] (range num-breakouts))
      :columns columns}))
 
-;; TODO: This can omit the primary rows from the result as a small optimization
 (defn- get-subtotal-values
-  "For each split of the pivot data returned by `split-pivot-data`, returns a maping from the column values in each row to the measure values."
-  [pivot-data val-indexes]
+  "For each split of the pivot data returned by `split-pivot-data`, aside from
+  the primary rows, returns a mapping from the column values in each row to the
+  measure values."
+  [pivot-data val-indexes primary-rows-key]
   (m/map-kv-vals
    (fn [column-indexes rows]
      (reduce
@@ -79,7 +80,7 @@
                  (map #(nth row %) val-indexes))))
       {}
       rows))
-   pivot-data))
+   (dissoc pivot-data primary-rows-key)))
 
 (defn- collapse-level
   "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
@@ -138,18 +139,19 @@
      (fn [acc row]
        (let [value-key  (select-indexes row col-and-row-indexes)
              values     (select-indexes row val-indexes)
-             ;; @tsp - this now assumes that cols is indexed the same as the row
              data       (map-indexed
                          (fn [index value]
                            {:value value
-                            :col (nth cols index)})
+                            :colIdx index})
                          row)
              ;; @tsp TODO? this could use the `data` above
              dimensions (->> row
                              (map-indexed (fn [index value]
                                             {:value value
-                                             :column (nth cols index)}))
-                             (filter (fn [{column :column}] (= (column :source) "breakout"))))
+                                             :column (nth cols index)
+                                             :colIdx index}))
+                             (filter (fn [{column :column}] (= (column :source) "breakout")))
+                             (map #(dissoc % :column)))
              value-columns (select-indexes cols val-indexes)]
          (assoc acc
                 value-key
@@ -259,19 +261,20 @@
      :values-by-key values-by-key}))
 
 (defn- format-values-in-tree
-  [tree formatters cols]
+  "Walks a tree, formatting values and annotating each value with its color for
+  conditional formatting, as well as data that powers drill-throughs on the
+  FE."
+  [tree formatters cols col-indexes]
   (let [formatter (first formatters)
-        col       (first cols)]
+        col-idx   (first col-indexes)]
     (map
      (fn [{:keys [value children] :as node}]
        (assoc node
               :value (formatter value)
-              :children (format-values-in-tree children (rest formatters) (rest cols))
+              :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
               :rawValue value
               :clicked {:value value
-                        :column col
-                        :data [{:value value
-                                :col col}]}))
+                        :colIdx col-idx}))
      tree)))
 
 (defn- should-show-row-totals?
@@ -479,7 +482,8 @@
       (map-indexed
        (fn [index value]
          (assoc value
-                :clicked {:data data :dimensions dimensions}
+                :clicked {:data       data
+                          :dimensions dimensions}
                 :backgroundColor (color-getter
                                   (nth values index)
                                   index
@@ -566,13 +570,13 @@
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
   [data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings & [make-color-getter]]
-  (let [pivot-data (:pivot-data (split-pivot-data data))
+  (let [{:keys [pivot-data primary-rows-key]} (split-pivot-data data)
         color-getter (if make-color-getter
                        (make-color-getter (get-rows-from-pivot-data pivot-data row-indexes col-indexes))
                        (constantly nil))
         {:keys [row-tree col-tree values-by-key]} (build-pivot-trees pivot-data columns row-indexes col-indexes val-indexes settings col-settings)
         left-index-columns (select-indexes columns row-indexes)
-        formatted-row-tree-without-subtotals (into [] (format-values-in-tree row-tree left-formatters left-index-columns))
+        formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters left-index-columns row-indexes)
         formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
         formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
                                          (maybe-add-grand-totals-row formatted-row-tree settings)
@@ -582,14 +586,14 @@
                        maybe-add-empty-path
                        (into []))
         top-index-columns (select-indexes columns col-indexes)
-        formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns))
+        formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns col-indexes))
         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)
         col-paths (->> formatted-col-tree-with-totals
                        (mapcat enumerate-paths)
                        maybe-add-empty-path
                        (into []))
         formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
-        subtotal-values (get-subtotal-values pivot-data val-indexes)]
+        subtotal-values (get-subtotal-values pivot-data val-indexes primary-rows-key)]
     {:columnIndex col-paths
      :rowIndex row-paths
      :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)

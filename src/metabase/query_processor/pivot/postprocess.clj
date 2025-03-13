@@ -93,6 +93,7 @@
         (get col-settings {::mb.viz/column-name (:name col)})))
      cols)))
 
+;; TODO: see if this can be simplified
 (defn- create-formatters
   [columns indexes timezone settings format-rows?]
   (mapv (fn [idx]
@@ -109,25 +110,24 @@
 
 (defn- build-top-headers
   [top-left-header top-header-items]
-  (let [max-depth (if (empty? top-header-items)
-                    0
-                    (apply max (map :depth top-header-items)))
-        left-width (count top-left-header)
-        init-rows (for [i (range (inc max-depth))]
-                    (if (= i max-depth)
-                      (vec top-left-header)
-                      (vec (repeat left-width nil))))
-        result (vec init-rows)]
-    (reduce
-     (fn [acc item]
-       (let [{:keys [depth value span]} item
-             current-row (get acc depth)
-             new-row (-> current-row
-                         (conj value)
-                         (into (repeat (dec span) value)))]
-         (assoc acc depth new-row)))
-     result
-     top-header-items)))
+  (if (empty? top-header-items)
+    [(vec top-left-header)]  ;; Return just the top-left header for empty input
+    (let [max-depth   (apply max (map :depth top-header-items))
+          left-width  (count top-left-header)
+          ;; Initialize rows - all rows except the last one are filled with nil
+          header-rows (-> (vec (repeat max-depth (vec (repeat left-width nil))))
+                          (conj (vec top-left-header)))]
+      ;; Fill in the header values for each item
+      (reduce
+       (fn [rows {:keys [depth value span]}]
+         (let [current-row (get rows depth)
+               ;; Add the value and repeat it for the span
+               new-row     (-> current-row
+                               (conj value)
+                               (into (repeat (dec span) value)))]
+           (assoc rows depth new-row)))
+       header-rows
+       top-header-items))))
 
 (defn- build-left-headers
   [left-header-items]
@@ -173,9 +173,10 @@
     (vec result)))
 
 (defn build-pivot-output
-  "Processes pivot data into the final pivot structure for exports."
+  "Processes pivot data into the final pivot structure for exports. Calls into metabase.pivot.core, which is the
+  postprocessing code shared with the FE pivot table implementation."
   [{:keys [data settings timezone format-rows? pivot-export-options]}]
-  (let [columns (pivot/columns-without-pivot-group (:cols data))
+  (let [columns                  (pivot/columns-without-pivot-group (:cols data))
         column-split             (:pivot_table.column_split settings)
         row-indexes              (:pivot-rows pivot-export-options)
         col-indexes              (:pivot-cols pivot-export-options)

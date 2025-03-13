@@ -345,6 +345,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       rowIndexes,
       columnIndexes,
       valueIndexes,
+      columnsWithoutPivotGroup,
     } = pivoted;
 
     const topHeaderRows =
@@ -358,9 +359,58 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (!clicked) {
         return undefined;
       }
+
+      // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
+      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
+      let updatedClicked = { ...clicked };
+
+      if (typeof updatedClicked.colIdx === "number") {
+        updatedClicked = {
+          ...updatedClicked,
+          column: columnsWithoutPivotGroup[updatedClicked.colIdx],
+          data: !updatedClicked.data
+            ? [
+                {
+                  value: updatedClicked.value,
+                  col: columnsWithoutPivotGroup[updatedClicked.colIdx] || null,
+                },
+              ]
+            : updatedClicked.data,
+        };
+        // Create a new object without the colIdx property
+        const { colIdx, ...withoutColIdx } = updatedClicked;
+        updatedClicked = withoutColIdx;
+      } else if (updatedClicked.data) {
+        updatedClicked = {
+          ...updatedClicked,
+          data: updatedClicked.data.map(item => ({
+            ...item,
+            col:
+              item.colIdx !== undefined
+                ? columnsWithoutPivotGroup[item.colIdx]
+                : null,
+            colIdx: undefined,
+          })),
+        };
+      }
+
+      if (updatedClicked.dimensions) {
+        updatedClicked = {
+          ...updatedClicked,
+          dimensions: updatedClicked.dimensions.map(item => ({
+            ...item,
+            column:
+              item.colIdx !== undefined
+                ? columnsWithoutPivotGroup[item.colIdx]
+                : null,
+            colIdx: undefined,
+          })),
+        };
+      }
+
       return (e: React.MouseEvent) =>
         onVisualizationClick({
-          ...clicked,
+          ...updatedClicked,
           event: e.nativeEvent,
           settings,
         });
@@ -439,6 +489,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       key={key}
                       style={style}
                       item={topHeaderItems[index]}
+                      columns={columnsWithoutPivotGroup}
                       getCellClickHandler={getCellClickHandler}
                       isNightMode={isNightMode}
                       onResize={(newWidth: number) =>
@@ -538,6 +589,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               rowSection={getRowSection(columnIndex, rowIndex)}
                               isNightMode={isNightMode}
                               getCellClickHandler={getCellClickHandler}
+                              columns={columnsWithoutPivotGroup}
                               cellWidths={getCellWidthsForSection(
                                 valueHeaderWidths,
                                 valueIndexes,
