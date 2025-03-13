@@ -2,7 +2,7 @@
   "extends": "../../../../../../../tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "*": ["../../../../../../../enterprise/frontend/src/*"],
+      "*": ["../../../*"],
       "@metabase/embedding-sdk-react": ["../../../../../../../resources/embedding-sdk"]
     },
     "noImplicitAny": false,
