@@ -1,16 +1,12 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
-   [metabase-enterprise.impersonation.core :as impersonation]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.params.field-values :as params.field-values]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (comment api/keep-me)
