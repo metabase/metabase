@@ -6,6 +6,8 @@ global.window.matchMedia = () => ({
   removeEventListener: () => {},
 });
 
+HTMLElement.prototype.scrollIntoView = () => {};
+
 global.window.ResizeObserver = class ResizeObserver {
   observe() {}
 
