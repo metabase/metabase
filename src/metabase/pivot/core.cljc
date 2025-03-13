@@ -137,8 +137,9 @@
   [row indexes]
   (map #(nth row %) indexes))
 
-(defn build-values-by-key
-  "Replicate valuesByKey construction"
+(defn- build-values-by-key
+  "Creates a mapping from row and column indexes to the values, as well as
+  metadata used for conditional formatting and drill-throughs."
   [rows cols row-indexes col-indexes val-indexes]
   (let [col-and-row-indexes (concat col-indexes row-indexes)]
     (reduce
@@ -150,7 +151,6 @@
                            {:value value
                             :colIdx index})
                          row)
-             ;; @tsp TODO? this could use the `data` above
              dimensions (->> row
                              (map-indexed (fn [index value]
                                             {:value value
@@ -158,11 +158,13 @@
                                              :colIdx index}))
                              (filter (fn [{column :column}] (= (column :source) "breakout")))
                              (map #(dissoc % :column)))
-             value-columns (select-indexes cols val-indexes)]
+             col-names  (->> (select-indexes cols val-indexes)
+                             (map :name)
+                             (into []))]
          (assoc acc
                 value-key
                 {:values values
-                 :valueColumns value-columns
+                 :valueCoumnNames col-names
                  :data data
                  :dimensions dimensions})))
      {}
@@ -488,7 +490,7 @@
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
   [values-by-key index-values value-formatters color-getter]
-  (let [{:keys [values valueColumns data dimensions]} (get values-by-key index-values)
+  (let [{:keys [values valueColumnNames data dimensions]} (get values-by-key index-values)
         formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
@@ -500,7 +502,7 @@
                 :backgroundColor (color-getter
                                   (nth values index)
                                   index
-                                  (:name (nth valueColumns index)))))
+                                  (:name (nth valueColumnNames index)))))
        formatted-values))))
 
 (defn- is-subtotal?
@@ -524,17 +526,16 @@
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
   [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
-  (memoize
-   (fn [col-index row-index]
-     (let [col-values (nth col-paths col-index [])
-           row-values (nth row-paths row-index [])
-           index-values (concat col-values row-values)
-           result (if (is-subtotal? row-values col-values row-indexes col-indexes)
-                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
-                    (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
-       ;; Convert to JavaScript object if in ClojureScript context
-       #?(:cljs (clj->js result)
-          :clj result)))))
+  (fn [col-index row-index]
+    (let [col-values (nth col-paths col-index [])
+          row-values (nth row-paths row-index [])
+          index-values (concat col-values row-values)
+          result (if (is-subtotal? row-values col-values row-indexes col-indexes)
+                   (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
+                   (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
+      ;; Convert to JavaScript object if in ClojureScript context
+      #?(:cljs (clj->js result)
+         :clj result))))
 
 (defn- tree-to-array
   "Flattens a hierarchical tree structure into an array of nodes with positioning information.

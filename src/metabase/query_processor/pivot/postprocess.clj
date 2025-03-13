@@ -93,14 +93,22 @@
         (get col-settings {::mb.viz/column-name (:name col)})))
      cols)))
 
-;; TODO: see if this can be simplified
+(defn- get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))
+
 (defn- create-formatters
   [columns indexes timezone settings format-rows?]
-  (mapv (fn [idx]
-          (fn [value]
-            ((formatter/create-formatter timezone (nth columns idx) settings format-rows?)
-             (common/format-value value))))
-        indexes))
+  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [column (nth columns idx)
+                  formatter (formatter-fn column)]
+              (fn [value]
+                (formatter (common/format-value value)))))
+          indexes)))
 
 (defn- make-formatters
   [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
