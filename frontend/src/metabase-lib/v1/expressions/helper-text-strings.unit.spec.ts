@@ -3,6 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
+import { MBQL_CLAUSES } from "./config";
+import { format } from "./formatter";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -115,6 +117,23 @@ describe("getHelpText", () => {
 
       expect(helpText?.description).toMatch("UTC");
     });
+  });
+
+  it("all help texts can be formatted", async () => {
+    for (const name in MBQL_CLAUSES) {
+      const { database } = setup();
+      const helpText = getHelpText(name, database, reportTimezone);
+      if (!helpText) {
+        continue;
+      }
+      expect(() =>
+        format(helpText.example, {
+          // @ts-expect-error: we do not depend on the query in examples
+          query: null,
+          stageIndex: -1,
+        }),
+      ).not.toThrow();
+    }
   });
 });
 

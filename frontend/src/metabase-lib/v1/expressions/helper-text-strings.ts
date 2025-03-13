@@ -8,6 +8,8 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
+import { adjustCaseOrIf } from "./recursive-parser";
+
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
   reportTimezone,
@@ -1247,7 +1249,8 @@ const getHelpExample = ({ name, args = [] }: HelpTextConfig): Expression => {
       parameters.push(arg.example);
     }
   }
-  return [name, ...parameters];
+
+  return adjustCaseOrIf([name, ...parameters]);
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
