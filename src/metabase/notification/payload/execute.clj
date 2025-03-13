@@ -253,37 +253,20 @@
   [creator-id :- pos-int?
    card-id :- pos-int?
    & {:as options}]
-  (try
-    (when-let [{query     :dataset_query
-                metadata  :result_metadata
-                card-type :type
-                :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
-      (let [query         (assoc query :async? false)
-            process-fn (if (= :pivot (:display card))
-                         qp.pivot/run-pivot-query
-                         qp/process-query)
-            process-query (fn []
-                            (binding [qp.perms/*card-id* card-id]
-                              (process-fn
-                               (qp/userland-query
-                                (assoc query
-                                       :middleware {:skip-results-metadata?            false
-                                                    :process-viz-settings?             true
-                                                    :js-int-to-string?                 false
-                                                    :add-default-userland-constraints? false})
-                                (merge (cond-> {:executed-by creator-id
-                                                :context     :pulse
-                                                :card-id     card-id}
-                                         (= card-type :model)
-                                         (assoc :metadata/model-metadata metadata))
-                                       {:visualization-settings (:visualization_settings card)}
-                                       options)))))
-            result        (if creator-id
-                            (request/with-current-user creator-id
-                              (process-query))
-                            (process-query))]
-        {:card   card
-         :result result
-         :type   :card}))
-    (catch Throwable e
-      (log/warnf e "Error running query for Card %s" card-id))))
+  (let [result (request/with-current-user creator-id
+                 (qp.card/process-query-for-card card-id :api
+                                                 ;; TODO rename to :notification?
+                                                 :context    :pulse
+                                                 :middleware {:skip-results-metadata?            false
+                                                              :process-viz-settings?             true
+                                                              :js-int-to-string?                 false
+                                                              :add-default-userland-constraints? false}
+                                                 :make-run      (fn make-run [qp _export-format]
+                                                                  (^:once fn* [query info]
+                                                                    (qp
+                                                                     (qp/userland-query query info)
+                                                                     nil)))))]
+
+    {:card   (t2/select-one :model/Card card-id)
+     :result result
+     :type   :card}))
