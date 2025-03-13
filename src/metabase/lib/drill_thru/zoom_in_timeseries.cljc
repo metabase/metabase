@@ -131,7 +131,7 @@
         new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
         stage-number           (lib.underlying/top-level-stage-number query)
         resolved-column        (lib.drill-thru.common/breakout->resolved-column
-                                query stage-number column {:preserve-bucketing? true})]
+                                query stage-number column {:preserve-type? true})]
     (-> query
         (lib.filter/filter stage-number (lib.filter/= resolved-column value))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))

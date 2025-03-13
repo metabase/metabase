@@ -86,7 +86,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     column       :- ::lib.schema.metadata/column
-    {:keys [preserve-bucketing?]}]
+    {:keys [preserve-type?]}]
    ;; TODO: This is a hack to workaround field refs confusion that should be fixed by the field refs overhaul. Remove
    ;; this function and possible-model-mapped-breakout-column?, above, once the field refs overhaul lands.
    ;;
@@ -98,13 +98,19 @@
    ;; id-based ref will wind up generating SQL that matches the underlying mapped column's name, not the name of the
    ;; column from the model's native query (which was renamed via "AS").
    ;;
+   ;; When a breakout column is bucketed by day, it is cast to type/Date. If we create filters for such a column,
+   ;; the QP will assume that there is no time component and, for example, it can generate a simple equality clause
+   ;; instead of a greater-than-or-equal and a less-than clause pair.  But (in most cases) we are removing the
+   ;; bucketing and add filters on the column that's the source of the breakout column. To find the "source" column
+   ;; we create a ref without the type specification and search for that.
+   ;;
    ;; https://github.com/metabase/metabase/issues/53556
    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1739904084459979
    (if-not (or (possible-model-mapped-breakout-column? query column)
                (day-bucketed-breakout-column? column))
      column
      (let [field-ref (cond-> (lib.ref/ref column)
-                       (not preserve-bucketing?) (update 1 dissoc :base-type :effective-type))
+                       (not preserve-type?) (update 1 dissoc :base-type :effective-type))
            resolved-column  (lib.metadata.calculation/metadata query stage-number field-ref)
            underlying-unit  (::lib.underlying/temporal-unit column)
            matching-column  (some-> resolved-column
