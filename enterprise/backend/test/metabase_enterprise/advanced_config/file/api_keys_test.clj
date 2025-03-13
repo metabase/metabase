@@ -121,4 +121,4 @@
             (is (thrown? clojure.lang.ExceptionInfo
                         (config.file/initialize!)))
             (finally
-              (cleanup-config!))))))))) 
+              (cleanup-config!)))))))))
