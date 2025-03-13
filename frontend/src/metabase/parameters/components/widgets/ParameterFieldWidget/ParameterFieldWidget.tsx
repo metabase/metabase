@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,31 +6,32 @@ import _ from "underscore";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
 } from "metabase-lib/v1/operators/utils";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import type { Dashboard, RowValue } from "metabase-types/api";
 
 import { Footer, WidgetRoot } from "../Widget";
 
 import { normalizeValue } from "./normalizeValue";
 
-const propTypes = {
-  fields: PropTypes.array.isRequired,
-  isEditing: PropTypes.bool.isRequired,
-  parameter: PropTypes.object.isRequired,
-  parameters: PropTypes.array.isRequired,
-  setValue: PropTypes.func.isRequired,
-  value: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.arrayOf(PropTypes.string),
-  ]),
-  question: PropTypes.object,
-  dashboard: PropTypes.object,
-};
+interface ParameterFieldWidgetProps {
+  fields: Field[];
+  isEditing?: boolean;
+  parameter: UiParameter;
+  parameters?: UiParameter[];
+  setValue: (value: RowValue[]) => void;
+  value?: string | string[];
+  question?: Question;
+  dashboard?: Dashboard | null;
+}
 
-export default function ParameterFieldWidget({
+export function ParameterFieldWidget({
   value,
   setValue,
   isEditing,
@@ -40,8 +40,10 @@ export default function ParameterFieldWidget({
   parameters,
   question,
   dashboard,
-}) {
-  const [unsavedValue, setUnsavedValue] = useState(() => normalizeValue(value));
+}: ParameterFieldWidgetProps) {
+  const [unsavedValue, setUnsavedValue] = useState<RowValue[]>(() =>
+    normalizeValue(value),
+  );
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
@@ -65,8 +67,8 @@ export default function ParameterFieldWidget({
             ? unsavedValue
             : [unsavedValue[index]];
           const onValueChange = supportsMultipleValues
-            ? newValues => setUnsavedValue(newValues)
-            : ([value]) => {
+            ? (newValues: RowValue[]) => setUnsavedValue(newValues)
+            : ([value]: RowValue[]) => {
                 const newValues = [...unsavedValue];
                 newValues[index] = value;
                 setUnsavedValue(newValues);
@@ -108,5 +110,3 @@ export default function ParameterFieldWidget({
     </WidgetRoot>
   );
 }
-
-ParameterFieldWidget.propTypes = propTypes;
