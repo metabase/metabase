@@ -137,16 +137,18 @@ export const ModelPersistenceConfiguration = () => {
           error={null}
           loading={modelPersistenceEnabled === undefined}
         >
-          <Switch
-            mt="sm"
-            label={
-              <Text fw="bold">
-                {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
-              </Text>
-            }
-            onChange={onSwitchChanged}
-            checked={modelPersistenceEnabled}
-          />
+          <Stack align="flex-start">
+            <Switch
+              mt="sm"
+              label={
+                <Text fw="bold">
+                  {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
+                </Text>
+              }
+              onChange={onSwitchChanged}
+              checked={modelPersistenceEnabled}
+            />
+          </Stack>
         </DelayedLoadingAndErrorWrapper>
       </Box>
       {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
