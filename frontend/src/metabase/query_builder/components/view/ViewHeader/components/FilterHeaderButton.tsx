@@ -7,7 +7,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -63,18 +63,20 @@ export function FilterHeaderButton({
         </Popover.Dropdown>
       </Popover>
       {shouldShowFilterPanelExpander && (
-        <Button
-          aria-label={label}
-          className={ViewTitleHeaderS.FilterButtonAttachment}
-          onClick={isExpanded ? onCollapse : onExpand}
-          data-testid="filters-visibility-control"
-          data-expanded={isExpanded}
-          style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
-        >
-          <div className={ViewTitleHeaderS.FilterCountChip}>
-            {items?.length}
-          </div>
-        </Button>
+        <Tooltip label={label}>
+          <Button
+            aria-label={label}
+            className={ViewTitleHeaderS.FilterButtonAttachment}
+            onClick={isExpanded ? onCollapse : onExpand}
+            data-testid="filters-visibility-control"
+            data-expanded={isExpanded}
+            style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
+          >
+            <div className={ViewTitleHeaderS.FilterCountChip}>
+              {items?.length}
+            </div>
+          </Button>
+        </Tooltip>
       )}
     </Button.Group>
   );
