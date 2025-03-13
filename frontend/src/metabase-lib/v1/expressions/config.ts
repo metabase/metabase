@@ -78,6 +78,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `DistinctIf`,
     type: "aggregation",
     args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
   },
   "sum-where": {
     displayName: `SumIf`,
@@ -506,13 +507,13 @@ export function getMBQLName(expressionName: string) {
 export const AGGREGATION_FUNCTIONS = new Set([
   // count-where/sum-where must come before count/sum
   "count-where",
-  "distinct-where",
   "sum-where",
   "count",
   "cum-count",
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",
