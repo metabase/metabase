@@ -1256,9 +1256,9 @@ describe("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      H.dashboardGrid()
-        .findByText(/Rows 1-\d of first 2000/)
-        .should("be.visible");
+      H.dashboardGrid().within(() => {
+        H.assertTableRowsCount(2000);
+      });
     });
 
     it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
@@ -1286,9 +1286,9 @@ describe("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
         "not.exist",
       );
-      H.dashboardGrid()
-        .findByText(/Rows 1-\d of first 2000/)
-        .should("be.visible");
+      H.dashboardGrid().within(() => {
+        H.assertTableRowsCount(2000);
+      });
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-empty-state").should("be.visible");
     });
