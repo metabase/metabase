@@ -192,26 +192,6 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
-    name: "distinct-where",
-    structure: "DistinctIf",
-    description: () =>
-      t`The number of distinct values in this column, limited to rows where the condition is true.`,
-    args: [
-      {
-        name: t`column`,
-        description: t`The column whose distinct values to count.`,
-        example: formatIdentifier(t`Subtotal`),
-      },
-      {
-        name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
-        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
-          t`Valid`,
-        )}`,
-      },
-    ],
-  },
-  {
     name: "sum-where",
     structure: "SumIf",
     description: () =>
