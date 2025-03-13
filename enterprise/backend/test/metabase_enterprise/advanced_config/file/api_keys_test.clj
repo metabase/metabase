@@ -6,8 +6,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
                       (binding [config.file/*supported-versions* {:min 1, :max 1}]
@@ -26,15 +25,15 @@
     (.delete (java.io.File. "config.yml"))))
 
 (defn- api-key-exists? [name]
-  (boolean (t2/select-one :model/APIKey :name name)))
+  (t2/exists :model/ApiKey :name name))
 
 (defn- api-key-user-exists? [name]
-  (boolean (t2/select-one :model/User :first_name name :type :api-key)))
+  (t2/exists? :model/User :first_name name :type :api-key))
 
 (deftest api-keys-config-test
   (mt/with-temp-env-var-value [mb-config-file-path "config.yml"]
     (mt/with-premium-features #{:config-text-file}
-      (t2.with-temp/with-temp [:model/User {:email "admin@test.com"
+      (mt/with-temp/with-temp [:model/User {:email "admin@test.com"
                                             :first_name "Admin"
                                             :is_superuser true}]
         (testing "should create API keys from config"
@@ -66,7 +65,7 @@
 
         (testing "should fail if creator is not an admin"
           (try
-            (t2.with-temp/with-temp [:model/User {:email "regular@test.com"
+            (mt/with-temp/with-temp [:model/User {:email "regular@test.com"
                                                   :first_name "Regular"
                                                   :is_superuser false}]
               (write-config!
