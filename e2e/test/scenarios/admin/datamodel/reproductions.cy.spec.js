@@ -216,6 +216,30 @@ describe("issue 52411", { tags: "@external" }, () => {
   });
 });
 
+describe("issue 53595", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
+  });
+
+  it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
+    cy.visit("/admin/datamodel");
+    cy.wait("@getSchema");
+    cy.findAllByTestId("admin-metadata-table-list-item").eq(0).click();
+
+    cy.findByTestId("column-ID")
+      .findByPlaceholderText("Select a semantic type")
+      .clear()
+      .type("cu");
+
+    H.popover().findByText("Currency").should("be.visible");
+    H.popover().then($popover => {
+      expect(H.isScrollableVertically($popover[0])).to.be.false;
+    });
+  });
+});
+
 function waitForFieldSyncToFinish(iteration = 0) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   // If it doesn't, we have a much bigger problem than this issue.
