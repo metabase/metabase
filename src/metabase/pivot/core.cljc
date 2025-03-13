@@ -240,13 +240,6 @@
       (transient [])
       tree))))
 
-(defn- get-rows-from-pivot-data
-  [pivot-data row-indexes col-indexes]
-  (let [primary-rows-key (range (+ (count row-indexes)
-                                   (count col-indexes)))]
-
-    (get pivot-data primary-rows-key)))
-
 (defn build-pivot-trees
   "Constructs the pivot table's tree structures for rows and columns.
 
