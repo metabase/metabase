@@ -33,7 +33,8 @@
 (defn- open-test-table!
   "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
 
-  Returned box is java.io.Closeable so you can clean up with `with-open`. Otherwise .close the box to drop the table when finished."
+  Returned box is java.io.Closeable so you can clean up with `with-open`.
+  Otherwise .close the box to drop the table when finished."
   ^Closeable []
   (let [db         (t2/select-one :model/Database (mt/id))
         driver     :h2
