@@ -275,10 +275,16 @@ export const getRoutes = store => {
               component={BrowseTables}
             />
             {PLUGIN_DATA_EDITING.isEnabled() && (
-              <Route
-                path="databases/:dbId/tables/:tableId"
-                component={PLUGIN_DATA_EDITING.PAGE_COMPONENT}
-              />
+              <>
+                <Route
+                  path="databases/:dbId/tables/:tableId"
+                  component={PLUGIN_DATA_EDITING.VIEW_PAGE_COMPONENT}
+                />
+                <Route
+                  path="databases/:dbId/tables/:tableId/edit"
+                  component={PLUGIN_DATA_EDITING.EDIT_PAGE_COMPONENT}
+                />
+              </>
             )}
 
             {/* These two Redirects support legacy paths in v48 and earlier */}

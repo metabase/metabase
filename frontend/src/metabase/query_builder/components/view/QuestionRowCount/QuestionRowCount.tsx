@@ -185,7 +185,7 @@ function getLimitMessage(question: Question, result: Dataset): string {
   return t`Showing first ${HARD_ROW_LIMIT} rows`;
 }
 
-function getRowCountMessage(result: Dataset): string {
+export function getRowCountMessage(result: Dataset): string {
   if (result.data.rows_truncated > 0) {
     return t`Showing first ${formatRowCount(result.row_count)}`;
   }

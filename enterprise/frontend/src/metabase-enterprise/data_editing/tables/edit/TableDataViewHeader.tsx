@@ -2,18 +2,16 @@ import type React from "react";
 import { t } from "ttag";
 
 import { Box, Group, Title } from "metabase/ui";
-import type { Database } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { TableDataViewBackButton } from "./TableDataViewBackButton";
 
 interface TableDataViewHeaderProps {
-  database: Database;
-  tableName?: string;
+  table: Table;
 }
 
 export const TableDataViewHeader = ({
-  database,
-  tableName,
+  table,
 }: TableDataViewHeaderProps): React.JSX.Element => {
   return (
     <Box
@@ -22,8 +20,8 @@ export const TableDataViewHeader = ({
       bd="1px solid var(--mb-color-border)"
     >
       <Group gap="sm">
-        <TableDataViewBackButton database={database} />
-        {tableName && <Title>{t`Editing ${tableName}`}</Title>}
+        <TableDataViewBackButton table={table} />
+        <Title>{t`Editing ${table.display_name}`}</Title>
       </Group>
     </Box>
   );

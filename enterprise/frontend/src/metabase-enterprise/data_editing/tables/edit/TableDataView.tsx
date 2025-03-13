@@ -13,9 +13,10 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
+import type { UpdatedRowCellsHandlerParams } from "../types";
+
 import { EditingBodyCellConditional } from "./EditingBodyCell";
 import S from "./TableDataView.module.css";
-import type { UpdatedRowCellsHandlerParams } from "./types";
 import { useTableEditing } from "./use-table-editing";
 
 type TableDataViewProps = {

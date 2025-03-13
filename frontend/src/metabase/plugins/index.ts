@@ -603,7 +603,13 @@ export const PLUGIN_DATA_EDITING = {
   hasDatabaseTableEditingEnabled: (
     _database: Database | DatabaseType,
   ): boolean => false,
-  PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
     params: {
       dbId: string;
       tableId: string;

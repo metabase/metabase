@@ -6,7 +6,7 @@
 
 .gridWrapper {
   overflow: hidden;
-  flex: 1 1 auto;
+  flex-grow: 1;
 }
 
 /** DataGrid overrides */

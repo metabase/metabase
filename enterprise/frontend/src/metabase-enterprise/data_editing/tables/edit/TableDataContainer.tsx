@@ -12,14 +12,14 @@ import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
+import { hasDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
-import { hasDatabaseTableEditingEnabled } from "../settings";
+import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";
 import { TableDataViewHeader } from "./TableDataViewHeader";
-import type { UpdatedRowCellsHandlerParams } from "./types";
 
 type TableDataViewProps = {
   params: {
@@ -37,7 +37,9 @@ export const TableDataContainer = ({
   const dispatch = useDispatch();
 
   const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
-  const { data: table } = useGetTableQuery({ id: tableId });
+  const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
+    id: tableId,
+  });
 
   const {
     data: datasetData,
@@ -86,7 +88,7 @@ export const TableDataContainer = ({
     [datasetData, refetchTableDataQuery, tableId, updateTableRows],
   );
 
-  if (!database || isLoading) {
+  if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
     return null;
   }
@@ -103,10 +105,7 @@ export const TableDataContainer = ({
       direction="column"
       justify="stretch"
     >
-      <TableDataViewHeader
-        database={database}
-        tableName={table?.display_name}
-      />
+      {table && <TableDataViewHeader table={table} />}
       {hasDatabaseTableEditingEnabled(database) ? (
         <Box pos="relative" className={S.gridWrapper}>
           <TableDataView
