@@ -12,6 +12,7 @@
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.analytics.settings :refer [prometheus-server-port]]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.server.core :as server]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -130,10 +131,18 @@
     arr))
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  (let [bean-id   (.getCanonicalName jmx-bean)
-        props     [:numConnections :numIdleConnections :numBusyConnections
-                   :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-    (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
+  ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
+  ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
+  ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
+  ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
+  ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `database-id->connection-pool` is)
+  ;; to prevent the deadlock. Hopefully.
+  ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
+  (locking @#'sql-jdbc.conn/database-id->connection-pool
+    (let [bean-id   (.getCanonicalName jmx-bean)
+          props     [:numConnections :numIdleConnections :numBusyConnections
+                     :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
@@ -262,7 +271,16 @@
                        {:description "Number of errors when sending channel notifications."
                         :labels [:payload-type :channel-type]})
    (prometheus/gauge :metabase-notification/concurrent-tasks
-                     {:description "Number of concurrent notification sends."})])
+                     {:description "Number of concurrent notification sends."})
+   (prometheus/counter :metabase-gsheets/connection-creation-began
+                       {:description "How many times the instance has initiated a Google Sheets connection creation."})
+   (prometheus/counter :metabase-gsheets/connection-creation-ok
+                       {:description "How many times the instance has created a Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-creation-error
+                       {:description "How many failures there were when creating a Google Sheets connection."
+                        :labels [:reason]})
+   (prometheus/counter :metabase-gsheets/connection-deleted
+                       {:description "How many times the instance has deleted their Google Sheets connection."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -404,5 +422,15 @@
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
 (comment
+  ;; want to see what's in the registry?
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (:registry system))))
+  (spit "metrics" (iapetos.export/text-format (:registry system)))
+
+  ;; need to restart the server to see the metrics? use:
+  (shutdown!)
+
+  ;; get the value of a metric:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-began)
+
+  ;; w/ a label:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-error [[:reason "timeout"]]))

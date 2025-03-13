@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))

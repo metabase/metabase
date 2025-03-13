@@ -698,6 +698,8 @@ export const getRawSeries = createSelector(
             visualization_settings: {
               ...card.visualization_settings,
               "table.pivot": false,
+              "table.column_formatting": [],
+              column_settings: {},
             },
           },
         },
@@ -933,10 +935,7 @@ export const getIsVisualized = createSelector(
     question &&
     // table is the default
     ((question.display() !== "table" && question.display() !== "pivot") ||
-      // any "table." settings has been explcitly set
-      Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
-      // "table.pivot" setting has been implicitly set to true
-      (settings && settings["table.pivot"])),
+      (settings != null && settings["table.pivot"])),
 );
 
 export const getIsLiveResizable = createSelector(

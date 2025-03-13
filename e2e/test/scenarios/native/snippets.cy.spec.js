@@ -31,7 +31,7 @@ describe("scenarios > question > snippets", () => {
 
     cy.log("Add a snippet of that text");
     cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
@@ -186,7 +186,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
-      cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
       H.modal().within(() => {
         cy.findByLabelText(

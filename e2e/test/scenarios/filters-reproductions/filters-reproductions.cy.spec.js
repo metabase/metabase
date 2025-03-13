@@ -179,7 +179,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe("issue 18770", () => {
+describe("issue 18770", { tags: "@flaky" }, () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -201,35 +201,39 @@ describe("issue 18770", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
-  it("post-aggregation filter shouldn't affect the drill-through options (metabase#18770)", () => {
-    H.openNotebook();
-    // It is important to manually trigger "visualize" in order to generate the `result_metadata`
-    // Otherwise, we might get false negative even when this issue gets resolved.
-    // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
-    cy.findAllByTestId("notebook-cell-item")
-      .contains(/Products? → Title/)
-      .click();
-    H.popover().findByText("Category").click();
-    cy.findAllByTestId("notebook-cell-item").contains(/Products? → Category/);
+  it(
+    "post-aggregation filter shouldn't affect the drill-through options (metabase#18770)",
+    { tags: "@flaky" },
+    () => {
+      H.openNotebook();
+      // It is important to manually trigger "visualize" in order to generate the `result_metadata`
+      // Otherwise, we might get false negative even when this issue gets resolved.
+      // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
+      cy.findAllByTestId("notebook-cell-item")
+        .contains(/Products? → Title/)
+        .click();
+      H.popover().findByText("Category").click();
+      cy.findAllByTestId("notebook-cell-item").contains(/Products? → Category/);
 
-    H.visualize();
+      H.visualize();
 
-    cy.findAllByTestId("cell-data")
-      .filter(":contains(4,784)")
-      .should("have.length", 1)
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Filter by this value").should("be.visible");
-      cy.findAllByRole("button")
-        .should("have.length", 6)
-        .and("contain", "See these Orders")
-        .and("contain", "Break out by")
-        .and("contain", "<")
-        .and("contain", ">")
-        .and("contain", "=")
-        .and("contain", "≠");
-    });
-  });
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(4,784)")
+        .should("have.length", 1)
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+        cy.findAllByRole("button")
+          .should("have.length", 6)
+          .and("contain", "See these Orders")
+          .and("contain", "Break out by")
+          .and("contain", "<")
+          .and("contain", ">")
+          .and("contain", "=")
+          .and("contain", "≠");
+      });
+    },
+  );
 });
 
 describe("issue 20551", () => {
@@ -947,7 +951,7 @@ describe("issue 34794", () => {
       cy.findByText("Created At").click();
       cy.icon("chevronleft").click(); // go back to the main filter popover
       cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[Total] > 10").blur();
+      H.CustomExpressionEditor.type("[Total] > 10").format();
       cy.button("Done").click();
     });
 
@@ -1311,7 +1315,7 @@ describe("45252", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 44435", () => {
+describe("issue 44435", () => {
   // It is crucial that the string is without spaces!
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const longString = alphabet.repeat(10);

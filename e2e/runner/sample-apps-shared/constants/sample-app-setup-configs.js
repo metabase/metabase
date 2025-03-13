@@ -1,4 +1,4 @@
-const BRANCH_NAME = "main";
+const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
@@ -12,7 +12,7 @@ const BASE_SETUP_CONFIG = {
   "docker-down-command": "yarn docker:down",
   "docker-env-example-path": ".env.docker.example",
   "docker-env-path": ".env.docker",
-  branch: BRANCH_NAME,
+  defaultBranch: BRANCH_NAME,
   env: BASE_ENV,
 };
 
@@ -21,26 +21,14 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nodejs-react-sdk-embedding-sample",
   },
-  "metabase-nextjs-sdk-embedding-sample-app-router-e2e": {
+  "metabase-nextjs-sdk-embedding-sample-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "metabase-nextjs-sdk-embedding-sample",
-    subAppName: "next-sample-app-router",
     env: {
       PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
       MB_PORT: BASE_ENV.MB_PORT,
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
-      AUTH_PROVIDER_PORT_APP_ROUTER: BASE_ENV.AUTH_PROVIDER_PORT,
-    },
-  },
-  "metabase-nextjs-sdk-embedding-sample-pages-router-e2e": {
-    ...BASE_SETUP_CONFIG,
-    appName: "metabase-nextjs-sdk-embedding-sample",
-    subAppName: "next-sample-pages-router",
-    env: {
-      PREMIUM_EMBEDDING_TOKEN: BASE_ENV.PREMIUM_EMBEDDING_TOKEN,
-      MB_PORT: BASE_ENV.MB_PORT,
-      CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT,
-      AUTH_PROVIDER_PORT_PAGES_ROUTER: BASE_ENV.AUTH_PROVIDER_PORT,
+      CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
     },
   },
   "shoppy-e2e": {

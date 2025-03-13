@@ -24,6 +24,7 @@ export const TAG_TYPES = [
   "revision",
   "schema",
   "segment",
+  "session-properties",
   "snippet",
   "subscription",
   "subscription-channel",
