@@ -1415,3 +1415,34 @@ describe("issue 48562", () => {
     H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
   });
 });
+
+describe("issue 54638", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+  });
+
+  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
+    H.CustomExpressionEditor.type("case(");
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText("Learn more")
+        .scrollIntoView()
+        .should("be.visible")
+        .then($a => {
+          expect($a).to.have.attr("target", "_blank");
+          // Update attr to open in same tab, since Cypress does not support
+          // testing in multiple tabs.
+          $a.attr("target", "_self");
+        })
+        .click();
+      cy.url().should(
+        "equal",
+        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
+      );
+    });
+  });
+});
