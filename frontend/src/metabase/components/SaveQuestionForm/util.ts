@@ -29,18 +29,18 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate, saveToCollection } = options;
+  const { details, question, onCreate, targetCollection } = options;
 
   if (details.saveType !== "create") {
     return;
   }
 
-  // `saveToCollection` is used to override the target collection of the question,
+  // `targetCollection` is used to override the target collection of the question,
   // this is mainly used for the embedding SDK.
   const collectionId = canonicalCollectionId(
-    isNullOrUndefined(saveToCollection)
+    isNullOrUndefined(targetCollection)
       ? details.collection_id
-      : saveToCollection,
+      : targetCollection,
   );
 
   const displayName = details.name.trim();
@@ -61,7 +61,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
     question,
     onSave,
     onCreate,
-    saveToCollection,
+    targetCollection,
   } = options;
 
   if (details.saveType === "overwrite" && originalQuestion) {
@@ -75,7 +75,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       question,
       details,
       onCreate,
-      saveToCollection,
+      targetCollection,
     });
   }
 }
