@@ -28,25 +28,26 @@
   [columns]
   (filter #(not (is-pivot-group-column %)) columns))
 
-(defn- get-active-breakout-indexes
+(def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
   The pivot group value is a bitmask where each bit represents a breakout. If a
   bit is 0, the corresponding breakout is active for this group."
-  [pivot-group num-breakouts]
-  (let [breakout-indexes (range num-breakouts)]
-    (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))
-
-(defn- remove-pivot-group-column-from-row
-  "Removes the pivot group column value from a row."
-  [row pivot-group-index]
-  (vec (m/remove-nth pivot-group-index row)))
+  (memoize
+   (fn [pivot-group num-breakouts]
+     (let [breakout-indexes (range num-breakouts)]
+       (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))))
 
 (defn- process-grouped-rows
   "Processes rows for a specific pivot group value (k).
    Returns a tuple of [active-breakout-indexes, rows-with-pivot-column-removed]."
-  [pivot-gruop rows pivot-group-index num-breakouts]
-  (let [active-indexes (get-active-breakout-indexes pivot-gruop num-breakouts)
-        processed-rows (map #(remove-pivot-group-column-from-row % pivot-group-index) rows)]
+  [pivot-group rows pivot-group-index num-breakouts]
+  (let [active-indexes (get-active-breakout-indexes pivot-group num-breakouts)
+        processed-rows (mapv
+                        (fn [row]
+                          (let [before (subvec row 0 pivot-group-index)
+                                after (subvec row (inc pivot-group-index))]
+                            (into before after)))
+                        rows)]
     [active-indexes processed-rows]))
 
 (defn split-pivot-data
@@ -70,17 +71,22 @@
   the primary rows, returns a mapping from the column values in each row to the
   measure values."
   [pivot-data val-indexes primary-rows-key]
-  (m/map-kv-vals
-   (fn [column-indexes rows]
-     (reduce
-      (fn [acc row]
-        (let [grouping-key (map #(nth row %) column-indexes)]
-          (assoc acc
-                 grouping-key
-                 (map #(nth row %) val-indexes))))
-      {}
-      rows))
-   (dissoc pivot-data primary-rows-key)))
+  (let [pivot-data-without-primary (dissoc pivot-data primary-rows-key)]
+    (persistent!
+     (reduce-kv
+      (fn [result column-indexes rows]
+        (let [processed-rows
+              (persistent!
+               (reduce
+                (fn [acc row]
+                  (let [grouping-key (mapv #(nth row %) column-indexes)
+                        values (mapv #(nth row %) val-indexes)]
+                    (assoc! acc grouping-key values)))
+                (transient {})
+                rows))]
+          (assoc! result column-indexes processed-rows)))
+      (transient {})
+      pivot-data-without-primary))))
 
 (defn- collapse-level
   "Marks all nodes at the given level as collapsed. 1 = root node; 2 = children
@@ -219,11 +225,18 @@
   make a round trip to JavaScript and back to CLJS in `process-pivot-table`
   without losing ordering information."
   [tree]
-  (vec
-   (for [[value tree-node] tree]
-     (assoc tree-node
-            :value value
-            :children (postprocess-tree (:children tree-node))))))
+  (if (empty? tree)
+    []
+    (persistent!
+     (reduce-kv
+      (fn [result value tree-node]
+        (let [children (:children tree-node)
+              processed-children (postprocess-tree children)]
+          (conj! result (assoc tree-node
+                               :value value
+                               :children processed-children))))
+      (transient [])
+      tree))))
 
 (defn- get-rows-from-pivot-data
   [pivot-data row-indexes col-indexes]
@@ -536,7 +549,7 @@
 
    Note - some keywords are camelCase to match expected object keys in TypeScript."
   [tree]
-  (let [a (atom [])]
+  (let [result (transient [])]
     (letfn [(process-tree [nodes depth offset path]
               (if (empty? nodes)
                 {:span 1 :max-depth 0}
@@ -553,18 +566,18 @@
                                                      :offset current-offset
                                                      :hasChildren (boolean (seq children))
                                                      :path path-with-value))
-                          item-index      (count @a)
-                          _               (swap! a conj item)
-                          result          (process-tree children (inc depth) current-offset path-with-value)
-                          _               (swap! a update-in [item-index] assoc
-                                                 :span (:span result)
-                                                 :maxDepthBelow (:max-depth result))]
+                          item-index      (count result)
+                          _               (conj! result item)
+                          result-value    (process-tree children (inc depth) current-offset path-with-value)
+                          _               (assoc! result item-index (assoc (nth result item-index)
+                                                                           :span (:span result-value)
+                                                                           :maxDepthBelow (:max-depth result-value)))]
                       (recur (rest remaining)
-                             (long (+ total-span (:span result)))
-                             (long (max max-depth (:max-depth result)))
-                             (+ current-offset (:span result))))))))]
+                             (long (+ total-span (:span result-value)))
+                             (long (max max-depth (:max-depth result-value)))
+                             (+ current-offset (:span result-value))))))))]
       (process-tree tree 0 0 [])
-      @a)))
+      (persistent! result))))
 
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
