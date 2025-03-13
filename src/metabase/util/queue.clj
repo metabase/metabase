@@ -91,7 +91,7 @@
 
 (defonce ^:private listeners (atom {}))
 
-(defn- listener-thread [{:keys [listener-name queue handler result-handler error-handler finally-handler max-batch-items max-next-ms]}]
+(defn- listener-thread [{:keys [listener-name queue handler result-handler err-handler finally-handler max-batch-items max-next-ms]}]
   (log/infof "Listener %s started" listener-name)
   (while true
     (try
@@ -105,7 +105,7 @@
         (log/infof "Listener %s interrupted" listener-name)
         (throw e))
       (catch Exception e
-        (error-handler e)
+        (err-handler e)
         (log/errorf e "Error in %s while processing batch" listener-name))
       (finally (finally-handler))))
   (log/infof "Listener %s stopped" listener-name))
@@ -120,16 +120,16 @@
 
   Optional arguments:
   - result-handler: A function called when handler does not throw an exception. Accepts [result-of-handler, duration-in-ms, listener-name]
-  - error-handler: A function called when the handler throws an exception. Accepts [exception]
-  - finally-handler: A no-arg function called after result-handler or error-handler regardless of the handler response.
+  - err-handler: A function called when the handler throws an exception. Accepts [exception]
+  - finally-handler: A no-arg function called after result-handler or err-handler regardless of the handler response.
   - pool-size: Number of threads in the listener. Default: 1
   - max-batch-items: Max number of items to batch up before calling handler. Default 50
   - max-next-ms: Max number of ms to let queued items collect before calling the handler. Default 100"
-  [{:keys [listener-name queue handler result-handler error-handler finally-handler pool-size max-batch-items max-next-ms]
+  [{:keys [listener-name queue handler result-handler err-handler finally-handler pool-size max-batch-items max-next-ms]
     :or   {result-handler
            (fn [_ duration passed-name] (log/debugf "Listener %s processed batch in %dms" passed-name duration))
 
-           error-handler
+           err-handler
            (fn [_] nil)
 
            finally-handler (fn [] nil)
@@ -159,7 +159,7 @@
                                                                         :queue           queue
                                                                         :handler         handler
                                                                         :result-handler  result-handler
-                                                                        :error-handler   error-handler
+                                                                        :err-handler   err-handler
                                                                         :finally-handler finally-handler
                                                                         :max-batch-items max-batch-items
                                                                         :max-next-ms    max-next-ms})))

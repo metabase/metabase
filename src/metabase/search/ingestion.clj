@@ -166,6 +166,6 @@
                                    (when (seq result)
                                      (report->prometheus! duration result)
                                      (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
-                :error-handler   #(analytics/inc! :metabase-search/index-error)
+                :err-handler   #(analytics/inc! :metabase-search/index-error)
                 :finally-handler track-queue-size!
                 :max-batch-items max-batch-items})
