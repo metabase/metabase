@@ -57,11 +57,11 @@
 (defn walk
   "Given some starting items, return their descendants."
   [item-type items metadata children-fn & {:as opts}]
-  (state->results (update (walk* item-type items metadata children-fn opts)
-                          :results
-                          (fn [results]
-                            (u/remove-nils
-                             (update results item-type (comp not-empty set/difference) items))))))
+  (-> (walk* item-type items metadata children-fn opts)
+      (update :results (fn [results]
+                         (u/remove-nils
+                          (update results item-type (comp not-empty set/difference) items))))
+      (state->results)))
 
 (defn count-descendants
   "Given some starting items, count the number of descendants they have, according to their types."
@@ -76,4 +76,5 @@
   (let [{:keys [queue results]} (walk* item-type items metadata children-fn opts)]
     (if (seq queue)
       (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))
-      (delete-fn results))))
+      (do (delete-fn results)
+          (update-vals results count)))))

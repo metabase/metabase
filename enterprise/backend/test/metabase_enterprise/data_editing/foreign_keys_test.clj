@@ -64,12 +64,15 @@
   (= (map parent (vals fks))
      (map child (keys fks))))
 
-(defn lookup-children [relationship parents]
-  [(:table relationship)
-   (for [child  (get db (:table relationship))
-         parent parents
-         :when (matches? parent (:fk relationship) child)]
-     (select-keys child (:pk relationship)))])
+(defn lookup-children
+  ([relationship parents]
+   (lookup-children db relationship parents))
+  ([db {:keys [table fk pk]} parents]
+   [table
+    (for [child  (get db table)
+          parent parents
+          :when (matches? parent fk child)]
+      (select-keys child pk))]))
 
 (deftest walk-test
   (is (= {:complete? true
@@ -101,46 +104,42 @@
           :counts    {:people 3}}
          (fks/count-descendants :people [{:id 1}] metadata lookup-children)))
   (is (= {:complete? true
-          :counts    {:users      8
+          :counts    {:users      7
                       :teams      2
                       :programmes 1
                       :projects   1
                       :tasks      1}}
          (fks/count-descendants :users [{:id :user/ceo}] metadata lookup-children))))
 
-(def ^:private ^:dynamic *db* nil)
-
-(defn- delete-items [items]
-  (swap! *db* (fn [db]
-                (reduce
-                 (fn [db [item-type items]]
-                   (update db item-type (fn [existing]
-                                          (filterv #(not (items (select-keys % (keys (first items)))))
-                                                   existing))))
-                 db
-                 #p items))))
-
-(defmacro with-mutable-db [db & body]
-  `(binding [*db* (atom ~db)]
-     ~@body
-     @*db*))
+(defn- delete-items [db items]
+  (reduce
+   (fn [db [item-type items]]
+     (update db item-type (fn [existing]
+                            (filterv #(not (items (select-keys % (keys (first items)))))
+                                     existing))))
+   db
+   items))
 
 (defn- after-delete [table rows]
-  (with-mutable-db db
-    (fks/delete-recursively table rows metadata lookup-children delete-items)))
+  (let [*db       (atom db)
+        lookup-fn #(apply lookup-children @*db %&)
+        delete-fn #(swap! *db delete-items %)]
+    (fks/delete-recursively table rows metadata lookup-fn delete-fn)
+    (select-keys @*db
+                 (case table
+                   :orders [:orders :order-items]
+                   :people [:people]
+                   :users  (remove #{:orders :order-items :people} (keys db))))))
 
 (deftest delete-recursively-test
   (is (= {:orders [{:id 43}], :order-items [{:id 1339, :order-id 43}]}
-         (select-keys (after-delete :orders [{:id 42}])
-                      [:orders :order-items])))
+         (after-delete :orders [{:id 42}])))
 
   (is (= {:people [{:id 2}]}
-         (select-keys (after-delete :people [{:id 1}])
-                      [:people])))
+         (after-delete :people [{:id 1}])))
 
   (is (= {:programmes [], :projects [], :tasks [], :teams [], :users []}
-         (dissoc (after-delete :users [{:id :user/ceo}])
-                 :orders :order-items :people)))
+         (after-delete :users [{:id :user/ceo}])))
   (is (= {:users      [{:id :user/ceo}
                        {:id :user/cto, :reports-to :user/ceo}
                        {:id :user/cpo, :reports-to :user/ceo}]
@@ -148,5 +147,4 @@
           :programmes [{:guided-by :user/cpo, :id :programme/skunk-works}],
           :projects   [{:id :project/gamma, :part-of :programme/skunk-works}],
           :tasks      []}
-         (dissoc (after-delete :users [{:id :user/em}])
-                 :orders :order-items :people))))
+         (after-delete :users [{:id :user/em}]))))
