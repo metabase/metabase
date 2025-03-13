@@ -11,13 +11,12 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
-(def ^:private update-stem "metabase.task.search-index.update")
 
 (def init-job-key
   "Key used to define and trigger a job that ensures there is an active index."
@@ -26,10 +25,6 @@
 (def reindex-job-key
   "Key used to define and trigger a job that rebuilds the entire index from scratch."
   (jobs/key (str reindex-stem ".job")))
-
-(def update-job-key
-  "Key used to define and trigger a job that makes incremental updates to the search index."
-  (jobs/key (str update-stem ".job")))
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
@@ -71,25 +66,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn- update-index! [^JobExecutionContext ctx]
-  (when (search/supports-index?)
-    (log/info "Starting Realtime Search Index Update worker")
-    (task/rerun-on-error ctx
-      (while true
-        (try
-          (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)
-                _        (log/trace "Processing batch" batch)
-                timer    (u/start-timer)
-                report   (search/bulk-ingest! batch)
-                duration (u/since-ms timer)]
-            (when (seq report)
-              (report->prometheus! duration report)
-              (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report))))
-          (catch Exception e
-            (analytics/inc! :metabase-search/index-error)
-            (throw e)))))))
-
-(task/defjob ^{:doc "Ensure a Search Index exists"}
+(jobs/defjob ^{:doc "Ensure a Search Index exists"}
   SearchIndexInit [_ctx]
   (init!))
 
@@ -97,10 +74,6 @@
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
   (reindex!))
-
-(task/defjob ^{:doc                        "Keep Search Index updated"}
-  SearchIndexUpdate [ctx]
-  (update-index! ctx))
 
 (defmethod task/init! ::SearchIndexInit [_]
   (let [job (jobs/build
@@ -126,17 +99,5 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod task/init! ::SearchIndexUpdate [_]
-  (let [job         (jobs/build
-                     (jobs/of-type SearchIndexUpdate)
-                     (jobs/with-identity update-job-key))
-        trigger-key (triggers/key (str update-stem ".trigger"))
-        trigger     (triggers/build
-                     (triggers/with-identity trigger-key)
-                     (triggers/for-job update-job-key)
-                     (triggers/start-now))]
-    (task/schedule-task! job trigger)))
-
 (comment
-  (task/job-exists? reindex-job-key)
-  (task/job-exists? update-job-key))
+  (task/job-exists? reindex-job-key))
