@@ -16,16 +16,12 @@ export function diagnose({
   query,
   stageIndex,
   metadata,
-  name = null,
-  expressionIndex,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
   query: Lib.Query;
   stageIndex: number;
-  name?: string | null;
   metadata?: Metadata;
-  expressionIndex?: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -56,10 +52,8 @@ export function diagnose({
   const res = compileExpression({
     source,
     startRule,
-    name,
     query,
     stageIndex,
-    expressionIndex,
     database,
   });
 
@@ -72,7 +66,6 @@ export function diagnose({
     stageIndex,
     startRule,
     expression: res.expression,
-    expressionIndex,
   });
   if (error) {
     return error;
