@@ -2,7 +2,6 @@
   "Support for initializing API keys from a `config.yml` file."
   (:require
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
@@ -18,14 +17,21 @@
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
   string?)
 
+(s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
+  string?)
+
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group
-  (s/or :keyword #{:admin :all-users}
-        :string #{"admin" "all-users" ":admin" ":all-users"}))
+  #{"admin" "all-users"})
+
+(s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/description
+  (s/nilable string?))
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.api-keys.config-file-spec/name
                    :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
-                   :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group]))
+                   :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
+                   :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group]
+          :opt-un [:metabase-enterprise.advanced-config.file.api-keys.config-file-spec/description]))
 
 (defmethod advanced-config.file.i/section-spec :api-keys
   [_section]
@@ -35,32 +41,26 @@
   [name]
   (t2/select-one :model/ApiKey :name name))
 
-(defn- normalize-group
-  "Convert group value to a keyword if it's a string."
-  [group]
-  (cond
-    (keyword? group) group
-    (string? group) (if (str/starts-with? group ":")
-                      (keyword (subs group 1))
-                      (keyword group))
-    :else group))
-
-(defn- find-admin-user
-  "Find an admin user to use as the creator of the API key."
-  []
-  (or (t2/select-one-pk :model/User :is_superuser true)
-      ;; If no admin user exists, use the first user
-      (t2/select-one-pk :model/User)))
+(defn- get-admin-user-by-email
+  "Find an admin user by email. Throws an exception if the user doesn't exist or isn't an admin."
+  [email]
+  (let [user (t2/select-one :model/User :email email)]
+    (when-not user
+      (throw (ex-info (format "User with email %s not found" email)
+                      {:email email})))
+    (when-not (:is_superuser user)
+      (throw (ex-info (format "User with email %s is not an admin" email)
+                      {:email email})))
+    user))
 
 (defn- init-from-config-file!
   [api-key-config]
-  (let [{:keys [name key group]} api-key-config
-        group (normalize-group group)
+  (let [{:keys [name key group creator description]} api-key-config
         group-id (case group
-                   :admin (u/the-id (perms/admin-group))
-                   :all-users (u/the-id (perms/all-users-group)))
+                   "admin" (u/the-id (perms/admin-group))
+                   "all-users" (u/the-id (perms/all-users-group)))
         unhashed-key (u.secret/secret key)
-        creator-id (find-admin-user)]
+        creator (get-admin-user-by-email creator)]
 
     (if-let [existing-api-key (select-api-key name)]
       (do
@@ -84,8 +84,9 @@
                                          {:user_id      (u/the-id user)
                                           :name         name
                                           :unhashed_key unhashed-key
-                                          :creator_id   creator-id
-                                          :updated_by_id creator-id}))))))
+                                          :creator_id   (u/the-id creator)
+                                          :updated_by_id (u/the-id creator)
+                                          :description  description}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]
