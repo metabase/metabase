@@ -218,38 +218,42 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be enterable and scollable to view all rows in long tooltips (metabase#53586) (metabase#48347)", () => {
-    const testQuestion = {
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            [
-              "field",
-              ORDERS.TOTAL,
-              { binning: { strategy: "num-bins", "num-bins": 50 } },
+  it(
+    "should be enterable and scollable to view all rows in long tooltips (metabase#53586) (metabase#48347)",
+    { tags: "@flaky" },
+    () => {
+      const testQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+              [
+                "field",
+                ORDERS.TOTAL,
+                { binning: { strategy: "num-bins", "num-bins": 50 } },
+              ],
             ],
-          ],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "bar",
-      visualization_settings: {
-        "graph.dimensions": ["CREATED_AT", "TOTAL"],
-        "graph.metrics": ["count"],
-      },
-    };
-    H.visitQuestionAdhoc(testQuestion);
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "TOTAL"],
+          "graph.metrics": ["count"],
+        },
+      };
+      H.visitQuestionAdhoc(testQuestion);
 
-    H.chartPathWithFillColor("#A989C5").eq(3).realHover();
-    H.echartsTooltip()
-      .findByText("155 – 160") // bottom row
-      .scrollIntoView()
-      .should("be.visible");
-  });
+      H.chartPathWithFillColor("#A989C5").eq(3).realHover();
+      H.echartsTooltip()
+        .findByText("155 – 160") // bottom row
+        .scrollIntoView()
+        .should("be.visible");
+    },
+  );
 
   describe("> additional columns setting", () => {
     const COUNT = "Count";
