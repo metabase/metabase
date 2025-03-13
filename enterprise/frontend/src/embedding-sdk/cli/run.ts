@@ -55,7 +55,7 @@ export const CLI_STEPS: CliStepConfig[] = [
   {
     id: "askForTenancyColumns",
     executeStep: askForTenancyColumns,
-    runIf: hasValidLicense,
+    runIf: state => !state.useSampleDatabase && hasValidLicense(state),
   },
   {
     id: "setupPermissions",
