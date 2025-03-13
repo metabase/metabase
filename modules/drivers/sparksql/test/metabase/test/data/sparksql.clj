@@ -142,6 +142,8 @@
 
 ;; strip out the default table alias `t1` from the generated native query
 (defmethod tx/count-with-field-filter-query :sparksql
-  [driver table field]
-  (-> ((get-method tx/count-with-field-filter-query :sql/test-extensions) driver table field)
-      (update :query str/replace #"`t1` " "")))
+  ([driver table field]
+   (tx/count-with-field-filter-query driver table field 1))
+  ([driver table field sample-value]
+   (-> ((get-method tx/count-with-field-filter-query :sql/test-extensions) driver table field sample-value)
+       (update :query str/replace #"`t1` " ""))))
