@@ -13,6 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
@@ -832,3 +833,146 @@
           (is (=  "sum"
                   (get-in (#'metrics/fetch-referenced-metrics query stage)
                           [(:id metric) :aggregation 1 :name]))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#_(comment
+    [:avg         lib/avg ; ok seemingly, verify other dbms
+     :count       lib/count ; must be transormed to count if
+     :cum-count   lib/cum-count ; ?
+     :count-where lib/count-where ; used for counts , condition would have to be modified
+     :distinct    lib/distinct ; count(distinct [field]) -- ok
+     :max         lib/max
+     :median      lib/median
+     :min         lib/min
+     :offset
+     :percentile
+     :share
+     :stddev
+     :sum       lib/sum
+     :cum-sum   lib/cum-sum ; ???
+     :sum-where lib/sum-where ; need to merge filters here
+     :var       lib/var
+     #_:metric])
+
+(def tested-op-list
+  [#'lib/avg ; ok
+   #_lib/count
+   #_lib/cum-count
+   #_lib/count-where
+   #'lib/distinct
+   #'lib/max ; ok
+   #'lib/median
+   #'lib/min ; ok
+   #_lib/offset
+   #_#'lib/percentile
+   #_lib/share
+   #'lib/stddev ;ok
+   #'lib/sum ; ok
+   #_lib/cum-sum
+   #_lib/sum-where
+   #'lib/var ;ok
+   ])
+
+(deftest case-vs-filter-difference-NO-breakout-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (doseq [ag-op tested-op-list]
+      (testing ag-op
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              query-base (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              filter-col (m/find-first (comp #{"User ID"} :display-name)
+                                       (lib/visible-columns query-base))
+              agg-col (m/find-first (comp #{"Total"} :display-name)
+                                    (lib/visible-columns query-base))
+              cond-1 (lib/< filter-col 10)
+              cond-2 (lib/>= filter-col 10)
+              case-query (-> query-base
+                          ;; is the or needed?
+                             (lib/filter (lib/or (lib.util/fresh-uuids cond-1)
+                                                 (lib.util/fresh-uuids cond-2)))
+                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
+                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2) agg-col]]))))
+              filter-query-1 (-> query-base
+                                 (lib/filter cond-1)
+                                 (lib/aggregate (ag-op agg-col)))
+              filter-query-2 (-> query-base
+                                 (lib/filter cond-2)
+                                 (lib/aggregate (ag-op agg-col)))
+              filter-query-1-result @(def r1 (qp/process-query filter-query-1))
+              filter-query-2-result @(def r2 (qp/process-query filter-query-2))
+              case-query-result @(def r3 (qp/process-query case-query))
+              filter-query-1-rows (mt/formatted-rows [2.0] filter-query-1-result)
+              filter-query-2-rows (mt/formatted-rows [2.0] filter-query-2-result)
+              case-query-rows (mt/formatted-rows [2.0 2.0] case-query-result)]
+       ;; initially only first row
+          (is (=? (let [exp (ffirst filter-query-1-rows)]
+                    (if (number? exp)
+                      (=?/approx [exp 0.01])
+                      exp))
+                  (ffirst case-query-rows)))
+          (is (=? (let [exp (ffirst filter-query-2-rows)]
+                    (if (number? exp)
+                      (=?/approx [exp 0.01])
+                      exp))
+                  (second (first case-query-rows)))))))))
+
+(deftest case-vs-filter-difference-WITH-breakout-test-yyy
+  (clojure.test/with-test-out
+    (mt/test-drivers
+      (mt/normal-drivers)
+      (doseq [ag-op tested-op-list]
+        (testing (str "xixi" (:name (meta ag-op)))
+          (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                query-base (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                filter-col (m/find-first (comp #{"User ID"} :display-name)
+                                         (lib/visible-columns query-base))
+                agg-col (m/find-first (comp #{"Total"} :display-name)
+                                      (lib/visible-columns query-base))
+                breakout-col (lib/with-temporal-bucket
+                               (m/find-first (comp #{"Created At"} :display-name)
+                                             (lib/breakoutable-columns query-base))
+                               :quarter)
+                cond-1 (lib/< filter-col 10)
+                cond-2 (lib/>= filter-col 10)
+                case-query (-> query-base
+                               (lib/breakout breakout-col)
+                          ;; is the or needed?
+                               #_(lib/filter (lib/or (lib.util/fresh-uuids cond-1)
+                                                     (lib.util/fresh-uuids cond-2)))
+                               (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
+                               (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2) agg-col]]))))
+                filter-query-1 (-> query-base
+                                   (lib/breakout breakout-col)
+                                   (lib/filter cond-1)
+                                   (lib/aggregate (ag-op agg-col)))
+                filter-query-2 (-> query-base
+                                   (lib/breakout breakout-col)
+                                   (lib/filter cond-2)
+                                   (lib/aggregate (ag-op agg-col)))
+                filter-query-1-result @(def r1 (qp/process-query filter-query-1))
+                filter-query-2-result @(def r2 (qp/process-query filter-query-2))
+                case-query-result @(def r3 (qp/process-query case-query))
+                filter-query-1-rows (mt/rows filter-query-1-result)
+                filter-query-2-rows (mt/rows filter-query-2-result)
+                case-query-rows (mt/rows case-query-result)
+                f1-rows-prepared @(def f1p (into {} (map #(vector (first %) (second %))) filter-query-1-rows))
+                f2-rows-prepared @(def f2p (into {} (map #(vector (first %) (second %))) filter-query-2-rows))]
+            (doseq [case-row case-query-rows
+                    :let [[breakout a1 a2] case-row]]
+              (testing "a1"
+                (is (=? (if (number? a1)
+                          (=?/approx [a1 0.000001])
+                          a1)
+                        (or (get f1-rows-prepared breakout)
+                            (when (= "distinct" (name (:name (meta ag-op))))
+                              0.0)))))
+              (testing "a2"
+                (is (=? (if (number? a2)
+                          (=?/approx [a2 0.000001])
+                          a2)
+                        (or (get f2-rows-prepared breakout)
+                            (when (= "distinct" (name (:name (meta ag-op))))
+                              0.0))))))))))))
+
