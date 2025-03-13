@@ -129,7 +129,7 @@ export const CollectionBrowserInner = ({
 };
 
 const CollectionBrowserWrapper = ({
-  collectionId,
+  collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
   const { id, isLoading } = useValidatedEntityId<
