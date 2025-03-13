@@ -9,9 +9,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [config.file/*supported-versions* {:min 1, :max 1}]
-                        (mt/with-premium-features #{:config-text-file}
-                          (thunk)))))
+                     (binding [config.file/*supported-versions* {:min 1, :max 1}]
+                       (mt/with-premium-features #{:config-text-file}
+                         (thunk)))))
 
 (defn- write-config! [config]
   (spit "config.yml" (yaml/generate-string config)))
@@ -31,7 +31,7 @@
   (t2/exists? :model/User :first_name name :type :api-key))
 
 (deftest api-keys-config-test
-  (mt/with-temp-env-var-value [mb-config-file-path "config.yml"]
+  (mt/with-temporary-setting-values [mb-config-file-path "config.yml"]
     (mt/with-premium-features #{:config-text-file}
       (mt/with-temp [:model/User {:email "admin@test.com"
                                  :first_name "Admin"
