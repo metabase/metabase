@@ -30,39 +30,33 @@
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
 
+(defn- create-test-table! [driver db table-name]
+  (let [_     (driver/create-table! driver
+                                    (mt/id)
+                                    table-name
+                                    {:id   (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
+                                     :name [:text]
+                                     :song  [:text]}
+                                    :primary-key [:id])
+        table (sync/create-table! db
+                                  {:name         table-name
+                                   :schema       nil
+                                   :display_name table-name})]
+    (sync/sync-fields-for-table! db table)
+    (:id table)))
+
 (defn- open-test-table!
   "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
 
   Returned box is java.io.Closeable so you can clean up with `with-open`.
   Otherwise .close the box to drop the table when finished."
   ^Closeable []
-  (let [db         (t2/select-one :model/Database (mt/id))
-        driver     :h2
+  (let [driver     :h2
+        db         (t2/select-one :model/Database (mt/id))
         table-name (str "temp_table_" (u/lower-case-en (random-uuid)))
-
-        cleanup
-        (fn []
-          (try
-            (driver/drop-table! driver (mt/id) table-name)
-            (catch Exception _)))
-
-        init
-        (fn []
-          (let [_     (driver/create-table! driver
-                                            (mt/id)
-                                            table-name
-                                            {:id   (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
-                                             :name [:text]
-                                             :song  [:text]}
-                                            {:primary-key [:id]})
-                table (sync/create-table! db
-                                          {:name         table-name
-                                           :schema       nil
-                                           :display_name table-name})]
-            (sync/sync-fields-for-table! db table)
-            (:id table)))]
+        cleanup    #(try (driver/drop-table! driver (mt/id) table-name) (catch Exception _))]
     (try
-      (let [table-id (init)]
+      (let [table-id (create-test-table! driver db table-name)]
         (reify Closeable
           IDeref
           (deref [_] table-id)
