@@ -1,7 +1,11 @@
 (ns metabase.util.queue
+  (:require
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import
    (java.time Duration Instant)
-   (java.util.concurrent ArrayBlockingQueue DelayQueue Delayed SynchronousQueue TimeUnit)))
+   (java.util.concurrent ArrayBlockingQueue DelayQueue Delayed ExecutorService Executors SynchronousQueue TimeUnit)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,3 +88,94 @@
   ([^DelayQueue queue max-items ^long max-first-ms ^long max-next-ms]
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-delayed-batch* queue max-items max-next-ms [(:value fst)]))))
+
+(defonce ^:private listeners (atom {}))
+
+(defn- listener-thread [{:keys [listener-name queue handler result-handler error-handler finally-handler max-batch-items max-next-ms]}]
+  (log/infof "Listener %s started" listener-name)
+  (while true
+    (try
+      (let [batch (take-delayed-batch! queue max-batch-items Long/MAX_VALUE max-next-ms)]
+        (when (seq batch)
+          (log/debugf "Listener %s processing batch: %s" listener-name batch)
+          (let [timer (u/start-timer)
+                output (handler batch)]
+            (result-handler output (u/since-ms timer) listener-name))))
+      (catch InterruptedException e
+        (log/infof "Listener %s interrupted" listener-name)
+        (throw e))
+      (catch Exception e
+        (error-handler e)
+        (log/errorf e "Error in %s while processing batch" listener-name))
+      (finally (finally-handler))))
+  (log/infof "Listener %s stopped" listener-name))
+
+(defn listen!
+  "Starts an async listener on the given queue.
+
+  Required arguments:
+  - listener-name: A unique string. Attemps to register another listener with the same name will be a no-op
+  - queue: The queue to listen on
+  - handler: A function taking a list of 1 or more values that have been sent to the queue.
+
+  Optional arguments:
+  - result-handler: A function called when handler does not throw an exception. Accepts [result-of-handler, duration-in-ms, listener-name]
+  - error-handler: A function called when the handler throws an exception. Accepts [exception]
+  - finally-handler: A no-arg function called after result-handler or error-handler regardless of the handler response.
+  - pool-size: Number of threads in the listener. Default: 1
+  - max-batch-items: Max number of items to batch up before calling handler. Default 50
+  - max-next-ms: Max number of ms to let queued items collect before calling the handler. Default 100"
+  [{:keys [listener-name queue handler result-handler error-handler finally-handler pool-size max-batch-items max-next-ms]
+    :or   {result-handler
+           (fn [_ duration passed-name] (log/debugf "Listener %s processed batch in %dms" passed-name duration))
+
+           error-handler
+           (fn [_] nil)
+
+           finally-handler (fn [] nil)
+           pool-size       1
+           max-batch-items 50
+           max-next-ms     100}}]
+  (if (contains? @listeners listener-name)
+    (log/errorf "Listener %s already exists" listener-name)
+
+    (let [executor (Executors/newFixedThreadPool
+                    pool-size
+                    (.build
+                     (doto (BasicThreadFactory$Builder.)
+                       (.namingPattern (str "queue-" listener-name "-%d"))
+                       (.daemon true))))]
+      (.addShutdownHook
+       (Runtime/getRuntime)
+       (Thread. ^Runnable (fn []
+                            (.shutdownNow ^ExecutorService executor)
+                            (try
+                              (.awaitTermination ^ExecutorService executor 30 TimeUnit/SECONDS)
+                              (catch InterruptedException _
+                                (log/warn (str "Interrupted while waiting for " listener-name "executor to terminate")))))))
+
+      (dotimes [_ pool-size]
+        (.submit ^ExecutorService executor ^Callable #(listener-thread {:listener-name   listener-name
+                                                                        :queue           queue
+                                                                        :handler         handler
+                                                                        :result-handler  result-handler
+                                                                        :error-handler   error-handler
+                                                                        :finally-handler finally-handler
+                                                                        :max-batch-items max-batch-items
+                                                                        :max-next-ms    max-next-ms})))
+
+      (swap! listeners assoc listener-name executor))))
+
+(defn stop-listening!
+  "Stops the listener previously started with (listen!).
+  If there is no running listener with the given name, it is a no-op"
+  [listener-name]
+  (if-let [executor (get @listeners listener-name)]
+    (do
+      (log/infof "Stopping listener %s..." listener-name)
+      (.shutdownNow ^ExecutorService executor)
+      (.awaitTermination ^ExecutorService executor 30 TimeUnit/SECONDS)
+
+      (swap! listeners dissoc listener-name)
+      (log/infof "Stopping listener %s...done" listener-name))
+    (log/infof "No running listener named %s" listener-name)))
