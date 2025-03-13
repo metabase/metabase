@@ -40,7 +40,7 @@ describe("EmbeddingDataPicker", () => {
     });
 
     describe("entity_types", () => {
-      it('should show only models when `entity_types=["models", "table"]`', async () => {
+      it('should show only models when `entity_types=["models"]`', async () => {
         setup({
           entityTypes: ["model"],
         });
