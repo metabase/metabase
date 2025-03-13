@@ -10,8 +10,7 @@ type ParameterFieldWidgetValueProps = {
   displayValue?: string;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ParameterFieldWidgetValue({
+export function ParameterFieldWidgetValue({
   value,
   fields,
   displayValue,

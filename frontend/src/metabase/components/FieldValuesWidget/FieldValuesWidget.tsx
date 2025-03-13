@@ -87,7 +87,7 @@ export interface IFieldValuesWidgetProps {
   parameter?: Parameter;
   parameters?: Parameter[];
   fields: Field[];
-  dashboard?: Dashboard;
+  dashboard?: Dashboard | null;
   question?: Question;
 
   value: RowValue[];
