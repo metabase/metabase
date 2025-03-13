@@ -1470,3 +1470,26 @@ describe("issue #54722", () => {
     H.expressionEditorWidget().button("Cancel").click();
   });
 });
+
+describe("issue #31964", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it #54722", () => {
+    cy.button("Custom column").click();
+    H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
+    cy.realPress(["Shift", "Enter"]);
+    H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        case([Product → Category] = "Widget", 1,
+        [Product → Category])
+      `,
+    );
+  });
+});
