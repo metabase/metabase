@@ -31,6 +31,7 @@ export function usePreventPopoverExit({
 export function PreventPopoverExitProvider({
   children,
 }: {
+  // children needs to be a single Popover component.
   children: JSX.Element;
 }) {
   const [allowPopoverExit, setAllowPopoverExit] = useState(true);
