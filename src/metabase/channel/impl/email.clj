@@ -180,9 +180,10 @@
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
-                            (first (assoc-attachment-booleans
-                                    [(assoc notification_card :include_csv true :format_rows true)]
-                                    [card_part])))
+                            card
+                            (:result card_part)
+                            {:include_csv true
+                             :format_rows true})
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
@@ -270,9 +271,12 @@
         result-attachments  (volatile! [])
         html-contents       (->> dashboard_parts
                                  (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription))
-                                 (mapv #(let [{:keys [attachments content]}
-                                              (render-part timezone % {:channel.render/include-title? true})
-                                              result-attachment (email.result-attachment/result-attachment %)]
+                                 (mapv #(let [{:keys [attachments content]} (render-part timezone % {:channel.render/include-title? true})
+                                              result-attachment (email.result-attachment/result-attachment (:card %) (:result %)
+                                                                                                           ;; fucking
+                                                                                                           ;; hate this
+                                                                                                           ;; thing
+                                                                                                           (select-keys (:card %) [:include_csv :include_xls :format_rows :pivot_results]))]
                                           (vswap! merged-attachments merge attachments)
                                           (vswap! result-attachments into result-attachment)
                                           (html content))))

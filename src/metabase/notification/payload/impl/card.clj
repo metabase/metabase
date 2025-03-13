@@ -27,7 +27,7 @@
      :notification_card payload
      :subscriptions     subscriptions}))
 
-(defn- goal-met? [{:keys [send_condition], :as notification_card} card_part]
+(defn- goal-met? [send_condition card_part]
   (let [goal-comparison      (if (= :goal_above (keyword send_condition)) >= <)
         goal-val             (ui-logic/find-goal-value card_part)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
@@ -35,7 +35,7 @@
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info "Unable to compare results to goal for notificationt_card"
-                      {:notification_card  notification_card
+                      {:send_condition  send_condition
                        :result card_part})))
     (boolean
      (some (fn [row]
@@ -44,17 +44,17 @@
 
 (mu/defmethod notification.payload/should-send-notification? :notification/card
   [{:keys [payload]}]
-  (let [{:keys [notification_card card_part]} payload
-        send-condition                        (:send_condition notification_card)]
+  (let [{:keys [notification_card card card_part]} payload
+        send-condition (:send_condition notification_card)]
     (cond
-      (-> notification_card :card :archived true?)
+      (-> card :archived true?)
       false
 
       (= :has_result send-condition)
       (not (notification.execute/is-card-empty? card_part))
 
       (#{:goal_above :goal_below} send-condition)
-      (goal-met? notification_card card_part)
+      (goal-met? send-condition card_part)
 
       :else
       (let [^String error-text (format "Unrecognized alert with condition '%s'" send-condition)]

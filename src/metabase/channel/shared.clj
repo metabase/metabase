@@ -25,3 +25,9 @@
   [part]
   (when part
     (m/update-existing-in part [:result :data :rows] maybe-deref)))
+
+(defn realize-result-rows
+  "Realize the data rows in a QP result"
+  [result]
+  (when result
+    (m/update-existing-in result [:data :rows] maybe-deref)))

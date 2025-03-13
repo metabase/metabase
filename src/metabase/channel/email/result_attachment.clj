@@ -83,21 +83,21 @@
 
 (defn result-attachment
   "Create result attachments for an email."
-  [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
-    result :result
-    :as part}]
+  [{card-name :name :as _card}
+   result
+   {:keys [format_rows pivot_results include_csv include_xls] :as _options}]
   (when (pos-int? (:row_count result))
-    (let [realize-data-rows (requiring-resolve 'metabase.channel.shared/realize-data-rows)
-          result (:result (realize-data-rows part))]
+    (let [realize-result-rows (requiring-resolve 'metabase.channel.shared/realize-result-rows)
+          result              (realize-result-rows result)]
       (->>
-       [(when-let [temp-file (and (:include_csv card)
+       [(when-let [temp-file (and include_csv
                                   (create-temp-file-or-throw "csv"))]
           (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+            (stream-api-results-to-export-format os {:export-format :csv :format-rows? format_rows :pivot? pivot_results} result))
           (create-result-attachment-map "csv" card-name temp-file))
-        (when-let [temp-file (and (:include_xls card)
+        (when-let [temp-file (and include_xls
                                   (create-temp-file-or-throw "xlsx"))]
           (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
+            (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format_rows :pivot? pivot_results} result))
           (create-result-attachment-map "xlsx" card-name temp-file))]
        (filterv some?)))))
