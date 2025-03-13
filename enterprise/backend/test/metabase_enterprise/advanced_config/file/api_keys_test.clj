@@ -9,9 +9,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
-                     (binding [config.file/*supported-versions* {:min 1, :max 1}]
-                       (mt/with-premium-features #{:config-text-file}
-                         (thunk)))))
+                      (binding [config.file/*supported-versions* {:min 1, :max 1}]
+                        (mt/with-premium-features #{:config-text-file}
+                          (thunk)))))
 
 (defn- write-config! [config]
   (spit "config.yml" (yaml/generate-string config)))
@@ -33,22 +33,22 @@
 (deftest api-keys-config-test
   (mt/with-temporary-setting-values [mb-config-file-path "config.yml"]
     (mt/with-premium-features #{:config-text-file}
-      (mt/with-temp [:model/User {:email "admin@test.com"
-                                 :first_name "Admin"
-                                 :is_superuser true}]
+      (mt/with-temp [:model/User [{user-id :id} {:email "admin@test.com"
+                                                 :first_name "Admin"
+                                                 :is_superuser true}]]
         (testing "should create API keys from config"
           (try
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
-                                 :creator "admin@test.com"
-                                 :group "admin"
-                                 :description "Test API key"}
-                                {:name "All Users API Key"
-                                 :key "test_api_key_456"
-                                 :creator "admin@test.com"
-                                 :group "all-users"}]}})
+                                   :key "test_api_key_123"
+                                   :creator "admin@test.com"
+                                   :group "admin"
+                                   :description "Test API key"}
+                                  {:name "All Users API Key"
+                                   :key "test_api_key_456"
+                                   :creator "admin@test.com"
+                                   :group "all-users"}]}})
             (is (= :ok (config.file/initialize!)))
             (testing "API keys should be created"
               (is (api-key-exists? "Test API Key"))
@@ -65,9 +65,9 @@
 
         (testing "should fail if creator is not an admin"
           (try
-            (mt/with-temp/with-temp [:model/User {:email "regular@test.com"
-                                                  :first_name "Regular"
-                                                  :is_superuser false}]
+            (mt/with-temp [:model/User [{regular-id :id} {:email "regular@test.com"
+                                                          :first_name "Regular"
+                                                          :is_superuser false}]]
               (write-config!
                {:version 1
                 :config {:api-keys [{:name "Test API Key"
