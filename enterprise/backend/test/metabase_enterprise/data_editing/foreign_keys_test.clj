@@ -1,19 +1,8 @@
 (ns metabase-enterprise.data-editing.foreign-keys-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-editing.foreign-keys :as fks]))
-
-(deftest descendants->table-counts-test
-  (is (= {:tables {:a 2, :b 1}, :complete? false}
-         (fks/descendants->table-counts [{:table :a, :row {:id 1}}
-                                         {:table :a, :row {:id 2}}
-                                         {:table :b, :row {:id 3}}
-                                         :fks/item-limit])))
-
-  (is (= {:tables {:a 2, :b 1}, :complete? true}
-         (fks/descendants->table-counts [{:table :a, :row {:id 1}}
-                                         {:table :a, :row {:id 2}}
-                                         {:table :b, :row {:id 3}}]))))
+   [metabase-enterprise.data-editing.foreign-keys :as fks]
+   [metabase-enterprise.data-editing.foreign-keys2 :as fks2]))
 
 (deftest take-with-sentinel-test
   (is (= [0 1 2]
@@ -41,84 +30,23 @@
    :user/em               {:managed-by [:team/alpha]}
    :user/alice            {:assigned-to [:task/foo]}})
 
-(defn- bulk-children [xs]
-  (let [child-maps (map graph xs)
-        ks         (into #{} (mapcat keys) child-maps)]
-    (mapv #(constantly (mapcat % child-maps)) ks)))
+(def metadata {:orders [{:table :order-items, :fk {:order-id :id}, :pk [:id]}]
+               :people [{:table :people, :fk {:father :id}, :pk [:id]}
+                        {:table :people, :fk {:mother :id}, :pk [:id]}]})
 
-(defn- kw->row [kw]
-  (if (= (namespace ::this-ns) (namespace kw))
-    kw
-    {:table (keyword (namespace kw))
-     :pks   [(keyword (name kw))]}))
+(def db
+  {:orders      [{:id 42}
+                 {:id 43}]
+   :order-items [{:id 1337, :order-id 42}
+                 {:id 1338, :order-id 42}
+                 {:id 1339, :order-id 43}]
+   :people      [{:id 1}
+                 {:id 2}
+                 {:id 3 :father 1 :mother 2}
+                 {:id 4 :father 1 :mother 3}
+                 ;; it's a scandal, nobody knows
+                 {:id 5 :father nil :mother 3}]})
 
-(deftest reducible-batch-bfs-test
-  (is (= [{:table :user, :pks [:cto]}
-          {:table :user, :pks [:cpo]}
-          {:table :team, :pks [:alpha]}
-          ::too-many-items]
-         (into []
-               (map kw->row)
-               (fks/reducible-batch-bfs bulk-children [:user/ceo]
-                                        {:max-results          3
-                                         :max-results-sentinel ::too-many-items
-                                         :max-chunk-size       4
-                                         :max-thunk-executions 5
-                                         :max-thunks-sentinel  ::too-many-queries}))))
-
-  (is (= [{:table :user, :pks [:cto]}
-          {:table :user, :pks [:cpo]}
-          {:table :team, :pks [:alpha]}
-          {:table :team, :pks [:bravo]}
-          {:table :team, :pks [:em]}
-          {:table :user, :pks [:pm]}
-          {:table :programme, :pks [:skunk-works]}
-          {:table :user, :pks [:em]}
-          {:table :user, :pks [:alice]}
-          {:table :user, :pks [:bob]}
-          {:table :user, :pks [:clarence]}
-          ::too-many-queries]
-         (into []
-               (map kw->row)
-               (fks/reducible-batch-bfs bulk-children [:user/ceo]
-                                        {:max-chunk-size       1
-                                         :max-thunk-executions 7
-                                         :max-thunks-sentinel  ::too-many-queries}))))
-
-  (is (= [{:table :user, :pks [:cto]}
-          {:table :user, :pks [:cpo]}
-          {:table :team, :pks [:alpha]}
-          {:table :team, :pks [:bravo]}
-          {:table :team, :pks [:em]}
-          {:table :user, :pks [:pm]}
-          {:table :programme, :pks [:skunk-works]}
-          {:table :user, :pks [:em]}
-          {:table :user, :pks [:alice]}
-          {:table :user, :pks [:bob]}
-          {:table :user, :pks [:clarence]}
-          {:table :project, :pks [:gamma]}
-          ::too-many-queries]
-         (into []
-               (map kw->row)
-               (fks/reducible-batch-bfs bulk-children [:user/ceo]
-                                        {:max-chunk-size       4
-                                         :max-thunk-executions 7
-                                         :max-thunks-sentinel  ::too-many-queries}))))
-
-  (is (= [{:table :user, :pks [:cto]}
-          {:table :user, :pks [:cpo]}
-          {:table :team, :pks [:alpha]}
-          {:table :team, :pks [:bravo]}
-          {:table :team, :pks [:em]}
-          {:table :user, :pks [:pm]}
-          {:table :programme, :pks [:skunk-works]}
-          {:table :user, :pks [:em]}
-          {:table :user, :pks [:alice]}
-          {:table :user, :pks [:bob]}
-          {:table :user, :pks [:clarence]}
-          {:table :project, :pks [:gamma]}
-          {:table :task, :pks [:foo]}]
-         (into []
-               (map kw->row)
-               (fks/reducible-batch-bfs bulk-children [:user/ceo]
-                                        {:max-thunks-sentinel ::too-many-queries})))))
+(deftest walk-test
+  (fks2/walk :orders [{:id 42}] metadata)
+  (fks2/walk :people [{:id 1}] metadata))

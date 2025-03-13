@@ -1,71 +1,61 @@
 (ns metabase-enterprise.data-editing.foreign-keys2
-  (:require    [clojure.java.jdbc :as jdbc]))
+  (:require
+   [clojure.java.jdbc :as jdbc]))
 
-(def hop-bound       10)
-(def per-table-bound 99)
-
-;; state
-{:orders {:delete-queue [{:id 42}]}
- :order-items {:will-delete #{{:id 1337} {:id 1338}}}}
-
-;; metadata
-(def orders-metadata {:orders [{:table :order-items, :fk {:order-id :id}, :pk [:id]}]})
-
-{:people      [{:table :people, :fk {:father :id},   :pk [:id]}
-               {:table :people, :fk {:mother :id},   :pk [:id]}]}
-
-(def db
-  {:orders [{:id 42}
-            {:id 43}]
-   :order-items [{:id 1337, :order-id 42}
-                 {:id 1338, :order-id 42}
-                 {:id 1339, :order-id 43}]})
-
-(def init-state
-  {:orders {:delete-queue [{:id 42}]}})
-
-(defn pop-delete-queue [state]
-  (if-some [table (some (fn [[table {:keys [delete-queue]}]] (when (seq delete-queue) table)) state)]
-    (let [{:keys [delete-queue] :as table-state} (get state table)
-          table-state (-> table-state (dissoc :delete-queue) (update :will-delete (fnil into #{}) delete-queue))]
-      [[table delete-queue] (assoc state table table-state)])
+(defn pop-queue [{:keys [queue] :as state}]
+  (if-let [nxt (first queue)]
+    [nxt (update state :queue subvec 1)]
     [nil state]))
 
-(defn matches [parent fks child]
+(defn matches? [parent fks child]
   (= (map parent (vals fks))
      (map child (keys fks))))
 
-(defn lookup-child-keys [foreign-key parents]
-  (for [child (get db (:table foreign-key))
-        parent parents
-        :when (matches parent (:fk foreign-key) child)]
-    (select-keys child (:pk foreign-key)))
+(defn lookup-children [relationship parents]
+  [(:table relationship)
+   (for [child  (get db (:table relationship))
+         parent parents
+         :when (matches? parent (:fk relationship) child)]
+     (select-keys child (:pk relationship)))])
 
-  #_(jdbc/query
-     'db
-     {:select (:pk foreign-key)
-      :from   [(:table foreign-key)]
-       ;; use :in for 1-1 keys
-      :where  (into [:or] (for [parent-key parent-keys]
-                            (into [:and] (for [[fk pk] (:fk foreign-key)]
-                                           [:= fk (get parent-key pk)]))))
-      :limit 501}))
+(defn lookup-children-in-db [{:keys [table fk pk]} parents]
+  (jdbc/query
+   'db
+   {:select pk
+    :from   [table]
+    :where  (if (= 1 (count fk))
+              [:in (key (first fk)) (map (val (first fk)) parents)]
+              (into [:or] (for [p parents]
+                            (into [:and] (for [[fk-col pk-col] fk]
+                                           [:= fk-col (get p pk-col)])))))
+    :limit  501}))
 
-(defn- push-into-delete-queue [state table pks]
-  (update-in state [table :delete-queue] (fnil into #{}) (remove (-> state (get table) :will-delete set)) pks))
+(defn- queue-items [state item-type items]
+  (if-not (seq items)
+    state
+    (let [new-items (remove (set (get-in state [:results item-type])) items)]
+      (-> state
+          (update :queue conj [item-type new-items])
+          (update-in [:results item-type] into new-items)))))
 
-(defn step [state metadata]
-  (let [[[parent-table delete-queue] state'] (pop-delete-queue state)]
-    (if-not parent-table
+(defn step [metadata children-fn state]
+  (let [[[parent-type items] state'] (pop-queue state)]
+    (if-not parent-type
       state'
-      (let [foreign-keys (get metadata parent-table)
-            child-keys   (for [{:keys [table] :as foreign-key} foreign-keys]
-                           [table (lookup-child-keys foreign-key delete-queue)])]
-        (reduce (fn [state [table pks]]
-                  (push-into-delete-queue state table pks))
+      (let [type-metadata (get metadata parent-type)
+            child-keys    (for [relationship type-metadata]
+                            (children-fn relationship items))]
+        (reduce (fn [state [item-type items]]
+                  (queue-items state item-type items))
                 state'
                 child-keys)))))
 
-(step (step (step init-state orders-metadata) orders-metadata) orders-metadata)
-
-
+(defn walk [item-type items metadata & {:keys [max-queries children-fn]
+                                        :or   {max-queries 10
+                                               children-fn lookup-children}}]
+  (:results
+   (reduce
+    (fn [state _]
+      (step metadata children-fn state))
+    {:queue [[item-type items]]}
+    (range max-queries))))
