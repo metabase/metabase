@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.foreign-keys :as fks]))
 
-(def metadata
+(def ^:private metadata
   {:orders     [{:table :order-items, :fk {:order-id :id}, :pk [:id]}]
 
    ;; family tree
@@ -125,6 +125,7 @@
      ~@body
      @*db*))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- after-delete [table rows]
   (with-mutable-db db
     (fks/delete-recursively table rows metadata lookup-children delete-items!)))

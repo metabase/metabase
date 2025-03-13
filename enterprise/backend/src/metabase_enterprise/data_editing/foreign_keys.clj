@@ -1,13 +1,7 @@
 (ns metabase-enterprise.data-editing.foreign-keys
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [metabase.util :as u]))
-
-(defn pop-queue [{:keys [queue] :as state}]
-  (if-let [nxt (first queue)]
-    [nxt (update state :queue subvec 1)]
-    [nil state]))
 
 #_(defn lookup-children-in-db [{:keys [table fk pk]} parents]
     (jdbc/query
@@ -21,6 +15,11 @@
                                              [:= fk-col (get p pk-col)])))))
       :limit  501}))
 
+(defn- pop-queue [{:keys [queue] :as state}]
+  (if-let [nxt (first queue)]
+    [nxt (update state :queue subvec 1)]
+    [nil state]))
+
 (defn- queue-items [state item-type items]
   (if-not (seq items)
     state
@@ -29,7 +28,7 @@
           (update :queue conj [item-type new-items])
           (update-in [:results item-type] (fnil into #{}) new-items)))))
 
-(defn step [metadata children-fn state]
+(defn- step [metadata children-fn state]
   (let [[[parent-type items] state'] (pop-queue state)]
     (if-not parent-type
       state'
@@ -41,7 +40,7 @@
                 state'
                 child-keys)))))
 
-(defn state->results [{:keys [results queue]}]
+(defn- state->results [{:keys [results queue]}]
   ;; This is not precise; we should check whether there is at least one child for what's in the queue.
   {:complete? (empty? queue)
    :items     results})
@@ -55,19 +54,25 @@
     :results {item-type (set items)}}
    (range max-queries)))
 
-(defn walk [item-type items metadata children-fn & {:as opts}]
+(defn walk
+  "Given some starting items, return their descendants."
+  [item-type items metadata children-fn & {:as opts}]
   (state->results (update (walk* item-type items metadata children-fn opts)
                           :results
                           (fn [results]
                             (u/remove-nils
                              (update results item-type (comp not-empty set/difference) items))))))
 
-(defn count-descendants [item-type items metadata children-fn & {:as opts}]
+(defn count-descendants
+  "Given some starting items, count the number of descendants they have, according to their types."
+  [item-type items metadata children-fn & {:as opts}]
   (let [{:keys [complete? items]} (walk item-type items metadata children-fn opts)]
     {:complete? complete?
      :counts    (update-vals items count)}))
 
-(defn delete-recursively [item-type items metadata children-fn delete-fn & {:as opts}]
+(defn delete-recursively
+  "Delete the given items, along with all their descendants."
+  [item-type items metadata children-fn delete-fn & {:as opts}]
   (let [{:keys [queue results]} (walk* item-type items metadata children-fn opts)]
     (if (seq queue)
       (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))
