@@ -11,19 +11,24 @@
 
 (defn- apply-bucket
   [column bucket]
-  (case bucket
-    :week-of-year (lib/get-week column :iso)
-    :day-of-week  (lib/get-day-of-week column :iso)
-    (lib/with-temporal-bucket column bucket)))
+  (let [bucket (keyword bucket)]
+    (case bucket
+      :week-of-year (lib/get-week column :iso)
+      :day-of-week  (lib/get-day-of-week column :iso)
+      (lib/with-temporal-bucket column bucket))))
+
+(defn- bucketed-column
+  [{:keys [column bucket]}]
+  (cond-> column
+    (and bucket
+         (lib.types.isa/temporal? column))
+    (apply-bucket bucket)))
 
 (defn- add-filter
   [query llm-filter]
   (let [llm-filter (update llm-filter :operation keyword)
-        {:keys [column bucket operation value values]} llm-filter
-        expr (cond-> column
-               (and bucket
-                    (lib.types.isa/temporal? column))
-               (apply-bucket (keyword bucket)))
+        {:keys [operation value values]} llm-filter
+        expr (bucketed-column llm-filter)
         filter
         (case operation
           :is-null                      (lib/is-null expr)
@@ -187,6 +192,76 @@
                       :value 35}],
                     :group-by nil}))
   -)
+
+(defn- add-aggregation
+  [query aggregation]
+  (let [expr     (bucketed-column aggregation)
+        agg-expr (case (-> aggregation :function keyword)
+                   :count          (lib/count)
+                   :count-distinct (lib/distinct expr)
+                   :sum            (lib/sum expr)
+                   :min            (lib/min expr)
+                   :max            (lib/max expr)
+                   :avg            (lib/avg expr))]
+    (lib/aggregate query agg-expr)))
+
+(defn- expression?
+  [expr-or-column]
+  (vector? expr-or-column))
+
+(defn- add-fields
+  [query projection]
+  (->> projection
+       (map (fn [[expr-or-column expr-name]]
+              (if (expression? expr-or-column)
+                (lib/expression-ref query expr-name)
+                expr-or-column)))
+       (lib/with-fields query)))
+
+(defn- query-model*
+  [{:keys [model-id fields filters aggregations group-by] :as _arguments}]
+  (let [card (metabot-v3.tools.u/get-card model-id)
+        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        base-query (lib/query mp (lib.metadata/card mp model-id))
+        visible-cols (lib/visible-columns base-query)
+        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        projection (map (comp (juxt bucketed-column (fn [{:keys [column bucket]}]
+                                                      (let [column (cond-> column
+                                                                     bucket (assoc :unit (keyword bucket)))]
+                                                        (lib/display-name base-query -1 column :long))))
+                              resolve-visible-column)
+                        fields)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter (map resolve-visible-column filters))
+                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
+                  (reduce-query add-breakout (map resolve-visible-column group-by)))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        returned-cols (lib/returned-columns query)]
+    {:type :query
+     :query_id query-id
+     :query (lib/->legacy-MBQL query)
+     :result_columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
+
+(defn query-model
+  "Create a query based on a model."
+  [{:keys [model-id] :as arguments}]
+  (try
+    (if (int? model-id)
+      {:structured-output (query-model* arguments)}
+      {:output (str "Invalid model_id " model-id)})
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (str "No model found with model_id " model-id)}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- base-query
   [data-source]

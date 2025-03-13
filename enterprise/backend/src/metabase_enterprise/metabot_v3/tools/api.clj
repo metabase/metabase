@@ -202,6 +202,26 @@
    [:filters {:optional true} [:maybe [:sequential ::filter]]]
    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
 
+(mr/def ::aggregation
+  [:map
+   [:field_id :string]
+   [:bucket {:optional true} ::bucket]
+   [:function [:enum "avg" "count" "count-distinct" "max" "min" "sum"]]])
+
+(mr/def ::field
+  [:map
+   [:field_id :string]
+   [:bucket {:optional true} ::bucket]])
+
+(mr/def ::query-model-arguments
+  [:map
+   {:encode/tool-api-request #(#_metabot-v3.u/recursive-update-keys update-keys % metabot-v3.u/safe->kebab-case-en)}
+   [:model_id :int]
+   [:fields {:optional true} [:maybe [:sequential {:min 1} ::field]]]
+   [:filters {:optional true} [:maybe [:sequential ::filter]]]
+   [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
+   [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
+
 (mr/def ::result-column
   [:map
    [:field_id :string]
@@ -591,6 +611,22 @@
                              arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::filtering-result
                          (metabot-v3.tools.filters/query-metric arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/query-model" :- [:merge ::filtering-result ::tool-request]
+  "Construct a query from a model."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::query-model-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :query-model) :llm.log/llm->be)
+  (let [arguments (mc/encode ::query-model-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::filtering-result
+                         (metabot-v3.tools.filters/query-model arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
