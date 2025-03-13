@@ -13,6 +13,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   sdk-build:
     if: contains(github.event.pull_request.labels.*.name, 'embedding-sdk-build')
     runs-on: ubuntu-22.04
@@ -37,3 +52,24 @@ jobs:
         run: yarn run embedding-sdk:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  embedding-sdk-snippets-type-check:
+    needs: [ files-changed ]
+    if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Run frontend embedding SDK snippets tests
+        run: yarn run test-unit:embedding-sdk-snippets

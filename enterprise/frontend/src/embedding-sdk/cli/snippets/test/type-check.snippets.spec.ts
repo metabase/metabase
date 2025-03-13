@@ -3,9 +3,8 @@ import * as fs from "fs";
 
 import * as path from "path";
 
-import { MOCK_SERVER_PACKAGE_JSON } from "embedding-sdk/cli/constants/mock-server-package-json";
-import { getExpressServerSnippet } from "embedding-sdk/cli/snippets";
-
+import { MOCK_SERVER_PACKAGE_JSON } from "../../constants/mock-server-package-json";
+import { getExpressServerSnippet } from "../express-server-snippet";
 import { getComponentSnippets } from "../get-component-snippets";
 
 const installDependencies = (tempDir: string) => {
@@ -14,8 +13,8 @@ const installDependencies = (tempDir: string) => {
   });
 };
 
-const typeCheck = (tscPath: string) => {
-  execSync(`"${tscPath}" --project tsconfig.snippets.json --noEmit`, {
+const typeCheck = () => {
+  execSync(`tsc --project tsconfig.json --noEmit`, {
     cwd: __dirname,
     encoding: "utf-8",
   });
@@ -25,11 +24,6 @@ jest.setTimeout(120 * 1000);
 
 describe("Embedding CLI snippets", () => {
   const tempDir: string = path.join(__dirname, "tmp");
-
-  const typescriptPackageDir = path.dirname(
-    require.resolve("typescript/package.json"),
-  );
-  const tscPath = path.join(typescriptPackageDir, "../.bin/tsc");
 
   beforeEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -64,7 +58,7 @@ describe("Embedding CLI snippets", () => {
       let errors: unknown | null = null;
 
       try {
-        typeCheck(tscPath);
+        typeCheck();
       } catch (error: any) {
         errors = error.output || error.message;
       }
@@ -98,7 +92,7 @@ describe("Embedding CLI snippets", () => {
       let errors: unknown | null = null;
 
       try {
-        typeCheck(tscPath);
+        typeCheck();
       } catch (error: any) {
         errors = error.output || error.message;
       }
