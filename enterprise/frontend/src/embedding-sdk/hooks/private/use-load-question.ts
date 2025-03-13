@@ -49,7 +49,7 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  cardId,
+  questionId,
   options,
   deserializedCard,
   initialSqlParameters,
@@ -79,7 +79,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = cardId != null;
+  const shouldLoadQuestion = questionId != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 
@@ -91,7 +91,7 @@ export function useLoadQuestion({
       loadQuestionSdk({
         options,
         deserializedCard,
-        cardId,
+        questionId: questionId,
         initialSqlParameters,
       }),
     ).finally(() => {
@@ -109,7 +109,7 @@ export function useLoadQuestion({
     mergeQuestionState(results);
 
     return { ...results, originalQuestion };
-  }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
+  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {
