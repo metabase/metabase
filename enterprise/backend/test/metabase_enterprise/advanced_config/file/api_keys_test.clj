@@ -33,9 +33,9 @@
 (deftest api-keys-config-test
   (mt/with-temporary-setting-values [mb-config-file-path "config.yml"]
     (mt/with-premium-features #{:config-text-file}
-      (mt/with-temp [:model/User {:email "admin@test.com"
-                                  :first_name "Admin"
-                                  :is_superuser true}]
+      (mt/with-temp [:model/User _ {:email "admin@test.com"
+                                    :first_name "Admin"
+                                    :is_superuser true}]
         (testing "should create API keys from config"
           (try
             (write-config!
@@ -65,9 +65,9 @@
 
         (testing "should fail if creator is not an admin"
           (try
-            (mt/with-temp [:model/User {:email "regular@test.com"
-                                        :first_name "Regular"
-                                        :is_superuser false}]
+            (mt/with-temp [:model/User _ {:email "regular@test.com"
+                                          :first_name "Regular"
+                                          :is_superuser false}]
               (write-config!
                {:version 1
                 :config {:api-keys [{:name "Test API Key"
