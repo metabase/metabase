@@ -11,10 +11,10 @@ import { defaultDay, defaultHour } from "./constants";
 
 export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   return arr.reduce<ReactNode[]>((acc, node) => {
-    const prevNode = acc.at(-1);
-    return typeof node === "string" && typeof prevNode === "string"
-      ? [...acc.slice(0, acc.length - 1), prevNode + ` ${node}`]
-      : _.compact([...acc, typeof node === "string" ? node.trim() : node]);
+    const previousNode = acc.at(-1);
+    return typeof node === "string" && typeof previousNode === "string"
+      ? [...acc.slice(0, acc.length - 1), previousNode + ` ${node}`]
+      : [...acc, typeof node === "string" ? node.trim() : node];
   }, []);
 };
 
