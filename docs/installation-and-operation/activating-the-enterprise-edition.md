@@ -29,9 +29,9 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 
 You'll also need to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md) to store your Metabase data.
 
-### Enter your license
+### Activate your license
 
-There are two ways to enter your license when self-hosting Metabase:
+There are two ways to activate your license when self-hosting Metabase:
 
 - **When Metabase is running**: go to **Settings** > **Admin settings**, and click **License and Billing** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
 
@@ -39,16 +39,22 @@ OR
 
 - **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
 
-## Upgrading from the open-source edition of Metabase
+## Upgrading from a self-hosted Metabase Open Source Edition to a Pro or Enterprise plan
 
-If you've been running the open-source edition of Metabase, you'll need to change to the Enterprise Edition (that goes for both the Pro and Enterprise plans).
+To get all the features available when upgrading to a _self-hosted_ [Pro or Enterprise plan](https://www.metabase.com/pricing/), you'll need to:
 
-Assuming you've been using a [production application database](../installation-and-operation/configuring-application-database.md), you can simply swap out the OSS Docker image or JAR for the Enterprise Edition.
+1. Change to the Metabase Enterprise Edition (that goes for both the Pro and Enterprise plans).
+2. Activate your license.
 
-- [Enterprise Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`.
-- [Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar).
+Assuming you've been using a [production application database](../installation-and-operation/configuring-application-database.md), you'll want to:
 
-Upgrading to the Enterprise Edition will keep all of your questions, dashboards, people, settings — everything in your existing Metabase.
+1. [Back up your application database](./backing-up-metabase-application-data.md).
+2. Download the Enterprise Edition version that corresponds with your current Metabase Version. So if you're running {{site.data.latest_version}}, you should switch to {{site.data.latest_enterprise}}. To see a list of versions, check out [Metabase releases](https://github.com/metabase/metabase/releases).
+3. Stop your current Metabase Open Source edition.
+4. Swap in the Enterprise Edition and start your Metabase like you normally would.
+5. [Activate your license](#enter-your-license).
+
+Migrating to the Enterprise Edition will keep all of your questions, dashboards, people, settings — everything in your existing Metabase.
 
 And don't stress. You won't lose any of your work, and if you get stuck, we're [here to help](https://www.metabase.com/help/premium).
 
