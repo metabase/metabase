@@ -16,6 +16,7 @@ describe("getInitialStateForCardDataSource", () => {
   const dashCard = createMockDashboardCard({
     card: createMockCard({
       display: "table",
+      name: "TablyMcTableface",
       visualization_settings: {
         "table.cell_column": "avg",
         "table.pivot_column": "CATEGORY",
@@ -52,6 +53,7 @@ describe("getInitialStateForCardDataSource", () => {
       "table.cell_column": "avg",
       "table.pivot_column": "CATEGORY",
       "table.column_formatting": [],
+      "card.title": "TablyMcTableface",
     });
   });
 });
