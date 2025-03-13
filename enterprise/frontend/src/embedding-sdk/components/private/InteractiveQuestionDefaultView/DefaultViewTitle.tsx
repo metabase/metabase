@@ -5,22 +5,25 @@ import { Anchor, Stack, Text } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 import { getQuestionTitle } from "../QuestionTitle";
 
-import type { InteractiveQuestionResultProps } from "./InteractiveQuestionResult";
+import type { InteractiveQuestionDefaultViewProps } from "./InteractiveQuestionDefaultView";
 
-interface ResultTitleTextProps
-  extends Pick<InteractiveQuestionResultProps, "withResetButton" | "title"> {
+interface DefaultViewTitleTextProps
+  extends Pick<
+    InteractiveQuestionDefaultViewProps,
+    "withResetButton" | "title"
+  > {
   isQuestionChanged?: boolean;
   onReset?: () => void;
   originalName?: string | null;
 }
 
-const ResultTitleText = ({
+const DefaultViewTitleText = ({
   title: Title,
   withResetButton = false,
   isQuestionChanged = false,
   onReset,
   originalName,
-}: ResultTitleTextProps) => (
+}: DefaultViewTitleTextProps) => (
   <Stack gap="xs">
     {originalName && withResetButton && isQuestionChanged && (
       <Text fw={600} size="sm">
@@ -34,10 +37,10 @@ const ResultTitleText = ({
   </Stack>
 );
 
-export const ResultTitle = ({
+export const DefaultViewTitle = ({
   title,
   withResetButton = false,
-}: InteractiveQuestionResultProps) => {
+}: InteractiveQuestionDefaultViewProps) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 
@@ -55,7 +58,7 @@ export const ResultTitle = ({
     const titleText = getQuestionTitle({ question });
 
     return (
-      <ResultTitleText
+      <DefaultViewTitleText
         title={
           <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
             {titleText}
@@ -71,7 +74,7 @@ export const ResultTitle = ({
 
   if (typeof title === "string") {
     return (
-      <ResultTitleText
+      <DefaultViewTitleText
         title={
           <Text fw={700} c="var(--mb-color-text-primary)" fz="xl">
             {title}

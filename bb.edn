@@ -98,6 +98,12 @@
                  (cli/parse! (current-task))
                  (jar-download/jar-download *command-line-args*))}
 
+  setup-stats-repl
+  {:doc "Connect to the stats repl"
+   :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
+   :requires [[mage.stats-repl :as stats-repl]]
+   :task     (stats-repl/connect (cli/parse! (current-task)))}
+
   setup-autocomplete
   {:doc      "Prints instructions to setup autocomplete"
    :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]

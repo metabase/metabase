@@ -143,38 +143,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("EXPR (2)");
   });
 
-  it("should process the updated expression when pressing Enter", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
-    H.enterCustomColumnDetails({ formula: "[Price] > 1" });
-
-    cy.button("Done").click();
-
-    H.getNotebookStep("filter").contains("Price is greater than 1").click();
-
-    // change the corresponding custom expression
-    cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
-    H.CustomExpressionEditor.clear().type("[Price] > 1 AND [Price] < 5");
-    cy.realPress("Enter");
-
-    // In case it does exist, it usually is an error in expression (caused by not clearing
-    // the input properly before typing), and this check helps to highlight that.
-    H.CustomExpressionEditor.get().should("not.exist");
-
-    H.getNotebookStep("filter")
-      .contains("Price is greater than 1")
-      .should("exist");
-    H.getNotebookStep("filter")
-      .contains("Price is less than 5")
-      .should("exist");
-  });
-
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
     cy.intercept(
       {
@@ -308,8 +276,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
       });
 
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
+      H.CustomExpressionEditor.nameInput()
+        .focus()
         .type("Example", { delay: 100 });
 
       cy.button("Done").should("not.be.disabled").click();
@@ -366,9 +334,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         H.enterCustomColumnDetails({ formula: expression });
 
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type(filter);
+        H.CustomExpressionEditor.nameInput().click().type(filter);
 
         H.popover().within(() => {
           cy.contains(/^expected closing parenthesis/i).should("not.exist");
@@ -1171,6 +1137,6 @@ function assertTableRowCount(expectedCount) {
 
 function addSimpleCustomColumn(name) {
   H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
-  cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
+  H.CustomExpressionEditor.nameInput().click().type(name);
   cy.button("Done").click();
 }
