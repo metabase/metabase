@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-editing.foreign-keys
   (:require
    [clojure.set :as set]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import (clojure.lang PersistentQueue)))
 
 #_(defn lookup-children-in-db [{:keys [table fk pk]} parents]
     (jdbc/query
@@ -16,8 +17,8 @@
       :limit  501}))
 
 (defn- pop-queue [{:keys [queue] :as state}]
-  (if-let [nxt (first queue)]
-    [nxt (update state :queue subvec 1)]
+  (if-let [nxt (peek queue)]
+    [nxt (update state :queue pop)]
     [nil state]))
 
 (defn- queue-items [state item-type items]
@@ -50,7 +51,7 @@
   (reduce
    (fn [state _]
      (step metadata children-fn state))
-   {:queue   [[item-type items]]
+   {:queue  (conj PersistentQueue/EMPTY [item-type items])
     :results {item-type (set items)}}
    (range max-queries)))
 
