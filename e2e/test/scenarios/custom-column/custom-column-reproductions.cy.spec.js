@@ -1446,3 +1446,27 @@ describe("issue 54638", () => {
     });
   });
 });
+
+describe("issue #54722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it #54722", () => {
+    cy.button("Custom column").click();
+    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    cy.button("Filter").click();
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    cy.button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    H.expressionEditorWidget().button("Cancel").click();
+  });
+});
