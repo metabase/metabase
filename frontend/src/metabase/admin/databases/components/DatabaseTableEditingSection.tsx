@@ -52,7 +52,7 @@ export function DatabaseTableEditingSection({
   return (
     <DatabaseInfoSection
       name={t`Editable tables`}
-      description={""}
+      description={t`Allow the data within tables of this database to be edited by Admin users.`}
       data-testid="database-table-editing-section"
     >
       <div>
@@ -67,8 +67,6 @@ export function DatabaseTableEditingSection({
         <Box maw="22.5rem">
           {error ? <Error>{error}</Error> : null}
           <Description>
-            {t`Allow Admins to edit tables in this database.`}
-            <br />
             {t`Your database connection will need Write permissions.`}
           </Description>
         </Box>
