@@ -4,7 +4,7 @@ import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
 import { MBQL_CLAUSES } from "./config";
-import { format } from "./formatter";
+import { formatExample } from "./formatter";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -126,13 +126,7 @@ describe("getHelpText", () => {
       if (!helpText) {
         continue;
       }
-      expect(() =>
-        format(helpText.example, {
-          // @ts-expect-error: we do not depend on the query in examples
-          query: null,
-          stageIndex: -1,
-        }),
-      ).not.toThrow();
+      expect(() => formatExample(helpText.example)).not.toThrow();
     }
   });
 });

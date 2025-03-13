@@ -1,6 +1,6 @@
 import { type HTMLAttributes, useEffect, useMemo, useState } from "react";
 
-import { format } from "metabase-lib/v1/expressions";
+import { formatExample } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
 
 import S from "./HighlightExpression.module.css";
@@ -17,12 +17,7 @@ export function HighlightExpression({
   const [formattedExpression, setFormattedExpression] = useState<string>("");
 
   useEffect(() => {
-    format(expression, {
-      printWidth,
-      // @ts-expect-error: the examples do not use clauses that depend on query
-      query: null,
-      stageIndex: -1,
-    })
+    formatExample(expression, { printWidth })
       .catch(() => "")
       .then(setFormattedExpression);
   }, [expression, printWidth]);

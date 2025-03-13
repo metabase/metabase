@@ -57,10 +57,28 @@ export async function format(expression: Expression, options: FormatOptions) {
   });
 }
 
+export type FormatExampleOptions = {
+  printWidth?: number;
+  quotes?: typeof EDITOR_QUOTES;
+};
+
+export async function formatExample(
+  expression: Expression,
+  options: FormatExampleOptions = {},
+) {
+  return pformat(JSON.stringify(expression), {
+    parser: PRETTIER_PLUGIN_NAME,
+    plugins: [plugin(options)],
+    printWidth: options.printWidth ?? 80,
+  });
+}
+
 const PRETTIER_PLUGIN_NAME = "custom-expression";
 
 // Set up a prettier plugin that formats expressions
-function plugin(options: FormatOptions): Plugin<ExpressionNode> {
+function plugin(
+  options: FormatOptions | FormatExampleOptions,
+): Plugin<ExpressionNode> {
   return {
     languages: [
       {
