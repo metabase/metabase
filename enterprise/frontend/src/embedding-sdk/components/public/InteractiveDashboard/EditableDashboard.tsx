@@ -88,7 +88,7 @@ export const EditableDashboard = ({
   }
 
   if (!dashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={dashboardId} />;
+    return <DashboardNotFoundError id={initialDashboardId} />;
   }
 
   return (
