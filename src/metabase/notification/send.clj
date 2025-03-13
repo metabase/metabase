@@ -129,8 +129,6 @@
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
-(require 'usage-tracking-map)
-
 (defn- sanize-notification
   [notification]
   (case (:payload_type notification)
@@ -155,8 +153,7 @@
         (task-history/with-task-history {:task          "notification-send"
                                          :task_details {:notification_id       id
                                                         :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-          (let [notification-payload (usage-tracking-map/to-usage-tracking
-                                      (sanize-notification (notification.payload/notification-payload (dissoc hydrated-notification :handlers))))]
+          (let [notification-payload (sanize-notification (notification.payload/notification-payload (dissoc hydrated-notification :handlers)))]
             (if (notification.payload/should-send-notification? notification-payload)
               (do
                 (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
@@ -182,9 +179,7 @@
               (log/infof "[Notification %d] Skipping" id))
             (do-after-notification-sent notification-info notification-payload)
             (log/infof "[Notification %d] Sent successfully" id)
-            (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type})
-            (def usage (usage-tracking-map/usage-report notification-payload))
-            (tap> usage))))
+            (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
       (catch Exception e
         (log/errorf e "[Notification %d] Failed to send" id)
         (prometheus/inc! :metabase-notification/send-error {:payload-type payload_type})
