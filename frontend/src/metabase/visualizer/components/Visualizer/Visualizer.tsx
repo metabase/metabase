@@ -7,7 +7,7 @@ import {
   useSensor,
 } from "@dnd-kit/core";
 import { useCallback, useEffect } from "react";
-import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
+import { usePrevious, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
@@ -103,18 +103,30 @@ export const Visualizer = (props: VisualizerProps) => {
     dispatch(resetVisualizer({ full: true }));
   });
 
-  useKeyPressEvent("z", event => {
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault();
-      if (event.shiftKey) {
-        if (canRedo) {
-          redo();
-        }
-      } else if (canUndo) {
-        undo();
+  useEffect(() => {
+    const keyPress = (event: KeyboardEvent) => {
+      if (event.key !== "z" && event.key !== "Z") {
+        return;
       }
-    }
-  });
+
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          if (canRedo) {
+            redo();
+          }
+        } else if (canUndo) {
+          undo();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", keyPress);
+
+    return () => {
+      window.removeEventListener("keydown", keyPress);
+    };
+  }, [canUndo, canRedo, undo, redo]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
