@@ -489,7 +489,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       key={key}
                       style={style}
                       item={topHeaderItems[index]}
-                      columns={columnsWithoutPivotGroup}
                       getCellClickHandler={getCellClickHandler}
                       isNightMode={isNightMode}
                       onResize={(newWidth: number) =>
@@ -589,7 +588,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               rowSection={getRowSection(columnIndex, rowIndex)}
                               isNightMode={isNightMode}
                               getCellClickHandler={getCellClickHandler}
-                              columns={columnsWithoutPivotGroup}
                               cellWidths={getCellWidthsForSection(
                                 valueHeaderWidths,
                                 valueIndexes,
