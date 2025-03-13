@@ -1295,4 +1295,18 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.expressionEditorWidget().should("not.exist");
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
   });
+
+  it("should be possible to close the popover when navigating away from the expression editor", () => {
+    H.expressionEditorWidget().button("Cancel").click();
+    cy.button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    // go back
+    H.popover().findByText("Custom Expression").click();
+    cy.button("View SQL").click();
+
+    H.modal().should("not.exist");
+    H.popover().should("not.exist");
+  });
 });

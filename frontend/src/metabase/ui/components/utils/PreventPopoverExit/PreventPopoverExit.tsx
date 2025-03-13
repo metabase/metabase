@@ -3,6 +3,7 @@ import {
   cloneElement,
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -20,8 +21,11 @@ export function usePreventPopoverExit({
 }: {
   popoverIsExitable?: boolean;
 }) {
-  const ctx = useContext(context);
-  ctx.setAllowPopoverExit(popoverIsExitable);
+  const { setAllowPopoverExit } = useContext(context);
+  useEffect(() => {
+    setAllowPopoverExit(popoverIsExitable);
+    return () => setAllowPopoverExit(true);
+  }, [popoverIsExitable, setAllowPopoverExit]);
 }
 
 export function PreventPopoverExitProvider({
