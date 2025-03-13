@@ -116,3 +116,107 @@
         (is (= [10] (queue/take-delayed-batch! q batch-size (time-until-nth 10) additional-wait))))
       (testing "Afterwards the queue is empty"
         (is (nil? (queue/take-delayed-batch! q batch-size)))))))
+
+(defn- thread-name-running? [name]
+  (some #(= name (.getName %)) (keys (Thread/getAllStackTraces))))
+
+(deftest listener-handler-test
+  (testing "Standard behavior with a handler"
+    (let [listener-name "test-listener"
+          times-handled (atom 0)
+          last-batch (atom nil)
+          queue (queue/delay-queue)
+          thread-name "queue-test-listener-1"]
+      (is (not (thread-name-running? thread-name)))
+
+      (queue/listen! {:listener-name listener-name
+                      :queue         queue
+                      :handler       (fn [batch] (swap! times-handled + (count batch)) (reset! last-batch batch))
+                      :max-next-ms   5})
+      (is (thread-name-running? thread-name))
+
+      (is (nil? (queue/listen! {:listener-name listener-name
+                                :queue         queue
+                                :handler       (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))})))
+
+      (queue/put-with-delay! queue 0 "a")
+      (Thread/sleep 10)
+      (is (= 1 @times-handled))
+      (is (= ["a"] @last-batch))
+
+      (queue/put-with-delay! queue 0 "b")
+      (queue/put-with-delay! queue 0 "c")
+      (queue/put-with-delay! queue 0 "d")
+      (Thread/sleep 10)
+      (is (= 4 @times-handled))
+      (is (some #{"d"} @last-batch))
+
+      (queue/stop-listening! listener-name)
+      (is (not (thread-name-running? thread-name)))
+
+      ; additional calls to stop are no-ops
+      (is (nil? (queue/stop-listening! listener-name))))))
+
+(deftest result-listener-test
+  (testing "When result and error handlers are defined, they are called correctly"
+    (let [listener-name "test-result-listener"
+          queue (queue/delay-queue)
+          result-count (atom 0)
+          error-count (atom 0)
+          last-error (atom nil)]
+      (queue/listen! {:listener-name  listener-name
+                      :queue          queue
+                      :handler        (fn [batch] (if (some #{"err"} batch)
+                                                    (throw (ex-info "Test Error" {:batch batch}))
+                                                    (count batch)))
+                      :result-handler (fn [result duration name]
+                                        (is (= listener-name name))
+                                        (is (< 0 duration))
+                                        (swap! result-count + result))
+                      :error-handler  (fn [e] (swap! error-count inc) (reset! last-error e))
+                      :max-next-ms   5})
+      (queue/put-with-delay! queue 0 "a")
+      (Thread/sleep 10)
+      (is (= 0 @error-count))
+      (is (= 1 @result-count))
+
+      (queue/put-with-delay! queue 0 "err")
+      (Thread/sleep 10)
+      (is (= 1 @error-count))
+      (is (= 1 @result-count))
+      (is (= "Test Error" (.getMessage ^Exception @last-error)))
+
+      (queue/stop-listening! listener-name))))
+
+(deftest multithreaded-listener-test
+  (testing "Test behavior with a multithreaded listener"
+    (let [listener-name "test-multithreaded-listener"
+          batches-handled (atom 0)
+          handlers-used (atom #{})
+          queue (queue/delay-queue)]
+      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
+      (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
+      (is (not (thread-name-running? (str "queue-" listener-name "-3"))))
+
+      (queue/listen! {:listener-name   listener-name
+                      :queue           queue
+                      :handler         (fn [batch] (is (<= 10 (count batch))) (count batch))
+                      :result-handler  (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
+                      :pool-size       3
+                      :max-batch-items 10
+                      :max-next-ms   5})
+      (is (thread-name-running? (str "queue-" listener-name "-1")))
+      (is (thread-name-running? (str "queue-" listener-name "-2")))
+      (is (thread-name-running? (str "queue-" listener-name "-3")))
+
+      (dotimes [i 100]
+        (queue/put-with-delay! queue 0 i))
+
+      (Thread/sleep 50)
+      (is (= 100 @batches-handled))
+      (is (contains? @handlers-used listener-name))
+
+      (queue/stop-listening! listener-name)
+      (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
+      (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
+      (is (not (thread-name-running? (str "queue-" listener-name "-3")))))))

@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
-   [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
@@ -26,7 +25,7 @@
   "The minimum time we must wait before updating the index. This delay exists to dedupe and batch changes efficiently."
   100)
 
-(def ^:private batch-max
+(def ^:private max-batch-items
   "The maximum number of update messages to process together.
   Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
   the tables within a given database when it is renamed."
@@ -138,25 +137,12 @@
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
 
-(defn get-next-batch!
-  "Wait up for a batch to become ready, and take it off the queue.
-  Used `first-delay-ms` to determine how long it will wait for any updates.
-  It will wait an additional `next-delay-ms` after each item for additional items to add to the batch, up to some
-  maximum batch size.
-  Will return nil if there is a timeout waiting for any updates."
-  [first-delay-ms next-delay-ms]
-  (u/prog1 (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)
-    (track-queue-size!)))
-
-(defn- index-worker-exists? []
-  (task/job-exists? @(requiring-resolve 'metabase.search.task.search-index/update-job-key)))
-
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing."
   ([updates]
-   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
+   (ingest-maybe-async! updates *force-sync*))
   ([updates sync?]
    (when-not *disable-updates*
      (if sync?
@@ -167,3 +153,19 @@
            (queue/put-with-delay! queue delay-ms update))
          (track-queue-size!)
          true)))))
+
+(defn- report->prometheus! [duration report]
+  (analytics/inc! :metabase-search/index-ms duration)
+  (doseq [[model cnt] report]
+    (analytics/inc! :metabase-search/index {:model model} cnt)))
+
+(queue/listen! {:listener-name   "search-index-update"
+                :queue           queue
+                :handler         bulk-ingest!
+                :result-handler  (fn [result duration _]
+                                   (when (seq result)
+                                     (report->prometheus! duration result)
+                                     (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
+                :error-handler   #(analytics/inc! :metabase-search/index-error)
+                :finally-handler track-queue-size!
+                :max-batch-items max-batch-items})
