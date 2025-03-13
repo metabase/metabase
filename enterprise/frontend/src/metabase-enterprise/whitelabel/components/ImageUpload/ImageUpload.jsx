@@ -2,16 +2,16 @@
 import cx from "classnames";
 
 import { SettingInput } from "metabase/admin/settings/components/widgets/SettingInput";
-import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+import { Button, Flex, Icon } from "metabase/ui";
 
 import { FileInput } from "./ImageUpload.styled";
 
 export const ImageUpload = ({ id, setting, onChange, ...props }) => {
   const imageSource = setting.value;
   return (
-    <div>
+    <Flex align="center">
       {imageSource && (
         <div className={CS.mb1}>
           {/* Preview of icon as it will appear in the nav bar */}
@@ -43,7 +43,16 @@ export const ImageUpload = ({ id, setting, onChange, ...props }) => {
       ) : (
         <SettingInput setting={setting} onChange={onChange} {...props} />
       )}
-      <Button onlyIcon icon="close" onClick={() => onChange(undefined)} />
-    </div>
+      {imageSource && (
+        <Button
+          p="xs"
+          c="text-dark"
+          variant="subtle"
+          onClick={() => onChange(undefined)}
+        >
+          <Icon name="close" />
+        </Button>
+      )}
+    </Flex>
   );
 };
