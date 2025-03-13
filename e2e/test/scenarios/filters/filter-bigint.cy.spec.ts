@@ -1070,7 +1070,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         cy.findByText("Custom Expression").click();
       });
       H.enterCustomColumnDetails({ formula: `[ID] != "${value}"` });
-      cy.button("Done").click();
+      cy.button("Update").click();
       H.visualize();
       H.assertQueryBuilderRowCount(2);
     }

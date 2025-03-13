@@ -1502,6 +1502,7 @@ describe("issue 44668", () => {
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
       name: "Custom String",
+      format: true,
     });
     H.popover().button("Done").click();
 

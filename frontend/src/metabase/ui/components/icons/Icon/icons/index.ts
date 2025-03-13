@@ -149,6 +149,8 @@ import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
+import format_code_component from "./format_code.svg?component";
+import format_code_source from "./format_code.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -700,6 +702,10 @@ export const Icons = {
   bug: {
     component: bug_component,
     source: bug_source,
+  },
+  format_code: {
+    component: format_code_component,
+    source: format_code_source,
   },
   formula: {
     component: formula_component,
