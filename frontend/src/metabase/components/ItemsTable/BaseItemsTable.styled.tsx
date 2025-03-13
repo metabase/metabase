@@ -25,9 +25,14 @@ type TableProps = TableHTMLAttributes<HTMLTableElement> & {
   isInDragLayer?: boolean;
 };
 
-export const Table = styled(({ isInDragLayer, ...props }: TableProps) => (
-  <table {...props} className={cx(props.className, AdminS.ContentTable)} />
-))`
+export const Table = styled(
+  (props: TableProps) => (
+    <table {...props} className={cx(props.className, AdminS.ContentTable)} />
+  ),
+  {
+    shouldForwardProp: prop => prop !== "isInDragLayer",
+  },
+)`
   background-color: var(--mb-color-bg-white);
   table-layout: fixed;
   border-collapse: unset;
