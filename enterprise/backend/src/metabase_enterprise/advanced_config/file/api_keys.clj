@@ -23,15 +23,11 @@
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group
   #{"admin" "all-users"})
 
-(s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/description
-  (s/nilable string?))
-
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.api-keys.config-file-spec/name
                    :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
                    :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
-                   :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group]
-          :opt-un [:metabase-enterprise.advanced-config.file.api-keys.config-file-spec/description]))
+                   :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/group]))
 
 (defmethod advanced-config.file.i/section-spec :api-keys
   [_section]
@@ -55,7 +51,7 @@
 
 (defn- init-from-config-file!
   [api-key-config]
-  (let [{:keys [name key group creator description]} api-key-config
+  (let [{:keys [name key group creator]} api-key-config
         group-id (case group
                    "admin" (u/the-id (perms/admin-group))
                    "all-users" (u/the-id (perms/all-users-group)))
@@ -85,8 +81,7 @@
                                           :name         name
                                           :unhashed_key unhashed-key
                                           :creator_id   (u/the-id creator)
-                                          :updated_by_id (u/the-id creator)
-                                          :description  description}))))))
+                                          :updated_by_id (u/the-id creator)}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]

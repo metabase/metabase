@@ -42,20 +42,18 @@
             :config {:api-keys [{:name "Test API Key"
                                  :key "test_api_key_123"
                                  :creator "admin@test.com"
-                                 :group "admin"
-                                 :description "Test API key"}
+                                 :group "admin"}
                                 {:name "All Users API Key"
-                                 :key "test_api_key_456"
+                                 :key "different_api_key_456"
                                  :creator "admin@test.com"
                                  :group "all-users"}]}})
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
                                                                :key "test_api_key_123"
                                                                :creator "admin@test.com"
-                                                               :group "admin"
-                                                               :description "Test API key"}
+                                                               :group "admin"}
                                                               {:name "All Users API Key"
-                                                               :key "test_api_key_456"
+                                                               :key "different_api_key_456"
                                                                :creator "admin@test.com"
                                                                :group "all-users"}]}}]
             (is (= :ok (config.file/initialize!)))
@@ -64,11 +62,7 @@
               (is (api-key-exists? "All Users API Key")))
             (testing "API key users should be created"
               (is (api-key-user-exists? "Test API Key"))
-              (is (api-key-user-exists? "All Users API Key")))
-            (testing "API key should have correct properties"
-              (let [api-key (t2/select-one :model/ApiKey :name "Test API Key")]
-                (is (string? (:key_prefix api-key)))
-                (is (= "Test API key" (:description api-key))))))
+              (is (api-key-user-exists? "All Users API Key"))))
           (finally
             (cleanup-config!))))
 
