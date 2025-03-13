@@ -7,7 +7,13 @@ import { ToolbarButton } from "../util/ToolbarButton";
 export const DownloadWidgetDropdown = (popoverProps: PopoverProps) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
-    <Popover {...popoverProps} disabled={!withDownloads}>
+    <Popover
+      {...popoverProps}
+      disabled={!withDownloads}
+      floatingStrategy="fixed"
+      withinPortal={false}
+      position="bottom-end"
+    >
       <Popover.Target>
         <ToolbarButton
           isHighlighted={false}
@@ -22,7 +28,7 @@ export const DownloadWidgetDropdown = (popoverProps: PopoverProps) => {
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <InteractiveQuestion.DownloadWidget />
+        <InteractiveQuestion.DownloadWidget w="18rem" />
       </Popover.Dropdown>
     </Popover>
   );

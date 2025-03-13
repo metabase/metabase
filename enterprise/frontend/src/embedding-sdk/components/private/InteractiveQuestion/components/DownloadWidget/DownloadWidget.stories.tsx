@@ -1,6 +1,6 @@
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box } from "metabase/ui";
+import { Box, type PopoverProps } from "metabase/ui";
 
 import { DownloadWidget, type DownloadWidgetProps } from "./DownloadWidget";
 
@@ -24,6 +24,18 @@ export const Default = {
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
           <InteractiveQuestion.DownloadWidget {...args} />
+        </InteractiveQuestion>
+      </Box>
+    );
+  },
+};
+
+export const Dropdown = {
+  render(args: PopoverProps) {
+    return (
+      <Box p="lg">
+        <InteractiveQuestion withDownloads questionId={QUESTION_ID}>
+          <InteractiveQuestion.DownloadWidgetDropdown {...args} />
         </InteractiveQuestion>
       </Box>
     );
