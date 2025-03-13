@@ -20,7 +20,7 @@
             (let [hash-key-1 (str
                               (hash
                                (merge
-                                (params.field-values/hash-input-for-field-values field nil)
+                                (params.field-values/hash-input-for-field-values field)
                                 ;; this is already included above, but we're just making sure.
                                 (impersonation/hash-input-for-impersonation field))))]
               (params.field-values/get-or-create-field-values! field)
@@ -38,7 +38,7 @@
                   (let [hash-key-2 (str
                                     (hash
                                      (merge
-                                      (params.field-values/hash-input-for-field-values field nil)
+                                      (params.field-values/hash-input-for-field-values field)
                                       ;; again, this is already included above, but we're adding it for documentation
                                       (impersonation/hash-input-for-impersonation field))))]
                     (params.field-values/get-or-create-field-values! field)
