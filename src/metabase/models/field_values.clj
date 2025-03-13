@@ -324,6 +324,12 @@
   [_field]
   nil)
 
+(defenterprise hash-input-for-database-routing
+  "Returns a hash input that will be used for fields subject to database routing"
+  metabase-enterprise.database-routing.model
+  [_field]
+  nil)
+
 (defn hash-input-for-linked-filters
   "Return a hash-key that will be used for linked-filters fieldvalues."
   [_field constraints]
