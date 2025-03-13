@@ -51,7 +51,7 @@ export interface DeleteDatabaseModalProps {
   database: Database;
 }
 
-const DeleteDatabaseModal = ({
+export const DeleteDatabaseModal = ({
   database,
   onClose,
   onDelete,
@@ -173,6 +173,3 @@ const DeleteDatabaseModal = ({
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteDatabaseModal;
