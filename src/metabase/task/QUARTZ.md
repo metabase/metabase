@@ -33,14 +33,14 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (def startup-trigger-key (triggers/key "my.startup.task.trigger"))
 
 (jobs/defjob StartupTask [_]
-  (println "Running startup initialization task")
-  )
+  (println "Running startup initialization task"))
 
 (defmethod task/init! ::StartupTask [_]
   (let [job (jobs/build
              (jobs/of-type StartupTask)
              (jobs/with-identity startup)
-             (jobs/with-description "One-time startup initialization task"))
+             (jobs/with-description "One-time startup initialization task")
+             (jobs/store-durably))
         trigger (triggers/build
                  (triggers/with-identity startup)
                  (triggers/for-job startup)
@@ -63,7 +63,8 @@ These tasks run on a recurring schedule defined by a cron expression.
   (let [job (jobs/build
              (jobs/of-type DailyTask)
              (jobs/with-identity daily)
-             (jobs/with-description "Daily scheduled task"))
+             (jobs/with-description "Daily scheduled task")
+             (jobs/store-durably))
         trigger (triggers/build
                  (triggers/with-identity daily)
                  (triggers/for-job daily)
