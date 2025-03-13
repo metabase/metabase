@@ -230,7 +230,9 @@ function createDimensionColumn(name: string): DatasetColumn {
   };
 }
 
-export function isScalarFunnel(state: VisualizerHistoryItem) {
+export function isScalarFunnel(
+  state: Pick<VisualizerHistoryItem, "display" | "settings">,
+) {
   return (
     state.display === "funnel" &&
     state.settings["funnel.metric"] === "METRIC" &&
