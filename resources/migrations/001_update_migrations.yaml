@@ -10834,6 +10834,22 @@ databaseChangeLog:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
 
+  - changeSet:
+      id: v54.2025-03-13T22:02:17
+      author: arakaki
+      comment: Remove the unique constraint/index on api_key.key_prefix
+      changes:
+        - dropIndex:
+            tableName: api_key
+            indexName: idx_api_key_key_prefix
+      rollback:
+        - createIndex:
+            tableName: api_key
+            columns:
+              - column:
+                  name: key_prefix
+            indexName: idx_api_key_key_prefix
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
