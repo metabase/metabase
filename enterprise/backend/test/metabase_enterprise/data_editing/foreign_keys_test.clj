@@ -81,21 +81,24 @@
      (select-keys child (:pk relationship)))])
 
 (deftest walk-test
-  (is (= {:order-items #{{:id 1338} {:id 1337}}}
+  (is (= {:complete? true
+          :results {:order-items #{{:id 1338} {:id 1337}}}}
          (fks/walk :orders [{:id 42}] metadata lookup-children)))
-  (is (= {:people #{{:id 5} {:id 4} {:id 3}}}
+  (is (= {:complete? true
+          :results    {:people #{{:id 5} {:id 4} {:id 3}}}}
          (fks/walk :people [{:id 1}] metadata lookup-children)))
-  (is (= {:users      #{{:id :user/ceo}
-                        {:id :user/cto}
-                        {:id :user/cpo}
-                        {:id :user/em}
-                        {:id :user/pm}
-                        {:id :user/bob}
-                        {:id :user/clarence}
-                        {:id :user/alice}}
-          :teams      #{{:id :team/alpha}
-                        {:id :team/bravo}}
-          :programmes #{{:id :programme/skunk-works}}
-          :projects   #{{:id :project/gamma}}
-          :tasks      #{{:id :task/foo}}}
+  (is (= {:complete? true
+          :results {:users      #{{:id :user/ceo}
+                                  {:id :user/cto}
+                                  {:id :user/cpo}
+                                  {:id :user/em}
+                                  {:id :user/pm}
+                                  {:id :user/bob}
+                                  {:id :user/clarence}
+                                  {:id :user/alice}}
+                    :teams      #{{:id :team/alpha}
+                                  {:id :team/bravo}}
+                    :programmes #{{:id :programme/skunk-works}}
+                    :projects   #{{:id :project/gamma}}
+                    :tasks      #{{:id :task/foo}}}}
          (fks/walk :users [{:user/ceo 1}] metadata lookup-children))))

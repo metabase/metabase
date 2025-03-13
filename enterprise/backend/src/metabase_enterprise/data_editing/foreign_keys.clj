@@ -58,9 +58,13 @@
                 state'
                 child-keys)))))
 
+(defn state->results [{:keys [results queue]}]
+  {:complete? (empty? queue)
+   :results   results})
+
 (defn walk [item-type items metadata children-fn & {:keys [max-queries]
                                                     :or   {max-queries 100}}]
-  (:results
+  (state->results
    (reduce
     (fn [state _]
       (step metadata children-fn state))
