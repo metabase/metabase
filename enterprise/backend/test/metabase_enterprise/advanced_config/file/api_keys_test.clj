@@ -3,10 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       (binding [config.file/*supported-versions* {:min 1, :max 1}]
