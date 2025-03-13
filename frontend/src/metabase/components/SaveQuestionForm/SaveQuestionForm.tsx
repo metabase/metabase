@@ -21,12 +21,12 @@ export const SaveQuestionForm = ({
   onCancel?: () => void;
   onSaveSuccess?: () => void;
 }) => {
-  const { question, originalQuestion, showSaveType, values, saveToCollection } =
+  const { question, originalQuestion, showSaveType, values, targetCollection } =
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
 
-  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollection);
+  const isCollectionPickerEnabled = isNullOrUndefined(targetCollection);
 
   return (
     <Form>
