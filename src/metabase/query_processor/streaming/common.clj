@@ -194,9 +194,9 @@
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get all-cols-settings {::mb.viz/field-id field-id-or-name})
-                            (get all-cols-settings {::mb.viz/column-name column-name})
-                            (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
+        column-settings (merge (get all-cols-settings {::mb.viz/field-id field-id-or-name})
+                               (get all-cols-settings {::mb.viz/column-name column-name})
+                               (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
     (merge
      ;; The default global settings based on the type of the column
      (try
