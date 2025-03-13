@@ -3,14 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.foreign-keys :as fks]))
 
-(deftest take-with-sentinel-test
-  (is (= [0 1 2]
-         (sequence (fks/take-with-sentinel 4 :truncated) (range 3))))
-  (is (= [0 1 2 3]
-         (sequence (fks/take-with-sentinel 4 :truncated) (range 4))))
-  (is (= [0 1 2 3 :truncated]
-         (sequence (fks/take-with-sentinel 4 :truncated) (range 5)))))
-
 (def metadata
   {:orders     [{:table :order-items, :fk {:order-id :id}, :pk [:id]}]
 
