@@ -27,10 +27,11 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/database-routing/mirror-database",
         body,
       }),
-      invalidatesTags: (_, error, { router_database_id }) =>
+      invalidatesTags: (response, error, { router_database_id }) =>
         invalidateTags(error, [
           listTag("database"),
           idTag("database", router_database_id),
+          ...(response?.map(({ id }) => idTag("database", id)) ?? []),
         ]),
     }),
   }),
