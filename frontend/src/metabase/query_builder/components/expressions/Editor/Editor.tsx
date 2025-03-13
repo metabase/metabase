@@ -14,15 +14,19 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MBQL_CLAUSES, format } from "metabase-lib/v1/expressions";
+import {
+  type ClauseType,
+  type ErrorWithMessage,
+  type StartRule,
+  MBQL_CLAUSES,
+  format,
+} from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
-import type { ClauseType, StartRule } from "../types";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";

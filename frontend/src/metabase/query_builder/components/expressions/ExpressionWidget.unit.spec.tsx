@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
+import type { StartRule } from "metabase-lib/v1/expressions";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import type { StartRule } from "./types";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
