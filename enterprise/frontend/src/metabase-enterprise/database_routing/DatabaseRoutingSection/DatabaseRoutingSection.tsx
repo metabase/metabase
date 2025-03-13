@@ -20,6 +20,7 @@ import {
   Select,
   Switch,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
@@ -73,10 +74,14 @@ export const DatabaseRoutingSection = ({
     // TODO: error handling
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
-      dispatch(addUndo({ message: t`Database routing disabled` }));
+
+      if (isFeatureEnabled) {
+        dispatch(addUndo({ message: t`Database routing disabled` }));
+      }
     }
   };
 
+  // TODO: make sure feature is only shown in the right circumstances
   if (shouldHideSection) {
     return null;
   }
@@ -122,10 +127,19 @@ export const DatabaseRoutingSection = ({
 
           <Flex justify="space-between" align="center">
             <Text fw="bold">{t`Destination databases`}</Text>
-            <Button
-              component={Link}
-              to={`/admin/databases/${database.id}/mirror/create`}
-            >{t`Add`}</Button>
+            {isFeatureEnabled ? (
+              <Button
+                component={Link}
+                to={`/admin/databases/${database.id}/mirror/create`}
+              >{t`Add`}</Button>
+            ) : (
+              <Tooltip
+                label={t`Please choose a user attribute first`}
+                withArrow
+              >
+                <Button disabled>{t`Add`}</Button>
+              </Tooltip>
+            )}
           </Flex>
 
           <RoutedDatabaesList database={database} previewCount={5} />

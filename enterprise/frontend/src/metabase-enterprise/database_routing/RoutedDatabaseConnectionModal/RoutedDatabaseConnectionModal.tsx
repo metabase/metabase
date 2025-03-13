@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
-import { useGetDatabaseQuery } from "metabase/api";
+import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Databases from "metabase/entities/databases";
 import title from "metabase/hoc/Title";
@@ -30,6 +30,7 @@ export const RoutedDatabaseConnectionModalInner = ({
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
   const mirrorDbReq = useGetDatabaseQuery(paramIdToGetQuery(mirrorDatabaseId));
   const [createMirrorDatabase] = useCreateMirrorDatabaseMutation();
+  const [updateDatabase] = useUpdateDatabaseMutation();
 
   const isLoading = primaryDbReq.isLoading || mirrorDbReq.isLoading;
   const error = primaryDbReq.error || mirrorDbReq.error;
@@ -72,9 +73,14 @@ export const RoutedDatabaseConnectionModalInner = ({
     return db;
   };
 
-  const handleSaveDatabase = isNewDatabase
-    ? handleCreateMirrorDatabase
-    : undefined;
+  const handleSaveDatabase = async (database: DatabaseData) => {
+    if (isNewDatabase) {
+      await handleCreateMirrorDatabase(database);
+    } else {
+      // @ts-expect-error doesn't like the type for some reason..
+      await updateDatabase(database);
+    }
+  };
 
   const handleOnSubmit = () => {
     handleCloseModal();

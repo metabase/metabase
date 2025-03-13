@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
-import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
+import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDiscardDatabaseFieldValuesMutation } from "metabase/api";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";

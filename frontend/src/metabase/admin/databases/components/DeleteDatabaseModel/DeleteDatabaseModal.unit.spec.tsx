@@ -5,7 +5,7 @@ import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
-import DeleteDatabaseModal from "./DeleteDatabaseModal";
+import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
 const getUsageInfo = (hasContent: boolean) => ({
   question: hasContent ? 10 : 0,
