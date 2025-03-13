@@ -245,7 +245,7 @@
                       [:card     :map]
                       [:dashcard :map]
                       [:result   :map]
-                      [:type     [:= :card]]]]
+                      [:type     [:= :dashcard]]]]
                     result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
