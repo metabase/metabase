@@ -261,6 +261,18 @@
     (partial u/round-to-decimals (int x))
     x))
 
+(defn boolish->bool
+  "Convert something that looks like a reasonable DB bool to a bool.
+
+  Throw an exception if the input does not seem boolish. Valid inputs are #{0 1 true false}.
+
+  Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
+  [x]
+  (case x
+    (0 false) false
+    (1 true)  true
+    (throw (ex-info "value is not boolish" {:value x}))))
+
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
   sequence or any of the common map formats we expect in QP tests.
