@@ -67,7 +67,7 @@
 /storybook-static
 /target
 /test-report-*
-**/snippets/test/tmp/**
+**/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
