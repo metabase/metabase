@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getVisualizerComputedSettings,
@@ -50,14 +50,25 @@ export function FunnelVerticalWell() {
       isOver={isOver}
       ref={setNodeRef}
     >
-      {!!metric && (
-        <WellItem
-          onRemove={handleRemoveMetric}
-          style={{ position: "absolute", transform: "rotate(-90deg)" }}
-        >
-          <Text truncate>{metric.display_name}</Text>
-        </WellItem>
-      )}
+      <Flex
+        align="center"
+        pos="relative"
+        gap="sm"
+        style={{
+          height: "100%",
+          overflow: "auto",
+          writingMode: "sideways-lr",
+        }}
+      >
+        {!!metric && (
+          <WellItem
+            onRemove={handleRemoveMetric}
+            style={{ position: "absolute", transform: "rotate(-90deg)" }}
+          >
+            <Text truncate>{metric.display_name}</Text>
+          </WellItem>
+        )}
+      </Flex>
     </SimpleVerticalWell>
   );
 }

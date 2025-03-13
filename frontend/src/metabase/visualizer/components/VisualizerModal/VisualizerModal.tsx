@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { type ComponentProps, useCallback, useEffect } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -22,17 +22,14 @@ interface VisualizerModalProps {
     state?: Partial<VisualizerHistoryItem>;
     extraDataSources?: VisualizerDataSourceId[];
   };
-  onSave: (visualization: VisualizerHistoryItem) => void;
   onClose: () => void;
-  saveLabel?: string;
 }
 
 export function VisualizerModal({
   initialState,
-  onSave,
   onClose,
-  saveLabel,
-}: VisualizerModalProps) {
+  ...otherProps
+}: VisualizerModalProps & ComponentProps<typeof Visualizer>) {
   const { open } = useModalOpen();
   const wasOpen = usePrevious(open);
   const dispatch = useDispatch();
@@ -71,11 +68,7 @@ export function VisualizerModal({
         onClose={onModalClose}
         padding={0}
       >
-        <Visualizer
-          className={S.VisualizerRoot}
-          onSave={onSave}
-          saveLabel={saveLabel}
-        />
+        <Visualizer className={S.VisualizerRoot} {...otherProps} />
       </Modal>
       {modalContent}
     </>

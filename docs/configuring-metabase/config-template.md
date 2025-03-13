@@ -238,7 +238,6 @@ config:
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
-    slack-files-channel: metabase_files
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     sql-parsing-enabled: true

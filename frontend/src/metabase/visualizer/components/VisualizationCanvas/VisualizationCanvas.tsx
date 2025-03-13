@@ -1,4 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
+import produce from "immer";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -13,6 +14,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -20,6 +22,7 @@ import {
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
+import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
 
@@ -29,18 +32,36 @@ import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 import Styles from "./VisualizationCanvas.module.css";
 
-export function VisualizationCanvas() {
+function disableAxisLabels(rawSeries: RawSeries) {
+  return produce(rawSeries, draft => {
+    const settings = draft[0]?.card.visualization_settings;
+
+    if (!settings) {
+      return draft;
+    }
+
+    settings["graph.x_axis.labels_enabled"] = false;
+    settings["graph.y_axis.labels_enabled"] = false;
+    draft[0].card.visualization_settings = settings;
+  });
+}
+
+export function VisualizationCanvas({ className }: { className?: string }) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
 
   const display = useSelector(getVisualizationType);
-  const rawSeries = useSelector(getVisualizerRawSeries);
+  let rawSeries = useSelector(getVisualizerRawSeries);
+  if (display && isCartesianChart(display)) {
+    rawSeries = disableAxisLabels(rawSeries);
+  }
+
   const isLoading = useSelector(getIsLoading);
 
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
 
   if (!display && !isLoading) {
     return (
-      <Center h="100%" w="100%" mx="auto">
+      <Center h="100%" w="100%" mx="auto" className={className}>
         <StartFromViz />
       </Center>
     );
@@ -48,7 +69,7 @@ export function VisualizationCanvas() {
 
   if (!display || rawSeries.length === 0) {
     return (
-      <Center h="100%" w="100%" mx="auto">
+      <Center h="100%" w="100%" mx="auto" className={className}>
         {isLoading ? (
           <Loader size="lg" />
         ) : (
@@ -60,7 +81,7 @@ export function VisualizationCanvas() {
 
   return (
     <>
-      <Box className={Styles.Container} ref={setNodeRef}>
+      <Box className={`${Styles.Container} ${className}`} ref={setNodeRef}>
         <Box style={{ gridArea: "left" }}>
           <VerticalWell display={display} />
         </Box>

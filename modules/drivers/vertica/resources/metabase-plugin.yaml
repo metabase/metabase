@@ -17,7 +17,7 @@ driver:
     - host
     - merge:
         - port
-        - default: 5433
+        - placeholder: 5433
     - dbname
     - user
     - password

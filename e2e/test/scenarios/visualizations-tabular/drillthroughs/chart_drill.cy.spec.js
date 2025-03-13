@@ -528,11 +528,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "table",
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^10 –/)
-      .closest(".test-TableInteractive-cellWrapper")
-      .next()
-      .contains("85")
-      .click();
+    cy.findByText(/^10 –/).parent().parent().next().contains("85").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See these Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

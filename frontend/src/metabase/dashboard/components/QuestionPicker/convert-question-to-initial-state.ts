@@ -1,8 +1,5 @@
 import visualizations from "metabase/visualizations";
-import {
-  getInitialStateForCardDataSource,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { getInitialStateForCardDataSource } from "metabase/visualizer/utils";
 import type {
   Card,
   DatasetColumn,
@@ -17,13 +14,6 @@ export function convertCardToInitialState(card: Card): {
   state: Partial<VisualizerHistoryItem>;
   extraDataSources: [VisualizerDataSourceId];
 } {
-  if (isVisualizerDashboardCard(card)) {
-    return {
-      state: {},
-      extraDataSources: [`card:${card.id}` as const],
-    };
-  }
-
   const initialState = getInitialStateForCardDataSource(
     card,
     // TODO fix that

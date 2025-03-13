@@ -698,6 +698,8 @@ export const getRawSeries = createSelector(
             visualization_settings: {
               ...card.visualization_settings,
               "table.pivot": false,
+              "table.column_formatting": [],
+              column_settings: {},
             },
           },
         },

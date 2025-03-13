@@ -14,7 +14,8 @@ export const QuestionChartSettings = ({
   onChange,
   computedSettings,
   initial,
-}: QuestionChartSettingsProps) => {
+  className,
+}: QuestionChartSettingsProps & { className?: string }) => {
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
@@ -39,6 +40,7 @@ export const QuestionChartSettings = ({
       chartSettings={chartSettings}
       transformedSeries={transformedSeries}
       widgets={widgets}
+      className={className}
       w="100%"
     />
   );

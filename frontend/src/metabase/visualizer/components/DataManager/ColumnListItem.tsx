@@ -18,10 +18,14 @@ import S from "./ColumnListItem.module.css";
 export interface ColumnListItemProps extends FlexProps {
   column: DatasetColumn;
   onRemove?: () => void;
+  highlightedForDrag?: boolean;
 }
 
 export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
-  function ColumnListItem({ column, onRemove, ...props }, ref) {
+  function ColumnListItem(
+    { column, onRemove, highlightedForDrag, ...props },
+    ref,
+  ) {
     const handleRemoveClick = (event: MouseEvent) => {
       event.stopPropagation();
       onRemove?.();
@@ -37,6 +41,17 @@ export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
         align="center"
         justify="space-between"
         ref={ref}
+        style={
+          highlightedForDrag
+            ? {
+                border: "2px solid var(--mb-color-brand)",
+                boxShadow: "0px 1px 4px 1px var(--mb-color-shadow)",
+                cursor: "grab",
+                backgroundColor: "var(--mb-color-bg-light)",
+                borderRadius: "var(--default-border-radius)",
+              }
+            : {}
+        }
       >
         <Flex align="center">
           <Icon className={S.grabber} name="grabber" mr={4} size={16} />
