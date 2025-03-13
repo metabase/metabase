@@ -53,12 +53,9 @@ export const InteractiveQuestionProvider = ({
   onSave,
   isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollection,
-  targetCollection: _targetCollection,
+  targetCollection,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
-  const targetCollection = _targetCollection || saveToCollection;
-
   const {
     id: questionId,
     isLoading: isLoadingValidatedId,
