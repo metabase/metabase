@@ -103,8 +103,8 @@
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
                                  (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings      (merge
-                              (or (get column-settings {::mb.viz/field-id col-id})
-                                  (get column-settings {::mb.viz/column-name col-name}))
+                              (get column-settings {::mb.viz/field-id col-id})
+                              (get column-settings {::mb.viz/column-name col-name})
                               (qualify-keys col-settings)
                               global-type-settings)
         global-settings      (merge
@@ -123,7 +123,6 @@
                                                                    (:type/Currency global-settings))
                                                                  (:type/Number global-settings)
                                                                  column-settings)
-
         currency           (when currency?
                              (keyword (or currency "USD")))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
