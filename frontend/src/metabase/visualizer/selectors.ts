@@ -25,6 +25,7 @@ import {
   extractReferencedColumns,
   getDefaultVisualizationName,
   mergeVisualizerData,
+  shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "./utils";
 
@@ -156,7 +157,10 @@ export const getVisualizerRawSeries = createSelector(
       } as SingleSeries,
     ];
 
-    if (isCartesianChart(display)) {
+    if (
+      isCartesianChart(display) &&
+      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+    ) {
       return splitVisualizerSeries(series, columnValuesMapping);
     }
 
