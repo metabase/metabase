@@ -17,18 +17,20 @@
 
 .toolbar {
   position: absolute;
-  bottom: 0;
+  top: 0;
   right: 0;
-  padding-top: 1px;
-  padding-bottom: 1px;
+}
+
+.toolbarButton {
+  aspect-ratio: 1;
 }
 
 .editor {
   overflow: auto;
-  width: 100%;
   height: 100%;
   box-sizing: border-box;
   color: var(--mb-color-text-dark);
+  margin-right: calc(28px + var(--mantine-spacing-sm));
 
   :global {
     .cm-editor {

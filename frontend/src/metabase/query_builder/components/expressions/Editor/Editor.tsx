@@ -161,7 +161,18 @@ export function Editor<S extends StartRule = "expression">(
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        <Flex className={S.toolbar} pr="md" gap="sm">
+        <Flex className={S.toolbar} pt="sm" pr="sm" direction="column">
+          <ButtonTooltip label={t`Function browser`}>
+            <Button
+              aria-label={t`Function browser`}
+              onClick={toggleFunctionBrowser}
+              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
+              className={S.toolbarButton}
+              size="xs"
+              p="x"
+              leftSection={<Icon name="function" />}
+            />
+          </ButtonTooltip>
           {source.trim() !== "" && error == null && isValidated && (
             <ButtonTooltip label={t`Auto-format`}>
               <Button
@@ -175,16 +186,6 @@ export function Editor<S extends StartRule = "expression">(
               />
             </ButtonTooltip>
           )}
-          <ButtonTooltip label={t`Function browser`}>
-            <Button
-              aria-label={t`Function browser`}
-              onClick={toggleFunctionBrowser}
-              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
-              size="xs"
-              p="xs"
-              leftSection={<Icon name="function" />}
-            />
-          </ButtonTooltip>
         </Flex>
 
         {portal}
