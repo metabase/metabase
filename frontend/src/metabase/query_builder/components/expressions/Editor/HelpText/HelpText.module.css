@@ -1,4 +1,5 @@
 .usage {
+  padding: 0.25rem 0;
   padding-left: 0.5rem;
   background-color: white;
   color: var(--mb-color-text-secondary);
@@ -7,8 +8,9 @@
   flex-shrink: 0;
   font-size: 0.75rem;
   min-height: 2.5rem;
-  line-height: 2.5rem;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
 }
 
 .toggle {
