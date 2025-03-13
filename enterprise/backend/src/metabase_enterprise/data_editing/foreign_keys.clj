@@ -1,6 +1,8 @@
 (ns metabase-enterprise.data-editing.foreign-keys
   (:require
-   [clojure.java.jdbc :as jdbc]))
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [metabase.util :as u]))
 
 (defn take-with-sentinel
   "Similar to the [[take]] transducer, but emits a final sentinel if there were remaining items."
@@ -59,14 +61,33 @@
                 child-keys)))))
 
 (defn state->results [{:keys [results queue]}]
+  ;; This is not precise; we should check whether there is at least one child for what's in the queue.
   {:complete? (empty? queue)
-   :results   results})
+   :items     results})
 
-(defn walk [item-type items metadata children-fn & {:keys [max-queries]
+(defn- walk* [item-type items metadata children-fn {:keys [max-queries]
                                                     :or   {max-queries 100}}]
-  (state->results
-   (reduce
-    (fn [state _]
-      (step metadata children-fn state))
-    {:queue [[item-type items]]}
-    (range max-queries))))
+  (reduce
+   (fn [state _]
+     (step metadata children-fn state))
+   {:queue   [[item-type items]]
+    :results {item-type (set items)}}
+   (range max-queries)))
+
+(defn walk [item-type items metadata children-fn & {:as opts}]
+  (state->results (update (walk* item-type items metadata children-fn opts)
+                          :results
+                          (fn [results]
+                            (u/remove-nils
+                             (update results item-type (comp not-empty set/difference) items))))))
+
+(defn count-descendants [item-type items metadata children-fn & {:as opts}]
+  (let [{:keys [complete? items]} (walk item-type items metadata children-fn opts)]
+    {:complete? complete?
+     :counts    (update-vals items count)}))
+
+(defn delete-recursively [item-type items metadata children-fn delete-fn & {:as opts}]
+  (let [{:keys [queue results]} (walk* item-type items metadata children-fn opts)]
+    (if (seq queue)
+      (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))
+      (delete-fn results))))
