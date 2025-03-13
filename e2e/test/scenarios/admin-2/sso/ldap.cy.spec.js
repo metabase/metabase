@@ -86,7 +86,7 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findAllByText("Nullable integer greater than 0").should("exist");
+      cy.findAllByText("nullable integer greater than 0").should("exist");
       cy.findByDisplayValue("localhost").should("exist");
     });
 
