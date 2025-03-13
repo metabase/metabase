@@ -16,17 +16,15 @@ function isCallExpression(expr: unknown): expr is CallExpression {
 
 export function applyPasses(
   expression: Expression,
-  passes: CompilerPass[],
+  passes: (CompilerPass | false | null)[],
 ): Expression {
   let res = expression;
   for (const pass of passes) {
-    res = pass(res);
+    if (pass) {
+      res = pass(res);
+    }
   }
   return res;
-}
-
-export function isCompilerPass(value: unknown): value is CompilerPass {
-  return typeof value === "function";
 }
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]

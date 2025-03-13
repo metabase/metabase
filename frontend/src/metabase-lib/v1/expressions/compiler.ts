@@ -13,7 +13,6 @@ import {
   adjustOptions,
   adjustTopLevelLiteral,
   applyPasses,
-  isCompilerPass,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import type { ClauseType, ErrorWithMessage, StartRule } from "./types";
@@ -60,25 +59,23 @@ export function compileExpression<S extends StartRule>({
     };
   }
 
-  const passes = [
-    adjustOptions,
-    adjustOffset,
-    adjustCaseOrIf,
-    adjustMultiArgOptions,
-    adjustTopLevelLiteral,
-    shouldResolve &&
-      resolverPass({
-        database,
-        query,
-        stageIndex,
-        startRule,
-      }),
-    adjustBooleans,
-  ].filter(isCompilerPass);
-
   try {
     let expression = compile(root);
-    expression = applyPasses(expression, passes);
+    expression = applyPasses(expression, [
+      adjustOptions,
+      adjustOffset,
+      adjustCaseOrIf,
+      adjustMultiArgOptions,
+      adjustTopLevelLiteral,
+      shouldResolve &&
+        resolverPass({
+          database,
+          query,
+          stageIndex,
+          startRule,
+        }),
+      adjustBooleans,
+    ]);
 
     const expressionClause = Lib.expressionClauseForLegacyExpression(
       query,
