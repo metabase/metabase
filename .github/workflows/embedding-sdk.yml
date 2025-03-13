@@ -28,7 +28,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  embedding-sdk-snippets-type-check:
+  embedding-sdk-cli-snippets-type-check:
     needs: [ files-changed ]
     if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
     runs-on: ubuntu-22.04
@@ -47,4 +47,4 @@ jobs:
       - name: Build Embedding SDK package
         run: yarn build-embedding-sdk
       - name: Run frontend embedding SDK snippets type check
-        run: yarn run type-check:embedding-sdk-snippets
+        run: yarn run embedding-sdk:cli-snippets:type-check
