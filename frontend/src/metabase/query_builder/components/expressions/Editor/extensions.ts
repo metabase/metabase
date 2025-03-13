@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import type * as Lib from "metabase-lib";
+import type { StartRule } from "metabase-lib/v1/expressions";
 import { suggestions } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -18,7 +19,7 @@ import S from "./Editor.module.css";
 import { customExpression } from "./language";
 
 type Options = {
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex: number | undefined;
