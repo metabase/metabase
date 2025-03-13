@@ -35,21 +35,21 @@
   (mt/with-temp-env-var-value [mb-config-file-path "config.yml"]
     (premium-features-test/with-premium-features #{:config-text-file}
       (t2.with-temp/with-temp [User {:email "admin@test.com"
-                                    :first_name "Admin"
-                                    :is_superuser true}]
+                                     :first_name "Admin"
+                                     :is_superuser true}]
         (testing "should create API keys from config"
           (try
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
-                                 :creator "admin@test.com"
-                                 :group "admin"
-                                 :description "Test API key"}
-                                {:name "All Users API Key"
-                                 :key "test_api_key_456"
-                                 :creator "admin@test.com"
-                                 :group "all-users"}]}})
+                                   :key "test_api_key_123"
+                                   :creator "admin@test.com"
+                                   :group "admin"
+                                   :description "Test API key"}
+                                  {:name "All Users API Key"
+                                   :key "test_api_key_456"
+                                   :creator "admin@test.com"
+                                   :group "all-users"}]}})
             (is (= :ok (config.file/initialize!)))
             (testing "API keys should be created"
               (is (api-key-exists? "Test API Key"))
@@ -67,14 +67,14 @@
         (testing "should fail if creator is not an admin"
           (try
             (t2.with-temp/with-temp [User {:email "regular@test.com"
-                                          :first_name "Regular"
-                                          :is_superuser false}]
+                                           :first_name "Regular"
+                                           :is_superuser false}]
               (write-config!
                {:version 1
                 :config {:api-keys [{:name "Test API Key"
-                                   :key "test_api_key_123"
-                                   :creator "regular@test.com"
-                                   :group "admin"}]}})
+                                     :key "test_api_key_123"
+                                     :creator "regular@test.com"
+                                     :group "admin"}]}})
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"User with email regular@test.com is not an admin"
@@ -87,9 +87,9 @@
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
-                                 :creator "nonexistent@test.com"
-                                 :group "admin"}]}})
+                                   :key "test_api_key_123"
+                                   :creator "nonexistent@test.com"
+                                   :group "admin"}]}})
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"User with email nonexistent@test.com not found"
@@ -102,9 +102,9 @@
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
-                                 :creator "admin@test.com"
-                                 :group "admin"}]}})
+                                   :key "test_api_key_123"
+                                   :creator "admin@test.com"
+                                   :group "admin"}]}})
             (config.file/initialize!)
             (let [first-key (t2/select-one APIKey :name "Test API Key")
                   _ (config.file/initialize!)
@@ -118,10 +118,10 @@
             (write-config!
              {:version 1
               :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
-                                 :creator "admin@test.com"
-                                 :group "invalid-group"}]}})
+                                   :key "test_api_key_123"
+                                   :creator "admin@test.com"
+                                   :group "invalid-group"}]}})
             (is (thrown? clojure.lang.ExceptionInfo
-                        (config.file/initialize!)))
+                         (config.file/initialize!)))
             (finally
-              (cleanup-config!)))))))))
+              (cleanup-config!))))))))
