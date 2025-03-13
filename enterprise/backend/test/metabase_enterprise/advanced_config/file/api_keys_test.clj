@@ -2,28 +2,30 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
-   [metabase.models.api-key :refer [ApiKey]]
-   [metabase.models.user :refer [User]]
+   [metabase.models :refer [APIKey User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- write-config! [config]
   (spit "config.yml" (yaml/generate-string config)))
 
 (defn- cleanup-config! []
   (u/ignore-exceptions
-    (doseq [api-key (t2/select ApiKey)]
-      (t2/delete! ApiKey :id (:id api-key)))
+    (doseq [api-key (t2/select APIKey)]
+      (t2/delete! APIKey :id (:id api-key)))
     (doseq [user (t2/select User :type :api-key)]
       (t2/delete! User :id (:id user)))
     (.delete (java.io.File. "config.yml"))))
 
 (defn- api-key-exists? [name]
-  (boolean (t2/select-one ApiKey :name name)))
+  (boolean (t2/select-one APIKey :name name)))
 
 (defn- api-key-user-exists? [name]
   (boolean (t2/select-one User :first_name name :type :api-key)))
@@ -55,7 +57,7 @@
               (is (api-key-user-exists? "Test API Key"))
               (is (api-key-user-exists? "All Users API Key")))
             (testing "API key should have correct properties"
-              (let [api-key (t2/select-one ApiKey :name "Test API Key")]
+              (let [api-key (t2/select-one APIKey :name "Test API Key")]
                 (is (string? (:key_prefix api-key)))
                 (is (= "Test API key" (:description api-key)))))
             (finally
@@ -103,9 +105,9 @@
                                  :creator "admin@test.com"
                                  :group "admin"}]}})
             (config.file/initialize!)
-            (let [first-key (t2/select-one ApiKey :name "Test API Key")
+            (let [first-key (t2/select-one APIKey :name "Test API Key")
                   _ (config.file/initialize!)
-                  second-key (t2/select-one ApiKey :name "Test API Key")]
+                  second-key (t2/select-one APIKey :name "Test API Key")]
               (is (= (:id first-key) (:id second-key))))
             (finally
               (cleanup-config!))))
