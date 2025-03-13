@@ -218,6 +218,43 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     cy.signInAsAdmin();
   });
 
+  it(
+    "should be enterable and scollable to view all rows in long tooltips (metabase#53586) (metabase#48347)",
+    { tags: "@flaky" },
+    () => {
+      const testQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+              [
+                "field",
+                ORDERS.TOTAL,
+                { binning: { strategy: "num-bins", "num-bins": 50 } },
+              ],
+            ],
+          },
+          type: "query",
+        },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "TOTAL"],
+          "graph.metrics": ["count"],
+        },
+      };
+      H.visitQuestionAdhoc(testQuestion);
+
+      H.chartPathWithFillColor("#A989C5").eq(3).realHover();
+      H.echartsTooltip()
+        .findByText("155 – 160") // bottom row
+        .scrollIntoView()
+        .should("be.visible");
+    },
+  );
+
   describe("> additional columns setting", () => {
     const COUNT = "Count";
     const SUM_OF_TOTAL = "Sum of Total";
@@ -544,7 +581,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     cy.get("@firstCircle").click();
 
-    H.echartsTooltip().should("not.be.visible");
+    cy.findAllByTestId("echarts-tooltip").should("be.hidden");
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -1071,19 +1108,15 @@ function setupDashboard(
     });
   });
 }
-function resetHoverState() {
-  H.echartsTriggerBlur();
-  cy.wait(50);
-}
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
-  resetHoverState();
+  H.echartsTriggerBlur();
   // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
-  resetHoverState();
+  H.echartsTriggerBlur();
   // eslint-disable-next-line no-unsafe-element-filtering
   H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }

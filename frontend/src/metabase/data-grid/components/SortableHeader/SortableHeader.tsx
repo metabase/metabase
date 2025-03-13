@@ -15,6 +15,7 @@ type DragPosition = { x: number; y: number };
 export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   header: Header<TData, TValue>;
   onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
 }
@@ -23,6 +24,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   header,
   className,
   children,
+  style: styleProp,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
   const isPinned = header.column.getIsPinned();
@@ -51,8 +53,9 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       zIndex: isDragging ? 2 : 0,
       cursor: isDragging ? "grabbing" : "pointer",
       outline: "none",
+      ...styleProp,
     };
-  }, [isDragging, transform, isPinned]);
+  }, [isDragging, transform, isPinned, styleProp]);
 
   const nodeAttributes = useMemo(() => {
     if (isPinned) {
