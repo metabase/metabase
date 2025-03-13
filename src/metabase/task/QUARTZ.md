@@ -29,8 +29,8 @@ These tasks execute once when Metabase starts up. They're useful for initializat
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [metabase.task :as task]))
 
-(def startup-job-key "my.startup.task.job")
-(def startup-trigger-key "my.startup.task.trigger")
+(def startup-job-key     (jobs/key "my.startup.task.job"))
+(def startup-trigger-key (triggers/key "my.startup.task.trigger"))
 
 (jobs/defjob StartupTask [_]
   (println "Running startup initialization task")
@@ -39,13 +39,12 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (defmethod task/init! ::StartupTask [_]
   (let [job (jobs/build
              (jobs/of-type StartupTask)
-             (jobs/with-identity (jobs/key startup-job-key))
+             (jobs/with-identity startup)
              (jobs/with-description "One-time startup initialization task"))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key startup-trigger-key))
-                 (triggers/for-job (jobs/key startup-job-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule (simple/schedule)))]
+                 (triggers/with-identity startup)
+                 (triggers/for-job startup)
+                 (triggers/start-now))]
     (task/schedule-task! job trigger)))
 ```
 
@@ -54,8 +53,8 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 These tasks run on a recurring schedule defined by a cron expression.
 
 ```clojure
-(def daily-job-key "my.scheduled.daily.task.job")
-(def daily-trigger-key "my.scheduled.daily.task.trigger")
+(def daily-job-key     (jobs/key "my.scheduled.daily.task.job"))
+(def daily-trigger-key (triggers/key "my.scheduled.daily.task.trigger"))
 
 (jobs/defjob DailyTask [_]
   (println "Running daily scheduled task"))
@@ -63,11 +62,11 @@ These tasks run on a recurring schedule defined by a cron expression.
 (defmethod task/init! ::DailyTask [_]
   (let [job (jobs/build
              (jobs/of-type DailyTask)
-             (jobs/with-identity (jobs/key daily-job-key))
+             (jobs/with-identity daily)
              (jobs/with-description "Daily scheduled task"))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key daily-trigger-key))
-                 (triggers/for-job (jobs/key daily-job-key))
+                 (triggers/with-identity daily)
+                 (triggers/for-job daily)
                  (triggers/start-now)
                  (triggers/with-schedule
                   ;; Run every day at 2 AM
