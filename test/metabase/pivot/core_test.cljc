@@ -161,7 +161,7 @@
   (testing "Excludes the primary rows if passed a primary rows key"
     (let [pivot-data {[0 1 2] [[1 "A" "Y" 10]
                                [1 "B" "Z" 20]]}
-
+          val-indexes [3]
           result (#'pivot/get-subtotal-values pivot-data val-indexes [0 1 2])]
       (is (= {}
              result)))))
