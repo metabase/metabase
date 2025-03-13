@@ -46,10 +46,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitTableMetadata();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
+      H.undoToast().should("contain.text", "Updated Table display_name");
       cy.findByDisplayValue("New orders").should("be.visible");
-      H.undoToast()
-        .findByText("Updated Table display_name")
-        .should("be.visible");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -63,10 +61,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitTableMetadata();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
+      H.undoToast().should("contain.text", "Updated Table description");
       cy.findByDisplayValue("New description").should("be.visible");
-      H.undoToast()
-        .findByText("Updated Table description")
-        .should("be.visible");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -79,9 +75,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitTableMetadata();
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
-      H.undoToast()
-        .findByText("Updated Table description")
-        .should("be.visible");
+      H.undoToast().should("contain.text", "Updated Table description");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -129,8 +123,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("Tax", "New tax");
       });
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -145,10 +139,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("The total billed amount.", "New description");
       });
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Total");
       getFieldSection("TOTAL")
         .findByDisplayValue("New description")
         .should("be.visible");
-      H.undoToast().findByText("Updated Total").should("be.visible");
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -165,7 +159,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         clearAndBlurInput("The total billed amount.");
       });
       cy.wait("@updateField");
-      H.undoToast().findByText("Updated Total").should("be.visible");
+      H.undoToast().should("contain.text", "Updated Total");
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -181,10 +175,10 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       getFieldSection("TAX")
         .findByDisplayValue("Do not include")
         .should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -201,10 +195,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       getFieldSection("TAX")
         .findByPlaceholderText("Select a currency type")
         .should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       getFieldSection("TAX")
         .findByPlaceholderText("Select a currency type")
@@ -227,11 +221,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated User ID");
       getFieldSection("USER_ID")
         .findByPlaceholderText("Select a target")
         .should("have.value", "Products → ID")
         .and("be.visible");
-      H.undoToast().findByText("Updated User ID").should("be.visible");
 
       H.openTable({
         database: SAMPLE_DB_ID,
@@ -342,8 +336,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
       setValueAndBlurInput("Tax", "New tax");
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       cy.findByDisplayValue("New tax").should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -356,8 +350,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("The total billed amount.", "New description");
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Total");
       cy.findByDisplayValue("New description").should("be.visible");
-      H.undoToast().findByText("Updated Total").should("be.visible");
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -373,8 +367,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       cy.findByDisplayValue("Do not include").should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -390,8 +384,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       cy.findByPlaceholderText("Select a currency type").should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       cy.findByPlaceholderText("Select a currency type")
         .should("have.value", "US Dollar")
@@ -411,10 +405,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated User ID");
       cy.findByPlaceholderText("Select a target")
         .should("have.value", "Products → ID")
         .should("be.visible");
-      H.undoToast().findByText("Updated User ID").should("be.visible");
 
       H.openTable({
         database: SAMPLE_DB_ID,
@@ -462,8 +456,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitTableMetadata();
       setValueAndBlurInput("Orders", "New orders");
       cy.findByDisplayValue("New orders").should("be.visible");
+      H.undoToast().should("contain.text", "Updated Table display_name");
       cy.wait("@updateTable");
-      H.undoToast().findByText("Updated Table display_name");
       cy.signOut();
 
       cy.signInAsNormalUser();
@@ -484,8 +478,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("Tax", "New tax"),
       );
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Tax");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
-      H.undoToast().findByText("Updated Tax").should("be.visible");
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
@@ -502,8 +496,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("Total", "New total");
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated Total");
       cy.findByDisplayValue("New total").should("be.visible");
-      H.undoToast().findByText("Updated Total").should("be.visible");
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
@@ -528,10 +522,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         cy.findByText("Products → ID").click();
       });
       cy.wait("@updateField");
+      H.undoToast().should("contain.text", "Updated User ID");
       cy.findByPlaceholderText("Select a target")
         .should("have.value", "Products → ID")
         .and("be.visible");
-      H.undoToast().findByText("Updated User ID").should("be.visible");
 
       cy.signInAsNormalUser();
       H.openTable({
