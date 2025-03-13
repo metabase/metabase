@@ -335,7 +335,7 @@ No props
 
 Provides a button that contains a dropdown that shows the `DownloadWidget`.
 
-Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) under the hood, as well as:
+Uses [Popover props](https://mantine.dev/core/popover/?t=props) under the hood, as well as:
 
 | Prop      | Type                | Description                                     |
 | --------- | ------------------- | ----------------------------------------------- |
