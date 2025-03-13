@@ -45,23 +45,11 @@ export function compileExpression<S extends StartRule>({
   database?: Database | null;
   resolve?: boolean;
 }): CompileResult<S> {
-  const tokens = lexify(source);
-
-  const { root, errors } = parse(tokens, {
-    throwOnError: false,
-  });
-
-  if (errors.length > 0) {
-    return {
-      expression: null,
-      expressionClause: null,
-      error: errors[0],
-    };
-  }
-
   try {
-    let expression = compile(root);
-    expression = applyPasses(expression, [
+    const tokens = lexify(source);
+    const { root } = parse(tokens, { throwOnError: true });
+    const compiled = compile(root);
+    const expression = applyPasses(compiled, [
       adjustOptions,
       adjustOffset,
       adjustCaseOrIf,
@@ -89,17 +77,20 @@ export function compileExpression<S extends StartRule>({
       error: null,
     };
   } catch (error) {
-    if (isErrorWithMessage(error) && error.friendly) {
-      return {
-        expression: null,
-        expressionClause: null,
-        error,
-      };
-    }
     return {
       expression: null,
       expressionClause: null,
-      error: { message: t`Invalid expression` },
+      error: renderError(error),
     };
   }
+}
+
+function renderError(error: unknown) {
+  if (isErrorWithMessage(error) && error.friendly) {
+    return error;
+  }
+  return {
+    message: t`Invalid expression`,
+    friendly: true,
+  };
 }
