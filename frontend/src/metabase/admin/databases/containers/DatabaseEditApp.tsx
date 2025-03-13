@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { type ComponentType, useState } from "react";
+import { type ComponentType, useCallback, useState } from "react";
 import { replace } from "react-router-redux";
 import { useInterval, useMount } from "react-use";
 import { t } from "ttag";
@@ -12,6 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
+import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -39,7 +40,6 @@ import {
   updateDatabase,
 } from "../database";
 import { getEditingDatabase, getInitializeError } from "../selectors";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 
 interface DatabaseEditAppProps {
   children: React.ReactNode;
@@ -100,6 +100,10 @@ function useDatabaseInitializer(
     () => initializeDatabase(databaseId),
     initialSyncStatus === "incomplete" ? 2000 : null,
   );
+
+  return useCallback(() => {
+    initializeDatabase(databaseId);
+  }, [databaseId, initializeDatabase]);
 }
 
 function DatabaseEditAppInner({
@@ -117,7 +121,7 @@ function DatabaseEditAppInner({
   location,
   replace,
 }: DatabaseEditAppProps) {
-  useDatabaseInitializer(
+  const refetchDatabase = useDatabaseInitializer(
     reset,
     initializeDatabase,
     params.databaseId,
@@ -170,6 +174,7 @@ function DatabaseEditAppInner({
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
                     database={database}
+                    refetchDatabase={refetchDatabase}
                   />
 
                   <DatabaseDangerZoneSection

@@ -6,11 +6,7 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import {
-  skipToken,
-  useGetDatabaseQuery,
-  useListUserAttributesQuery,
-} from "metabase/api";
+import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -33,21 +29,19 @@ import { RoutedDatabaesList } from "../RoutedDatabasesList";
 
 export const DatabaseRoutingSection = ({
   database,
+  refetchDatabase,
 }: {
   database: Database;
+  refetchDatabase: () => void;
 }) => {
   const dispatch = useDispatch();
-  const rtkDatabaseReq = useGetDatabaseQuery({
-    id: database.id,
-  });
 
   // TODO: get cache invalidation working and the database value to
   // reactively update when it is updated (feature is turned on or off)
 
   const [updateRouterDatabase] = useUpdateRouterDatabaseMutation();
 
-  const userAttribute =
-    rtkDatabaseReq.currentData?.router_user_attribute ?? undefined;
+  const userAttribute = database.router_user_attribute ?? undefined;
   const [tempEnabled, setTempEnabled] = useState(false);
   const isFeatureEnabled = !!userAttribute;
   const isToggleEnabled = tempEnabled || isFeatureEnabled;
@@ -57,6 +51,8 @@ export const DatabaseRoutingSection = ({
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
+    refetchDatabase();
+
     if (!isFeatureEnabled) {
       dispatch(addUndo({ message: t`Database routing enabled` }));
     } else {
@@ -74,6 +70,7 @@ export const DatabaseRoutingSection = ({
     // TODO: error handling
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
+      refetchDatabase();
 
       if (isFeatureEnabled) {
         dispatch(addUndo({ message: t`Database routing disabled` }));
@@ -142,7 +139,10 @@ export const DatabaseRoutingSection = ({
             )}
           </Flex>
 
-          <RoutedDatabaesList database={database} previewCount={5} />
+          <RoutedDatabaesList
+            primaryDatabaseId={database.id}
+            previewCount={5}
+          />
         </>
       )}
     </DatabaseInfoSection>

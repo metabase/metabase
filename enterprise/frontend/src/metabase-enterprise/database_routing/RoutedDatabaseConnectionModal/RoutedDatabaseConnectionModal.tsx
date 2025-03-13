@@ -15,8 +15,9 @@ import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
 import Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData } from "metabase-types/api";
 
+import { paramIdToGetQuery } from "../utils";
+
 import S from "./RoutedDatabaseConnectionModal.module.css";
-import { paramIdToGetQuery } from "./utils";
 
 export const RoutedDatabaseConnectionModalInner = ({
   params: { databaseId, mirrorDatabaseId },
@@ -75,10 +76,17 @@ export const RoutedDatabaseConnectionModalInner = ({
 
   const handleSaveDatabase = async (database: DatabaseData) => {
     if (isNewDatabase) {
-      await handleCreateMirrorDatabase(database);
+      // TODO: handle errors
+      const result = await handleCreateMirrorDatabase(database);
+      return result;
     } else {
+      // TODO: handle errors
       // @ts-expect-error doesn't like the type for some reason..
-      await updateDatabase(database);
+      const result = await updateDatabase(database);
+      if (result.error || !result.data) {
+        throw result.error;
+      }
+      return result.data;
     }
   };
 
