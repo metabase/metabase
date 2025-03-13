@@ -2,6 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 
 import { usePreventPopoverExit } from "metabase/ui/components/utils/PreventPopoverExit";
 
+/**
+ * useCloseModal sets up click handlers that prevent clicks the would cause the modal
+ * to close from firing unless allowPopoverExit is true.
+ *
+ * If the element that was clicked is an active element (ie. button, input, etc.),
+ * the confirmation modal is shown.
+ * If the element is not an active element, the confirmation modal is not shown, but
+ * the click is prevented from closing the popover.
+ * If the element has data-ignore-editor-clicks="true", the click behavior
+ * works as normal (ie. to make sure nested popovers keep working).
+ *
+ */
 export function useCloseModal({
   allowPopoverExit = false,
 }: {
