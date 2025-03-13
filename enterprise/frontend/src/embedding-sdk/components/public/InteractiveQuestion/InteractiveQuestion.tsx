@@ -31,16 +31,16 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SDKCollectionReference } from "embedding-sdk/store/collections";
+import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-  /**
-   * When this is defined, the collection picker will be hidden and
-   * the question will be saved to this collection.
-   **/
-  saveToCollection?: SDKCollectionReference;
 }> &
+  Pick<
+    SaveQuestionProps<SDKCollectionReference>,
+    "targetCollection" | "saveToCollection"
+  > &
   Pick<
     InteractiveQuestionProviderProps,
     | "onBeforeSave"
@@ -64,6 +64,7 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
+  targetCollection,
   saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
@@ -77,6 +78,7 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
+    targetCollection={targetCollection}
     saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
