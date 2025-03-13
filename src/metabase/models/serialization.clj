@@ -182,12 +182,12 @@
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
-(defn- increment-first-field
-  "Adds a suffix to the first element of the input seq.  Used to 'increment' a hash value to avoid duplicates."
-  [[value & rest :as values] increment]
+(defn- increment-hash-values
+  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  [values increment]
   (if (= increment 0)
     values
-    (cons (str value "-metabase-increment-" increment) rest)))
+    (conj values (str "metabase-increment-" increment))))
 
 (defn identity-hash
   "Returns an identity hash string (8 hex digits) from an `entity` map.
@@ -203,7 +203,7 @@
    {:pre [(some? entity)]}
    (-> (for [f (hash-fields entity)]
          (f entity))
-       (increment-first-field increment)
+       (increment-hash-values increment)
        raw-hash)))
 
 (defn backfill-entity-id
