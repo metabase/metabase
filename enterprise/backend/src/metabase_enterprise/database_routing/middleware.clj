@@ -3,29 +3,12 @@
   `:mirror-database/id`, on the query if a mirror database should be used. The second middleware runs around query
   execution, and should be THE LAST middleware before we hit the database and query execution actually occurs."
   (:require
+   [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
-
-(defn- user-attribute
-  "Which user attribute should we use for this RouterDB?"
-  [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :db_id (u/the-id db-or-id)))
-
-(defn router-db-or-id->mirror-db-id
-  [current-user db-or-id]
-  (when-let [attr-name (user-attribute db-or-id)]
-    (let [database-name #p (get (:login_attributes @current-user) attr-name)]
-      (if (= database-name "__METABASE_ROUTER__")
-        (u/the-id db-or-id)
-        (or (t2/select-one-pk :model/Database
-                              :router_database_id (u/the-id db-or-id)
-                              :name database-name)
-            (throw (ex-info "No MirrorDB found for user attribute" {:database-name database-name
-                                                                    :router-database-id (u/the-id db-or-id)})))))))
+   [metabase.util :as u]))
 
 (defenterprise swap-mirror-db-middleware
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the

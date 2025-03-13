@@ -111,7 +111,8 @@
    {:field-id (u/the-id field)}
    (field-values/hash-input-for-sandbox field)
    (field-values/hash-input-for-impersonation field)
-   (field-values/hash-input-for-linked-filters field constraints)))
+   (field-values/hash-input-for-linked-filters field constraints)
+   (field-values/hash-input-for-database-routing field)))
 
 (defn- requires-advanced-field-value?
   "Given a field, returns falsey if this field should use the normal batched implementation to get field values."

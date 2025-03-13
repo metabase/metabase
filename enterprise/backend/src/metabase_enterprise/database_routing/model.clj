@@ -1,6 +1,9 @@
 (ns metabase-enterprise.database-routing.model
   (:require
    [metabase.models.interface :as mi]
+   [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
+   [metabase.api.common :as api]
+   [metabase.models.field :as field]
    [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,3 +23,10 @@
                             :database_id  [:in (map :id databases)]))
    :id
    {:default nil}))
+
+(defenterprise hash-input-for-database-routing
+  "Enterprise version. Returns a hash input that will be used for fields subject to database routing."
+  :feature :database-routing
+  [field]
+  (when-let [mirror-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->mirror-db-id @api/*current-user*))]
+    {:mirror-db-id mirror-db-id}))
