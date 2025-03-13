@@ -976,3 +976,58 @@
                             (when (= "distinct" (name (:name (meta ag-op))))
                               0.0))))))))))))
 
+(deftest with-nulls-test
+  (mt/test-drivers
+    (mt/normal-drivers)
+    (mt/dataset
+      daily-bird-counts
+      (doseq [ag-op #_[#'lib/sum] tested-op-list]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              query-base (lib/query mp (lib.metadata/table mp (mt/id :bird-count)))
+              filter-col (m/find-first (comp #{"Date"} :display-name)
+                                       (lib/visible-columns query-base))
+              agg-col (m/find-first (comp #{"Count"} :display-name)
+                                    (lib/visible-columns query-base))
+              breakout-col (lib/with-temporal-bucket
+                             (m/find-first (comp #{"Date"} :display-name)
+                                           (lib/breakoutable-columns query-base))
+                             :year)
+              cond-1 (lib/between filter-col "2018-10-01" "2018-10-31")
+              cond-2 (lib/between filter-col "2018-09-01" "2018-09-30")
+              case-query (-> query-base
+                             (lib/breakout breakout-col)
+                              ;; is the or needed?
+                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-1) agg-col]])))
+                             (lib/aggregate (ag-op (lib/case [[(lib.util/fresh-uuids cond-2) agg-col]]))))
+              filter-query-1 (-> query-base
+                                 (lib/breakout breakout-col)
+                                 (lib/filter cond-1)
+                                 (lib/aggregate (ag-op agg-col)))
+              filter-query-2 (-> query-base
+                                 (lib/breakout breakout-col)
+                                 (lib/filter cond-2)
+                                 (lib/aggregate (ag-op agg-col)))
+              filter-query-1-result @(def r1 (qp/process-query filter-query-1))
+              filter-query-2-result @(def r2 (qp/process-query filter-query-2))
+              case-query-result @(def r3 (qp/process-query case-query))
+              filter-query-1-rows (mt/rows filter-query-1-result)
+              filter-query-2-rows (mt/rows filter-query-2-result)
+              case-query-rows (mt/rows case-query-result)
+              f1-rows-prepared @(def f1p (into {} (map #(vector (first %) (second %))) filter-query-1-rows))
+              f2-rows-prepared @(def f2p (into {} (map #(vector (first %) (second %))) filter-query-2-rows))]
+          (doseq [case-row case-query-rows
+                  :let [[breakout a1 a2] case-row]]
+            (testing "a1"
+              (is (=? (if (number? a1)
+                        (=?/approx [a1 0.000001])
+                        a1)
+                      (or (get f1-rows-prepared breakout)
+                          (when (= "distinct" (name (:name (meta ag-op))))
+                            0.0)))))
+            (testing "a2"
+              (is (=? (if (number? a2)
+                        (=?/approx [a2 0.000001])
+                        a2)
+                      (or (get f2-rows-prepared breakout)
+                          (when (= "distinct" (name (:name (meta ag-op))))
+                            0.0)))))))))))
