@@ -417,6 +417,7 @@
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",
+    "embedding-sdk:cli-snippets:type-check": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-cli-snippets-for-testing.ts && tsc --project enterprise/frontend/src/embedding-sdk/tsconfig.cli-snippets.json && rm -rf enterprise/frontend/src/embedding-sdk/cli-snippets-tmp",
     "embedding-sdk:clean": "rm -rf resources/embedding-sdk/dist && rm -rf resources/embedding-sdk/.tsbuildinfo",
     "embedding-sdk:dev": "concurrently -n 'tsc,webpack,fix-types' -c 'blue,green,yellow' 'npm:embedding-sdk:dev:dts' 'npm:embedding-sdk:dev:webpack' 'npm:embedding-sdk:dev:fixup'",
     "embedding-sdk:dev:dts": "yarn embedding-sdk:tsc --watch --preserveWatchOutput",
