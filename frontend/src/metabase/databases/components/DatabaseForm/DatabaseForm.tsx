@@ -28,7 +28,7 @@ import DatabaseNameField from "../DatabaseNameField";
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 interface DatabaseFormProps {
-  initialValues?: DatabaseData;
+  initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
   isAdvanced?: boolean;
   isMirrorDatabase?: boolean;
@@ -249,7 +249,7 @@ const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
 
 const getEngineKey = (
   engines: Record<string, Engine>,
-  values?: DatabaseData,
+  values?: Partial<DatabaseData>,
   isAdvanced?: boolean,
 ) => {
   if (values?.engine) {

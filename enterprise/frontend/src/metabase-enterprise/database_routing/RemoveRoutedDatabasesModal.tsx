@@ -4,9 +4,8 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
-import Database from "metabase-lib/v1/metadata/Database";
 
-import { paramIdToGetQuery } from "./RoutedDatabaseConnectionModal/utils"; // TODO: move to a more common utils file
+import { paramIdToGetQuery } from "./utils";
 
 export const RemoveRoutedDatabaseModal = ({
   params: { databaseId, mirrorDatabaseId },
@@ -16,15 +15,13 @@ export const RemoveRoutedDatabaseModal = ({
   const dispatch = useDispatch();
 
   const mirrorDbReq = useGetDatabaseQuery(paramIdToGetQuery(mirrorDatabaseId));
+  const mirrorDb = mirrorDbReq.data;
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
   // TODO
-  if (!mirrorDbReq.data) {
+  if (!mirrorDb) {
     return <div>TODO</div>;
   }
-
-  // @ts-expect-error TODO fix
-  const database = new Database(mirrorDbReq.data);
 
   const handleCloseModal = () => {
     dispatch(push(`/admin/databases/${databaseId}`));
@@ -47,7 +44,7 @@ export const RemoveRoutedDatabaseModal = ({
       <DeleteDatabaseModal
         onClose={handleCloseModal}
         onDelete={handleDelete}
-        database={database}
+        database={mirrorDb}
       />
     </Modal>
   );

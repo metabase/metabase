@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -15,19 +16,19 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { DatabaseId } from "metabase-types/api";
 
 export const RoutedDatabaesList = ({
+  primaryDatabaseId,
   previewCount = Infinity,
-  database,
 }: {
+  primaryDatabaseId: DatabaseId;
   previewCount?: number;
-  database: Database;
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
   const mirrorDbsReq = useListDatabasesQuery({
-    include_mirror_databases: database.id,
+    include_mirror_databases: primaryDatabaseId,
   });
 
   const mirrorDatabases = useMemo(
@@ -62,15 +63,15 @@ export const RoutedDatabaesList = ({
                   </Menu.Target>
                   <Menu.Dropdown>
                     <Menu.Item
-                      component={Link}
-                      to={`/admin/databases/${database.id}/mirror/${id}`}
+                      component={ForwardRefLink}
+                      to={`/admin/databases/${primaryDatabaseId}/mirror/${id}`}
                     >
                       Edit
                     </Menu.Item>
                     {isAdmin && (
                       <Menu.Item
-                        component={Link}
-                        to={`/admin/databases/${database.id}/mirror/${id}/remove`}
+                        component={ForwardRefLink}
+                        to={`/admin/databases/${primaryDatabaseId}/mirror/${id}/remove`}
                       >
                         Remove
                       </Menu.Item>
@@ -84,7 +85,7 @@ export const RoutedDatabaesList = ({
                 component={Link}
                 c="brand"
                 td="underline"
-                to={`/admin/databases/${database.id}/mirrors`}
+                to={`/admin/databases/${primaryDatabaseId}/mirrors`}
               >
                 View all {mirrorDatabases.length}
               </Text>
