@@ -39,7 +39,6 @@ const authConfig = {
 // Demo provider that wraps the MetabaseProvider with a custom theme and auth configuration.
 // In a real app, the theme would be managed by your application.
 export const EmbeddingProvider = ({children}) => {
-  /** @type {import('./analytics-provider').AnalyticsContextType} */
   const {themeKey} = useContext(AnalyticsContext)
   const theme = useMemo(() => THEMES[themeKey], [themeKey])
 

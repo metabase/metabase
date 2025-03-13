@@ -8,9 +8,6 @@ import {createContext, useState} from 'react'
  * @property {(themeKey: 'light'|'dark') => void} setThemeKey - Function to update the theme.
  */
 
-/**
- * @type {React.Context<AnalyticsContextType>}
- */
 export const AnalyticsContext = createContext(
   /** @type {AnalyticsContextType} */ ({})
 );
@@ -19,9 +16,6 @@ export const AnalyticsContext = createContext(
 // Delete this once you've played around with the theme switcher, and use your
 // own application's theming instead.
 export const AnalyticsProvider = ({children}) => {
-  /**
-   * @type {['light'|'dark', React.Dispatch<React.SetStateAction<'light'|'dark'>>]}
-   */
   const [themeKey, setThemeKey] = useState(/** @type {'light'|'dark'} */ ('light'));
 
   return (
@@ -46,9 +40,6 @@ export const BASE_SSO_API = 'http://localhost:4477'
  * @property {string|null} [authError] - Optional auth error message.
  */
 
-/**
- * @type {React.Context<AnalyticsContextType>}
- */
 export const AnalyticsContext = createContext(/** @type {AnalyticsContextType} */ ({}));
 
 const AUTH_SERVER_DOWN_MESSAGE = \`
