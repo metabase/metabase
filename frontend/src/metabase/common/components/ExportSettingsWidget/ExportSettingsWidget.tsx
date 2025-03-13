@@ -34,11 +34,11 @@ export const ExportSettingsWidget = ({
   const applicationName = useSelector(getApplicationName);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const formattingLabelParts = isFormattingEnabled
-    ? [t`E.g. September 6, 2024 or $187.50`, `, like in ${applicationName}`]
-    : [t`E.g. 2024-09-06 or 187.50`, `, like in the database`];
+    ? [t`E.g. September 6, 2024 or $187.50`, t`like in ${applicationName}`]
+    : [t`E.g. 2024-09-06 or 187.50`, t`like in the database`];
   const formattingLabel = isEmbeddingSdk
     ? formattingLabelParts[0]
-    : formattingLabelParts.join();
+    : formattingLabelParts.join(", ");
 
   return (
     <Stack>
