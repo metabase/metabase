@@ -29,18 +29,13 @@ These tasks execute once when Metabase starts up. They're useful for initializat
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [metabase.task :as task]))
 
-;; Define job keys and trigger keys
 (def startup-job-key "my.startup.task.job")
 (def startup-trigger-key "my.startup.task.trigger")
 
-;; Define the job
 (jobs/defjob StartupTask [_]
   (println "Running startup initialization task")
-  ;; After the task completes, you can optionally delete it
-  (task/delete-task! (jobs/key startup-job-key)
-                     (triggers/key startup-trigger-key)))
+  )
 
-;; Initialize and schedule the task
 (defmethod task/init! ::StartupTask [_]
   (let [job (jobs/build
              (jobs/of-type StartupTask)
@@ -62,11 +57,9 @@ These tasks run on a recurring schedule defined by a cron expression.
 (def daily-job-key "my.scheduled.daily.task.job")
 (def daily-trigger-key "my.scheduled.daily.task.trigger")
 
-;; Define the job
 (jobs/defjob DailyTask [_]
   (println "Running daily scheduled task"))
 
-;; Initialize and schedule the task
 (defmethod task/init! ::DailyTask [_]
   (let [job (jobs/build
              (jobs/of-type DailyTask)
