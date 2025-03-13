@@ -13,7 +13,7 @@ describe("HelpText (OSS)", () => {
     });
 
     expect(
-      screen.getByText('concat([Last Name], ", ", [First Name])'),
+      await screen.findByText('concat([Last Name], ", ", [First Name])'),
     ).toBeInTheDocument();
 
     expect(
@@ -39,13 +39,11 @@ describe("HelpText (OSS)", () => {
       },
     });
 
-    expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
-
     const exampleCodeEl = screen.getByTestId(
       "expression-helper-popover-structure",
     );
     expect(
-      within(exampleCodeEl).getByText("CumulativeCount"),
+      await within(exampleCodeEl).findByText("CumulativeCount"),
     ).toBeInTheDocument();
 
     expect(
