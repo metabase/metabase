@@ -53,7 +53,7 @@ Assuming you've been using a [production application database](../installation-a
 3. Stop your current Metabase Open Source edition.
 4. Swap in the Enterprise Edition Docker image or jar that you downloaded.
 5. Start your Metabase like you normally would using the new Enterprise Edition image or jar. You don't need to do anything with your application database (which you've backed up in step one, right?).
-6. [Activate your license](#enter-your-license). You won't be able to use any of the new features until you've activated your license.
+6. [Activate your license](#activate-your-license). You won't be able to use any of the new features until you've activated your license.
 
 Migrating to the Enterprise Edition will keep all of your questions, dashboards, people, settings — everything in your existing Metabase.
 
