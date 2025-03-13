@@ -257,7 +257,7 @@
     :status                    200
     :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
                                                               (or filename-prefix "query_result")
-                                                              (u.date/format (t/zoned-date-time)))}}))
+                                                              (streaming.common/export-filename-timestamp))}}))
 
 (defn- cell-string-format-style
   [^Workbook workbook ^DataFormat data-format format-string]
