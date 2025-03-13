@@ -101,7 +101,8 @@
   (testing "card notification of a simple line graph"
     (notification.tu/with-card-notification
       [notification {:card     {:dataset_query (mt/mbql-query orders {:aggregation [["count"]]
-                                                                      :breakout    [!day.created_at]})
+                                                                      :breakout    [!day.created_at]
+                                                                      :limit       1})
                                 :display       :line}
                      :handlers [@notification.tu/default-email-handler
                                 notification.tu/default-slack-handler]}]
@@ -191,8 +192,8 @@
                 (is (= 0 (count messages)))))}))))))
 
 (deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:send_condition "goal_above"}
-        alert-below-pulse {:send_condition "goal_below"}
+  (let [alert-above-pulse "goal_above"
+        alert-below-pulse "goal_below"
         progress-result   (fn [val] {:card   {:display                :progress
                                               :visualization_settings {:progress.goal    5}}
                                      :result {:data {:rows [[val]]}}})
@@ -205,7 +206,9 @@
                                                              :effective-type :type/Integer
                                                              :semantic_type  :type/Quantity}]
                                                      :rows [["2021-01-01T00:00:00Z" val]]}}})
-        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+        goal-met?#        (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+        goal-met?         (fn [send-condition {:keys [card result]}]
+                            (goal-met?# send-condition card result))]
     (testing "Progress bar"
       (testing "alert above"
         (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))

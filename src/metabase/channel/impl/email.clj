@@ -69,7 +69,7 @@
 (defn- render-part
   [timezone part options]
   (case (:type part)
-    :card
+    (:card :dashcard)
     (channel.render/render-pulse-section timezone (channel.shared/realize-data-rows part) options)
 
     :text
@@ -176,7 +176,7 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone (assoc card_part :card card) {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -186,7 +186,7 @@
                              :format_rows true})
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
-        goal               (ui-logic/find-goal-value payload)
+        goal               (ui-logic/find-goal-value card)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (keyword (:send_condition notification_card))

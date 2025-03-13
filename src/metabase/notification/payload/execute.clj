@@ -151,8 +151,8 @@
                                           card
                                           (t2/select-one :model/Card :id card-id))
                               :dashcard dashcard
-                              ;; TODO should this be dashcard?
-                              :type     :card
+                              ;; TODO: namepsace these types
+                              :type     :dashcard
                               :result   (qp.dashboard/process-query-for-dashcard
                                          :dashboard-id  dashboard_id
                                          :card-id       card-id
@@ -220,11 +220,14 @@
 (mr/def ::Part
   "Part."
   [:multi {:dispatch :type}
+   [:dashcard  [:map {:closed true}
+                [:type      [:= :dashcard]]
+                [:card      :map]
+                [:result    [:maybe :map]]
+                [:dashcard  [:maybe :map]]]]
    [:card      [:map {:closed true}
-                [:type                      [:= :card]]
-                [:card                      :map]
-                [:result                    [:maybe :map]]
-                [:dashcard {:optional true} [:maybe :map]]]]
+                [:type    [:= :card]]
+                [:result  [:maybe :map]]]]
    [:text      [:map
                 [:text :string]
                 [:type [:= :text]]]]

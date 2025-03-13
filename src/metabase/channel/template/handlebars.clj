@@ -30,11 +30,11 @@
 (defn- wrap-context
   [context]
   ;; TEMPORARY DISABLE TO MAKE IT EASY TO DEBUG
-  context
-  #_(walk/postwalk
-     #(if (keyword? %)
-        (u/qualified-name %)
-        %) context))
+  #_context
+  (walk/postwalk
+   #(if (keyword? %)
+      (u/qualified-name %)
+      %) context))
 
 (def ^:private default-hbs
   (delay (u/prog1 (registry (classpath-loader "/" "") :reload? true)

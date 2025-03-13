@@ -115,14 +115,13 @@
 (def ^:private result-attachment #'email.result-attachment/result-attachment)
 
 (defn- render-csv-for-dashcard
-  [part]
-  (-> part
-      (assoc-in [:card :include_csv] true)
-      result-attachment
-      first
-      :content
-      slurp
-      csv-to-html-table))
+  [{:keys [card result]}]
+  (let [attachment (result-attachment card result {:include_csv true})]
+    (-> attachment
+        first
+        :content
+        slurp
+        csv-to-html-table)))
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]

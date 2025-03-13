@@ -127,13 +127,13 @@
 
 (defn find-goal-value
   "The goal value can come from a progress goal or a graph goal_value depending on it's type"
-  [result]
-  (case (get-in result [:card :display])
+  [card]
+  (case (:display card)
 
     (:area :bar :line)
-    (get-in result [:card :visualization_settings :graph.goal_value])
+    (get-in card [:visualization_settings :graph.goal_value])
 
     :progress
-    (get-in result [:card :visualization_settings :progress.goal])
+    (get-in card [:visualization_settings :progress.goal])
 
     nil))

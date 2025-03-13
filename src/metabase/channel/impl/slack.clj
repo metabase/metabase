@@ -50,7 +50,7 @@
 (defn- part->attachment-data
   [part]
   (case (:type part)
-    :card
+    (:card :dashcard)
     (let [{:keys [card dashcard result]}         part
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
@@ -119,11 +119,12 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [_channel-type {:keys [payload]} _template recipients]
-  (let [attachments [{:blocks [{:type "header"
+  (let [card        (:card payload)
+        attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (:card_part payload))]]
+                     (part->attachment-data (assoc (:card_part payload) :card card))]]
     (for [channel-id (map notification-recipient->channel-id recipients)]
       {:channel-id  channel-id
        :attachments attachments})))
