@@ -85,11 +85,31 @@
                                                  :type :query
                                                  :query {:source-table (mt/id :orders)
                                                          :aggregation [[:metric metric-id]]
+                                                         :filter [:and
+                                                                  [:!=
+                                                                   [:get-week
+                                                                    [:field (mt/id :orders :created_at)
+                                                                     {:base-type :type/DateTimeWithLocalTZ}]
+                                                                    :iso]
+                                                                   1 2 3]
+                                                                  [:=
+                                                                   [:field (mt/id :orders :created_at)
+                                                                    {:base-type :type/DateTimeWithLocalTZ
+                                                                     :temporal-unit :month-of-year}]
+                                                                   6 7 8]]
                                                          :breakout [[:field (mt/id :orders :created_at)
                                                                      {:base-type :type/DateTimeWithLocalTZ
                                                                       :temporal-unit :week}]]}}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
+                      :filters [{:field_id (->field-id "Created At")
+                                 :bucket "week-of-year"
+                                 :operation "not-equals"
+                                 :values [1 2 3]}
+                                {:field_id (->field-id "Created At")
+                                 :bucket "month-of-year"
+                                 :operation "equals"
+                                 :values [6 7 8]}]
                       :group-by [{:field_id (->field-id "Created At")
                                   :field_granularity "week"}]}))))
           (testing "Multi-value filtering works"
@@ -153,12 +173,23 @@
                                              :type :query
                                              :query {:source-table (mt/id :orders)
                                                      :filter
-                                                     [:> [:field (mt/id :orders :discount)
-                                                          {:base-type :type/Float}]
-                                                      3]}}}}
+                                                     [:and
+                                                      [:=
+                                                       [:get-day-of-week
+                                                        [:field (mt/id :orders :created_at)
+                                                         {:base-type :type/DateTimeWithLocalTZ}]
+                                                        :iso]
+                                                       1 7]
+                                                      [:>
+                                                       [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                                       3]]}}}}
                 (metabot-v3.tools.filters/filter-records
                  {:data-source {:table_id table-id}
-                  :filters [{:field_id (->field-id "Discount")
+                  :filters [{:field_id (->field-id "Created At")
+                             :bucket "day-of-week"
+                             :operation "equals"
+                             :values [1 7]}
+                            {:field_id (->field-id "Discount")
                              :operation "number-greater-than"
                              :value 3}]})))))
     (testing "Missing table results in an error."
