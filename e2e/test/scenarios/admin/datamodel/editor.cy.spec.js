@@ -125,9 +125,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("Tax", "New tax");
       });
       cy.wait("@updateField");
+      H.undoToast().findByText("Updated Tax").should("be.visible");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -177,14 +176,13 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field visibility", () => {
       visitTableMetadata();
-      getFieldSection("TAX").findByText("Everywhere").click();
+      getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
-      getFieldSection("TAX").findByText("Do not include").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Do not include").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Tax").should("be.visible");
+      H.undoToast().findByText("Updated Tax").should("be.visible");
+      getFieldSection("TAX")
+        .findByDisplayValue("Do not include")
+        .should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -201,14 +199,14 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
+      H.undoToast().findByText("Updated Tax").should("be.visible");
       getFieldSection("TAX")
         .findByPlaceholderText("Select a currency type")
         .should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Tax").should("be.visible");
 
       getFieldSection("TAX")
         .findByPlaceholderText("Select a currency type")
+        .scrollIntoView()
         .should("have.value", "US Dollar")
         .click();
       searchAndSelectValue("Canadian Dollar");
@@ -373,14 +371,11 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field visibility", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Everywhere").click();
+      cy.findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Do not include").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Tax").should("be.visible");
+      H.undoToast().findByText("Updated Tax").should("be.visible");
+      cy.findByDisplayValue("Do not include").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -493,9 +488,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("Tax", "New tax"),
       );
       cy.wait("@updateField");
+      H.undoToast().findByText("Updated Tax").should("be.visible");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Updated Tax").should("be.visible");
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
@@ -641,10 +635,12 @@ describe("scenarios > admin > datamodel > editor", () => {
         databaseId: MYSQL_DB_SCHEMA_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
-      getFieldSection("TAX").findByText("Everywhere").click();
+      getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
-      getFieldSection("TAX").findByText("Do not include").should("be.visible");
+      getFieldSection("TAX")
+        .findByDisplayValue("Do not include")
+        .should("be.visible");
     });
   });
 });

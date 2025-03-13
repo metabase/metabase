@@ -167,8 +167,7 @@ describe("scenarios > admin > datamodel > field", () => {
     it("lets you change field visibility", () => {
       H.visitAlias("@ORDERS_CREATED_AT_URL");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Everywhere").click();
+      cy.findByDisplayValue("Everywhere").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Do not include").click({ force: true });
       cy.wait("@fieldUpdate");
@@ -207,8 +206,7 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Use original value").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use foreign key").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Title").click();
+      H.popover().findByText("Title").click();
       cy.wait("@fieldDimensionUpdate");
 
       cy.reload();
