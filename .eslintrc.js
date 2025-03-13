@@ -288,5 +288,13 @@ module.exports = {
         ],
       },
     },
+    {
+      files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+      rules: {
+        "@typescript-eslint/no-unused-vars": "off",
+        "import/no-unresolved": "off",
+        "no-color-literals": "off",
+      },
+    },
   ],
 };
