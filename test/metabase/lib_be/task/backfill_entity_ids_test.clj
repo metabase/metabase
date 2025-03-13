@@ -60,6 +60,19 @@
         (is (nil? (:entity_id (t2/select :model/Database :id db-id))))
         (is (nil? (:entity_id (t2/select :model/Table :id table-id))))))))
 
+(deftest ^:synchonized backfill-duplicates-test
+  (testing "Can backfill duplicate entities"
+    (with-sample-data! :model/Database
+      (fn [{:keys [db-id db]}]
+        (mt/with-temp
+          [:model/Database {db-id2 :id} (select-keys db [:name :engine])]
+          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
+          (let [entity-id1 (:entity_id (t2/select-one :model/Database :id db-id))
+                entity-id2 (:entity_id (t2/select-one :model/Database :id db-id2))]
+            (is (not (nil? entity-id1)))
+            (is (not (nil? entity-id2)))
+            (is (not (= entity-id1 entity-id2)))))))))
+
 (deftest ^:synchronized backfill-limit-test
   (testing "Only backfills up to batch-size records"
     (binding [backfill-entity-ids/*batch-size* 1]

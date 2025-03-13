@@ -1,5 +1,6 @@
 (ns metabase.lib-be.task.backfill-entity-ids
   (:require
+   [clojure.string :as str]
    [clojurewerkz.quartzite.conversion :as conversion]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
@@ -16,6 +17,9 @@
 (def ^:dynamic *batch-size*
   "The number of records the backfill entity ids job will process at once"
   50)
+(def ^:dynamic *max-retries*
+  "The number of times we will retry hashing in an attempt to find a unique hash"
+  20)
 (def ^:private min-repeat-ms
   "The minimum acceptable repeat rate for the backfill entity ids job"
   1000)
@@ -44,7 +48,7 @@
   "Given a model, gets a batch of objects from the db and adds entity-ids"
   [model]
   (try
-    (t2/with-transaction [_conn]
+    (t2/with-transaction [^java.sql.Connection conn]
       (let [failed-ids @failed-rows
             id-condition (if (seq failed-ids)
                            [:not-in failed-ids]
@@ -52,15 +56,34 @@
             rows (t2/select model :entity_id nil :id id-condition {:limit *batch-size*})]
         (when (seq rows)
           (log/info (str "Adding entity-ids to " (count rows) " rows of " model))
-          (doseq [{:keys [id] :as row} rows]
-            (try
-              (t2/update! model id {:entity_id (serdes/backfill-entity-id row)})
-              (catch Exception e
-                ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
-                ;; retry them on next sync.
-                (add-failed-row! id)
-                (log/error (str "Exception updating entity-id for " model " with id " id))
-                (log/error e))))
+          (loop [[{:keys [id] :as row} & rest :as all] rows
+                 retry 0
+                 savepoint (.setSavepoint conn)]
+            (when row
+              (let [needs-retry
+                    (try
+                      (t2/update! model id {:entity_id (serdes/backfill-entity-id row retry)})
+                      false
+                      (catch Exception e
+                        (.rollback conn savepoint)
+                        (if (and (some-> e
+                                         ex-cause
+                                         .getMessage
+                                         (str/includes? " already exists"))
+                                 (< retry *max-retries*))
+                          (do
+                            (log/info (str "Duplicate entity-id found for " model " with id " id ", retried " retry " times"))
+                            true)
+                          (do
+                            ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
+                            ;; retry them on next sync.
+                            (add-failed-row! id)
+                            (log/error (str "Exception updating entity-id for " model " with id " id))
+                            (log/error e)
+                            false))))]
+                (if needs-retry
+                  (recur all (inc retry) savepoint)
+                  (recur rest 0 (.setSavepoint conn))))))
           true)))
     (catch Exception e
       ;; If we error outside of updating a single entity id, stop.  We'll retry on next sync.
