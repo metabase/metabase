@@ -103,6 +103,10 @@ export interface GetDatabaseRequest {
   exclude_uneditable_details?: boolean;
 }
 
+export type GetDatabaseHealthResponse =
+  | { status: "ok" }
+  | { status: "error"; message: string; errors: unknown };
+
 export interface ListDatabasesRequest {
   include?: "table";
   saved?: boolean;

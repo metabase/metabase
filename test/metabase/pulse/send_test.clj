@@ -13,8 +13,6 @@
    [metabase.integrations.slack :as slack]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -203,7 +201,6 @@
                                    :content     true}
                  :title_link      (str "https://testmb.com/question/" card-id)
                  :attachment-name "image.png"
-                 :channel-id      "FOO"
                  :fallback        pulse.test-util/card-name}]}
               (pulse.test-util/thunk->boolean pulse-results))))
 
@@ -263,7 +260,6 @@
                                               :content     true}
                             :title_link      (str "https://testmb.com/question/" card-id)
                             :attachment-name "image.png"
-                            :channel-id      "FOO"
                             :fallback        pulse.test-util/card-name}]}
                          (pulse.test-util/thunk->boolean pulse-results))))
                 (testing "attached-results-text should be invoked exactly once"
@@ -404,7 +400,6 @@
                                                          :content     true}
                                        :title_link      (str "https://testmb.com/question/" card-id)
                                        :attachment-name "image.png"
-                                       :channel-id      "FOO"
                                        :fallback        pulse.test-util/card-name}]}
                        (pulse.test-util/thunk->boolean result)))
                 (is (every? produces-bytes? (rest (:attachments result)))))}}
@@ -625,24 +620,6 @@
          (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
          (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe")))))))
 
-(deftest pulse-permissions-test
-  (testing "Pulses should be sent with the Permissions of the user that created them."
-    (letfn [(send-pulse-created-by-user!* [user-kw]
-              (mt/with-temp [:model/Collection coll {}
-                             :model/Card       card {:dataset_query (mt/mbql-query checkins
-                                                                      {:order-by [[:asc $id]]
-                                                                       :limit    1})
-                                                     :collection_id (:id coll)}]
-                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
-                (pulse.test-util/send-alert-created-by-user! user-kw card)))]
-      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
-             (send-pulse-created-by-user!* :crowberto)))
-      (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You do not have permissions to view Card [\d,]+."
-             (send-pulse-created-by-user!* :rasta)))))))
-
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
     (into {}
@@ -717,8 +694,7 @@
 
 (def ^:private fake-slack-notification
   {:channel-id  "#test-channel"
-   :message     "test message body"
-   :attachments []})
+   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync

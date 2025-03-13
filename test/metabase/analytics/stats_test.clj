@@ -337,6 +337,44 @@
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
 
+(deftest question-metrics-test
+  (testing "Returns metrics for cards using a single sql query"
+    (mt/with-temp [:model/User      u {}
+                   :model/Dashboard d {:creator_id (u/the-id u)}
+                   :model/Card      _ {}
+                   :model/Card      _ {:query_type "native"}
+                   :model/Card      _ {:query_type "gui"}
+                   :model/Card      _ {:public_uuid (str (random-uuid))}
+                   :model/Card      _ {:dashboard_id (u/the-id d)}
+                   :model/Card      _ {:enable_embedding true}
+                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
+                                       :embedding_params {:category_name "locked" :name_category "disabled"}}
+                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :string}}}}
+                                       :embedding_params {:category_name "enabled" :name_category "enabled"}}]
+      (testing "reported metrics for all app db types"
+        (is (malli= [:map
+                     [:questions [:map
+                                  [:total [:= 8]]
+                                  [:native [:= 1]]
+                                  [:gui [:= 1]]
+                                  [:is_dashboard_question [:= 1]]]]
+                     [:public [:map
+                               [:total [:= 3]]]]
+                     [:embedded [:map
+                                 [:total [:= 3]]]]]
+                    (#'stats/question-metrics))))
+      (when (contains? #{:mysql :postgres} (mdb/db-type))
+        (testing "reports json column derived-metrics"
+          (let [reported (#'stats/question-metrics)]
+            (is (= 2 (get-in reported [:questions :with_params])))
+            (is (= 2 (get-in reported [:public :with_params])))
+            (is (= 2 (get-in reported [:embedded :with_params])))
+            (is (= 1 (get-in reported [:embedded :with_enabled_params])))
+            (is (= 1 (get-in reported [:embedded :with_locked_params])))
+            (is (= 1 (get-in reported [:embedded :with_disabled_params])))))))))
+
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
@@ -455,13 +493,14 @@
   "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
-    :enhancements
+    :collection-cleanup
     :embedding
     :embedding-sdk
-    :collection-cleanup
+    :enhancements
     :llm-autodescription
     :query-reference-validation
-    :session-timeout-config})
+    :session-timeout-config
+    :table-data-editing})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

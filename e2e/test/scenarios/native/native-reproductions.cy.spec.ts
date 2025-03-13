@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
 
@@ -32,9 +33,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   });
 });
@@ -227,7 +226,6 @@ describe("issue 53194", () => {
 
   it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
     H.startNewNativeQuestion();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
@@ -381,4 +379,39 @@ describe("issues 52811, 52812", () => {
   function clickAway() {
     cy.get("body").click(0, 0);
   }
+});
+
+describe("issue 52806", () => {
+  const questionDetails = {
+    name: "SQL",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+        "template-tags": {
+          id: {
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: "1",
+          },
+        },
+      },
+    },
+    visualization_settings: {},
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    H.visitQuestionAdhoc(questionDetails);
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.location().should(location => expect(location.search).to.eq(""));
+  });
 });

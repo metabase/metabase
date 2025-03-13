@@ -15,7 +15,8 @@ export function echartsContainer() {
 }
 
 export function echartsTriggerBlur() {
-  return echartsContainer().realHover({ position: "right" });
+  echartsContainer().realHover({ position: "right" });
+  cy.wait(700); // Waiting until tooltip disappears
 }
 
 export function ensureEchartsContainerHasSvg() {

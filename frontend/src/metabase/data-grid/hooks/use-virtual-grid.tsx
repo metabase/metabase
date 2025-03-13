@@ -1,7 +1,9 @@
 import type { Table as ReactTable } from "@tanstack/react-table";
 import {
+  type Range,
   type VirtualItem,
   type Virtualizer,
+  defaultRangeExtractor,
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
@@ -20,6 +22,7 @@ export interface VirtualGrid {
   virtualPaddingLeft: number | undefined;
   virtualPaddingRight: number | undefined;
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+  columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
 }
 
@@ -31,6 +34,12 @@ export const useVirtualGrid = <TData,>({
 }: VirtualGridOptions<TData>): VirtualGrid => {
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
+
+  const pinnedColumnsIndices = useMemo(
+    () => table.getLeftVisibleLeafColumns().map(c => c.getPinnedIndex()),
+    [table],
+  );
+
   const columnVirtualizer = useVirtualizer({
     count: visibleColumns.length,
     getScrollElement: () => gridRef.current,
@@ -40,6 +49,16 @@ export const useVirtualGrid = <TData,>({
       const actualSize = table.getState().columnSizing[column.id];
       return actualSize ?? size;
     },
+    rangeExtractor: useCallback(
+      (range: Range) => {
+        const columnIndices = defaultRangeExtractor(range);
+        if (pinnedColumnsIndices.length === 0) {
+          return columnIndices;
+        }
+        return Array.from(new Set([...pinnedColumnsIndices, ...columnIndices]));
+      },
+      [pinnedColumnsIndices],
+    ),
     horizontal: true,
     overscan: 3,
   });
@@ -74,18 +93,27 @@ export const useVirtualGrid = <TData,>({
     let virtualPaddingLeft: number | undefined;
     let virtualPaddingRight: number | undefined;
 
+    const pinnedCount = pinnedColumnsIndices.length;
+
     if (columnVirtualizer && virtualColumns?.length) {
-      virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
+      const leftNonPinnedStart = virtualColumns[pinnedCount]?.start ?? 0;
+      const leftNonPinnedEnd =
+        virtualColumns[pinnedColumnsIndices.length - 1]?.end ?? 0;
+
+      virtualPaddingLeft = leftNonPinnedStart - leftNonPinnedEnd;
+
       virtualPaddingRight =
         columnVirtualizer.getTotalSize() -
         (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
     }
+
     return {
       virtualColumns,
       virtualRows,
       virtualPaddingLeft,
       virtualPaddingRight,
       rowVirtualizer,
+      columnVirtualizer,
       measureGrid,
     };
   }, [
@@ -93,6 +121,7 @@ export const useVirtualGrid = <TData,>({
     virtualRows,
     rowVirtualizer,
     columnVirtualizer,
+    pinnedColumnsIndices.length,
     measureGrid,
   ]);
 };

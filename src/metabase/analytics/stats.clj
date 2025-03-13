@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
@@ -14,7 +15,7 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.slack :as slack]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -170,36 +171,91 @@
   []
   {:groups (t2/count :model/PermissionsGroup)})
 
-(defn- card-has-params? [card]
-  (boolean (get-in card [:dataset_query :native :template-tags])))
+(defn- and-not-nil
+  ([not-nil-field]
+   (and-not-nil nil not-nil-field))
+  ([case-boolean not-nil-field]
+   (cond->> [:!= not-nil-field nil]
+     case-boolean (conj [:and case-boolean]))))
+
+(defn- count-case
+  [case-boolean]
+  [:count [:case case-boolean [:inline 1] :else [:inline nil]]])
+
+(defn- card-has-params
+  []
+  (condp = (db/db-type)
+    :mysql [:json_contains_path
+            :dataset_query
+            [:inline "one"]
+            [:inline "$.native.\"template-tags\".*"]]
+    :postgres [:jsonb_path_exists
+               [:cast :dataset_query :jsonb]
+               [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+
+(defn- contains-embedding-param
+  [param]
+  (condp = (db/db-type)
+    :mysql [:!= [:json_search
+                 :embedding_params
+                 [:inline "one"]
+                 [:inline param]]
+            nil]
+    :postgres [:jsonb_path_exists
+               [:cast :embedding_params :jsonb]
+               [:inline (str "$.* ? (@ == \"" param "\")")]]))
+
+(def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query
-                          :dashboard_id :entity_id :created_at :collection_id :name]
-                         {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:questions (merge-count-maps (for [card cards]
-                                    (let [native? (= (keyword (:query_type card)) :native)
-                                          dq? (some? (:dashboard_id card))]
-                                      {:total                 1
-                                       :native                native?
-                                       :gui                   (not native?)
-                                       :is_dashboard_question dq?
-                                       :with_params           (card-has-params? card)})))
-     :public    (merge-count-maps (for [card  cards
-                                        :when (:public_uuid card)]
-                                    {:total       1
-                                     :with_params (card-has-params? card)}))
-     :embedded  (merge-count-maps (for [card  cards
-                                        :when (:enable_embedding card)]
-                                    (let [embedding-params-vals (set (vals (:embedding_params card)))]
-                                      {:total                1
-                                       :with_params          (card-has-params? card)
-                                       :with_enabled_params  (contains? embedding-params-vals "enabled")
-                                       :with_locked_params   (contains? embedding-params-vals "locked")
-                                       :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
+  (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))
+        cards (t2/select-one (cond-> [:model/Card
+                                      [:%count.* :total]
+                                      [(count-case [:= [:inline "native"] :query_type])
+                                       :native]
+                                      [(count-case [:!= [:inline "native"] :query_type])
+                                       :gui]
+                                      [(count-case [:!= :dashboard_id nil])
+                                       :is_dashboard_question]
+                                      [(count-case [:= :enable_embedding [:inline true]])
+                                       :total_embedded]
+                                      [(count-case (and-not-nil :public_uuid))
+                                       :total_public]]
+                               ;; json_exists/contains which we use to query json encoded data stored in text
+                               ;; columns is not supported on h2 databases, so we exclude these stats when
+                               ;; the app db is h2.
+                               json-supported? (conj
+                                                [(count-case (card-has-params))
+                                                 :with_params]
+                                                [(count-case (and-not-nil (card-has-params) :public_uuid))
+                                                 :with_params_public]
+                                                [(count-case [:and embedding-on (card-has-params)])
+                                                 :with_params_embedded]
+                                                [(count-case [:and (contains-embedding-param "enabled")
+                                                              embedding-on])
+                                                 :with_enabled_params]
+                                                [(count-case [:and (contains-embedding-param "locked")
+                                                              embedding-on])
+                                                 :with_locked_params]
+                                                [(count-case [:and (contains-embedding-param "disabled")
+                                                              embedding-on])
+                                                 :with_disabled_params]))
+                             {:where (mi/exclude-internal-content-hsql :model/Card)})]
+    ;; duplicate previous behaviour where these are empty maps if there are no matching cards in the given
+    ;; category
+    (cond-> {:questions {} :public {} :embedded {}}
+      (> (:total cards) 0) (assoc :questions (select-keys cards [:total :native :gui :is_dashboard_question :with_params]))
+      (> (:total_public cards) 0) (assoc :public (-> (select-keys cards [:total_public :with_params_public])
+                                                     (set/rename-keys {:total_public :total :with_params_public :with_params})))
+      (> (:total_embedded cards) 0) (assoc :embedded (-> (select-keys cards [:total_embedded
+                                                                             :with_params_embedded
+                                                                             :with_enabled_params
+                                                                             :with_locked_params
+                                                                             :with_disabled_params])
+                                                         (set/rename-keys {:total_embedded :total :with_params_embedded :with_params}))))))
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards

@@ -43,7 +43,7 @@
    {:message (deferred-tru
               (str "Hmm, we couldn''t connect to the database."
                    " "
-                   "Make sure your Host and Port settings are correct"))
+                   "Make sure your Host and Port settings are correct."))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 

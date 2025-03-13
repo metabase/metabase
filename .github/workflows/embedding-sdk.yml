@@ -13,8 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sdk-build:
-    if: contains(github.event.pull_request.labels.*.name, 'embedding-sdk-build')
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  embedding-sdk-cli-snippets-type-check:
+    needs: [ files-changed ]
+    if: needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -25,15 +41,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
-      - name: Generate SDK package.json
-        run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-      - name: Generate .npmrc for Github npm registry
-        uses: actions/setup-node@v4
-        with:
-          registry-url: "https://npm.pkg.github.com"
-      - name: Publish package
-        run: yarn run embedding-sdk:publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:cli-snippets:type-check

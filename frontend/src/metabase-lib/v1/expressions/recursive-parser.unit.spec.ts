@@ -25,6 +25,7 @@ describe("recursive-parser", () => {
   it("should parse string literals", () => {
     expect(process("'Universe'")).toEqual("Universe");
     expect(process('"answer"')).toEqual("answer");
+    expect(process('"\\""')).toEqual('"');
   });
 
   it("should parse field references", () => {
@@ -164,6 +165,10 @@ describe("recursive-parser", () => {
     {
       source: "interval(B, -1, 'days', 'include-current')",
       expression: ["time-interval", B, -1, "days", { "include-current": true }],
+    },
+    {
+      source: "intervalStartingFrom(B, -1, 'days', -5, 'years')",
+      expression: ["relative-time-interval", B, -1, "days", -5, "years"],
     },
   ])("should handle function options: $source", ({ source, expression }) => {
     expect(filter(source)).toEqual(expression);

@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.macros :as api.macros]
-   [metabase.api.notification-test :as api.notification-test]
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
@@ -23,6 +22,7 @@
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -2540,7 +2540,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+       ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)

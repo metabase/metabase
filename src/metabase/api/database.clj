@@ -29,6 +29,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
+   [metabase.server.streaming-response]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -1079,7 +1080,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [db (api/check-404 (t2/select-one :model/Database id))]
-    (api/check-403 (mi/can-write? db))
+    (or (api/check-403 (mi/can-write? db))
+        (:is_attached_dwh db))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)
@@ -1210,9 +1212,11 @@
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
-    (if-let [err-map (test-database-connection engine details)]
-      (merge err-map {:status "error"})
-      {:status "ok"})))
+    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+    (binding [h2/*allow-testing-h2-connections* true]
+      (if-let [err-map (test-database-connection engine details)]
+        (merge err-map {:status "error"})
+        {:status "ok"}))))
 
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]

@@ -70,7 +70,7 @@ describe("scenarios > public > question", () => {
       // On page load, query params are added
       cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-      H.filterWidget().contains("Previous 30 Years");
+      H.filterWidget().contains("Previous 30 years");
       H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
@@ -116,7 +116,7 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              H.filterWidget().contains("Previous 30 Years");
+              H.filterWidget().contains("Previous 30 years");
               H.filterWidget().contains("Affiliate");
 
               cy.findByTestId("visualization-root").should("be.visible");
@@ -132,7 +132,7 @@ describe("scenarios > public > question", () => {
 
     // Create a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { c, t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
@@ -14,7 +14,7 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import SchedulePicker from "metabase/containers/SchedulePicker";
+import { Schedule } from "metabase/components/Schedule/Schedule";
 import CS from "metabase/css/core/index.css";
 import {
   alertIsValid,
@@ -35,7 +35,8 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/selectors/settings";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -86,7 +87,8 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "hourly",
   "daily",
   "weekly",
-] as const;
+  "monthly",
+];
 
 type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
@@ -113,7 +115,10 @@ export const CreateOrEditQuestionAlertModal = ({
   const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const userCanAccessSettings = useSelector(canAccessSettings);
+  const timezone = useSelector(state =>
+    getSetting(state, "report-timezone-short"),
+  );
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -157,7 +162,7 @@ export const CreateOrEditQuestionAlertModal = ({
               channelSpec,
               hookChannels,
               availableTriggerOptions: triggerOptions,
-              isAdmin,
+              userCanAccessSettings,
             }),
       );
     }
@@ -170,7 +175,7 @@ export const CreateOrEditQuestionAlertModal = ({
     editingNotification,
     isEditMode,
     hookChannels,
-    isAdmin,
+    userCanAccessSettings,
   ]);
 
   const onCreateOrEditAlert = async () => {
@@ -232,12 +237,45 @@ export const CreateOrEditQuestionAlertModal = ({
     }
   };
 
-  const channelRequirementsMet = isAdmin
+  const channelRequirementsMet = userCanAccessSettings
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
+  const scheduleSettings = useMemo(() => {
+    return (
+      cronToScheduleSettings(subscription?.cron_schedule) ||
+      DEFAULT_ALERT_SCHEDULE
+    );
+  }, [subscription]);
+
+  const onScheduleChange = useCallback(
+    (nextSchedule: ScheduleSettings) => {
+      if (!subscription) {
+        return;
+      }
+
+      if (nextSchedule.schedule_type) {
+        setNotification({
+          ...notification,
+          subscriptions: [
+            {
+              ...subscription,
+              cron_schedule: scheduleSettingsToCron(nextSchedule),
+            },
+          ],
+        });
+      }
+    },
+    [setNotification, subscription, notification],
+  );
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
-    return <ChannelSetupModal isAdmin={isAdmin} onClose={onClose} />;
+    return (
+      <ChannelSetupModal
+        userCanAccessSettings={userCanAccessSettings}
+        onClose={onClose}
+      />
+    );
   }
 
   if (!notification || !subscription) {
@@ -248,143 +286,128 @@ export const CreateOrEditQuestionAlertModal = ({
   const hasChanges = !isEqual(editingNotification, notification);
 
   return (
-    <Modal.Root
+    <Modal
       data-testid="alert-create"
       opened
       size={rem(680)}
       onClose={onClose}
+      padding="2.5rem"
+      title={isEditMode ? t`Edit alert` : t`New alert`}
+      styles={{
+        body: {
+          paddingLeft: 0,
+          paddingRight: 0,
+        },
+      }}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header p="2.5rem" pb="2rem">
-          <Modal.Title>{isEditMode ? t`Edit alert` : t`New alert`}</Modal.Title>
-          <Modal.CloseButton />
-        </Modal.Header>
-        <Modal.Body p="0 2.5rem 2rem">
-          <Stack gap="xl">
-            <AlertModalSettingsBlock
-              title={t`What do you want to be alerted about?`}
-            >
-              <Flex gap="lg" align="center">
-                <AlertTriggerIcon />
-                {hasSingleTriggerOption ? (
-                  <Paper
-                    data-testid="alert-goal-select"
-                    withBorder
-                    shadow="none"
-                    py="sm"
-                    px="1.5rem"
-                    bg="transparent"
-                  >
-                    <Text>{triggerOptions[0].label}</Text>
-                  </Paper>
-                ) : (
-                  <Select
-                    data-testid="alert-goal-select"
-                    data={triggerOptions}
-                    value={notification.payload.send_condition}
-                    w={276}
-                    onChange={value =>
-                      setNotification({
-                        ...notification,
-                        payload: {
-                          ...notification.payload,
-                          send_condition:
-                            value as NotificationCardSendCondition,
-                        },
-                      })
-                    }
-                  />
-                )}
-              </Flex>
-            </AlertModalSettingsBlock>
-            <AlertModalSettingsBlock title={t`When do you want to check this?`}>
-              <SchedulePicker
-                mt={0}
-                schedule={
-                  cronToScheduleSettings(subscription.cron_schedule) ||
-                  DEFAULT_ALERT_SCHEDULE // default is just for typechecking
-                }
-                scheduleOptions={ALERT_SCHEDULE_OPTIONS}
-                onScheduleChange={(nextSchedule: ScheduleSettings) => {
-                  if (nextSchedule.schedule_type) {
-                    setNotification({
-                      ...notification,
-                      subscriptions: [
-                        {
-                          ...subscription,
-                          cron_schedule: scheduleSettingsToCron(nextSchedule),
-                        },
-                      ],
-                    });
-                  }
-                }}
-                textBeforeInterval={t`Check`}
-              />
-            </AlertModalSettingsBlock>
-            <AlertModalSettingsBlock
-              title={t`Where do you want to send the results?`}
-            >
-              <NotificationChannelsPicker
-                notificationHandlers={notification.handlers}
-                channels={channelSpec ? channelSpec.channels : undefined}
-                onChange={(newHandlers: NotificationHandler[]) => {
-                  setNotification({
-                    ...notification,
-                    handlers: newHandlers,
-                  });
-                }}
-                emailRecipientText={t`Email alerts to:`}
-                getInvalidRecipientText={domains =>
-                  t`You're only allowed to email alerts to addresses ending in ${domains}`
-                }
-              />
-            </AlertModalSettingsBlock>
-            <AlertModalSettingsBlock title={t`More options`}>
-              <Switch
-                label={t`Only send this alert once`}
-                labelPosition="right"
-                size="sm"
-                checked={notification.payload.send_once}
-                onChange={e =>
+      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+        <AlertModalSettingsBlock
+          title={t`What do you want to be alerted about?`}
+        >
+          <Flex gap="lg" align="center">
+            <AlertTriggerIcon />
+            {hasSingleTriggerOption ? (
+              <Paper
+                data-testid="alert-goal-select"
+                withBorder
+                shadow="none"
+                py="sm"
+                px="1.5rem"
+                bg="transparent"
+              >
+                <Text>{triggerOptions[0].label}</Text>
+              </Paper>
+            ) : (
+              <Select
+                data-testid="alert-goal-select"
+                data={triggerOptions}
+                value={notification.payload.send_condition}
+                w={276}
+                onChange={value =>
                   setNotification({
                     ...notification,
                     payload: {
                       ...notification.payload,
-                      send_once: e.target.checked,
+                      send_condition: value as NotificationCardSendCondition,
                     },
                   })
                 }
               />
-            </AlertModalSettingsBlock>
-          </Stack>
-        </Modal.Body>
-        <Flex
-          justify="space-between"
-          px="2.5rem"
-          py="lg"
-          className={CS.borderTop}
+            )}
+          </Flex>
+        </AlertModalSettingsBlock>
+        <AlertModalSettingsBlock title={t`When do you want to check this?`}>
+          <Schedule
+            schedule={scheduleSettings}
+            scheduleOptions={ALERT_SCHEDULE_OPTIONS}
+            minutesOnHourPicker
+            onScheduleChange={onScheduleChange}
+            verb={c("A verb in the imperative mood").t`Check`}
+            timezone={timezone}
+            aria-label={t`Describe how often the alert notification should be sent`}
+          />
+        </AlertModalSettingsBlock>
+        <AlertModalSettingsBlock
+          title={t`Where do you want to send the results?`}
         >
-          <Button
-            variant="outline"
-            color="brand"
-            loading={isLoading}
-            onClick={onSendNow}
-          >
-            {isLoading ? t`Sending…` : t`Send now`}
-          </Button>
-          <div>
-            <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-            <ButtonWithStatus
-              titleForState={{
-                default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
-              }}
-              disabled={!isValid}
-              onClickOperation={onCreateOrEditAlert}
-            />
-          </div>
-        </Flex>
-      </Modal.Content>
-    </Modal.Root>
+          <NotificationChannelsPicker
+            notificationHandlers={notification.handlers}
+            channels={channelSpec ? channelSpec.channels : undefined}
+            onChange={(newHandlers: NotificationHandler[]) => {
+              setNotification({
+                ...notification,
+                handlers: newHandlers,
+              });
+            }}
+            emailRecipientText={t`Email alerts to:`}
+            getInvalidRecipientText={domains =>
+              t`You're only allowed to email alerts to addresses ending in ${domains}`
+            }
+          />
+        </AlertModalSettingsBlock>
+        <AlertModalSettingsBlock title={t`More options`}>
+          <Switch
+            label={t`Only send this alert once`}
+            labelPosition="right"
+            size="sm"
+            checked={notification.payload.send_once}
+            onChange={e =>
+              setNotification({
+                ...notification,
+                payload: {
+                  ...notification.payload,
+                  send_once: e.target.checked,
+                },
+              })
+            }
+          />
+        </AlertModalSettingsBlock>
+      </Stack>
+      <Flex
+        justify="space-between"
+        px="2.5rem"
+        pt="lg"
+        className={CS.borderTop}
+      >
+        <Button
+          variant="outline"
+          color="brand"
+          loading={isLoading}
+          onClick={onSendNow}
+        >
+          {isLoading ? t`Sending…` : t`Send now`}
+        </Button>
+        <div>
+          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
+          <ButtonWithStatus
+            titleForState={{
+              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
+            }}
+            disabled={!isValid}
+            onClickOperation={onCreateOrEditAlert}
+          />
+        </div>
+      </Flex>
+    </Modal>
   );
 };
