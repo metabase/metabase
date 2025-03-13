@@ -1,19 +1,13 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import { ColorPill } from "metabase/core/components/ColorPill";
+import { Divider, Group, Stack, type StackProps } from "metabase/ui";
 
-import {
-  PopoverColorList,
-  PopoverColorRangeList,
-  PopoverDivider,
-  PopoverRoot,
-} from "./ColorRangePopover.styled";
 import ColorRangeToggle from "./ColorRangeToggle";
 
-export interface ColorRangeContentProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorRangeContentProps extends Omit<StackProps, "onChange"> {
   initialValue: string[];
   colors: string[];
   colorRanges?: string[][];
@@ -90,8 +84,8 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
   }, [color, value, colorMapping, isInverted, onChange]);
 
   return (
-    <PopoverRoot {...props} ref={ref}>
-      <PopoverColorList>
+    <Stack py="md" spacing="md" {...props} ref={ref}>
+      <Group px="md" spacing="xs" position="center">
         {colors.map((value, index) => (
           <ColorPill
             key={index}
@@ -100,15 +94,17 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
             onSelect={handleColorSelect}
           />
         ))}
-      </PopoverColorList>
+      </Group>
       <ColorRangeToggle
+        px="md"
+        justify="center"
         value={value}
         isQuantile={isQuantile}
         onToggleClick={handleToggleInvertedClick}
         showToggleButton
       />
-      {colorRanges.length > 0 && <PopoverDivider />}
-      <PopoverColorRangeList>
+      {colorRanges.length > 0 && <Divider />}
+      <Stack px="md">
         {colorRanges?.map((range, index) => (
           <ColorRangeToggle
             key={index}
@@ -118,8 +114,8 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
             onColorRangeSelect={handleColorRangeSelect}
           />
         ))}
-      </PopoverColorRangeList>
-    </PopoverRoot>
+      </Stack>
+    </Stack>
   );
 });
 

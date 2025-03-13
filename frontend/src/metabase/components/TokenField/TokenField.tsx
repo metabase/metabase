@@ -1,7 +1,6 @@
 import cx from "classnames";
-import { Component } from "react";
-import * as React from "react";
-import { findDOMNode } from "react-dom";
+import type * as React from "react";
+import { Component, createRef } from "react";
 import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -88,8 +87,7 @@ const defaultStyleValue = {
 };
 
 class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
-  inputRef: React.RefObject<HTMLInputElement>;
-  scrollElement = null;
+  inputRef = createRef<HTMLInputElement>();
 
   constructor(props: TokenFieldProps) {
     super(props);
@@ -103,8 +101,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
       isAllSelected: false,
       listIsHovered: false,
     };
-
-    this.inputRef = React.createRef();
   }
 
   UNSAFE_componentWillMount() {
@@ -443,18 +439,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps: TokenFieldProps, prevState: TokenFieldState) {
+  componentDidUpdate(prevProps: TokenFieldProps) {
     const input = this.inputRef.current;
-
-    if (
-      prevState.selectedOptionValue !== this.state.selectedOptionValue &&
-      this.scrollElement != null
-    ) {
-      const element = findDOMNode(this.scrollElement);
-      if (element && isObscured(element) && element instanceof Element) {
-        element.scrollIntoView({ block: "nearest" });
-      }
-    }
 
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
