@@ -42,6 +42,7 @@ on:
           - SQLite
           - SQL Server 2017
           - SQL Server 2022
+          - Starburst
           - Vertica
 
 jobs:
