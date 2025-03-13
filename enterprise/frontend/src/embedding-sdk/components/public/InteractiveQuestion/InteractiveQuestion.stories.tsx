@@ -52,7 +52,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollection: undefined,
+    targetCollection: undefined,
     title: true,
     withResetButton: true,
   },
@@ -72,7 +72,7 @@ export const EditorOnly = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
-    saveToCollection: undefined,
+    targetCollection: undefined,
   },
 };
 
