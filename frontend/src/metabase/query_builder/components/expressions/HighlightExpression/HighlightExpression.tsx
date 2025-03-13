@@ -7,7 +7,7 @@ import type { Expression } from "metabase-types/api";
 import S from "./HighlightExpression.module.css";
 import { highlight } from "./utils";
 
-export function HighlightExpression({
+export function HighlightExampleExpression({
   expression,
   printWidth = Infinity,
   ...props
