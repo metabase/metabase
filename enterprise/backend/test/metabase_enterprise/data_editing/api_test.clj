@@ -132,28 +132,33 @@
                         (req user :put url {:rows [{:id 1 :song "Join us now and share the software"}]})
 
                         del-response
-                        (req user :delete url {:rows [{:id 1}]})
+                        (req user :delete url {:rows [{:id 1}]})]
+                    {:settings settings
+                     :user     user
+                     :responses {:create post-response
+                                 :update put-response
+                                 :delete del-response}})))
 
-                        error-or-ok
-                        (fn [{:keys [status body]}]
-                          (if (<= 200 status 299)
-                            :ok
-                            [(:message body body) status]))]
-                    [(error-or-ok post-response)
-                     (error-or-ok put-response)
-                     (error-or-ok del-response)])))]
-          (are [flags response]
-               (= response (frequencies (test-endpoints flags)))
+              error-or-ok
+              (fn [{:keys [status body]}]
+                (if (<= 200 status 299)
+                  :ok
+                  [(:message body body) status]))
 
-            ;; Shorthand notation
-            ;; :a == action-editing should not affect result
-            ;; :d == data-editing   only allowed to edit if editing enabled
-            ;; :s == super-user     only allowed to edit if a superuser
-
-            #{:a}           {["You don't have permissions to do that." 403] 3}
-            #{:d}           {["You don't have permissions to do that." 403] 3}
-            #{:a :d}        {["You don't have permissions to do that." 403] 3}
-            #{:s}           {["Data editing is not enabled."           400] 3}
-            #{:s :a}        {["Data editing is not enabled."           400] 3}
-            #{:s :d}        {:ok 3}
-            #{:s :a :d}     {:ok 3}))))))
+              ;; Shorthand config notation
+              ;; :a == action-editing should not affect result
+              ;; :d == data-editing   only allowed to edit if editing enabled
+              ;; :s == super-user     only allowed to edit if a superuser
+              tests
+              [#{:a}       ["You don't have permissions to do that." 403]
+               #{:d}       ["You don't have permissions to do that." 403]
+               #{:a :d}    ["You don't have permissions to do that." 403]
+               #{:s}       ["Data editing is not enabled."           400]
+               #{:s :a}    ["Data editing is not enabled."           400]
+               #{:s :d}    :ok
+               #{:s :a :d} :ok]]
+          (doseq [[flags expected] (partition 2 tests)
+                  :let [{:keys [settings user responses]} (test-endpoints flags)]
+                  [verb  response] responses]
+            (testing (format "%s user: %s, settings: %s" verb user settings)
+              (is (= expected (error-or-ok response))))))))))
