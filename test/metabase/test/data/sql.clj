@@ -323,15 +323,17 @@
       {:query query})))
 
 (defmethod tx/count-with-field-filter-query :sql/test-extensions
-  [driver table field]
-  (driver/with-driver driver
-    (let [mbql-query      (data/mbql-query nil
-                            {:source-table (data/id table)
-                             :aggregation  [[:count]]
-                             :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp.compile/compile mbql-query)
-          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
-      {:query query})))
+  ([driver table field]
+   (tx/count-with-field-filter-query driver table field 1))
+  ([driver table field sample-value]
+   (driver/with-driver driver
+     (let [mbql-query      (data/mbql-query nil
+                             {:source-table (data/id table)
+                              :aggregation  [[:count]]
+                              :filter       [:= [:field-id (data/id table field)] sample-value]})
+           {:keys [query]} (qp.compile/compile mbql-query)
+           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
+       {:query query}))))
 
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
