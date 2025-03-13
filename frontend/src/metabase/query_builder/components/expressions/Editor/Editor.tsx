@@ -1,5 +1,9 @@
 import type { EditorState } from "@codemirror/state";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useDisclosure } from "@mantine/hooks";
+import CodeMirror, {
+  EditorSelection,
+  type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -16,6 +20,8 @@ import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
+import { FunctionBrowser } from "../FunctionBrowser";
+import { Layout } from "../Layout";
 import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
@@ -39,7 +45,7 @@ type EditorProps<S extends StartRule> = {
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ErrorWithMessage | Error | null;
-  onCloseEditor?: () => void;
+  hasHeader?: boolean;
 
   onChange: (
     clause: ClauseType<S> | null,
@@ -47,6 +53,10 @@ type EditorProps<S extends StartRule> = {
   ) => void;
   shortcuts?: Shortcut[];
 };
+
+const EDITOR_WIDGET_HEIGHT = 220;
+const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
+const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 
 export function Editor<S extends StartRule = "expression">(
   props: EditorProps<S>,
@@ -62,10 +72,13 @@ export function Editor<S extends StartRule = "expression">(
     error,
     reportTimezone,
     shortcuts,
+    hasHeader,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
+  const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
+    useDisclosure();
 
   const {
     source,
@@ -104,50 +117,90 @@ export function Editor<S extends StartRule = "expression">(
     extensions: [customTooltip],
   });
 
+  const handleFunctionBrowserClauseClick = useCallback(
+    (displayName: string) => {
+      const view = ref.current?.view;
+      if (!view) {
+        return;
+      }
+      view?.focus();
+      view?.dispatch(
+        view.state.changeByRange(range => ({
+          range: EditorSelection.range(
+            range.to + displayName.length + 1,
+            range.to + displayName.length + 1,
+          ),
+          changes: [{ from: range.from, insert: `${displayName}()` }],
+        })),
+      );
+    },
+    [],
+  );
+
   return (
-    <Flex
-      className={cx(S.wrapper, { [S.formatting]: isFormatting })}
-      direction="column"
-    >
-      <CodeMirror
-        id={id}
-        ref={ref}
-        data-testid="custom-expression-query-editor"
-        className={S.editor}
-        extensions={extensions}
-        readOnly={readOnly || isFormatting}
-        value={source}
-        onChange={onSourceChange}
-        onBlur={onBlur}
-        height="100%"
-        width="100%"
-        indentWithTab={false}
-        autoFocus
-      />
-      <Errors error={error} />
+    <>
+      <Layout.Main className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+        <CodeMirror
+          id={id}
+          ref={ref}
+          data-testid="custom-expression-query-editor"
+          className={S.editor}
+          extensions={extensions}
+          readOnly={readOnly || isFormatting}
+          value={source}
+          onChange={onSourceChange}
+          onBlur={onBlur}
+          height="100%"
+          width="100%"
+          indentWithTab={false}
+          autoFocus
+        />
+        <Errors error={error} />
 
-      {source.trim() === "" && !isFormatting && error == null && (
-        <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
-      )}
+        {source.trim() === "" && !isFormatting && error == null && (
+          <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
+        )}
 
-      <Flex className={S.toolbar} pr="md" gap="sm">
-        {source.trim() !== "" && error == null && isValidated && (
-          <ButtonTooltip label={t`Auto-format`}>
+        <Flex className={S.toolbar} pr="md" gap="sm">
+          {source.trim() !== "" && error == null && isValidated && (
+            <ButtonTooltip label={t`Auto-format`}>
+              <Button
+                aria-label={t`Auto-format`}
+                onClick={formatExpression}
+                variant="subtle"
+                size="xs"
+                p="xs"
+                disabled={isFormatting || error != null}
+                leftSection={<Icon name="format_code" />}
+              />
+            </ButtonTooltip>
+          )}
+          <ButtonTooltip label={t`Function browser`}>
             <Button
-              aria-label={t`Auto-format`}
-              onClick={formatExpression}
-              variant="subtle"
+              aria-label={t`Function browser`}
+              onClick={toggleFunctionBrowser}
+              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
               size="xs"
               p="xs"
-              disabled={isFormatting || error != null}
-              leftSection={<Icon name="format_code" />}
+              leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
-        )}
-      </Flex>
+        </Flex>
 
-      {portal}
-    </Flex>
+        {portal}
+      </Layout.Main>
+
+      {isFunctionBrowserOpen && (
+        <Layout.Sidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+          <FunctionBrowser
+            startRule={startRule}
+            reportTimezone={reportTimezone}
+            query={query}
+            onClauseClick={handleFunctionBrowserClauseClick}
+          />
+        </Layout.Sidebar>
+      )}
+    </>
   );
 }
 

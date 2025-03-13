@@ -1,8 +1,8 @@
 .wrapper {
   position: relative;
-  height: 220px;
-  width: 100%;
   border-bottom: 1px solid var(--mb-color-border);
+  display: flex;
+  flex-direction: column;
 
   &.formatting {
     background-color: var(--mb-color-bg-medium);
