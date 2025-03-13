@@ -29,7 +29,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollection?: CollectionId;
+  targetCollection?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -58,7 +58,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollection: userTargetCollection,
+  targetCollection: userTargetCollection,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -92,7 +92,7 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollection: targetCollection,
+        targetCollection,
       }),
     [originalQuestion, question, onSave, onCreate, targetCollection],
   );
@@ -128,7 +128,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollection: targetCollection,
+            targetCollection,
           }}
         >
           {children}
