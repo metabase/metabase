@@ -25,7 +25,7 @@ type TableProps = TableHTMLAttributes<HTMLTableElement> & {
   isInDragLayer?: boolean;
 };
 
-export const Table = styled((props: TableProps) => (
+export const Table = styled(({ isInDragLayer, ...props }: TableProps) => (
   <table {...props} className={cx(props.className, AdminS.ContentTable)} />
 ))`
   background-color: var(--mb-color-bg-white);
