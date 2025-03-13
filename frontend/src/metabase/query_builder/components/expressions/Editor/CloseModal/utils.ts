@@ -8,9 +8,14 @@ export function useCloseModal({
   allowPopoverExit?: boolean;
 } = {}) {
   const [showModal, setShowModal] = useState(false);
+
   usePreventPopoverExit({
     popoverIsExitable: allowPopoverExit,
   });
+
+  // We need to attach our own click handler that triggers in the capture phase
+  // to prevent other click handlers from firing first.
+  // This means we cannot useClickOutside from Mantine.
   useEffect(() => {
     if (allowPopoverExit) {
       return;
