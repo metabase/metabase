@@ -1,6 +1,5 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -30,7 +29,6 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.53.2")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -74,7 +72,7 @@
       :user user
       :ssl (boolean ssl)
       :use_server_time_zone_for_dates true
-      :product_name product-name
+      :product_name (format "metabase/%s" (:tag config/mb-version-info))
       :remember_last_set_roles true
       :http_connection_provider "HTTP_URL_CONNECTION"
       :jdbc_ignore_unsupported_values "true"

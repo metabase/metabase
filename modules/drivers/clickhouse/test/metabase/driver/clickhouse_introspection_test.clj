@@ -5,17 +5,15 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- desc-table!
   [db table-name]
   (into #{} (map #(select-keys % [:name :database-type :base-type :database-required])
                  (:fields (driver/describe-table :clickhouse db {:name table-name})))))
-(tx/defdataset introspection_db
+
+(mt/defdataset introspection_db
   [["enums_base_types"
     [{:field-name "c1", :base-type {:native "Nullable(Enum8('America/New_York'))"}}
      {:field-name "c2", :base-type {:native "Enum8('BASE TABLE' = 1, 'VIEW' = 2, 'FOREIGN TABLE' = 3, 'LOCAL TEMPORARY' = 4, 'SYSTEM VIEW' = 5)"}}
@@ -426,7 +424,7 @@
 (deftest ^:parallel clickhouse-boolean-type-metadata
   (mt/test-driver :clickhouse
     (let [result      (-> {:query "SELECT false, 123, true"} mt/native-query qp/process-query)
-          [[c1 _ c3]] (-> result qp.test/rows)]
+          [[c1 _ c3]] (-> result mt/rows)]
       (testing "column should be of type :type/Boolean"
         (is (= :type/Boolean (-> result :data :results_metadata :columns first :base_type)))
         (is (= :type/Boolean (transduce identity (driver.common/values->base-type) [c1, c3])))
@@ -468,15 +466,15 @@
   (mt/test-driver :clickhouse
     (mt/dataset introspection_db
       (is (= [[1 42 144 255255]]
-             (qp.test/formatted-rows
+             (mt/formatted-rows
               [int int int int]
               :format-nil-values
-              (data/with-db (mt/db)
-                (data/run-mbql-query
+              (mt/with-db (mt/db)
+                (mt/run-mbql-query
                   aggregate_functions_filter_test
                   {}))))))))
 
-(tx/defdataset metabase_db_scan_test
+(mt/defdataset metabase_db_scan_test
   [["table1"
     [{:field-name "i", :base-type {:native "Int32"}}]
     []]
@@ -505,7 +503,7 @@
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
                              :details (merge {:scan-all-databases true}
-                                             (tx/dbdef->connection-details
+                                             (mt/dbdef->connection-details
                                               :clickhouse :db
                                               {:database-name "default"}))}]
         (let [describe-result (driver/describe-database :clickhouse db)]
@@ -526,7 +524,7 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (tx/dbdef->connection-details
+                             :details (mt/dbdef->connection-details
                                        :clickhouse :db
                                        {:database-name "metabase_db_scan_test information_schema"})}]
         (let [{:keys [tables] :as _describe-result}

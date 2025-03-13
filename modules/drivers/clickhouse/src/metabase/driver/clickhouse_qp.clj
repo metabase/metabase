@@ -1,6 +1,5 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]

@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
-  "SET ROLE (connection impersonation feature) tests on with single node or on-premise cluster setups."
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
+  "SET ROLE (connection impersonation feature) tests with single node or on-premise cluster setups."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]

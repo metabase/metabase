@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -13,7 +14,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
-   [metabase.query-processor.test-util :as qp.test]
+   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -49,7 +50,7 @@
    :password ""
    :ssl false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.53.2"
+   :product_name (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term "schema",
    :max_open_connections 100
@@ -128,6 +129,7 @@
   (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
 
 (def ^:private non-nullable-types ["Array" "Map" "Tuple" "Nullable"])
+
 (defn- disallowed-as-nullable?
   [ch-type]
   (boolean (some #(str/starts-with? ch-type %) non-nullable-types)))
@@ -185,9 +187,8 @@
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
   [query-result]
-  (map #(drop 1 %) (qp.test/rows query-result)))
+  (map #(drop 1 %) (mt/rows query-result)))
 
-#_{:clj-kondo/ignore [:warn-on-reflection]}
 (defn exec-statements
   ([statements details-map]
    (exec-statements statements details-map nil))

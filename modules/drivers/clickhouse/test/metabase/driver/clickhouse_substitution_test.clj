@@ -1,13 +1,10 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-substitution-test
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
    [metabase.test.data.clickhouse :as ctd]
-   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [schema.core :as s])
   (:import (java.time LocalDate LocalDateTime)))
@@ -64,8 +61,8 @@
                     row3  (.plusMinutes  now 5)
                     row4  (.plusHours    now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "date"
                     (is (= [[(->iso-str row1)] [(->iso-str row2)] [(->iso-str row3)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30" db))))))
@@ -81,8 +78,8 @@
                     row3  (.plusMinutes  now 5)
                     row4  (.plusHours    now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past30minutes"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past30minutes" db))))))
@@ -98,8 +95,8 @@
                     row3  (.plusHours  now 25)
                     row4  (.plusHours  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12hours"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12hours" db))))))
@@ -115,8 +112,8 @@
                     row3  (.plusDays  now 25)
                     row4  (.plusDays  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12days"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12days" db))))))
@@ -132,8 +129,8 @@
                     row3  (.plusMonths  now 25)
                     row4  (.plusMonths  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12months"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12months" db))))))
@@ -155,8 +152,8 @@
                     row3  (.plusYears  now 25)
                     row4  (.plusYears  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12years"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12years" db))))))
@@ -191,8 +188,8 @@
                     row3  (.plusDays  now 25)
                     row4  (.plusDays  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (is (= [[(->iso-str row2)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30" db))))))))
             (testing "past/next days"
@@ -204,8 +201,8 @@
                     row3  (.plusDays  now 25)
                     row4  (.plusDays  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12days"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12days" db))))))
@@ -221,8 +218,8 @@
                     row3  (.plusMonths  now 25)
                     row4  (.plusMonths  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12months"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12months" db))))))
@@ -244,8 +241,8 @@
                     row3  (.plusYears  now 25)
                     row4  (.plusYears  now 6)
                     table (get-test-table [row1 row2 row3 row4] base-type)]
-                (data/dataset
-                  (tx/dataset-definition db table)
+                (mt/dataset
+                  (mt/dataset-definition db table)
                   (testing "past12years"
                     (is (= [[(->iso-str row2)]]
                            (ctd/rows-without-index (qp/process-query (get-mbql "past12years" db))))))
@@ -287,8 +284,8 @@
                            [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]
               first-row  [[(->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt) nil]]
               second-row [[nil (->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt)]]]
-          (data/dataset
-            (tx/dataset-definition db table)
+          (mt/dataset
+            (mt/dataset-definition db table)
             (letfn
              [(get-mbql*
                 [field value]
