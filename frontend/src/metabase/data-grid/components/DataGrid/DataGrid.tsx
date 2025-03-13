@@ -124,8 +124,7 @@ export const DataGrid = function DataGrid<TData>({
   );
 
   const rowsCount = table.getRowModel().rows.length;
-  const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-bg-white)";
+  const backgroundColor = theme?.cell?.backgroundColor;
 
   return (
     <DataGridThemeProvider theme={theme}>
