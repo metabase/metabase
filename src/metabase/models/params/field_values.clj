@@ -47,7 +47,22 @@
         (update-vals (field-values/batched-get-latest-full-field-values field-ids)
                      #(select-keys % [:field_id :human_readable_values :values]))))))
 
-(defn hash-input-for-field-values [field constraints]
+(defn hash-input-for-field-values
+  "Generate a hash input map for a given field, used to determine cache keys for FieldValues.
+
+  The returned map combines various pieces of information that affect whether cached FieldValues
+  can be reused across different requests. This includes:
+
+    - the field's unique ID.
+    - sandboxing context.
+    - impersonation context.
+    - linked-filter constraints (optionally provided).
+    - database routing context
+
+  This ensures that any difference in these elements results in a distinct cache key.
+
+  Returns a map suitable for hashing into a cache key."
+  [field & [constraints]]
   (merge
    {:field-id (u/the-id field)}
    (field-values/hash-input-for-sandbox field)
@@ -58,7 +73,7 @@
 (defn- requires-advanced-field-value?
   "Given a field, returns falsey if this field should use the normal batched implementation to get field values."
   [field]
-  (not= (hash-input-for-field-values field nil)
+  (not= (hash-input-for-field-values field)
         {:field-id (u/the-id field)}))
 
 (defn field-id->field-values-for-current-user
