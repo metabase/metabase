@@ -1136,26 +1136,3 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
-
-(deftest ^:parallel query-with-literal-custom-expression-test
-  (testing "literal custom expression support"
-    (is (= [[1 "" "foo" 0 12345 1.234M true false]
-            [2 "" "foo" 0 12345 1.234M true false]]
-           (mt/rows
-            (mt/run-mbql-query orders
-              {:expressions {"empty"  [:value ""    nil]
-                             "foo"    [:value "foo" nil]
-                             "zero"   [:value 0     nil]
-                             "12345"  [:value 12345 nil]
-                             "float"  [:value 1.234 nil]
-                             "True"   [:value true  nil]
-                             "False"  [:value false nil]}
-               :fields [$id
-                        [:expression "empty" nil]
-                        [:expression "foo"   nil]
-                        [:expression "zero"  nil]
-                        [:expression "12345" nil]
-                        [:expression "float" nil]
-                        [:expression "True"  nil]
-                        [:expression "False" nil]]
-               :limit 2}))))))
