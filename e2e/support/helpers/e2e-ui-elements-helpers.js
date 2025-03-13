@@ -372,6 +372,22 @@ export function tableInteractiveScrollContainer() {
   return cy.findByTestId("table-scroll-container");
 }
 
+export function assertTableRowsCount(value) {
+  if (value > 0) {
+    // Ensure table some rows are rendered although due to virtualization we can't rely on their count
+    tableInteractiveBody().findAllByRole("row").should("not.be.empty");
+  }
+  tableInteractive().should("have.attr", "data-rows-count", String(value));
+}
+
+export function lastTableRow() {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return tableInteractiveScrollContainer()
+    .scrollTo("bottomLeft")
+    .findAllByRole("row")
+    .last();
+}
+
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }

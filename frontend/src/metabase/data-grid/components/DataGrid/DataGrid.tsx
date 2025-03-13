@@ -123,8 +123,7 @@ export const DataGrid = function DataGrid<TData>({
     ],
   );
 
-  const isEmpty = table.getRowModel().rows.length === 0;
-
+  const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
     theme?.cell?.backgroundColor ?? "var(--mb-color-bg-white)";
 
@@ -134,6 +133,7 @@ export const DataGrid = function DataGrid<TData>({
         <div
           className={cx(S.table, classNames?.root)}
           data-testid="table-root"
+          data-rows-count={rowsCount}
           style={{
             fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
             backgroundColor,
@@ -227,7 +227,7 @@ export const DataGrid = function DataGrid<TData>({
               ))}
             </div>
 
-            {isEmpty && emptyState}
+            {rowsCount === 0 && emptyState}
 
             <div
               data-testid="table-body"

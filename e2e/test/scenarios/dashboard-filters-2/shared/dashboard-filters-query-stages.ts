@@ -833,12 +833,12 @@ export function verifyDashcardRowsCount({
   queryBuilderCount,
 }: {
   dashcardIndex: number;
-  dashboardCount: string;
+  dashboardCount: number;
   queryBuilderCount: string;
 }) {
-  H.getDashboardCard(dashcardIndex)
-    .findByText(dashboardCount)
-    .should("be.visible");
+  H.getDashboardCard(dashcardIndex).within(() => {
+    H.assertTableRowsCount(dashboardCount);
+  });
   H.getDashboardCard(dashcardIndex)
     .findByTestId("legend-caption-title")
     .click();

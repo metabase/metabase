@@ -107,9 +107,6 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       },
     ];
 
-    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
-    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
-
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
         cy.get(dashboardIdAlias).then(dashboardId => {
@@ -119,7 +116,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
         getSdkRoot().within(() => {
           cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
           cy.findByText("Test question card").should("be.visible");
-          cy.findByText(rowsTextRegex).should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
