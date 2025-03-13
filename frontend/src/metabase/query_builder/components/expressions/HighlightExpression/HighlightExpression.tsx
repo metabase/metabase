@@ -1,4 +1,5 @@
-import { type HTMLAttributes, useEffect, useMemo, useState } from "react";
+import { type HTMLAttributes, useMemo } from "react";
+import { useAsync } from "react-use";
 
 import { formatExample } from "metabase-lib/v1/expressions";
 import type { Expression } from "metabase-types/api";
@@ -14,16 +15,16 @@ export function HighlightExpression({
   expression: Expression;
   printWidth?: number;
 } & HTMLAttributes<HTMLPreElement>) {
-  const [formattedExpression, setFormattedExpression] = useState<string>("");
-
-  useEffect(() => {
-    formatExample(expression, { printWidth })
-      .catch(() => "")
-      .then(setFormattedExpression);
-  }, [expression, printWidth]);
+  const { value: formattedExpression } = useAsync(
+    () => formatExample(expression, { printWidth }),
+    [expression, printWidth],
+  );
 
   return (
-    <HighlightExpressionSource expression={formattedExpression} {...props} />
+    <HighlightExpressionSource
+      expression={formattedExpression ?? ""}
+      {...props}
+    />
   );
 }
 
