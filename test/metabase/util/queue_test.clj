@@ -173,7 +173,7 @@
                                         (is (= listener-name name))
                                         (is (< 0 duration))
                                         (swap! result-count + result))
-                      :error-handler  (fn [e] (swap! error-count inc) (reset! last-error e))
+                      :err-handler  (fn [e] (swap! error-count inc) (reset! last-error e))
                       :max-next-ms   5})
       (queue/put-with-delay! queue 0 "a")
       (Thread/sleep 10)
