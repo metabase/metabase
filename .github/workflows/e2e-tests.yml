@@ -74,8 +74,8 @@ jobs:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Build uberjar with ./bin/build.sh
-        run: |
-          timeout 10m ./bin/build.sh
+        timeout-minutes: 10
+        run:  ./bin/build.sh
         shell: bash
 
       - name: Prepare uberjar artifact
