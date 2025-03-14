@@ -1421,7 +1421,6 @@ describe("issue 54638", () => {
     H.restore();
     cy.signInAsNormalUser();
     H.openOrdersTable({ mode: "notebook" });
-
     H.addCustomColumn();
   });
 
@@ -1454,16 +1453,16 @@ describe("issue #54722", () => {
   });
 
   it("should focus the editor when opening it (metabase#54722)", () => {
-    cy.button("Custom column").click();
+    H.addCustomColumn();
     cy.focused().should("have.attr", "class").and("contains", "cm-content");
     H.expressionEditorWidget().button("Cancel").click();
 
-    cy.button("Filter").click();
+    H.filter({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
     cy.focused().should("have.attr", "class").and("contains", "cm-content");
     H.expressionEditorWidget().button("Cancel").click();
 
-    cy.button("Summarize").click();
+    H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
     cy.focused().should("have.attr", "class").and("contains", "cm-content");
     H.expressionEditorWidget().button("Cancel").click();
@@ -1478,7 +1477,7 @@ describe("issue #31964", () => {
   });
 
   it("should focus the editor when opening it (metabase#54722)", () => {
-    cy.button("Custom column").click();
+    H.addCustomColumn();
     H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
     cy.realPress(["Shift", "Enter"]);
     H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
