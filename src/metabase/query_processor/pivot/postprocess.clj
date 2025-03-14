@@ -10,7 +10,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [run!]])
@@ -255,7 +255,7 @@
                     (seq v-map))
                 v-map)]
     (when value
-      ((or formatter identity) (common/format-value value)))))
+      ((or formatter identity) (streaming.common/format-value value)))))
 
 (defn- build-column-headers
   "Build multi-level column headers."
