@@ -224,7 +224,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        description: t`Something that evaluates to true or false.`,
         example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
           t`Valid`,
         )}`,
