@@ -11,7 +11,6 @@ import { reducer as downloads } from "metabase/redux/downloads";
 import embed from "metabase/redux/embed";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 import requests from "metabase/redux/requests";
-import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
@@ -24,7 +23,6 @@ export const commonReducers = {
   currentUser,
   // "entities" framework needs control over "requests" state
   requests: enhanceRequestsReducer(requests),
-  settings,
   undo,
   entities,
   upload,

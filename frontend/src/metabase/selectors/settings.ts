@@ -1,27 +1,59 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { sessionApi } from "metabase/api";
 import { getPlan } from "metabase/common/utils/plan";
-import type { TokenStatus, Version } from "metabase-types/api";
+import type {
+  SettingKey,
+  Settings,
+  TokenStatus,
+  Version,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-export const getSettings: <S extends State>(state: S) => GetSettings<S> =
-  createSelector(
-    (state: State) => state.settings,
-    settings => settings.values,
-  );
+export const getAdminSettingDefinitions = (state: State) =>
+  state.admin.settings.settings;
 
-export const getSettingsLoading = createSelector(
-  (state: State) => state.settings,
-  settings => settings.loading,
+export const getAdminSettingWarnings = (state: State) =>
+  state.admin.settings.warnings;
+
+export const getAdminSettingsInfo = createSelector(
+  getAdminSettingDefinitions,
+  getAdminSettingWarnings,
+  (settings, warnings) =>
+    settings.map(setting =>
+      warnings[setting.key]
+        ? { ...setting, warning: warnings[setting.key] }
+        : setting,
+    ),
 );
 
-type GetSettings<S extends State> = S["settings"]["values"];
-type GetSettingKey<S extends State> = keyof GetSettings<S>;
+export const getAdminSettingValues = createSelector(
+  getAdminSettingsInfo,
+  settings => {
+    return Object.fromEntries(
+      settings.map(setting => [setting.key, setting.value]),
+    );
+  },
+);
 
-export const getSetting = <S extends State, T extends GetSettingKey<S>>(
+export const getSettings: (state: State) => Settings = createSelector(
+  sessionApi.endpoints.getSessionProperties.select(),
+  ({ data }) => {
+    // note: this sets the initial state to the current values in the window object
+    // this is necessary so that we never have empty settings
+    return data ? data : window.MetabaseBootstrap;
+  },
+);
+
+export const getSettingsLoading = createSelector(
+  sessionApi.endpoints.getSessionProperties.select(),
+  settings => settings.status === "pending",
+);
+
+export const getSetting = <S extends State, T extends SettingKey>(
   state: S,
   key: T,
-): GetSettings<S>[T] => {
+): Settings[T] => {
   const settings = getSettings(state);
   const setting = settings[key];
   return setting;

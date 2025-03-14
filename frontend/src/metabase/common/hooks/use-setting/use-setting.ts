@@ -2,11 +2,13 @@ import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 // Don't touch this import or the auth page will break. referring to the barrel doesn't work right now
-import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors/typed-selectors";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getAdminSettingDefinitions,
+  getSetting,
+} from "metabase/selectors/settings";
 import type {
   SettingDefinition,
   SettingKey,

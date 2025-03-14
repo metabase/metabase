@@ -15,7 +15,11 @@ import {
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { getDocsUrlForVersion } from "metabase/selectors/settings";
+import {
+  getAdminSettingsInfo,
+  getDocsUrlForVersion,
+  getSettings,
+} from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import {
@@ -46,11 +50,6 @@ import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import { updateSetting } from "../settings";
 import SlackSettings from "../slack/containers/SlackSettings";
-
-import {
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-} from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -524,39 +523,15 @@ export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
-export const getSettings = createSelector(
-  getAdminSettingDefinitions,
-  getAdminSettingWarnings,
-  (settings, warnings) =>
-    settings.map(setting =>
-      warnings[setting.key]
-        ? { ...setting, warning: warnings[setting.key] }
-        : setting,
-    ),
-);
-
-// getSettings selector returns settings for admin setting page and values specified by
-// environment variables set to "null". Actual applied setting values are coming from
-// /api/session/properties API handler and getDerivedSettingValues returns them.
-export const getDerivedSettingValues = state => state.settings?.values ?? {};
-
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
-
 export const getCurrentVersion = createSelector(
-  getDerivedSettingValues,
+  getAdminSettingsInfo,
   settings => {
     return settings.version?.tag;
   },
 );
 
 export const getLatestVersion = createSelector(
-  getDerivedSettingValues,
+  getAdminSettingsInfo,
   settings => {
     const updateChannel = settings["update-channel"] ?? "latest";
     return settings["version-info"]?.[updateChannel]?.version;
@@ -575,8 +550,8 @@ export const getNewVersionAvailable = createSelector(
 );
 
 export const getSections = createSelector(
+  getAdminSettingsInfo,
   getSettings,
-  getDerivedSettingValues,
   getUserIsAdmin,
   (settings, derivedSettingValues, isAdmin) => {
     if (!settings || _.isEmpty(settings)) {
