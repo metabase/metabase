@@ -106,7 +106,6 @@ export const isNavigationAllowed = ({
     const allowedPathnames = isNewQuestion
       ? ["/metric/query", "/metric/metadata"]
       : validSlugs.flatMap(slug => [
-          `/metric/${slug}`,
           `/metric/${slug}/query`,
           `/metric/${slug}/metadata`,
           `/metric/${slug}/notebook`,
