@@ -13,7 +13,6 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-
 log_info() {
   echo -e "${BLUE}[INFO]${NC} $*" >&2
 }
@@ -31,25 +30,25 @@ log_error() {
 }
 
 dbg_info() {
-  if [[ -z "${MAGE_DEBUG+}" ]]; then
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
     echo -e "${BLUE}[INFO]${NC} $*" >&2
   fi
 }
 
 dbg_success() {
-  if [[ -z "${MAGE_DEBUG+}" ]]; then
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
     echo -e "${GREEN}[SUCCESS]${NC} $*" >&2
   fi
 }
 
 dbg_warning() {
-  if [[ -z "${MAGE_DEBUG+}" ]]; then
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
     echo -e "${YELLOW}[WARNING]${NC} $*" >&2
   fi
 }
 
 dbg_error() {
-  if [[ -z "${MAGE_DEBUG+}" ]]; then
+  if [[ -n "${MAGE_DEBUG:-}" ]]; then
     echo -e "${RED}[ERROR]${NC} $*" >&2
   fi
 }
@@ -77,7 +76,7 @@ get_min_bb_version() {
   fi
 
   # Debug: print file content when in debug mode
-  dbg_file_content "$edn_file"
+  # dbg_file_content "$edn_file"
 
   # Simple approach for the specific format :min-bb-version "x.y.z"
   bb_version=$(grep -o ':min-bb-version "[0-9]\+\.[0-9]\+\.[0-9]\+"' "$edn_file" | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
@@ -96,39 +95,11 @@ compare_versions() {
   local version1=$1
   local version2=$2
 
-  # Split versions into arrays
-  IFS='.' read -ra ver1 <<< "$version1"
-  IFS='.' read -ra ver2 <<< "$version2"
-
-  # Pad arrays to equal length
-  local max_length=${#ver1[@]}
-  if [ ${#ver2[@]} -gt $max_length ]; then
-    max_length=${#ver2[@]}
+  if [ "$version1" = "$version2" ]; then
+    echo "0"  # Versions are equal
+  else
+    echo "-1" # Not same version
   fi
-
-  # Compare each component
-  for ((i=0; i<$max_length; i++)); do
-    local v1_component=${ver1[$i]:-0}
-    local v2_component=${ver2[$i]:-0}
-
-    # Remove leading zeros for numeric comparison
-    v1_component=$(echo "$v1_component" | sed 's/^0*//')
-    v2_component=$(echo "$v2_component" | sed 's/^0*//')
-
-    # Default to 0 if empty after removing leading zeros
-    v1_component=${v1_component:-0}
-    v2_component=${v2_component:-0}
-
-    if [ "$v1_component" -lt "$v2_component" ]; then
-      echo "-1"  # version1 < version2
-      return
-    elif [ "$v1_component" -gt "$v2_component" ]; then
-      echo "1"   # version1 > version2
-      return
-    fi
-  done
-
-  echo "0"  # Versions are equal
 }
 
 # Detect OS and architecture
@@ -157,7 +128,7 @@ install_babashka() {
   # Get required Babashka version
   min_bb_version=$(get_min_bb_version)
 
-  log_info "Babashka not found at ${BB_EXEC}. Installing version ${min_bb_version}..."
+  dbg_info "Babashka not found at ${BB_EXEC}. Installing version ${min_bb_version}..."
 
   platform=$(detect_platform)
   log_info "Detected platform: ${platform}"
@@ -226,21 +197,21 @@ check_babashka() {
       return 1
     fi
 
-    dbg_info "Installed version: ${installed_version}, Required minimum: ${min_bb_version}"
+    dbg_info "Installed version: ${installed_version}, Required: ${min_bb_version}"
 
     # Proper semantic version comparison
     local comparison_result
     comparison_result=$(compare_versions "${installed_version}" "${min_bb_version}")
 
     if [ "$comparison_result" -lt "0" ]; then
-      log_warning "Installed Babashka version ${installed_version} is older than required ${min_bb_version}"
+      log_warning "Installed Babashka version ${installed_version} is not the same as required ${min_bb_version}"
       return 1
     fi
 
     dbg_success "Using Babashka ${installed_version} at ${BB_EXEC}"
     return 0
   else
-    log_error "Babashka not found at ${BB_EXEC}"
+    dbg_error "Babashka not found at ${BB_EXEC}"
     return 1
   fi
 }
@@ -262,18 +233,18 @@ main() {
 
   # First, ensure babashka is installed in the local ./bin directory
   if ! check_babashka; then
-    log_info "Babashka not found or version is too old, installing..."
+    log_info "Babashka not found or version doesn't match, installing..."
     install_babashka
   fi
 
   # Check if BB_EXEC exists now
   if [ ! -x "${BB_EXEC}" ]; then
-    log_error "Babashka binary not found at ${BB_EXEC} after installation attempt!"
+    dbg_error "Babashka binary not found at ${BB_EXEC} after installation attempt!"
     exit 1
   fi
 
   # Construct the path to ./bin/mage_core (sibling file to this script)
-  MAGE_CORE_PATH="${SCRIPT_DIR}/mage_core"
+  MAGE_CORE_PATH="${SCRIPT_DIR}/mage.bb"
   # log_info "mage_core path: ${MAGE_CORE_PATH}"
 
   # Ensure mage_core exists and is executable
@@ -282,13 +253,15 @@ main() {
     exit 1
   fi
 
-  # Export BB_EXEC so mage_core can find babashka
-  export BB_EXEC
-  dbg_info "Exported BB_EXEC=${BB_EXEC}"
+  # # Export BB_EXEC so mage_core can find babashka
+  # export BB_EXEC
+  # dbg_info "Exported BB_EXEC=${BB_EXEC}"
 
   # Execute mage_core with all arguments
   dbg_info "Running mage_core with args: '$*'"
-  exec "${MAGE_CORE_PATH}" "$@"
+  # log_info $MAGE_CORE_PATH
+  # log_info "${BB_EXEC} ${MAGE_CORE_PATH}"
+  exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@"
 }
 
 # Run the main function with all arguments

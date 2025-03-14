@@ -1,9 +1,4 @@
-#! /usr/bin/env bb
-
-;; Getting env: bb: No such file or directory ?
-;; Install bb with: brew install borkdude/brew/babashka
-
-;; you may want to set an alias for mage:
+;; You may want to set an alias for mage:
 ;; alias mage='cd ~/your/repo/metabase && ./bin/mage'
 
 (ns mage
@@ -27,13 +22,22 @@
       (println (c/red (str "Unknown task: " task-name)))
       true)))
 
+(defn tip-o-day []
+  (rand-nth
+   ["Did you know? You can use `mage <task> --help` to get more information about a specific task."
+    "Pro tip: Use `mage <task>` to run a specific task."
+    "Remember: You can always check available tasks with `bb tasks`."
+    "Fun fact: The word 'mage' comes from the Latin 'magus', meaning 'wise"
+    "Pro tip: You can setup autocomplete for mage to speed up your workflow with mage setup-autocomplete."]))
+
 (defn- print-help []
   (do
     (lolcat "./mage/resource.txt")
     (flush)
     (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
     (println "")
-    (println (u/sh "bb tasks"))))
+    (println (u/sh "bb tasks"))
+    (println (tip-o-day))))
 
 (defn -main [& _]
   (cond
