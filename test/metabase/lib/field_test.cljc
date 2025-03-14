@@ -17,6 +17,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -523,11 +524,9 @@
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
-                             [{:database (meta/id)
-                               :type     :query
-                               :query    {:source-table (meta/id :checkins)
-                                          :aggregation  [[:count]]
-                                          :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
+                             [(lib.tu.macros/mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [$user-id]})])
           cols  (->> (lib.metadata/card metadata-provider 1)
                      (lib/query metadata-provider)
                      lib/returned-columns
@@ -631,8 +630,9 @@
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
-                                 :result-metadata [{:id   4
-                                                    :name "Field 4"}]}]})
+                                 :result-metadata [{:id    4
+                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
+                                                    :name  "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
@@ -642,6 +642,7 @@
                :effective-type           :type/*
                :id                       4
                :name                     "Field 4"
+               :ident                    "ybTElkkGoYYBAyDRTIiUe"
                :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
@@ -653,6 +654,7 @@
               :effective-type          :type/Text
               :id                      4
               :name                    "Field 4"
+              :ident                   "ybTElkkGoYYBAyDRTIiUe"
               :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
@@ -1594,11 +1596,13 @@
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (is (=? {:lib/type        :metadata/column
-               :lib/source-uuid string?
-               :name            "12345"
-               :display-name    "12345"}
-              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
+      (binding [lib.metadata.ident/*enforce-idents-present* false]
+        (is (=? {:lib/type        :metadata/column
+                 :lib/source-uuid string?
+                 :name            "12345"
+                 :display-name    "12345"}
+                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1691,6 +1695,7 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "search"
+                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Search"
                             :base-type :type/Text})
                 lib/visible-columns
@@ -1702,6 +1707,7 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
+                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns

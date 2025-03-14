@@ -657,30 +657,38 @@
   (u/prog1 eid-translation/default-counter
     (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
-(defn- categorize-query-execution [{:keys [context embedding_client executor_id]}]
-  (cond
-    (= "embedding-sdk-react" embedding_client)                        "sdk_embed"
-    (and (= "embedding-iframe" embedding_client) (some? executor_id)) "interactive_embed"
-    (and (= "embedding-iframe" embedding_client) (nil? executor_id))  "static_embed"
-    (some-> context name (str/starts-with? "public-"))                "public_link"
-    :else                                                             "internal"))
-
 (defn- ->one-day-ago []
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  (let [qe (t2/select [:model/QueryExecution :embedding_client :context :executor_id :started_at])
+  (let [qe-query [:model/QueryExecution
+                  [(count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
+                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
+                                [:!= :executor_id nil]])
+                   :interactive_embed]
+                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
+                                [:= :executor_id nil]])
+                   :static_embed]
+                  [(count-case [:and
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-sdk-react"]]
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-iframe"]]
+                                [:like :context "public-%"]])
+                   :public_link]
+                  [(count-case [:and
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-sdk-react"]]
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-iframe"]]
+                                [:not [:like :context "public-%"]]])
+                   :internal]]
+
+        qe          (t2/select-one qe-query)
         one-day-ago (->one-day-ago)
-        ;; reuse the query data:
-        qe-24h (filter (fn [{started-at :started_at}] (t/after? started-at one-day-ago)) qe)]
-    {:query-executions (merge
-                        {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                        (-> (group-by categorize-query-execution qe)
-                            (update-vals count)))
-     :query-executions-24h (merge
-                            {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                            (-> (group-by categorize-query-execution qe-24h)
-                                (update-vals count)))
+        qe-24h      (t2/select-one qe-query {:where [:> :started_at one-day-ago]})]
+    {:query-executions     qe
+     :query-executions-24h qe-24h
      :eid-translations-24h (get-translation-count)}))
 
 (defn- deep-string-keywords
@@ -689,6 +697,12 @@
   (walk/postwalk
    (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
    data))
+
+(defn- get-query-exeuction-counts
+  [executions]
+  (mapv (fn [qe-group]
+          {:group (str qe-group) :value (get executions qe-group)})
+        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -702,13 +716,10 @@
     :as _snowplow-grouped-metric-info}]
   (deep-string-keywords
    [{:name :query_executions_by_source
-     :values (mapv (fn [qe-group]
-                     {:group qe-group :value (get query-executions qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions)
      :tags ["embedding"]}
     {:name :query_executions_by_source_24h
-     :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions-24h)
      :tags ["embedding"]}
     {:name :entity_id_translations_last_24h
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
@@ -921,7 +932,10 @@
     :enabled   (t2/exists? :model/Collection :namespace "snippets")}
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
-    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}])
+    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :sdk-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sdk)}])
 
 (defn- snowplow-features
   []

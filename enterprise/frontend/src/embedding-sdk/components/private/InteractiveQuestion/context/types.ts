@@ -33,6 +33,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
+  withDownloads?: boolean;
 } & Pick<SaveQuestionProps<SDKCollectionReference>, "targetCollection">;
 
 export type QuestionMockLocationParameters = {
@@ -50,7 +51,8 @@ export type InteractiveQuestionId = CardId | "new" | (string & {});
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: InteractiveQuestionId;
+      questionId: InteractiveQuestionId | null;
+      variant?: "static" | "interactive";
     }
 >;
 
@@ -60,8 +62,9 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "targetCollection"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
+  Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
@@ -71,5 +74,5 @@ export type InteractiveQuestionContextType = Omit<
     onSave: (question: Question) => Promise<void>;
   } & {
     isCardIdError: boolean;
-    originalId: InteractiveQuestionId;
+    originalId: InteractiveQuestionId | null;
   };

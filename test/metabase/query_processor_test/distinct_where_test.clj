@@ -9,12 +9,11 @@
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (is (= 3
-           (->> {:aggregation [[:distinct-where
-                                [:field (mt/id :venues :price) nil]
-                                [:< [:field (mt/id :venues :price) nil] 4]]]}
+           (->> {:aggregation [[:distinct-where $price [:< $price 4]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))
+                ffirst
+                int)))
 
     (testing "Should get normalized correctly and work as expected"
       (is (= 3
@@ -23,27 +22,27 @@
                                   ["<" ["field" (mt/id :venues :price) nil] 4]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))
 
 (deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (is (= 2
-           (->> {:aggregation [[:distinct-where
-                                [:field (mt/id :venues :price) nil]
-                                [:and [:< [:field (mt/id :venues :price) nil] 4]
-                                 [:> [:field (mt/id :venues :price) nil] 1]]]]}
+           (->> {:aggregation [[:distinct-where $price [:and [:< $price 4] [:> $price 1]]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))))
+                ffirst
+                int)))))
 
 (deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (is (= 0
-           (->> {:aggregation [[:distinct-where [:field (mt/id :venues :price) nil] [:< [:field (mt/id :venues :price) nil] 4]]]
-                 :filter      [:> [:field (mt/id :venues :price) nil] Long/MAX_VALUE]}
+           (->> {:aggregation [[:distinct-where $price [:< $price 4]]]
+                 :filter      [:> $price Long/MAX_VALUE]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))))
+                ffirst
+                int)))))
 
 (deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -51,25 +50,19 @@
             [3 0]
             [4 1]
             [5 1]]
-           (->> {:aggregation [[:distinct-where
-                                [:field (mt/id :venues :price) nil]
-                                [:< [:field (mt/id :venues :price) nil] 2]]]
-                 :breakout    [[:field (mt/id :venues :category_id) nil]]
+           (->> {:aggregation [[:distinct-where $price [:< $price 2]]]
+                 :breakout    [$category_id]
                  :limit       4}
                 (mt/run-mbql-query venues)
                 (mt/round-all-decimals 2)
-                mt/rows)))))
+                mt/rows
+                (map (fn [[k v]]
+                       [(int k) (int v)])))))))
 
 (deftest ^:parallel distinct-where-inside-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where :expressions)
     (is (= 2.5
-           (->> {:aggregation [[:+
-                                [:/
-                                 [:distinct-where
-                                  [:field (mt/id :venues :price) nil]
-                                  [:< [:field (mt/id :venues :price) nil] 4]]
-                                 2]
-                                1]]}
+           (->> {:aggregation [[:+ [:/ [:distinct-where $price [:< $price 4]] 2] 1]]}
                 (mt/run-mbql-query venues)
                 mt/rows
                 ffirst
@@ -85,10 +78,11 @@
                                                    :definition {:source-table (mt/id :venues)
                                                                 :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})
       (is (= 3
-             (->> {:aggregation [[:distinct-where [:field (mt/id :venues :price) nil] [:segment 1]]]}
+             (->> {:aggregation [[:distinct-where $price [:segment 1]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -98,8 +92,7 @@
                                                 :database-id   (mt/id)
                                                 :name          "Metric 1"
                                                 :dataset-query (mt/mbql-query venues
-                                                                 {:source-table (mt/id :venues)
-                                                                  :aggregation  [:distinct-where
+                                                                 {:aggregation  [:distinct-where
                                                                                  $price
                                                                                  [:< $price 4]]})
                                                 :type          :metric}]})
@@ -108,4 +101,5 @@
                     {:aggregation [[:metric 1]]
                      :source-table "card__1"})
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))

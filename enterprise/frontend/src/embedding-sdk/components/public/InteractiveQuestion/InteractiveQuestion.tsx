@@ -7,6 +7,8 @@ import {
   BreakoutDropdown,
   ChartTypeDropdown,
   ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
   Editor,
   EditorButton,
   Filter,
@@ -22,6 +24,7 @@ import {
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import {
+  type InteractiveQuestionId,
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
@@ -34,7 +37,7 @@ import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionProviderProps["questionId"];
+  questionId: InteractiveQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<SaveQuestionProps<SDKCollectionReference>, "targetCollection"> &
@@ -46,6 +49,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "entityTypeFilter"
     | "isSaveEnabled"
     | "initialSqlParameters"
+    | "withDownloads"
   >;
 
 export const _InteractiveQuestion = ({
@@ -64,6 +68,7 @@ export const _InteractiveQuestion = ({
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
+  withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
   InteractiveQuestionDefaultViewProps &
@@ -77,6 +82,7 @@ export const _InteractiveQuestion = ({
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
     {children ?? (
       <InteractiveQuestionDefaultView
@@ -117,6 +123,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -141,5 +149,6 @@ InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-
+InteractiveQuestion.DownloadWidget = DownloadWidget;
+InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
 export { InteractiveQuestion };
