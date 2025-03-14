@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
+   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
@@ -64,6 +65,34 @@
             (testing "API key users should be created"
               (is (api-key-user-exists? "Test API Key"))
               (is (api-key-user-exists? "All Users API Key"))))
+          (finally
+            (cleanup-config!))))
+
+      (testing "should fail if API keys have the same prefix"
+        (try
+          (write-config!
+           {:version 1
+            :config {:api-keys [{:name "First API Key"
+                                 :key "mb_same_prefix_123"
+                                 :creator "admin@test.com"
+                                 :group "admin"}]}})
+          (binding [config.file/*config* {:version 1
+                                          :config {:api-keys [{:name "First API Key"
+                                                               :key "mb_same_prefix_123"
+                                                               :creator "admin@test.com"
+                                                               :group "admin"}]}}]
+            (config.file/initialize!)
+
+            ;; Try to create another key with the same prefix
+            (binding [config.file/*config* {:version 1
+                                            :config {:api-keys [{:name "Second API Key"
+                                                                 :key "mb_same_prefix_456"
+                                                                 :creator "admin@test.com"
+                                                                 :group "admin"}]}}]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"API key with prefix 'mb_same' already exists"
+                   (config.file/initialize!)))))
           (finally
             (cleanup-config!))))
 

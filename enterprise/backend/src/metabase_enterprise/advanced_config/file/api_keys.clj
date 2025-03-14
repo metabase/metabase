@@ -66,7 +66,13 @@
                      "admin" (u/the-id (perms/admin-group))
                      "all-users" (u/the-id (perms/all-users-group)))
           unhashed-key (u.secret/secret key)
+          prefix (api-key/prefix (u.secret/expose unhashed-key))
           creator (get-admin-user-by-email creator)]
+
+      ;; Check if there's an existing API key with the same prefix
+      (when (t2/exists? :model/ApiKey :key_prefix prefix)
+        (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
+                        {:name name :prefix prefix})))
 
       (if-let [existing-api-key (select-api-key name)]
         (do
