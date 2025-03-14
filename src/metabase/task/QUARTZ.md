@@ -21,6 +21,10 @@ This list is not complete and is open to additions. If you have other use cases 
 
 These tasks execute once when Metabase starts up. They're useful for initialization operations.
 
+**Important Note:** In multi-instance deployments (e.g., cloud environments with multiple instances), these tasks will run on EVERY instance when it starts up. Additionally, these tasks will re-execute whenever a process restarts (e.g., after an OOM kill or deployment). This can lead to unexpected behavior if your task isn't idempotent.
+
+**Alternative Approach:** For simple initialization tasks that don't cross-instance coordination, we can execute them directly as part of the startup process.
+
 ```clojure
 (ns my.startup.task
   (:require
@@ -35,17 +39,16 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (jobs/defjob StartupTask [_]
   (println "Running startup initialization task"))
 
-(defmethod task/init! ::StartupTask [_]
-  (let [job (jobs/build
-             (jobs/of-type StartupTask)
-             (jobs/with-identity startup)
-             (jobs/with-description "One-time startup initialization task")
-             (jobs/store-durably))
-        trigger (triggers/build
+(defmethod task/init! ::StartupTask [_]  
+  (let [job (jobs/build                  
+             (jobs/of-type StartupTask)   ; Specify the job class to execute (the StartupTask we defined earlier)
+             (jobs/with-identity startup) ; Set the job's identity using the startup-job-key defined above
+             (jobs/with-description "One-time startup initialization task") )
+        trigger (triggers/build                
                  (triggers/with-identity startup)
-                 (triggers/for-job startup)
-                 (triggers/start-now))]
-    (task/schedule-task! job trigger)))
+                 (triggers/for-job startup)       ; Associate this trigger with the job defined above
+                 (triggers/start-now))]           ; Configure the trigger to fire immediately when scheduled
+    (task/schedule-task! job trigger)))           ; Register both the job and trigger with the Quartz scheduler
 ```
 
 ### 2. Recurring Scheduled Tasks
@@ -85,7 +88,7 @@ Notice in the example above that we set the timezone explicitly with `(cron/in-t
 
 ### 3. Tasks that run once like a migration
 
-We haven't found a good solution for this.
+We haven't found a good solution for this. For short and simple tasks we still encourage you to use custom migrations.
 
 ## Advanced Configuration
 
@@ -130,7 +133,10 @@ By default, Quartz allows multiple instances of the same job to run concurrently
   (println "This job will not run concurrently with itself"))
 ```
 
-When this annotation is applied, Quartz will block a new instance of the job from starting if a previous instance is still running. This is particularly important for long-running tasks that operate on shared resources.
+When this annotation is applied, Quartz will block a new instance of the job from starting if a previous instance is still running. 
+This is particularly important for long-running tasks that:
+- we need to make sure they don't run concurrently across instances
+- operate on shared resources
 
 ### Error Handling and Retries
 
@@ -143,7 +149,7 @@ Metabase provides a `rerun-on-error` macro to automatically retry a job if it fa
     (do-something-that-might-fail)))
 ```
 
-This will catch any exceptions, log them, and then throw a special `JobExecutionException` that tells Quartz to reschedule the job to run again.
+This will catch any exceptions, log them, and then throw a special `JobExecutionException` that tells Quartz to reschedule the job to run again **immediately**. Unlike scheduled retries with backoff, this causes the job to be retried right away, which may be appropriate for transient errors but could cause problems with persistent failures.
 
 ## Additional Resources
 
