@@ -44,7 +44,7 @@
 
 (deftest describe-table-test
   (mt/test-driver :starburst
-    (is (= {:name   "test_data_venues"
+    (is (= {:name   "venues"
             :schema "default"
             :fields #{{:name          "name",
                        ;; for HTTP based starburst driver, this is coming back as varchar(255)

@@ -92,11 +92,15 @@
       :else (throw e))))
 
 (defmethod driver/can-connect? :starburst
-  [driver details]
+  [driver {:keys [catalog], :as details}]
   (try
-    (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-      (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))
-    (catch Throwable e (handle-execution-error-details e details))))
+    ((get-method driver/can-connect? :sql-jdbc) driver details)
+    (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+      ;; jdbc/query is used to see if we throw, we want to ignore the results
+      (jdbc/query spec (format "SHOW SCHEMAS FROM %s" catalog))
+      true)
+    (catch Throwable e
+      (handle-execution-error-details e details))))
 
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
