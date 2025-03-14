@@ -504,7 +504,7 @@
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"
     (let [instance-stats (#'stats/instance-settings)
-          snowplow-settings #p (#'stats/snowplow-settings instance-stats)]
+          snowplow-settings (#'stats/snowplow-settings instance-stats)]
       (testing "matches expected schema"
         (is (malli= [:map
                      [:is_embedding_app_origin_sdk_set :boolean]
