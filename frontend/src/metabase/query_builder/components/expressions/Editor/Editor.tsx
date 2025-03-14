@@ -155,7 +155,10 @@ export function Editor<S extends StartRule = "expression">(
 
       {portal}
       {showModal && (
-        <CloseModal closeModal={closeModal} onClose={onCloseEditor} />
+        <CloseModal
+          onKeepEditing={closeModal}
+          onDiscardChanges={onCloseEditor}
+        />
       )}
     </Flex>
   );

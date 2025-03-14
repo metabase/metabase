@@ -1,41 +1,25 @@
 import { t } from "ttag";
 
-import { Box, Button, Flex, Modal, Stack, Text } from "metabase/ui";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 
 export function CloseModal({
-  closeModal,
-  onClose,
+  onKeepEditing,
+  onDiscardChanges,
 }: {
-  closeModal: () => void;
-  onClose?: () => void;
+  onKeepEditing?: () => void;
+  onDiscardChanges?: () => void;
 }) {
   return (
-    <Modal
-      title={t`Keep editing your custom expression?`}
+    <ConfirmModal
       opened
-      onClose={closeModal}
-      closeOnEscape
-      closeButtonProps={{ style: { display: "none" } }}
       data-ignore-editor-clicks="true"
-    >
-      <Stack gap="md">
-        <Box py="md">
-          <Text>
-            {t`You have changes that haven't been saved to your custom expression. You can continue editing it or discard the changes.`}
-          </Text>
-        </Box>
-
-        <Flex justify="end" gap="sm">
-          {onClose && (
-            <Button onClick={onClose} variant="subtle">
-              {t`Discard changes`}
-            </Button>
-          )}
-          <Button onClick={closeModal} variant="primary">
-            {t`Keep editing`}
-          </Button>
-        </Flex>
-      </Stack>
-    </Modal>
+      title={t`Keep editing your custom expression?`}
+      content={t`You have changes that haven't been saved to your custom expression. You can continue editing it or discard the changes.`}
+      onConfirm={onDiscardChanges}
+      onClose={onKeepEditing}
+      confirmButtonText={t`Discard changes`}
+      confirmButtonPrimary
+      closeButtonText={t`Keep editing`}
+    />
   );
 }
