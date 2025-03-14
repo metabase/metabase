@@ -1304,3 +1304,57 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
   });
 });
+
+describe("scenarios > question > custom column > function browser", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.openProductsTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+  });
+
+  it("should be possible to insert functions by clicking them in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("concat")
+      .should("be.visible");
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("Combine two or more string of text together.")
+      .should("be.visible");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("concat").click();
+
+    H.CustomExpressionEditor.value().should("equal", "concat()");
+    H.CustomExpressionEditor.value().should("equal", "concat()");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("rtrim").click();
+    H.CustomExpressionEditor.value().should("equal", "concat(rtrim())");
+
+    H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
+    H.CustomExpressionEditor.value().should("equal", 'concat(rtrim("foo"), )');
+
+    H.CustomExpressionEditor.functionBrowser().findByText("ltrim").click();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'concat(rtrim("foo"), ltrim())',
+    );
+  });
+
+  it("should be possible to filter functions in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("con");
+
+      cy.findByText("upper").should("not.exist");
+      cy.findByText("concat").should("be.visible");
+      cy.findByText("second").should("be.visible");
+
+      cy.findByPlaceholderText("Search functions…").clear();
+      cy.findByText("upper").should("be.visible");
+    });
+  });
+});
