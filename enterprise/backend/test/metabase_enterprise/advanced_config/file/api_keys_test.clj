@@ -41,11 +41,11 @@
           (write-config!
            {:version 1
             :config {:api-keys [{:name "Test API Key"
-                                 :key "test_api_key_123"
+                                 :key "mb_test_api_key_123"
                                  :creator "admin@test.com"
                                  :group "admin"}
                                 {:name "All Users API Key"
-                                 :key "different_api_key_456"
+                                 :key "mb_different_api_key_456"
                                  :creator "admin@test.com"
                                  :group "all-users"}]}})
           (binding [config.file/*config* {:version 1
@@ -74,7 +74,7 @@
                                         :is_superuser false}]
             (binding [config.file/*config* {:version 1
                                             :config {:api-keys [{:name "Test API Key"
-                                                                 :key "test_api_key_123"
+                                                                 :key "mb_test_api_key_123"
                                                                  :creator "regular@test.com"
                                                                  :group "admin"}]}}]
               (is (thrown-with-msg?
@@ -88,7 +88,7 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "test_api_key_123"
+                                                               :key "mb_test_api_key_123"
                                                                :creator "nonexistent@test.com"
                                                                :group "admin"}]}}]
             (is (thrown-with-msg?
@@ -102,7 +102,7 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "test_api_key_123"
+                                                               :key "mb_test_api_key_123"
                                                                :creator "admin@test.com"
                                                                :group "admin"}]}}]
             (config.file/initialize!)
@@ -117,7 +117,7 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "test_api_key_123"
+                                                               :key "mb_test_api_key_123"
                                                                :creator "admin@test.com"
                                                                :group "invalid-group"}]}}]
             (is (thrown? clojure.lang.ExceptionInfo
