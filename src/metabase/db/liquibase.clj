@@ -486,7 +486,7 @@
        (.getDatabaseChangeLog)
        (.getChangeSets)
        last
-       (^ChangeSet .getId)
+       (#(.getId ^ChangeSet %))
        extract-numbers
        first))
 
