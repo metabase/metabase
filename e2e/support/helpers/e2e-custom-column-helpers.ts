@@ -277,4 +277,7 @@ export const CustomExpressionEditor = {
   nameInput() {
     return cy.findByTestId("expression-name");
   },
+  functionBrowser() {
+    return cy.findByTestId("expression-editor-function-browser");
+  },
 };

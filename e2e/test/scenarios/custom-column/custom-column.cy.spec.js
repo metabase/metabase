@@ -1304,3 +1304,91 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
   });
 });
+
+describe("scenarios > question > custom column > function browser", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to insert functions by clicking them in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("concat")
+      .should("be.visible");
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("Combine two or more string of text together.")
+      .should("be.visible");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("concat").click();
+
+    H.CustomExpressionEditor.value().should("equal", "concat()");
+    H.CustomExpressionEditor.value().should("equal", "concat()");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("rtrim").click();
+    H.CustomExpressionEditor.value().should("equal", "concat(rtrim())");
+
+    H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
+    H.CustomExpressionEditor.value().should("equal", 'concat(rtrim("foo"), )');
+
+    H.CustomExpressionEditor.functionBrowser().findByText("ltrim").click();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'concat(rtrim("foo"), ltrim())',
+    );
+  });
+
+  it("should be possible to filter functions in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("con");
+
+      cy.findByText("upper").should("not.exist");
+      cy.findByText("concat").should("be.visible");
+      cy.findByText("second").should("be.visible");
+
+      cy.findByPlaceholderText("Search functions…").clear();
+      cy.findByText("upper").should("be.visible");
+    });
+  });
+
+  it("should not show functions that are not supported by the current database", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("convertTimezone");
+      cy.findByText("convertTimezone").should("not.exist");
+    });
+  });
+
+  it("should not show aggregations unless aggregating", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("Count");
+      cy.findByText("Count").should("not.exist");
+    });
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search aggregations…").type("Count");
+      cy.findByText("Count").should("be.visible");
+    });
+  });
+
+  it("show a message when no functions match the filter", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("foobar");
+      cy.findByText("Didn't find any results").should("be.visible");
+    });
+  });
+});
