@@ -35,6 +35,11 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
 };
 
 export const MBQL_CLAUSES: MBQLClauseMap = {
+  value: {
+    displayName: `Value`,
+    type: "expression",
+    args: ["expression"],
+  },
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
   "cum-count": {
