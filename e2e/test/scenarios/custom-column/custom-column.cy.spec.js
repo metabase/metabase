@@ -1299,14 +1299,16 @@ describe("scenarios > question > custom column > exiting the editor", () => {
   it("should be possible to close the popover when navigating away from the expression editor", () => {
     H.expressionEditorWidget().button("Cancel").click();
     cy.button("Summarize").click();
-    H.popover().findByText("Custom Expression").click();
+    H.popover().as("popover").findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "1+1" });
 
-    // go back
+    cy.log("Go back to summarize modal");
     H.popover().findByText("Custom Expression").click();
+
+    cy.log("Close summarize modal by clicking outside");
     cy.button("View SQL").click();
 
     H.modal().should("not.exist");
-    H.popover().should("not.exist");
+    cy.get("popover").should("not.exist");
   });
 });
