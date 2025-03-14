@@ -3,13 +3,16 @@
     flex: 1;
   }
 
+  .QuestionListItemLabel {
+    overflow: hidden;
+  }
+
   .QuestionListItemIcon:last-child {
     justify-self: start;
   }
 
   .VisualizerButton {
     visibility: hidden;
-
     background-color: var(--mb-color-brand);
     color: var(--mb-color-text-white);
     cursor: pointer;
