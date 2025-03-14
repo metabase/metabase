@@ -117,7 +117,7 @@ const LinkMenuItem = ({
   children,
   onClose,
 }: LinkMenuItemProps): JSX.Element => (
-  <Tooltip label={tooltip} position="right">
+  <Tooltip label={tooltip} disabled={tooltip == null} position="right">
     {externalLink ? (
       <MenuExternalLink
         href={link}
