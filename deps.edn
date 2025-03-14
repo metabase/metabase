@@ -87,8 +87,6 @@
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
-  ;; Pinned to include fix for reflection warning, which can cause Eastwood to fail.
-  ;; Requested the release here: https://github.com/MastodonC/kixi.stats/issues/52
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
