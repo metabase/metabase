@@ -203,6 +203,7 @@
               :sparksql
               :sqlite
               :sqlserver
+              :starburst
               :vertica}}
 
   ;;

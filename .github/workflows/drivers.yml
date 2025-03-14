@@ -942,6 +942,8 @@ jobs:
     services:
       starburst:
         image: trinodb/trino:latest
+        env:
+          CATALOG_MANAGEMENT: dynamic
         ports:
           - "8080:8080"
     name: Starburst

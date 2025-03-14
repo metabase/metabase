@@ -9,7 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -907,7 +907,7 @@
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"
               :subprotocol "trino"
-              :subname     (mdb.spec/make-subname host port (db-name catalog schema))})
+              :subname     (mdb/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       prepare-roles
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
