@@ -53,7 +53,7 @@ jobs:
         uses: crowdin/github-action@v2
         id: crowdin
         with:
-          config: locales/crowdin.yml
+          config: ../../locales/crowdin.yml
           upload_sources: true
           upload_translations: false
           download_translations: true
