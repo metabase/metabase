@@ -118,15 +118,20 @@
 
 (defn- handle-error [body]
   (let [invalid-token? (slack-token-error-codes (:error body))
-        message        (if invalid-token?
-                         "Invalid token"
-                         (format "Slack API error: %s" (:error body)))
-        error          (if invalid-token?
-                         {:error-code (:error body)
-                          :errors     {:slack-token message}}
-                         {:error-code (:error body)
-                          :message    message
-                          :response   body})]
+        missing-channel? (= (:error body) "channel_not_found")
+        message        (cond
+                         invalid-token? "Invalid token"
+                         missing-channel? "Channel not found"
+                         :else (format "Slack API error: %s" (:error body)))
+        error          (cond
+                         invalid-token? {:error-code (:error body)
+                                         :errors     {:slack-token message}}
+                         missing-channel? {:error-code (:error body)
+                                           :errors     {:slack-channel message}}
+                         :else {:error-code (:error body)
+                                :message    message
+                                :response   body})]
+
     (when (and invalid-token? *send-token-error-emails?*)
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
@@ -137,6 +142,8 @@
     (when invalid-token?
       (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"
                                       " update your integration in Admin Settings -> Slack."))))
+    (when missing-channel?
+      (log/warn (u/colorize :red "🔍 The Slack channel you've configured doesn't exist. Please update it.")))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [headers status body]}]
