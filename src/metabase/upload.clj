@@ -787,7 +787,7 @@
               ;; See https://github.com/metabase/metabase/issues/55199
               ch-type-hack       (fn [upload-type]
                                    (if (and (= ::upload-types/offset-datetime upload-type)
-                                            (= driver :clickhouse))
+                                            (= :clickhouse driver))
                                      ::upload-types/datetime
                                      upload-type))
               old-types          (map (comp ch-type-hack upload-types/base-type->upload-type :base_type name->field) column-names)
