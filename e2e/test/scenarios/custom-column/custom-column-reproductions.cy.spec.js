@@ -1422,8 +1422,7 @@ describe("issue 54638", () => {
     cy.signInAsNormalUser();
     H.openOrdersTable({ mode: "notebook" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
+    H.addCustomColumn();
   });
 
   it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
