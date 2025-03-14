@@ -784,7 +784,13 @@
               name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
               _                  (check-schema name->field column-names)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
+              ;; See https://github.com/metabase/metabase/issues/55199
+              ch-type-hack       (fn [upload-type]
+                                   (if (and (= ::upload-types/offset-datetime upload-type)
+                                            (= driver :clickhouse))
+                                     ::upload-types/datetime
+                                     upload-type))
+              old-types          (map (comp ch-type-hack upload-types/base-type->upload-type :base_type name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
