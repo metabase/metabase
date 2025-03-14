@@ -41,11 +41,9 @@ export const FkTargetPicker = ({
   return (
     <Select
       className={className}
-      classNames={{
-        dropdown: S.dropdown,
-      }}
       comboboxProps={{
         position: "bottom-start",
+        width: 300,
       }}
       data={data}
       data-testid="fk-target-select"

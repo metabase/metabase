@@ -3,8 +3,6 @@ import { t } from "ttag";
 import { currency } from "cljs/metabase.util.currency";
 import { Combobox, Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
 
-import S from "./CurrencyPicker.module.css";
-
 const DATA = getData();
 const SYMBOLS = getSymbols();
 
@@ -18,11 +16,9 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
   return (
     <Select
       className={className}
-      classNames={{
-        dropdown: S.dropdown,
-      }}
       comboboxProps={{
         position: "bottom-start",
+        width: 300,
       }}
       data={DATA}
       fw="bold"

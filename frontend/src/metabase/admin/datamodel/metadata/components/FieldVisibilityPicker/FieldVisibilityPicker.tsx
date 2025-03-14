@@ -35,11 +35,9 @@ export const FieldVisibilityPicker = ({
   return (
     <Select
       className={className}
-      classNames={{
-        dropdown: S.dropdown,
-      }}
       comboboxProps={{
         position: "bottom-start",
+        width: 300,
       }}
       data={DATA}
       fw="bold"
