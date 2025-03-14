@@ -560,7 +560,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("wilma-muller");
   });
 
-  it("should reject a number literal", () => {
+  it("should not reject a number literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -568,12 +568,10 @@ describe("scenarios > question > filter", () => {
 
     H.enterCustomColumnDetails({ formula: "3.14159" });
 
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expecting boolean but found 3.14159");
+    cy.button("Done").should("be.enabled");
   });
 
-  it("should reject a string literal", () => {
+  it("should not reject a string literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -581,9 +579,7 @@ describe("scenarios > question > filter", () => {
 
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
 
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText('Expecting boolean but found "TheAnswer"');
+    cy.button("Done").should("be.enabled");
   });
 
   it.skip("column filters should work for metrics (metabase#15333)", () => {
