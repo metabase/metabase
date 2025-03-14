@@ -1,16 +1,20 @@
 import { useCallback } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import {
   useGetDatabaseMetadataQuery,
   useGetTableDataQuery,
   useGetTableQuery,
 } from "metabase/api";
+import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
+
+import { isDatabaseTableEditingEnabled } from "../settings";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";
@@ -82,7 +86,7 @@ export const TableDataContainer = ({
     [datasetData, refetchTableDataQuery, tableId, updateTableRows],
   );
 
-  if (isLoading) {
+  if (!database || isLoading) {
     // TODO: show loader
     return null;
   }
@@ -99,18 +103,24 @@ export const TableDataContainer = ({
       direction="column"
       justify="stretch"
     >
-      {database && table && (
-        <TableDataViewHeader
-          database={database}
-          tableName={table?.display_name}
+      <TableDataViewHeader
+        database={database}
+        tableName={table?.display_name}
+      />
+      {isDatabaseTableEditingEnabled(database) ? (
+        <Box pos="relative" className={S.gridWrapper}>
+          <TableDataView
+            data={datasetData}
+            onCellValueUpdate={handleCellValueUpdate}
+          />
+        </Box>
+      ) : (
+        <GenericError
+          title={t`Table editing is not enabled for this database`}
+          message={t`Please ask your admin to enable table editing`}
+          details={undefined}
         />
       )}
-      <Box pos="relative" className={S.gridWrapper}>
-        <TableDataView
-          data={datasetData}
-          onCellValueUpdate={handleCellValueUpdate}
-        />
-      </Box>
     </Flex>
   );
 };
