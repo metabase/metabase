@@ -20,6 +20,8 @@ export const InteractiveQuestionProviderWithLocation = ({
 
   return (
     <InteractiveQuestionProvider
+      // the public type for questionId is InteractiveQuestionId, but it doesn't contain null
+      // and we don't want to expose `null` to the user
       questionId={questionId as InteractiveQuestionId}
       options={options}
       deserializedCard={deserializedCard}
