@@ -14,7 +14,7 @@ import { Box, Flex } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
-import { hasDatabaseTableEditingEnabled } from "../settings";
+import { isDatabaseTableEditingEnabled } from "../settings";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";
@@ -107,7 +107,7 @@ export const TableDataContainer = ({
         database={database}
         tableName={table?.display_name}
       />
-      {hasDatabaseTableEditingEnabled(database) ? (
+      {isDatabaseTableEditingEnabled(database) ? (
         <Box pos="relative" className={S.gridWrapper}>
           <TableDataView
             data={datasetData}

@@ -59,7 +59,7 @@ export function DatabaseTableEditingSection({
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
         <Toggle
           id="table-editing-toggle"
-          value={PLUGIN_DATA_EDITING.hasDatabaseTableEditingEnabled(database)}
+          value={PLUGIN_DATA_EDITING.isDatabaseTableEditingEnabled(database)}
           onChange={handleToggle}
         />
       </Flex>

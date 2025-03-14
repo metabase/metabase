@@ -600,7 +600,7 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 
 export const PLUGIN_DATA_EDITING = {
   isEnabled: () => false,
-  hasDatabaseTableEditingEnabled: (
+  isDatabaseTableEditingEnabled: (
     _database: Database | DatabaseType,
   ): boolean => false,
   PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
