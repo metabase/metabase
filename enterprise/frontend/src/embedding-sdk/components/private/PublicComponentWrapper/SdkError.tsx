@@ -36,7 +36,7 @@ const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
 );
 
 interface ResourceNotFoundErrorProps {
-  id: string | number | null | undefined;
+  id: string | number;
 }
 
 const ResourceNotFoundError = ({

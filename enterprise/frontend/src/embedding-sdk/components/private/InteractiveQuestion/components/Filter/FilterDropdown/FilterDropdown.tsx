@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import type { SDKFilterItem } from "embedding-sdk/components/private/InteractiveQuestion/components/Filter/hooks/use-filter-data";
 import {
@@ -43,7 +43,11 @@ const FilterDropdownInner = ({
   const label = match(filters.length)
     .with(0, () => t`Filter`)
     .with(1, () => t`1 filter`)
-    .otherwise(value => jt`${value} filters`);
+    .otherwise(
+      value =>
+        c("{0} refers to a number greater than 1 (i.e. 2 filters, 10 filters)")
+          .t`${value} filters`,
+    );
 
   const onRemoveItem = (item: SDKFilterItem) => {
     item.onRemoveFilter();
