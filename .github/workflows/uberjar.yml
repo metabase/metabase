@@ -6,6 +6,7 @@ on:
       - "master"
       - metabot-v3-main
       - feature-visualizer
+      - "internal-tools"
     paths-ignore:
       # config files
       - ".**"
@@ -85,6 +86,7 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss, ee-extra]
+      fail-fast: false
     services:
       registry:
         image: registry:2

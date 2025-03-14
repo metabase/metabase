@@ -1371,6 +1371,65 @@ describe("issue 53556 - nested question based on native model with remapped valu
   });
 });
 
+describe("issue 54108 - nested question broken out by day", () => {
+  const questionDetails = {
+    name: "54108 base",
+    type: "question",
+    native: {
+      query: "select ID, CREATED_AT from ORDERS",
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          name: "54108",
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+                { "temporal-unit": "day", "base-type": "type/Date" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        },
+      );
+    });
+  });
+
+  it("drill-through should work (metabase#54108)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.visitQuestion("@nestedQuestionId");
+
+    // We can click on any circle; this index was chosen randomly
+    H.cartesianChartCircle().eq(500).click({ force: true });
+    H.popover()
+      .findByText(/^See these/)
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      "CREATED_AT is Oct 11, 2023",
+    );
+
+    H.assertQueryBuilderRowCount(6);
+  });
+});
+
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   const questionDetails = {
     name: "29951",
@@ -1410,7 +1469,8 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
-    H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
+    H.tableHeaderColumn("ID").as("idHeader");
+    H.moveDnDKitElementByAlias("@idHeader", { horizontal: 100 });
 
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");

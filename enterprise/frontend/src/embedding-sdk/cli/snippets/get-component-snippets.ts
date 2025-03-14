@@ -1,15 +1,15 @@
+import type { DashboardInfo } from "../types/dashboard";
+import { withNextJsUseClientDirective } from "../utils/nextjs-helpers";
+
+import { getAnalyticsDashboardSnippet } from "./analytics-dashboard-snippet";
+import { ANALYTICS_PAGE_SNIPPET } from "./analytics-page-snippet";
 import {
-  ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
   ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
-  THEME_SWITCHER_SNIPPET,
-  getAnalyticsDashboardSnippet,
-  getEmbeddingProviderSnippet,
-  getUserSwitcherSnippet,
-} from "../snippets";
-import type { DashboardInfo } from "../types/dashboard";
-
-import { withNextJsUseClientDirective } from "./nextjs-helpers";
+} from "./analytics-provider-snippet";
+import { getEmbeddingProviderSnippet } from "./embedding-provider-snippet";
+import { THEME_SWITCHER_SNIPPET } from "./theme-switcher-snippet";
+import { getUserSwitcherSnippet } from "./user-switcher-snippet";
 
 interface Options {
   instanceUrl: string;

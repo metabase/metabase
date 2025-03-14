@@ -500,7 +500,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.startNewNativeQuestion();
       cy.findByTestId("gui-builder-data").click();
       cy.findByLabelText(MONGO_DB_NAME).click();
-      cy.findByLabelText("Format query").should("not.exist");
+      cy.findByLabelText("Auto-format").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
 
@@ -514,7 +514,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // It should load the formatter chunk only when used
       cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
 
-      cy.findByLabelText("Format query").click();
+      cy.findByLabelText("Auto-format").click();
 
       cy.wait("@sqlFormatter");
 
