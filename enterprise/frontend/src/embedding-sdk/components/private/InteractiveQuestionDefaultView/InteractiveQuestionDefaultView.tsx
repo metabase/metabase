@@ -148,7 +148,7 @@ export const InteractiveQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <Group gap="sm">
+            <Group spacing="sm">
               {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
               <InteractiveQuestion.EditorButton
                 isOpen={isEditorOpen}

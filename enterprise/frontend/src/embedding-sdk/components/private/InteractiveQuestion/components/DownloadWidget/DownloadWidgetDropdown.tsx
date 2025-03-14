@@ -4,13 +4,14 @@ import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const DownloadWidgetDropdown = (popoverProps: PopoverProps) => {
+export const DownloadWidgetDropdown = (
+  popoverProps: Omit<PopoverProps, "children">,
+) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
     <Popover
       {...popoverProps}
       disabled={!withDownloads}
-      floatingStrategy="fixed"
       withinPortal={false}
       position="bottom-end"
     >
