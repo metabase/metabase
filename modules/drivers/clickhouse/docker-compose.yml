@@ -5,12 +5,14 @@ services:
   ##########################################################################################################
 
   clickhouse:
-    image: 'clickhouse/clickhouse-server:24.7-alpine'
+    image: 'clickhouse/clickhouse-server:25.2-alpine'
     container_name: 'metabase-driver-clickhouse-server'
     hostname: clickhouse
     ports:
       - '8123:8123'
       - '9000:9000'
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
       nofile:
         soft: 262144
@@ -32,6 +34,8 @@ services:
     ports:
       - '8443:8443'
       - '9440:9440'
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
       nofile:
         soft: 262144
@@ -53,6 +57,8 @@ services:
     ports:
       - '8124:8123'
       - '9001:9000'
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
       nofile:
         soft: 262144
@@ -67,7 +73,7 @@ services:
   ##########################################################################################################
 
   clickhouse_cluster_node1:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.2-alpine}'
     ulimits:
       nofile:
         soft: 262144
@@ -78,13 +84,15 @@ services:
       - '8125:8123'
       - '9002:9000'
       - '9181:9181'
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
       - './.docker/clickhouse/cluster/server1_config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/cluster/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
       - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse_cluster_node2:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.7-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.2-alpine}'
     ulimits:
       nofile:
         soft: 262144
@@ -95,6 +103,8 @@ services:
       - '8126:8123'
       - '9003:9000'
       - '9182:9181'
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
       - './.docker/clickhouse/cluster/server2_config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/clickhouse/cluster/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'

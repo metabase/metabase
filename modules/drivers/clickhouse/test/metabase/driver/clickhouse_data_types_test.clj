@@ -1,9 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
   (:require
-   [cljc.java-time.local-date :as local-date]
-   [cljc.java-time.local-date-time :as local-date-time]
    [clojure.test :refer :all]
-   [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -26,7 +23,7 @@
                    :breakout [[:expression :divided]]
                    :order-by [[:desc [:expression :divided]]]
                    :limit 1})
-                qp.test/first-row last float))))
+                mt/first-row last float))))
       (testing "divided decimal precision"
         (is
          (= 1.8155331831916208
@@ -34,7 +31,7 @@
                   {:expressions {:divided [:/ 42 $my_money]}
                    :filter [:= $id 2]
                    :limit 1})
-                qp.test/first-row last double)))))))
+                mt/first-row last double)))))))
 
 (deftest ^:parallel clickhouse-array-string
   (mt/test-driver :clickhouse
@@ -47,7 +44,7 @@
                                         :base-type {:native "Array(String)"}}]
                                       [[(into-array (list "foo" "bar"))]]])
               (mt/run-mbql-query test-data-array-string {:limit 1}))
-            qp.test/first-row
+            mt/first-row
             last)))))
 
 (deftest ^:parallel clickhouse-array-uint64
@@ -61,7 +58,7 @@
                                         :base-type {:native "Array(UInt64)"}}]
                                       [[(into-array (list 23 42))]]])
               (mt/run-mbql-query test-data-array-uint64 {:limit 1}))
-            qp.test/first-row
+            mt/first-row
             last)))))
 
 (deftest ^:parallel clickhouse-array-of-arrays
@@ -306,7 +303,13 @@
      {:field-name "u16", :base-type {:native "UInt16"}}
      {:field-name "u32", :base-type {:native "UInt32"}}
      {:field-name "u64", :base-type {:native "UInt64"}}]
-    [[255, 65535, 4294967295, 18446744073709551615]]]])
+    [[255, 65535, 4294967295, 18446744073709551615]]]
+   ["fixed_strings"
+    [{:field-name "f1" :base-type {:native "FixedString(4)"}}
+     {:field-name "f2" :base-type {:native "LowCardinality(FixedString(4))"}}
+     {:field-name "f3" :base-type {:native "Nullable(FixedString(4))"}}
+     {:field-name "f4" :base-type {:native "LowCardinality(Nullable(FixedString(4)))"}}]
+    [["val1" "val2" "val3" "val4"]]]])
 
 (comment
   ;; This test doesn't pass because honey.sql/format doesn't generate a valid
@@ -370,19 +373,19 @@
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})
-                   qp.test/first-row last))))
+                   mt/first-row last))))
       (testing "nullable strings not null filter"
         (is (= 3M
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:not-null $mystring]
                       :aggregation [:count]})
-                   qp.test/first-row last))))
+                   mt/first-row last))))
       (testing "filter nullable string by value"
         (is (= 1M
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:= $mystring "foo"]
                       :aggregation [:count]})
-                   qp.test/first-row last)))))))
+                   mt/first-row last)))))))
 
 (deftest clickhouse-non-latin-strings
   (mt/test-driver :clickhouse
@@ -585,3 +588,18 @@
                 (mt/run-mbql-query
                   unsigned_int_types
                   {}))))))))
+
+;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
+#_(deftest ^:parallel clickhouse-fixed-strings
+    (mt/test-driver
+      :clickhouse
+      (is (= [["val1" "val2" "val3" "val4"]]
+             (qp.test/formatted-rows
+              [str str str str]
+              :format-nil-values
+              (ctd/do-with-test-db
+               (fn [db]
+                 (data/with-db db
+                   (data/run-mbql-query
+                    fixed_strings
+                    {})))))))))

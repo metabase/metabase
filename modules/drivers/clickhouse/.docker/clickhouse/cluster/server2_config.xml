@@ -90,22 +90,11 @@
     <flush_interval_milliseconds>1000</flush_interval_milliseconds>
   </query_log>
 
-  <http_options_response>
-    <header>
-      <name>Access-Control-Allow-Origin</name>
-      <value>*</value>
-    </header>
-    <header>
-      <name>Access-Control-Allow-Headers</name>
-      <value>accept, origin, x-requested-with, content-type, authorization</value>
-    </header>
-    <header>
-      <name>Access-Control-Allow-Methods</name>
-      <value>POST, GET, OPTIONS</value>
-    </header>
-    <header>
-      <name>Access-Control-Max-Age</name>
-      <value>86400</value>
-    </header>
-  </http_options_response>
+  <!-- required after 25.1+ -->
+  <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+  <user_directories>
+    <users_xml>
+      <path>users.xml</path>
+    </users_xml>
+  </user_directories>
 </clickhouse>
