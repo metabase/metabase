@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
