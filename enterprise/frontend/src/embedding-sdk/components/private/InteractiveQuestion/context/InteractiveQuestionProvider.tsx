@@ -55,6 +55,7 @@ export const InteractiveQuestionProvider = ({
   entityTypeFilter,
   targetCollection,
   initialSqlParameters,
+  withDownloads,
 }: InteractiveQuestionProviderProps) => {
   const {
     id: questionId,
@@ -159,6 +160,7 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     isCardIdError,
+    withDownloads,
   };
 
   useEffect(() => {
