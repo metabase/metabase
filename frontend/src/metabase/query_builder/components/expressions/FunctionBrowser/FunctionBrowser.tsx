@@ -1,4 +1,10 @@
-import { type ChangeEvent, useCallback, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type MouseEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -6,7 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { MBQL_CLAUSES } from "metabase-lib/v1/expressions";
+import { type HelpText, MBQL_CLAUSES } from "metabase-lib/v1/expressions";
 
 import type { StartRule } from "../types";
 
@@ -80,33 +86,53 @@ export function FunctionBrowser({
               {group.displayName}
             </Text>
             {group.clauses.map(clause => (
-              <Box
-                role="button"
+              <FunctionBrowserItem
                 key={clause.name}
-                className={S.clause}
-                px="md"
-                py="xs"
-                onMouseDown={evt => {
-                  evt.preventDefault();
-                  if (clause.name) {
-                    const structure = MBQL_CLAUSES[clause.name].displayName;
-                    onClauseClick?.(structure);
-                  }
-                }}
-              >
-                <dt className={S.name}>
-                  <Text size="sm">{clause.structure}</Text>
-                </dt>
-                <dd className={S.description}>
-                  <Text size="sm" c="var(--mb-color-text-medium)">
-                    {clause.description}
-                  </Text>
-                </dd>
-              </Box>
+                onClauseClick={onClauseClick}
+                clause={clause}
+              />
             ))}
           </>
         ))}
       </Flex>
     </Flex>
+  );
+}
+
+function FunctionBrowserItem({
+  onClauseClick,
+  clause,
+}: {
+  onClauseClick?: (name: string) => void;
+  clause: HelpText;
+}) {
+  const handleMouseDown = useCallback(
+    (evt: MouseEvent<HTMLDivElement>) => {
+      evt.preventDefault();
+      if (clause.name) {
+        const structure = MBQL_CLAUSES[clause.name].displayName;
+        onClauseClick?.(structure);
+      }
+    },
+    [onClauseClick, clause.name],
+  );
+  return (
+    <Box
+      role="button"
+      key={clause.name}
+      className={S.clause}
+      px="md"
+      py="xs"
+      onMouseDown={handleMouseDown}
+    >
+      <dt className={S.name}>
+        <Text size="sm">{clause.structure}</Text>
+      </dt>
+      <dd className={S.description}>
+        <Text size="sm" c="var(--mb-color-text-medium)">
+          {clause.description}
+        </Text>
+      </dd>
+    </Box>
   );
 }
