@@ -145,14 +145,12 @@
    ;; map of ports.
    :data       {:a [:b :c] :b [:d]}}
 
-  -test {:doc      "run all mage tests"
-         :requires [[mage.core-test]
-                    [mage.examples-test :as examples-test]]
-         :task     (do
-                     (mage.core-test/run-tests)
-                     (examples-test/run-example-tests))}
+  -test-help {:doc      "run all mage tests"
+              :requires [[mage.core-test :as core-test]]
+              :task     (System/exit
+                         (if (= :ok (core-test/run-tests)) 0 1))}
 
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
-   :task     (examples-test/run-example-tests)}}}
+   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}}}
