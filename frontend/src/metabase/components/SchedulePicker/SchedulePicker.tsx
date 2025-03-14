@@ -32,6 +32,7 @@ import {
 } from "./SchedulePicker.styled";
 
 const optionNameTranslations = {
+  minutely: t`By the minute`,
   hourly: t`Hourly`,
   daily: t`Daily`,
   weekly: t`Weekly`,

@@ -82,7 +82,12 @@ export interface ScheduleSettings {
   schedule_minute?: number | null;
 }
 
-export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
+export type ScheduleType =
+  | "minutely"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly";
 
 export type ScheduleDayType =
   | "sun"

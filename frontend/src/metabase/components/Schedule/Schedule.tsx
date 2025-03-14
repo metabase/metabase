@@ -1,6 +1,7 @@
+import cx from "classnames";
 import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
-import { c } from "ttag";
+import { c, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
@@ -17,6 +18,7 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
+import { minuteIntervals } from "./strings";
 import type { ScheduleChangeProp, UpdateSchedule } from "./types";
 import { getScheduleDefaults } from "./utils";
 
@@ -31,6 +33,7 @@ export interface ScheduleProps {
   verb?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
+  labelAlignment?: "compact" | "left";
 }
 
 export const Schedule = ({
@@ -40,19 +43,9 @@ export const Schedule = ({
   verb,
   minutesOnHourPicker,
   onScheduleChange,
+  labelAlignment = "compact",
   ...boxProps
-}: {
-  schedule: ScheduleSettings;
-  scheduleOptions: ScheduleType[];
-  timezone?: string;
-  verb?: string;
-  minutesOnHourPicker?: boolean;
-  onScheduleChange: (
-    nextSchedule: ScheduleSettings,
-    change: ScheduleChangeProp,
-  ) => void;
-} & BoxProps &
-  HTMLAttributes<HTMLDivElement>) => {
+}: ScheduleProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
   const updateSchedule: UpdateSchedule = useCallback(
     (
       updatedField: keyof ScheduleSettings,
@@ -119,6 +112,15 @@ export const Schedule = ({
       />
     );
 
+    const selectEveryMinute = (
+      <SelectMinute
+        key="minute"
+        schedule_minute={schedule_minute}
+        updateSchedule={updateSchedule}
+        range={minuteIntervals}
+      />
+    );
+
     const selectTime = (
       <SelectTime
         key="time"
@@ -153,6 +155,17 @@ export const Schedule = ({
     );
 
     return match(schedule_type)
+      .with(
+        "minutely",
+        () =>
+          c(
+            "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
+          ).jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(
+            msgid`minute`,
+            "minutes",
+            schedule_minute as number,
+          )}`,
+      )
       .with("hourly", () => {
         return minutesOnHourPicker ? (
           // For example, "Send hourly at 15 minutes past the hour"
@@ -211,7 +224,16 @@ export const Schedule = ({
   ]);
 
   return (
-    <Box className={S.Schedule} {...boxProps}>
+    <Box
+      {...boxProps}
+      className={cx(
+        S.Schedule,
+        {
+          [S.CompactLabels]: labelAlignment === "compact",
+        },
+        boxProps.className,
+      )}
+    >
       <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
     </Box>
   );
