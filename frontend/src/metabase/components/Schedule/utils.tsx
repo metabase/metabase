@@ -71,6 +71,12 @@ export const getScheduleDefaults = (
   schedule: ScheduleSettings,
 ): ScheduleSettings => {
   return match<ScheduleSettings>(schedule)
+    .with({ schedule_type: "minutely" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: null,
+      schedule_minute: 10,
+    }))
     .with({ schedule_type: "hourly" }, () => ({
       schedule_day: null,
       schedule_frame: null,
