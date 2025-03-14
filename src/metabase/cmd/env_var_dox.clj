@@ -86,20 +86,13 @@
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
 
-(defn- deprecated-message
-  "For shouting (and listing a message, like the version it was deprecated, if available)."
-  [env-var]
-  (let [deprecated (:deprecated env-var)]
-    (if (string? deprecated)
-      (str "> DEPRECATED: " deprecated)
-      "> DEPRECATED")))
-
 (defn- format-deprecated
   "Tags a deprecated environment variable."
   [env-var]
-  (when (:deprecated env-var)
-    (deprecated-message env-var)))
-
+  (when-let [deprecated (:deprecated env-var)]
+    (if (string? deprecated)
+      (str "> DEPRECATED: " deprecated)
+      "> DEPRECATED")))
 (def paid-message
   "Used to mark an env var that requires a paid plan."
   "> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
