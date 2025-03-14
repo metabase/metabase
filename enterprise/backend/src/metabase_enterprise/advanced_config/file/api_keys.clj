@@ -10,6 +10,8 @@
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/name
   string?)
 
