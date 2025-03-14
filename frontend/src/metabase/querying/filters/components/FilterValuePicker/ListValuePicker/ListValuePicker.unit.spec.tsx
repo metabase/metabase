@@ -122,7 +122,7 @@ describe("ListValuePicker", () => {
       expect(screen.getByLabelText("Gadget")).toBeInTheDocument();
       expect(screen.queryByLabelText("Widget")).not.toBeInTheDocument();
 
-      const checkbox = screen.getByLabelText("Select all");
+      const checkbox = screen.getByLabelText("Select these");
       expect(checkbox).toBeChecked();
       await userEvent.click(checkbox);
       expect(onChange).toHaveBeenCalledWith(["Doohickey", "Widget"]);

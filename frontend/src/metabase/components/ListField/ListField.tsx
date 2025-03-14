@@ -166,7 +166,11 @@ export const ListField = ({
             <OptionContainer>
               <Checkbox
                 variant="stacked"
-                label={<Text>{t`Select all`}</Text>}
+                label={
+                  <Text c="text-secondary">
+                    {debouncedFilter ? t`Select these` : t`Select all`}
+                  </Text>
+                }
                 checked={isAll}
                 indeterminate={!isAll && !isNone}
                 onChange={handleToggleAll}

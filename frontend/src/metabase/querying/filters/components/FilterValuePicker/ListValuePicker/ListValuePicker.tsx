@@ -94,7 +94,11 @@ function CheckboxListPicker({
         <Stack>
           <Checkbox
             variant="stacked"
-            label={<Text c="text-secondary">{t`Select all`}</Text>}
+            label={
+              <Text c="text-secondary">
+                {searchValue ? t`Select these` : t`Select all`}
+              </Text>
+            }
             checked={isAll}
             indeterminate={!isAll && !isNone}
             onChange={handleToggleAll}
