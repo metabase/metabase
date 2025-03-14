@@ -169,8 +169,8 @@
   (mt/test-driver :clickhouse
     (let [row1 (into-array
                 (list
-                 (local-date/parse "2022-12-06")
-                 (local-date/parse "2021-10-19")))
+                 #t "2022-12-06"
+                 #t "2021-10-19"))
           row2 (into-array nil)
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_array_of_dates"
@@ -186,8 +186,8 @@
   (mt/test-driver :clickhouse
     (let [row1 (into-array
                 (list
-                 (local-date/parse "2122-12-06")
-                 (local-date/parse "2099-10-19")))
+                 #t "2122-12-06"
+                 #t "2099-10-19"))
           row2 (into-array nil)
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_array_of_date32"
@@ -203,8 +203,8 @@
   (mt/test-driver :clickhouse
     (let [row1 (into-array
                 (list
-                 (local-date-time/parse "2022-12-06T18:28:31")
-                 (local-date-time/parse "2021-10-19T13:12:44")))
+                 #t "2022-12-06T18:28:31"
+                 #t "2021-10-19T13:12:44"))
           row2 (into-array nil)
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_array_of_datetime"
@@ -220,8 +220,8 @@
   (mt/test-driver :clickhouse
     (let [row1 (into-array
                 (list
-                 (local-date-time/parse "2022-12-06T18:28:31.123")
-                 (local-date-time/parse "2021-10-19T13:12:44.456")))
+                 #t "2022-12-06T18:28:31.123"
+                 #t "2021-10-19T13:12:44.456"))
           row2 (into-array nil)
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_array_of_datetime64"
@@ -505,6 +505,7 @@
               (mt/with-db (mt/db) (mt/run-mbql-query ipaddress_test {}))))))))
 
 (defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
+
 (deftest clickhouse-simple-map-test
   (mt/test-driver :clickhouse
     (mt/dataset metabase_test

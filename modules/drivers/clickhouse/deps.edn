@@ -1,5 +1,4 @@
 {:paths ["src" "resources"]
  :deps
- {com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}
-  com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.1"}
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.1"}
   org.lz4/lz4-java {:mvn/version "1.8.0"}}}
