@@ -92,52 +92,50 @@ function getParameterTargetFieldFromFieldRef(
 ) {
   const metadata = question.metadata();
 
-  if (isConcreteFieldReference(fieldRef)) {
-    const [_type, fieldIdOrName] = fieldRef;
-    const fields = metadata.fieldsList();
-    if (typeof fieldIdOrName === "number") {
-      // performance optimization:
-      // we can match by id directly without finding this column via query
-      return fields.find(field => field.id === fieldIdOrName);
-    }
+  const [_type, fieldIdOrName] = fieldRef;
+  const fields = metadata.fieldsList();
+  if (typeof fieldIdOrName === "number") {
+    // performance optimization:
+    // we can match by id directly without finding this column via query
+    return fields.find(field => field.id === fieldIdOrName);
+  }
 
-    const { query, columns } = getParameterColumns(question, parameter);
+  const { query, columns } = getParameterColumns(question, parameter);
 
-    if (columns.length === 0) {
-      // query and metadata are not available: 1) no data permissions 2) embedding
-      // there is no way to find the correct field so pick the first one matching by name
-      return fields.find(
-        field => typeof field.id === "number" && field.name === fieldIdOrName,
-      );
-    }
+  if (columns.length === 0) {
+    // query and metadata are not available: 1) no data permissions 2) embedding
+    // there is no way to find the correct field so pick the first one matching by name
+    return fields.find(
+      field => typeof field.id === "number" && field.name === fieldIdOrName,
+    );
+  }
 
-    const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
-    for (const stageIndex of stageIndexes) {
-      const stageColumns = columns
-        .filter(column => column.stageIndex === stageIndex)
-        .map(({ column }) => column);
+  for (const stageIndex of stageIndexes) {
+    const stageColumns = columns
+      .filter(column => column.stageIndex === stageIndex)
+      .map(({ column }) => column);
 
-      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        stageColumns,
-        [fieldRef],
-      );
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      stageColumns,
+      [fieldRef],
+    );
 
-      if (columnIndex >= 0) {
-        const column = stageColumns[columnIndex];
-        const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+    if (columnIndex >= 0) {
+      const column = stageColumns[columnIndex];
+      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
-        if (fieldValuesInfo.fieldId == null) {
-          // the column does not represent to a database field, e.g. coming from an aggregation clause
-          return null;
-        }
-
-        // do not use `metadata.field(id)` because it only works for fields loaded
-        // with the original table, not coming from model metadata
-        return fields.find(field => field.id === fieldValuesInfo.fieldId);
+      if (fieldValuesInfo.fieldId == null) {
+        // the column does not represent to a database field, e.g. coming from an aggregation clause
+        return null;
       }
+
+      // do not use `metadata.field(id)` because it only works for fields loaded
+      // with the original table, not coming from model metadata
+      return fields.find(field => field.id === fieldValuesInfo.fieldId);
     }
   }
 
