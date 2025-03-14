@@ -568,12 +568,14 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
     const question = structuredMetricQuestion;
 
-    describe("allows navigating between metric query & metadata tabs", () => {
-      it.each([newMetricQueryTabLocation])("to `$pathname`", destination => {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      });
+    it("allows current route", () => {
+      expect(
+        isNavigationAllowed({
+          destination: newMetricQueryTabLocation,
+          question,
+          isNewQuestion,
+        }),
+      ).toBe(true);
     });
 
     it("allows to run the metric", () => {
