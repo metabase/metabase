@@ -269,8 +269,8 @@
   Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
   [x]
   (case x
-    (0 false) false
-    (1 true)  true
+    (0 0M false) false
+    (1 1M true)  true
     (throw (ex-info "value is not boolish" {:value x}))))
 
 (defn format-rows-by
