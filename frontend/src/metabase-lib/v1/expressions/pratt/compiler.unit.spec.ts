@@ -11,8 +11,8 @@ describe("pratt/compiler", () => {
 
   describe("(for an expression)", () => {
     it("should compile literals", () => {
-      expect(expr("42")).toEqual(42);
-      expect(expr("'Universe'")).toEqual("Universe");
+      expect(expr("42")).toEqual(["value", 42]);
+      expect(expr("'Universe'")).toEqual(["value", "Universe"]);
     });
 
     /// TODO: Fix w/ some type info
@@ -49,12 +49,12 @@ describe("pratt/compiler", () => {
     });
 
     it("should handle parenthesized expression", () => {
-      expect(expr("(42)")).toEqual(42);
-      expect(expr("-42")).toEqual(-42);
+      expect(expr("(42)")).toEqual(["value", 42]);
+      expect(expr("-42")).toEqual(["value", -42]);
       expect(expr("-(42)")).toEqual(["-", 42]);
-      expect(expr("((43))")).toEqual(43);
-      expect(expr("('Universe')")).toEqual("Universe");
-      expect(expr("(('Answer'))")).toEqual("Answer");
+      expect(expr("((43))")).toEqual(["value", 43]);
+      expect(expr("('Universe')")).toEqual(["value", "Universe"]);
+      expect(expr("(('Answer'))")).toEqual(["value", "Answer"]);
       expect(expr("(1+2)")).toEqual(["+", 1, 2]);
       expect(expr("(1+2)/3")).toEqual(["/", ["+", 1, 2], 3]);
       expect(expr("4-(5*6)")).toEqual(["-", 4, ["*", 5, 6]]);
