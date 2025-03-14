@@ -264,6 +264,10 @@
           metabase.lib.walk}
    :uses #{config driver legacy-mbql models types util}}
 
+  lib-be
+  {:api #{metabase.lib-be.init}
+   :uses #{models task util}}
+
   logger
   {:api  #{metabase.logger metabase.logger.init}
    :uses #{config plugins}}
