@@ -1,3 +1,5 @@
+import { useRegisterActions } from "kbar";
+
 import { useBookmarkListQuery } from "metabase/common/hooks";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getDashboard } from "metabase/dashboard/selectors";
@@ -36,6 +38,19 @@ export const DashboardBookmark = (): JSX.Element | null => {
       dispatch(Bookmark.actions.delete({ id, type: "dashboard" }));
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        name: "Bookmark Dashboard",
+        id: "bookmark-dashboard",
+        shortcut: ["o"],
+        perform: () =>
+          isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
+      },
+    ],
+    [isBookmarked],
+  );
 
   return (
     <BookmarkToggle

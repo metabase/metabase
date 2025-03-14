@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useRegisterActions } from "kbar";
 import { msgid, ngettext, t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -36,6 +37,15 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
     handleDoneEditing();
   };
+
+  useRegisterActions([
+    {
+      id: "save-edit",
+      name: "Save Edit Dashboard",
+      shortcut: ["s"],
+      perform: onSave,
+    },
+  ]);
 
   return (
     <Tooltip key="save" label={disabledSaveTooltip} disabled={!isSaveDisabled}>

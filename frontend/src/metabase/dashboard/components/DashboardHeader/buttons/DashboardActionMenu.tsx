@@ -1,11 +1,14 @@
+import { useRegisterActions } from "kbar";
 import { type JSX, type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
+import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -40,6 +43,7 @@ const DashboardActionMenuInner = ({
 }: DashboardActionMenuProps &
   DashboardFullscreenControls &
   WithRouterProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [opened, setOpened] = useState(false);
 
   const { refreshDashboard } = useRefreshDashboard({
@@ -51,6 +55,30 @@ const DashboardActionMenuInner = ({
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
     refreshDashboard,
+  );
+
+  useRegisterActions(
+    [
+      {
+        name: "Copy dashboard",
+        id: "copy-dashboard",
+        shortcut: ["$mod+c"],
+        perform: () => dispatch(push(`${location?.pathname}/copy`)),
+      },
+      {
+        name: "Move dashboard",
+        id: "move-dashboard",
+        shortcut: ["$mod+m"],
+        perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
+      },
+      {
+        name: "Send tashboard to trash",
+        id: "trash-dashboard",
+        shortcut: ["$mod+backspace"],
+        perform: () => dispatch(push(`${location?.pathname}/archive`)),
+      },
+    ],
+    [location.pathname],
   );
 
   return (

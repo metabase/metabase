@@ -17,7 +17,7 @@ import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
 
-type ModalName = null | "collection" | "dashboard" | "action";
+type ModalName = null | "collection" | "dashboard" | "action" | "help";
 
 export interface State {
   admin: AdminState;

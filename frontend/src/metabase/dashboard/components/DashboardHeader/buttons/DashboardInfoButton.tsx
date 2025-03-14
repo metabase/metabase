@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -12,6 +13,24 @@ export const DashboardInfoButton = () => {
     getIsShowDashboardInfoSidebar,
   );
 
+  const handleClick = () => {
+    isShowingDashboardInfoSidebar
+      ? dispatch(closeSidebar())
+      : dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+  };
+
+  useRegisterActions(
+    [
+      {
+        id: "info-dashboard",
+        name: "Toggle Dashboard Info",
+        shortcut: ["]"],
+        perform: handleClick,
+      },
+    ],
+    [isShowingDashboardInfoSidebar],
+  );
+
   return (
     <ToolbarButton
       aria-label={t`More info`}
@@ -19,11 +38,7 @@ export const DashboardInfoButton = () => {
       icon="info"
       isActive={isShowingDashboardInfoSidebar}
       disabled={isShowingDashboardInfoSidebar}
-      onClick={() =>
-        isShowingDashboardInfoSidebar
-          ? dispatch(closeSidebar())
-          : dispatch(setSidebar({ name: SIDEBAR_NAME.info }))
-      }
+      onClick={handleClick}
     />
   );
 };
