@@ -2,10 +2,7 @@ import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import { InteractiveQuestionProvider } from "./InteractiveQuestionProvider";
-import type {
-  InteractiveQuestionId,
-  InteractiveQuestionProviderWithLocationProps,
-} from "./types";
+import type { InteractiveQuestionProviderWithLocationProps } from "./types";
 
 export const InteractiveQuestionProviderWithLocation = ({
   location,
@@ -20,9 +17,7 @@ export const InteractiveQuestionProviderWithLocation = ({
 
   return (
     <InteractiveQuestionProvider
-      // the public type for questionId is InteractiveQuestionId, but it doesn't contain null
-      // and we don't want to expose `null` to the user
-      questionId={questionId as InteractiveQuestionId}
+      questionId={questionId}
       options={options}
       deserializedCard={deserializedCard}
       {...props}

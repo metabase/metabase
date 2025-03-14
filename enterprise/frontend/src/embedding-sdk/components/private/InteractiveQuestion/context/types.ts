@@ -51,7 +51,7 @@ export type InteractiveQuestionId = CardId | "new" | (string & {});
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: InteractiveQuestionId;
+      questionId: InteractiveQuestionId | null;
     }
 >;
 
