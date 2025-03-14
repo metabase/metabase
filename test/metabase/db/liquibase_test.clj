@@ -135,7 +135,7 @@
   (mt/test-drivers #{:h2}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
-        (is (< 52 (liquibase/latest-available-major-version liquibase)))))))
+        (is (< 51 (liquibase/latest-available-major-version liquibase)))))))
 
 (deftest latest-applied-major-version
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -143,7 +143,7 @@
       (liquibase/with-liquibase [liquibase conn]
         (is (nil? (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
         (.update liquibase "")
-        (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
+        (is (< 51 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
 
 (deftest rollback-major-version
   (mt/test-drivers #{:h2 :mysql :rollback}
