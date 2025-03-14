@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -14,6 +15,18 @@ export const AddQuestionButton = () => {
     sidebar.name === SIDEBAR_NAME.addQuestion
       ? t`Close sidebar`
       : t`Add questions`;
+
+  useRegisterActions(
+    [
+      {
+        id: "add-question",
+        name: "Add Question",
+        shortcut: ["a"],
+        perform: () => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion)),
+      },
+    ],
+    [],
+  );
 
   return (
     <ToolbarButton

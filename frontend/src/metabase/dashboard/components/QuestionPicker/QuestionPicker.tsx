@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -95,6 +96,24 @@ function QuestionPickerInner({
       );
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        name: "Add new question",
+        id: "new-question-dashboard",
+        shortcut: ["c"],
+        perform: () => onNewQuestion("notebook"),
+      },
+      {
+        name: "Add new native question",
+        id: "new-native-question-dashboard",
+        shortcut: ["n"],
+        perform: () => onNewQuestion("native"),
+      },
+    ],
+    [dashboard],
+  );
 
   return (
     <div className={S.questionPickerRoot}>

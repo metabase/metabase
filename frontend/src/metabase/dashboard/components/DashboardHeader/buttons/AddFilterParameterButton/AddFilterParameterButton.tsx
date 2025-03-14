@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -39,6 +40,18 @@ export const AddFilterParameterButton = () => {
       );
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        id: "add-filter",
+        name: "Add Filter",
+        shortcut: ["f"],
+        perform: () => handleItemClick(sections[0]),
+      },
+    ],
+    [],
+  );
 
   useLayoutEffect(() => {
     if (isOpened) {

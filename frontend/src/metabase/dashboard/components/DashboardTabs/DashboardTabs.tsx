@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -37,6 +38,16 @@ export function DashboardTabs({
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
 
+  useRegisterActions(
+    tabs.map((tab, index) => ({
+      id: `dashboard-tab-${index}`,
+      name: `Dashboard Tab ${index}`,
+      shortcut: [`${index + 1}`],
+      perform: () => selectTab(tab.id),
+    })),
+    [tabs],
+  );
+
   if (!showTabs) {
     return null;
   }
@@ -71,7 +82,7 @@ export function DashboardTabs({
             menuItems={menuItems}
           />
         ) : (
-          tabs.map((tab) => (
+          tabs.map((tab, index) => (
             <Sortable
               key={tab.id}
               id={tab.id}
@@ -85,6 +96,7 @@ export function DashboardTabs({
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}
                 menuItems={menuItems}
+                tabIndex={index}
               />
             </Sortable>
           ))

@@ -1,3 +1,4 @@
+import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -17,6 +18,18 @@ export const EditDashboardButton = ({
       dispatch(setEditingDashboard(dashboard));
     }
   };
+
+  useRegisterActions(
+    [
+      {
+        id: "edit-dashboard",
+        name: "Edit Dashboard",
+        shortcut: ["e"],
+        perform: onBeginEditing,
+      },
+    ],
+    [dashboard],
+  );
 
   return (
     <ToolbarButton
