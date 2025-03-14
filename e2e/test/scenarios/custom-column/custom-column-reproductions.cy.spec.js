@@ -1454,7 +1454,7 @@ describe("issue #54722", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should focus the editor when opening it #54722", () => {
+  it("should focus the editor when opening it (metabase#54722)", () => {
     cy.button("Custom column").click();
     cy.focused().should("have.attr", "class").and("contains", "cm-content");
     H.expressionEditorWidget().button("Cancel").click();
