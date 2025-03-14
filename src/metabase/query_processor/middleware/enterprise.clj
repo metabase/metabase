@@ -46,12 +46,18 @@
 
 ;;; (f qp) => qp
 
-(defenterprise swap-mirror-db-middleware
+(defenterprise swap-mirror-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
    Metadata Provider for one that has the appropriate mirror database."
   metabase-enterprise.database-routing.middleware
   [qp]
   qp)
+
+(defn swap-mirror-db-middleware
+  "Helper middleware wrapper for [[swap-mirror-db]] to make sure we do [[defenterprise]] dispatch correctly on each QP run rather than just once when we combine all of the QP middleware"
+  [qp]
+  (fn [query rff]
+    ((swap-mirror-db qp) query rff)))
 
 (defenterprise check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
