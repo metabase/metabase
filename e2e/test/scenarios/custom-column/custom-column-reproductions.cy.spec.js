@@ -1479,7 +1479,7 @@ describe("issue #31964", () => {
   it("should focus the editor when opening it (metabase#54722)", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
-    cy.realPress(["Shift", "Enter"]);
+    cy.realPress("Enter");
     H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
     cy.realPress("Tab");
     H.CustomExpressionEditor.value().should(
