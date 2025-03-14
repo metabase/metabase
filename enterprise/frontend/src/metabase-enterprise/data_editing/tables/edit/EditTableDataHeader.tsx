@@ -9,14 +9,12 @@ import { EditTableDataBackButton } from "./EditTableDataBackButton";
 interface EditTableDataHeaderProps {
   table: Table;
   onCreate: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
 export const EditTableDataHeader = ({
   table,
   onCreate,
-  onEdit,
   onDelete,
 }: EditTableDataHeaderProps): React.JSX.Element => {
   return (
@@ -37,11 +35,6 @@ export const EditTableDataHeader = ({
           variant="filled"
           onClick={onCreate}
         >{t`New record`}</Button>
-        <Button
-          leftSection={<Icon name="pencil" />}
-          disabled
-          onClick={onEdit}
-        >{t`Edit`}</Button>
         <Button
           leftSection={<Icon name="trash" />}
           disabled

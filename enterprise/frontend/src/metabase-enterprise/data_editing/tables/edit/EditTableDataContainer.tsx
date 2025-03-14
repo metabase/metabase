@@ -12,7 +12,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
-import { hasDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
+import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
@@ -55,6 +55,9 @@ export const EditTableDataContainer = ({
   useMount(() => {
     dispatch(closeNavbar());
   });
+
+  const handleNewRowCreate = () => {};
+  const handleRowsDelete = () => {};
 
   const handleCellValueUpdate = useCallback(
     async ({ data, rowIndex }: UpdatedRowCellsHandlerParams) => {
@@ -101,8 +104,14 @@ export const EditTableDataContainer = ({
 
   return (
     <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
-      {table && <EditTableDataHeader table={table} />}
-      {hasDatabaseTableEditingEnabled(database) ? (
+      {table && (
+        <EditTableDataHeader
+          table={table}
+          onCreate={handleNewRowCreate}
+          onDelete={handleRowsDelete}
+        />
+      )}
+      {isDatabaseTableEditingEnabled(database) ? (
         <>
           <Box pos="relative" className={S.gridWrapper}>
             <EditTableDataGrid
