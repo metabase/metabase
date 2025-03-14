@@ -17,20 +17,20 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
-import { TableDataView } from "./TableDataView";
-import S from "./TableDataView.module.css";
-import { TableDataViewHeader } from "./TableDataViewHeader";
+import S from "./EditTableData.module.css";
+import { EditTableDataGrid } from "./EditTableDataGrid";
+import { EditTableDataHeader } from "./EditTableDataHeader";
 
-type TableDataViewProps = {
+type EditTableDataContainerProps = {
   params: {
     dbId: string;
     tableId: string;
   };
 };
 
-export const TableDataContainer = ({
+export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam },
-}: TableDataViewProps) => {
+}: EditTableDataContainerProps) => {
   const dbId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
@@ -101,14 +101,14 @@ export const TableDataContainer = ({
   return (
     <Flex
       className={S.container}
-      data-testid="table-data-view-root"
+      data-testid="edit-table-data-root"
       direction="column"
       justify="stretch"
     >
-      {table && <TableDataViewHeader table={table} />}
+      {table && <EditTableDataHeader table={table} />}
       {hasDatabaseTableEditingEnabled(database) ? (
         <Box pos="relative" className={S.gridWrapper}>
-          <TableDataView
+          <EditTableDataGrid
             data={datasetData}
             onCellValueUpdate={handleCellValueUpdate}
           />

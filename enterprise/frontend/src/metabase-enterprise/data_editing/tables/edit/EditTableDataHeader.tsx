@@ -4,15 +4,15 @@ import { t } from "ttag";
 import { Box, Group, Title } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-import { TableDataViewBackButton } from "./TableDataViewBackButton";
+import { EditTableDataBackButton } from "./EditTableDataBackButton";
 
-interface TableDataViewHeaderProps {
+interface EditTableDataHeaderProps {
   table: Table;
 }
 
-export const TableDataViewHeader = ({
+export const EditTableDataHeader = ({
   table,
-}: TableDataViewHeaderProps): React.JSX.Element => {
+}: EditTableDataHeaderProps): React.JSX.Element => {
   return (
     <Box
       p="lg"
@@ -20,7 +20,7 @@ export const TableDataViewHeader = ({
       bd="1px solid var(--mb-color-border)"
     >
       <Group gap="sm">
-        <TableDataViewBackButton table={table} />
+        <EditTableDataBackButton table={table} />
         <Title>{t`Editing ${table.display_name}`}</Title>
       </Group>
     </Box>

@@ -15,21 +15,21 @@ import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
+import S from "./EditTableData.module.css";
 import { EditingBodyCellConditional } from "./EditingBodyCell";
-import S from "./TableDataView.module.css";
 import { useTableEditing } from "./use-table-editing";
 
-type TableDataViewProps = {
+type EditTableDataGridProps = {
   data: Dataset;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
 
 const TABLE_DATA_VIEW_HEADER_HEIGHT = 32;
 
-export const TableDataView = ({
+export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
-}: TableDataViewProps) => {
+}: EditTableDataGridProps) => {
   const { cols, rows } = data.data;
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =

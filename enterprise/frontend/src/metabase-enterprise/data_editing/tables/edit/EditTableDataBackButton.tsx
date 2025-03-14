@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-export const TableDataViewBackButton = ({ table }: { table: Table }) => {
+export const EditTableDataBackButton = ({ table }: { table: Table }) => {
   const label = t`Back to ${table.display_name}`;
 
   return (

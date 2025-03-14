@@ -1,1 +1,1 @@
-export { TableDataContainer } from "./TableDataContainer";
+export { EditTableDataContainer } from "./EditTableDataContainer";

@@ -23,7 +23,7 @@ import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
 import S from "./BrowseTableData.module.css";
-import { TableDataView } from "./TableDataView";
+import { BrowseTableDataGrid } from "./BrowseTableDataGrid";
 
 type BrowseTableDataProps = {
   params: {
@@ -69,11 +69,12 @@ export const BrowseTableData = ({
 
   if (!table || !datasetData) {
     // TODO: add loading and error handling
+    // TODO: add loading state on data refresh
     return null;
   }
 
   return (
-    <Stack gap={0} className={S.container}>
+    <Stack className={S.container} gap={0} data-testid="table-data-view-root">
       <Group
         justify="space-between"
         align="center"
@@ -114,7 +115,7 @@ export const BrowseTableData = ({
         </Group>
       </Group>
       <Box className={S.gridWrapper} p="1.5rem 1.5rem 0.5rem">
-        <TableDataView data={datasetData} />
+        <BrowseTableDataGrid data={datasetData} />
       </Box>
       <Flex py="0.5rem" px="1.5rem" h="2.5rem" justify="flex-end">
         <Text fw="bold" size="md" component="span">

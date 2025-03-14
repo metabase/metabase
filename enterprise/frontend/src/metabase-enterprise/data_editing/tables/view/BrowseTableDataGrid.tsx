@@ -11,11 +11,11 @@ import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./BrowseTableData.module.css";
 
-type TableDataViewProps = {
+type BrowseTableDataGridProps = {
   data: Dataset;
 };
 
-export const TableDataView = ({ data }: TableDataViewProps) => {
+export const BrowseTableDataGrid = ({ data }: BrowseTableDataGridProps) => {
   const { cols, rows } = data.data;
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
