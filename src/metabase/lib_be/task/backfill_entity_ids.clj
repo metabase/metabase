@@ -1,6 +1,5 @@
 (ns metabase.lib-be.task.backfill-entity-ids
   (:require
-   [clojure.string :as str]
    [clojurewerkz.quartzite.conversion :as conversion]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
@@ -60,16 +59,14 @@
                  retry 0
                  savepoint (.setSavepoint conn)]
             (when row
-              (let [needs-retry
+              (let [new-entity-id (serdes/backfill-entity-id row retry)
+                    needs-retry
                     (try
-                      (t2/update! model id {:entity_id (serdes/backfill-entity-id row retry)})
+                      (t2/update! model id {:entity_id new-entity-id})
                       false
                       (catch Exception e
                         (.rollback conn savepoint)
-                        (if (and (some-> e
-                                         ex-cause
-                                         .getMessage
-                                         (str/includes? " already exists"))
+                        (if (and (t2/select-one model :entity_id new-entity-id)
                                  (< retry *max-retries*))
                           (do
                             (log/info (str "Duplicate entity-id found for " model " with id " id ", retried " retry " times"))
