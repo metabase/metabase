@@ -1,0 +1,11 @@
+"files": [
+   {
+      "source": "/locales/metabase.pot",
+      "translation": "/locales/%two_letters_code%.po",
+      "languages_mapping": {
+         "two_letters_code": {
+            "sv-SE": "sv",
+         }
+      }
+   }
+]
