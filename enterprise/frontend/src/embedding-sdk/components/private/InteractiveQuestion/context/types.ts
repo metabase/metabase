@@ -72,5 +72,5 @@ export type InteractiveQuestionContextType = Omit<
     onSave: (question: Question) => Promise<void>;
   } & {
     isCardIdError: boolean;
-    originalId: InteractiveQuestionId;
+    originalId: InteractiveQuestionId | null;
   };
