@@ -28,6 +28,7 @@ export const ConfirmModal = ({
   confirmButtonText = t`Yes`,
   confirmButtonPrimary = false,
   closeButtonText = t`Cancel`,
+  ...props
 }: ConfirmModal) => (
   <Modal
     data-testid={dataTestId}
@@ -35,6 +36,7 @@ export const ConfirmModal = ({
     title={title}
     onClose={onClose}
     size="lg"
+    {...props}
   >
     <Flex direction="column" gap="lg" mt="lg">
       {content ? <Text>{content}</Text> : null}
