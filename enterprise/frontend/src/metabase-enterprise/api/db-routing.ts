@@ -19,7 +19,7 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [listTag("database"), idTag("database", id)]),
     }),
     createMirrorDatabase: builder.mutation<
-      Database[],
+      Database,
       CreateMirrorDatabaseRequest
     >({
       query: body => ({
@@ -27,11 +27,14 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/database-routing/mirror-database",
         body,
       }),
-      invalidatesTags: (response, error, { router_database_id }) =>
+      transformResponse: (response: [Database]): Database => {
+        return response[0];
+      },
+      invalidatesTags: (db, error, { router_database_id }) =>
         invalidateTags(error, [
           listTag("database"),
           idTag("database", router_database_id),
-          ...(response?.map(({ id }) => idTag("database", id)) ?? []),
+          ...(db ? [idTag("database", db.id)] : []),
         ]),
     }),
   }),

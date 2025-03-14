@@ -12,14 +12,13 @@ import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
 
-const makeDefaultSaveFn =
+const makeDefaultSaveDbFn =
   (dispatch: Dispatch) =>
   async (database: DatabaseData): Promise<any> =>
     await dispatch(saveDatabase(database));
@@ -34,7 +33,7 @@ export const DatabaseEditConnectionForm = ({
   route,
   ...props
 }: {
-  database?: Database;
+  database?: Partial<DatabaseData>;
   initializeError?: DatabaseEditErrorType;
   isMirrorDatabase?: boolean;
   handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
@@ -58,8 +57,7 @@ export const DatabaseEditConnectionForm = ({
 
   const handleSubmit = async (database: DatabaseData) => {
     try {
-      // TODO: think this through a bit more...
-      const saveFn = handleSaveDb ?? makeDefaultSaveFn(dispatch);
+      const saveFn = handleSaveDb ?? makeDefaultSaveDbFn(dispatch);
       const savedDB = await saveFn(database);
       scheduleCallback(() => {
         onSubmitted(savedDB);
