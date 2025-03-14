@@ -411,6 +411,11 @@
     {:type type
      :source-id (Integer/parseInt source-id)}))
 
+(defn- parse-data-source-id-new
+  "TODO"
+  [{:keys [sourceId]}]
+  (Integer/parseInt (second (str/split sourceId #":"))))
+
 (defn- is-data-source-name-ref?
   "Checks if value is a data source name reference"
   [value]
@@ -432,20 +437,73 @@
      :source-id (:id card)
      :name (:name card)}))
 
+(defn- merge-visualizer-data-new
+  "TODO"
+  [series-data {:keys [columns columnValuesMapping]}]
+  ;; Step 1. Build map of vizualizer-col-ref->values
+  (let [referenced-cols-with-vals   (extract-referenced-columns columnValuesMapping)
+        remapped-col-name->vals     (reduce
+                                     (fn [acc {:keys [name originalName] :as ref}]
+                                       (let [ref-card-id      (parse-data-source-id-new ref)
+                                             card-with-data   (u/find-first-map series-data [:card :id] ref-card-id)
+                                             card-cols        (get-in card-with-data [:data :cols])
+                                             card-rows        (get-in card-with-data [:data :rows])
+                                             col-idx-in-card  (u/find-first-map card-cols :name originalName true)]
+                                         (if col-idx-in-card
+                                           (let [values (mapv #(nth % col-idx-in-card) card-rows)]
+                                             (assoc acc name values))
+                                           acc)))
+                                     {}
+                                     referenced-cols-with-vals)]
+    (println referenced-cols-with-vals)
+    (println remapped-col-name->vals)))
+
 (defn- merge-visualizer-data
   "Use visualizer column mapping metadata to repackage & merge column and row data"
-  [datasets dashcard-settings]
+  ;;
+  ;; Steps:
+  ;;  1. Create list of metadata maps from the cards with data (series-data)
+  ;;  2. Create list of visualizer column remappings using the visualizer settings
+  ;;  3. Build map of remapped-col-name -> values by:
+  ;;    a. Match card in series-data by sourceId in the remapping structure
+  ;;    b. Grab column index in the card's [:data :cols] by matching on originalName in remapping structure
+  ;;    c. Collect values out of [:data :rows] using column index and assoc with remapped col name
+  ;;  4. Build unzipped row data list of lists
+  ;;    a. Iterate over the visualizer column definitions
+  ;;    b. Grab the matching visualizer remapping config via "name"
+  ;;    c. The visualizer remapping denotes the sources of values for this visualizer column
+  ;;    d. For each of the value sources, mapcat the following:
+  ;;      - If its a true value source, grab the values from our value map in step 3
+  ;;      - If its a name source, parse the card id, match it to a data source config, grab the name (user facing name)
+  ;;  5. Return the zipped data 
+  ;;
+  ;;  columns              - the visualizer column definitions
+  ;;  columnValuesMapping  - column visualizer ref name -> data sources metadata
+  ;;                         this contains :name which is the results_metadata column :name from QP
+  ;;  series-data          - the cards with data from QP (dashcard data + its series results)
+  ;;  
+  ;;
+  ;;
+  [series-data dashcard-settings]
+  ;; columns - list of column definitions of the visualizer dashcard
+  ;; columnValuesMapping - visualizer dashcard's mapping definition of original cards/cols
   (let [{:keys [columns columnValuesMapping]} (:visualization dashcard-settings)
-        datasources (map build-data-source datasets)
+        ;; ({:id "card:191",
+        ;;   :type "card",
+        ;;   :source-id 191,
+        ;;   :name "Accounts - Google (Funnel Scalar 2)"}
+        ;;  ...)
+        datasources (map build-data-source series-data)
 
         ;; e.g. ({:sourceId "card:192", :originalName "count", :name "COLUMN_1"}, ...)
         referenced-columns (extract-referenced-columns columnValuesMapping)
 
+        ;; columnValuesMapping[idx].sourceId.Id <-> series-data[idx].card.id
         ;; e.g. {"COLUMN_1": [<values>], ...}
         referenced-column-values-map (reduce
                                       (fn [acc ref]
                                         (let [{:keys [source-id]} (parse-data-source-id (:sourceId ref))
-                                              dataset (first (filter #(= (get-in % [:card :id]) source-id) datasets))]
+                                              dataset (first (filter #(= (get-in % [:card :id]) source-id) series-data))]
                                           (if dataset
                                             ;; Get index of column from dataset whose :name matches :originalName
                                             (let [column-index (or
@@ -467,20 +525,32 @@
 
         unzipped-rows (mapv
                        (fn [column]
+                         ;; The data sources used to supply the values for the visualizer column
                          (let [value-sources (get columnValuesMapping (keyword (:name column)) [])]
                            (->> value-sources
                                 (mapcat
                                  (fn [value-source]
+                                   ;; Value sources are of two types:
+                                   ;;   1. Actual values from a card
+                                   ;;   2. A name ref, or just the name of a card
                                    (if (is-data-source-name-ref? value-source)
+                                     ;; This is a name ref, so grab the original card name
                                      (let [id (get-data-source-id-from-name-ref value-source)
                                            datasource (first (filter #(= id (:id %)) datasources))]
                                        (if-let [name (:name datasource)]
                                          [name]
                                          []))
+                                     ;; Actual values source, so grab the values from our value map keyed on remapped column name
                                      (let [values (get referenced-column-values-map (:name value-source))]
                                        (if values values [])))))
                                 vec)))
                        columns)]
+    (def series-data series-data)
+    (def dashcard-settings dashcard-settings)
+    (def datasources datasources)
+    (def referenced-columns referenced-columns)
+    (def referenced-column-values-map referenced-column-values-map)
+    (def unzipped-rows unzipped-rows)
 
     {:viz-settings (get-in dashcard-settings [:visualization :settings])
      :cols columns

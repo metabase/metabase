@@ -1238,3 +1238,14 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+
+(defn find-first-map
+  "Returns the first map in `maps` that contains the value at the given key path."
+  ([maps key-or-keys value]
+   (find-first-map maps key-or-keys value false))
+
+  ([maps key-or-keys value return-idx]
+   (let [keys (if (sequential? key-or-keys) key-or-keys [key-or-keys])]
+     (if return-idx
+       (ffirst (filter #(= (get-in (second %) keys) value) (map-indexed vector maps)))
+       (first (filter #(= (get-in % keys) value) maps))))))
