@@ -35,6 +35,8 @@ export function infer(mbql, env) {
   }
 
   switch (op) {
+    case "value":
+      return infer(mbql[1]);
     case "case":
     case "if":
       return infer(mbql[1][0][1], env);

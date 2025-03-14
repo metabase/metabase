@@ -15,17 +15,24 @@ describe("recursive-parser", () => {
   const C = ["dimension", "C"];
   const D = ["dimension", "D"];
 
-  it("should parse numeric literals", () => {
-    expect(process("0")).toEqual(0);
-    expect(process("42")).toEqual(42);
-    expect(process("1.0")).toEqual(1);
-    expect(process("0.123")).toEqual(0.123);
+  it("should parse string literals", () => {
+    expect(process("'Universe'")).toEqual(["value", "Universe"]);
+    expect(process('"answer"')).toEqual(["value", "answer"]);
+    expect(process('"\\""')).toEqual(["value", '"']);
   });
 
-  it("should parse string literals", () => {
-    expect(process("'Universe'")).toEqual("Universe");
-    expect(process('"answer"')).toEqual("answer");
-    expect(process('"\\""')).toEqual('"');
+  it("should parse numeric literals", () => {
+    expect(process("0")).toEqual(["value", 0]);
+    expect(process("42")).toEqual(["value", 42]);
+    expect(process("1.0")).toEqual(["value", 1]);
+    expect(process("0.123")).toEqual(["value", 0.123]);
+    expect(process("1 + 2")).toEqual(["+", 1, 2]);
+  });
+
+  it("should parse boolean literals", () => {
+    expect(process("False")).toEqual(["value", false]);
+    expect(process("True")).toEqual(["value", true]);
+    expect(process("True != False")).toEqual(["!=", true, false]);
   });
 
   it("should parse field references", () => {
@@ -62,8 +69,8 @@ describe("recursive-parser", () => {
   });
 
   it("should flatten unary expressions", () => {
-    expect(process("--5")).toEqual(5);
-    expect(process("- 6")).toEqual(-6);
+    expect(process("--5")).toEqual(["value", 5]);
+    expect(process("- 6")).toEqual(["value", -6]);
     expect(process("+-7")).toEqual(["+", -7]);
     expect(process("sqrt(-1)")).toEqual(["sqrt", -1]);
     expect(process("- X")).toEqual(["-", ["dimension", "X"]]);

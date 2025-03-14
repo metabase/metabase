@@ -394,6 +394,15 @@ export const adjustBooleans = tree =>
     return node;
   });
 
+export const adjustTopLevelLiteral = tree => {
+  const type = typeof tree;
+  if (type === "string" || type === "number" || type === "boolean") {
+    return ["value", tree];
+  } else {
+    return tree;
+  }
+};
+
 const pipe =
   (...fns) =>
   x =>
@@ -406,4 +415,5 @@ export const parse = pipe(
   adjustOffset,
   adjustCaseOrIf,
   adjustMultiArgOptions,
+  adjustTopLevelLiteral,
 );

@@ -116,6 +116,8 @@ function print(
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
     return formatStringLiteral(path.node, options.extra);
+  } else if (check.isValue(path)) {
+    return formatValue(path, print);
   } else if (check.isOperator(path)) {
     return formatOperator(path, print);
   } else if (check.isOffset(path)) {
@@ -291,6 +293,15 @@ function formatFunction(path: AstPath<CallExpression>, print: Print): Doc {
   }
 
   return formatCallExpression(name, args);
+}
+
+function formatValue(path: AstPath<CallExpression>, print: Print): Doc {
+  const { node } = path;
+  if (!Array.isArray(node)) {
+    throw new Error("Expected array");
+  }
+
+  return recurse(path, print, path.node[1]);
 }
 
 function formatOperator(path: AstPath<CallExpression>, print: Print): Doc {
