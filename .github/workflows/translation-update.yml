@@ -15,6 +15,8 @@ jobs:
     name: Synchronize Translations
     env:
       BRANCH_NAME: update-translations-${{ github.run_id }}
+      CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+      CROWDIN_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -53,7 +55,7 @@ jobs:
         uses: crowdin/github-action@v2
         id: crowdin
         with:
-          config: ../../locales/crowdin.yml
+          config: locales/crowdin.yml
           upload_sources: true
           upload_translations: false
           download_translations: true
@@ -62,8 +64,6 @@ jobs:
           pull_request_title: 'Update Translations'
           pull_request_body: 'Updated translations'
           pull_request_base_branch_name: 'master'
-          source: locales/metabase.pot
-          translation: locales/%two_letters_code%.po # we may need to do:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           CROWDIN_PROJECT_ID: 7

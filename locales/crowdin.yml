@@ -1,7 +1,11 @@
+"project_id_env": "CROWDIN_PROJECT_ID"
+"api_token_env": "CROWDIN_TOKEN"
+"base_path": "."
+
 "files": [
    {
-      "source": "/locales/metabase.pot",
-      "translation": "/locales/%two_letters_code%.po",
+      "source": "locales/metabase.pot",
+      "translation": "locales/%two_letters_code%.po",
       "languages_mapping": {
          "two_letters_code": {
             "sv-SE": "sv",
