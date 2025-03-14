@@ -360,6 +360,29 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy.findAllByTestId(`resize-handle-${columnId}`)
+    .eq(elementIndex)
+    .trigger("mousedown", {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+    });
+
+  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
+  cy.get("body")
+    .trigger("mousemove", {
+      clientX: moveX / 2,
+      clientY: 0,
+    })
+    .trigger("mousemove", {
+      clientX: moveX,
+      clientY: 0,
+    });
+  cy.get("body").trigger("mouseup", { force: true });
+}
+
 export function openObjectDetail(rowIndex) {
   cy.get(`[data-index=${rowIndex}]`)
     .realHover({ scrollBehavior: false })
@@ -386,6 +409,13 @@ export function lastTableRow() {
     .scrollTo("bottomLeft")
     .findAllByRole("row")
     .last();
+}
+
+export function assertRowHeight(index, height) {
+  tableInteractive()
+    .find(`[data-index=${index}]`)
+    .should("exist")
+    .should("have.css", "height", `${height}px`);
 }
 
 export function tableAllFieldsHiddenImage() {

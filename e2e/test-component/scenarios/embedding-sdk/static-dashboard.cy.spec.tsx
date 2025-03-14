@@ -1,3 +1,4 @@
+const { H } = cy;
 import { StaticDashboard } from "@metabase/embedding-sdk-react";
 
 import {
@@ -132,7 +133,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          H.assertTableRowsCount(2000);
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });

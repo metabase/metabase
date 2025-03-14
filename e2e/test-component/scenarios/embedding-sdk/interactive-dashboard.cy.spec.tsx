@@ -153,7 +153,6 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText(rowsTextRegex).should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });
