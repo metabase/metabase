@@ -1311,8 +1311,7 @@ describe("scenarios > question > custom column > function browser", () => {
     cy.signInAsNormalUser();
 
     H.openProductsTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
+    H.addCustomColumn();
   });
 
   it("should be possible to insert functions by clicking them in the function browser", () => {
@@ -1355,6 +1354,33 @@ describe("scenarios > question > custom column > function browser", () => {
 
       cy.findByPlaceholderText("Search functions…").clear();
       cy.findByText("upper").should("be.visible");
+    });
+  });
+
+  it("should not show functions that are not supported by the current database", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("convertTimezone");
+      cy.findByText("convertTimezone").should("not.exist");
+    });
+  });
+
+  it("should not show aggregations unless aggregating", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("Count");
+      cy.findByText("Count").should("not.exist");
+    });
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search aggregations…").type("Count");
+      cy.findByText("Count").should("be.visible");
     });
   });
 });
