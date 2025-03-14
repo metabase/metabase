@@ -4,11 +4,49 @@
 
 "files": [
    {
-      "source": "locales/metabase.pot",
-      "translation": "locales/%two_letters_code%.po",
+      "source": "metabase.po",
+      "translation": "%language%.po",
       "languages_mapping": {
-         "two_letters_code": {
+         "language": {
+            "ar": "ar",
+            "ar-SA": "ar-SA",
+            "bg": "bg",
+            "ca": "ca",
+            "cs": "cs",
+            "da": "da",
+            "de": "de",
+            "es-ES": "es",
+            "fa": "fa",
+            "fi": "fi",
+            "fr": "fr",
+            "he": "he",
+            "hr": "hr",
+            "hu": "hu",
+            "id": "id",
+            "it": "it",
+            "ja": "ja",
+            "ko": "ko",
+            "lt": "lt",
+            "lv": "lv",
+            "ms": "ms",
+            "nb": "nb",
+            "nl": "nl",
+            "pl": "pl",
+            "pt-PT": "pt-PT",
+            "pt-BR": "pt-BR",
+            "ru": "ru",
+            "ro": "ro",
+            "sk": "sk",
+            "sl": "sl",
+            "sq": "sq",
+            "sr-CS": "sr", # the code is for latin, but it's actually cyrillic
             "sv-SE": "sv",
+            "tr": "tr",
+            "uk": "uk",
+            "vi": "vi",
+            "zh-CN": "zh-CN",
+            "zh-TW": "zh-TW",
+            "zh-HK": "zh-HK"
          }
       }
    }

@@ -44,7 +44,7 @@ jobs:
 
           ./bin/i18n/update-translation-template
 
-          git add locales/metabase.pot
+          git add locales/metabase.po
 
           git commit -m "Update translation sources $DATE"
           git push -u origin $BRANCH_NAME
