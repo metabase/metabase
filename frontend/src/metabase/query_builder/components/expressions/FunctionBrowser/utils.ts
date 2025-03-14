@@ -20,10 +20,10 @@ const AGGREGATION_CLAUSES = Array.from(AGGREGATION_FUNCTIONS).map(
 
 export function getSearchPlaceholder(startRule: StartRule) {
   if (startRule === "expression" || startRule === "boolean") {
-    return t`Search functions...`;
+    return t`Search functions…`;
   }
   if (startRule === "aggregation") {
-    return t`Search aggregations...`;
+    return t`Search aggregations…`;
   }
 }
 
