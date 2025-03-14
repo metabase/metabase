@@ -53,7 +53,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
       const border = `1px solid color-mix(in srgb, ${color}, transparent 86%)`;
       return {
         ...style,
-        color: theme?.pillCell?.textColor,
+        color: theme?.pillCell?.textColor ?? color,
         backgroundColor,
         border,
       };
