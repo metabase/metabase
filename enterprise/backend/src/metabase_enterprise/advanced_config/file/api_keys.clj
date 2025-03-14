@@ -4,6 +4,7 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.secret :as u.secret]
