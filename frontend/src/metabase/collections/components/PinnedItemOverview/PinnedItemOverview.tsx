@@ -58,51 +58,51 @@ function PinnedItemOverview({
   ) : (
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
-
       <Stack gap="1.5rem">
         {metricItems.length > 0 && (
           <div>
             <SectionTitle title={t`Metrics`} icon="metric" />
-            {metricGroups.map(
-              (cardGroup, cardGroupIndex) =>
-                cardGroup.length > 0 && (
-                  <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
-                      <div key={item.id} className={CS.relative}>
-                        <PinnedItemSortDropTarget
-                          isFrontTarget
-                          itemModel="metric"
-                          pinIndex={item.collection_position}
-                          enableDropTargetBackground={false}
-                        />
-                        <ItemDragSource item={item} collection={collection}>
-                          <div>
-                            <PinnedQuestionCard
-                              item={item}
-                              collection={collection}
-                              databases={databases}
-                              bookmarks={bookmarks}
-                              onCopy={onCopy}
-                              onMove={onMove}
-                              onCreateBookmark={createBookmark}
-                              onDeleteBookmark={deleteBookmark}
-                            />
-                          </div>
-                        </ItemDragSource>
-                        <PinnedItemSortDropTarget
-                          isBackTarget
-                          itemModel="metric"
-                          pinIndex={item.collection_position}
-                          enableDropTargetBackground={false}
-                        />
-                      </div>
-                    ))}
-                  </Grid>
-                ),
-            )}
+            <Stack>
+              {metricGroups.map(
+                (cardGroup, cardGroupIndex) =>
+                  cardGroup.length > 0 && (
+                    <Grid key={cardGroupIndex}>
+                      {cardGroup.map(item => (
+                        <div key={item.id} className={CS.relative}>
+                          <PinnedItemSortDropTarget
+                            isFrontTarget
+                            itemModel="metric"
+                            pinIndex={item.collection_position}
+                            enableDropTargetBackground={false}
+                          />
+                          <ItemDragSource item={item} collection={collection}>
+                            <div>
+                              <PinnedQuestionCard
+                                item={item}
+                                collection={collection}
+                                databases={databases}
+                                bookmarks={bookmarks}
+                                onCopy={onCopy}
+                                onMove={onMove}
+                                onCreateBookmark={createBookmark}
+                                onDeleteBookmark={deleteBookmark}
+                              />
+                            </div>
+                          </ItemDragSource>
+                          <PinnedItemSortDropTarget
+                            isBackTarget
+                            itemModel="metric"
+                            pinIndex={item.collection_position}
+                            enableDropTargetBackground={false}
+                          />
+                        </div>
+                      ))}
+                    </Grid>
+                  ),
+              )}
+            </Stack>
           </div>
         )}
-
         {cardItems.length > 0 && (
           <div>
             <SectionTitle title={t`Pinned questions`} icon="pin" />
@@ -145,7 +145,6 @@ function PinnedItemOverview({
             )}
           </div>
         )}
-
         {dashboardItems.length > 0 && (
           <div>
             <SectionTitle title={t`Dashboards`} icon="dashboard" />
@@ -183,7 +182,6 @@ function PinnedItemOverview({
             </Grid>
           </div>
         )}
-
         {modelItems.length > 0 && (
           <div>
             <SectionTitle
