@@ -14,8 +14,9 @@ import {
 } from "metabase/ui";
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
+import type { UpdatedRowCellsHandlerParams } from "../types";
+
 import S from "./EditingBodyCell.module.css";
-import type { UpdatedRowCellsHandlerParams } from "./types";
 
 interface EditingBodyCellProps<TRow, TValue> {
   column: DatasetColumn;

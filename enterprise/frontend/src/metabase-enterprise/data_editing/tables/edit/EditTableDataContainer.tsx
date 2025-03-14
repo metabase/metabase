@@ -10,34 +10,37 @@ import {
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
+import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
+import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
-import { isDatabaseTableEditingEnabled } from "../settings";
+import type { UpdatedRowCellsHandlerParams } from "../types";
 
-import { TableDataView } from "./TableDataView";
-import S from "./TableDataView.module.css";
-import { TableDataViewHeader } from "./TableDataViewHeader";
-import type { UpdatedRowCellsHandlerParams } from "./types";
+import S from "./EditTableData.module.css";
+import { EditTableDataGrid } from "./EditTableDataGrid";
+import { EditTableDataHeader } from "./EditTableDataHeader";
 
-type TableDataViewProps = {
+type EditTableDataContainerProps = {
   params: {
     dbId: string;
     tableId: string;
   };
 };
 
-export const TableDataContainer = ({
+export const EditTableDataContainer = ({
   params: { dbId: dbIdParam, tableId: tableIdParam },
-}: TableDataViewProps) => {
+}: EditTableDataContainerProps) => {
   const dbId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
   const dispatch = useDispatch();
 
   const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
-  const { data: table } = useGetTableQuery({ id: tableId });
+  const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
+    id: tableId,
+  });
 
   const {
     data: datasetData,
@@ -52,6 +55,9 @@ export const TableDataContainer = ({
   useMount(() => {
     dispatch(closeNavbar());
   });
+
+  const handleNewRowCreate = () => {};
+  const handleRowsDelete = () => {};
 
   const handleCellValueUpdate = useCallback(
     async ({ data, rowIndex }: UpdatedRowCellsHandlerParams) => {
@@ -86,7 +92,7 @@ export const TableDataContainer = ({
     [datasetData, refetchTableDataQuery, tableId, updateTableRows],
   );
 
-  if (!database || isLoading) {
+  if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
     return null;
   }
@@ -97,23 +103,35 @@ export const TableDataContainer = ({
   }
 
   return (
-    <Flex
-      className={S.container}
-      data-testid="table-data-view-root"
-      direction="column"
-      justify="stretch"
-    >
-      <TableDataViewHeader
-        database={database}
-        tableName={table?.display_name}
-      />
+    <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
+      {table && (
+        <EditTableDataHeader
+          table={table}
+          onCreate={handleNewRowCreate}
+          onDelete={handleRowsDelete}
+        />
+      )}
       {isDatabaseTableEditingEnabled(database) ? (
-        <Box pos="relative" className={S.gridWrapper}>
-          <TableDataView
-            data={datasetData}
-            onCellValueUpdate={handleCellValueUpdate}
-          />
-        </Box>
+        <>
+          <Box pos="relative" className={S.gridWrapper}>
+            <EditTableDataGrid
+              data={datasetData}
+              onCellValueUpdate={handleCellValueUpdate}
+            />
+          </Box>
+          <Flex
+            py="0.5rem"
+            px="1.5rem"
+            h="2.5rem"
+            justify="flex-end"
+            align="center"
+            className={S.gridFooter}
+          >
+            <Text fw="bold" size="md" c="inherit" component="span">
+              {getRowCountMessage(datasetData)}
+            </Text>
+          </Flex>
+        </>
       ) : (
         <GenericError
           title={t`Table editing is not enabled for this database`}
@@ -121,6 +139,6 @@ export const TableDataContainer = ({
           details={undefined}
         />
       )}
-    </Flex>
+    </Stack>
   );
 };

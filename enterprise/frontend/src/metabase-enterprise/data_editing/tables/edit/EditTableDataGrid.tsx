@@ -1,4 +1,3 @@
-import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
@@ -13,22 +12,23 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
+import type { UpdatedRowCellsHandlerParams } from "../types";
+
+import S from "./EditTableData.module.css";
 import { EditingBodyCellConditional } from "./EditingBodyCell";
-import S from "./TableDataView.module.css";
-import type { UpdatedRowCellsHandlerParams } from "./types";
 import { useTableEditing } from "./use-table-editing";
 
-type TableDataViewProps = {
+type EditTableDataGridProps = {
   data: Dataset;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
 
 const TABLE_DATA_VIEW_HEADER_HEIGHT = 32;
 
-export const TableDataView = ({
+export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
-}: TableDataViewProps) => {
+}: EditTableDataGridProps) => {
   const { cols, rows } = data.data;
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
@@ -36,12 +36,7 @@ export const TableDataView = ({
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
-  const columnSizingMap = useMemo(() => {
-    return cols.reduce((acc: ColumnSizingState, column) => {
-      acc[column.name] = 100;
-      return acc;
-    }, {});
-  }, [cols]);
+  const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
@@ -112,7 +107,9 @@ export const TableDataView = ({
       {...tableProps}
       classNames={{
         tableGrid: S.tableGrid,
+        headerContainer: S.tableHeaderContainer,
         headerCell: S.tableHeaderCell,
+        bodyContainer: S.tableBodyContainer,
         bodyCell: S.tableBodyCell,
         row: S.tableRow,
       }}
@@ -124,6 +121,7 @@ export const TableDataView = ({
           backgroundColor: undefined,
         },
       }}
+      theme={{ cell: { backgroundColor: "" } }}
       onBodyCellClick={handleCellClick}
     />
   );
