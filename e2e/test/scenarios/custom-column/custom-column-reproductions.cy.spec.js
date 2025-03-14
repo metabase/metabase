@@ -1036,7 +1036,7 @@ describe("issue 49342", () => {
     H.CustomExpressionEditor.nameInput().focus();
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
 
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
@@ -1454,17 +1454,17 @@ describe("issue #54722", () => {
 
   it("should focus the editor when opening it (metabase#54722)", () => {
     H.addCustomColumn();
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
     H.expressionEditorWidget().button("Cancel").click();
 
     H.filter({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
     H.expressionEditorWidget().button("Cancel").click();
 
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
     H.expressionEditorWidget().button("Cancel").click();
   });
 });
