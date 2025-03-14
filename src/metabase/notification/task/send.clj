@@ -14,7 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -178,7 +178,8 @@
 (jobs/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."}
+    Run once on startup."
+    DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]
   (log/info "Initializing SendNotification triggers")

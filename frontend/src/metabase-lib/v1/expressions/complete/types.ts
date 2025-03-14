@@ -16,9 +16,3 @@ export type Completion = CodeMirrorCompletion & {
 export type CompletionResult = CodeMirrorCompletionResult & {
   options: Completion[];
 };
-
-export type Shortcut = {
-  name: string;
-  icon: IconName;
-  action: () => void;
-};

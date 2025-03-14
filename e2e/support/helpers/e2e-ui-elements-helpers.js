@@ -290,6 +290,44 @@ export const moveDnDKitElement = (
     .wait(200);
 };
 
+export const moveDnDKitElementByAlias = (
+  alias,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
+  // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
+  cy.get(alias)
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  // This initial move needs to be greater than the activation constraint
+  // of the pointer sensor
+  cy.get(alias)
+    .trigger("pointermove", 20, 20, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  cy.get(alias)
+    .trigger("pointermove", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  cy.get(alias)
+    .trigger("pointerup", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+};
+
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
