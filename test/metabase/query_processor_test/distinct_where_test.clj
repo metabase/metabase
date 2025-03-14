@@ -12,7 +12,8 @@
            (->> {:aggregation [[:distinct-where $price [:< $price 4]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))
+                ffirst
+                int)))
 
     (testing "Should get normalized correctly and work as expected"
       (is (= 3
@@ -21,7 +22,8 @@
                                   ["<" ["field" (mt/id :venues :price) nil] 4]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))
 
 (deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -29,7 +31,8 @@
            (->> {:aggregation [[:distinct-where $price [:and [:< $price 4] [:> $price 1]]]]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))))
+                ffirst
+                int)))))
 
 (deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -38,7 +41,8 @@
                  :filter      [:> $price Long/MAX_VALUE]}
                 (mt/run-mbql-query venues)
                 mt/rows
-                ffirst)))))
+                ffirst
+                int)))))
 
 (deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -51,7 +55,9 @@
                  :limit       4}
                 (mt/run-mbql-query venues)
                 (mt/round-all-decimals 2)
-                mt/rows)))))
+                mt/rows
+                (map (fn [[k v]]
+                       [(int k) (int v)])))))))
 
 (deftest ^:parallel distinct-where-inside-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where :expressions)
@@ -75,7 +81,8 @@
              (->> {:aggregation [[:distinct-where $price [:segment 1]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
@@ -94,4 +101,5 @@
                     {:aggregation [[:metric 1]]
                      :source-table "card__1"})
                   mt/rows
-                  ffirst))))))
+                  ffirst
+                  int))))))
