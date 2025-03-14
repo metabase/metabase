@@ -3,6 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase.models.api-key :as api-key]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -58,7 +59,7 @@
     ;; Validate key format
     (when-not (and (string? key)
                    (>= (count key) 8)
-                   (.startsWith key "mb_"))
+                   (.startsWith ^String key "mb_"))
       (throw (ex-info (format "API key must start with 'mb_' and be at least 8 characters long: %s" (pr-str name))
                       {:name name})))
 
