@@ -12,12 +12,12 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.util Queue)))
+   (java.util.concurrent BlockingQueue)))
 
 (set! *warn-on-reflection* true)
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^Queue queue (queue/delay-queue))
+(defonce ^:private ^BlockingQueue queue (queue/delay-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
@@ -159,13 +159,11 @@
   (doseq [[model cnt] report]
     (analytics/inc! :metabase-search/index {:model model} cnt)))
 
-(queue/listen! {:listener-name   "search-index-update"
-                :queue           queue
-                :handler         bulk-ingest!
-                :result-handler  (fn [result duration _]
+(queue/listen! "search-index-update" queue bulk-ingest!
+               {:result-handler  (fn [result duration _]
                                    (when (seq result)
                                      (report->prometheus! duration result)
                                      (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
-                :err-handler   #(analytics/inc! :metabase-search/index-error)
+                :err-handler     #(analytics/inc! :metabase-search/index-error)
                 :finally-handler track-queue-size!
                 :max-batch-items max-batch-items})

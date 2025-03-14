@@ -129,15 +129,14 @@
           thread-name "queue-test-listener-1"]
       (is (not (thread-name-running? thread-name)))
 
-      (queue/listen! {:listener-name listener-name
-                      :queue         queue
-                      :handler       (fn [batch] (swap! times-handled + (count batch)) (reset! last-batch batch))
-                      :max-next-ms   5})
+      (queue/listen! listener-name queue
+                     (fn [batch] (swap! times-handled + (count batch)) (reset! last-batch batch))
+                     {:max-next-ms 5})
       (is (thread-name-running? thread-name))
 
-      (is (nil? (queue/listen! {:listener-name listener-name
-                                :queue         queue
-                                :handler       (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))})))
+      (is (nil? (queue/listen! listener-name queue
+                               (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))
+                               {})))
 
       (queue/put-with-delay! queue 0 "a")
       (Thread/sleep 10)
@@ -164,17 +163,16 @@
           result-count (atom 0)
           error-count (atom 0)
           last-error (atom nil)]
-      (queue/listen! {:listener-name  listener-name
-                      :queue          queue
-                      :handler        (fn [batch] (if (some #{"err"} batch)
-                                                    (throw (ex-info "Test Error" {:batch batch}))
-                                                    (count batch)))
-                      :result-handler (fn [result duration name]
+      (queue/listen! listener-name queue
+                     (fn [batch] (if (some #{"err"} batch)
+                                   (throw (ex-info "Test Error" {:batch batch}))
+                                   (count batch)))
+                     {:result-handler (fn [result duration name]
                                         (is (= listener-name name))
                                         (is (< 0 duration))
                                         (swap! result-count + result))
-                      :err-handler  (fn [e] (swap! error-count inc) (reset! last-error e))
-                      :max-next-ms   5})
+                      :err-handler    (fn [e] (swap! error-count inc) (reset! last-error e))
+                      :max-next-ms    5})
       (queue/put-with-delay! queue 0 "a")
       (Thread/sleep 10)
       (is (= 0 @error-count))
@@ -198,13 +196,13 @@
       (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-3"))))
 
-      (queue/listen! {:listener-name   listener-name
-                      :queue           queue
-                      :handler         (fn [batch] (is (<= 10 (count batch))) (count batch))
-                      :result-handler  (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
+      (queue/listen! listener-name
+                     queue
+                     (fn [batch] (is (<= 10 (count batch))) (count batch))
+                     {:result-handler  (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
                       :pool-size       3
                       :max-batch-items 10
-                      :max-next-ms   5})
+                      :max-next-ms     5})
       (is (thread-name-running? (str "queue-" listener-name "-1")))
       (is (thread-name-running? (str "queue-" listener-name "-2")))
       (is (thread-name-running? (str "queue-" listener-name "-3")))
