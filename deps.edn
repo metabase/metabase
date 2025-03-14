@@ -89,9 +89,7 @@
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   ;; Pinned to include fix for reflection warning, which can cause Eastwood to fail.
   ;; Requested the release here: https://github.com/MastodonC/kixi.stats/issues/52
-  kixi/stats                                {;; :git/sha     "0.5.7"            ; Various statistic measures implemented as transducers
-                                             :git/sha     "6563dd32e2960f0a127244b3f43934f3cded5b80"
-                                             :git/url     "https://github.com/MastodonC/kixi.stats"
+  kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
