@@ -395,11 +395,6 @@ export type OffsetExpression = [
   NumericLiteral,
 ];
 
-export type ValueExpression = [
-  "value",
-  StringLiteral | NumericLiteral | BooleanLiteral,
-];
-
 type ExpressionOperator = string;
 type ExpressionOperand = Expression | CallOptions;
 
