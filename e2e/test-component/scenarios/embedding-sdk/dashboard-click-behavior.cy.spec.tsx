@@ -1,4 +1,7 @@
-import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
+import {
+  EditableDashboard,
+  InteractiveDashboard,
+} from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -33,7 +36,19 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           query: { "source-table": ORDERS_ID, limit: 5 },
         },
         {
-          name: "Line chart with click behavior",
+          name: "Line chart with disabled click behavior",
+          display: "line",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+            limit: 5,
+          },
+        },
+        {
+          name: "Line chart with internal click behavior",
           display: "line",
           query: {
             "source-table": ORDERS_ID,
@@ -72,6 +87,10 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
               linkTemplate: "https://metabase.com",
             },
           },
+        },
+        {
+          size_x: 12,
+          col: 12,
         },
       ],
     }).then(({ dashboard }) => {
@@ -129,12 +148,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
         // Line chart click behavior should be disabled in the sdk
         H.getDashboardCard(1).within(() => {
-          cartesianChartCircle()
-            .eq(0)
-            .then(([circle]) => {
-              const { left, top } = circle.getBoundingClientRect();
-              root.click(left, top);
-            });
+          cartesianChartCircle().eq(0).click();
         });
 
         cy.get(POPOVER_ELEMENT).should("not.exist");
@@ -155,6 +169,31 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       cy.location().then(location => {
         cy.get("@initialPath").should("eq", location.pathname);
       });
+    });
+  });
+
+  it("show the question visualization when the user drills down (metabase#55514 - EMB-266)", () => {
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
+
+    cy.get("@dashboardId").then(dashboardId => {
+      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      H.getDashboardCard(2).within(() => {
+        cartesianChartCircle().eq(2).click();
+      });
+      H.popover().within(() => {
+        cy.findByText("See these Orders").click();
+      });
+    });
+
+    cy.wait(["@getCard", "@datasetMetadata"]);
+
+    getSdkRoot().within(() => {
+      cy.findByText("New question").should("be.visible");
+      cy.findByTestId("visualization-root").should("be.visible");
     });
   });
 });
