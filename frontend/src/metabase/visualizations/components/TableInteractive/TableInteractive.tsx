@@ -575,7 +575,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const backgroundColor = useMemo(() => {
     if (!isNightMode) {
-      return;
+      return "transparent";
     }
 
     const isPublicOrStaticEmbedding = token != null || uuid != null;

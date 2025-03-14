@@ -126,7 +126,12 @@ export const DataGrid = function DataGrid<TData>({
   );
 
   const rowsCount = table.getRowModel().rows.length;
-  const backgroundColor = theme?.cell?.backgroundColor;
+  const backgroundColor =
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
+  const stickyElementsBackgroundColor =
+    backgroundColor == null || backgroundColor === "transparent"
+      ? "var(--mb-color-background)"
+      : backgroundColor;
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -158,7 +163,10 @@ export const DataGrid = function DataGrid<TData>({
             <div
               data-testid="table-header"
               className={cx(S.headerContainer, classNames?.headerContainer)}
-              style={styles?.headerContainer}
+              style={{
+                backgroundColor: stickyElementsBackgroundColor,
+                ...styles?.headerContainer,
+              }}
             >
               {table.getHeaderGroups().map(headerGroup => (
                 <div
@@ -194,7 +202,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
                           }
                         : {
                             width,
@@ -283,7 +291,7 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {
