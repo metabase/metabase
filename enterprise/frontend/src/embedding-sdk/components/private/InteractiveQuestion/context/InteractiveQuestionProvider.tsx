@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
+import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkSelector } from "embedding-sdk/store";
@@ -9,6 +10,7 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type Question from "metabase-lib/v1/Question";
 
 import type {
@@ -55,6 +57,8 @@ export const InteractiveQuestionProvider = ({
   entityTypeFilter,
   targetCollection,
   initialSqlParameters,
+  withDownloads,
+  variant,
 }: InteractiveQuestionProviderProps) => {
   const {
     id: questionId,
@@ -132,10 +136,12 @@ export const InteractiveQuestionProvider = ({
       question &&
       getEmbeddingMode({
         question,
+        queryMode:
+          variant === "static" ? StaticQuestionSdkMode : EmbeddingSdkMode,
         plugins: combinedPlugins ?? undefined,
       })
     );
-  }, [question, combinedPlugins]);
+  }, [question, variant, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
     originalId: initialQuestionId,
@@ -159,6 +165,8 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     isCardIdError,
+    withDownloads,
+    variant,
   };
 
   useEffect(() => {
