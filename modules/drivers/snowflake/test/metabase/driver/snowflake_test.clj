@@ -1114,6 +1114,23 @@
                                   :breakout [tested-day]
                                   :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}))))))))))))))))
 
+(deftest snowflake-casted-date-relative-time-filter-test
+  (mt/test-driver :snowflake
+    (mt/dataset (mt/dataset-definition
+                 "text-dates-db4"
+                 ["text-dates"
+                  [{:field-name "text_date"
+                    :base-type :type/Text
+                    :coercion-strategy :Coercion/ISO8601->DateTime
+                    :effective-type :type/DateTime}]
+                  [[(str (t/local-date) "T00:00:00Z")]]])
+      (is (= [[1 (str (t/local-date) "T00:00:00Z")]]
+             (->> (mt/mbql-query text-dates {:filter [:time-interval
+                                                      [:field (mt/id :text-dates :text_date) {:base-type :type/Text}]
+                                                      -30 :day {:include-current true}]})
+                  (mt/user-http-request :crowberto :post 202 "dataset")
+                  mt/rows))))))
+
 (deftest snowflake-all-auth-combos-test
   (mt/test-driver
     :snowflake
