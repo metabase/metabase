@@ -33,8 +33,8 @@ export function FunctionBrowser({
   );
 
   const filteredClauses = useMemo(
-    () => getFilteredClauses(startRule, filter),
-    [filter, startRule],
+    () => getFilteredClauses({ startRule, filter, database }),
+    [filter, startRule, database],
   );
 
   return (

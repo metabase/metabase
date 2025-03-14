@@ -7,6 +7,7 @@ import {
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
 } from "metabase-lib/v1/expressions";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import type { StartRule } from "../types";
@@ -37,10 +38,20 @@ function getClauses(startRule: StartRule): MBQLClauseFunctionConfig[] {
   return [];
 }
 
-export function getFilteredClauses(startRule: StartRule, filter: string) {
+export function getFilteredClauses({
+  startRule,
+  filter,
+  database,
+}: {
+  startRule: StartRule;
+  filter: string;
+  database: Database | null;
+}) {
   const clauses = getClauses(startRule);
-  return clauses.filter(clause =>
-    clause.displayName.toLowerCase().includes(filter.toLowerCase()),
+  return clauses.filter(
+    clause =>
+      database?.hasFeature(clause.requiresFeature) &&
+      clause.displayName.toLowerCase().includes(filter.toLowerCase()),
   );
 }
 
