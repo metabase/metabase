@@ -144,6 +144,127 @@
           (is (= {:output (str "Invalid metric_id " metric-id)}
                  (metabot-v3.tools.filters/query-metric {:metric-id (str metric-id)}))))))))
 
+(deftest ^:parallel query-model-test
+  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "Orders Model"
+                                             :description "The _real_ orders."
+                                             :type :model}]
+    (testing "User has to have execution rights."
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-model
+                             {:model-id model-id
+                              :filters []
+                              :group-by []}))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
+                              :structured-output)
+            model-card-id (str "card__" model-id)
+            ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
+                          (when-not <>
+                            (throw (ex-info (str "Column " % " not found") {:column %}))))
+            order-created-at-field-id (->field-id "Created At")]
+        (testing "Trivial query works."
+          (is (=? {:structured-output {:type :query,
+                                       :query_id string?
+                                       :query (mt/mbql-query orders {:source-table model-card-id})}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :filters []
+                    :group-by []}))))
+        (testing "Filtering, aggregation and grouping works and ignores bucketing for non-temporal columns."
+          (is (=? {:structured-output {:type :query,
+                                       :query_id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :aggregation [[:sum [:field "SUBTOTAL" {}]]]
+                                                 :breakout [[:field "PRODUCT_ID" {}]]
+                                                 :filter [:> [:field "DISCOUNT" {}] 3]})}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :filters [{:field_id (->field-id "Discount")
+                               :operation "number-greater-than"
+                               :value 3}]
+                    :aggregations [{:field_id (->field-id "Subtotal")
+                                    :bucket "day-of-month" ; ignored
+                                    :function "sum"}]
+                    :group-by [{:field_id (->field-id "Product ID")
+                                :field_granularity "year"}]}))))
+        (testing "Temporal bucketing works for temporal columns."
+          (is (=? {:structured-output {:type :query,
+                                       :query_id string?
+                                       :query (mt/mbql-query orders
+                                                {:source-table model-card-id
+                                                 :aggregation [[:min [:field "CREATED_AT"
+                                                                      {:base-type :type/DateTimeWithLocalTZ
+                                                                       :temporal-unit :hour-of-day}]]
+                                                               [:avg [:field "CREATED_AT"
+                                                                      {:base-type :type/DateTimeWithLocalTZ
+                                                                       :temporal-unit :hour-of-day}]]
+                                                               [:max [:field "CREATED_AT"
+                                                                      {:base-type :type/DateTimeWithLocalTZ
+                                                                       :temporal-unit :hour-of-day}]]]
+                                                 :filter [:and
+                                                          [:!= [:get-week [:field "CREATED_AT" {}] :iso] 1 2 3]
+                                                          [:=
+                                                           [:field "CREATED_AT"
+                                                            {:base-type :type/DateTimeWithLocalTZ
+                                                             :temporal-unit :month-of-year}]
+                                                           6 7 8]]
+                                                 :breakout [[:field "PRODUCT_ID" {}]
+                                                            [:field "CREATED_AT"
+                                                             {:base-type :type/DateTimeWithLocalTZ
+                                                              :temporal-unit :week}]]})}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :filters [{:field_id order-created-at-field-id
+                               :bucket "week-of-year"
+                               :operation "not-equals"
+                               :values [1 2 3]}
+                              {:field_id order-created-at-field-id
+                               :bucket "month-of-year"
+                               :operation "equals"
+                               :values [6 7 8]}]
+                    :aggregations [{:field_id order-created-at-field-id
+                                    :bucket "hour-of-day"
+                                    :function "min"}
+                                   {:field_id order-created-at-field-id
+                                    :bucket "hour-of-day"
+                                    :function "avg"}
+                                   {:field_id order-created-at-field-id
+                                    :bucket "hour-of-day"
+                                    :function "max"}]
+                    :group-by [{:field_id (->field-id "Product ID")}
+                               {:field_id order-created-at-field-id
+                                :field_granularity "week"}]}))))
+        (testing "Fields can be selected"
+          (is (=? {:structured-output
+                   {:type :query,
+                    :query_id string?
+                    :query (mt/mbql-query orders
+                             {:source-table model-card-id
+                              :expressions {"Created At: Day of week" [:get-day-of-week [:field "CREATED_AT" {}] :iso]}
+                              :fields [[:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :day-of-month}]
+                                       [:expression "Created At: Day of week" {:base-type :type/Integer}]
+                                       [:field "TOTAL" {:base-type :type/Float}]]
+                              :filter [:!= [:field "USER_ID" {}] 3 42]})}}
+                  (metabot-v3.tools.filters/query-model
+                   {:model-id model-id
+                    :fields [{:field_id order-created-at-field-id
+                              :bucket "day-of-month"}
+                             {:field_id order-created-at-field-id
+                              :bucket "day-of-week"}
+                             {:field_id (->field-id "Total")}]
+                    :filters [{:field_id (->field-id "User ID")
+                               :operation "not-equals"
+                               :values [3 42]}]})))))
+      (testing "Missing model results in an error."
+        (is (= {:output (str "No model found with model_id " Integer/MAX_VALUE)}
+               (metabot-v3.tools.filters/query-model {:model-id Integer/MAX_VALUE}))))
+      (testing "Invalid model-id results in an error."
+        (is (= {:output (str "Invalid model_id " model-id)}
+               (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
+
 (deftest ^:parallel filter-records-table-test
   (testing "User has to have execution rights, otherwise the table should be invisible."
     (is (= {:output (str "No table found with table_id " (mt/id :orders))}

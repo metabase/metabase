@@ -161,9 +161,44 @@
                                                                 :filters   filters
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})]
-          (is (=? {:structured_output output
-                   :conversation_id conversation-id}
-                  response)))))))
+          (is (= {:structured_output output
+                  :conversation_id conversation-id}
+                 response)))))))
+
+(deftest query-model-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [tool-requests (atom [])
+          conversation-id (str (random-uuid))
+          output (str (random-uuid))
+          ai-token (ai-session-token)]
+      (with-redefs [metabot-v3.tools.filters/query-model
+                    (fn [arguments]
+                      (swap! tool-requests conj arguments)
+                      {:structured-output output})]
+        (let [fields [{:field_id "c2/8", :bucket "year-of-era"}
+                      {:field_id "c2/9"}]
+              filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
+                       {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
+                       {:field_id "c2/5", :operation "not-equals", :values [3 4]}
+                       {:field_id "c2/6", :operation "month-equals", :values [4 5 9]}
+                       {:field_id "c2/6", :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id "c2/6", :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id "c2/6", :operation "year-equals", :value 2008}]
+              aggregations [{:field_id "c2/10", :bucket "week", :function "count-distinct"}
+                            {:field_id "c2/11", :function "sum"}]
+              breakouts [{:field_id "c2/4", :field_granularity "week"}
+                         {:field_id "c2/6", :field_granularity "day"}]
+              response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
+                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                             {:arguments       {:model_id     1
+                                                                :fields       fields
+                                                                :filters      filters
+                                                                :aggregations aggregations
+                                                                :group_by     breakouts}
+                                              :conversation_id conversation-id})]
+          (is (= {:structured_output output
+                  :conversation_id conversation-id}
+                 response)))))))
 
 (deftest ^:parallel get-current-user-test
   (mt/with-premium-features #{:metabot-v3}
