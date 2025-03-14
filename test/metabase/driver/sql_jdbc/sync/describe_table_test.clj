@@ -56,43 +56,61 @@
                :base-type                  :type/BigInteger
                :database-position          0
                :pk?                        true
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment true
+               :database-is-generated      false
+               :database-is-nullable       false
                :json-unfolding             false}
               {:name                       "NAME"
                :database-type              "CHARACTER VARYING"
                :base-type                  :type/Text
                :database-position          1
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "CATEGORY_ID"
                :database-type              "INTEGER"
                :base-type                  :type/Integer
                :database-position          2
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "LATITUDE"
                :database-type              "DOUBLE PRECISION"
                :base-type                  :type/Float
                :database-position          3
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "LONGITUDE"
                :database-type              "DOUBLE PRECISION"
                :base-type                  :type/Float
                :database-position          4
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "PRICE"
                :database-type              "INTEGER"
                :base-type                  :type/Integer
                :database-position          5
+               :database-default           nil
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}}}
            (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
@@ -109,28 +127,37 @@
                          "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (is (= {:fields #{{:base-type                 :type/Integer
+      (is (= {:fields #{{:base-type                  :type/Integer
                          :database-is-auto-increment true
-                         :database-position         0
-                         :database-required         false
-                         :database-type             "INTEGER"
-                         :name                      "id"
-                         :pk?                       true
-                         :json-unfolding            false}
-                        {:base-type                 :type/Integer
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          0
+                         :database-default           nil
+                         :database-required          false
+                         :database-type              "INTEGER"
+                         :name                       "id"
+                         :pk?                        true
+                         :json-unfolding             false}
+                        {:base-type                  :type/Integer
                          :database-is-auto-increment true
-                         :database-position         1
-                         :database-required         false
-                         :database-type             "INTEGER"
-                         :name                      "count"
-                         :json-unfolding            false}
-                        {:base-type                 :type/Integer
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          1
+                         :database-default           nil
+                         :database-required          false
+                         :database-type              "INTEGER"
+                         :name                       "count"
+                         :json-unfolding             false}
+                        {:base-type                  :type/Integer
                          :database-is-auto-increment false
-                         :database-position         2
-                         :database-required         true
-                         :database-type             "INTEGER"
-                         :name                      "rank"
-                         :json-unfolding            false}}
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          2
+                         :database-default           nil
+                         :database-required          true
+                         :database-type              "INTEGER"
+                         :name                       "rank"
+                         :json-unfolding             false}}
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 

@@ -42,5 +42,7 @@ serdes/meta:
 - id: PRODUCT_ID
   model: Field
 database_indexed: true
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: HcBNIyo38ID7k3zRiaZZ7

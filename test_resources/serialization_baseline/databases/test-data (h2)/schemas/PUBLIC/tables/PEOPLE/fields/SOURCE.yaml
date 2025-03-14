@@ -38,5 +38,7 @@ serdes/meta:
 - id: SOURCE
   model: Field
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: 2hnPlZ9z5Riq4qv_VSeTv
