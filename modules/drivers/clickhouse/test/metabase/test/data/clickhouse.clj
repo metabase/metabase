@@ -75,11 +75,11 @@
 
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
   (merge
-   {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
-    :port     (tx/db-test-env-var-or-throw :clickhouse :port 8123)}
-   (when-let [user (tx/db-test-env-var :clickhouse :user)]
+   {:host     (mt/db-test-env-var :clickhouse :host)
+    :port     (mt/db-test-env-var :clickhouse :port)}
+   (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})
-   (when-let [password (tx/db-test-env-var :clickhouse :password)]
+   (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
    (when (= context :db)
      {:db database-name})))

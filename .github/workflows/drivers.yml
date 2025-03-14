@@ -974,6 +974,10 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: clickhouse
+      MB_CLICKHOUSE_TEST_HOST: localhost
+      MB_CLICKHOUSE_TEST_PORT: 8123
+      MB_CLICKHOUSE_TEST_OLD_PORT: 8124
+      MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: Clickhouse
     steps:
     - uses: actions/checkout@v4
