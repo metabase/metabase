@@ -218,11 +218,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <DashboardLeaveConfirmationModal
-        route={route}
-        isDirty={isDirty}
-        isEditing={isEditing}
-      />
+      <DashboardLeaveConfirmationModal route={route} />
       <Dashboard
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
