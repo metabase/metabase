@@ -56,6 +56,7 @@ export const InteractiveQuestionResult = ({
     isSaveEnabled,
     targetCollection,
     isCardIdError,
+    withDownloads,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
@@ -144,10 +145,13 @@ export const InteractiveQuestionResult = ({
                 </>
               )}
             </Group>
-            <InteractiveQuestion.EditorButton
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
+            <Group gap="sm">
+              {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+              <InteractiveQuestion.EditorButton
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+            </Group>
           </Group>
         </Stack>
       )}
