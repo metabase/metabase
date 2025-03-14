@@ -326,7 +326,7 @@ describe("Unfold JSON", { tags: "@external" }, () => {
     // Sync database
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sync database schema now/i).click();
+    cy.findByText(/Sync database schema/i).click();
     cy.wait("@sync_schema");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");

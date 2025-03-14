@@ -4,6 +4,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -41,7 +42,8 @@
    (some->> (breakouts query stage-number)
             (mapv (fn [field-ref]
                     (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts)))))))
+                        (assoc :lib/source :source/breakouts
+                               :ident      (lib.options/ident field-ref))))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."

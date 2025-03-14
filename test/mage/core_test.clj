@@ -40,8 +40,10 @@
   (bin-mage-has-help?)
   (invalid-task-names-print-help-test)
   (start-db-test/run-tests)
-  (println "All tests passed")
-  (System/exit 0))
+  (println "Examples tests passed"))
 
+;; To call run-tests directly, use:
+;; bb ./test/mage/core_test.clj
 (when (= *file* (System/getProperty "babashka.file"))
-  (run-tests))
+  (run-tests)
+  :ok)

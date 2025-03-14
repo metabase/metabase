@@ -22,22 +22,3 @@
 .formulaDefinition {
   overflow: hidden;
 }
-
-.formulaDefinitionEnter {
-  max-height: 0;
-}
-
-.formulaDefinitionEnter.formulaDefinitionEnterActive {
-  /* using 100% max-height breaks the transition */
-  max-height: 150px;
-  transition: max-height 300ms ease-out;
-}
-
-.formulaDefinitionExit {
-  max-height: 150px;
-}
-
-.formulaDefinitionExit.formulaDefinitionExitActive {
-  max-height: 0;
-  transition: max-height 300ms ease-out;
-}

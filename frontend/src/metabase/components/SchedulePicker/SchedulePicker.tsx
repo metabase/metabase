@@ -61,6 +61,9 @@ export interface SchedulePickerProps {
 
 const DEFAULT_DAY = "mon";
 
+/**
+ * @deprecated use "metabase/components/Schedule" instead
+ */
 class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,
