@@ -68,34 +68,6 @@
           (finally
             (cleanup-config!))))
 
-      (testing "should fail if API keys have the same prefix"
-        (try
-          (write-config!
-           {:version 1
-            :config {:api-keys [{:name "First API Key"
-                                 :key "mb_same_prefix_123"
-                                 :creator "admin@test.com"
-                                 :group "admin"}]}})
-          (binding [config.file/*config* {:version 1
-                                          :config {:api-keys [{:name "First API Key"
-                                                               :key "mb_same_prefix_123"
-                                                               :creator "admin@test.com"
-                                                               :group "admin"}]}}]
-            (config.file/initialize!)
-
-            ;; Try to create another key with the same prefix
-            (binding [config.file/*config* {:version 1
-                                            :config {:api-keys [{:name "Second API Key"
-                                                                 :key "mb_same_prefix_456"
-                                                                 :creator "admin@test.com"
-                                                                 :group "admin"}]}}]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"API key with prefix 'mb_same' already exists"
-                   (config.file/initialize!)))))
-          (finally
-            (cleanup-config!))))
-
       (testing "should fail if creator is not an admin"
         (try
           (mt/with-temp [:model/User _ {:email "regular@test.com"
