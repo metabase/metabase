@@ -90,10 +90,6 @@ const newMetricQueryTabLocation = createMockLocation({
   pathname: "/metric/query",
 });
 
-const newMetricMetadataTabLocation = createMockLocation({
-  pathname: "/metric/metadata",
-});
-
 const getRunModelLocation = (model: Question) =>
   createMockLocation({
     pathname: `/model/${model.id()}/query`,
@@ -134,8 +130,6 @@ const getViewMetricLocations = (metric: Question) => [
 const getEditMetricLocations = (metric: Question) => [
   createMockLocation({ pathname: `/metric/${metric.id()}/query` }),
   createMockLocation({ pathname: `/metric/${metric.slug()}/query` }),
-  createMockLocation({ pathname: `/metric/${metric.id()}/metadata` }),
-  createMockLocation({ pathname: `/metric/${metric.slug()}/metadata` }),
   createMockLocation({ pathname: `/metric/${metric.id()}/notebook` }),
   createMockLocation({ pathname: `/metric/${metric.slug()}/notebook` }),
 ];
@@ -239,7 +233,6 @@ describe("isNavigationAllowed", () => {
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       newMetricQueryTabLocation,
-      newMetricMetadataTabLocation,
       runModelLocation,
       runNewModelLocation,
       runMetricLocation,
@@ -273,7 +266,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
         runMetricLocation,
@@ -317,7 +309,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
         runMetricLocation,
@@ -376,7 +367,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
       ])("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -412,7 +402,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runModelLocation,
         runNewModelLocation,
         runMetricLocation,
@@ -511,7 +500,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
@@ -565,7 +553,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runMetricLocation,
         runNewMetricLocation,
         runQuestionEditNotebookLocation,
@@ -582,14 +569,11 @@ describe("isNavigationAllowed", () => {
     const question = structuredMetricQuestion;
 
     describe("allows navigating between metric query & metadata tabs", () => {
-      it.each([newMetricQueryTabLocation, newMetricMetadataTabLocation])(
-        "to `$pathname`",
-        destination => {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(true);
-        },
-      );
+      it.each([newMetricQueryTabLocation])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
     });
 
     it("allows to run the metric", () => {
@@ -603,6 +587,7 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
+        ...getViewMetricLocations(question),
         ...getAllModelLocations(structuredModelQuestion),
         ...getAllModelLocations(nativeModelQuestion),
         ...getAllMetricLocations(structuredMetricQuestion),
@@ -660,7 +645,6 @@ describe("isNavigationAllowed", () => {
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         newMetricQueryTabLocation,
-        newMetricMetadataTabLocation,
         runQuestionEditNotebookLocation,
       ])("to `$pathname`", destination => {
         expect(
