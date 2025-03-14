@@ -50,6 +50,12 @@ export const useConfirmRouteLeaveModal = ({
     setIsConfirmed(true);
   }, []);
 
+  const resetState = useCallback(() => {
+    setOpened(false);
+    setIsConfirmed(false);
+    setNextLocation(undefined);
+  }, []);
+
   useBeforeUnload(isEnabled);
 
   useEffect(() => {
@@ -66,9 +72,10 @@ export const useConfirmRouteLeaveModal = ({
 
   useEffect(() => {
     if (isConfirmed && nextLocation) {
+      resetState();
       dispatch(push(nextLocation));
     }
-  }, [dispatch, isConfirmed, nextLocation]);
+  }, [dispatch, isConfirmed, nextLocation, resetState]);
 
   return {
     opened,
