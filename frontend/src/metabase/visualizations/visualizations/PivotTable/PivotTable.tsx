@@ -362,50 +362,32 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
       // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
       // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
-      let updatedClicked = { ...clicked };
-
-      if (typeof updatedClicked.colIdx === "number") {
-        updatedClicked = {
-          ...updatedClicked,
-          column: columnsWithoutPivotGroup[updatedClicked.colIdx],
-          data: !updatedClicked.data
-            ? [
-                {
-                  value: updatedClicked.value,
-                  col: columnsWithoutPivotGroup[updatedClicked.colIdx] || null,
-                },
-              ]
-            : updatedClicked.data,
-        };
-        // Create a new object without the colIdx property
-        const { colIdx, ...withoutColIdx } = updatedClicked;
-        updatedClicked = withoutColIdx;
+      const { colIdx, ...updatedClicked } = clicked;
+      if (typeof colIdx === "number") {
+        updatedClicked.column = columnsWithoutPivotGroup[colIdx];
+        updatedClicked.data ??= [
+          {
+            value: updatedClicked.value,
+            col: columnsWithoutPivotGroup[colIdx] || null,
+          },
+        ];
       } else if (updatedClicked.data) {
-        updatedClicked = {
-          ...updatedClicked,
-          data: updatedClicked.data.map(item => ({
+        updatedClicked.data = updatedClicked.data.map(
+          ({ colIdx, ...item }) => ({
             ...item,
-            col:
-              item.colIdx !== undefined
-                ? columnsWithoutPivotGroup[item.colIdx]
-                : null,
-            colIdx: undefined,
-          })),
-        };
+            col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
       }
 
       if (updatedClicked.dimensions) {
-        updatedClicked = {
-          ...updatedClicked,
-          dimensions: updatedClicked.dimensions.map(item => ({
+        updatedClicked.dimensions = updatedClicked.dimensions.map(
+          ({ colIdx, ...item }) => ({
             ...item,
             column:
-              item.colIdx !== undefined
-                ? columnsWithoutPivotGroup[item.colIdx]
-                : null,
-            colIdx: undefined,
-          })),
-        };
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
       }
 
       return (e: React.MouseEvent) =>

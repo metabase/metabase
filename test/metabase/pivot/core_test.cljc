@@ -156,8 +156,9 @@
           result (#'pivot/get-subtotal-values pivot-data val-indexes nil)]
       (is (= {[0 1 2] {[1 "A" "Y"] [10]
                        [1 "B" "Z"] [20]}}
-             result))))
+             result)))))
 
+(deftest get-subtotal-values-primary-rows-key-test
   (testing "Excludes the primary rows if passed a primary rows key"
     (let [pivot-data {[0 1 2] [[1 "A" "Y" 10]
                                [1 "B" "Z" 20]]}

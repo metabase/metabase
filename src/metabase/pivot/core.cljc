@@ -13,12 +13,12 @@
    (set! *warn-on-reflection* true))
 
 (defn- json-parse
-  "Parses a JSON string in Clojure or ClojureScript"
+  "Parses a JSON string in Clojure or ClojureScript into  "
   [x]
   #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
-(defn- is-pivot-group-column
+(defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
   [col]
   (= (:name col) "pivot-grouping"))
@@ -26,7 +26,7 @@
 (defn columns-without-pivot-group
   "Removes the pivot-grouping column from a list of columns, identifying it by name."
   [columns]
-  (filter #(not (is-pivot-group-column %)) columns))
+  (filter #(not (pivot-group-column? %)) columns))
 
 (def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
@@ -55,7 +55,7 @@
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
   to split apart the data and convert field refs to indices"
   [data]
-  (let [group-index   (u/index-of is-pivot-group-column (:cols data))
+  (let [group-index   (u/index-of pivot-group-column? (:cols data))
         columns       (columns-without-pivot-group (:cols data))
         breakouts     (filter #(= (keyword (:source %)) :breakout) columns)
         num-breakouts (count breakouts)
@@ -199,13 +199,12 @@
   "Converts each level of a tree to a sorted map as needed, based on the values
   in `sort-orders`."
   [tree sort-orders]
-  (let [curr-compare-fn (compare-fn (first sort-orders))]
-    (into
-     (if curr-compare-fn
-       (sorted-map-by curr-compare-fn)
-       (ordered-map/ordered-map))
-     (for [[k v] tree]
-       [k (assoc v :children (sort-tree (:children v) (rest sort-orders)))]))))
+  (into
+   (if-let [curr-compare-fn (compare-fn (first sort-orders))]
+     (sorted-map-by curr-compare-fn)
+     (ordered-map/ordered-map))
+   (for [[k v] tree]
+     [k (assoc v :children (sort-tree (:children v) (rest sort-orders)))])))
 
 ;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
 (defn- filter-collapsed-subtotals
@@ -294,6 +293,7 @@
   (get settings :pivot.show_column_totals true))
 
 (defn- maybe-add-row-totals-column
+  "If needed, adds a column header to the end of the column tree for the column containing row totals"
   [col-tree settings]
   (if (and (> (count col-tree) 1)
            (should-show-row-totals? settings))
@@ -306,6 +306,7 @@
     col-tree))
 
 (defn- maybe-add-grand-totals-row
+  "If needed, adds a row header to the end of the row tree for the row containing the grand total at the bottom-right of the table."
   [row-tree settings]
   (if (should-show-column-totals? settings)
     (conj
@@ -391,7 +392,7 @@
               row-tree))))
 
 (defn display-name-for-col
-  "@tsp - ripped from frontend/src/metabase/lib/formatting/column.ts"
+  "Translated from frontend/src/metabase/lib/formatting/column.ts"
   [column col-settings format-values?]
   (or (if format-values?
         (or
@@ -572,32 +573,42 @@
       (process-tree tree 0 0 [])
       (persistent! result))))
 
+(defn- compute-row-paths [columns row-indexes row-tree left-formatters settings col-settings]
+  (let [left-index-columns (select-indexes columns row-indexes)
+        formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters left-index-columns row-indexes)
+        formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
+        formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
+                                         (maybe-add-grand-totals-row formatted-row-tree settings)
+                                         formatted-row-tree)]
+    {:formatted-row-tree-with-totals formatted-row-tree-with-totals
+     :row-paths (->> formatted-row-tree-with-totals (mapcat enumerate-paths) maybe-add-empty-path (into []))}))
+
+(defn- compute-col-paths [columns col-indexes col-tree top-formatters settings]
+  (let [top-index-columns (select-indexes columns col-indexes)
+        formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns col-indexes))
+        formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)]
+    {:formatted-col-tree-with-totals formatted-col-tree-with-totals
+     :col-paths (->> formatted-col-tree-with-totals (mapcat enumerate-paths) maybe-add-empty-path (into []))}))
+
 (defn process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
-  ([data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings & [_make-color-getter]]
+  ([data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings]
+   (process-pivot-table data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings (constantly nil)))
+  ([data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings make-color-getter]
    (let [{:keys [pivot-data primary-rows-key]} (split-pivot-data data)
          primary-rows (get pivot-data primary-rows-key)
-         color-getter #?(:cljs (_make-color-getter (clj->js primary-rows))
-                         :clj  (constantly nil))
-         {:keys [row-tree col-tree values-by-key]} (build-pivot-trees primary-rows columns row-indexes col-indexes val-indexes settings col-settings)
-         left-index-columns (select-indexes columns row-indexes)
-         formatted-row-tree-without-subtotals (format-values-in-tree row-tree left-formatters left-index-columns row-indexes)
-         formatted-row-tree (into [] (add-subtotals formatted-row-tree-without-subtotals row-indexes settings col-settings))
-         formatted-row-tree-with-totals (if (> (count formatted-row-tree-without-subtotals) 1)
-                                          (maybe-add-grand-totals-row formatted-row-tree settings)
-                                          formatted-row-tree)
-         row-paths (->> formatted-row-tree-with-totals
-                        (mapcat enumerate-paths)
-                        maybe-add-empty-path
-                        (into []))
-         top-index-columns (select-indexes columns col-indexes)
-         formatted-col-tree-without-values (into [] (format-values-in-tree col-tree top-formatters top-index-columns col-indexes))
-         formatted-col-tree-with-totals (maybe-add-row-totals-column formatted-col-tree-without-values settings)
-         col-paths (->> formatted-col-tree-with-totals
-                        (mapcat enumerate-paths)
-                        maybe-add-empty-path
-                        (into []))
+         color-getter #?(:cljs (make-color-getter (clj->js primary-rows))
+                         :clj (make-color-getter))
+         {:keys [row-tree col-tree values-by-key]}
+         (build-pivot-trees primary-rows columns row-indexes col-indexes val-indexes settings col-settings)
+
+         {:keys [row-paths formatted-row-tree-with-totals]}
+         (compute-row-paths columns row-indexes row-tree left-formatters settings col-settings)
+
+         {:keys [col-paths formatted-col-tree-with-totals]}
+         (compute-col-paths columns col-indexes col-tree top-formatters settings)
+
          formatted-col-tree (into [] (add-value-column-nodes formatted-col-tree-with-totals columns val-indexes col-settings format-rows?))
          subtotal-values (get-subtotal-values pivot-data val-indexes primary-rows-key)]
      {:columnIndex col-paths
