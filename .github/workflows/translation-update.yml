@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: 30 5 * * 1-5 # every weekday morning (utc)
   workflow_dispatch:
+  pull_request:  # FIXME for testing
 
 permissions:
   contents: write
@@ -57,12 +58,11 @@ jobs:
           download_translations: true
           localization_branch_name: ${{ env.BRANCH_NAME }}
           create_pull_request: true
-          pull_request_title: 'New Translations'
-          pull_request_body: 'Newly imported translations'
+          pull_request_title: 'Update Translations'
+          pull_request_body: 'Updated translations'
           pull_request_base_branch_name: 'master'
-          base_url: https://metabase-testing.api.crowdin.com
           source: locales/metabase.pot
-          translation: locales/%two_letters_code%.po # we may need to do: https://support.crowdin.com/developer/configuration-file/#language-mapping
+          translation: locales/%two_letters_code%.po # we may need to do:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           CROWDIN_PROJECT_ID: 7
@@ -85,14 +85,14 @@ jobs:
             --add-label "Customization/i18n"
 
       - name: Auto approve PR
-        if: false # disabled for testing
+        if: false # FIXME for testing
         uses: juliangruber/approve-pull-request-action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           number: ${{ steps.crowdin.outputs.pull_request_number }}
 
       - name: Enable Pull Request Automerge
-        if: false # disabled for testing
+        if: false # FIXME for testing
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
