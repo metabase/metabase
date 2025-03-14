@@ -14,6 +14,7 @@ interface ConfirmModal {
   onConfirm?: () => void;
   confirmButtonText?: string;
   confirmButtonPrimary?: boolean;
+  closeButtonText?: string;
 }
 
 export const ConfirmModal = ({
@@ -26,6 +27,7 @@ export const ConfirmModal = ({
   onConfirm = _.noop,
   confirmButtonText = t`Yes`,
   confirmButtonPrimary = false,
+  closeButtonText = t`Cancel`,
 }: ConfirmModal) => (
   <Modal
     data-testid={dataTestId}
@@ -38,7 +40,7 @@ export const ConfirmModal = ({
       {content ? <Text>{content}</Text> : null}
       <Text>{message}</Text>
       <Flex justify="flex-end" gap="md">
-        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button onClick={onClose}>{closeButtonText}</Button>
         <Button
           color={confirmButtonPrimary ? "primary" : "danger"}
           variant="filled"
