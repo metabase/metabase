@@ -172,7 +172,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     });
   });
 
-  it.only("show the question visualization when the user drills down (metabase#55514 - EMB-266)", () => {
+  it("show the question visualization when the user drills down (metabase#55514 - EMB-266)", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
 
