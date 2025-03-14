@@ -15,9 +15,7 @@
   "starburst driver test extensions."
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
@@ -35,8 +33,6 @@
 
 ;; JDBC SQL
 (sql-jdbc.tx/add-test-extensions! :starburst)
-
-(def ^:private test-catalog-name "test")
 
 (defmethod tx/sorts-nil-first? :starburst [_ _] false)
 

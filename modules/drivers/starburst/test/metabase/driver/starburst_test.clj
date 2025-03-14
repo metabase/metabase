@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.starburst-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
@@ -9,6 +8,7 @@
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
    [metabase.query-processor :as qp]
@@ -20,7 +20,11 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 (sql-jdbc.tx/add-test-extensions! :starburst)
@@ -164,10 +168,13 @@
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :starburst
     (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :starburst (:details (mt/db)))]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        (doseq [ddl-stmt ddl-statements]
-          (with-open [stmt (.prepareStatement conn ddl-stmt)]
-            (.executeUpdate stmt)))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       :starburst
+       jdbc-spec
+       (fn [^Connection conn]
+         (doseq [ddl-stmt ddl-statements]
+           (with-open [stmt (.prepareStatement conn ddl-stmt)]
+             (.executeUpdate stmt))))))))
 
 (deftest specific-schema-sync-test
   (mt/test-driver :starburst

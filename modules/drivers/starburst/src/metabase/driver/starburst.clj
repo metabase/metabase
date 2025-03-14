@@ -97,8 +97,9 @@
     ((get-method driver/can-connect? :sql-jdbc) driver details)
     (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
       ;; jdbc/query is used to see if we throw, we want to ignore the results
-      (jdbc/query spec (format "SHOW SCHEMAS FROM %s" catalog))
-      true)
+      (let [query (format "SHOW CATALOGS LIKE '%s'" catalog)
+            response (jdbc/query spec query)]
+        (= [{:catalog catalog}] response)))
     (catch Throwable e
       (handle-execution-error-details e details))))
 
@@ -655,13 +656,6 @@
       (str/includes? message "Incorrect number of parameters")
       (throw (Exception. "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."))
       :else (throw e))))
-
-(defn test-proxy [^PreparedStatement stmt]
-  (proxy [PreparedStatement] []
-    (setObject
-      ([^Integer index obj sql-type] (if (int? sql-type)
-                                       (.setObject stmt index obj ^Integer sql-type)
-                                       (.setObject stmt index obj ^SQLType sql-type))))))
 
 ; Optimized prepared statement where a proxy is generated and set-parameters! called on that proxy.
 ; Metabase is sometimes calling getParametersMetaData() on the prepared statement in order to count
