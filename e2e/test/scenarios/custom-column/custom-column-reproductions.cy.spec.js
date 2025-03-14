@@ -1036,7 +1036,7 @@ describe("issue 49342", () => {
     H.CustomExpressionEditor.nameInput().focus();
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
 
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
@@ -1413,5 +1413,81 @@ describe("issue 48562", () => {
 
     H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
+  });
+});
+
+describe("issue 54638", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
+    H.CustomExpressionEditor.type("case(");
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText("Learn more")
+        .scrollIntoView()
+        .should("be.visible")
+        .then($a => {
+          expect($a).to.have.attr("target", "_blank");
+          // Update attr to open in same tab, since Cypress does not support
+          // testing in multiple tabs.
+          $a.attr("target", "_self");
+        })
+        .click();
+      cy.url().should(
+        "equal",
+        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
+      );
+    });
+  });
+});
+
+describe("issue #54722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+  });
+});
+
+describe("issue #31964", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
+    cy.realPress("Enter");
+    H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        case([Product → Category] = "Widget", 1,
+        [Product → Category])
+      `,
+    );
   });
 });
