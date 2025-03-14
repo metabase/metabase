@@ -100,15 +100,23 @@ const getRunModelLocation = (model: Question) =>
     hash: `#${serializeCardForUrl(nativeModelCard)}`,
   });
 
-const getModelLocations = (model: Question) => [
+const getViewModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}` }),
   createMockLocation({ pathname: `/model/${model.slug()}` }),
+];
+
+const getEditModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}/query` }),
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
   createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
   createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
   createMockLocation({ pathname: `/model/${model.id()}/notebook` }),
   createMockLocation({ pathname: `/model/${model.slug()}/notebook` }),
+];
+
+const getAllModelLocations = (model: Question) => [
+  ...getViewModelLocations(model),
+  ...getEditModelLocations(model),
   getRunModelLocation(model),
 ];
 
@@ -215,8 +223,8 @@ describe("isNavigationAllowed", () => {
 
     it.each([
       anyLocation,
-      ...getModelLocations(structuredModelQuestion),
-      ...getModelLocations(nativeModelQuestion),
+      ...getAllModelLocations(structuredModelQuestion),
+      ...getAllModelLocations(nativeModelQuestion),
       ...getMetricLocations(structuredMetricQuestion),
       ...getStructuredQuestionLocations(structuredQuestion),
       ...getNativeQuestionLocations(nativeQuestion),
@@ -249,8 +257,8 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating away", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -292,8 +300,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -352,8 +360,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         ...getRunQuestionLocations(nativeQuestion),
@@ -387,8 +395,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -436,8 +444,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -458,11 +466,14 @@ describe("isNavigationAllowed", () => {
     const question = structuredModelQuestion;
 
     describe("allows navigating between model query & metadata tabs", () => {
-      it.each(getModelLocations(question))("to `$pathname`", destination => {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      });
+      it.each(getEditModelLocations(question))(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
 
     it("allows to run the model", () => {
@@ -484,7 +495,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(nativeModelQuestion),
+        ...getViewModelLocations(question),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -508,11 +520,14 @@ describe("isNavigationAllowed", () => {
     const question = nativeModelQuestion;
 
     describe("allows navigating between model query & metadata tabs", () => {
-      it.each(getModelLocations(question))("to `$pathname`", destination => {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      });
+      it.each(getEditModelLocations(question))(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
 
     it("allows to run the model", () => {
@@ -534,7 +549,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
+        ...getViewModelLocations(question),
+        ...getAllModelLocations(structuredModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -579,8 +595,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getMetricLocations(structuredMetricQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
@@ -625,8 +641,8 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        ...getModelLocations(structuredModelQuestion),
-        ...getModelLocations(nativeModelQuestion),
+        ...getAllModelLocations(structuredModelQuestion),
+        ...getAllModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
         ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,

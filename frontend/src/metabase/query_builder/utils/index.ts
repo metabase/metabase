@@ -93,7 +93,6 @@ export const isNavigationAllowed = ({
     const allowedPathnames = isNewQuestion
       ? ["/model/query", "/model/metadata"]
       : validSlugs.flatMap(slug => [
-          `/model/${slug}`,
           `/model/${slug}/query`,
           `/model/${slug}/metadata`,
           `/model/${slug}/notebook`,
