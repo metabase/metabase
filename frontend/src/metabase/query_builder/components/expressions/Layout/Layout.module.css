@@ -5,13 +5,26 @@
   --main-width: 688px;
   --main-height: 280px;
   --footer-height: 46px;
+  --sidebar-width: 230px;
 
   grid-template-rows: min-content min-content min-content;
   grid-template-columns:
-    minmax(688px, auto)
+    minmax(var(--main-width), auto)
     auto;
 
+  @media (max-width: 920px) {
+    --main-width: 600px;
+    --sidebar-width: 200px;
+  }
+
   @media (max-width: 800px) {
+    --main-width: 460px;
+    --sidebar-width: 180px;
+  }
+
+  @media (max-width: 640px) {
+    --sidebar-width: 230px;
+
     background: var(--mb-color-bg-white);
     position: fixed;
     top: 0;
@@ -37,7 +50,7 @@
   height: var(--main-height);
   width: var(--main-width);
 
-  @media (max-width: 800px) {
+  @media (max-width: 640px) {
     width: auto;
     height: auto;
   }
@@ -47,10 +60,10 @@
   grid-column: 2;
   grid-row: 1 / span 3;
   overflow: hidden;
-  max-width: 230px;
+  max-width: var(--sidebar-width);
   min-height: 100%;
 
-  @media (max-width: 800px) {
+  @media (max-width: 640px) {
     width: 35vw;
     height: 100vh;
   }
