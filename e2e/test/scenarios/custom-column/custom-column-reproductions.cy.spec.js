@@ -1478,7 +1478,7 @@ describe("issue #31964", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should focus the editor when opening it #54722", () => {
+  it("should focus the editor when opening it (metabase#54722)", () => {
     cy.button("Custom column").click();
     H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
     cy.realPress(["Shift", "Enter"]);
