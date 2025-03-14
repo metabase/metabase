@@ -1,5 +1,7 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
+import EmptyState from "metabase/components/EmptyState";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
@@ -36,6 +38,8 @@ export function FunctionBrowser({
     [filter, startRule, database, reportTimezone],
   );
 
+  const isEmpty = filteredClauses.length === 0;
+
   return (
     <Flex
       pt="sm"
@@ -52,7 +56,18 @@ export function FunctionBrowser({
         onChange={handleFilterChange}
         leftSection={<Icon name="search" />}
       />
-      <Box component="dl" my={0} pt={0} pb="md" className={S.results}>
+      <Flex
+        component="dl"
+        my={0}
+        pt={0}
+        pb="md"
+        direction="column"
+        justify={isEmpty ? "center" : "flex-start"}
+        className={S.results}
+      >
+        {isEmpty && (
+          <EmptyState message={t`Didn't find any results`} icon="search" />
+        )}
         {filteredClauses.map(group => (
           <>
             <Text
@@ -91,7 +106,7 @@ export function FunctionBrowser({
             ))}
           </>
         ))}
-      </Box>
+      </Flex>
     </Flex>
   );
 }

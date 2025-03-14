@@ -1383,4 +1383,12 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("Count").should("be.visible");
     });
   });
+
+  it("show a message when no functions match the filter", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("foobar");
+      cy.findByText("Didn't find any results").should("be.visible");
+    });
+  });
 });

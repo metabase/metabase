@@ -6,6 +6,7 @@
 
 .results {
   overflow: auto;
+  height: 100%;
 }
 
 .name {
