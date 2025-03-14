@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   AGGREGATION_FUNCTIONS,
@@ -7,6 +8,7 @@ import {
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
 } from "metabase-lib/v1/expressions";
+import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -42,17 +44,26 @@ export function getFilteredClauses({
   startRule,
   filter,
   database,
+  reportTimezone,
 }: {
   startRule: StartRule;
   filter: string;
   database: Database | null;
+  reportTimezone?: string;
 }) {
   const clauses = getClauses(startRule);
-  return clauses.filter(
-    clause =>
-      database?.hasFeature(clause.requiresFeature) &&
-      clause.displayName.toLowerCase().includes(filter.toLowerCase()),
-  );
+  return clauses
+    .filter(
+      clause =>
+        database?.hasFeature(clause.requiresFeature) &&
+        clause.displayName.toLowerCase().includes(filter.toLowerCase()),
+    )
+    .map(clause =>
+      clause.name && database
+        ? getHelpText(clause.name, database, reportTimezone)
+        : null,
+    )
+    .filter(isNotNull);
 }
 
 export function getDatabase(query: Lib.Query, metadata: Metadata) {

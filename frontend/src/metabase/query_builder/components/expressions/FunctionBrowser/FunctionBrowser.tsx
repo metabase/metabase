@@ -5,7 +5,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import { MBQL_CLAUSES } from "metabase-lib/v1/expressions";
-import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 
 import type { StartRule } from "../types";
 
@@ -33,8 +32,8 @@ export function FunctionBrowser({
   );
 
   const filteredClauses = useMemo(
-    () => getFilteredClauses({ startRule, filter, database }),
-    [filter, startRule, database],
+    () => getFilteredClauses({ startRule, filter, database, reportTimezone }),
+    [filter, startRule, database, reportTimezone],
   );
 
   return (
@@ -72,13 +71,11 @@ export function FunctionBrowser({
                 }}
               >
                 <dt className={S.name}>
-                  <Text size="sm">{clause.displayName}</Text>
+                  <Text size="sm">{clause.structure}</Text>
                 </dt>
                 <dd className={S.description}>
                   <Text size="sm" c="var(--mb-color-text-medium)">
-                    {database &&
-                      getHelpText(clause.name, database, reportTimezone)
-                        ?.description}
+                    {clause.description}
                   </Text>
                 </dd>
               </Box>
