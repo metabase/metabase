@@ -52,7 +52,7 @@
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
-  {"Strict-Transport-Security" "max-age=31536000"})
+  {"Strict-Transport-Security" "max-age=31536000; includeSubDomains"})
 
 (defn parse-url
   "Returns an object with protocol, domain and port for the given url"
