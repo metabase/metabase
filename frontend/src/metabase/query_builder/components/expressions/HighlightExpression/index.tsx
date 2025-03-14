@@ -1,2 +1,2 @@
-export { HighlightExpression } from "./HighlightExpression";
+export * from "./HighlightExpression";
 export { highlight } from "./utils";
