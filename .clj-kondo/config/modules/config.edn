@@ -585,7 +585,7 @@
            metabase-enterprise.advanced-config.models.pulse-channel
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.crufty}
-   :uses #{api db driver models premium-features setup sync util}}
+   :uses #{api db driver models permissions premium-features setup sync util}}
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes
