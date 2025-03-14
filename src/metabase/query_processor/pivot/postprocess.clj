@@ -205,8 +205,7 @@
                                                             val-formatters
                                                             format-rows?
                                                             settings
-                                                            col-settings
-                                                            nil)
+                                                            col-settings)
         top-left-header          (map (fn [i] (pivot/display-name-for-col (nth columns i)
                                                                           (nth col-settings i)
                                                                           format-rows?))

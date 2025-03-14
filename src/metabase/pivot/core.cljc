@@ -594,7 +594,7 @@
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
   ([data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings]
-   (process-pivot-table data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings (constantly nil)))
+   (process-pivot-table data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings (constantly (constantly nil))))
   ([data row-indexes col-indexes val-indexes columns top-formatters left-formatters value-formatters format-rows? settings col-settings make-color-getter]
    (let [{:keys [pivot-data primary-rows-key]} (split-pivot-data data)
          primary-rows (get pivot-data primary-rows-key)
