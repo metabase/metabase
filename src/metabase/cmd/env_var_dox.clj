@@ -93,6 +93,7 @@
     (if (string? deprecated)
       (str "> DEPRECATED: " deprecated)
       "> DEPRECATED")))
+
 (def paid-message
   "Used to mark an env var that requires a paid plan."
   "> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.")
