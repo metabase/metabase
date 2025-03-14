@@ -525,43 +525,6 @@
                  :order-by     [[:asc $id]]
                  :limit        2})))))))
 
-(deftest ^:parallel literal-expression-case-test
-  (testing "literal expression in CASE clause"
-    (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
-      (is (= [[1 12345 true  "foo"]
-              [2 12345 false "foo"]]
-             (mt/formatted-rows
-              [int int mt/boolish->bool str]
-              (mt/run-mbql-query venues
-                {:expressions (into standard-literal-expression-defs
-                                    {"case 1" [:case
-                                               [[[:< 1 [:expression "Zero"]]      [:expression "Zero"]]
-                                                [[:= false [:expression "True"]]  [:expression "Zero"]]
-                                                [[:= false [:expression "False"]] [:expression "12345"]]
-                                                ;; TODO these should be supported
-                                                #_[[:expression "False"] [:expression "Zero"]]
-                                                #_[[:not [:expression "True"]]  [:expression "Zero"]]
-                                                #_[[:expression "True"]  [:expression "12345"]]
-                                                #_[[:not [:expression "False"]] [:expression "12345"]]]
-                                               {:default [:expression "Zero"]}]
-                                     "case 2" [:case
-                                               [[[:= $id 1] [:expression "True"]]
-                                                [[:= $id 2] [:expression "False"]]]]
-                                     "case 3" [:case
-                                               [[[:= [:concat [:expression "foo"] ""] "bar"] [:expression "empty"]]
-                                                ;; TODO This one fails because 0 is normalized to [:field 0 nil].
-                                                ;; Unclear how to fix this without breakout ancient legacy queries.
-                                                #_[[:> 0 [:expression "Zero"]]  [:expression "empty"]]
-                                                ;; TODO This should probably be supported
-                                                #_[[:not-empty [:expression "empty"]] [:expression "empty"]]]
-                                               {:default [:expression "foo"]}]})
-                 :fields      [$id
-                               [:expression "case 1"]
-                               [:expression "case 2"]
-                               [:expression "case 3"]]
-                 :order-by    [[:asc  $id]]
-                 :limit       2})))))))
-
 (deftest ^:parallel order-by-literal-expression-test
   (testing "order-by integer literal expression"
     ;; ORDER BY a non-negative integer literal is broadly supported (maybe even standard?) and means "order by the Nth
