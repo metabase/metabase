@@ -1022,7 +1022,7 @@ describe("issue 49342", () => {
   });
 
   it("should not be possible to leave the expression input with the Tab key ", () => {
-    // This test used to be a repro for #49342, but the product feature change
+    // This test used to be a repro for #49342, but the product feature changed
     // so that the expression input can no longer be tabbed out of.
 
     H.openOrdersTable({ mode: "notebook" });
@@ -1034,6 +1034,7 @@ describe("issue 49342", () => {
 
     cy.log("Shift-tab from name input should stay within the popover");
     H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("contains", "cm-content");
