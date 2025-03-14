@@ -16,7 +16,10 @@
   (if (try (u/sh "command -v lolcat")
            (catch Exception _ false))
     (bt/shell (str "lolcat " f))
-    (println (slurp f))))
+    (do
+      (println (slurp f))
+      (when (> (rand) 0.8)
+        (println (c/yellow "Tip: install lolcat for a better experience!"))))))
 
 (defn invalid-task? []
   (let [task-name (first *command-line-args*)]
@@ -26,11 +29,12 @@
 
 (defn tip-o-day []
   (rand-nth
-   ["Did you know? You can use `mage <task> --help` to get more information about a specific task."
-    "Pro tip: Use `mage <task>` to run a specific task."
-    "Remember: You can always check available tasks with `bb tasks`."
-    "Fun fact: The word 'mage' comes from the Latin 'magus', meaning 'wise"
-    "Pro tip: You can setup autocomplete for mage to speed up your workflow with mage setup-autocomplete."]))
+   ["Did you know? You can use `./bin/mage <task> --help` to get more information about a specific task."
+    "Pro tip: Use `./bin/mage <task>` to run a specific task."
+    "Remember: You can always check available tasks with `./bin/mage`"
+    "Fun fact: The word 'mage' comes from the Latin 'magus', meaning 'wise'"
+    "Pro tip: You can setup autocomplete for mage to speed up your workflow with mage setup-autocomplete."
+    "Tip: we reccomend aliasing mage like: `alias mage='cd $MB_DIR && ./bin/mage'`"]))
 
 (defn- print-help []
   (do
