@@ -38,7 +38,12 @@ export function FunctionBrowser({
   );
 
   return (
-    <Flex pt="sm" direction="column" className={S.wrapper}>
+    <Flex
+      pt="sm"
+      direction="column"
+      className={S.wrapper}
+      data-testid="expression-editor-function-browser"
+    >
       <Input
         size="sm"
         mb="sm"
