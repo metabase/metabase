@@ -95,7 +95,7 @@ export const DwhUploadMenu = () => {
         <Menu.Dropdown miw="19rem">
           <Menu.Item
             fw="bold"
-            leftSection={<Icon name="upload" />}
+            icon={<Icon name="upload" />}
             onClick={triggerUploadInput}
           >
             {c("button label for uploading a CSV data file").t`Upload CSV`}

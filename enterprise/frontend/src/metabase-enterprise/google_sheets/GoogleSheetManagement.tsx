@@ -87,9 +87,7 @@ export function GsheetConnectButton() {
           trackSheetConnectionClick({ from: "db-page" });
         }}
         disabled={status === "loading"}
-        leftSection={
-          status === "complete" ? undefined : <Icon name="google_sheet" />
-        }
+        icon={status === "complete" ? undefined : <Icon name="google_sheet" />}
       >
         {buttonText}
       </Button>
