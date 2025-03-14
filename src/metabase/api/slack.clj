@@ -152,5 +152,3 @@
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-#p [::hi]
