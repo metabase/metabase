@@ -8,12 +8,13 @@ import {
   useGetTableQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
-import { hasDatabaseTableEditingEnabled } from "metabase/databases/utils/settings";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
+
+import { hasDatabaseTableEditingEnabled } from "../settings";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableDataView.module.css";

@@ -51,26 +51,24 @@ export function DatabaseTableEditingSection({
 
   return (
     <DatabaseInfoSection
-      name={t`Editable tables`}
+      name={t`Editable table data`}
       description={t`Allow the data within tables of this database to be edited by Admin users.`}
       data-testid="database-table-editing-section"
     >
-      <div>
-        <Flex align="center" justify="space-between" mb="xs">
-          <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
-          <Toggle
-            id="table-editing-toggle"
-            value={database.hasTableEditingEnabled()}
-            onChange={handleToggle}
-          />
-        </Flex>
-        <Box maw="22.5rem">
-          {error ? <Error>{error}</Error> : null}
-          <Description>
-            {t`Your database connection will need Write permissions.`}
-          </Description>
-        </Box>
-      </div>
+      <Flex align="center" justify="space-between" mb="xs">
+        <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
+        <Toggle
+          id="table-editing-toggle"
+          value={PLUGIN_DATA_EDITING.hasDatabaseTableEditingEnabled(database)}
+          onChange={handleToggle}
+        />
+      </Flex>
+      <Box maw="22.5rem">
+        {error ? <Error>{error}</Error> : null}
+        <Description>
+          {t`Your database connection will need Write permissions.`}
+        </Description>
+      </Box>
     </DatabaseInfoSection>
   );
 }

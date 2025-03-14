@@ -600,6 +600,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 
 export const PLUGIN_DATA_EDITING = {
   isEnabled: () => false,
+  hasDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
   PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
     params: {
       dbId: string;

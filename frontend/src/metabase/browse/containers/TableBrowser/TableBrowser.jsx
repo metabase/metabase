@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { hasDatabaseTableEditingEnabled } from "metabase/databases/utils/settings";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
@@ -39,9 +38,8 @@ const getReloadInterval = (_state, _props, tables = []) =>
 
 const getTableUrl = ({ table, metadata, database }) => {
   if (
-    PLUGIN_DATA_EDITING.isEnabled() &&
     database &&
-    hasDatabaseTableEditingEnabled(database)
+    PLUGIN_DATA_EDITING.hasDatabaseTableEditingEnabled(database)
   ) {
     return `/browse/databases/${database.id}/tables/${table.id}`;
   }
