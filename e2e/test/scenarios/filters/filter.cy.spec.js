@@ -670,7 +670,7 @@ describe("scenarios > question > filter", () => {
 
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
 
     H.CustomExpressionEditor.value().should("equal", "[Tax] > 0  ");
   });
@@ -688,7 +688,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
 
     // Finish to complete a valid expression, i.e. [Tax] > 42
     H.CustomExpressionEditor.type("> 42");
@@ -696,7 +696,7 @@ describe("scenarios > question > filter", () => {
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
 
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
     H.CustomExpressionEditor.value().should("equal", "[Tax]> 42  ");
   });
 
