@@ -1,7 +1,6 @@
 (ns metabase.driver.starburst
   "starburst driver."
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -20,7 +19,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -38,6 +36,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    SQLType
     Time
     Types)
    (java.time
@@ -69,13 +68,6 @@
                               :now                             true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
-(def ^:private starburst_INCOMPATIBLE_WITH_OPTIMIZED_PREPARED
-  "\"Optimized prepared statements\" require Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or starburst (version 418 or higher)")
-(def ^:private starburst_MAYBE_INCOMPATIBLE
-  ". If the database has the \"Optimized prepared statements\" option on, it require Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or starburst (version 418 or higher)")
-(def ^:private TOO_MANY_PARAMETERS
-  "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
-
 (defn- format-field
   [name value]
   (if (nil? value)
@@ -91,12 +83,12 @@
    (format-field "cardID" card-id)))
 
 (defn- handle-execution-error-details
-  [e details]
+  [^Exception e details]
   (let [message (.getMessage e)
         execute-immediate (get details :prepared-optimized false)]
     (cond
       (and (str/includes? message "Expecting: 'USING'") execute-immediate)
-      (throw (Exception. starburst_INCOMPATIBLE_WITH_OPTIMIZED_PREPARED))
+      (throw (Exception. "\"Optimized prepared statements\" require Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or starburst (version 418 or higher)"))
       :else (throw e))))
 
 (defmethod driver/can-connect? :starburst
@@ -108,8 +100,11 @@
 
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/describe-table-fks :starburst
   [_driver _database _table]
+  ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
+  ;; We have this return nil to avoid running unnecessary queries during fks sync.
   nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -117,10 +112,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const timestamp-with-time-zone-db-type "timestamp with time zone")
-
-(defmethod sql.qp/honey-sql-version :starburst
-  [_driver]
-  2)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Misc Implementations                                                       |
@@ -446,7 +437,7 @@
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
-  [driver conn catalog schema]
+  [driver ^Connection conn catalog schema]
   (with-open [stmt (.createStatement conn)]
     (let [sql (describe-schema-sql driver catalog schema)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
@@ -461,7 +452,7 @@
 
 (defn- all-schemas
   "Gets a set of maps for all tables in all schemas in the given `catalog`."
-  [driver conn catalog]
+  [driver ^Connection conn catalog]
   (with-open [stmt (.createStatement conn)]
     (let [sql (describe-catalog-sql driver catalog)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
@@ -615,17 +606,17 @@
   [_ ^ResultSet rset _ ^long i]
   ;; Converts TIMESTAMP_WITH_TIMEZONE to java.time.ZonedDateTime, then to OffsetDateTime with UTC time zone
   (fn []
-    (let [zonedDateTime (.getObject rset i java.time.ZonedDateTime)
+    (let [zonedDateTime ^java.time.ZonedDateTime (.getObject rset i java.time.ZonedDateTime)
           utcTimeZone (java.time.ZoneId/of "UTC")]
       (cond
         (nil? zonedDateTime) nil
         :else (.toOffsetDateTime (.withZoneSameInstant zonedDateTime utcTimeZone))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:starburst Types/TIME_WITH_TIMEZONE]
-  [_ rs _ i]
+  [_ ^ResultSet rs _ ^Integer i]
   ;; Converts TIME_WITH_TIMEZONE to local-time, then to OffsetTime with default time zone.
   (fn []
-    (when-let [sql-time (.getTime rs i)]
+    (when-let [sql-time ^java.sql.Time (.getTime rs i)]
       (let [local-time (sql-time->local-time sql-time)]
         (t/offset-time
          local-time
@@ -636,30 +627,37 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- impersonate-user
-  [conn]
+  [^Connection conn]
   (if
    (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
     (let [email (get (deref api/*current-user*) :email)]
-      (.setSessionUser (.unwrap conn TrinoConnection) email))
+      (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))
     nil))
 
 (defn- remove-impersonation
-  [conn]
+  [^Connection conn]
   (if
    (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (.clearSessionUser (.unwrap conn TrinoConnection))
+    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))
     nil))
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed
 (defn- handle-execution-error
-  [e]
+  [^Exception e]
   (let [message (.getMessage e)]
     (cond
       (str/includes? message "Expecting: 'USING'")
-      (throw (Exception. (str message starburst_MAYBE_INCOMPATIBLE)))
+      (throw (Exception. (str message ". If the database has the \"Optimized prepared statements\" option on, it require Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or starburst (version 418 or higher)")))
       (str/includes? message "Incorrect number of parameters")
-      (throw (Exception. TOO_MANY_PARAMETERS))
+      (throw (Exception. "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."))
       :else (throw e))))
+
+(defn test-proxy [^PreparedStatement stmt]
+  (proxy [PreparedStatement] []
+    (setObject
+      ([^Integer index obj sql-type] (if (int? sql-type)
+                                       (.setObject stmt index obj ^Integer sql-type)
+                                       (.setObject stmt index obj ^SQLType sql-type))))))
 
 ; Optimized prepared statement where a proxy is generated and set-parameters! called on that proxy.
 ; Metabase is sometimes calling getParametersMetaData() on the prepared statement in order to count
@@ -675,7 +673,7 @@
 ; In the end, the exact same message is presented to the user when the number of arguments is
 ; incorrect except we now execute the query to display the error message
 (defn- proxy-optimized-prepared-statement
-  [driver conn stmt params]
+  [driver ^Connection conn ^PreparedStatement stmt params]
   (let [ps (proxy [java.sql.PreparedStatement] []
              (executeQuery []
                (try
@@ -692,7 +690,10 @@
              (setMaxRows [nb] (.setMaxRows stmt nb))
              (setObject
                ([index obj] (.setObject stmt index obj))
-               ([index obj type] (.setObject stmt index obj type)))
+               ([^Integer index obj sql-type]
+                (if (int? sql-type)
+                  (.setObject stmt index obj ^Integer sql-type)
+                  (.setObject stmt index obj ^SQLType sql-type))))
              (setTime
                ([index val] (.setTime stmt index val))
                ([index val cal] (.setTime stmt index val cal)))
@@ -718,7 +719,7 @@
 
 ; Default prepared statement where set-parameters! is called before generating the proxy
 (defn- proxy-prepared-statement
-  [driver conn stmt params]
+  [driver ^Connection conn ^PreparedStatement stmt params]
   (sql-jdbc.execute/set-parameters! driver stmt params)
   (proxy [java.sql.PreparedStatement] []
     (executeQuery []
@@ -752,7 +753,7 @@
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
       (if
-       (.useExplicitPrepare (.unwrap conn TrinoConnection))
+       (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
       (catch Throwable e
@@ -967,30 +968,21 @@
 ;;; |                                                  Unprepare                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:dynamic *param-splice-style*
-  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
-  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
-  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
-  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
-  :friendly)
-
-(defmethod unprepare/unprepare-value [:starburst String]
+(defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (case *param-splice-style*
-    :friendly (str \' (sql.u/escape-sql s :ansi) \')
-    :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
+  (str \' (sql.u/escape-sql s :ansi) \'))
 
-(defmethod unprepare/unprepare-value [:starburst Time]
+(defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
   ;; This is only needed for test purposes, because some of the sample data still uses legacy types
   ;; Convert time to Local time, then unprepare.
-  (unprepare/unprepare-value driver (t/local-time t)))
+  (sql.qp/inline-value driver (t/local-time t)))
 
-(defmethod unprepare/unprepare-value [:starburst OffsetDateTime]
+(defmethod sql.qp/inline-value [:starburst OffsetDateTime]
   [_ t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:starburst ZonedDateTime]
+(defmethod sql.qp/inline-value [:starburst ZonedDateTime]
   [_ t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
@@ -1001,8 +993,3 @@
 (defmethod driver/db-start-of-week :starburst
   [_]
   :monday)
-
-(defmethod driver/describe-table-fks :starburst [_ _ _]
-  ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
-  ;; We have this return nil to avoid running unnecessary queries during fks sync.
-  nil)
