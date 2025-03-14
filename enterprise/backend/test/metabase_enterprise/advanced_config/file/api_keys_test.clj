@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]
-   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]
@@ -68,6 +67,30 @@
           (finally
             (cleanup-config!))))
 
+      (testing "should fail if API keys have the same prefix"
+        (try
+          (write-config!
+           {:version 1
+            :config {:api-keys [{:name "First API Key"
+                                 :key "mb_same_prefix_123"
+                                 :creator "admin@test.com"
+                                 :group "admin"}]}})
+          (binding [config.file/*config* {:version 1
+                                          :config {:api-keys [{:name "First API Key"
+                                                               :key "mb_same_prefix_123"
+                                                               :creator "admin@test.com"
+                                                               :group "admin"}
+                                                              {:name "Second API Key"
+                                                               :key "mb_same_prefix_456"
+                                                               :creator "admin@test.com"
+                                                               :group "admin"}]}}]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"API key with prefix 'mb_same' already exists\. Keys must have unique prefixes\."
+                 (config.file/initialize!))))
+          (finally
+            (cleanup-config!))))
+
       (testing "should fail if creator is not an admin"
         (try
           (mt/with-temp [:model/User _ {:email "regular@test.com"
@@ -75,7 +98,7 @@
                                         :is_superuser false}]
             (binding [config.file/*config* {:version 1
                                             :config {:api-keys [{:name "Test API Key"
-                                                                 :key "mb_test_api_key_123"
+                                                                 :key "mb_1test_api_key_123"
                                                                  :creator "regular@test.com"
                                                                  :group "admin"}]}}]
               (is (thrown-with-msg?
@@ -89,7 +112,7 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "mb_test_api_key_123"
+                                                               :key "mb_2test_api_key_123"
                                                                :creator "nonexistent@test.com"
                                                                :group "admin"}]}}]
             (is (thrown-with-msg?
@@ -103,12 +126,17 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "mb_test_api_key_123"
+                                                               :key "mb_3test_api_key_123"
                                                                :creator "admin@test.com"
                                                                :group "admin"}]}}]
             (config.file/initialize!)
             (let [first-key (t2/select-one :model/ApiKey :name "Test API Key")
-                  _ (config.file/initialize!)
+                  _ (binding [config.file/*config* {:version 1
+                                                    :config {:api-keys [{:name "Test API Key"
+                                                                         :key "mb_4test_api_key_123"
+                                                                         :creator "admin@test.com"
+                                                                         :group "admin"}]}}]
+                      (config.file/initialize!))
                   second-key (t2/select-one :model/ApiKey :name "Test API Key")]
               (is (= (:id first-key) (:id second-key)))))
           (finally
@@ -118,7 +146,7 @@
         (try
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Test API Key"
-                                                               :key "mb_test_api_key_123"
+                                                               :key "mb_5test_api_key_123"
                                                                :creator "admin@test.com"
                                                                :group "invalid-group"}]}}]
             (is (thrown? clojure.lang.ExceptionInfo
