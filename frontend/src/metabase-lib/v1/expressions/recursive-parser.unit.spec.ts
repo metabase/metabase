@@ -15,17 +15,24 @@ describe("recursive-parser", () => {
   const C = ["dimension", "C"];
   const D = ["dimension", "D"];
 
+  it("should parse string literals", () => {
+    expect(process("'Universe'")).toEqual(["value", "Universe"]);
+    expect(process('"answer"')).toEqual(["value", "answer"]);
+    expect(process('"\\""')).toEqual(["value", '"']);
+  });
+
   it("should parse numeric literals", () => {
     expect(process("0")).toEqual(["value", 0]);
     expect(process("42")).toEqual(["value", 42]);
     expect(process("1.0")).toEqual(["value", 1]);
     expect(process("0.123")).toEqual(["value", 0.123]);
+    expect(process("1 + 2")).toEqual(["+", 1, 2]);
   });
 
-  it("should parse string literals", () => {
-    expect(process("'Universe'")).toEqual(["value", "Universe"]);
-    expect(process('"answer"')).toEqual(["value", "answer"]);
-    expect(process('"\\""')).toEqual(["value", '"']);
+  it("should parse boolean literals", () => {
+    expect(process("False")).toEqual(["value", false]);
+    expect(process("True")).toEqual(["value", true]);
+    expect(process("True != False")).toEqual(["!=", true, false]);
   });
 
   it("should parse field references", () => {
