@@ -1,3 +1,5 @@
+;; -*- mode: clojure -*-
+
 ;; You may want to set an alias for mage:
 ;; alias mage='cd ~/your/repo/metabase && ./bin/mage'
 
