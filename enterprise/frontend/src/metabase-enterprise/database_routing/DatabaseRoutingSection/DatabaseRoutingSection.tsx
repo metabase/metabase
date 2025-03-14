@@ -14,6 +14,7 @@ import {
   Flex,
   Icon,
   Select,
+  Stack,
   Switch,
   Text,
   Tooltip,
@@ -24,9 +25,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 
 import { RoutedDatabaesList } from "../RoutedDatabasesList";
 
-// TODO: make a smart component and loading state for this component as a parent
-// that way this component can be a bit more dumb and focus solely on the presentation
-
 export const DatabaseRoutingSection = ({
   database,
   refetchDatabase,
@@ -36,18 +34,19 @@ export const DatabaseRoutingSection = ({
 }) => {
   const dispatch = useDispatch();
 
-  // TODO: get cache invalidation working and the database value to
-  // reactively update when it is updated (feature is turned on or off)
-
-  const [updateRouterDatabase] = useUpdateRouterDatabaseMutation();
-
+  const shouldHideSection = database.is_attached_dwh;
   const userAttribute = database.router_user_attribute ?? undefined;
+
   const [tempEnabled, setTempEnabled] = useState(false);
   const isFeatureEnabled = !!userAttribute;
+
   const isToggleEnabled = tempEnabled || isFeatureEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const shouldHideSection = database.is_attached_dwh;
+  const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
+  const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
+    isToggleEnabled && !shouldHideSection ? undefined : skipToken,
+  );
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
@@ -60,14 +59,9 @@ export const DatabaseRoutingSection = ({
     }
   };
 
-  const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
-    isToggleEnabled && !shouldHideSection ? undefined : skipToken,
-  );
-
   const handleToggle = async (enabled: boolean) => {
     setIsExpanded(enabled);
     setTempEnabled(enabled);
-    // TODO: error handling
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
       refetchDatabase();
@@ -78,7 +72,6 @@ export const DatabaseRoutingSection = ({
     }
   };
 
-  // TODO: make sure feature is only shown in the right circumstances
   if (shouldHideSection) {
     return null;
   }
@@ -90,9 +83,16 @@ export const DatabaseRoutingSection = ({
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
-        <label htmlFor="database-routing-toggle">
-          <Text lh="1.4">{t`Enable database routing`}</Text>
-        </label>
+        <Stack>
+          <label htmlFor="database-routing-toggle">
+            <Text lh="1.4">{t`Enable database routing`}</Text>
+          </label>
+          {error ? (
+            <Text role="alert" color="error">
+              {String(error)}
+            </Text>
+          ) : null}
+        </Stack>
         <Flex gap="md">
           <Switch
             id="database-routing-toggle"
@@ -100,11 +100,9 @@ export const DatabaseRoutingSection = ({
             checked={isToggleEnabled}
             onChange={e => handleToggle(e.currentTarget.checked)}
           />
-          {isToggleEnabled && (
-            <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
-              <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
-            </UnstyledButton>
-          )}
+          <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
+            <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
+          </UnstyledButton>
         </Flex>
       </Flex>
 

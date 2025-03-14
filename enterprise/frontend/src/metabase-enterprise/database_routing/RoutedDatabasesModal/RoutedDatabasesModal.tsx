@@ -1,34 +1,25 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { getEditingDatabase } from "metabase/admin/databases/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 
 import { RoutedDatabaesList } from "../RoutedDatabasesList";
 
 import S from "./RoutedDatabasesModal.module.css";
 
-export const RoutedDatabasesModal = () => {
+export const RoutedDatabasesModal = ({
+  params,
+}: {
+  params: { databaseId: string };
+}) => {
   const dispatch = useDispatch();
-  const primaryDbId = useSelector(state => {
-    const editingDb = getEditingDatabase(state);
-    return editingDb?.id;
-  });
+
+  const primaryDbId = parseInt(params.databaseId, 10);
 
   const handleCloseModal = () => {
-    const dbPath = primaryDbId ? `/${primaryDbId}` : "";
-    dispatch(push(`/admin/databases${dbPath}`));
+    dispatch(push(`/admin/databases/${primaryDbId}`));
   };
-
-  // TODO:
-  if (!primaryDbId) {
-    return (
-      <Modal opened onClose={handleCloseModal} title={t`Mirror databases`}>
-        Loading
-      </Modal>
-    );
-  }
 
   return (
     <Modal

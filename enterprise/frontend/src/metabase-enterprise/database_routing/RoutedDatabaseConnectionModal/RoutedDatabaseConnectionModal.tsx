@@ -6,13 +6,11 @@ import { t } from "ttag";
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Databases from "metabase/entities/databases";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Modal } from "metabase/ui";
 import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
-import Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
@@ -37,56 +35,37 @@ export const RoutedDatabaseConnectionModalInner = ({
   const error = primaryDbReq.error || mirrorDbReq.error;
   const isNewDatabase = mirrorDatabaseId === undefined;
 
-  const primaryDbData = primaryDbReq.currentData;
   const mirrorDatabase = useMemo(() => {
-    if (isNewDatabase) {
-      return primaryDbReq.currentData
-        ? // HACK: need the form to start with an initial engine value that matches the parent
-          // `Database`'s types don't offically support a partial value but this appears to work
-          // @ts-expect-error will remove
-          new Database({ engine: primaryDbReq.currentData.engine })
-        : undefined;
-    }
-
-    // HACK: temp work around
-    const fakeAction = { payload: mirrorDbReq.currentData };
-    const normalizedDbData = Databases.HACK_getObjectFromAction(fakeAction);
-    return new Database(normalizedDbData);
+    return isNewDatabase
+      ? { engine: primaryDbReq.currentData?.engine }
+      : mirrorDbReq.currentData;
   }, [isNewDatabase, primaryDbReq.currentData, mirrorDbReq.currentData]);
 
   const addingNewDatabase = mirrorDatabaseId === undefined;
 
   const handleCloseModal = () => {
-    const dbPath = primaryDbData?.id ? `/${primaryDbData.id}` : "";
+    const id = primaryDbReq.currentData?.id;
+    const dbPath = id ? `/${id}` : "";
     dispatch(push(`/admin/databases${dbPath}`));
   };
 
   const handleCreateMirrorDatabase = async (database: DatabaseData) => {
-    // TODO: handle error case
-    const result = await createMirrorDatabase({
+    return createMirrorDatabase({
       router_database_id: parseInt(databaseId, 10),
       mirrors: [database],
-    });
-    const db = result.data?.[0];
-    if (!db) {
-      throw new Error("expected a db to have been created");
-    }
-    return db;
+    }).unwrap();
   };
 
   const handleSaveDatabase = async (database: DatabaseData) => {
-    if (isNewDatabase) {
-      // TODO: handle errors
-      const result = await handleCreateMirrorDatabase(database);
-      return result;
+    if (database.id === undefined) {
+      return handleCreateMirrorDatabase(database);
     } else {
-      // TODO: handle errors
-      // @ts-expect-error doesn't like the type for some reason..
-      const result = await updateDatabase(database);
-      if (result.error || !result.data) {
-        throw result.error;
-      }
-      return result.data;
+      // TODO: it really doesn't like this type for two reasons
+      // 1. the id key being ?ed
+      // 2. a lot of fields are value | undefined in one type and value | null in the other
+      // it appears the API endpoint doesn't like undefined when it expects null either
+      // @ts-expect-error will fix
+      return updateDatabase(database).unwrap();
     }
   };
 
@@ -97,8 +76,6 @@ export const RoutedDatabaseConnectionModalInner = ({
     );
   };
 
-  // TODO: when coming from the "Add" button, intial focus somehow ends up on the body
-  // this isn't the case if you refresh the page (initial page load correctly places it on the name input)
   return (
     <Modal
       title={
@@ -117,7 +94,6 @@ export const RoutedDatabaseConnectionModalInner = ({
         <DatabaseEditConnectionForm
           database={mirrorDatabase}
           isMirrorDatabase
-          initializeError={undefined /* TODO */}
           handleSaveDb={handleSaveDatabase}
           onSubmitted={handleOnSubmit}
           onCancel={handleCloseModal}
