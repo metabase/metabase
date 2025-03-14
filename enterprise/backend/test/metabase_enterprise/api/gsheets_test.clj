@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.api.common :as api]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import [java.time
