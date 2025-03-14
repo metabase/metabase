@@ -100,7 +100,10 @@ const recents_2 = createMockRecentCollectionItem({
 mockScrollTo();
 mockScrollIntoView();
 
-const TOKEN_FEATURES = createMockTokenFeatures({ content_verification: true });
+const TOKEN_FEATURES = createMockTokenFeatures({
+  content_verification: true,
+  metabot_v3: true,
+});
 
 export interface CommonSetupProps {
   query?: string;

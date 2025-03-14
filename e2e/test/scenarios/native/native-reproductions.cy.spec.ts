@@ -33,7 +33,9 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Query results will appear here.").should("be.visible");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
     });
   });
 });
