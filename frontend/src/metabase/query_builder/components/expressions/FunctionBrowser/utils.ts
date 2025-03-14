@@ -40,6 +40,23 @@ function getClauses(startRule: StartRule): MBQLClauseFunctionConfig[] {
   return [];
 }
 
+function getCategoryName(category: string) {
+  switch (category) {
+    case "logical":
+      return t`Logical functions`;
+    case "math":
+      return t`Math functions`;
+    case "string":
+      return t`String functions`;
+    case "date":
+      return t`Date functions`;
+    case "window":
+      return t`Window functions`;
+    case "aggregation":
+      return t`Aggregations`;
+  }
+}
+
 export function getFilteredClauses({
   startRule,
   filter,
@@ -52,7 +69,7 @@ export function getFilteredClauses({
   reportTimezone?: string;
 }) {
   const clauses = getClauses(startRule);
-  return clauses
+  const filteredClauses = clauses
     .filter(
       clause =>
         database?.hasFeature(clause.requiresFeature) &&
@@ -64,6 +81,18 @@ export function getFilteredClauses({
         : null,
     )
     .filter(isNotNull);
+
+  const filteredCategories = new Set(
+    filteredClauses.map(clause => clause.category),
+  );
+
+  return Array.from(filteredCategories)
+    .sort()
+    .map(category => ({
+      category,
+      displayName: getCategoryName(category),
+      clauses: filteredClauses.filter(clause => clause.category === category),
+    }));
 }
 
 export function getDatabase(query: Lib.Query, metadata: Metadata) {

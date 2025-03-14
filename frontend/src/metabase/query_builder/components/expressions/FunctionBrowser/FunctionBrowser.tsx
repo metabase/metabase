@@ -53,9 +53,18 @@ export function FunctionBrowser({
         leftSection={<Icon name="search" />}
       />
       <Box component="dl" my={0} pt={0} pb="md" className={S.results}>
-        {filteredClauses.map(
-          clause =>
-            clause.name && (
+        {filteredClauses.map(group => (
+          <>
+            <Text
+              size="xs"
+              p="md"
+              pb="sm"
+              c="var(--mb-color-text-medium)"
+              fw="bold"
+            >
+              {group.displayName}
+            </Text>
+            {group.clauses.map(clause => (
               <Box
                 role="button"
                 key={clause.name}
@@ -79,8 +88,9 @@ export function FunctionBrowser({
                   </Text>
                 </dd>
               </Box>
-            ),
-        )}
+            ))}
+          </>
+        ))}
       </Box>
     </Flex>
   );
