@@ -2,7 +2,10 @@ import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import { InteractiveQuestionProvider } from "./InteractiveQuestionProvider";
-import type { InteractiveQuestionProviderWithLocationProps } from "./types";
+import type {
+  InteractiveQuestionId,
+  InteractiveQuestionProviderWithLocationProps,
+} from "./types";
 
 export const InteractiveQuestionProviderWithLocation = ({
   location,
@@ -17,7 +20,7 @@ export const InteractiveQuestionProviderWithLocation = ({
 
   return (
     <InteractiveQuestionProvider
-      questionId={questionId}
+      questionId={questionId as InteractiveQuestionId}
       options={options}
       deserializedCard={deserializedCard}
       {...props}
