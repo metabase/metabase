@@ -166,7 +166,7 @@ const DatabaseFormBody = ({
         <DatabaseDetailField
           key={field.name}
           field={field}
-          autoFocus={field.name === autofocusFieldName}
+          autoFocus={autofocusFieldName === field.name}
           data-kek={field.name}
         />
       ))}

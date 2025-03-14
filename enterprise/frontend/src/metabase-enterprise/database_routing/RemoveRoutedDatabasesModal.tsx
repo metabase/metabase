@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 
@@ -18,20 +19,13 @@ export const RemoveRoutedDatabaseModal = ({
   const mirrorDb = mirrorDbReq.data;
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
-  // TODO
-  if (!mirrorDb) {
-    return <div>TODO</div>;
-  }
-
+  // TODO: consolidate the handleCloseModal methods into a common util
   const handleCloseModal = () => {
     dispatch(push(`/admin/databases/${databaseId}`));
   };
 
   const handleDelete = async () => {
-    // TODO: clean up
-    if (mirrorDatabaseId) {
-      await deleteDatabase(parseInt(mirrorDatabaseId, 10));
-    }
+    await deleteDatabase(parseInt(mirrorDatabaseId, 10)).unwrap();
   };
 
   return (
@@ -41,11 +35,18 @@ export const RemoveRoutedDatabaseModal = ({
       padding="0"
       withCloseButton={false}
     >
-      <DeleteDatabaseModal
-        onClose={handleCloseModal}
-        onDelete={handleDelete}
-        database={mirrorDb}
-      />
+      <LoadingAndErrorWrapper
+        loading={mirrorDbReq.isLoading}
+        error={mirrorDbReq.error}
+      >
+        {mirrorDb && (
+          <DeleteDatabaseModal
+            onClose={handleCloseModal}
+            onDelete={handleDelete}
+            database={mirrorDb}
+          />
+        )}
+      </LoadingAndErrorWrapper>
     </Modal>
   );
 };

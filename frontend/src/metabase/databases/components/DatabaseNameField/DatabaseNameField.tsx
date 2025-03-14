@@ -10,6 +10,7 @@ export interface DatabaseNameFieldProps {
 
 const DatabaseNameField = ({
   engine,
+  autoFocus,
   ...props
 }: DatabaseNameFieldProps): JSX.Element => {
   const name = engine["driver-name"] ?? t`Database`;
@@ -22,6 +23,8 @@ const DatabaseNameField = ({
       rightIcon="info"
       // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
+      autoFocus={autoFocus}
+      data-autofocus={autoFocus}
       {...props}
     />
   );
