@@ -1,7 +1,7 @@
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
-export type SaveQuestionProps = {
+export type SaveQuestionProps<C = CollectionId> = {
   question: Question;
   originalQuestion: Question | null;
   onCreate: (question: Question) => Promise<void>;
@@ -12,13 +12,18 @@ export type SaveQuestionProps = {
   initialCollectionId?: CollectionId | null;
 
   /**
+   * @deprecated Use `targetCollection` instead
+   */
+  saveToCollection?: C;
+
+  /**
    * The target collection to save the question to.
    * Currently used for the embedding SDK.
    *
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
    **/
-  saveToCollection?: CollectionId;
+  targetCollection?: C;
 };
 
 export type FormValues = {
@@ -38,7 +43,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   onCreate: (question: Question) => Promise<void>;
-} & Pick<SaveQuestionProps, "saveToCollection">;
+} & Pick<SaveQuestionProps, "targetCollection">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
   originalQuestion: Question | null;

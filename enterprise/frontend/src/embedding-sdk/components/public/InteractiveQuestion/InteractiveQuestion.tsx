@@ -25,24 +25,25 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
-  InteractiveQuestionResult,
-  type InteractiveQuestionResultProps,
-} from "embedding-sdk/components/private/InteractiveQuestionResult";
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 import type { SDKCollectionReference } from "embedding-sdk/store/collections";
+import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionProviderProps["cardId"];
+  questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-  /**
-   * When this is defined, the collection picker will be hidden and
-   * the question will be saved to this collection.
-   **/
-  saveToCollection?: SDKCollectionReference;
 }> &
   Pick<
+    SaveQuestionProps<SDKCollectionReference>,
+    "targetCollection" | "saveToCollection"
+  > &
+  Pick<
     InteractiveQuestionProviderProps,
+    | "questionId"
     | "onBeforeSave"
     | "onSave"
     | "entityTypeFilter"
@@ -64,24 +65,26 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
+  targetCollection,
   saveToCollection,
   withChartTypeSelector = true,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps &
+  InteractiveQuestionDefaultViewProps &
   FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
-    cardId={questionId}
+    questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
+    targetCollection={targetCollection}
     saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
   >
     {children ?? (
-      <InteractiveQuestionResult
+      <InteractiveQuestionDefaultView
         height={height}
         width={width}
         className={className}

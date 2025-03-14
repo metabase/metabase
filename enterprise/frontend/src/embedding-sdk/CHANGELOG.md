@@ -1,3 +1,20 @@
+## [0.52.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.15...embedding-sdk-0.52.16) (2025-03-12)
+
+
+### Bug Fixes
+
+* **sdk:** [EMB-154] Pivot table visualization settings tabs caused jarring width change ([#54314](https://github.com/metabase/metabase/issues/54314)) ([4514326](https://github.com/metabase/metabase/commit/4514326c0b0996c1a4bb2a437a876157f18e0f47))
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54616](https://github.com/metabase/metabase/issues/54616)) ([37fd560](https://github.com/metabase/metabase/commit/37fd560cf8e583f315cce6c8e5d86257d39ea51a))
+* **sdk:** mark react-dom/client as external to fix warnings in React 19 ([#54919](https://github.com/metabase/metabase/issues/54919)) ([#54924](https://github.com/metabase/metabase/issues/54924)) ([be077d8](https://github.com/metabase/metabase/commit/be077d8e2d6f098f2906b9799842daef71018e45))
+* **sdk:** remove react-router console error in LegendLabel when in React 19 ([#54926](https://github.com/metabase/metabase/issues/54926)) ([#54953](https://github.com/metabase/metabase/issues/54953)) ([6042d7b](https://github.com/metabase/metabase/commit/6042d7bc07ad8d258c2611118aaa3cf6eb06ee57))
+
+
+### Features
+
+* **sdk:** experimental react 19 version range support ([#54904](https://github.com/metabase/metabase/issues/54904)) ([#55002](https://github.com/metabase/metabase/issues/55002)) ([840e63d](https://github.com/metabase/metabase/commit/840e63dd2fe0ae7fbec3c62a3407a99918cfe2bb))
+
+
+
 ## [0.52.15](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.14...embedding-sdk-0.52.15) (2025-02-27)
 
 

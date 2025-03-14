@@ -1,6 +1,15 @@
-import { type CSSProperties, type ComponentType, useState } from "react";
+import {
+  type CSSProperties,
+  type ComponentType,
+  useEffect,
+  useState,
+} from "react";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  CollectionNotFoundError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SDKCollectionReference,
   getCollectionIdSlugFromReference,
@@ -8,6 +17,7 @@ import {
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
@@ -77,6 +87,10 @@ export const CollectionBrowserInner = ({
   const [currentCollectionId, setCurrentCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
+  useEffect(() => {
+    setCurrentCollectionId(baseCollectionId);
+  }, [baseCollectionId]);
+
   const onClickItem = (item: CollectionItem) => {
     if (onClick) {
       onClick(item);
@@ -114,6 +128,37 @@ export const CollectionBrowserInner = ({
   );
 };
 
+const CollectionBrowserWrapper = ({
+  collectionId = "personal",
+  ...restProps
+}: CollectionBrowserProps) => {
+  const { id, isLoading } = useValidatedEntityId<
+    "collection",
+    SDKCollectionReference
+  >({
+    type: "collection",
+    id: collectionId,
+  });
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  const isValidId =
+    id ||
+    typeof collectionId === "number" ||
+    collectionId === "personal" ||
+    collectionId === "root";
+
+  if (!isValidId) {
+    return <CollectionNotFoundError id={collectionId} />;
+  }
+
+  return (
+    <CollectionBrowserInner collectionId={id ?? collectionId} {...restProps} />
+  );
+};
+
 export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserInner,
+  CollectionBrowserWrapper,
 );
