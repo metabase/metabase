@@ -46,6 +46,7 @@ export interface DataGridProps<TData>
   extends DataGridInstance<TData>,
     DataGridStylesProps {
   emptyState?: React.ReactNode;
+  isSortingDisabled?: boolean;
   theme?: DataGridTheme;
 }
 
@@ -59,6 +60,7 @@ export const DataGrid = function DataGrid<TData>({
   theme,
   classNames,
   styles,
+  isSortingDisabled,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -204,6 +206,7 @@ export const DataGrid = function DataGrid<TData>({
                         <SortableHeader
                           className={cx(S.headerCell, classNames?.headerCell)}
                           style={{ backgroundColor, ...styles?.headerCell }}
+                          isSortingDisabled={isSortingDisabled}
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -290,6 +293,7 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={cell.id}
+                          data-column-id={cell.column.id}
                           className={cx(S.bodyCell, classNames?.bodyCell)}
                           onClick={e =>
                             onBodyCellClick?.(e, cell.row.index, cell.column.id)

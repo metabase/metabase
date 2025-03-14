@@ -137,6 +137,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     renderEmptyMessage,
     queryBuilderMode,
     isDashboard,
+    isSettings,
     isRawTable,
     isEmbeddingSdk,
     scrollToLastColumn,
@@ -682,6 +683,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     >
       <DataGrid
         {...tableProps}
+        isSortingDisabled={isDashboard && !isSettings}
         emptyState={emptyState}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
