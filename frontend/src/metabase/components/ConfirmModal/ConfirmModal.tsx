@@ -45,7 +45,7 @@ export const ConfirmModal = ({
         <Button onClick={onClose}>{closeButtonText}</Button>
         <Button
           color={confirmButtonPrimary ? "primary" : "danger"}
-          variant="filled"
+          variant={confirmButtonPrimary ? "primary" : "filled"}
           onClick={onConfirm}
         >
           {confirmButtonText}
