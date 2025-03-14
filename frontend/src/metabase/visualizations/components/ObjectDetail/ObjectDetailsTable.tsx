@@ -17,7 +17,11 @@ import {
   isImageURL,
   isa,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   FitImage,
@@ -131,7 +135,7 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: unknown[];
+  zoomedRow: RowValue[];
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
