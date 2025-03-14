@@ -10,7 +10,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
-(defenterprise swap-mirror-db-middleware
+(defenterprise swap-mirror-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
    Metadata Provider for one that has the appropriate mirror database."
   :feature :database-routing
@@ -24,7 +24,7 @@
                        (rff metadata))))]
         (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
           (qp.store/with-metadata-provider mirror-db-id
-            (qp query rff*))))
+            (qp (assoc query :database mirror-db-id) rff*))))
       (qp query rff))))
 
 (defenterprise attach-mirror-db-middleware

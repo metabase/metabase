@@ -6,7 +6,7 @@
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :db_id (u/the-id db-or-id)))
+  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
 
 (defn router-db-or-id->mirror-db-id
   "Given a the current user and a database (or id), returns the ID of the mirror database that the user's query should
