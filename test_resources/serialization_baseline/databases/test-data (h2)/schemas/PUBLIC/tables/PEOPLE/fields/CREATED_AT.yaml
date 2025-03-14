@@ -38,5 +38,7 @@ serdes/meta:
 - id: CREATED_AT
   model: Field
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: kVPl9EyIl3cKVtJT2boYc

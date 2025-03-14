@@ -38,5 +38,7 @@ serdes/meta:
 - id: QUANTITY
   model: Field
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: 0wAi4F3QofJo3rKLN0Tmc

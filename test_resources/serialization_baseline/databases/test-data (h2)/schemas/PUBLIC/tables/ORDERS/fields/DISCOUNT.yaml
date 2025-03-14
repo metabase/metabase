@@ -38,5 +38,7 @@ serdes/meta:
 - id: DISCOUNT
   model: Field
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: bJZMPrTpKh9du7t-BG67z
