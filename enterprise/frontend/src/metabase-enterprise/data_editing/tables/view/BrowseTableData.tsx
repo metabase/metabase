@@ -6,7 +6,6 @@ import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { getRowCountMessage } from "metabase/query_builder/components/view/QuestionRowCount/QuestionRowCount";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -20,6 +19,7 @@ import {
   Title,
 } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
+import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
 import S from "./BrowseTableData.module.css";
@@ -117,8 +117,14 @@ export const BrowseTableData = ({
       <Box className={S.gridWrapper} p="1.5rem 1.5rem 0.5rem">
         <BrowseTableDataGrid data={datasetData} />
       </Box>
-      <Flex py="0.5rem" px="1.5rem" h="2.5rem" justify="flex-end">
-        <Text fw="bold" size="md" component="span">
+      <Flex
+        py="0.5rem"
+        px="1.5rem"
+        h="2.5rem"
+        justify="flex-end"
+        align="center"
+      >
+        <Text fw="bold" size="md" c="inherit" component="span">
           {getRowCountMessage(datasetData)}
         </Text>
       </Flex>

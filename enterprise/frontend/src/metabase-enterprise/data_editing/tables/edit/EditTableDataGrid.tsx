@@ -1,4 +1,3 @@
-import type { ColumnSizingState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
@@ -37,12 +36,7 @@ export const EditTableDataGrid = ({
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
-  const columnSizingMap = useMemo(() => {
-    return cols.reduce((acc: ColumnSizingState, column) => {
-      acc[column.name] = 100;
-      return acc;
-    }, {});
-  }, [cols]);
+  const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {
@@ -113,7 +107,9 @@ export const EditTableDataGrid = ({
       {...tableProps}
       classNames={{
         tableGrid: S.tableGrid,
+        headerContainer: S.tableHeaderContainer,
         headerCell: S.tableHeaderCell,
+        bodyContainer: S.tableBodyContainer,
         bodyCell: S.tableBodyCell,
         row: S.tableRow,
       }}
@@ -125,6 +121,7 @@ export const EditTableDataGrid = ({
           backgroundColor: undefined,
         },
       }}
+      theme={{ cell: { backgroundColor: "" } }}
       onBodyCellClick={handleCellClick}
     />
   );

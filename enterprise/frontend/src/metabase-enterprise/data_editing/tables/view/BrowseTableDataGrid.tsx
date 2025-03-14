@@ -1,4 +1,3 @@
-import type { ColumnSizingState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import {
@@ -20,12 +19,7 @@ export const BrowseTableDataGrid = ({ data }: BrowseTableDataGridProps) => {
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
-  const columnSizingMap = useMemo(() => {
-    return cols.reduce((acc: ColumnSizingState, column) => {
-      acc[column.name] = 100;
-      return acc;
-    }, {});
-  }, [cols]);
+  const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((column, columnIndex) => {

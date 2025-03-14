@@ -10,9 +10,10 @@ import {
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { hasDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
+import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
@@ -99,20 +100,29 @@ export const EditTableDataContainer = ({
   }
 
   return (
-    <Flex
-      className={S.container}
-      data-testid="edit-table-data-root"
-      direction="column"
-      justify="stretch"
-    >
+    <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
       {table && <EditTableDataHeader table={table} />}
       {hasDatabaseTableEditingEnabled(database) ? (
-        <Box pos="relative" className={S.gridWrapper}>
-          <EditTableDataGrid
-            data={datasetData}
-            onCellValueUpdate={handleCellValueUpdate}
-          />
-        </Box>
+        <>
+          <Box pos="relative" className={S.gridWrapper}>
+            <EditTableDataGrid
+              data={datasetData}
+              onCellValueUpdate={handleCellValueUpdate}
+            />
+          </Box>
+          <Flex
+            py="0.5rem"
+            px="1.5rem"
+            h="2.5rem"
+            justify="flex-end"
+            align="center"
+            className={S.gridFooter}
+          >
+            <Text fw="bold" size="md" c="inherit" component="span">
+              {getRowCountMessage(datasetData)}
+            </Text>
+          </Flex>
+        </>
       ) : (
         <GenericError
           title={t`Table editing is not enabled for this database`}
@@ -120,6 +130,6 @@ export const EditTableDataContainer = ({
           details={undefined}
         />
       )}
-    </Flex>
+    </Stack>
   );
 };
