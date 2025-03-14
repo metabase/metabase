@@ -90,18 +90,6 @@ get_min_bb_version() {
   fi
 }
 
-# Compare semantic versions
-compare_versions() {
-  local version1=$1
-  local version2=$2
-
-  if [ "$version1" = "$version2" ]; then
-    echo "0"  # Versions are equal
-  else
-    echo "-1" # Not same version
-  fi
-}
-
 # Detect OS and architecture
 detect_platform() {
   local os arch
@@ -199,12 +187,9 @@ check_babashka() {
 
     dbg_info "Installed version: ${installed_version}, Required: ${min_bb_version}"
 
-    # Proper semantic version comparison
-    local comparison_result
-    comparison_result=$(compare_versions "${installed_version}" "${min_bb_version}")
-
-    if [ "$comparison_result" -lt "0" ]; then
+    if [ "$installed_version" != "$min_bb_version" ]; then
       log_warning "Installed Babashka version ${installed_version} is not the same as required ${min_bb_version}"
+      log_info "Installing Babashka version ${min_bb_version} ..."
       return 1
     fi
 

@@ -1,4 +1,4 @@
-{:min-bb-version "1.12.196"
+{:min-bb-version "1.12.197"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test"]
