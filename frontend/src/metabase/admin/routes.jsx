@@ -35,10 +35,7 @@ import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
 import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
-import {
-  createAdminRedirect,
-  createAdminRouteGuard,
-} from "metabase/admin/utils";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -138,7 +135,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
-        <IndexRoute component={createAdminRedirect("setup", "general")} />
+        <IndexRedirect to="general" />
         <Route title={t`Settings`}>
           <Route path="*" component={SettingsEditor} />
         </Route>
