@@ -211,7 +211,8 @@
                                                             {:base-type :type/DateTimeWithLocalTZ
                                                              :temporal-unit :month-of-year}]
                                                            6 7 8]]
-                                                 :breakout [[:field "CREATED_AT"
+                                                 :breakout [[:field "PRODUCT_ID" {}]
+                                                            [:field "CREATED_AT"
                                                              {:base-type :type/DateTimeWithLocalTZ
                                                               :temporal-unit :week}]]})}}
                   (metabot-v3.tools.filters/query-model
@@ -233,7 +234,8 @@
                                    {:field_id order-created-at-field-id
                                     :bucket "hour-of-day"
                                     :function "max"}]
-                    :group-by [{:field_id order-created-at-field-id
+                    :group-by [{:field_id (->field-id "Product ID")}
+                               {:field_id order-created-at-field-id
                                 :field_granularity "week"}]}))))
         (testing "Fields can be selected"
           (is (=? {:structured-output
