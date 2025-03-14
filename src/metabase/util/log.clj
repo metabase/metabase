@@ -10,7 +10,11 @@
    [clojure.tools.logging.impl]
    [metabase.config :as config]
    [metabase.util.log.capture]
+   [metabase.util.malli :as mu]
+   [mokujin.log :as mlog]
    [net.cgrand.macrovich :as macros]))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
@@ -46,17 +50,36 @@
          (lambdaisland.glogi/log logger# level# nil s#)
          a#))))
 
+(defmacro with-context
+  "Adds a context to logs in body, using. Values will be stringified. Used in structured logging."
+  [m & body] `(mlog/with-context ~m ~@body))
+
+(mu/defn parse-args :- [:map
+                        [:e {:optional true} [:fn #(instance? Throwable %)]]
+                        [:msg {:optional true} :string]
+                        [:context {:optional true} :map]]
+  "Parses the arguments for logp into a dependable map."
+  [msg-or-throwable :- [:or [:fn #(instance? Throwable %)] :string]
+   & [ctx-or-msg :- [:maybe [:or :map :string]]
+      ctx :- [:maybe :map]]]
+  ;; (prn [(if (instance? Throwable msg-or-throwable) :e msg-or-throwable) ctx-or-msg ctx])
+  (if (instance? Throwable msg-or-throwable)
+    (merge {:e msg-or-throwable}
+           (parse-args ctx-or-msg ctx))
+    (let [msg     msg-or-throwable
+          context ctx-or-msg]
+      (cond-> {}
+        msg           (assoc :msg msg)
+        (seq context) (assoc :context context)))))
+
 (defn- tools-logp
   "Macro helper for [[logp]] in CLJ."
   [logger-ns level x more]
   `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
      (when (clojure.tools.logging.impl/enabled? logger# ~level)
-       (let [x# ~x]
-         (if (instance? Throwable x#)
-           (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
-                                                             ""
-                                                             `(print-str ~@more)))
-           (clojure.tools.logging/log* logger# ~level nil (print-str x# ~@more)))))))
+       (let [args# (apply parse-args ~(vec (cons x more)))]
+         (with-context (:context args#)
+           (clojure.tools.logging/log* logger# ~level (:e args#) (:msg args#)))))))
 
 (defn- tools-logf
   "Macro helper for [[logf]] in CLJ."
@@ -78,7 +101,8 @@
 (defmacro logp
   "Implementation for prn-style `logp`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[info]]."
-  {:arglists '([level message & more] [level throwable message & more])}
+  {:arglists '([level message & more]
+               [level throwable message & more])}
   [level x & more]
   `(do
      ~(config/build-type-case
@@ -127,7 +151,8 @@
 
 (defmacro info
   "Log one or more args at the `:info` level."
-  {:arglists '([& args] [e & args])}
+  {:arglists '([msg] [msg ctx]
+                     [e] [e msg] [e msg ctx])}
   [& args]
   `(logp :info ~@args))
 
