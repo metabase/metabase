@@ -152,7 +152,7 @@ describe("formatting", () => {
         );
         expect(formatNumber(500000, { compact: true })).toBe("500.0k");
         expect(formatNumber(10.1, { compact: true })).toBe("10.1");
-        expect(formatNumber(10.1, { compact: true, decimals: 0 })).toBe("10.1");
+        expect(formatNumber(10.1, { compact: true, decimals: 0 })).toBe("10");
         expect(formatNumber(99999999.9, { compact: true })).toBe("100.0M");
         expect(formatNumber(99999999.9, { compact: true, decimals: 0 })).toBe(
           "100M",
