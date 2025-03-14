@@ -16,7 +16,7 @@
   padding: 4px 8px;
   cursor: pointer;
   background-color: transparent;
-  color: inherit;
+  color: grey;
   border-radius: 99px;
 
   &.active {

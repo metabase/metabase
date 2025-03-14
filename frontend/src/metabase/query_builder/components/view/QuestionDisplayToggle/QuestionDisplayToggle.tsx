@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import { Flex, Icon } from "metabase/ui";
 
 import QuestionDisplayToggleS from "./QuestionDisplayToggle.module.css";
@@ -17,8 +18,12 @@ const QuestionDisplayToggle = ({
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
   return (
-    <Flex
+    <ViewButton
       className={cx(QuestionDisplayToggleS.Well, className)}
+      medium
+      labelBreakpoint="sm"
+      color="grey"
+      data-testid="viz-toggle-button"
       onClick={() => onToggleRawTable(!isShowingRawTable)}
     >
       <Flex
@@ -37,7 +42,7 @@ const QuestionDisplayToggle = ({
       >
         <Icon name="lineandbar" />
       </Flex>
-    </Flex>
+    </ViewButton>
   );
 };
 
