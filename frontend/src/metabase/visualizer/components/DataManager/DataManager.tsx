@@ -19,11 +19,6 @@ export const DataManager = () => {
         border: `1px solid var(--mb-color-border)`,
       }}
     >
-      <Box px={12} py={8}>
-        <Text fw="bold" mb={3}>
-          {t`Data`}
-        </Text>
-      </Box>
       {dataSources.length > 0 ? (
         <DatasetList />
       ) : (
