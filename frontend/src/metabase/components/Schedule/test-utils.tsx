@@ -28,6 +28,7 @@ const mockSchedule: ScheduleSettings = {
   schedule_minute: 0,
 };
 const mockScheduleOptions: ScheduleType[] = [
+  "minutely",
   "hourly",
   "daily",
   "weekly",
