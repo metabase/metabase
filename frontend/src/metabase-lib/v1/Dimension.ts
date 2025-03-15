@@ -4,7 +4,6 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { isa } from "cljs/metabase.types";
-import { FK_SYMBOL, stripId } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
@@ -27,7 +26,6 @@ import {
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
-  DatetimeUnit,
   ExpressionReference,
   FieldReference,
   LocalFieldReference,
@@ -140,14 +138,6 @@ export default class Dimension {
   }
 
   /**
-   * The default sub-dimension for the provided dimension of this type, if any.
-   * @abstract
-   */
-  static defaultDimension(_parent: Dimension): Dimension | null | undefined {
-    return null;
-  }
-
-  /**
    * Returns "sub-dimensions" of this dimension.
    * @abstract
    */
@@ -165,35 +155,6 @@ export default class Dimension {
         ),
       );
     }
-  }
-
-  /**
-   * Returns the default sub-dimension of this dimension, if any.
-   * @abstract
-   */
-  defaultDimension(
-    DimensionTypes: any[] = DIMENSION_TYPES,
-  ): Dimension | null | undefined {
-    const defaultDimensionOption = this.field().default_dimension_option;
-
-    if (defaultDimensionOption) {
-      const dimension = this._dimensionForOption(defaultDimensionOption);
-
-      // NOTE: temporarily disable for DatetimeFieldDimension until backend automatically picks appropriate bucketing
-      if (!(isFieldDimension(dimension) && dimension.temporalUnit())) {
-        return dimension;
-      }
-    }
-
-    for (const DimensionType of DimensionTypes) {
-      const defaultDimension = DimensionType.defaultDimension(this);
-
-      if (defaultDimension) {
-        return defaultDimension;
-      }
-    }
-
-    return null;
   }
 
   /**
@@ -268,14 +229,6 @@ export default class Dimension {
     return isExpressionDimension(this);
   }
 
-  foreign(_dimension: Dimension): FieldDimension {
-    return null;
-  }
-
-  datetime(_unit: DatetimeUnit): FieldDimension {
-    return null;
-  }
-
   /**
    * The underlying field for this dimension
    */
@@ -294,43 +247,12 @@ export default class Dimension {
     return this.field().name;
   }
 
-  // BREAKOUTS
-
-  /**
-   * Returns MBQL for the default breakout
-   *
-   * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
-   * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
-   */
-  defaultBreakout() {
-    const defaultSubDimension = this.defaultDimension();
-
-    if (defaultSubDimension) {
-      return defaultSubDimension.mbql();
-    } else {
-      return this.mbql();
-    }
-  }
-
   /**
    * The display name of this dimension, e.x. the field's display_name
    * @abstract
    */
   displayName(..._args: unknown[]): string {
     return "";
-  }
-
-  column(extra = {}) {
-    const field = this.baseDimension().field();
-    return {
-      id: field.id,
-      base_type: field.base_type,
-      semantic_type: field.semantic_type,
-      name: this.columnName(),
-      display_name: this.displayName(),
-      field_ref: this.mbql(),
-      ...extra,
-    };
   }
 
   /**
@@ -351,10 +273,6 @@ export default class Dimension {
     return this;
   }
 
-  sourceDimension() {
-    return this._query && this._query.dimensionForSourceQuery(this);
-  }
-
   getOptions() {
     return this._options;
   }
@@ -372,14 +290,6 @@ export default class Dimension {
    */
   temporalUnit() {
     return this.getOption("temporal-unit");
-  }
-
-  /**
-   * Whether temporal bucketing is being applied, *and* the bucketing is a truncation operation such as "month" or
-   * "quarter";
-   */
-  isTemporalExtraction(): boolean {
-    return this.temporalUnit() && /-of-/.test(this.temporalUnit());
   }
 
   // binning-strategy stuff
@@ -498,12 +408,6 @@ export default class Dimension {
     return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
   }
 
-  isValidFKRemappingTarget() {
-    return !(
-      this.defaultDimension() instanceof FieldDimension && this.temporalUnit()
-    );
-  }
-
   /**
    * The name to be shown when this dimension is being displayed as a sub-dimension of another.
    *
@@ -529,54 +433,6 @@ export default class Dimension {
     }
 
     return "Default";
-  }
-
-  /**
-   * A shorter version of subDisplayName, e.x. to be shown in the dimension picker trigger (e.g. the list of temporal
-   * bucketing options like 'Day' or 'Month')
-   */
-  subTriggerDisplayName(): string {
-    if (this._subTriggerDisplayName) {
-      return this._subTriggerDisplayName;
-    }
-
-    // binned field
-    if (this._binningOptions()) {
-      return this._describeBinning();
-    }
-
-    // temporal bucketed field
-    if (this.temporalUnit()) {
-      return t`by ${Lib.describeTemporalUnit(
-        this.temporalUnit(),
-      ).toLowerCase()}`;
-    }
-
-    // if the field is a binnable number, we should return 'Unbinned' here
-    if (this._isBinnable()) {
-      return t`Unbinned`;
-    }
-
-    return "";
-  }
-
-  /**
-   * Whether this is a numeric Field that can be binned
-   */
-  _isBinnable(): boolean {
-    const defaultDimension = this.defaultDimension();
-    return (
-      defaultDimension &&
-      isFieldDimension(defaultDimension) &&
-      defaultDimension._binningOptions()
-    );
-  }
-
-  /**
-   * Renders a dimension to a string for display in query builders
-   */
-  render() {
-    return this._parent ? this._parent.render() : this.displayName();
   }
 
   mbql(): FieldReference | null | undefined {
@@ -853,13 +709,6 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  // no idea what this does or if it's even used anywhere.
-  foreign(dimension: Dimension): FieldDimension {
-    if (isFieldDimension(dimension)) {
-      return dimension.withSourceField(this._fieldIdOrName);
-    }
-  }
-
   columnName() {
     return this.isIntegerFieldId() ? super.columnName() : this._fieldIdOrName;
   }
@@ -925,40 +774,6 @@ export class FieldDimension extends Dimension {
     return dimensions;
   }
 
-  defaultDimension(dimensionTypes = []): FieldDimension {
-    const field = this.field();
-
-    if (field && field.isDate()) {
-      return this.withTemporalUnit(field.getDefaultDateTimeUnit());
-    }
-
-    let dimension = super.defaultDimension(dimensionTypes);
-
-    if (!dimension) {
-      return null;
-    }
-
-    const sourceField = this.sourceField();
-
-    if (sourceField) {
-      dimension = dimension.withSourceField(sourceField);
-    }
-
-    const joinAlias = this.joinAlias();
-
-    if (joinAlias) {
-      dimension = dimension.withJoinAlias(joinAlias);
-    }
-
-    const baseType = this.getOption("base-type");
-
-    if (baseType) {
-      dimension = dimension.withOption("base-type", baseType);
-    }
-
-    return dimension;
-  }
-
   _dimensionForOption(option): FieldDimension {
     let dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
@@ -998,49 +813,6 @@ export class FieldDimension extends Dimension {
       this._query,
       additionalProperties,
     );
-  }
-
-  render(): string {
-    let displayName = this.displayName();
-
-    if (this.fk()) {
-      const fkDisplayName =
-        this.fk() && stripId(this.fk().field().displayName());
-      if (!displayName.startsWith(`${fkDisplayName} ${FK_SYMBOL}`)) {
-        displayName = `${fkDisplayName} ${FK_SYMBOL} ${displayName}`;
-      }
-    } else if (this.joinAlias()) {
-      const joinAlias = this.joinAlias();
-      if (!displayName.startsWith(`${joinAlias} ${FK_SYMBOL}`)) {
-        displayName = `${joinAlias} ${FK_SYMBOL} ${displayName}`;
-      }
-    }
-
-    if (this.temporalUnit()) {
-      displayName = `${displayName}: ${Lib.describeTemporalUnit(
-        this.temporalUnit(),
-      )}`;
-    }
-
-    if (this._binningOptions()) {
-      displayName = `${displayName}: ${this._describeBinning()}`;
-    }
-
-    return displayName;
-  }
-
-  column(extra = {}) {
-    const more = {};
-
-    if (typeof this.sourceField() === "number") {
-      more.fk_field_id = this.sourceField();
-    }
-
-    if (this.temporalUnit()) {
-      more.unit = this.temporalUnit();
-    }
-
-    return { ...super.column(), ...more, ...extra };
   }
 
   /**
@@ -1324,22 +1096,6 @@ export class ExpressionDimension extends Dimension {
       this._metadata,
       this._query,
     );
-  }
-
-  render(): string {
-    let displayName = this.displayName();
-
-    if (this.temporalUnit()) {
-      displayName = `${displayName}: ${Lib.describeTemporalUnit(
-        this.temporalUnit(),
-      )}`;
-    }
-
-    if (this._binningOptions()) {
-      displayName = `${displayName}: ${this._describeBinning()}`;
-    }
-
-    return displayName;
   }
 }
 

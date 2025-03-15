@@ -199,23 +199,6 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("foreign", () => {
-      it("should return a FieldDimension", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
-        const dimension = ordersProductId
-          .dimension()
-          .foreign(productsCategory.dimension());
-
-        expect(dimension).toBeInstanceOf(FieldDimension);
-        expect(dimension.mbql()).toEqual([
-          "field",
-          PRODUCTS.CATEGORY,
-          { "source-field": ORDERS.PRODUCT_ID },
-        ]);
-      });
-    });
-
     describe("getMLv1CompatibleDimension", () => {
       it("should return itself without changes by default", () => {
         const productsCategory = metadata.field(PRODUCTS.CATEGORY);
@@ -228,10 +211,6 @@ describe("Dimension", () => {
   describe("Field with integer ID", () => {
     const dimension = Dimension.parseMBQL(
       ["field", ORDERS.TOTAL, null],
-      metadata,
-    );
-    const categoryDimension = Dimension.parseMBQL(
-      ["field", PRODUCTS.CATEGORY, null],
       metadata,
     );
 
@@ -264,16 +243,6 @@ describe("Dimension", () => {
               metadata,
             ).subDisplayName(),
           ).toEqual("Default");
-        });
-      });
-
-      describe("subTriggerDisplayName()", () => {
-        it("returns 'Unbinned' if the dimension is a binnable number", () => {
-          expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
-        });
-
-        it("does not have a value if the dimension is a category", () => {
-          expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
         });
       });
 
@@ -366,29 +335,6 @@ describe("Dimension", () => {
     const dimension = Dimension.parseMBQL(mbql, metadata);
 
     describe("INSTANCE METHODS", () => {
-      describe("_isBinnable()", () => {
-        it("should return truthy", () => {
-          expect(dimension._isBinnable()).toBeTruthy();
-        });
-      });
-
-      describe("defaultDimension()", () => {
-        it("should return a dimension with binning options", () => {
-          const defaultDimension = dimension.defaultDimension();
-          expect(defaultDimension).toBeInstanceOf(FieldDimension);
-          expect(defaultDimension.mbql()).toEqual([
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-              binning: {
-                strategy: "default",
-              },
-            },
-          ]);
-        });
-      });
-
       describe("dimensions()[1]", () => {
         it("should be a binned dimension", () => {
           expect(dimension.dimensions()[1].mbql()).toEqual([
