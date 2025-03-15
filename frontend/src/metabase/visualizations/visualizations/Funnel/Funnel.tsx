@@ -11,7 +11,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
   ChartSettingsError,
-  MinRowsError,
+  // MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -44,6 +44,7 @@ Object.assign(Funnel, {
   iconName: "funnel",
   noHeader: true,
   minSize: getMinSize("funnel"),
+  supportsVisualizer: true,
   defaultSize: getDefaultSize("funnel"),
   isSensible({ cols }: DatasetData) {
     return cols.length === 2;
@@ -52,18 +53,18 @@ Object.assign(Funnel, {
     series: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
-    const [
-      {
-        data: { rows },
-      },
-    ] = series;
+    // const [
+    //   {
+    //     data: { rows },
+    //   },
+    // ] = series;
     if (series.length > 1) {
       return;
     }
 
-    if (rows.length < 1) {
-      throw new MinRowsError(1, rows.length);
-    }
+    // if (rows.length < 1) {
+    //   throw new MinRowsError(1, rows.length);
+    // }
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
         t`Which fields do you want to use?`,
@@ -206,6 +207,7 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
+    isVisualizerViz,
     actionButtons,
     className,
     onChangeCardAndRun,
@@ -233,6 +235,10 @@ export function Funnel(props: VisualizationProps) {
     );
   }
 
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
@@ -240,9 +246,9 @@ export function Funnel(props: VisualizationProps) {
           series={groupedRawSeries}
           settings={settings}
           icon={headerIcon}
-          getHref={getHref}
+          getHref={canSelectTitle ? getHref : undefined}
           actionButtons={actionButtons}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
         />
       )}
       <FunnelNormal

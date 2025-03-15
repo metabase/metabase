@@ -35,6 +35,7 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
+import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -50,6 +51,8 @@ export const useChartEvents = (
   {
     card,
     rawSeries,
+    isVisualizerViz,
+    visualizerRawSeries = [],
     selectedTimelineEventIds,
     settings,
     visualizationIsClickable,
@@ -69,15 +72,17 @@ export const useChartEvents = (
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find(series => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (isVisualizerViz) {
+        const index = getVisualizerSeriesCardIndex(cardId);
+        const nextCard = visualizerRawSeries[index].card;
+        onChangeCardAndRun?.({ nextCard });
+      } else {
+        const nextCard =
+          rawSeries.find(series => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
   );
 
   const hoveredSeriesDataKey = useMemo(

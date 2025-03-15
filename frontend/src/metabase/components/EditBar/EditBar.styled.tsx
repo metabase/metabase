@@ -1,4 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
+import isPropValid from "@emotion/is-prop-valid";
+// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
@@ -6,7 +8,9 @@ import { alpha, color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 
-export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
+export const Root = styled(FullWidthContainer, {
+  shouldForwardProp: isPropValid,
+})<{ admin: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
