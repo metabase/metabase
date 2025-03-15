@@ -15,6 +15,7 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDataset,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
@@ -35,6 +36,7 @@ import {
   createAdHocNativeCard,
   createComposedModelCard,
   createNativeModelCard,
+  createOrdersTable,
   createSampleDatabase,
   createSavedNativeCard,
   createSavedStructuredCard,
@@ -132,14 +134,17 @@ async function setup({
   });
 
   const metadata = getMetadata(createMockState({ entities: entitiesState }));
-  const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+  const ordersTable = createOrdersTable();
+  const ordersFields = ordersTable.fields ?? [];
   const question = isSavedCard
     ? checkNotNull(metadata.question(card.id))
     : new Question(card, metadata);
 
   const queryResult = createMockDataset({
     data: {
-      cols: ordersTable.getFields().map(field => field.column()),
+      cols: ordersFields.map(field =>
+        createMockColumn({ ...field, id: Number(field.id) }),
+      ),
     },
   });
 
