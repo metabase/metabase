@@ -1,4 +1,5 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { type CacheConfig, CacheDurationUnit } from "metabase-types/api";
 
 import {
   adhocQuestionData,
@@ -7,11 +8,13 @@ import {
   createSandboxingDashboardAndQuestions,
   getCardResponses,
   getDashcardResponses,
-  getFieldValues,
+  getFieldValuesForProductCategories,
+  resultsShouldBeCached,
   rowsShouldContainGizmosAndWidgets,
   rowsShouldContainOnlyGizmos,
   signInAsNormalUser,
   sandboxingUser as user,
+  valuesShouldContainOnlyGizmos,
 } from "./helpers/e2e-sandboxing-helpers";
 import type { DatasetResponse, SandboxableItems } from "./helpers/types";
 
@@ -21,6 +24,17 @@ const preparePermissions = () => {
   H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
   H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
+};
+
+const simpleCacheConfiguration: CacheConfig = {
+  model: "root",
+  model_id: 0,
+  strategy: {
+    type: "duration",
+    duration: 1,
+    unit: CacheDurationUnit.Hours,
+    refresh_automatically: false,
+  },
 };
 
 describe(
@@ -44,9 +58,18 @@ describe(
             (item: { model: string }) => item.model !== "dashboard",
           ),
         };
+
+        cy.log(
+          "We additionally want to ensure that sandboxed users see filtered results even if the unsandboxed results are cached. So let's cache the unsandboxed results",
+        );
+        cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+          cy.log("Populate the caches");
+          getCardResponses(items);
+        });
       });
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
+
       // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
     });
@@ -57,20 +80,25 @@ describe(
         "dashcardQuery",
       );
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
+
       H.restore("sandboxing-on-postgres-12" as any);
     });
 
     it("shows all data before sandboxing policy is applied", () => {
       signInAsNormalUser();
 
-      getDashcardResponses(items).then(rowsShouldContainGizmosAndWidgets);
-      getCardResponses(items).then(rowsShouldContainGizmosAndWidgets);
+      getDashcardResponses(items)
+        .then(resultsShouldBeCached)
+        .then(rowsShouldContainGizmosAndWidgets);
+      getCardResponses(items)
+        .then(resultsShouldBeCached)
+        .then(rowsShouldContainGizmosAndWidgets);
 
       H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
         rowsShouldContainGizmosAndWidgets([response]),
       );
 
-      getFieldValues().then(response => {
+      getFieldValuesForProductCategories().then(response => {
         const values = response.body.values.map(val => val[0]);
         expect(values.length).to.equal(4);
         expect(values).to.contain("Doohickey");
@@ -91,13 +119,15 @@ describe(
           customViewType: "Question" as const,
           customViewName: "sandbox - Question with only gizmos",
         });
-        getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
-        getCardResponses(items).then(rowsShouldContainOnlyGizmos);
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos([response as DatasetResponse]),
-        );
-        getFieldValues().then(response => {
-          expect(response.body.values).to.deep.equal([["Gizmo"]]);
+        signInAsNormalUser().then(() => {
+          getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
+          getCardResponses(items).then(rowsShouldContainOnlyGizmos);
+          H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+            rowsShouldContainOnlyGizmos([response as DatasetResponse]),
+          );
+          getFieldValuesForProductCategories().then(response =>
+            valuesShouldContainOnlyGizmos(response.body.values),
+          );
         });
       });
 
@@ -107,12 +137,13 @@ describe(
           customViewType: "Model" as const,
           customViewName: "sandbox - Model with only gizmos",
         });
+        signInAsNormalUser();
         getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
         getCardResponses(items).then(rowsShouldContainOnlyGizmos);
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValues().then(response => {
+        getFieldValuesForProductCategories().then(response => {
           expect(response.body.values).to.deep.equal([["Gizmo"]]);
         });
       });
@@ -123,12 +154,13 @@ describe(
           filterTableBy: "column",
           filterColumn: "Category",
         });
+        signInAsNormalUser();
         getDashcardResponses(items).then(rowsShouldContainOnlyGizmos);
         getCardResponses(items).then(rowsShouldContainOnlyGizmos);
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValues().then(response => {
+        getFieldValuesForProductCategories().then(response => {
           expect(response.body.values).to.deep.equal([["Gizmo"]]);
         });
       });
