@@ -280,7 +280,9 @@
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
    (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})])
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-manually-synced
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
