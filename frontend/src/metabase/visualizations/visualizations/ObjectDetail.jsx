@@ -33,6 +33,12 @@ const ObjectDetailProperties = {
         getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
+
+      // Makes sure `column_settings` doesn't omit these settings,
+      // so they can be used for formatting
+      view_as: { hidden: true },
+      link_text: { hidden: true },
+      link_url: { hidden: true },
     };
 
     return settings;
