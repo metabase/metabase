@@ -153,6 +153,7 @@ export function BasicAdminSettingInput({
           checked={localValue}
           onChange={(e) => handleChange(e.target.checked)}
           label={localValue ? t`Enabled` : t`Disabled`}
+          w="auto"
         />
       );
     case "radio":

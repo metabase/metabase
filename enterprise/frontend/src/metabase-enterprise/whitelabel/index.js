@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import { jt, t } from "ttag";
 
 import RedirectWidget from "metabase/admin/settings/components/widgets/RedirectWidget";
@@ -43,7 +42,9 @@ import { getLoadingMessageOptions } from "./lib/loading-message";
 import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
-  PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
+  PLUGIN_LANDING_PAGE.getLandingPage = () =>
+    MetabaseSettings.get("landing-page");
+  PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(
     (sections) => ({
       ...sections,
@@ -284,24 +285,6 @@ if (hasPremiumFeature("whitelabel")) {
         ],
       },
     }),
-    (sections) => {
-      return updateIn(sections, ["general", "settings"], (settings) => {
-        const customHomepageIndex = settings.findIndex(
-          (setting) => setting.key === "custom-homepage-dashboard",
-        );
-        return [
-          ...settings.slice(0, customHomepageIndex + 1),
-          {
-            key: "landing-page",
-            display_name: t`Landing Page`,
-            type: "string",
-            placeholder: "/",
-            widget: LandingPageWidget,
-          },
-          ...settings.slice(customHomepageIndex + 1),
-        ];
-      });
-    },
   );
 
   PLUGIN_APP_INIT_FUNCTIONS.push(() => {

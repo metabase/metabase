@@ -308,6 +308,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
+  "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
@@ -383,6 +384,7 @@ interface PublicSettings {
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "landing-page": string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;
