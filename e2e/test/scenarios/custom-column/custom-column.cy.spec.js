@@ -1251,7 +1251,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
-    H.popover().findByText("Select none").should("be.visible");
+    H.popover().findByText("Select all").should("be.visible");
   });
 
   // This test is skipped until we can implement the "save unsaved changes"
@@ -1259,7 +1259,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
   it.skip("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
     H.expressionEditorWidget().should("exist");
 
     H.modal().within(() => {
@@ -1280,7 +1280,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.expressionEditorWidget().should("exist");
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
 
     H.modal().within(() => {
       cy.findByText("Keep editing your custom expression?").should(

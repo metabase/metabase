@@ -1379,7 +1379,7 @@ describe("issue 24235", () => {
 
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.button("Update filter").should("be.disabled");
     });
   });
@@ -2987,7 +2987,7 @@ describe("issue 27579", () => {
       cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("not.be.checked");
     });
   });

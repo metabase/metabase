@@ -77,9 +77,7 @@ export const FieldPicker = ({
             indeterminate={!isAll && !isNone}
             onChange={handleLabelToggle}
           />
-          <div className={S.ItemTitle}>
-            {isAll ? t`Select none` : t`Select all`}
-          </div>
+          <div className={S.ItemTitle}>{t`Select all`}</div>
         </HoverParent>
       </li>
       <DelayGroup>

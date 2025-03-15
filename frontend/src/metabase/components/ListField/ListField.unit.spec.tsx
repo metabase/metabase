@@ -103,7 +103,7 @@ describe("ListField", () => {
       options: allOptions,
     });
 
-    const checkbox = screen.getByLabelText("Select none");
+    const checkbox = screen.getByLabelText("Select all");
     expect(checkbox).toBeChecked();
     await userEvent.click(checkbox);
 
@@ -126,7 +126,7 @@ describe("ListField", () => {
       expect(screen.queryByLabelText("Widget")).not.toBeInTheDocument(),
     );
 
-    const checkbox = screen.getByLabelText("Select none");
+    const checkbox = screen.getByLabelText("Select these");
     expect(checkbox).toBeChecked();
     await userEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(["Doohickey", "Widget"]);
@@ -146,7 +146,7 @@ describe("ListField", () => {
       expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
     );
     await waitFor(() =>
-      expect(screen.queryByLabelText("Select none")).not.toBeInTheDocument(),
+      expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
     );
   });
 });

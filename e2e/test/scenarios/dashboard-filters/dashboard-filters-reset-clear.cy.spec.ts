@@ -626,7 +626,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         filter(label).click();
         H.popover().within(() => {
           cy.findAllByRole("listitem").contains("Select all").click();
-          cy.findAllByRole("listitem").contains("Select none").click();
+          cy.findAllByRole("listitem").contains("Select all").click();
 
           value
             .split(",")
