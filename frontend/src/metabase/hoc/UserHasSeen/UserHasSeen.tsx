@@ -29,11 +29,22 @@ export const UserHasSeen = ({
     true,
   );
 
+  /*
+    This is a really odd way to name things, but essentially
+    if the user hasn't seen the key before, then the value from
+    the API will be false. So we compute isNew to be the opposite of
+    that. This is also useful when we want to determine
+    the value based on something other than the API response
+  */
   const isNew = overrideFn(hasSeen);
 
   useEffect(() => {
-    if (upsertBadge && removeBadge) {
-      if (!isLoading && isNew) {
+    const hasContext = upsertBadge && removeBadge;
+    // In this case, we only want to register the value with the context
+    // if we are actually going to pass back that the value isNew
+    const hasLoadedValueAndIsTrue = !isLoading && isNew;
+    if (hasContext) {
+      if (hasLoadedValueAndIsTrue) {
         upsertBadge({ key: hasSeenKey, value: hasSeen });
         return () => removeBadge({ key: hasSeenKey });
       }

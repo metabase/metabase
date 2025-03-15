@@ -19,7 +19,7 @@ const _UserHasSeenAll = ({ children }: UserHasSeenAllProps) => {
   const ctx = useContext(UserHasSeenAllContext);
 
   if (!ctx) {
-    throw new Error("User has seen must be used within context");
+    throw new Error("UserHasSeenAll must be used within context");
   }
 
   const { hasSeenAll, handleOpen } = ctx;
