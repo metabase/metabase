@@ -4,10 +4,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
@@ -235,6 +238,229 @@
   (lib.util.match/match-one query
     [:metric _ _] &match))
 
+;;;; Rejection of incompatible metrics ===============================================================================
+
+(def ^:private commutative-ops
+  #{:+
+    :*
+    :=
+    :!=
+    :and
+    :or})
+
+(declare equal-filter?)
+
+(defn- equal-commutative-op?
+  [f1 f2]
+  (let [f1-args (subvec f1 2)
+        f2-args (subvec f2 2)]
+    (loop [f1-indices (range (count f1-args))
+           f2-indices (set (range (count f2-args)))]
+      (cond
+        (and (empty? f1-indices)
+             (empty? f2-indices))
+        true
+
+        (or (empty? f1-indices)
+            (empty? f2-indices))
+        false
+
+        :else
+        (let [f1-index (first f1-indices)
+              f1-elm (f1-args f1-index)
+              matching (m/find-first #(equal-filter? f1-elm (f2-args %)) f2-indices)]
+          (if-not matching
+            false
+            (recur (next f1-indices)
+                   (disj f2-indices matching))))))))
+
+;; Following fn operates on _single elements_ of filters vector (as returned from lib/filters).
+(defn- equal-filter?
+  [f1 f2]
+  (let [f1 (cond-> f1 (lib.util/clause-of-type? f1 :value) (get 2))
+        f2 (cond-> f2 (lib.util/clause-of-type? f2 :value) (get 2))]
+    (cond
+      (or (not (lib.util/clause? f1))
+          (not (lib.util/clause? f2)))
+      (= f1 f2)
+
+      (and (lib.util/clause? f1)
+           (lib.util/clause? f2)
+           (= (first f1) (first f2))
+           (= (count (nthnext f1 2)) (count (nthnext f2 2))))
+      (if ((comp commutative-ops first) f1)
+        (equal-commutative-op? f1 f2)
+        (every? #(apply equal-filter? %)
+                (map vector (nthnext f1 2) (nthnext f2 2))))
+
+      :else
+      false)))
+
+(def ^:private forbidden-aggregations #{:min
+                                        :stddev
+                                        :count-where
+                                        :cum-count
+                                        :sum-where
+                                        :cum-sum
+                                        :distinct
+                                        :percentile
+                                        :var
+                                        :median
+                                        :share
+                                        :max
+                                        :count
+                                        :avg
+                                        :sum})
+
+(defn- non-metric-aggregation
+  [aggregation]
+  (when-let [[tag _opts & args] (and (vector? aggregation) aggregation)]
+    (or (and (forbidden-aggregations tag) aggregation)
+        (some non-metric-aggregation args))))
+
+(defn- assert-compatible-stage-aggregations
+  "Assert that stage, specifically its aggregations, are compatible with referenced metrics. If there is aggregating
+  function called on referencing stage directly, referenced metrics can not contain any filters."
+  [query stage-number metrics]
+  (when-some [non-metric-ag (m/find-first non-metric-aggregation (lib/aggregations query stage-number))]
+    (when-some [metric-id  (some (fn [[id metric-query]]
+                                   (when (seq (lib/filters metric-query))
+                                     id))
+                                 ;; assuming all those metrics are present in the `query`'s `stage-number`
+                                 metrics)]
+      (throw (ex-info (tru "It''s not allowed to combine metrics having filters with other aggregations")
+                      {:meric-id metric-id
+                       :metric-filter (lib/filters (metrics metric-id))
+                       :non-metric-aggregation non-metric-ag}))))
+
+  nil)
+
+;; Following fn operates on filter's vectors (as returned from lib/filters)
+(defn- filters-map-1-1?
+  "Predicate that checks whether filtler clauses of `f1` equal to clauses of `f2` in terms of [[equal-filter?]]."
+  [f1 f2]
+  (assert (and (vector f1) (vector f2)))
+  (loop [f1 f1
+         f2-indices (set (range (count f2)))]
+    (cond
+      (and (empty? f1) (empty? f2-indices))
+      true
+
+      (or (empty? f1) (empty? f2-indices))
+      false
+
+      :else
+      (let [f1-elm (first f1)
+            matching (m/find-first #(equal-filter? f1-elm (get f2 %)) f2-indices)]
+        (if (nil? matching)
+          false
+          (recur (rest f1) (disj f2-indices matching)))))))
+
+(defn- assert-compatible-filters-in-metrics
+  "Assert that metrics referenced in a stage have compatible filters. Returns nil."
+  [metrics]
+  (let [[base-metric-id & other-metric-ids] (keys metrics)
+        base-metric-query (get metrics base-metric-id)
+        base-filters (lib/filters base-metric-query)]
+    (loop [metric-ids other-metric-ids]
+      (when (seq metric-ids)
+        (let [metric-id (first metric-ids)
+              metric-query (get metrics metric-id)
+              metric-filters (lib/filters metric-query)]
+          (when-not (filters-map-1-1? base-filters metric-filters)
+            (throw (ex-info (tru "Metrics {0} and {1} have incompatible filters."
+                                 base-metric-id
+                                 metric-id)
+                            {:base-filters base-filters
+                             :metric-filters metric-filters}))))
+        (recur (rest other-metric-ids)))))
+  nil)
+
+(defn is-join-compatible?
+  "Predicate that checks whether join is compatible to be used in metric or referencing stage."
+  [query stage-number join]
+  (every? (fn [[op _opts arg1 arg2 :as condition]]
+            (when (and (= := op)
+                       (lib.util/clause-of-type? arg1 :field)
+                       (lib.util/clause-of-type? arg2 :field))
+              (let [local-ref (some #(when (and (lib.util/clause? %)
+                                                (not (:join-alias (lib.options/options %)))) %)
+                                    condition)
+                    _ (assert  (some? local-ref))
+                    local-col (lib/find-matching-column local-ref (lib/visible-columns query stage-number))
+                    _ (assert (some? local-col))
+                    dummy-query (lib.query/query-with-stages query (:stages join))
+                    foreign-ref (some #(when (and (lib.util/clause? %)
+                                                  (:join-alias (lib.options/options %))) %)
+                                      condition)
+                    _ (assert (some? foreign-ref))
+                    foreign-col (lib/find-matching-column
+                                 (lib.options/update-options foreign-ref dissoc :join-alias)
+                                 (lib/returned-columns dummy-query))
+                    _ (assert (some? foreign-col))]
+                (and (= :type/FK (:semantic-type local-col))
+                     (= :type/PK (:semantic-type foreign-col))
+                     (= (:fk-target-field-id local-col) (:id foreign-col))))))
+          (:conditions join)))
+
+(defn- assert-compatible-joins
+  "Assert referencing stage and referenced metrics have no incompatible joins. Returns nil."
+  [query stage-number resolved-metric-queries]
+  ;; check the stage joins
+  (loop [stage-joins (lib/joins query stage-number)]
+    (when (seq stage-joins)
+      (let [join (first stage-joins)]
+        (when-not (is-join-compatible? query stage-number join)
+          (throw (ex-info (tru "Incompatible join in a stage referencing a metric")
+                          {:join join}))))
+      (recur (rest stage-joins))))
+  ;; check the metrics' joins
+  (loop [metric-ids (keys resolved-metric-queries)]
+    (when (seq metric-ids)
+      (let [metric-id (first metric-ids)
+            metric-query (get resolved-metric-queries metric-id)]
+        (loop [metric-joins (lib/joins metric-query)]
+          (when (seq metric-joins)
+            (let [metric-join (first metric-joins)]
+              (when-not (is-join-compatible? metric-query -1 metric-join)
+                (throw (ex-info (tru "Incompatible join in the metric {0}" metric-id)
+                                {:join metric-join}))))
+            (recur (rest metric-joins)))))
+      (recur (rest metric-ids))))
+  nil)
+
+(defn- assert-compatible-metrics*
+  "Assert that referencing stage and referenced metric joins and filters are allowed. Returns nil."
+  [query path-type path stage-or-join]
+  (when (= :lib.walk/stage path-type)
+    (let [aggregation (:aggregation stage-or-join)]
+      (when-some [metric-ids (not-empty (set (lib.util.match/match aggregation
+                                               [:metric opts id]
+                                               id)))]
+        (let [refq-stage-number (last path)
+              refq-stages (get-in query (butlast path))
+              refq (lib.query/query-with-stages query refq-stages)
+              metrics (-> (->> (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
+                               (m/index-by :id))
+                          (update-vals #(->> %
+                                             :dataset-query
+                                             ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                             (lib/query query))))]
+          (try
+            (assert-compatible-joins refq refq-stage-number metrics)
+            (assert-compatible-filters-in-metrics metrics)
+            (assert-compatible-stage-aggregations refq refq-stage-number metrics)
+            (catch Throwable t
+              (analytics/inc! :metabase-query-processor/metrics-adjust-incompatible-rejections)
+              (throw t)))))))
+  nil)
+
+(defn- assert-compatible-metrics
+  [query]
+  (lib.walk/walk query assert-compatible-metrics*))
+
+;;;; Middleware =======================================================================================================
+
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -255,6 +481,7 @@
     (do
       (analytics/inc! :metabase-query-processor/metrics-adjust)
       (try
+        (assert-compatible-metrics query)
         (let [query (lib.walk/walk
                      query
                      (fn [_query path-type path stage-or-join]
