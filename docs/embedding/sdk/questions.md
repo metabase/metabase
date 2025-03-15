@@ -326,6 +326,23 @@ Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClo
 | className | string              | Custom CSS class name for styling the component |
 | style     | React.CSSProperties | Inline styles to apply to the component         |
 
+### InteractiveQuestion.DownloadWidget
+
+Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `JSON`, and `PNG` depending on the visualization).
+
+No props
+
+### InteractiveQuestion.DownloadWidgetDropdown
+
+Provides a button that contains a dropdown that shows the `DownloadWidget`.
+
+Uses [Popover props](https://mantine.dev/core/popover/?t=props) under the hood, as well as:
+
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
 ### `InteractiveQuestion.Title`
 
 Displays a title based on the question's state. Shows:
