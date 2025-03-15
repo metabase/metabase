@@ -1,45 +1,16 @@
 import cx from "classnames";
-import { useCallback } from "react";
-import { t } from "ttag";
 
-import { currency } from "cljs/metabase.util.currency";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
 import FieldSeparator from "../FieldSeparator";
 
-const TYPE_OPTIONS = [
-  ...MetabaseCore.field_semantic_types,
-  {
-    id: null,
-    name: t`No semantic type`,
-    section: t`Other`,
-  },
-];
-
-const SEARCH_PROPS = [
-  "display_name",
-  "table.display_name",
-  "table.schema_name",
-];
-
-interface TypeOption {
-  id: string | null;
-  name: string;
-  section: string;
-}
-
-interface CurrencyOption {
-  name: string;
-  code: string;
-  symbol: string;
-}
+import { CurrencyPicker } from "./CurrencyPicker";
+import { FkTargetPicker } from "./FkTargetPicker";
+import { SemanticTypePicker } from "./SemanticTypePicker";
 
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
@@ -56,129 +27,78 @@ const SemanticTypeAndTargetPicker = ({
   hasSeparator,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
-  const comparableIdFields = idFields.filter((idField: Field) =>
-    field.isComparableWith(idField),
-  );
-  const hasIdFields = comparableIdFields.length > 0;
-  const includeSchema = hasMultipleSchemas(comparableIdFields);
   const showFKTargetSelect = field.isFK();
   const showCurrencyTypeSelect = field.isCurrency();
 
-  const handleChangeSemanticType = useCallback(
-    ({ target: { value: semanticType } }: SelectChangeEvent<string>) => {
-      // If we are changing the field from a FK to something else, we should delete any FKs present
-      if (field.target && field.target.id != null && field.isFK()) {
-        onUpdateField(field, {
-          semantic_type: semanticType,
-          fk_target_field_id: null,
-        });
-      } else {
-        onUpdateField(field, { semantic_type: semanticType });
-      }
-    },
-    [field, onUpdateField],
-  );
-
-  const handleChangeCurrency = useCallback(
-    ({ target: { value: currency } }: SelectChangeEvent<string>) => {
+  const handleChangeSemanticType = (semanticType: string | null) => {
+    // If we are changing the field from a FK to something else, we should delete any FKs present
+    if (field.target && field.target.id != null && field.isFK()) {
       onUpdateField(field, {
-        settings: { ...field.settings, currency },
+        semantic_type: semanticType,
+        fk_target_field_id: null,
       });
-    },
-    [field, onUpdateField],
-  );
+    } else {
+      onUpdateField(field, {
+        semantic_type: semanticType,
+      });
+    }
+  };
 
-  const handleChangeTarget = useCallback(
-    ({ target: { value: fk_target_field_id } }: SelectChangeEvent<FieldId>) => {
-      onUpdateField(field, { fk_target_field_id });
-    },
-    [field, onUpdateField],
-  );
+  const handleChangeCurrency = (currency: string) => {
+    onUpdateField(field, {
+      settings: { ...field.settings, currency },
+    });
+  };
+
+  const handleChangeTarget = (fieldId: FieldId | null) => {
+    onUpdateField(field, {
+      fk_target_field_id: fieldId,
+    });
+  };
 
   return (
     <div
       data-testid="semantic-type-target-picker"
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
-      <Select
-        className={cx(AdminS.TableEditorFieldSemanticType, CS.mt0, className)}
+      <SemanticTypePicker
+        className={className}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
-        options={TYPE_OPTIONS}
-        optionValueFn={getTypeOptionId}
-        optionSectionFn={getTypeOptionSection}
-        placeholder={t`Select a semantic type`}
-        searchProp="name"
-        globalSearch
       />
+
       {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
+
       {showCurrencyTypeSelect && (
-        <Select
+        <CurrencyPicker
           className={cx(
             AdminS.TableEditorFieldTarget,
-            CS.inlineBlock,
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
           value={getFieldCurrency(field)}
           onChange={handleChangeCurrency}
-          placeholder={t`Select a currency type`}
-          searchProp="name"
-          searchCaseSensitive={false}
-        >
-          {currency.map(([_symbol, c]: CurrencyOption[]) => (
-            <Option name={c.name} value={c.code} key={c.code}>
-              <span className={cx(CS.flex, CS.full, CS.alignCenter)}>
-                <span>{c.name}</span>
-                <span className={cx(CS.textBold, CS.textLight, CS.ml1)}>
-                  {c.symbol}
-                </span>
-              </span>
-            </Option>
-          ))}
-        </Select>
+        />
       )}
+
       {showFKTargetSelect && hasSeparator && <FieldSeparator />}
+
       {showFKTargetSelect && (
-        <Select
-          buttonProps={{
-            "data-testid": "fk-target-select",
-          }}
-          disabled={!hasIdFields}
+        <FkTargetPicker
           className={cx(
             AdminS.TableEditorFieldTarget,
             CS.textWrap,
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
-          placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
-          searchProp={SEARCH_PROPS}
+          field={field}
+          idFields={idFields}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
-          options={comparableIdFields}
-          optionValueFn={getFieldId}
-          optionNameFn={includeSchema ? getFieldNameWithSchema : getFieldName}
-          optionIconFn={getFieldIcon}
         />
       )}
     </div>
   );
-};
-
-const getFieldId = (field: Field) => {
-  return field.id;
-};
-
-const getFieldIcon = () => {
-  return null;
-};
-
-const getFieldName = (field: Field) => {
-  return field.displayName({ includeTable: true });
-};
-
-const getFieldNameWithSchema = (field: Field) => {
-  return field.displayName({ includeTable: true, includeSchema: true });
 };
 
 const getFieldCurrency = (field: Field) => {
@@ -192,33 +112,6 @@ const getFieldCurrency = (field: Field) => {
   }
 
   return "USD";
-};
-
-const getFkFieldPlaceholder = (field: Field, idFields: Field[]) => {
-  const hasIdFields = idFields?.length > 0;
-  const isRestrictedFKTargetSelected =
-    field.isFK() &&
-    field.fk_target_field_id != null &&
-    !idFields?.some(idField => idField.id === field.fk_target_field_id);
-
-  if (isRestrictedFKTargetSelected) {
-    return t`Field access denied`;
-  }
-
-  return hasIdFields ? t`Select a target` : t`No key available`;
-};
-
-const getTypeOptionId = (option: TypeOption) => {
-  return option.id;
-};
-
-const getTypeOptionSection = (option: TypeOption) => {
-  return option.section;
-};
-
-const hasMultipleSchemas = (field: Field[]) => {
-  const schemas = new Set(field.map(field => field.table?.schema));
-  return schemas.size > 1;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

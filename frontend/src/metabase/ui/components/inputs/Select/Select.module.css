@@ -124,7 +124,7 @@
       content: "";
       display: block;
       margin-top: calc(var(--mantine-spacing-sm) - 1px);
-      margin-bottom: var(--mantine-spacing-xs);
+      margin-bottom: var(--mantine-spacing-sm);
       margin-inline: var(--mantine-spacing-sm);
       border-top: 1px solid var(--mb-color-border);
     }

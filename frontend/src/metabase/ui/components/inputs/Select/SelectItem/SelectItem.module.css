@@ -1,7 +1,7 @@
 .item {
   cursor: pointer;
   border-radius: 6px;
-  word-break: break-all;
+  overflow-wrap: break-word;
 
   &:hover {
     color: var(--mb-color-text-hover);

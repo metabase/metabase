@@ -6,6 +6,8 @@ global.window.matchMedia = () => ({
   removeEventListener: () => {},
 });
 
+HTMLElement.prototype.scrollIntoView = () => {}; // used under the hood in Mantine's Select component
+
 global.window.ResizeObserver = class ResizeObserver {
   observe() {}
 
