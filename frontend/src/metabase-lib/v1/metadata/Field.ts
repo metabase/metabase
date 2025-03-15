@@ -34,7 +34,6 @@ import {
   isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetColumn,
   FieldFingerprint,
   FieldFormattingSettings,
   FieldId,
@@ -404,13 +403,6 @@ export default class Field extends Base {
     }
 
     return this.isSearchable() ? this : null;
-  }
-
-  column(extra = {}): DatasetColumn {
-    return this.dimension().column({
-      source: "fields",
-      ...extra,
-    });
   }
 
   clone(fieldMetadata?: FieldMetadata) {
