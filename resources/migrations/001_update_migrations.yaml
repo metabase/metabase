@@ -10834,6 +10834,106 @@ databaseChangeLog:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
 
+  - changeSet:
+      id: v54.2025-03-11T10:40:50
+      author: johnswanson
+      comment: Add `db_router` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: db_router
+      changes:
+        - createTable:
+            tableName: db_router
+            remarks: |
+              Configuration for Database Routers. Currently just holds which user attribute each
+              configured router database should use to choose a mirror database to route to.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'The ID of the database this is for.'
+                  constraints:
+                    unique: true
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_db_router_database_id
+              - column:
+                  name: user_attribute
+                  type: varchar(254)
+                  remarks: 'The user attribute used to redirect users to a different database.'
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v54.2025-03-11T10:41:06
+      author: johnswanson
+      comment: Add self-referential foreign key `router_database_id` to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: router_database_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: router_database_id
+                  type: int
+                  remarks: The ID of the primary database for this mirror database.
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-11T10:41:11
+      author: johnswanson
+      comment: Add foreign key for `router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_metabase_database_metabase_database_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: router_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_metabase_database_metabase_database_id
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v54.2025-03-11T10:41:14
+      author: johnswanson
+      comment: add an index for `metabase_database.router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_database
+                indexName: idx_metabase_database_router_database_id
+      rollback: # will be deleted when column is deleted
+      changes:
+        - createIndex:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: router_database_id
+            indexName: idx_metabase_database_router_database_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

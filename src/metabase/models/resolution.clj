@@ -34,6 +34,7 @@
     :model/DashboardTab                      metabase.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
+    :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
     :model/Field                             metabase.models.field
     :model/FieldUsage                        metabase.models.field-usage
