@@ -417,15 +417,6 @@ export default class Field extends Base {
     return newField;
   }
 
-  /**
-   * Returns a FKDimension for this field and the provided field
-   * @param {Field} foreignField
-   * @return {Dimension}
-   */
-  foreign(foreignField) {
-    return this.dimension().foreign(foreignField.dimension());
-  }
-
   isVirtual() {
     return typeof this.id !== "number";
   }
