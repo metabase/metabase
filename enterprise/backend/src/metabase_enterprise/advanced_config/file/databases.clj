@@ -1,6 +1,8 @@
 (ns metabase-enterprise.advanced-config.file.databases
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
+   [medley.core :as m]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.setting :refer [defsetting]]
@@ -26,14 +28,41 @@
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/details
   map?)
 
+(defn- valid-regex-patterns? [patterns]
+  (every? (fn [pattern]
+            (try
+              (boolean (re-pattern pattern))
+              (catch Exception e (log/error e) false)))
+          patterns))
+
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
+  (s/and
+   map?
+   (fn cruft-patterns-are-valid? [settings]
+     (->> [(:auto-cruft-tables settings
+                               ;; we access auto.cruft.* with _'s here. Because we may expect to see underscores from
+                               ;; the yaml file, this is validated first then normalized into kebab-case after
+                               ;; validation in [[normalize-settings]].
+                               (:auto_cruft_tables settings))
+           (:auto-cruft-columns settings
+                                (:auto_cruft_columns settings))]
+          (remove nil?)
+          (every? valid-regex-patterns?)))))
+
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
-                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]))
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]
+          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings]))
 
 (defmethod advanced-config.file.i/section-spec :databases
   [_section]
   (s/spec (s/* ::config-file-spec)))
+
+(defn- normalize-settings [db]
+  (m/update-existing db :settings set/rename-keys
+                     {:auto_cruft_tables :auto-cruft-tables
+                      :auto_cruft_columns :auto-cruft-columns}))
 
 (defn- init-from-config-file!
   [database]
@@ -55,10 +84,10 @@
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (do
           (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
-          (t2/update! :model/Database existing-database-id database))
+          (t2/update! :model/Database existing-database-id (normalize-settings database)))
         (do
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
-          (let [db (first (t2/insert-returning-instances! :model/Database database))]
+          (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
             (if (config-from-file-sync-databases)
               (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
                 (quick-task/submit-task! (fn [] (sync-database! db))))
