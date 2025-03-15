@@ -117,13 +117,21 @@ module.exports = env => {
       ],
     },
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react-dom/client": "react-dom/client",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+    externals: [
+      {
+        ...mainConfig.externals,
+        react: "react",
+        "react/jsx-runtime": "react/jsx-runtime",
+      },
+      ({ request }, callback) => {
+        // Every react-dom dependency request must be external
+        if (/^react-dom($|\/)/.test(request)) {
+          return callback(null, request);
+        }
+
+        callback();
+      },
+    ],
 
     optimization: {
       // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
