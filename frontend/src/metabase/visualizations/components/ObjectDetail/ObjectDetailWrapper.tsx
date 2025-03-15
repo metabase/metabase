@@ -86,6 +86,10 @@ export function ObjectDetailWrapper({
 
   const hasPagination = data?.rows?.length > 1;
 
+  if (data.rows.length <= currentObjectIndex) {
+    setCurrentObjectIndex(data.rows.length - 1);
+  }
+
   return (
     <>
       <ObjectDetailView
