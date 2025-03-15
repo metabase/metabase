@@ -1,0 +1,23 @@
+.PreviewIframeContainer {
+  border: 1px solid var(--mb-color-border);
+  width: 100%;
+  height: 500px;
+}
+
+.PreviewIframe {
+  width: 100%;
+  height: 100%;
+}
+
+.CodeContainer {
+  position: relative;
+  border: 1px solid var(--mb-color-border-alpha-30);
+  background: var(--mb-color-background);
+}
+
+.CopyButton {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+  cursor: pointer;
+}
