@@ -5,11 +5,13 @@ import { useToast } from "metabase/common/hooks";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { Stack, Switch } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 import { trackCustomHomepageDashboardEnabled } from "../../analytics";
 import { SettingHeader } from "../SettingHeader";
+
+import { AdminSettingInputComponent } from "./AdminSettingInput";
 
 export function CustomHomepageDashboardSetting() {
   const { value: customHomepage, updateSetting } =
@@ -39,6 +41,8 @@ export function CustomHomepageDashboardSetting() {
       value: true,
     });
 
+    sendToast({ message: t`Changes saved`, icon: "check" });
+
     await dispatch(refreshCurrentUser());
   };
 
@@ -48,7 +52,10 @@ export function CustomHomepageDashboardSetting() {
       value: newValue,
     });
     await dispatch(refreshCurrentUser());
-    sendToast({ message: t`Changes saved`, icon: "check" });
+
+    if (customHomepageDashboardId || !newValue) {
+      sendToast({ message: t`Changes saved`, icon: "check" });
+    }
   };
 
   return (
@@ -58,11 +65,11 @@ export function CustomHomepageDashboardSetting() {
         title={t`Custom Homepage`}
         description={t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.`}
       />
-      <Switch
-        id="custom-homepage"
-        checked={customHomepage}
-        onChange={e => handleToggleChange(e.target.checked)}
-        label={customHomepage ? t`Enabled` : t`Disabled`}
+      <AdminSettingInputComponent
+        name="custom-homepage"
+        inputType="boolean"
+        value={customHomepage}
+        onChange={newValue => handleToggleChange(Boolean(newValue))}
       />
       {customHomepage && (
         <DashboardSelector

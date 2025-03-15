@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api";
@@ -48,7 +49,9 @@ export function SiteUrlWidget() {
       <InputWithSelectPrefix
         id="site-url"
         value={value}
-        onChange={handleChange}
+        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+          handleChange(e.target.value)
+        }
         prefixes={["https://", "http://"]}
         defaultPrefix="http://"
         caseInsensitivePrefix={true}
