@@ -7,8 +7,7 @@ import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Dashboards from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
@@ -148,83 +147,72 @@ export const MoveQuestionModal = ({
 
   if (confirmMoveState?.type === "dashboard-to-collection") {
     return (
-      <Modal>
-        <ConfirmContent
-          data-testid="dashboard-to-collection-move-confirmation"
-          onAction={() =>
-            handleMove(confirmMoveState?.destination, deleteOldDashcardsState)
-          }
-          onCancel={onClose}
-          onClose={onClose}
-          title={
-            <Title fz="1.25rem" lh={1.5}>
-              {c(
-                "{0} is the dashboard name the question currently has dashcards in",
-              ).jt`Do you still want this question to appear in ${(
-                <>
-                  <Icon
-                    name="dashboard"
-                    style={{ marginBottom: -2 }}
-                    size={20}
-                  />{" "}
-                  <Dashboards.Name id={question.dashboardId()} />
-                </>
-              )}?`}
-            </Title>
-          }
-          message={
-            <>
-              <Box mt="-2rem">
-                {t`It can still appear there even though you’re moving it into a collection.`}
-              </Box>
-              <Radio.Group
-                value={`${!deleteOldDashcardsState}`}
-                onChange={val => setDeleteOldDashcardsState(val !== "true")}
-                mt="2rem"
-              >
-                <Radio
-                  label={t`Yes, it should still appear there`}
-                  value={"true"}
-                />
-                <Radio
-                  mt="md"
-                  label={t`No, remove it from that dashboard`}
-                  value={"false"}
-                />
-              </Radio.Group>
-            </>
-          }
-          confirmButtonPrimary
-          confirmButtonText={t`Done`}
-        />
-      </Modal>
+      <ConfirmModal
+        data-testid="dashboard-to-collection-move-confirmation"
+        opened
+        onConfirm={() => {
+          handleMove(confirmMoveState?.destination, deleteOldDashcardsState);
+          onClose();
+        }}
+        onClose={onClose}
+        title={
+          <Title fz="1.25rem" lh={1.5}>
+            {c(
+              "{0} is the dashboard name the question currently has dashcards in",
+            ).jt`Do you still want this question to appear in ${(
+              <>
+                <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
+                <Dashboards.Name id={question.dashboardId()} />
+              </>
+            )}?`}
+          </Title>
+        }
+        message={
+          <>
+            <Box mt="-2rem">
+              {t`It can still appear there even though you’re moving it into a collection.`}
+            </Box>
+            <Radio.Group
+              value={`${!deleteOldDashcardsState}`}
+              onChange={val => setDeleteOldDashcardsState(val !== "true")}
+              mt="2rem"
+            >
+              <Radio
+                label={t`Yes, it should still appear there`}
+                value={"true"}
+              />
+              <Radio
+                mt="md"
+                label={t`No, remove it from that dashboard`}
+                value={"false"}
+              />
+            </Radio.Group>
+          </>
+        }
+        confirmButtonPrimary
+        confirmButtonText={t`Done`}
+      />
     );
   }
 
   if (confirmMoveState?.type === "dashboard-to-dashboard") {
     return (
-      <Modal>
-        <ConfirmContent
-          data-testid="dashboard-to-dashboard-move-confirmation"
-          onAction={() => handleMove(confirmMoveState.destination, true)}
-          onCancel={onClose}
-          onClose={onClose}
-          title={
-            <Title fz="1.25rem" lh={1.5}>
-              Moving this question to another dashboard will remove it from{" "}
-              <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-              <Dashboards.Name id={question.dashboardId()} />
-            </Title>
-          }
-          message={
-            <Box mt="-2rem">
-              {t`You can move it to a collection if you want to use it in both dashboards.`}
-            </Box>
-          }
-          confirmButtonPrimary
-          confirmButtonText={t`Okay`}
-        />
-      </Modal>
+      <ConfirmModal
+        opened
+        data-testid="dashboard-to-dashboard-move-confirmation"
+        onConfirm={() => handleMove(confirmMoveState.destination, true)}
+        onClose={onClose}
+        title={
+          <Title fz="1.25rem" lh={1.5}>
+            Moving this question to another dashboard will remove it from{" "}
+            <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
+            <Dashboards.Name id={question.dashboardId()} />
+          </Title>
+        }
+        message={t`You can move it to a collection if you want to use it in both dashboards.`}
+        confirmButtonPrimary
+        confirmButtonText={t`Okay`}
+      />
     );
   }
 
