@@ -46,12 +46,17 @@
    (when async-status
      (format " [ASYNC: %s]" async-status))))
 
-(defn- format-performance-info
+(defn- performance-info
   [{:keys [start-time call-count-fn _diag-info-fn]
     :or {start-time    (u/start-timer)
          call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/since-ms start-time)
         db-calls     (call-count-fn)]
+    {:elapsed-time elapsed-time
+     :db-calls db-calls}))
+
+(defn- format-performance-info [info]
+  (let [{:keys [db-calls elapsed-time]} (performance-info info)]
     (format "%.0fms (%s DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
@@ -147,7 +152,8 @@
            :as opts}
           (some #(when ((:status-pred %) status) %)
                 log-options)]
-      (log-fn (u/format-color color (format-info info opts))))
+      (log/with-context #p (merge {:response-status status} (performance-info info))
+        (log-fn (u/format-color color (format-info info opts)))))
     (catch Throwable e
       (log/error e "Error logging API request"))))
 
@@ -166,23 +172,26 @@
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
-      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
+      (log/with-context {:core-async-response? true}
+        (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))))))
 
 (defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log-info (assoc info :async-status (name result)))))))
+        (log/with-context {:streaming-response? true}
+          (log-info (assoc info :async-status (name result))))))))
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value
   should be passed to the normal `respond` function."
   [{{:keys [body], :as response} :response, :as info}]
-  (condp instance? body
-    ManyToManyChannel (log-core-async-response info)
-    StreamingResponse (log-streaming-response info)
-    (log-info info))
+  (log/with-context
+    (condp instance? body
+      ManyToManyChannel (log-core-async-response info)
+      StreamingResponse (log-streaming-response info)
+      (log-info info)))
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

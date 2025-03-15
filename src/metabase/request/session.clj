@@ -7,6 +7,7 @@
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (def ^:private current-user-fields
@@ -43,8 +44,9 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (perms/with-relevant-permissions-for-user metabase-user-id
-      (thunk))))
+    (log/with-context {:log/user-id metabase-user-id}
+      (perms/with-relevant-permissions-for-user metabase-user-id
+        (thunk)))))
 
 (defn with-current-user-fetch-user-for-id
   "Part of the impl for `with-current-user` -- don't use this directly."
