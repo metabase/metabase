@@ -1,0 +1,3 @@
+.Input input::-webkit-inner-spin-button {
+  appearance: revert;
+}
