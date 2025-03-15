@@ -46,20 +46,22 @@ function CreateCollectionModal({
   );
 
   return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="lg"
-      data-testid="new-collection-modal"
-      padding="40px"
-      title={t`New collection`}
-    >
-      <CreateCollectionForm
-        {...props}
-        onCreate={handleCreate}
-        onCancel={onClose}
-      />
-    </Modal>
+    <Modal.Stack>
+      <Modal
+        opened
+        onClose={onClose}
+        size="lg"
+        data-testid="new-collection-modal"
+        padding="40px"
+        title={t`New collection`}
+      >
+        <CreateCollectionForm
+          {...props}
+          onCreate={handleCreate}
+          onCancel={onClose}
+        />
+      </Modal>
+    </Modal.Stack>
   );
 }
 

@@ -18,7 +18,7 @@ export const modalOverrides = {
     classNames: {
       root: Styles.root,
       title: Styles.title,
-      overlay: cx(Styles.overlay, ZIndex.Overlay, Animation.fadeIn),
+      overlay: cx(Styles.overlay, ZIndex.Overlay),
       content: cx(Styles.content, ZIndex.Overlay, Animation.popInFromBottom),
       inner: cx(ZIndex.Overlay, Animation.popInFromBottom),
       header: Styles.header,
