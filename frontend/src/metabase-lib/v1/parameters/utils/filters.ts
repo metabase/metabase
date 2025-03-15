@@ -70,21 +70,6 @@ export function dimensionFilterForParameter(parameter: Parameter | string) {
   return (dimension: Dimension) => fieldFilter(dimension.field());
 }
 
-export function getTagOperatorFilterForParameter(
-  parameter: Parameter | string,
-) {
-  const subtype = getParameterSubType(parameter);
-  const parameterOperatorName = getParameterOperatorName(subtype);
-
-  return (tag: TemplateTag) => {
-    const { "widget-type": widgetType = "" } = tag;
-    const subtype = getParameterSubType(widgetType);
-    const tagOperatorName = getParameterOperatorName(subtype);
-
-    return parameterOperatorName === tagOperatorName;
-  };
-}
-
 export function variableFilterForParameter(parameter: Parameter | string) {
   const tagFilter = tagFilterForParameter(parameter);
   return (variable: Variable) => {

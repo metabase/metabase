@@ -2,16 +2,10 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import Dimension from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
-import {
-  createMockParameter,
-  createMockTemplateTag,
-} from "metabase-types/api/mocks";
+import { createMockParameter } from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
-import {
-  dimensionFilterForParameter,
-  getTagOperatorFilterForParameter,
-} from "./filters";
+import { dimensionFilterForParameter } from "./filters";
 
 describe("parameters/utils/field-filters", () => {
   describe("dimensionFilterForParameter", () => {
@@ -145,28 +139,6 @@ describe("parameters/utils/field-filters", () => {
         createMockParameter({ type: "category" }),
       );
       expect(predicate(locationDimension)).toBe(false);
-    });
-  });
-
-  describe("getTagOperatorFilterForParameter", () => {
-    it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
-      const predicate = getTagOperatorFilterForParameter(
-        createMockParameter({
-          type: "string/starts-with",
-        }),
-      );
-      const templateTag1 = createMockTemplateTag({
-        "widget-type": "string/starts-with",
-      });
-      const templateTag2 = createMockTemplateTag({
-        "widget-type": "foo/starts-with",
-      });
-      const templateTag3 = createMockTemplateTag({
-        "widget-type": "string/ends-with",
-      });
-      expect(predicate(templateTag1)).toBe(true);
-      expect(predicate(templateTag2)).toBe(true);
-      expect(predicate(templateTag3)).toBe(false);
     });
   });
 });
