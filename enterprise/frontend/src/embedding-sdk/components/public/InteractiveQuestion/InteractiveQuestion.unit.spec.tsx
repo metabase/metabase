@@ -10,7 +10,7 @@ import {
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
-import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -60,7 +60,7 @@ function InteractiveQuestionCustomLayout({
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionResult title={title} />
+      <InteractiveQuestionDefaultView title={title} />
     </div>
   );
 }
