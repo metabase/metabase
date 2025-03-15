@@ -31,9 +31,9 @@ describe("getLogoUrl", () => {
   it('should return custom logo url if "application-logo-url" is set', () => {
     const customLogoDataUrl = "data:image/png;base64,aaaaaaaaaaaaaaaaaaaaaa";
     const states = createMockState({
-      settings: createMockSettingsState({
+      settings: {
         "application-logo-url": customLogoDataUrl,
-      }),
+      },
     });
 
     expect(getLogoUrl(states)).toBe(customLogoDataUrl);

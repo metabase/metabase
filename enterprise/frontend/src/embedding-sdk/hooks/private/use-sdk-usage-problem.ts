@@ -6,6 +6,7 @@ import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
+import { getSettings } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkUsageProblem({
@@ -27,7 +28,7 @@ export function useSdkUsageProblem({
   const hasTokenFeature = useSdkSelector(state => {
     // We also assume that the feature is enabled if the token-features are missing.
     // Same reason as above.
-    if (!state.settings.values?.["token-features"]) {
+    if (!getSettings(state)?.["token-features"]) {
       return true;
     }
 

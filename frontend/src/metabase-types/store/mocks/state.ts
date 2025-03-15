@@ -1,5 +1,6 @@
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { EnterpriseState } from "metabase-enterprise/settings/types";
+import type { Settings } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 
@@ -17,11 +18,15 @@ import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
 
+type APIStoreOpts = {
+  settings?: Partial<Settings>;
+};
+
 export function createMockState<S extends Pick<SdkStoreState, "sdk">>(
   opts?: S,
 ): SdkStoreState;
 export function createMockState(
-  opts?: Partial<State> | Partial<EnterpriseState>,
+  opts?: (Partial<State> & APIStoreOpts) | Partial<EnterpriseState>,
 ): State;
 export function createMockState(opts: any) {
   return {
@@ -36,10 +41,14 @@ export function createMockState(opts: any) {
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),
     routing: createMockRoutingState(),
-    settings: createMockSettingsState(),
     setup: createMockSetupState(),
     upload: createMockUploadState(),
     modal: null,
+    "metabase-api": {
+      queries: {
+        ...createMockSettingsState(opts?.settings ?? {}),
+      },
+    },
     ...opts,
   };
 }

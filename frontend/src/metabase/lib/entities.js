@@ -86,7 +86,7 @@ import {
 } from "metabase/lib/redux";
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
-
+import { getSettings } from "metabase/selectors/settings";
 const EMPTY_ENTITY_QUERY = {};
 
 /**
@@ -386,7 +386,6 @@ export function createEntity(def) {
   // SELECTORS
 
   const getEntities = state => state.entities;
-  const getSettings = state => state.settings;
 
   // OBJECT SELECTORS
 
