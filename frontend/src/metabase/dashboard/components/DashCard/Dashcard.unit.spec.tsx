@@ -1,4 +1,10 @@
-import { queryIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -109,6 +115,18 @@ function setup({
 }
 
 describe("DashCard", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("should show a dashcard title", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
@@ -116,8 +134,11 @@ describe("DashCard", () => {
 
   it("should show a table card", () => {
     setup();
+    act(() => {
+      jest.runAllTimers();
+    });
     expect(screen.getByText("My Card")).toBeVisible();
-    expect(screen.getByRole("table")).toBeVisible();
+    expect(screen.getByRole("grid")).toBeVisible();
     expect(screen.getByText("NAME")).toBeVisible();
     expect(screen.getByText("Davy Crocket")).toBeVisible();
     expect(screen.getByText("Daniel Boone")).toBeVisible();

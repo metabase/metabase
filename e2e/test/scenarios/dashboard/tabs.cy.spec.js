@@ -648,7 +648,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
 
     // we do not auto-wire automatically in different tabs anymore, so first tab
@@ -656,7 +656,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findAllByTestId("table-row").should("exist");
+      cy.findAllByRole("row").should("exist");
     });
   });
 

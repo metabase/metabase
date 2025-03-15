@@ -18,7 +18,6 @@ function filterDashboard(suggests = true) {
   }
   cy.contains("Add filter").click({ force: true });
   cy.contains("100 Main Street");
-  cy.contains(/Rows \d-\d+ of 23/);
 }
 
 describe("support > permissions (metabase#8472)", () => {

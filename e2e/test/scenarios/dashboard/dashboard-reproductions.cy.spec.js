@@ -677,7 +677,7 @@ describe("issue 29076", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
     // test that user is sandboxed - normal users has over 2000 rows
-    H.getDashboardCard().find("tbody > tr").should("have.length", 1);
+    H.getDashboardCard().findAllByRole("row").should("have.length", 1);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
@@ -990,8 +990,8 @@ describe("issue 34382", () => {
 
     H.getDashboardCard().within(() => {
       // only products with category "Gizmo" are filtered
-      cy.findAllByTestId("table-row")
-        .find("td")
+      cy.findAllByRole("row")
+        .findAllByRole("gridcell")
         .eq(3)
         .should("contain", "Gizmo");
     });

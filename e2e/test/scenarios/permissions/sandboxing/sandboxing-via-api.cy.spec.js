@@ -1112,9 +1112,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards()
-        .findByText(/Rows 1-\d of 11/)
-        .should("exist");
+      H.getDashboardCard().within(() => {
+        H.assertTableRowsCount(11);
+      });
       H.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
@@ -1218,9 +1218,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards()
-          .findByText(/Rows 1-\d of 11/)
-          .should("exist");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(11);
+        });
+
         H.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
