@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useAdminSetting } from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { fetchWithTimeout } from "metabase/lib/fetchWithTimeout";
 
 import { AdminSettingInput } from "./AdminSettingInput";
 
@@ -15,18 +17,19 @@ enum Status {
 export function HttpsOnlyWidget() {
   const isHosted = useHasTokenFeature("hosting");
   const [status, setStatus] = useState<Status>(Status.NOT_CHECKED);
-  const siteUrl = useSetting("site-url");
+  const { value: siteUrl } = useAdminSetting("site-url");
 
   const isHttps = siteUrl?.startsWith("https://");
 
   const checkHttps = useCallback(() => {
-    const req = new XMLHttpRequest();
-    req.timeout = 10000; // don't make the user wait >10s
-    req.addEventListener("load", () => setStatus(Status.VERIFIED));
-    req.addEventListener("error", () => setStatus(Status.FAILED));
-    req.open("GET", siteUrl + "/api/health");
     setStatus(Status.CHECKING);
-    req.send();
+    fetchWithTimeout(siteUrl + "/api/health", { timeout: 10000 })
+      .then(response => {
+        response.ok ? setStatus(Status.VERIFIED) : setStatus(Status.FAILED);
+      })
+      .catch(() => {
+        setStatus(Status.FAILED);
+      });
   }, [siteUrl]);
 
   useEffect(() => {
