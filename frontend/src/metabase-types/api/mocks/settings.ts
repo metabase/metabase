@@ -238,6 +238,7 @@ export const createMockSettings = (
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
   "premium-embedding-token": null,
   "read-only-mode": false,
+  "redirect-all-requests-to-https": false,
   "report-timezone-short": "UTC",
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
