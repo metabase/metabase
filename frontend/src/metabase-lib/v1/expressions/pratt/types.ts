@@ -7,6 +7,7 @@ type VariableId = number;
 export interface Token {
   type: NodeType;
   text: string;
+  value?: string | string;
   length: number;
   pos: number;
 }
@@ -85,6 +86,7 @@ export interface Hooks {
 abstract class ExpressionError extends Error {
   abstract get pos(): number | null;
   abstract get len(): number | null;
+  abstract get friendly(): boolean;
 }
 
 export class CompileError extends ExpressionError {
@@ -93,6 +95,10 @@ export class CompileError extends ExpressionError {
     private data: any,
   ) {
     super(message);
+  }
+
+  get friendly(): boolean {
+    return true;
   }
 
   get pos(): number | null {
@@ -110,6 +116,10 @@ export class ResolverError extends ExpressionError {
     private node?: Node,
   ) {
     super(message);
+  }
+
+  get friendly(): boolean {
+    return true;
   }
 
   get pos(): number | null {

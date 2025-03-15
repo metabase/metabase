@@ -10,13 +10,15 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { format } from "metabase-lib/v1/expressions";
+import type {
+  ClauseType,
+  ErrorWithMessage,
+  StartRule,
+} from "metabase-lib/v1/expressions";
+import { diagnoseAndCompile, format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
@@ -26,12 +28,10 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { diagnoseAndCompileExpression } from "./utils";
 
 type EditorProps<S extends StartRule> = {
   id?: string;
   clause?: ClauseType<S> | null;
-  name: string;
   query: Lib.Query;
   stageIndex: number;
   startRule: S;
@@ -53,7 +53,6 @@ export function Editor<S extends StartRule = "expression">(
 ) {
   const {
     id,
-    name,
     startRule = "expression",
     stageIndex,
     query,
@@ -97,7 +96,6 @@ export function Editor<S extends StartRule = "expression">(
     startRule,
     query,
     stageIndex,
-    name,
     expressionIndex,
     reportTimezone,
     metadata,
@@ -152,7 +150,6 @@ export function Editor<S extends StartRule = "expression">(
 }
 
 function useExpression<S extends StartRule = "expression">({
-  name,
   clause,
   startRule,
   stageIndex,
@@ -226,13 +223,13 @@ function useExpression<S extends StartRule = "expression">({
         return;
       }
 
-      const { clause, error } = diagnoseAndCompileExpression(source, {
+      const { error, expressionClause: clause } = diagnoseAndCompile({
+        source,
         startRule,
         query,
         stageIndex,
-        expressionIndex,
         metadata,
-        name,
+        expressionIndex,
       });
       if (immediate || prevError) {
         debouncedOnChange.cancel();
@@ -242,15 +239,14 @@ function useExpression<S extends StartRule = "expression">({
       }
     },
     [
-      name,
       query,
       stageIndex,
       startRule,
       metadata,
-      expressionIndex,
       handleChange,
       debouncedOnChange,
       prevError,
+      expressionIndex,
     ],
   );
 

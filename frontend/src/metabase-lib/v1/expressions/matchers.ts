@@ -11,6 +11,7 @@ import type {
   OffsetExpression,
   SegmentFilter,
   StringLiteral,
+  ValueClause,
 } from "metabase-types/api";
 
 import { FUNCTIONS, OPERATORS } from "./config";
@@ -49,6 +50,10 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
   return typeof expr === "number";
+}
+
+export function isValueClause(expr: unknown): expr is ValueClause {
+  return Array.isArray(expr) && expr[0] === "value" && isLiteral(expr[1]);
 }
 
 export function isOperator(expr: unknown): expr is CallExpression {

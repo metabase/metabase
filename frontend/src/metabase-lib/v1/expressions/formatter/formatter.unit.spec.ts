@@ -3,11 +3,12 @@
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
-import { processSource } from "../process";
+import { compileExpression } from "../compiler";
+import type { StartRule } from "../types";
 
 import { format } from "./formatter";
 
-function setup(printWidth: number, startRule: string = "expression") {
+function setup(printWidth: number, startRule: StartRule = "expression") {
   async function isFormatted(expressions: string | string[]): Promise<void> {
     if (!Array.isArray(expressions)) {
       return isFormatted([expressions]);
@@ -20,16 +21,16 @@ function setup(printWidth: number, startRule: string = "expression") {
       };
 
       const source = dedent(expr);
-      const { expression: mbql, compileError } = processSource({
+      const res = compileExpression({
         ...options,
         source,
       });
 
-      if (!mbql || compileError) {
-        throw new Error(`Cannot compile expression: ${compileError?.message}`);
+      if (res.error) {
+        throw res.error;
       }
 
-      const result = await format(mbql, {
+      const result = await format(res.expression, {
         ...options,
         printWidth,
       });
@@ -185,6 +186,18 @@ describe("format", () => {
         `,
       ]);
     });
+  });
+
+  it("should handle value clauses", async () => {
+    const options = {
+      query,
+      startRule: "expression",
+      stageIndex: -1,
+    };
+
+    expect(await format(["value", 10], options)).toBe("10");
+    expect(await format(["value", "foo"], options)).toBe('"foo"');
+    expect(await format(["value", false], options)).toBe("False");
   });
 });
 
