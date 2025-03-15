@@ -18,7 +18,8 @@
   (condp #(isa? %2 %1) col-base-type
     :type/DateTimeWithTZ dt
     :type/DateTime       (t/local-date-time dt)
-    :type/Date           (t/local-date dt)))
+    :type/Date           (t/local-date dt)
+    dt))
 
 (defn- relative-datetime-sql-str
   "Compute relative datetime from [[qp.timezone/now]] shifted by `unit` and `amount`. Format the resulting value
