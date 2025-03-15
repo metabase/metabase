@@ -25,7 +25,7 @@ type BooleanInputType = "boolean";
 type InputDetails =
   | {
       inputType: TextualInputType;
-      options?: never;
+      options: never;
       placeholder?: string;
     }
   | {
@@ -35,12 +35,12 @@ type InputDetails =
     }
   | {
       inputType: BooleanInputType;
-      options?: never;
-      placeholder?: never;
+      options: never;
+      placeholder: never;
     };
 
-export type AdminSettingInputProps<SettingName> = {
-  name: SettingName;
+export type AdminSettingInputProps<S extends SettingKey> = {
+  name: S;
   title?: string;
   description?: React.ReactNode;
   hidden?: boolean;
@@ -100,9 +100,9 @@ export function AdminSettingInput<SettingName extends SettingKey>({
         <AdminSettingInputComponent
           name={name}
           value={initialValue}
-          placeholder={placeholder}
           onChange={handleChange}
           options={options}
+          placeholder={placeholder}
           inputType={inputType}
         />
       )}
@@ -114,14 +114,17 @@ export function AdminSettingInputComponent({
   name,
   value,
   onChange,
-  inputType,
-  placeholder,
   options,
+  placeholder,
+  inputType,
 }: {
   name: SettingKey;
   value: any;
   onChange: (newValue: string | boolean | number) => void;
-} & InputDetails) {
+  options?: { label: string; value: string }[];
+  placeholder?: string;
+  inputType: TextualInputType | OptionsInputType | BooleanInputType;
+}) {
   const [localValue, setLocalValue] = useState(value);
 
   useEffect(() => {
