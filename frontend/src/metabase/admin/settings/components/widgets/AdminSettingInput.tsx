@@ -68,7 +68,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
     value: initialValue,
     updateSetting,
     isLoading,
-    settingDetails: { is_env_setting: setByEnvVar, env_name: envName } = {},
+    settingDetails,
   } = useAdminSetting(name);
 
   const handleChange = (newValue: string | boolean | number) => {
@@ -94,8 +94,8 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   return (
     <Box {...boxProps}>
       <SettingHeader id={name} title={title} description={description} />
-      {setByEnvVar && envName ? (
-        <SetByEnvVar varName={envName} />
+      {settingDetails?.is_env_setting && settingDetails?.env_name ? (
+        <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <AdminSettingInputComponent
           name={name}
