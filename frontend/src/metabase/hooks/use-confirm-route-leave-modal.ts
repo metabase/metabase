@@ -1,7 +1,8 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
-import { push } from "react-router-redux";
+import { goBack, push, replace } from "react-router-redux";
+import { match } from "ts-pattern";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
@@ -48,6 +49,7 @@ export const useConfirmRouteLeaveModal = ({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const confirm = useCallback(() => {
     setIsConfirmed(true);
+    setOpened(false);
   }, []);
 
   useBeforeUnload(isEnabled);
@@ -66,7 +68,24 @@ export const useConfirmRouteLeaveModal = ({
 
   useEffect(() => {
     if (isConfirmed && nextLocation) {
-      dispatch(push(nextLocation));
+      setIsConfirmed(false);
+
+      match(nextLocation.action)
+        .with("POP", () => {
+          /**
+           * There is no simple or reliable way to detect how many pages is user going back,
+           * so we use goBack() to go back just one page.
+           * Ideally we should be using dispatch(go(numberOfPages));
+           */
+          dispatch(goBack());
+        })
+        .with("PUSH", () => {
+          dispatch(push(nextLocation));
+        })
+        .with("REPLACE", () => {
+          dispatch(replace(nextLocation));
+        })
+        .exhaustive();
     }
   }, [dispatch, isConfirmed, nextLocation]);
 

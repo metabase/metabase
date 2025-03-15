@@ -1323,6 +1323,35 @@ describe("issue 37300", () => {
   });
 });
 
+describe("issue 32037", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing a model (metabase#32037)", () => {
+    cy.visit("/browse/models");
+    cy.findByLabelText("Orders Model").click();
+    H.tableInteractive().should("be.visible");
+    cy.location("pathname").as("modelPathname");
+    H.openQuestionActions("Edit metadata");
+    cy.button("Save changes").should("be.disabled");
+    cy.findByLabelText("Description").type("123").blur();
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.appBar().should("be.visible");
+    cy.get("@modelPathname").then(modelPathname => {
+      cy.location("pathname").should("eq", modelPathname);
+    });
+  });
+});
+
 describe("issue 51925", () => {
   function setLinkDisplayType() {
     cy.findByTestId("chart-settings-widget-view_as").findByText("Link").click();
