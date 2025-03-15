@@ -25,7 +25,7 @@ type BooleanInputType = "boolean";
 type InputDetails =
   | {
       inputType: TextualInputType;
-      options: never;
+      options?: never;
       placeholder?: string;
     }
   | {
@@ -35,8 +35,8 @@ type InputDetails =
     }
   | {
       inputType: BooleanInputType;
-      options: never;
-      placeholder: never;
+      options?: never;
+      placeholder?: never;
     };
 
 export type AdminSettingInputProps<S extends SettingKey> = {
