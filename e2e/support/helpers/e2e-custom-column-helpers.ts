@@ -95,9 +95,11 @@ export const CustomExpressionEditor = {
     {
       allowFastSet = false,
       focus = true,
+      delay = 0,
     }: {
       focus?: boolean;
       allowFastSet?: boolean;
+      delay?: number;
     } = {},
   ) {
     if (focus) {
@@ -116,6 +118,7 @@ export const CustomExpressionEditor = {
     const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
     parts.forEach(part => {
+      cy.wait(delay);
       switch (part.toLowerCase()) {
         case "":
           return;
@@ -186,7 +189,7 @@ export const CustomExpressionEditor = {
         );
       }
 
-      cy.realType(unexpanded);
+      cy.realType(unexpanded, { delay });
     });
     return CustomExpressionEditor;
   },

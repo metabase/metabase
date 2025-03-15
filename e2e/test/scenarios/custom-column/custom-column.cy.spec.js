@@ -769,6 +769,38 @@ describe("scenarios > question > custom column", () => {
     cy.focused().should("have.attr", "role", "textbox");
   });
 
+  it("should be possible to use the suggestion snippet arguments", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
+  });
+
+  it("should be possible to use the suggestion templates", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Wait for error check to render, it should not affect the state of the snippets
+    cy.wait(1300);
+
+    H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
+      focus: false,
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
+  });
+
   // TODO: fixme!
   it.skip("should render custom expression helper near the custom expression field", () => {
     H.openOrdersTable({ mode: "notebook" });
