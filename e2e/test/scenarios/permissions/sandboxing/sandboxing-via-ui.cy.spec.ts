@@ -7,11 +7,14 @@ import {
   createSandboxingDashboardAndQuestions,
   getCardResponses,
   getDashcardResponses,
-  getFieldValues,
+  getFieldValuesForProductCategories,
+  getParameterValuesForProductCategories,
   rowsShouldContainGizmosAndWidgets,
   rowsShouldContainOnlyGizmos,
   signInAsNormalUser,
   sandboxingUser as user,
+  valuesShouldContainGizmosAndWidgets,
+  valuesShouldContainOnlyGizmos,
 } from "./helpers/e2e-sandboxing-helpers";
 import type { DatasetResponse, SandboxableItems } from "./helpers/types";
 
@@ -47,6 +50,7 @@ describe(
       });
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
+
       // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
     });
@@ -70,14 +74,13 @@ describe(
         rowsShouldContainGizmosAndWidgets([response]),
       );
 
-      getFieldValues().then(response => {
-        const values = response.body.values.map(val => val[0]);
-        expect(values.length).to.equal(4);
-        expect(values).to.contain("Doohickey");
-        expect(values).to.contain("Gizmo");
-        expect(values).to.contain("Gadget");
-        expect(values).to.contain("Widget");
-      });
+      getFieldValuesForProductCategories().then(response =>
+        valuesShouldContainGizmosAndWidgets(response.body.values),
+      );
+
+      getParameterValuesForProductCategories().then(response =>
+        valuesShouldContainGizmosAndWidgets(response.body.values),
+      );
     });
 
     describe("we can apply a sandbox policy", () => {
@@ -96,9 +99,12 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValues().then(response => {
-          expect(response.body.values).to.deep.equal([["Gizmo"]]);
-        });
+        getFieldValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
+        getParameterValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -112,9 +118,12 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValues().then(response => {
-          expect(response.body.values).to.deep.equal([["Gizmo"]]);
-        });
+        getFieldValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
+        getParameterValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
       });
 
       it("to a table filtered by a regular column", () => {
@@ -128,9 +137,12 @@ describe(
         H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
           rowsShouldContainOnlyGizmos([response as DatasetResponse]),
         );
-        getFieldValues().then(response => {
-          expect(response.body.values).to.deep.equal([["Gizmo"]]);
-        });
+        getFieldValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
+        getParameterValuesForProductCategories().then(response =>
+          valuesShouldContainOnlyGizmos(response.body.values),
+        );
       });
     });
 
@@ -166,6 +178,14 @@ describe(
               expect(response?.body.data.rows).to.have.length(0);
               expect(response?.body.error_type).to.contain("invalid-query");
             });
+          });
+
+          getFieldValuesForProductCategories().then(response => {
+            expect(response.body.values).to.have.length(0);
+          });
+
+          getParameterValuesForProductCategories().then(response => {
+            expect(response.body.values).to.have.length(0);
           });
         });
       });
