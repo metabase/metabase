@@ -38,14 +38,13 @@
           [:td {:style table-style} cell])])]))
 
 (defn- render-csv-for-dashcard
-  [part]
-  (-> part
-      (assoc-in [:card :include_csv] true)
-      email.result-attachment/result-attachment
-      first
-      :content
-      slurp
-      csv-to-html-table))
+  [{:keys [card result]}]
+  (let [attachment (email.result-attachment/result-attachment card result {:include_csv true})]
+    (-> attachment
+        first
+        :content
+        slurp
+        csv-to-html-table)))
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]
