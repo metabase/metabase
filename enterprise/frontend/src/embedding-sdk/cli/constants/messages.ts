@@ -100,6 +100,17 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
   If you skip this step, the setup will continue without multi-tenancy or SSO.
 `;
 
+export const SETUP_PRO_LICENSE_MESSAGE_WITH_SAMPLE_DATABASE = `
+  You've chosen to use a sample database to explore Metabase.
+  This tool can also set up permissions for multi-tenancy, but you will need to provide your own database for that.
+
+  For now, this tool can create a mock back-end server that signs people into Metabase,
+  so you can see how different tenants experience the dashboard embedded in your app when you connect your data.
+
+  To set up multi-tenancy and SSO with JWT, you'll need a Pro license.
+  Skipping this step will not affect how your Metabase instance is set up.
+`;
+
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
   SDK_DOCS_LINK,
 )}`;
