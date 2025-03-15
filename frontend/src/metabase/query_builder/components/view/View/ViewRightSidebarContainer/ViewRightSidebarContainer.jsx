@@ -28,7 +28,9 @@ export const ViewRightSidebarContainer = props => {
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
-  return !isNative ? (
+  return isNative ? (
+    <NativeQueryRightSidebar {...props} />
+  ) : (
     <StructuredQueryRightSidebar
       deselectTimelineEvents={deselectTimelineEvents}
       hideTimelineEvents={hideTimelineEvents}
@@ -50,7 +52,5 @@ export const ViewRightSidebarContainer = props => {
       visibleTimelineEventIds={visibleTimelineEventIds}
       xDomain={xDomain}
     />
-  ) : (
-    <NativeQueryRightSidebar {...props} />
   );
 };
