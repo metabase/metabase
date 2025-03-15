@@ -67,13 +67,9 @@ The data section is where you select the data you want to work with. Here you'll
 
 You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
 
-To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#rearranging-adding-and-removing-columns) from the table view once you visualize your results.
+To choose which columns to include in your query, click on the arrow next to the data source. If you uncheck a column, you'll still be able to use it while building a query (for example, in filters) but it won't be displayed in the results.
 
-### Adding or removing columns in a table
-
-When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
-
-![Adding or removing columns](../images/column-selection.png)
+You'll also be able [hide columns](../visualizations/table.md#rearranging-adding-and-removing-columns) from the table view once you visualize your results, but this doesn't remove columns from the query itself, and so even people with no query builder permissions will be able to unhide the columns. To hide columns with sensitive information, remove them from the query, or hide them entirely across Metabase from [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
 
 ## Joining data
 

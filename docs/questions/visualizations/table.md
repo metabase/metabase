@@ -10,13 +10,17 @@ The **Table** option is good for looking at tabular data (duh), or for lists of 
 
 ## Rearranging, adding, and removing columns
 
-Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
+Open up the settings for your table visualization and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
 
 To manage these columns, including columns from linked tables, just click **add or remove columns**. Check the boxes next to the columns you want to show in the **visible section**, or uncheck to hide them.
 
-To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
+When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
 
-> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../dashboards/start.md).
+![Adding or removing columns](../images/column-selection.png)
+
+> Hiding columns in table visualization setting only affects visibility of the columns _in the visualization_, not in the query results. For example, even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To hide the column from the results of a specific query, uncheck them in the "Data" block of the query builder instead. To hide a column across your entire Metabase, mark it as hidden in [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
+
+To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
 
 ## Column heading options for filtering and summarizing
 
@@ -96,7 +100,7 @@ You can rename the column.
 
 ### Display as
 
-You can display the text as is, or if the text is a URL, you can display the text as a link or image. 
+You can display the text as is, or if the text is a URL, you can display the text as a link or image.
 
 #### Display text as a link
 
