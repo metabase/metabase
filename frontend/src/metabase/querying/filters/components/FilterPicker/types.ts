@@ -18,12 +18,17 @@ export interface PickerOperatorOption<Operator> {
   name?: string;
 }
 
-export type ColumnListItem = Lib.ColumnDisplayInfo & {
+export type ColumnListItem = {
+  name: string;
+  displayName: string;
   column: Lib.ColumnMetadata;
-  query: Lib.Query;
   stageIndex: number;
+  filterPositions?: number[];
 };
 
 export type SegmentListItem = Lib.SegmentDisplayInfo & {
+  name: string;
+  displayName: string;
   segment: Lib.SegmentMetadata;
+  stageIndex: number;
 };

@@ -15,42 +15,26 @@
     transition: background 300ms linear;
 
     &:hover {
-      color: var(--mb-color-filter);
       background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
-
-      .FilterCountChip {
-        background-color: var(--mb-color-filter);
-      }
     }
 
+    &:hover,
     &[data-expanded="true"] {
-      background-color: var(--mb-color-filter);
-
       .FilterCountChip {
-        background-color: var(--mb-color-bg-white);
-        color: var(--mb-color-text-dark);
-      }
-
-      &:hover {
-        background-color: color-mix(in srgb, var(--mb-color-filter) 80%, white);
-
-        .FilterCountChip {
-          background-color: var(--mb-color-bg-white);
-          color: var(--mb-color-text-dark);
-        }
+        color: var(--mb-color-text-selected);
+        background-color: var(--mb-color-filter);
       }
     }
   }
 }
 
 .FilterCountChip {
-  transition: background-color 300ms linear;
-  background-color: var(--mb-color-text-dark);
   font-size: 0.6875rem;
   border-radius: 10px;
   line-height: 1rem;
   padding-inline: 0.5rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary);
+  background-color: color-mix(in srgb, var(--mb-color-filter) 15%, white);
 }
 
 .SummarizeButton {
