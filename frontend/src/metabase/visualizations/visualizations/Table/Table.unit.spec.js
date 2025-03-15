@@ -20,6 +20,7 @@ import {
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -28,7 +29,8 @@ registerVisualizations();
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-const ordersTable = metadata.table(ORDERS_ID);
+const ordersTable = createOrdersTable();
+const ordersFields = ordersTable.fields ?? [];
 
 const setup = ({ display, visualization_settings = {} }) => {
   const onChange = jest.fn();
@@ -67,7 +69,9 @@ const setup = ({ display, visualization_settings = {} }) => {
             card: question.card(),
             data: {
               rows: [],
-              cols: ordersTable.fields.map(f => f.column()),
+              cols: ordersFields.map(field =>
+                createMockColumn({ ...field, id: Number(field.id) }),
+              ),
             },
           },
         ]}

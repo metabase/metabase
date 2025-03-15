@@ -199,23 +199,6 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("foreign", () => {
-      it("should return a FieldDimension", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
-        const dimension = ordersProductId
-          .dimension()
-          .foreign(productsCategory.dimension());
-
-        expect(dimension).toBeInstanceOf(FieldDimension);
-        expect(dimension.mbql()).toEqual([
-          "field",
-          PRODUCTS.CATEGORY,
-          { "source-field": ORDERS.PRODUCT_ID },
-        ]);
-      });
-    });
-
     describe("getMLv1CompatibleDimension", () => {
       it("should return itself without changes by default", () => {
         const productsCategory = metadata.field(PRODUCTS.CATEGORY);
@@ -228,10 +211,6 @@ describe("Dimension", () => {
   describe("Field with integer ID", () => {
     const dimension = Dimension.parseMBQL(
       ["field", ORDERS.TOTAL, null],
-      metadata,
-    );
-    const categoryDimension = Dimension.parseMBQL(
-      ["field", PRODUCTS.CATEGORY, null],
       metadata,
     );
 
@@ -264,16 +243,6 @@ describe("Dimension", () => {
               metadata,
             ).subDisplayName(),
           ).toEqual("Default");
-        });
-      });
-
-      describe("subTriggerDisplayName()", () => {
-        it("returns 'Unbinned' if the dimension is a binnable number", () => {
-          expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
-        });
-
-        it("does not have a value if the dimension is a category", () => {
-          expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
         });
       });
 
@@ -366,29 +335,6 @@ describe("Dimension", () => {
     const dimension = Dimension.parseMBQL(mbql, metadata);
 
     describe("INSTANCE METHODS", () => {
-      describe("_isBinnable()", () => {
-        it("should return truthy", () => {
-          expect(dimension._isBinnable()).toBeTruthy();
-        });
-      });
-
-      describe("defaultDimension()", () => {
-        it("should return a dimension with binning options", () => {
-          const defaultDimension = dimension.defaultDimension();
-          expect(defaultDimension).toBeInstanceOf(FieldDimension);
-          expect(defaultDimension.mbql()).toEqual([
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-              binning: {
-                strategy: "default",
-              },
-            },
-          ]);
-        });
-      });
-
       describe("dimensions()[1]", () => {
         it("should be a binned dimension", () => {
           expect(dimension.dimensions()[1].mbql()).toEqual([
@@ -703,116 +649,6 @@ describe("Dimension", () => {
             ],
           });
         });
-      });
-    });
-  });
-
-  describe("ExpressionDimension", () => {
-    const dimension = Dimension.parseMBQL(
-      ["expression", "Hello World"],
-      metadata,
-    );
-
-    describe("INSTANCE METHODS", () => {
-      describe("mbql()", () => {
-        it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
-        });
-      });
-
-      describe("displayName()", () => {
-        it("returns the expression name", () => {
-          expect(dimension.displayName()).toEqual("Hello World");
-        });
-      });
-
-      describe("column()", () => {
-        it("returns the dimension column", () => {
-          expect(dimension.column()).toEqual({
-            id: ["expression", "Hello World"],
-            name: "Hello World",
-            display_name: "Hello World",
-            base_type: "type/Text",
-            semantic_type: "type/Text",
-            field_ref: ["expression", "Hello World"],
-          });
-        });
-      });
-
-      describe("field", () => {
-        it("should return a field inferred from the expression", () => {
-          const field = dimension.field();
-
-          expect(field).toBeInstanceOf(Field);
-          expect(field.name).toEqual("Hello World");
-        });
-
-        describe("when an expression dimension has a query that relies on a nested card", () => {
-          it("should return a field inferred from the expression", () => {
-            const question = new Question(nestedQuestionCard, null);
-            const query = question.legacyQuery({ useStructuredQuery: true });
-            const dimension = Dimension.parseMBQL(
-              ["expression", "Foobar"], // "Foobar" does not exist in the metadata
-              null,
-              query,
-            );
-            const field = dimension.field();
-
-            expect(field).toBeInstanceOf(Field);
-            expect(field.name).toEqual("Foobar");
-            expect(field.query).toEqual(query);
-            expect(field.metadata).toEqual(undefined);
-          });
-
-          it("should return a field inferred from the expression (from metadata)", () => {
-            const question = new Question(nestedQuestionCard, metadata);
-            const query = question.legacyQuery({ useStructuredQuery: true });
-            const dimension = Dimension.parseMBQL(
-              ["expression", "Foo"],
-              metadata,
-              query,
-            );
-            const field = dimension.field();
-
-            expect(field).toBeInstanceOf(Field);
-            expect(field.name).toEqual("Foo");
-            expect(field.query).toEqual(query);
-            expect(field.metadata).toEqual(metadata);
-          });
-        });
-      });
-
-      describe("getMLv1CompatibleDimension", () => {
-        it("should strip away *-type options", () => {
-          const dimension = Dimension.parseMBQL(
-            [
-              "expression",
-              "Hello World",
-              {
-                "base-type": "type/Text",
-                "effective-type": "type/Text",
-              },
-            ],
-            metadata,
-          );
-
-          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
-            "expression",
-            "Hello World",
-          ]);
-        });
-      });
-    });
-
-    describe("dimensions()", () => {
-      it("should return subdimensions according to the field type", () => {
-        const question = new Question(nestedQuestionCard, metadata);
-        const dimension = Dimension.parseMBQL(
-          ["expression", 42],
-          metadata,
-          question.legacyQuery({ useStructuredQuery: true }),
-        );
-        expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
     });
   });
