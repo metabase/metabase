@@ -23,6 +23,14 @@
   :visibility :public
   :database-local :only)
 
+(setting/defsetting database-enable-table-editing
+  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
+  :default false
+  :type :boolean
+  :visibility :public
+  :database-local :only
+  :export? true)
+
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
   {:arglists '([action arg-map]), :added "0.44.0"}
@@ -131,6 +139,23 @@
 
   nil)
 
+(defn check-data-editing-enabled-for-database!
+  "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  ;; for now we reuse the :actions driver feature, but specialise the message
+  (when-not (driver.u/supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (binding [setting/*database-local-values* db-settings]
+    (when-not (database-enable-table-editing)
+      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
 (defn- database-for-action [action-or-id]
   (t2/select-one :model/Database {:select [:db.*]
                                   :from   :action
@@ -152,7 +177,9 @@
   [action
    arg-map :- [:map
                [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
-               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
+               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]
+   & {:keys [policy]
+      :or   {policy :model-action}}]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
@@ -161,9 +188,14 @@
                       (s/explain-data spec arg-map))))
     (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
                                                    (lib.metadata/database (qp.store/metadata-provider))))]
-      (check-actions-enabled-for-database! db)
+      (case policy
+        :model-action
+        (check-actions-enabled-for-database! db)
+        :data-editing
+        (check-data-editing-enabled-for-database! db))
       (binding [*misc-value-cache* (atom {})]
-        (qp.perms/check-query-action-permissions* arg-map)
+        (when (= :model-action policy)
+          (qp.perms/check-query-action-permissions* arg-map))
         (driver/with-driver driver
           (perform-action!* driver action db arg-map))))))
 

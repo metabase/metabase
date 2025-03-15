@@ -8,10 +8,12 @@
    [toucan2.core :as t2]))
 
 (defn- perform-bulk-action! [action-kw table-id rows]
+  (api/check-superuser)
   (actions/perform-action! action-kw
                            {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
                             :table-id table-id
-                            :arg      rows}))
+                            :arg      rows}
+                           :policy :data-editing))
 
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
