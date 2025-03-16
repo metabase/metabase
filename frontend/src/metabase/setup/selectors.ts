@@ -18,8 +18,11 @@ export const getStep = (state: State): SetupStep => {
   return state.setup.step;
 };
 
-export const getLocale = (state: State): Locale | undefined => {
-  return state.setup.locale;
+export const getLocale = (_state: State): Locale | undefined => {
+  const locale: Locale = { name: "French", code: "fr" };
+  return locale;
+  // hard-code this for now
+  // return state.setup.locale;
 };
 
 export const getUser = (state: State): UserInfo | undefined => {

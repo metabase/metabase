@@ -24,6 +24,7 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch } from "metabase/lib/redux";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -205,6 +206,8 @@ function Dashboard(props: DashboardProps) {
 
   const dispatch = useDispatch();
 
+  const tc = useTranslateContent();
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -229,7 +232,8 @@ function Dashboard(props: DashboardProps) {
   const canRestore = Boolean(dashboard?.can_restore);
   const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
-  const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
+  const dashboardHasCards =
+    dashboard && dashboard.dashcards && dashboard.dashcards.length > 0;
 
   const { data: databasesResponse } = useListDatabasesQuery();
   const databases = useMemo(
@@ -419,7 +423,7 @@ function Dashboard(props: DashboardProps) {
           <Flex direction="column" mih="100%" w="100%" flex="1 0 auto">
             {dashboard.archived && (
               <ArchivedEntityBanner
-                name={dashboard.name}
+                name={tc(dashboard, "name")}
                 entityType="dashboard"
                 canMove={canWrite}
                 canRestore={canRestore}

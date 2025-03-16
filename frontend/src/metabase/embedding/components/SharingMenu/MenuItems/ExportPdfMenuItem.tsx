@@ -10,7 +10,11 @@ import type { Dashboard } from "metabase-types/api";
 
 const handleClick = async (dashboard: Dashboard) => {
   const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-  await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+  await saveDashboardPdf(
+    cardNodeSelector,
+    // NOTE: We could localize the name later
+    dashboard.name,
+  ).then(() => {
     trackExportDashboardToPDF({
       dashboardId: dashboard.id,
       dashboardAccessedVia: isWithinIframe()
