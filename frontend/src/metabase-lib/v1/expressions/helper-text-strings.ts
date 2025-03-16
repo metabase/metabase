@@ -87,6 +87,26 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "distinct-where",
+    structure: "DistinctIf",
+    description: () =>
+      t`The count of distinct values in this column for rows where the condition is true.`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to count distinct values in.`,
+        example: formatIdentifier(t`Customer ID`),
+      },
+      {
+        name: t`condition`,
+        description: t`Something that evaluates to true or false.`,
+        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
+          t`Completed`,
+        )}`,
+      },
+    ],
+  },
+  {
     name: "stddev",
     structure: "StandardDeviation",
     description: () => t`Calculates the standard deviation of the column.`,
@@ -204,7 +224,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`condition`,
-        description: t`Something that should evaluate to true or false.`,
+        description: t`Something that evaluates to true or false.`,
         example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
           t`Valid`,
         )}`,
