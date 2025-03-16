@@ -26,6 +26,7 @@ import type {
   EmbedHideParameters,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type {
@@ -129,6 +130,8 @@ export function PublicOrEmbeddedDashboardView({
     />
   ) : null;
 
+  const tc = useTranslateContent();
+
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
     (dashcard) => !isActionDashCard(dashcard),
   );
@@ -165,8 +168,8 @@ export function PublicOrEmbeddedDashboardView({
 
   return (
     <EmbedFrame
-      name={dashboard && dashboard.name}
-      description={dashboard && dashboard.description}
+      name={dashboard && tc(dashboard, "name")}
+      description={dashboard && tc(dashboard, "description")}
       dashboard={dashboard}
       parameters={parameters}
       parameterValues={parameterValues}

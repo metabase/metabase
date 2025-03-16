@@ -97,6 +97,23 @@ function App({
     initializeIframeResizer();
   }, []);
 
+  (window as any).userContentTranslations = [
+    ["fr", "dashboard_name", "dashboard", "tableau de bord"],
+  ];
+
+  (window as any).translateUserContent = (
+    lang: string,
+    type: string,
+    msgid: string | null | undefined,
+  ) => {
+    const translations = (window as any).userContentTranslations;
+    const translation = translations.find(
+      ([lang_, type_, msgid_]: [string, string, string]) =>
+        lang_ === lang && type_ === type && msgid_ === msgid,
+    );
+    return translation ? translation[3] : msgid;
+  };
+
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>

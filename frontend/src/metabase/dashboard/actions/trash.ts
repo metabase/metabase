@@ -6,6 +6,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import { L } from "metabase/i18n/utils";
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -20,7 +21,12 @@ export const setArchivedDashboard = createThunkAction(
       const { dashboardId, dashboards, dashcards } = getState().dashboard;
       const dashboard = dashboardId
         ? dashboards[dashboardId]
-        : { name: "Dashboard" };
+        : {
+            name:
+              // FIXME: This should be localized, right?
+              t`Dashboard`,
+            name_localized: undefined,
+          };
 
       await dispatch(
         Dashboards.actions.update({ id: dashboardId }, { archived }),
@@ -29,7 +35,7 @@ export const setArchivedDashboard = createThunkAction(
       if (!undoing) {
         dispatch(
           addUndo({
-            message: getTrashUndoMessage(dashboard.name, archived),
+            message: getTrashUndoMessage(L(dashboard, "name"), archived),
             action: () => dispatch(setArchivedDashboard(!archived, true)),
           }),
         );
