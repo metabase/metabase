@@ -766,7 +766,7 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
   });
 
   // TODO: fixme!
@@ -1302,5 +1302,42 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
+  });
+});
+
+describe("scenarios > question > custom column > distinctIf", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use a distinctIf function", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] = 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "53");
+
+    cy.log("modify the expression");
+    H.openNotebook();
+    H.getNotebookStep("summarize").findByText("Distinct").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      'DistinctIf([ID], [Category] = "Gadget")',
+    );
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] != 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Update").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "147");
   });
 });

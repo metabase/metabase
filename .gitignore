@@ -128,3 +128,5 @@ modules/drivers/*/.lsp/*
 
 # metabot
 llm-payloads
+
+/bin/bb

@@ -264,6 +264,10 @@
           metabase.lib.walk}
    :uses #{config driver legacy-mbql models types util}}
 
+  lib-be
+  {:api #{metabase.lib-be.init}
+   :uses #{models task util}}
+
   logger
   {:api  #{metabase.logger metabase.logger.init}
    :uses #{config plugins}}
@@ -393,6 +397,10 @@
            metabase.permissions.util}
    :uses #{api audit config db models plugins premium-features request server util}}
 
+  pivot
+  {:api #{metabase.pivot.core}
+   :uses #{util models}}
+
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
    :uses #{config driver util}}
@@ -474,6 +482,7 @@
            model-persistence
            models
            permissions
+           pivot
            premium-features
            public-settings
            request
@@ -609,7 +618,7 @@
            metabase-enterprise.advanced-config.models.pulse-channel
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.crufty}
-   :uses #{api db driver models premium-features setup sync util}}
+   :uses #{api db driver models permissions premium-features setup sync util}}
 
   enterprise/advanced-permissions
   {:api  #{metabase-enterprise.advanced-permissions.api.routes

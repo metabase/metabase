@@ -6,18 +6,19 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private segment-id 100)
 
 (def ^:private segment-definition
-  {:source-table (meta/id :venues)
-   :aggregation  [[:count]]
-   :filter       [:and
-                  [:> [:field (meta/id :venues :id) nil] [:* [:field (meta/id :venues :price) nil] 11]]
-                  [:contains [:field (meta/id :venues :name) nil] "BBQ" {:case-sensitive true}]]})
+  (:query (lib.tu.macros/mbql-query venues
+            {:aggregation [[:count]]
+             :filter      [:and
+                           [:> $id [:* $price 11]]
+                           [:contains $name "BBQ" {:case-sensitive true}]]})))
 
 (def ^:private segments-db
   {:segments [{:id          segment-id
