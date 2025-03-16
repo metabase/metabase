@@ -6,6 +6,7 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { L } from "metabase/i18n/utils";
 import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
@@ -47,13 +48,15 @@ export const CollectionCaption = ({
     [collection, onUpdateCollection],
   );
 
+  const localizedCollectionName = L(collection, "name") as string;
+
   return (
     <CaptionRoot data-testid="collection-caption">
       <CaptionTitleContainer>
         <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
           key={collection.id}
-          initialValue={collection.name}
+          initialValue={localizedCollectionName}
           placeholder={t`Add title`}
           isDisabled={!isEditable}
           data-testid="collection-name-heading"

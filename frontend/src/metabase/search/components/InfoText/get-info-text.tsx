@@ -38,6 +38,7 @@ export const getInfoText = (result: WrappedResult): InfoTextData => {
 const getCardInfoText = (result: WrappedResult): InfoTextData => {
   if (result.dashboard) {
     return {
+      // NOTE: We could localize the name later
       label: result.dashboard.name,
       icon: (
         <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">

@@ -2,6 +2,7 @@ import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { getLocalized } from "metabase/i18n/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
@@ -34,7 +35,7 @@ export function DashboardBackButton({
     return null;
   }
 
-  const label = t`Back to ${dashboard.name}`;
+  const label = t`Back to ${getLocalized(dashboard, "name")}`;
 
   return (
     <Tooltip label={label}>
