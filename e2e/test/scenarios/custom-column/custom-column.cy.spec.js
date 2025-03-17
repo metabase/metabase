@@ -766,7 +766,39 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("contains", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
+  });
+
+  it("should be possible to use the suggestion snippet arguments", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
+  });
+
+  it("should be possible to use the suggestion templates", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Wait for error check to render, it should not affect the state of the snippets
+    cy.wait(1300);
+
+    H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
+      focus: false,
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
   });
 
   // TODO: fixme!
@@ -1251,7 +1283,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
-    H.popover().findByText("Select none").should("be.visible");
+    H.popover().findByText("Select all").should("be.visible");
   });
 
   // This test is skipped until we can implement the "save unsaved changes"
@@ -1259,7 +1291,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
   it.skip("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
     H.expressionEditorWidget().should("exist");
 
     H.modal().within(() => {
@@ -1280,7 +1312,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.expressionEditorWidget().should("exist");
-    H.popover().findByText("Select none").should("not.exist");
+    H.popover().findByText("Select all").should("not.exist");
 
     H.modal().within(() => {
       cy.findByText("Keep editing your custom expression?").should(
@@ -1302,5 +1334,42 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
     H.getNotebookStep("expression").findByText("OK").should("not.exist");
+  });
+});
+
+describe("scenarios > question > custom column > distinctIf", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use a distinctIf function", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] = 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "53");
+
+    cy.log("modify the expression");
+    H.openNotebook();
+    H.getNotebookStep("summarize").findByText("Distinct").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      'DistinctIf([ID], [Category] = "Gadget")',
+    );
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] != 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Update").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "147");
   });
 });
