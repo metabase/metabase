@@ -8,7 +8,7 @@ import { Stack } from "metabase/ui";
 import { trackTrackingPermissionChanged } from "../../analytics";
 import { SettingHeader } from "../SettingHeader";
 
-import { AdminSettingInputComponent } from "./AdminSettingInput";
+import { BasicAdminSettingInput } from "./AdminSettingInput";
 
 export function AnonymousTrackingInput() {
   const { value, updateSetting } = useAdminSetting("anon-tracking-enabled");
@@ -43,7 +43,7 @@ export function AnonymousTrackingInput() {
         title={t`Anonymous Tracking`}
         description={t`Enable the collection of anonymous usage data in order to help Metabase improve.`}
       />
-      <AdminSettingInputComponent
+      <BasicAdminSettingInput
         name="anon-tracking-enabled"
         inputType="boolean"
         value={value}
