@@ -156,7 +156,7 @@
   org.clojure/tools.logging                 {:mvn/version "1.3.0"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.2.1"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
-  org.clojure/tools.reader                  {:mvn/version "1.5.1"}
+  org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
   org.eclipse.jetty/jetty-server            ^:antq/exclude                      ; 12.x do not support Java 8
   {:mvn/version "11.0.24"}            ; web server
