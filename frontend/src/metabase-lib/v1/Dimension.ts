@@ -234,13 +234,6 @@ export default class Dimension {
   }
 
   /**
-   * The `name` appearing in the column object (except duplicates would normally be suffxied)
-   */
-  columnName(): string {
-    return this.field().name;
-  }
-
-  /**
    * The display name of this dimension, e.x. the field's display_name
    * @abstract
    */
@@ -661,10 +654,6 @@ export class FieldDimension extends Dimension {
         _subTriggerDisplayName: this._subTriggerDisplayName,
       },
     );
-  }
-
-  columnName() {
-    return this.isIntegerFieldId() ? super.columnName() : this._fieldIdOrName;
   }
 
   displayName(...args) {
