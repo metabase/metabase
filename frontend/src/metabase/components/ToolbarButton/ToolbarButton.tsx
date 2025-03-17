@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 
-import type { ActionIconProps, IconName, type TooltipProps } from "metabase/ui";
+import type { ActionIconProps, IconName, TooltipProps } from "metabase/ui";
 import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
 
 export type ToolbarButtonProps = {

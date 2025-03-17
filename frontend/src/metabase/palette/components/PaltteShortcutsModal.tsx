@@ -31,6 +31,7 @@ export const PaletteShortcutsModal = ({
       onClose={onClose}
       position="right"
       title={<Title>{t`Shortcuts`}</Title>}
+      withCloseButton={false}
     >
       <Stack>
         {shortcutActions.map(action => (
