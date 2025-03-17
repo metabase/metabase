@@ -6,6 +6,45 @@ describe("scenarios > custom column > literals", () => {
     cy.signInAsNormalUser();
   });
 
+  it("should support literals in custom columns", () => {
+    const columns = [
+      { name: "True", expression: "True", value: "true" },
+      // TODO false doesn't work atm. Uncomment when it is fixed
+      // { name: "false", expression: "False", value: "false" },
+      { name: "Text", expression: '"abc"', value: "abc" },
+      { name: "Number", expression: "10", value: "10" },
+      { name: "Column", expression: "[Number]", value: "10" },
+      { name: "Expression", expression: "[Number] + [Number]", value: "20" },
+    ];
+
+    function removeTableFields() {
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText("Select all").click();
+      H.getNotebookStep("data").button("Pick columns").click();
+    }
+
+    function addCustomColumns() {
+      columns.forEach(({ name, expression }, index) => {
+        if (index === 0) {
+          H.getNotebookStep("data").button("Custom column").click();
+        } else {
+          H.getNotebookStep("expression").icon("add").click();
+        }
+        H.enterCustomColumnDetails({ formula: expression, name });
+        H.popover().button("Done").click();
+      });
+    }
+
+    H.openProductsTable({ mode: "notebook" });
+    removeTableFields();
+    addCustomColumns();
+    H.visualize();
+    H.assertTableData({
+      columns: ["ID", ...columns.map(({ name }) => name)],
+      firstRows: [["1", ...columns.map(({ value }) => value)]],
+    });
+  });
+
   it("should support literals in filters", () => {
     function testFilterLiteral({
       filterExpression,
