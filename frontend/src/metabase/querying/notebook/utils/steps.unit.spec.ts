@@ -53,12 +53,19 @@ const postAggregationFilterQuery: StructuredQueryObject = {
 };
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const question = database.question(query);
+  const question = Question.create({
+    metadata,
+    dataset_query: { database: database.id, type: "query", query },
+  });
   return getQuestionSteps(question, metadata, {});
 };
 
 const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const question = database.question(query).setType("metric");
+  const question = Question.create({
+    metadata,
+    dataset_query: { database: database.id, type: "query", query },
+    cardType: "metric",
+  });
   return getQuestionSteps(question, metadata, {});
 };
 
