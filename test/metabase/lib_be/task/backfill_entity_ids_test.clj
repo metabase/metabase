@@ -87,7 +87,7 @@
             (let [entity-ids [t2/select-fn-set :entity_id :model/Database :id [:in [db-id db-id2 db-id3 db-id4 db-id5]]]]
               (is (every? some? entity-ids))
               ;; entity-ids are all unique
-              (is (= (count entity-ids) 5)))))))))
+              (is (= 5 (count entity-ids))))))))))
 
 (deftest ^:synchronized backfill-limit-test
   (testing "Only backfills up to batch-size records"
