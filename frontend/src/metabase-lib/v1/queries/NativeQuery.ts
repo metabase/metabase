@@ -102,7 +102,7 @@ export default class NativeQuery {
   }
 
   private _setQuery(query: Lib.Query): NativeQuery {
-    return this.question().setQuery(query).legacyQuery();
+    return this.question().setQuery(query).legacyNativeQuery();
   }
 
   /**
@@ -331,11 +331,13 @@ export default class NativeQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).legacyQuery();
+    return this.question()
+      .setParameter(tag.id, newParameter)
+      .legacyNativeQuery();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
-    return this.question().setDatasetQuery(datasetQuery).legacyQuery();
+    return this.question().setDatasetQuery(datasetQuery).legacyNativeQuery();
   }
 
   dimensionOptions(
