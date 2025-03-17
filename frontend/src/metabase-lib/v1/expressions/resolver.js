@@ -89,7 +89,9 @@ export function resolve({
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
-    if (FIELD_MARKERS.includes(op)) {
+    if (op === "value") {
+      return expression;
+    } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
       if (fn) {
