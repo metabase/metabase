@@ -1,7 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import { getIn, merge, updateIn } from "icepick";
+import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { getDashboardById } from "metabase/dashboard/selectors";
@@ -193,21 +193,6 @@ export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
   }) || getDatabasesListDefaultValue;
-
-const getTablesDefaultValue = [];
-export const getTables = createSelector(
-  [getDatabaseId, getDatabasesList],
-  (databaseId, databases) => {
-    if (databaseId != null && databases && databases.length > 0) {
-      const db = _.findWhere(databases, { id: databaseId });
-      if (db && db.tables) {
-        return db.tables;
-      }
-    }
-
-    return getTablesDefaultValue;
-  },
-);
 
 export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
@@ -1020,10 +1005,6 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
-
-export const getTemplateTags = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "native", "template-tags"]),
-);
 
 export const getEmbeddingParameters = createSelector([getCard], card => {
   if (!card?.enable_embedding) {

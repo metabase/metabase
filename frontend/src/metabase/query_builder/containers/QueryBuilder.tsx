@@ -79,7 +79,6 @@ import {
   getSnippetCollectionId,
   getTableForeignKeyReferences,
   getTableForeignKeys,
-  getTables,
   getTimeseriesXDomain,
   getUiControls,
   getVisibleTimelineEventIds,
@@ -136,7 +135,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    tables: getTables(state),
 
     metadata: getMetadata(state),
 
