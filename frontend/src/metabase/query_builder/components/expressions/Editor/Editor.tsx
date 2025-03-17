@@ -325,7 +325,6 @@ function useExpression<S extends StartRule = "expression">({
       metadata,
       handleChange,
       debouncedOnChange,
-      prevError,
       expressionIndex,
     ],
   );
