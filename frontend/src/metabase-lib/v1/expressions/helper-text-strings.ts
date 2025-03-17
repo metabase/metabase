@@ -8,6 +8,7 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
+import { formatIdentifier } from "./identifier";
 import { adjustCaseOrIf } from "./recursive-parser";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
@@ -354,6 +355,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
     ],
     docsPage: "concat",
+  },
+  {
+    name: "url-pathname",
+    structure: "urlPathname",
+    description: () => t`there should be valid description.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The URL or Email column to extract the pathname from.`,
+        example: formatIdentifier(t`Url`),
+      },
+    ],
+    docsPage: "url-pathname",
   },
   {
     name: "replace",
