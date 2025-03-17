@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
+BINDIR=$(dirname "$0")
+MB="$BINDIR/.."
+
 # using relative path ./bin/bb
-BB_BIN_DIR="."
+BB_BIN_DIR="${BINDIR}"
 BB_EXEC="${BB_BIN_DIR}/bb"
 
 # Colors for output
@@ -66,8 +69,9 @@ dbg_file_content() {
 
 # Get Babashka version from bb.edn
 get_min_bb_version() {
-  local edn_file="${BB_EDN_PATH:-"../bb.edn"}"
+  local edn_file="${BB_EDN_PATH:-$MB/bb.edn}"
   local default_version="1.3.186"  # Fallback version
+  dbg_warning "Path to bb.edn '${edn_file}'"
 
   if [ ! -f "$edn_file" ]; then
     log_warning "bb.edn not found at ${edn_file}, using default version: ${default_version}"
@@ -126,10 +130,6 @@ install_babashka() {
 
   download_url="https://github.com/babashka/babashka/releases/download/v${min_bb_version}/babashka-${min_bb_version}-${platform}.tar.gz"
   log_info "Download URL: ${download_url}"
-
-  # Create bin directory relative to the script location
-  dbg_info "Creating bin directory: ${BB_BIN_DIR}"
-  mkdir -p "${BB_BIN_DIR}"
 
   # Download the file first
   curl -L "${download_url}" -o "${tmp_dir}/babashka.tar.gz"
@@ -203,19 +203,6 @@ check_babashka() {
 
 # Main execution
 main() {
-  # Find the real location of this script for relative paths
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  dbg_info "Script directory: ${SCRIPT_DIR}"
-
-  # When checking babashka version, we need to look relative to this script
-  export BB_EDN_PATH="${SCRIPT_DIR}/../bb.edn"
-  dbg_info "BB_EDN_PATH set to: ${BB_EDN_PATH}"
-
-  # Make BB_BIN_DIR relative to the script directory
-  BB_BIN_DIR="${SCRIPT_DIR}"
-  BB_EXEC="${BB_BIN_DIR}/bb"
-  dbg_info "Babashka binary path: ${BB_EXEC}"
-
   # First, ensure babashka is installed in the local ./bin directory
   if ! check_babashka; then
     log_info "Babashka not found or version doesn't match, installing..."
@@ -229,7 +216,7 @@ main() {
   fi
 
   # Construct the path to ./bin/mage_core (sibling file to this script)
-  MAGE_CORE_PATH="${SCRIPT_DIR}/mage.bb"
+  MAGE_CORE_PATH="${BINDIR}/mage.bb"
   # log_info "mage_core path: ${MAGE_CORE_PATH}"
 
   # Ensure mage_core exists and is executable
