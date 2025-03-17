@@ -51,7 +51,7 @@ jobs:
           git commit -m "Update translation sources $DATE"
           git push -u origin $BRANCH_NAME
 
-      - name: crowdin sync
+      - name: Crowdin sync
         uses: crowdin/github-action@v2
         id: crowdin
         with:
@@ -76,7 +76,7 @@ jobs:
           ./bin/i18n/build-translation-resources
 
           git add locales/
-          git commit -m "Update translations"
+          git commit -a -m "Update translations"
           git push -u origin $BRANCH_NAME
 
       - name: Update PR
