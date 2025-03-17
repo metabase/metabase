@@ -152,7 +152,7 @@
            :as opts}
           (some #(when ((:status-pred %) status) %)
                 log-options)]
-      (log/with-context #p (merge {:response-status status} (performance-info info))
+      (log/with-context (merge {:response-status status} (performance-info info))
         (log-fn (u/format-color color (format-info info opts)))))
     (catch Throwable e
       (log/error e "Error logging API request"))))
@@ -187,11 +187,10 @@
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value
   should be passed to the normal `respond` function."
   [{{:keys [body], :as response} :response, :as info}]
-  (log/with-context
-    (condp instance? body
-      ManyToManyChannel (log-core-async-response info)
-      StreamingResponse (log-streaming-response info)
-      (log-info info)))
+  (condp instance? body
+    ManyToManyChannel (log-core-async-response info)
+    StreamingResponse (log-streaming-response info)
+    (log-info info))
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
