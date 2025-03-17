@@ -717,14 +717,17 @@
       {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
-      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
+      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}
+      {:clause [:value "ABC"], :options {:effective-type :type/Text}, :name "\"ABC\""}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
    [{:clause [:= is-active true], :name "Is Active is true"}
     {:clause [:= is-active false], :name "Is Active is false"}
     {:clause [:is-null is-active], :name "Is Active is empty"}
-    {:clause [:not-null is-active], :name "Is Active is not empty"}]))
+    {:clause [:not-null is-active], :name "Is Active is not empty"}
+    {:clause [:value false], :options {:effective-type :type/Boolean}, :name "false"}
+    {:clause [:value true], :options {:effective-type :type/Boolean}, :name "true"}]))
 
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
@@ -743,7 +746,10 @@
       {:clause [:>= tax 1], :name "Tax is greater than or equal to 1"}
       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
       {:clause [:is-null tax], :name "Tax is empty"}
-      {:clause [:not-null tax], :name "Tax is not empty"}])))
+      {:clause [:not-null tax], :name "Tax is not empty"}
+      {:clause [:value 0], :options {:effective-type :type/Number}, :name "0"}
+      {:clause [:value 10], :options {:effective-type :type/Integer}, :name "10"}
+      {:clause [:value -10.15], :options {:effective-type :type/Float}, :name "-10.15"}])))
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id        (meta/field-metadata :orders :id)
