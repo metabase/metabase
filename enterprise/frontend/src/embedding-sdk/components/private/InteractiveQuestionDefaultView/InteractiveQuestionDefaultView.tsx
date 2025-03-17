@@ -77,7 +77,12 @@ export const InteractiveQuestionDefaultView = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if ((!question || isCardIdError) && originalId && originalId !== "new") {
+  if (
+    (!question || isCardIdError) &&
+    originalId &&
+    originalId !== "new" &&
+    originalId !== null
+  ) {
     return <QuestionNotFoundError id={originalId} />;
   }
 
