@@ -1,0 +1,16 @@
+.container {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.gridWrapper {
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.gridRoot {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+  overflow: hidden;
+}
