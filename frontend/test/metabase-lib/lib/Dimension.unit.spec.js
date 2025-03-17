@@ -99,10 +99,6 @@ describe("Dimension", () => {
             ])._options,
           ).toEqual({ "join-alias": "wow" });
         });
-
-        it("should render correctly", () => {
-          expect(dimension.render()).toEqual("Product ID");
-        });
       });
 
       describe("field with FK source-field", () => {
@@ -116,7 +112,7 @@ describe("Dimension", () => {
         it("should parse correctly", () => {
           expect(dimension).toBeInstanceOf(FieldDimension);
           expect(dimension.mbql()).toEqual(mbql);
-          expect(dimension.render()).toEqual("Product → Category");
+          expect(dimension.displayName()).toEqual("Category");
         });
       });
 
@@ -134,7 +130,7 @@ describe("Dimension", () => {
         });
 
         it("should render correctly", () => {
-          expect(dimension.render()).toEqual("Created At: Hour");
+          expect(dimension.displayName()).toEqual("Created At");
         });
       });
 
@@ -152,10 +148,6 @@ describe("Dimension", () => {
           expect(dimension.getOption("source-field")).toEqual(
             ORDERS.PRODUCT_ID,
           );
-        });
-
-        it("should render correctly", () => {
-          expect(dimension.render()).toEqual("Product → Created At: Hour");
         });
       });
     });
@@ -243,19 +235,6 @@ describe("Dimension", () => {
               metadata,
             ).subDisplayName(),
           ).toEqual("Default");
-        });
-      });
-
-      describe("column()", () => {
-        it("should return the column", () => {
-          expect(dimension.column()).toEqual({
-            id: ORDERS.TOTAL,
-            name: "TOTAL",
-            display_name: "Total",
-            base_type: "type/Float",
-            semantic_type: null,
-            field_ref: ["field", ORDERS.TOTAL, null],
-          });
         });
       });
 
@@ -379,36 +358,12 @@ describe("Dimension", () => {
         });
       });
 
-      describe("subTriggerDisplayName()", () => {
-        it("does not have a value", () => {
-          expect(dimension.subTriggerDisplayName()).toBeFalsy();
-        });
-      });
-
-      describe("column()", () => {
-        it("should return the column", () => {
-          expect(dimension.column()).toEqual({
-            id: PRODUCTS.TITLE,
-            name: "TITLE",
-            display_name: "Title",
-            base_type: "type/Text",
-            semantic_type: "type/Title",
-            fk_field_id: ORDERS.PRODUCT_ID,
-            field_ref: [
-              "field",
-              PRODUCTS.TITLE,
-              { "source-field": ORDERS.PRODUCT_ID },
-            ],
-          });
-        });
-      });
-
       describe("fk()", () => {
         it("should return the fk", () => {
           const fk = dimension.fk();
           expect(fk).toBeInstanceOf(FieldDimension);
           expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID, null]);
-          expect(fk.render()).toEqual("Product ID");
+          expect(fk.displayName()).toEqual("Product ID");
           expect(fk._metadata).toEqual(metadata);
         });
       });
@@ -464,30 +419,6 @@ describe("Dimension", () => {
       describe("subDisplayName()", () => {
         it("returns 'Month'", () => {
           expect(dimension.subDisplayName()).toEqual("Month");
-        });
-      });
-
-      describe("subTriggerDisplayName()", () => {
-        it("returns 'by month'", () => {
-          expect(dimension.subTriggerDisplayName()).toEqual("by month");
-        });
-      });
-
-      describe("column()", () => {
-        it("should return the column", () => {
-          expect(dimension.column()).toEqual({
-            id: ORDERS.CREATED_AT,
-            name: "CREATED_AT",
-            display_name: "Created At",
-            base_type: "type/DateTime",
-            semantic_type: "type/CreationTimestamp",
-            field_ref: [
-              "field",
-              ORDERS.CREATED_AT,
-              { "temporal-unit": "month" },
-            ],
-            unit: "month",
-          });
         });
       });
 
@@ -587,11 +518,6 @@ describe("Dimension", () => {
         expect(fk.field().id).toEqual(ORDERS.PRODUCT_ID);
         expect(fk.field().displayName()).toEqual("Product ID");
       });
-
-      it("should render correctly", () => {
-        expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID, null]);
-        expect(fk.render()).toEqual("Product ID");
-      });
     });
   });
 
@@ -627,29 +553,6 @@ describe("Dimension", () => {
           expect(dimension.subDisplayName()).toEqual("10 bins");
         });
       });
-
-      describe("subTriggerDisplayName()", () => {
-        it("returns '10 bins'", () => {
-          expect(dimension.subTriggerDisplayName()).toEqual("10 bins");
-        });
-      });
-
-      describe("column()", () => {
-        it("returns the dimension column", () => {
-          expect(dimension.column()).toEqual({
-            id: ORDERS.TOTAL,
-            name: "TOTAL",
-            display_name: "Total",
-            base_type: "type/Float",
-            semantic_type: null,
-            field_ref: [
-              "field",
-              ORDERS.TOTAL,
-              { binning: { strategy: "num-bins", "num-bins": 10 } },
-            ],
-          });
-        });
-      });
     });
   });
 
@@ -679,25 +582,6 @@ describe("Dimension", () => {
       describe("subDisplayName()", () => {
         it("returns 'Default' for numeric fields", () => {
           expect(dimension.subDisplayName()).toEqual("Default");
-        });
-      });
-
-      describe("subTriggerDisplayName()", () => {
-        it("returns 'Unbinned' if the dimension is a binnable number", () => {
-          expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
-        });
-      });
-
-      describe("column()", () => {
-        it("returns the dimension column", () => {
-          expect(dimension.column()).toEqual({
-            id: ORDERS.TOTAL,
-            name: "TOTAL",
-            display_name: "Total",
-            base_type: "type/Float",
-            semantic_type: null,
-            field_ref: ["field", ORDERS.TOTAL, { "join-alias": "join1" }],
-          });
         });
       });
 
@@ -771,31 +655,6 @@ describe("Dimension", () => {
       describe("displayName", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("boolean");
-        });
-      });
-
-      describe("column", () => {
-        it("returns the column", () => {
-          expect(dimension.column()).toEqual({
-            name: "boolean",
-            display_name: "boolean",
-            base_type: "type/Boolean",
-            semantic_type: undefined,
-            id: [
-              "field",
-              "boolean",
-              {
-                "base-type": "type/Boolean",
-              },
-            ],
-            field_ref: [
-              "field",
-              "boolean",
-              {
-                "base-type": "type/Boolean",
-              },
-            ],
-          });
         });
       });
 

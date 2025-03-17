@@ -143,7 +143,12 @@ async function setup({
   const queryResult = createMockDataset({
     data: {
       cols: ordersFields.map(field =>
-        createMockColumn({ ...field, id: Number(field.id) }),
+        createMockColumn({
+          ...field,
+          id: Number(field.id),
+          source: "fields",
+          field_ref: ["field", Number(field.id), null],
+        }),
       ),
     },
   });

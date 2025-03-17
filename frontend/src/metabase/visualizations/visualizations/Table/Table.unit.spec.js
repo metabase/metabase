@@ -70,7 +70,12 @@ const setup = ({ display, visualization_settings = {} }) => {
             data: {
               rows: [],
               cols: ordersFields.map(field =>
-                createMockColumn({ ...field, id: Number(field.id) }),
+                createMockColumn({
+                  ...field,
+                  id: Number(field.id),
+                  source: "fields",
+                  field_ref: ["field", Number(field.id), null],
+                }),
               ),
             },
           },
