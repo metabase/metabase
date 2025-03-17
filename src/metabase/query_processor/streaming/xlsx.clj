@@ -744,7 +744,8 @@
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
-          (update-pivot-area-ref workbook (inc @last-row-num) (count @cell-styles))
+          (when (and (not (nil? @last-row-num)) (not (nil? @cell-styles)))
+            (update-pivot-area-ref workbook (inc @last-row-num) (count @cell-styles)))
           (try
             (spreadsheet/save-workbook-into-stream! os workbook)
             (finally
