@@ -710,7 +710,7 @@
         (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
                       slack/post-chat-message!               (fn [& _]
                                                                (throw (ex-info "Invalid token"
-                                                                               {:errors {:slack-token "Invalid token"}})))]
+                                                                               {:error-type :slack/invalid-token})))]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry))))))
@@ -734,7 +734,7 @@
       (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
         (with-redefs [slack/post-chat-message!               (fn [& _]
                                                                (throw (ex-info "Channel not found"
-                                                                               {:errors {:slack-channel "Channel not found"}}))
+                                                                               {:error-type :slack/channel-not-found}))
                                                                nil)
                       retry/random-exponential-backoff-retry (constantly test-retry)]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)

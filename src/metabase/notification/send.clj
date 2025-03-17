@@ -42,15 +42,15 @@
    :max-interval-millis     30000})
 
 (defn- contains-unretriable-errors?
-  [errors]
-  (let [unretriable-errors #{:slack-token :slack-channel}
-        error-kinds             (set (keys errors))]
-    (not-empty (s/intersection unretriable-errors error-kinds))))
+  [error]
+  (let [unretriable-errors #{:slack/invalid-token :slack/channel-not-found}]
+    (contains? unretriable-errors error)))
 
 (defn- should-retry-sending?
   [exception channel-type]
-  (not (and (= :channel/slack channel-type)
-            (contains-unretriable-errors? (:errors (ex-data exception))))))
+  (let [error (:error-type (ex-data exception))]
+    (not (and (= :channel/slack channel-type)
+              (contains-unretriable-errors? error)))))
 
 (defn- channel-send-retrying!
   [notification-id payload-type handler message]
