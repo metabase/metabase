@@ -30,10 +30,9 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
       transformResponse: (response: [Database]): Database => {
         return response[0];
       },
-      invalidatesTags: (db, error, { router_database_id }) =>
+      invalidatesTags: (db, error) =>
         invalidateTags(error, [
           listTag("database"),
-          idTag("database", router_database_id),
           ...(db ? [idTag("database", db.id)] : []),
         ]),
     }),

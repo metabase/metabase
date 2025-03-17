@@ -63,15 +63,14 @@ export const DestinationDatabaseConnectionModalInner = ({
   };
 
   const handleSaveDatabase = async (database: DatabaseData) => {
-    if (database.id === undefined) {
-      return handleCreateMirrorDatabase(database);
+    if (typeof database.id === "number") {
+      return updateDatabase({
+        ...database,
+        id: database.id,
+        auto_run_queries: database.auto_run_queries ?? true,
+      }).unwrap();
     } else {
-      // TODO: it really doesn't like this type for two reasons
-      // 1. the id key being ?ed
-      // 2. a lot of fields are value | undefined in one type and value | null in the other
-      // it appears the API endpoint doesn't like undefined when it expects null either
-      // @ts-expect-error will fix
-      return updateDatabase(database).unwrap();
+      return handleCreateMirrorDatabase(database);
     }
   };
 
