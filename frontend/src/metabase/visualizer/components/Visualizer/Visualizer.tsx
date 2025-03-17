@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   DndContext,
   type DragEndEvent,
@@ -8,8 +6,10 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect } from "react";
 import { usePrevious, useUnmount } from "react-use";
+import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon, Title } from "metabase/ui";
@@ -46,7 +46,6 @@ import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 import S from "./Visualizer.module.css";
-import { useDisclosure } from "@mantine/hooks";
 
 const MEASURE_VERTICAL_ITEM = (node: HTMLElement) => {
   const rect = node.getBoundingClientRect();
@@ -225,20 +224,6 @@ export const Visualizer = (props: VisualizerProps) => {
               <DataManager />
             </Flex>
           )}
-          {/* <Box
-              h={dataImporterOpen ? "50%" : "0"}
-              p={10}
-              pr={0}
-              style={{ overflowY: "hidden" }}
-            >
-            </Box>
-            <Box
-              h={dataImporterOpen ? "25%" : "100%"}
-              pl={10}
-              pb={10}
-              style={{ overflowY: "auto" }}
-            >
-            </Box> */}
         </Box>
 
         {/* top header bar */}

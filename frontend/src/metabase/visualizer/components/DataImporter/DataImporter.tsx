@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Text, TextInput, Title } from "metabase/ui";
+import { Box, Flex, Icon, Text, TextInput } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
   addDataSource,
