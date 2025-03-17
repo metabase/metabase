@@ -12,18 +12,14 @@
     minmax(var(--main-width), auto)
     auto;
 
-  @media (max-width: 920px) {
-    --main-width: 600px;
-    --sidebar-width: 200px;
+  @media screen and (--breakpoint-max-md) {
+    --main-width: 65vw;
+    --sidebar-width: 35vw;
   }
 
-  @media (max-width: 800px) {
+  @media screen and (--breakpoint-max-sm) {
     --main-width: 460px;
     --sidebar-width: 180px;
-  }
-
-  @media (max-width: 640px) {
-    --sidebar-width: 230px;
 
     background: var(--mb-color-bg-white);
     position: fixed;
@@ -63,7 +59,7 @@
   max-width: var(--sidebar-width);
   min-height: 100%;
 
-  @media (max-width: 640px) {
+  @media screen and (--breakpoint-max-sm) {
     width: 35vw;
     height: 100vh;
   }
