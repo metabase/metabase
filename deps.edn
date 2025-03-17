@@ -138,7 +138,6 @@
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
-  org.clojars.lukaszkorecki/mokujin         {:mvn/version "1.0.0.50-SNAPSHOT-1"}; Structured Logging MDC wrapper
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.clojure/clojure                       {:mvn/version "1.12.0"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
