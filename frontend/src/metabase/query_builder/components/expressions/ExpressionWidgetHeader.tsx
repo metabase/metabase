@@ -18,7 +18,7 @@ export const ExpressionWidgetHeader = ({
   onBack,
 }: Props): JSX.Element => {
   return (
-    <Flex className={ExpressionWidgetHeaderS.Header} maw={688}>
+    <Flex className={ExpressionWidgetHeaderS.Header}>
       <Button
         className={ExpressionWidgetHeaderS.HeaderButton}
         icon="chevronleft"
