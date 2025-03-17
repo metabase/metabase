@@ -55,7 +55,8 @@ export type EngineFieldType =
   | "select"
   | "textFile"
   | "info"
-  | "section";
+  | "section"
+  | "hidden";
 
 export type EngineFieldTreatType = "base64";
 
