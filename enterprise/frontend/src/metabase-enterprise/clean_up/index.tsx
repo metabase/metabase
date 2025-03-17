@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
@@ -48,11 +48,6 @@ if (hasPremiumFeature("collection_cleanup")) {
         menuItems: [],
       };
     }
-
-    console.log({
-      hasStaleItems,
-      hasCollectionItems,
-    });
 
     return {
       menuItems: [

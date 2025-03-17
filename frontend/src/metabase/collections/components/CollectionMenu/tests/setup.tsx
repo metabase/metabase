@@ -115,6 +115,9 @@ export const assertIndicatorVisible = async () => {
 
 export const assertIndicatorHidden = async () => {
   await fetchMock.flush();
+  await waitFor(() =>
+    expect(screen.queryByTestId("thing-is-loading")).not.toBeInTheDocument(),
+  );
   expect(
     (await screen.findByTestId("menu-indicator-root")).querySelector(
       "[class*=indicator]",

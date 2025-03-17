@@ -8,10 +8,10 @@ import {
 interface UserHasSeenAllProps {
   children: ({
     hasSeenAll,
-    handleOpen,
+    handleUpdate,
   }: {
     hasSeenAll: boolean;
-    handleOpen: () => void;
+    handleUpdate: () => void;
   }) => JSX.Element;
 }
 
@@ -22,18 +22,16 @@ const _UserHasSeenAll = ({ children }: UserHasSeenAllProps) => {
     throw new Error("UserHasSeenAll must be used within context");
   }
 
-  const { hasSeenAll, handleOpen } = ctx;
+  const { hasSeenAll, handleUpdate } = ctx;
 
-  console.log({ hasSeenAll });
-
-  return children({ hasSeenAll, handleOpen });
+  return children({ hasSeenAll, handleUpdate });
 };
 
 export const UserHasSeenAll = ({
-  menuKey,
+  id,
   ...rest
-}: UserHasSeenAllProps & { menuKey: string }) => (
-  <UserHasSeenAllProvider menuKey={menuKey}>
+}: UserHasSeenAllProps & { id: string }) => (
+  <UserHasSeenAllProvider id={id}>
     <_UserHasSeenAll {...rest} />
   </UserHasSeenAllProvider>
 );

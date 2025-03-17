@@ -5,16 +5,16 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useKeyPressEvent } from "react-use";
 
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
-import { useKeyPressEvent } from "react-use";
 
 const EMPTY_ARRAY: string[] = [];
 
 export interface UserHasSeenAllContextProps {
   upsertBadge: ({ key, value }: { key: string; value: boolean }) => void;
   removeBadge: ({ key }: { key: string }) => void;
-  handleOpen: () => void;
+  handleUpdate: () => void;
   hasSeenAll: boolean;
 }
 
@@ -22,10 +22,10 @@ export const UserHasSeenAllContext =
   createContext<UserHasSeenAllContextProps | null>(null);
 
 export const UserHasSeenAllProvider = ({
-  menuKey,
+  id,
   children,
-}: PropsWithChildren<{ menuKey: string }>) => {
-  const contextValue = useUserHasSeenAll(menuKey);
+}: PropsWithChildren<{ id: string }>) => {
+  const contextValue = useUserHasSeenAll(id);
 
   return (
     <UserHasSeenAllContext.Provider value={contextValue}>
@@ -34,7 +34,7 @@ export const UserHasSeenAllProvider = ({
   );
 };
 
-const useUserHasSeenAll = (menuKey: string) => {
+const useUserHasSeenAll = (id: string) => {
   const [badges, setBadges] = useState<[string, boolean][]>([]);
 
   const upsertBadge = useCallback(
@@ -57,7 +57,7 @@ const useUserHasSeenAll = (menuKey: string) => {
 
   const { value: seenBadges, setValue: setSeenBadges } = useUserKeyValue({
     namespace: "indicator-menu",
-    key: menuKey,
+    key: id,
     defaultValue: EMPTY_ARRAY,
   });
 
@@ -69,7 +69,7 @@ const useUserHasSeenAll = (menuKey: string) => {
       .map(([key]) => key);
   }, [badges, seenBadges]);
 
-  const handleOpen = useCallback(() => {
+  const handleUpdate = useCallback(() => {
     if (!unseenBadges.every(b => seenBadges.includes(b))) {
       setSeenBadges([...seenBadges, ...unseenBadges]);
     }
@@ -82,8 +82,8 @@ const useUserHasSeenAll = (menuKey: string) => {
       upsertBadge,
       removeBadge,
       hasSeenAll,
-      handleOpen,
+      handleUpdate,
     }),
-    [hasSeenAll, upsertBadge, removeBadge, handleOpen],
+    [hasSeenAll, upsertBadge, removeBadge, handleUpdate],
   );
 };

@@ -7,9 +7,9 @@ import {
   isRootPersonalCollection,
 } from "metabase/collections/utils";
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
+import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
+import { UserHasSeenAll } from "metabase/components/UserHasSeen/UserHasSeenAll";
 import { ForwardRefLink } from "metabase/core/components/Link";
-import { UserHasSeen } from "metabase/hoc/UserHasSeen/UserHasSeen";
-import { UserHasSeenAll } from "metabase/hoc/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
@@ -126,14 +126,14 @@ export const CollectionMenu = ({
   }
 
   return (
-    <UserHasSeenAll menuKey="collection-menu">
-      {({ hasSeenAll, handleOpen }) => (
+    <UserHasSeenAll id="collection-menu">
+      {({ hasSeenAll, handleUpdate }) => (
         <Menu
           position="bottom-end"
           opened={menuOpen}
           onChange={setMenuOpen}
           keepMounted
-          onOpen={handleOpen}
+          onOpen={handleUpdate}
         >
           <Menu.Target>
             <Tooltip

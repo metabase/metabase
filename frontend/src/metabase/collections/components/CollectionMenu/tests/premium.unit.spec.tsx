@@ -194,6 +194,14 @@ describe("CollectionMenu", () => {
           ),
         ).toHaveLength(1),
       );
+      await waitFor(() =>
+        expect(
+          fetchMock.calls(
+            "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/clean-stale-items",
+            { method: "GET" },
+          ),
+        ).toHaveLength(1),
+      );
 
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));

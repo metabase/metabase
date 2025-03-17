@@ -1,9 +1,9 @@
 import { useContext, useEffect } from "react";
+import { useKeyPressEvent } from "react-use";
 
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
 import { UserHasSeenAllContext } from "./UserHasSeenAllContext";
-import { useKeyPressEvent } from "react-use";
 
 interface UserHasSeenProps {
   id: string;
@@ -36,7 +36,9 @@ export const UserHasSeen = ({
     if (hasContext && withContext) {
       if (!isLoading) {
         upsertBadge({ key: id, value: hasSeen });
-        return () => removeBadge({ key: id });
+        return () => {
+          removeBadge({ key: id });
+        };
       }
     }
   }, [id, hasSeen, isLoading, upsertBadge, removeBadge, withContext]);
