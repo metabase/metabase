@@ -189,7 +189,7 @@
 ;; HACK: This is only necessary to handle broken legacy refs that refer to a :join-alias from another stage.
 ;; If such refs can be excluded, this can be dropped. The best approach is likely for conversion from legacy to heal
 ;; such a bad ref in advance.
-(mu/defn resolve-join-across-stages :- ::lib.schema.join/join
+(mu/defn maybe-resolve-join-across-stages :- [:maybe ::lib.schema.join/join]
   "Resolves a join with a specific `join-alias`, in the specified stage **and** earlier stages.
 
   This can heal some bad legacy references which use a `join-alias` for a previous stage even when they should not."
@@ -197,10 +197,9 @@
    stage-number :- :int
    join-alias   :- ::lib.schema.common/non-blank-string]
   (let [stage-index (lib.util/canonical-stage-index query stage-number)]
-    (or (some #(maybe-resolve-join query % join-alias)
+    (some #(maybe-resolve-join query % join-alias)
           ;; Every stage from the input `stage-number` down to 1, but excluding 0.
-              (range stage-index -1 -1))
-        (throw (join-not-found-error query stage-number join-alias)))))
+          (range stage-index -1 -1))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]

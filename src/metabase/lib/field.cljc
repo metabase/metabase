@@ -198,7 +198,7 @@
                                  (:ident (lib.metadata/field query source-field))))
       join-alias     (-> (lib.join/with-join-alias join-alias)
                          (update :ident lib.metadata.ident/explicitly-joined-ident
-                                 (:ident (lib.join/resolve-join-across-stages query stage-number join-alias))))
+                                 (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias))))
       ;; Overwriting the ident with one from the options, eg. for a breakout clause.
       ident          (assoc :ident ident))))
 

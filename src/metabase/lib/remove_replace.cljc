@@ -86,11 +86,15 @@
      #(lib.util.match/replace
         %
         #{:field}
+        ;; XXX: These changes might not be necessary! The clause should already have been removed, not survive to this
+        ;; point.
         (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
               source-uuid (:lib/source-uuid old-matching-column)
-              new-column  (source-uuid->new-column source-uuid)
+              new-column  (when source-uuid
+                            (source-uuid->new-column source-uuid))
               new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
-          (assoc &match 2 new-name))))))
+          (cond-> &match
+            new-name (assoc 2 new-name)))))))
 
 (defn- update-stale-references
   "Update stale refs in query after clause removal.
@@ -202,10 +206,12 @@
   [query previous-stage-number unmodified-query-for-stage target-uuid]
   (if-let [stage-number (lib.util/next-stage-number unmodified-query-for-stage previous-stage-number)]
     (let [stage (lib.util/query-stage unmodified-query-for-stage stage-number)
-          target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
+          cols  (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
+          target-ref-id (->> cols
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
                                        (:lib/desired-column-alias column)))))]
+      (tap> (list `remove-stage-references query previous-stage-number stage-number stage cols '=> target-uuid target-ref-id))
       (cond-> query
         ;; We are moving to the next stage, so pass the current query as the unmodified-query-for-stage
         target-ref-id
@@ -256,9 +262,9 @@
                       :else
                       query)
           new-query (if location
-                      (-> new-query
-                          (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
-                          (normalize-fields-clauses location))
+                      (dev.portal/diff-> new-query
+                                         (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
+                                         (normalize-fields-clauses location))
                       new-query)
           new-stage (lib.util/query-stage new-query stage-number)]
       (if (or (not changing-breakout?) (lib.schema.util/distinct-refs? (:breakout new-stage)))

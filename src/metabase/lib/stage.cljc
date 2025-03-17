@@ -364,9 +364,6 @@
                              signed)]
          (mapv (fn [[sig column]]
                  (let [ident (get idents sig)]
-                   (when-not ident
-                     (println "\n\n\nerror 2!\n\n")
-                     #_(throw (ex-info "nil ident in RCM ::stage" {:idents idents, :sig sig, :column column})))
                    (assoc column :ident ident)))
                (m/distinct-by first signed)))
 
