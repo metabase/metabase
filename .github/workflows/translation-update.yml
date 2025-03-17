@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -58,7 +60,7 @@ jobs:
           upload_translations: false
           download_translations: true
           localization_branch_name: ${{ env.BRANCH_NAME }}
-          create_pull_request: true
+          create_pull_request: false
           pull_request_title: 'Update Translations'
           pull_request_body: 'Updated translations'
           pull_request_base_branch_name: 'master'
