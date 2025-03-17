@@ -177,7 +177,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("fields-picker").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("City").click();
       cy.findByText("State").click();
       cy.findByText("Birth Date").click();

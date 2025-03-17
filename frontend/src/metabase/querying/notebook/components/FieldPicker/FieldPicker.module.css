@@ -1,4 +1,5 @@
 .ItemTitle {
+  color: var(--mb-color-text-secondary);
   min-width: 10ch;
 }
 
