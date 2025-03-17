@@ -14,7 +14,6 @@ const paths = [
 const locales = [
   "Chinese (China)",
   "Chinese (Taiwan)",
-  "Chinese",
   "French",
   "German",
   "Italian",
