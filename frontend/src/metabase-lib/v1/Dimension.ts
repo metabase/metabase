@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ValidationError, {
@@ -253,28 +253,6 @@ export default class Dimension {
 
   binningStrategy() {
     return this._getBinningOption("strategy");
-  }
-
-  /**
-   * Short string that describes the binning options used. Used for both subTriggerDisplayName() and render()
-   */
-  _describeBinning(): string {
-    if (!this._binningOptions()) {
-      return "";
-    }
-
-    if (this.binningStrategy() === "num-bins") {
-      const n = this._getBinningOption("num-bins");
-      return ngettext(msgid`${n} bin`, `${n} bins`, n);
-    }
-
-    if (this.binningStrategy() === "bin-width") {
-      const binWidth = this._getBinningOption("bin-width");
-      const units = this.field().isCoordinate() ? "°" : "";
-      return `${binWidth}${units}`;
-    } else {
-      return t`Auto binned`;
-    }
   }
 
   /**
