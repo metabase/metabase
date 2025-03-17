@@ -9,6 +9,7 @@ import {
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import {
   Alert,
@@ -147,7 +148,7 @@ export const DatabaseRoutingSection = ({
             {isFeatureEnabled ? (
               <Button
                 component={Link}
-                to={`/admin/databases/${database.id}/destination-databases/create`}
+                to={Urls.createDestinationDatabase(database.id)}
               >{t`Add`}</Button>
             ) : (
               <Tooltip
