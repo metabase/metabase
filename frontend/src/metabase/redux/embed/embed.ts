@@ -18,7 +18,7 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     additional_info: true,
     action_buttons: true,
     entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
-  } as const;
+  };
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
   DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,

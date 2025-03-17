@@ -14,7 +14,8 @@ export interface InteractiveEmbeddingOptions {
   entity_types: EmbeddingEntityType[];
 }
 
+type EmptyObject = Record<string, never>;
 export interface EmbedState {
-  options: InteractiveEmbeddingOptions;
+  options: InteractiveEmbeddingOptions | EmptyObject;
   isEmbeddingSdk?: boolean;
 }
