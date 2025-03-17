@@ -9,6 +9,7 @@ describe("scenarios > custom column > literals", () => {
   it("should support literals in custom columns", () => {
     const columns = [
       { name: "True", expression: "True", value: "true" },
+      // TODO false doesn't work atm. Uncomment when it is fixed
       // { name: "false", expression: "False", value: "false" },
       { name: "Text", expression: '"abc"', value: "abc" },
       { name: "Number", expression: "10", value: "10" },
