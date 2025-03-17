@@ -202,7 +202,7 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
       const target: ClickBehaviorTarget = { type: "variable", id: name };
 
       const field = templateTagDimension.field();
-      const { base_type } = field;
+      const base_type = field?.base_type;
 
       const parentType =
         [TYPE.Temporal, TYPE.Number, TYPE.Text].find(
