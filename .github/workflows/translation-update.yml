@@ -61,8 +61,6 @@ jobs:
 
           DATE=$(date +'%Y-%m-%d')
 
-          git checkout -b $BRANCH_NAME
-
           ./bin/i18n/update-translation-template
 
           git add locales/metabase.po
