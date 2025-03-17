@@ -93,8 +93,7 @@ export class TemplateTagDimension {
   }
 
   displayName() {
-    const tag = this.tag();
-    return tag?.["display-name"] ?? "";
+    return this.tag()?.["display-name"] ?? this.field()?.displayName() ?? "";
   }
 
   mbql(): VariableTarget {
