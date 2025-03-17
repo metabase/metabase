@@ -1,7 +1,6 @@
 import { forwardRef, useState } from "react";
 
 import { LeaveConfirmModal } from "metabase/components/LeaveConfirmModal";
-import Modal from "metabase/components/Modal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -119,13 +118,11 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           />
         )}
         {modalType === "leave" && (
-          <Modal isOpen>
-            <LeaveConfirmModal
-              opened
-              onConfirm={handleConfirmCancel}
-              onClose={handleModalClose}
-            />
-          </Modal>
+          <LeaveConfirmModal
+            opened
+            onConfirm={handleConfirmCancel}
+            onClose={handleModalClose}
+          />
         )}
       </Flex>
     );
