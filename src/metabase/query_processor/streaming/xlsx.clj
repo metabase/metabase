@@ -638,13 +638,6 @@
               .getPivotFields
               (.getPivotFieldArray idx)
               (.setSortType setting)))))
-    ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
-    (-> pivot-table
-        .getPivotCacheDefinition
-        .getCTPivotCacheDefinition
-        .getCacheSource
-        .getWorksheetSource
-        (.setRef (format "A:%s" (CellReference/convertNumToColString (dec (count ordered-cols))))))
     (let [swb   (-> (SXSSFWorkbook. ^XSSFWorkbook wb)
                     (doto (.setCompressTempFiles true)))
           sheet (spreadsheet/select-sheet "data" swb)]
@@ -665,6 +658,20 @@
     {:workbook workbook
      :sheet    sheet}))
 
+(defn- update-pivot-area-ref [workbook last-row-num last-cell-num]
+  ;; Update the area reference of the pivot table in the pivot sheet
+  ;; based on the number of columns in the first row and the number of rows in the last row of the data sheet.
+  (when-let [xssfworkbook (.getXSSFWorkbook workbook)]
+    (when-let [sheet (.getSheet xssfworkbook "pivot")]
+      (when-let [pivot-ables (.getPivotTables sheet)]
+        (when-let [pivot-table (first pivot-ables)]
+          (-> pivot-table
+              .getPivotCacheDefinition
+              .getCTPivotCacheDefinition
+              .getCacheSource
+              .getWorksheetSource
+              (.setRef (format "A1:%s%s" (CellReference/convertNumToColString (dec last-cell-num)) last-row-num))))))))
+
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   ;; working around a bug #41919. Will be fixed when we can get a release of apache poi 5.3.1. See
@@ -675,7 +682,8 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)
+        last-row-num       (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
@@ -727,6 +735,7 @@
           (when (or (not group)
                     (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
+            (vreset! last-row-num (inc row-num))
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))
 
@@ -735,6 +744,7 @@
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
+          (update-pivot-area-ref workbook (inc @last-row-num) (count @cell-styles))
           (try
             (spreadsheet/save-workbook-into-stream! os workbook)
             (finally
