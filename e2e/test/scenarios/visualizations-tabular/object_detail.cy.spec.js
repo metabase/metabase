@@ -387,6 +387,62 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.get("@getActions").should("have.callCount", 0);
   });
+
+  it("should respect 'view_as' column settings (VIZ-199)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
+      settings: {
+        view_as: "link",
+        link_text: "Link to review {{ID}}",
+        link_url: "https://metabase.test?review={{ID}}",
+      },
+    });
+
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": REVIEWS_ID },
+      },
+      visualization_settings: {
+        column_settings: {
+          [JSON.stringify(["name", "RATING"])]: {
+            view_as: "link",
+            link_text: "Rating: {{RATING}}",
+            link_url: "https://metabase.test?rating={{RATING}}",
+          },
+        },
+      },
+    });
+
+    H.openObjectDetail(0);
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Link to review 1")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?review=1");
+
+      cy.findByText("Rating: 5")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?rating=5");
+    });
+
+    cy.findByTestId("view-next-object-detail").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Link to review 2")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?review=2");
+
+      cy.findByText("Rating: 4")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?rating=4");
+    });
+  });
 });
 
 function drillPK({ id }) {
