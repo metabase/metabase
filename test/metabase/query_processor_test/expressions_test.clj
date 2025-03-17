@@ -482,7 +482,13 @@
    [:field "False" {:base_type :type/Boolean}]])
 
 (def ^:private standard-literal-expression-row-formats
-  [int str str int int 3.0 mt/boolish->bool mt/boolish->bool])
+  [str str int int 3.0 mt/boolish->bool mt/boolish->bool])
+
+(def ^:private standard-literal-expression-row-formats-with-id
+  (into [int] standard-literal-expression-row-formats))
+
+(def ^:private standard-literal-expression-values
+  (map second (vals standard-literal-expression-defs)))
 
 (defmethod driver/database-supports? [::driver/driver ::expression-literals]
   [driver _feature database]
@@ -495,39 +501,52 @@
     false))
 
 (deftest ^:parallel basic-literal-expression-test
-  (testing "basic literal expression"
+  (testing "basic literal expressions"
     (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
       (is (= [[1 "" "foo" 0 12345 1.234 true false]
               [2 "" "foo" 0 12345 1.234 true false]]
              (mt/formatted-rows
-              standard-literal-expression-row-formats
+              standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query orders
                 {:expressions standard-literal-expression-defs
                  :fields      (into [$id] standard-literal-expression-refs)
                  :order-by    [[:asc  $id]]
                  :limit       2})))))))
 
+(deftest ^:parallel filter-literal-expression-with-=-!=-test
+  (doseq [[and-or eq-ne expected] [[:and :=  [standard-literal-expression-values]]
+                                   [:or  :!= []]]]
+    (testing (str "filter literal expressions with " and-or " " eq-ne)
+      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+        (is (= expected
+               (mt/formatted-rows
+                standard-literal-expression-row-formats
+                (mt/run-mbql-query orders
+                  {:expressions standard-literal-expression-defs
+                   :fields      standard-literal-expression-refs
+                   :filter      (into [and-or] (map #(vector eq-ne % %) standard-literal-expression-refs))
+                   :limit       1}))))))))
+
 (deftest ^:parallel nested-literal-expression-test
   (testing "nested literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
                                      #{:h2})
-      (is (= [[1 "" "foo" 0 12345 1.234 true false]
-              [2 "" "foo" 0 12345 1.234 true false]]
+      (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
-              standard-literal-expression-row-formats
+              standard-literal-expression-row-formats-with-id
               (mt/run-mbql-query venues
                 {:fields       (into [$id] standard-literal-expression-column-refs)
                  :source-query {:source-table $$venues
                                 :expressions  standard-literal-expression-defs
                                 :fields       (into [$id] standard-literal-expression-refs)}
                  :order-by     [[:asc $id]]
-                 :limit        2})))))))
+                 :limit        1})))))))
 
 (deftest ^:parallel order-by-literal-expression-test
   (testing "order-by integer literal expression"
     ;; ORDER BY a non-negative integer literal is broadly supported (maybe even standard?) and means "order by the Nth
-    ;; column in the select list".
+    ;; column in the select list". Nevertheless, it's questionable whether anyone would actually want to do this.
     (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
       (is (= [[1 1]
               [2 1]]
@@ -544,13 +563,42 @@
         (is (= [[1 "" "foo" 0 12345 1.234 true false]
                 [2 "" "foo" 0 12345 1.234 true false]]
                (mt/formatted-rows
-                standard-literal-expression-row-formats
+                standard-literal-expression-row-formats-with-id
                 (mt/run-mbql-query orders
                   {:expressions standard-literal-expression-defs
                    :fields      (into [$id] standard-literal-expression-refs)
                    :order-by    (into [[:asc  $id]]
                                       (map #(conj [:asc] %) standard-literal-expression-refs))
                    :limit       2})))))))
+
+;; This fails, but also fails for non-literal expressions.
+#_(deftest ^:parallel filter-literal-expression-with-and-or-test
+    (doseq [op [:and :or]]
+      (testing (str "filter literal expressions with " op)
+        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+          (is (= [standard-literal-expression-values]
+                 (mt/formatted-rows
+                  standard-literal-expression-row-formats
+                  (mt/run-mbql-query orders
+                    {:expressions standard-literal-expression-defs
+                     :fields      standard-literal-expression-refs
+                     :filter      (into [op] standard-literal-expression-refs)
+                     :limit       1}))))))))
+
+;; This fails, but also fails for non-literal expressions.
+#_(deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
+    (doseq [[expression expected] [[[:expression "True"] [standard-literal-expression-values]]
+                                   [[:expression "False"] []]]]
+      (testing (str "filter literal expressions with " expression)
+        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+          (is (= expected
+                 (mt/formatted-rows
+                  standard-literal-expression-row-formats
+                  (mt/run-mbql-query orders
+                    {:expressions standard-literal-expression-defs
+                     :fields      standard-literal-expression-refs
+                     :filter      expression
+                     :limit       1}))))))))
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested aggregated and filtered literal expression"
