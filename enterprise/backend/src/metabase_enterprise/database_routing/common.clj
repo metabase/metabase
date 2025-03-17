@@ -14,7 +14,7 @@
   Database but no current user exists, an exception will be thrown."
   [current-user db-or-id]
   (when-let [attr-name (user-attribute db-or-id)]
-    (let [database-name #p (get #p (:login_attributes @current-user) #p attr-name)]
+    (let [database-name (get (:login_attributes @current-user) attr-name)]
       (cond
         (nil? @current-user)
         (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
