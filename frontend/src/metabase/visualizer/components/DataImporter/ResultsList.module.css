@@ -1,0 +1,15 @@
+.resultItem {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.resultItem:hover {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-bg-medium);
+}
+
+.resultItemSelected,
+.resultItemSelected:hover {
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-brand);
+}
