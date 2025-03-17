@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-BINDIR=$(dirname "$0")
+_REL_BINDIR=$(dirname "$0")
+BINDIR=$(cd "${_REL_BINDIR}" && pwd)
+# echo "BINDIR" "${BINDIR}"
 MB="$BINDIR/.."
 
 # using relative path ./bin/bb
@@ -233,7 +235,7 @@ main() {
   dbg_info "Running mage_core with args: '$*'"
   # log_info $MAGE_CORE_PATH
   # log_info "${BB_EXEC} ${MAGE_CORE_PATH}"
-  exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@"
+  (cd "${MB}" && exec "${BB_EXEC}" "${MAGE_CORE_PATH}" "$@")
 }
 
 # Run the main function with all arguments
