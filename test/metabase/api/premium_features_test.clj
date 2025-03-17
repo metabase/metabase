@@ -30,3 +30,6 @@
       (testing "returns 404 if no token is set"
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 "premium-features/token/status")))))))
+
+(deftest token-check-features-test
+  (is (= [] (token-check/*token-features*))))
