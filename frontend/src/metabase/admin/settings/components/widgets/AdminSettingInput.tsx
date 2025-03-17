@@ -97,7 +97,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
-        <AdminSettingInputComponent
+        <BasicAdminSettingInput
           name={name}
           value={initialValue}
           onChange={handleChange}
@@ -110,7 +110,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
   );
 }
 
-export function AdminSettingInputComponent({
+export function BasicAdminSettingInput({
   name,
   value,
   onChange,
