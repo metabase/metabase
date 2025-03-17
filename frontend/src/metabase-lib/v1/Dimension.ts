@@ -3,7 +3,6 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import * as Lib from "metabase-lib";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/v1/ValidationError";
@@ -383,42 +382,11 @@ export default class Dimension {
     return this.withoutOptions("temporal-unit");
   }
 
-  withoutJoinAlias(): Dimension {
-    return this.withoutOptions("join-alias");
-  }
-
   /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
     return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
-  }
-
-  /**
-   * The name to be shown when this dimension is being displayed as a sub-dimension of another.
-   *
-   * Example: a temporal bucketing option such as 'by Day' or 'by Month'.
-   */
-  subDisplayName(): string {
-    if (this._subDisplayName) {
-      return this._subDisplayName;
-    }
-
-    if (this.temporalUnit()) {
-      return Lib.describeTemporalUnit(this.temporalUnit());
-    }
-
-    if (this.binningStrategy()) {
-      return this._describeBinning();
-    }
-
-    // honestly, I have no idea why we do something totally random if we have a FK source field compared to everything
-    // else, but that's how the tests are written
-    if (this.sourceField()) {
-      return this.displayName();
-    }
-
-    return "Default";
   }
 
   mbql(): FieldReference | null | undefined {

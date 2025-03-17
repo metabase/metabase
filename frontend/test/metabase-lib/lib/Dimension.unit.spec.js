@@ -223,21 +223,6 @@ describe("Dimension", () => {
         });
       });
 
-      describe("subDisplayName()", () => {
-        it("returns 'Default' for numeric fields", () => {
-          expect(dimension.subDisplayName()).toEqual("Default");
-        });
-
-        it("returns 'Default' for non-numeric fields", () => {
-          expect(
-            Dimension.parseMBQL(
-              ["field", PRODUCTS.CATEGORY, null],
-              metadata,
-            ).subDisplayName(),
-          ).toEqual("Default");
-        });
-      });
-
       describe("field()", () => {
         it("should return correct Field for underlying Field", () => {
           expect(dimension.field().id).toEqual(ORDERS.TOTAL);
@@ -352,12 +337,6 @@ describe("Dimension", () => {
         });
       });
 
-      describe("subDisplayName()", () => {
-        it("returns the field name", () => {
-          expect(dimension.subDisplayName()).toEqual("Title");
-        });
-      });
-
       describe("fk()", () => {
         it("should return the fk", () => {
           const fk = dimension.fk();
@@ -413,12 +392,6 @@ describe("Dimension", () => {
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Created At");
-        });
-      });
-
-      describe("subDisplayName()", () => {
-        it("returns 'Month'", () => {
-          expect(dimension.subDisplayName()).toEqual("Month");
         });
       });
 
@@ -547,12 +520,6 @@ describe("Dimension", () => {
           expect(dimension.displayName()).toEqual("Total");
         });
       });
-
-      describe("subDisplayName()", () => {
-        it("returns '10 bins'", () => {
-          expect(dimension.subDisplayName()).toEqual("10 bins");
-        });
-      });
     });
   });
 
@@ -576,12 +543,6 @@ describe("Dimension", () => {
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Total");
-        });
-      });
-
-      describe("subDisplayName()", () => {
-        it("returns 'Default' for numeric fields", () => {
-          expect(dimension.subDisplayName()).toEqual("Default");
         });
       });
 
