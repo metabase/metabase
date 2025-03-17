@@ -1,7 +1,7 @@
 name: Synchronize Translations
 on:
   schedule:
-    - cron: 30 5 * * 1-5 # every weekday morning (utc)
+    - cron: 30 5 * * 2 # tuesday morning, UTC
   workflow_dispatch:
   pull_request:
     types: [ synchronize ] # FIXME for testing
@@ -16,7 +16,9 @@ jobs:
     env:
       BRANCH_NAME: update-translations-${{ github.run_id }}
       CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-      CROWDIN_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
+      CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -33,12 +35,29 @@ jobs:
       - name: install gettext
         run: sudo apt-get install gettext
 
-      - name: Commit updated sources
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Crowdin download
+        uses: crowdin/github-action@v2
+        id: crowdin-download
+        with:
+          config: locales/crowdin.yml
+          command: download
+          command_args: |
+            --config locales/crowdin.yml \
+            -e=el \ # exclude incomplete languages
+            -e=es-MX \
+            -e=gu-IN \
+            -e=hr \
+            -e=km \
+            -e=pt-PT \
+            -e=ro \
+            -e=th \
+            -e=uz
+
+      - name: Prepare translation resources
         run: | # sh
           git config user.name github-actions
           git config user.email github-actions@github.com
+          git checkout -b $BRANCH_NAME
 
           DATE=$(date +'%Y-%m-%d')
 
@@ -47,57 +66,53 @@ jobs:
           ./bin/i18n/update-translation-template
 
           git add locales/metabase.po
-
           git commit -m "Update translation sources $DATE"
-          git push -u origin $BRANCH_NAME
-
-      - name: Crowdin sync
-        uses: crowdin/github-action@v2
-        id: crowdin
-        with:
-          config: locales/crowdin.yml
-          upload_sources: true
-          upload_translations: false
-          download_translations: true
-          localization_branch_name: ${{ env.BRANCH_NAME }}
-          create_pull_request: false
-          pull_request_title: 'Update Translations'
-          pull_request_body: 'Updated translations'
-          pull_request_base_branch_name: 'master'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
-
-      - name: Prepare translation resources
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: | # sh
-          git checkout $BRANCH_NAME
 
           ./bin/i18n/build-translation-resources
 
           git add locales/
-          git commit -a -m "Update translations" --allow-empty
+          git commit -a -m "Update translations $Date" --allow-empty
           git push -u origin $BRANCH_NAME
 
-      - name: Update PR
+      - name: Crowdin upload
+        uses: crowdin/github-action@v2
+        id: crowdin-upload
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
+        with:
+          config: locales/crowdin.yml
+          command: upload
+          command_args: --config locales/crowdin.yml
+
+      - name: Open PR
+        id: create_pr
         run: | # sh
-          gh pr edit $BRANCH_NAME \
-            --add-label "backport" \
-            --add-label "Customization/i18n"
+          DATE=$(date +'%Y-%m-%d')
+
+          URL=$(gh pr create \
+            --base master \
+            --head $BRANCH_NAME \
+            --title "Update translations $DATE" \
+            --body "Synchronize translations with Crowdin" \
+            --label "backport" \
+            --label "Customization/i18n")
+
+          PR_NUMBER=${URL##*/}
+
+          echo "::set-output name=pr_number::$PR_NUMBER"
 
       - name: Auto approve PR
-        if: false # FIXME for testing
         uses: juliangruber/approve-pull-request-action@v1
         with:
           github-token: ${{ github.token }}
-          number: ${{ steps.crowdin.outputs.pull_request_number }}
+          number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
         if: false # FIXME for testing
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          pull-request-number: ${{ steps.crowdin.outputs.pull_request_number }}
+          pull-request-number: ${{ steps.create_pr.outputs.pr_number }}
           merge-method: squash
