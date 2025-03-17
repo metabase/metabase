@@ -1,5 +1,5 @@
 {
-  "name": "snippets",
+  "name": "embedding-snippets",
   "version": "0.0.0",
   "private": true,
   "devDependencies": {

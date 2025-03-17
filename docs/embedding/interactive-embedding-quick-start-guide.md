@@ -92,7 +92,7 @@ npm install jsonwebtoken --save
 And in your app, require the library:
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="jsonwebtoken-import" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="jsonwebtoken-import" %}
 ```
 
 ### Restricting access to certain routes
@@ -100,7 +100,7 @@ And in your app, require the library:
 Presumably, your app already has some way of making sure some routes are only accessible after having signed in. Our examples use a simple helper function named `restrict` that protects these routes:
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="restrict-helper" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="restrict-helper" %}
 ```
 
 ### Add a function to sign users
@@ -108,7 +108,7 @@ Presumably, your app already has some way of making sure some routes are only ac
 We need to write a function to sign user JWTs, using the JWT library.
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="sign-user-token-helper" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sign-user-token-helper" %}
 ```
 
 ### Add a `sso/metabase` route
@@ -116,7 +116,7 @@ We need to write a function to sign user JWTs, using the JWT library.
 You'll need to add a route to sign people in to your Metabase via SSO using JWT. If the person isn't signed in to your app yet, your app should redirect them through your sign-in flow. In the code below, this check and redirection is handled by the `restrict` function we introduced earlier.
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
 ```
 
 If the person has never signed in to Metabase before, Metabase will create an account for them.
@@ -136,7 +136,7 @@ In this route, we need to render an iframe that will load your Metabase. The `sr
 `METABASE_DASHBOARD_PATH` should be pointing to the relative path of the dashboard you created at the beginning of this guide (`/dashboard/[ID]`, or if you used the dashboard's Entity ID: `/dashboard/entity/[Entity ID]`).
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="analytics-route" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="analytics-route" %}
 ```
 
 The `METABASE_DASHBOARD_PATH` is just the first thing people will see when they log in, but you could set that path to any Metabase URL. And since you're embedding the full Metabase, people will be able to drill through the data and view other questions, dashboards, and collections.
@@ -158,7 +158,7 @@ Now that you have SSO and interactive embedding set up, it's time to set up grou
 Recall the `signUserToken` function used to create the JWTs. Add a `groups` key to the signed token that maps to an array. Metabase will look at the values in that array to see if any of the values map to a group in Metabase (We'll walk through mapping groups in a bit).
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="user-groups-sign-user-token-helper" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-groups-sign-user-token-helper" %}
 ```
 
 ### Create a group in Metabase
@@ -210,7 +210,7 @@ You can include user attributes in the JSON web token. Metabase will pick up any
 If you're using our sample app, edit the `signUserToken` function used to create the JWT by adding a key `account_id` with value `28`.
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
 ```
 
 That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute to sandbox the Invoices table, so people will only see rows in that table that contain their account ID.
@@ -250,7 +250,7 @@ For example, to hide the logo and the top navigation bar of your embedded Metaba
 In the handler of your `/sso/metabase` path, add the query parameters:
 
 ```javascript
-{% include_file "{{ dirname }}/snippets/interactive-embedding-quck-start-guide/sso-with-jwt.ts" snippet="hide-metabase-elements" %}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="hide-metabase-elements" %}
 ```
 
 ### CHECKPOINT: verify hidden UI elements
