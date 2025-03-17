@@ -222,22 +222,24 @@ export const BodyCell = ({
   return (
     <div style={style} className={CS.flex}>
       {rowSection.map(
-        ({ value, isSubtotal, clicked, backgroundColor }, index) => (
-          <Cell
-            isNightMode={isNightMode}
-            key={index}
-            style={{
-              flexBasis: cellWidths[index],
-            }}
-            value={value}
-            isEmphasized={isSubtotal}
-            isBold={isSubtotal}
-            showTooltip={showTooltip}
-            isBody
-            onClick={getCellClickHandler(clicked)}
-            backgroundColor={backgroundColor}
-          />
-        ),
+        ({ value, isSubtotal, clicked, backgroundColor }, index) => {
+          return (
+            <Cell
+              isNightMode={isNightMode}
+              key={index}
+              style={{
+                flexBasis: cellWidths[index],
+              }}
+              value={value}
+              isEmphasized={isSubtotal}
+              isBold={isSubtotal}
+              showTooltip={showTooltip}
+              isBody
+              onClick={getCellClickHandler(clicked)}
+              backgroundColor={backgroundColor}
+            />
+          );
+        },
       )}
     </div>
   );

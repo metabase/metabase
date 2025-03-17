@@ -326,7 +326,7 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.legacyNativeQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setLegacyQuery(newQuery);
   }

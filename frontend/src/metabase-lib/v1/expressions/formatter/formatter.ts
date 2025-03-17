@@ -29,7 +29,12 @@ import {
   formatMetricName,
   formatSegmentName,
 } from "../identifier";
-import { isFunction, isOperator, isOptionsObject } from "../matchers";
+import {
+  type RawDimension,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "../matchers";
 import { formatStringLiteral } from "../string";
 
 import { pathMatchers as check } from "./utils";
@@ -52,10 +57,28 @@ export async function format(expression: Expression, options: FormatOptions) {
   });
 }
 
+export type FormatExampleOptions = {
+  printWidth?: number;
+  quotes?: typeof EDITOR_QUOTES;
+};
+
+export async function formatExample(
+  expression: Expression,
+  options: FormatExampleOptions = {},
+) {
+  return pformat(JSON.stringify(expression), {
+    parser: PRETTIER_PLUGIN_NAME,
+    plugins: [plugin(options)],
+    printWidth: options.printWidth ?? 80,
+  });
+}
+
 const PRETTIER_PLUGIN_NAME = "custom-expression";
 
 // Set up a prettier plugin that formats expressions
-function plugin(options: FormatOptions): Plugin<ExpressionNode> {
+function plugin(
+  options: FormatOptions | FormatExampleOptions,
+): Plugin<ExpressionNode> {
   return {
     languages: [
       {
@@ -132,6 +155,8 @@ function print(
     return formatSegment(path, options.extra);
   } else if (check.isCaseOrIf(path)) {
     return formatCaseOrIf(path, print);
+  } else if (check.isRawDimension(path)) {
+    return formatDimensionReference(path);
   } else if (check.isOptionsObject(path)) {
     return "";
   }
@@ -484,4 +509,8 @@ function formatCallExpression(callee: string, args: Doc[]): Doc {
     softline,
     ")",
   ]);
+}
+
+function formatDimensionReference(path: AstPath<RawDimension>) {
+  return formatIdentifier(path.node[1]);
 }
