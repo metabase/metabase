@@ -82,4 +82,31 @@ describe("scenarios > custom column > literals", () => {
       expectedRowCount: 200,
     });
   });
+
+  it("should support custom columns with literal values used in other clauses", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({ name: "Column", formula: "10" });
+    H.popover().button("Done").click();
+    H.getNotebookStep("expression").button("Filter").click();
+    H.popover().within(() => {
+      cy.findByText("Column").click();
+      cy.findByPlaceholderText("Min").type("5");
+      cy.button("Add filter").click();
+    });
+    H.getNotebookStep("filter").button("Summarize").click();
+    H.popover().within(() => {
+      cy.findByText("Average of ...").click();
+      cy.findByText("Column").click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Column").click();
+    H.visualize();
+    H.assertTableData({
+      columns: ["Column", "Average of Column"],
+      firstRows: [["10", "10"]],
+    });
+  });
 });
