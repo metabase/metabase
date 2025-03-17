@@ -4,30 +4,30 @@ import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteD
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";
 
-import { paramIdToGetQuery } from "./utils";
-
 export const RemoveDestinationDatabaseModal = ({
-  params: { databaseId, destinationDatabaseId },
+  params,
 }: {
   params: { databaseId: string; destinationDatabaseId: string };
 }) => {
   const dispatch = useDispatch();
 
-  const destinationDbReq = useGetDatabaseQuery(
-    paramIdToGetQuery(destinationDatabaseId),
-  );
-  const destinationDb = destinationDbReq.data;
+  const dbId = parseInt(params.databaseId, 10);
+  const destDbId = parseInt(params.databaseId, 10);
+
+  const destinationDbReq = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
-  // TODO: consolidate the handleCloseModal methods into a common util
+  const destinationDb = destinationDbReq.data;
+
   const handleCloseModal = () => {
-    dispatch(push(`/admin/databases/${databaseId}`));
+    dispatch(push(Urls.viewDatabase(dbId)));
   };
 
   const handleDelete = async () => {
-    await deleteDatabase(parseInt(destinationDatabaseId, 10)).unwrap();
+    await deleteDatabase(destDbId).unwrap();
   };
 
   return (

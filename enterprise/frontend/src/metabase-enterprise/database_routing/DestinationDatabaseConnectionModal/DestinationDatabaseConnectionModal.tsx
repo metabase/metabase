@@ -8,6 +8,7 @@ import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { Modal } from "metabase/ui";
 import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
@@ -47,8 +48,11 @@ export const DestinationDatabaseConnectionModalInner = ({
 
   const handleCloseModal = () => {
     const id = primaryDbReq.currentData?.id;
-    const dbPath = id ? `/${id}` : "";
-    dispatch(push(`/admin/databases${dbPath}`));
+    dispatch(
+      id
+        ? dispatch(push(Urls.viewDatabase(id)))
+        : dispatch(push(Urls.viewDatabases())),
+    );
   };
 
   const handleCreateMirrorDatabase = async (database: DatabaseData) => {

@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
@@ -18,7 +19,7 @@ export const DestinationDatabasesModal = ({
   const primaryDbId = parseInt(params.databaseId, 10);
 
   const handleCloseModal = () => {
-    dispatch(push(`/admin/databases/${primaryDbId}`));
+    dispatch(push(Urls.viewDatabase(primaryDbId)));
   };
 
   return (
