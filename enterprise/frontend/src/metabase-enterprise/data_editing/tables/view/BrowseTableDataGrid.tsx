@@ -6,6 +6,7 @@ import {
   useDataGridInstance,
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
+import { extractRemappedColumns } from "metabase/visualizations";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import S from "./BrowseTableData.module.css";
@@ -15,7 +16,10 @@ type BrowseTableDataGridProps = {
 };
 
 export const BrowseTableDataGrid = ({ data }: BrowseTableDataGridProps) => {
-  const { cols, rows } = data.data;
+  const { cols, rows } = useMemo(
+    () => extractRemappedColumns(data.data),
+    [data.data],
+  );
 
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
