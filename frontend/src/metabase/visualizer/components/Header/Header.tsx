@@ -8,6 +8,7 @@ import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-h
 import {
   getCurrentVisualizerState,
   getIsDirty,
+  getIsRenderable,
   getVisualizationTitle,
 } from "metabase/visualizer/selectors";
 import {
@@ -33,14 +34,16 @@ export function Header({
 }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
-  const visualization = useSelector(getCurrentVisualizerState);
+  const visualizerState = useSelector(getCurrentVisualizerState);
+
   const isDirty = useSelector(getIsDirty);
+  const isRenderable = useSelector(getIsRenderable);
   const title = useSelector(getVisualizationTitle);
 
   const dispatch = useDispatch();
 
   const handleSave = () => {
-    onSave?.(visualization);
+    onSave?.(visualizerState);
   };
 
   const handleChangeTitle = useCallback(
@@ -49,6 +52,8 @@ export function Header({
     },
     [dispatch],
   );
+
+  const saveButtonEnabled = isRenderable && (isDirty || allowSaveWhenPristine);
 
   return (
     <Flex p="md" pb="sm" align="center" className={className}>
@@ -74,7 +79,7 @@ export function Header({
         </Tooltip>
         <Button
           variant="filled"
-          disabled={!isDirty && !allowSaveWhenPristine}
+          disabled={!saveButtonEnabled}
           onClick={handleSave}
         >
           {saveLabel ?? t`Add to dashboard`}

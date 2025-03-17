@@ -73,6 +73,10 @@ export function registerVisualization(visualization: Visualization) {
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;
 
+export function getVisualization(display: VisualizationDisplay | null) {
+  return display ? visualizations.get(display) : defaultVisualization;
+}
+
 export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
