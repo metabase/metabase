@@ -42,15 +42,15 @@ jobs:
           config: locales/crowdin.yml
           command: download
           command_args: |
-            --config locales/crowdin.yml \
-            -e=el \ # exclude incomplete languages
-            -e=es-MX \
-            -e=gu-IN \
-            -e=hr \
-            -e=km \
-            -e=pt-PT \
-            -e=ro \
-            -e=th \
+            --config locales/crowdin.yml
+            -e=el
+            -e=es-MX
+            -e=gu-IN
+            -e=hr
+            -e=km
+            -e=pt-PT
+            -e=ro
+            -e=th
             -e=uz
 
       - name: Prepare translation resources
