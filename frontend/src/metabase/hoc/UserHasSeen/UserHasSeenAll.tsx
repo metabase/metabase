@@ -24,6 +24,8 @@ const _UserHasSeenAll = ({ children }: UserHasSeenAllProps) => {
 
   const { hasSeenAll, handleOpen } = ctx;
 
+  console.log({ hasSeenAll });
+
   return children({ hasSeenAll, handleOpen });
 };
 

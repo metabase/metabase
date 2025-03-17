@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen } from "__support__/ui";
+import { getIcon, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -182,14 +182,25 @@ describe("CollectionMenu", () => {
         numberOfStaleItems: 0,
       });
 
+      await waitFor(() =>
+        expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1),
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.calls(
+            "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
+            { method: "GET" },
+          ),
+        ).toHaveLength(1),
+      );
+
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1);
-
       expect(
         fetchMock.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(0);

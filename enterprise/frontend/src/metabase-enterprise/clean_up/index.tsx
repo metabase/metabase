@@ -46,30 +46,35 @@ if (hasPremiumFeature("collection_cleanup")) {
     if (!canCleanupCollection || !hasCollectionItems) {
       return {
         menuItems: [],
-        showIndicator: false,
       };
     }
+
+    console.log({
+      hasStaleItems,
+      hasCollectionItems,
+    });
 
     return {
       menuItems: [
         <UserHasSeen
           key="collections-cleanup"
-          hasSeenKey="clean-stale-items"
-          overrideFn={() => hasStaleItems}
+          id="clean-stale-items"
+          withContext={hasStaleItems}
         >
-          {({ isNew }) => (
+          {() => (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               component={ForwardRefLink}
               to={`${Urls.collection(collection)}/cleanup`}
-              rightSection={isNew ? <Badge>{t`Recommended`}</Badge> : null}
+              rightSection={
+                hasStaleItems ? <Badge>{t`Recommended`}</Badge> : null
+              }
             >
               {t`Clear out unused items`}
             </Menu.Item>
           )}
         </UserHasSeen>,
       ],
-      showIndicator: hasStaleItems,
     };
   };
 

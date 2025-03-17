@@ -94,14 +94,14 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      <UserHasSeen key="move-to-dashboard" hasSeenKey="move-to-dashboard">
-        {({ isNew, ack }) => (
+      <UserHasSeen key="move-to-dashboard" id="move-to-dashboard">
+        {({ hasSeen, ack }) => (
           <Menu.Item
             leftSection={<Icon name="add_to_dash" />}
             component={ForwardRefLink}
             to={`${url}/move-questions-dashboard`}
             onClick={ack}
-            rightSection={isNew ? <Badge>{t`New`}</Badge> : null}
+            rightSection={!hasSeen ? <Badge>{t`New`}</Badge> : null}
           >{t`Move questions into their dashboards`}</Menu.Item>
         )}
       </UserHasSeen>,
