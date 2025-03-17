@@ -314,6 +314,63 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "substring",
   },
   {
+    name: "split",
+    structure: "split",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: formatIdentifier(t`Title`),
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: `","`,
+      },
+      {
+        name: t`position`,
+        description: t`Which array element to return after the split. Index starts at position 1.`,
+        example: "1",
+      },
+    ],
+    docsPage: "split",
+  },
+  {
+    name: "url-pathname",
+    structure: "urlPathname",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The URL or Email column to extract the pathname from.`,
+        example: formatIdentifier(t`Url`),
+      },
+    ],
+    docsPage: "url-pathname",
+  },
+  {
+    name: "cast",
+    structure: "cast",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`expression`,
+        description: t`The column or expression to cast to a given type.`,
+        example: formatIdentifier(t`Created At`),
+      },
+      {
+        name: t`type`,
+        description: t`The database type to cast the expression to.`,
+        example: formatStringLiteral(t`Text`),
+      },
+    ],
+    docsPage: "cast",
+  },
+  {
     name: "regex-match-first",
     structure: "regexextract",
     description: () =>
