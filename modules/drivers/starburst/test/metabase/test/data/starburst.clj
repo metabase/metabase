@@ -41,6 +41,7 @@
 (defmethod driver/database-supports? [:starburst :test/time-type] [_ _ _] false)
 (defmethod driver/database-supports? [:starburst :test/timestamptz-type] [_ _ _] false)
 (defmethod driver/database-supports? [:starburst :test/dynamic-dataset-loading] [_ _ _] true)
+(defmethod driver/database-supports? [:starburst :test/creates-db-on-connect] [_ _ _] true)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor-test.string-extracts-test/concat-non-string-args] [_ _ _] false)
 (defmethod driver/database-supports? [:starburst :metabase.query-processor-test.alternative-date-test/yyyymmddhhss-binary-timestamps] [_ _ _] false)
 

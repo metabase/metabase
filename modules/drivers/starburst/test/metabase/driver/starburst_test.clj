@@ -171,6 +171,7 @@
       (sql-jdbc.execute/do-with-connection-with-options
        :starburst
        jdbc-spec
+       {}
        (fn [^Connection conn]
          (doseq [ddl-stmt ddl-statements]
            (with-open [stmt (.prepareStatement conn ddl-stmt)]
