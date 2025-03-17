@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect } from "react";
+import { useEffect } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -25,11 +25,20 @@ import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
+/**
+ * @public
+ * @interface
+ */
 export type EditableDashboardProps = {
+  /**
+   * Height of a question component when drilled from the dashboard to a question level.
+   */
   drillThroughQuestionHeight?: number;
+
+  /**
+   * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
+   */
   plugins?: MetabasePluginsConfig;
-  className?: string;
-  style?: CSSProperties;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
