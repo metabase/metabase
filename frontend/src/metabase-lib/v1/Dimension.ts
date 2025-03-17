@@ -758,24 +758,6 @@ export class FieldDimension extends Dimension {
     );
   }
 
-  /**
-   * For `:field` clauses with an FK source field, returns a new Dimension for the source field.
-   */
-  fk() {
-    const sourceFieldIdOrName = this.sourceField();
-
-    if (!sourceFieldIdOrName) {
-      return null;
-    }
-
-    return new FieldDimension(
-      sourceFieldIdOrName,
-      null,
-      this._metadata,
-      this._query,
-    );
-  }
-
   join() {
     return null;
   }

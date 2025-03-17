@@ -337,16 +337,6 @@ describe("Dimension", () => {
         });
       });
 
-      describe("fk()", () => {
-        it("should return the fk", () => {
-          const fk = dimension.fk();
-          expect(fk).toBeInstanceOf(FieldDimension);
-          expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID, null]);
-          expect(fk.displayName()).toEqual("Product ID");
-          expect(fk._metadata).toEqual(metadata);
-        });
-      });
-
       describe("getMLv1CompatibleDimension", () => {
         it("should strip away *-type options", () => {
           const dimension = Dimension.parseMBQL(
@@ -475,21 +465,6 @@ describe("Dimension", () => {
           PRODUCTS.CREATED_AT,
           { "source-field": ORDERS.PRODUCT_ID },
         ]);
-      });
-    });
-
-    describe("FK field", () => {
-      const fk = dimension.fk();
-
-      it("should return FK field Dimension when you call fk() method", () => {
-        expect(fk).toBeInstanceOf(FieldDimension);
-        expect(fk._metadata).toEqual(metadata);
-      });
-
-      it("should return underlying Field", () => {
-        expect(fk.field()).toBeInstanceOf(Field);
-        expect(fk.field().id).toEqual(ORDERS.PRODUCT_ID);
-        expect(fk.field().displayName()).toEqual("Product ID");
       });
     });
   });
