@@ -89,6 +89,7 @@ config:
     application-font-files: null
     application-logo-url: app/assets/img/logo.svg
     application-name: Metabase
+    attachment-row-limit: null
     attachment-table-row-limit: 20
     bcc-enabled: true
     breakout-bin-width: 10.0
@@ -133,6 +134,7 @@ config:
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
     google-auth-enabled: null
+    gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
@@ -206,6 +208,7 @@ config:
     saml-group-sync: false
     saml-identity-provider-certificate: null
     saml-identity-provider-issuer: null
+    saml-identity-provider-slo-uri: null
     saml-identity-provider-uri: null
     saml-keystore-alias: metabase
     saml-keystore-password: changeit
