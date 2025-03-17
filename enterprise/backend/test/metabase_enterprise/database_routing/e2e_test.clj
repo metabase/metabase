@@ -1,7 +1,7 @@
 (ns metabase-enterprise.database-routing.e2e-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is]]
    [metabase-enterprise.sandbox.test-util :as sandbox.test-util]
    [metabase.db :as mdb]
    [metabase.driver.h2]
@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defmacro with-temp-dbs
+(defmacro with-temp-dbs!
   "Creates databases like `mt/with-temp`, but creating an actual underlying H2 database with a single table,
   `my_database_name`, with a single column, `str`."
   [bindings & body]
@@ -51,7 +51,7 @@
           (sandbox.test-util/with-user-attributes!
             :lucky
             {"db_name" "bar"}
-            (with-temp-dbs [router-db mirror-db-1 mirror-db-2]
+            (with-temp-dbs! [router-db mirror-db-1 mirror-db-2]
               ;; configure the Mirror Databases
               (t2/update! :model/Database (u/the-id mirror-db-1) {:name "foo" :router_database_id (u/the-id router-db)})
               (t2/update! :model/Database (u/the-id mirror-db-2) {:name "bar" :router_database_id (u/the-id router-db)})
@@ -80,7 +80,7 @@
       (sandbox.test-util/with-user-attributes!
         :crowberto
         {"db_name" "nonexistent_database_name"}
-        (with-temp-dbs [router-db mirror-db]
+        (with-temp-dbs! [router-db mirror-db]
           (t2/update! :model/Database (u/the-id mirror-db) {:name "my database name" :router_database_id (u/the-id router-db)})
           (sync/sync-database! router-db)
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
@@ -109,7 +109,7 @@
         (sandbox.test-util/with-user-attributes!
           :rasta
           {"db_name" "mirror database"}
-          (with-temp-dbs [router-db mirror-db]
+          (with-temp-dbs! [router-db mirror-db]
             (t2/update! :model/Database (u/the-id mirror-db) {:name "mirror database" :router_database_id (u/the-id router-db)})
             (sync/sync-database! router-db)
             (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
