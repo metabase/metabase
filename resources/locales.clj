@@ -14,7 +14,6 @@
    "fi"
    "fr"
    "he"
-   "hr"
    "hu"
    "id"
    "it"
