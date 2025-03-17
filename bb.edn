@@ -1,4 +1,4 @@
-{:min-bb-version "1.12.196"
+{:min-bb-version "1.12.197"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test"]
@@ -63,14 +63,15 @@
                 ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
    :requires   [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb]
+                [:enum :postgres :mysql :mariadb :mongo]
                 [:enum :oldest :latest]]
-   :ports      {:postgres {:oldest 5432 :latest 5433}
-                :mysql    {:oldest 3308 :latest 3309}
-                :mariadb  {:oldest 3306 :latest 3307}}
+   :db-info      {:postgres {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
+                  :mysql    {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
+                  :mariadb  {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
+                  :mongo    {:ports {:oldest 27017 :latest 27018} :eol-url "https://endoflife.date/api/mongodb.json"}}
    :usage-fn   start-db/usage
    :task       (let [[db version] (:arguments (cli/parse! (current-task)))]
-                 (start-db/start-db (:ports (current-task)) db version))}
+                 (start-db/start-db (:db-info (current-task)) db version))}
 
   nrepl
   {:doc      "Starts the babashka nrepl: helpful for for mage development"

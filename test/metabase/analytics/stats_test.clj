@@ -568,3 +568,37 @@
                     (-> before :query-executions-24h :public_link))))
         (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
                     (-> before :query-executions-24h :interactive_embed))))))))
+
+(deftest snowplow-setting-tests
+  (testing "snowplow formated settings"
+    (let [instance-stats (#'stats/instance-settings)
+          snowplow-settings (#'stats/snowplow-settings instance-stats)]
+      (testing "matches expected schema"
+        (is (malli= [:map
+                     [:is_embedding_app_origin_sdk_set :boolean]
+                     [:is_embedding_app_origin_interactive_set :boolean]
+                     [:application_name [:enum "default" "changed"]]
+                     [:help_link [:enum "hidden" "custom" "metabase"]]
+                     [:logo [:enum "default" "changed"]]
+                     [:favicon [:enum "default" "changed"]]
+                     [:loading_message [:enum "default" "changed"]]
+                     [:show_metabot_greeting :boolean]
+                     [:show_login_page_illustration [:enum "default" "changed" "none"]]
+                     [:show_landing_page_illustration [:enum "default" "changed" "none"]]
+                     [:show_no_data_illustration [:enum "default" "changed" "none"]]
+                     [:show_no_object_illustration [:enum "default" "changed" "none"]]
+                     [:ui_color [:enum "default" "changed"]]
+                     [:chart_colors [:enum "default" "changed"]]
+                     [:show_mb_links :boolean]
+                     [:font :string]
+                     [:samesite :string]
+                     [:site_locale :string]
+                     [:report_timezone :string]
+                     [:start_of_week :string]]
+                    (zipmap (map (comp keyword :key) snowplow-settings) (map :value snowplow-settings)))))
+      (testing "is_embedding_app_origin_sdk_set"
+        (is (= false (get-in snowplow-settings [0 :value]))))
+      (testing "stringifies help link"
+        (is (= "metabase" (get-in snowplow-settings [3 :value]))))
+      (testing "converts boolean changed? to string"
+        (is (= "default" (get-in snowplow-settings [4 :value])))))))

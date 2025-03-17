@@ -358,6 +358,11 @@ const aggregation: TestCase[] = [
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
+  [
+    "DistinctIf([User ID], [Total] > 50)",
+    ["distinct-where", userId, [">", total, 50]],
+    "distinct-where aggregation",
+  ],
 ];
 
 const filter: TestCase[] = [
@@ -424,15 +429,5 @@ export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
   ["aggregation", aggregation, { query, stageIndex }],
   ["filter", filter, { query, stageIndex }],
 ] as const;
-
-/**
- * @type {import("metabase-lib/v1/metadata/Table").default}
- */
-export const ordersTable = metadata.table(ORDERS_ID);
-
-/**
- * @type {import("metabase-lib/v1/metadata/Field").default}
- */
-export const ordersTotalField = metadata.field(ORDERS.TOTAL);
 
 export const sharedMetadata = metadata;
