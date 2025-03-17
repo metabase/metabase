@@ -1,3 +1,20 @@
+## [0.53.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.10...embedding-sdk-0.53.11) (2025-03-17)
+
+
+### Bug Fixes
+
+* **sdk:** Popovers not working on Safari ([#55012](https://github.com/metabase/metabase/issues/55012)) ([#55021](https://github.com/metabase/metabase/issues/55021)) ([c72aa49](https://github.com/metabase/metabase/commit/c72aa49becf0628c855d7c43d979134f6e1474de))
+
+
+### Features
+
+* **sdk:** Add DownloadWidget and DownloadWidgetDropdown ([#55148](https://github.com/metabase/metabase/issues/55148)) ([bfdc47c](https://github.com/metabase/metabase/commit/bfdc47c72b8acbc75ca175fe5c1c60fefa7b5138))
+* **sdk:** Add entity IDs to CollectionBrowser ([#54985](https://github.com/metabase/metabase/issues/54985)) ([#55085](https://github.com/metabase/metabase/issues/55085)) ([b206331](https://github.com/metabase/metabase/commit/b20633136873db712356561da5eab982ae841315))
+* **sdk:** Add stable ID support where missing ([#54975](https://github.com/metabase/metabase/issues/54975)) ([#55079](https://github.com/metabase/metabase/issues/55079)) ([b6f7bbe](https://github.com/metabase/metabase/commit/b6f7bbee4739ed79d03d20e4b3a98d9ecc18f628))
+* **sdk:** Ensure that all dashboards use entity ID the same way ([#55010](https://github.com/metabase/metabase/issues/55010)) ([#55091](https://github.com/metabase/metabase/issues/55091)) ([008e73a](https://github.com/metabase/metabase/commit/008e73af79cf024e7cc6968c37302059f6ba80f1))
+
+
+
 ## [0.53.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.9...embedding-sdk-0.53.10) (2025-03-12)
 
 
