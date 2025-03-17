@@ -4,8 +4,6 @@
             [clojure.test.check.properties :as prop]
             [malli.generator :as mg]
             [metabase.util.log :as log]
-            [metabase.util.malli.describe :as umd]
-            [metabase.util.malli.registry :as mr]
             [metabase.util.malli.schema :as ms]))
 
 (deftest log-parse-args-test
@@ -23,22 +21,24 @@
                           {:ex-message (ex-message e)
                            :ex-data (ex-data e)}))))))
 
-(mr/def ::exception [:and
-                     {:gen/elements [(ex-info "woops" {:problem true})
-                                     (ex-info "uh o" {:problem :yea})]}
-                     (ms/InstanceOfClass Throwable)])
-
-(mr/def ::valid-args
-  [:cat [:? ::exception] [:+ :string] [:? :map]])
+(def ^:private valid-args [:cat
+                           [:? [:and
+                                {:gen/elements [(ex-info "woops" {:problem true})
+                                                (ex-info "uh o" {:problem :yea})
+                                                (ex-info "oops" {:problem :nope})]}
+                                (ms/InstanceOfClass Throwable)]]
+                           [:+ :string]
+                           [:? :map]])
 
 (defspec can-valid-log-args
-  (prop/for-all [log-args (mg/generator ::valid-args)]
+  (prop/for-all [log-args (mg/generator valid-args)]
     (= #{:msg :ctx :e} (set (keys (apply #'log/parse-args log-args))))))
 
 (defspec can-pick-out-ctx-maps
-  (prop/for-all [log-args (mg/generator ::valid-args)]
+  (prop/for-all [log-args (mg/generator valid-args)]
     (if (map? (last log-args))
-      (map? (:ctx (apply #'log/parse-args log-args)))
+      (= (last log-args)
+         (:ctx (apply #'log/parse-args log-args)))
       true)))
 
 (defspec enforces-at-least-one-string
