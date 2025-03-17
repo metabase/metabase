@@ -56,7 +56,6 @@ export const InteractiveQuestionDefaultView = ({
     onSave,
     isSaveEnabled,
     targetCollection,
-    isCardIdError,
     withDownloads,
   } = useInteractiveQuestionContext();
 
@@ -77,9 +76,8 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  // `isCardError: true` when the entity ID couldn't be resolved
   if (!question) {
-    if (isCardIdError && originalId && originalId !== "new") {
+    if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
       return <SdkError message={t`Question not found`} />;
