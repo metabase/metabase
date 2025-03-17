@@ -21,7 +21,7 @@ import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
-import { Layout } from "../Layout";
+import { LayoutMain, LayoutSidebar } from "../Layout";
 import type { ClauseType, StartRule } from "../types";
 
 import S from "./Editor.module.css";
@@ -139,7 +139,7 @@ export function Editor<S extends StartRule = "expression">(
 
   return (
     <>
-      <Layout.Main className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
         <CodeMirror
           id={id}
           ref={ref}
@@ -189,17 +189,17 @@ export function Editor<S extends StartRule = "expression">(
         </Flex>
 
         {portal}
-      </Layout.Main>
+      </LayoutMain>
 
       {isFunctionBrowserOpen && (
-        <Layout.Sidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+        <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
             startRule={startRule}
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
           />
-        </Layout.Sidebar>
+        </LayoutSidebar>
       )}
     </>
   );

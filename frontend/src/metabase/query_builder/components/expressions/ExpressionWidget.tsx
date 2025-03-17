@@ -16,7 +16,7 @@ import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
 import type { Shortcut } from "./Editor/Shortcuts";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
-import { Layout } from "./Layout";
+import { Layout, LayoutFooter, LayoutHeader } from "./Layout";
 import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
 
@@ -177,7 +177,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
   return (
     <Layout data-testid="expression-editor" data-ignore-editor-clicks="true">
-      {header && <Layout.Header>{header}</Layout.Header>}
+      {header && <LayoutHeader>{header}</LayoutHeader>}
 
       <Editor
         id="expression-content"
@@ -194,7 +194,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         hasHeader={Boolean(header)}
       />
 
-      <Layout.Footer>
+      <LayoutFooter>
         <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
           {withName && (
             <NameInput
@@ -222,7 +222,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
             </Button>
           </Flex>
         </Flex>
-      </Layout.Footer>
+      </LayoutFooter>
     </Layout>
   );
 };

@@ -11,23 +11,18 @@ export function Layout(props: Props) {
   return <Box {...props} className={cx(S.layout, props.className)} />;
 }
 
-function LayoutHeader(props: Props) {
+export function LayoutHeader(props: Props) {
   return <Box {...props} className={cx(S.header, props.className)} />;
 }
 
-function LayoutMain(props: Props) {
+export function LayoutMain(props: Props) {
   return <Box {...props} className={cx(S.main, props.className)} />;
 }
 
-function LayoutSidebar(props: Props) {
+export function LayoutSidebar(props: Props) {
   return <Box {...props} className={cx(S.sidebar, props.className)} />;
 }
 
-function LayoutFooter(props: Props) {
+export function LayoutFooter(props: Props) {
   return <Box {...props} className={cx(S.footer, props.className)} />;
 }
-
-Layout.Header = LayoutHeader;
-Layout.Main = LayoutMain;
-Layout.Sidebar = LayoutSidebar;
-Layout.Footer = LayoutFooter;
