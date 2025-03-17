@@ -2,13 +2,14 @@ import type { DragEndEvent } from "@dnd-kit/core";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
+  canCombineCard,
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
-import type { DatasetColumn } from "metabase-types/api";
+import type { Card, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
   VisualizerDataSource,
@@ -140,6 +141,39 @@ export function addDimensionColumnToCartesianChart(
     ...state.settings,
     "graph.dimensions": [...dimensions, newDimension.name],
   };
+}
+
+export function addColumnToCartesianChart(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  card?: Card,
+) {
+  if (!state.display || !["area", "bar", "line"].includes(state.display)) {
+    return;
+  }
+
+  if (
+    card &&
+    canCombineCard(state.display, state.columns, state.settings, card)
+  ) {
+    const ownMetrics = state.settings["graph.metrics"] ?? [];
+    const ownDimensions = state.settings["graph.dimensions"] ?? [];
+
+    const metrics = card.visualization_settings["graph.metrics"] ?? [];
+    const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
+
+    const isMetric = metrics.includes(columnRef.originalName);
+    const isDimension = dimensions.includes(columnRef.originalName);
+
+    if (isMetric) {
+      state.settings["graph.metrics"] = [...ownMetrics, column.name];
+    }
+
+    if (isDimension) {
+      state.settings["graph.dimensions"] = [...ownDimensions, column.name];
+    }
+  }
 }
 
 export function removeColumnFromCartesianChart(
