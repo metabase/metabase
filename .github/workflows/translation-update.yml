@@ -108,7 +108,6 @@ jobs:
           number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
-        if: false # FIXME for testing
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
