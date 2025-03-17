@@ -158,7 +158,7 @@ export default class NativeQuery {
 
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this.metadata().database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
@@ -169,7 +169,10 @@ export default class NativeQuery {
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
-      const metadataProvider = Lib.metadataProvider(databaseId, this._metadata);
+      const metadataProvider = Lib.metadataProvider(
+        databaseId,
+        this.metadata(),
+      );
       const newQuery = Lib.withDifferentDatabase(
         this._query(),
         databaseId,
