@@ -33,7 +33,7 @@ jobs:
       - name: install gettext
         run: sudo apt-get install gettext
 
-      - name: Commit update sources
+      - name: Commit updated sources
         env:
           GH_TOKEN: ${{ github.token }}
         run: | # sh
@@ -65,18 +65,20 @@ jobs:
           pull_request_body: 'Updated translations'
           pull_request_base_branch_name: 'master'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
 
       - name: Prepare translation resources
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: | # sh
           git checkout $BRANCH_NAME
 
           ./bin/i18n/build-translation-resources
 
           git add locales/
-          git commit -a -m "Update translations"
+          git commit -a -m "Update translations" --allow-empty
           git push -u origin $BRANCH_NAME
 
       - name: Update PR
@@ -89,7 +91,7 @@ jobs:
         if: false # FIXME for testing
         uses: juliangruber/approve-pull-request-action@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           number: ${{ steps.crowdin.outputs.pull_request_number }}
 
       - name: Enable Pull Request Automerge
