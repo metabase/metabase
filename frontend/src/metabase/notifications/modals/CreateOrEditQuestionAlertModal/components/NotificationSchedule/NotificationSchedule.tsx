@@ -86,7 +86,7 @@ export const NotificationSchedule = ({
   );
 };
 
-const UNSAFE_SCHEDULE_TYPES = ["minutely", "cron"];
+const UNSAFE_SCHEDULE_TYPES = ["every_n_minutes", "cron"];
 const WARNING_THRESHOLD_MINS = 10;
 function showWarning(schedule: ScheduleSettings) {
   if (
@@ -102,7 +102,7 @@ function showWarning(schedule: ScheduleSettings) {
 }
 
 // No description is necessary for schedule types, which recur periodically.
-const PERIODIC_SCHEDULE_TYPES = ["minutely", "hourly"];
+const PERIODIC_SCHEDULE_TYPES = ["every_n_minutes", "hourly"];
 function useScheduleDescription(
   schedule: ScheduleSettings,
   timezone: string,

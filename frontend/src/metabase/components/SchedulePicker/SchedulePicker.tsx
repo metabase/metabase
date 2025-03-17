@@ -31,8 +31,7 @@ import {
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
 
-const optionNameTranslations = {
-  minutely: t`By the minute`,
+const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
   hourly: t`Hourly`,
   daily: t`Daily`,
   weekly: t`Weekly`,

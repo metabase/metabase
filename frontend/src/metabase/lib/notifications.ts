@@ -244,7 +244,7 @@ export const formatNotificationCheckSchedule = ({
   const options = MetabaseSettings.formattingOptions();
 
   switch (schedule_type) {
-    case "minutely":
+    case "every_n_minutes":
       // Converting to lowercase here, because 'minute` is used without pluralization on the backend.
       // and it's impossible to have both pluralized and single form for the same string.
       return t`Check every ${ngettext(msgid`Minute`, `${schedule_minute} Minutes`, schedule_minute || 0).toLocaleLowerCase()}`;

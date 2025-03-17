@@ -156,7 +156,7 @@ export const Schedule = ({
 
     return match(schedule_type)
       .with(
-        "minutely",
+        "every_n_minutes",
         () =>
           // Converting to lowercase here, because 'minute` is used without pluralization on the backend,
           // and it's impossible to have both pluralized and single form for the same string.

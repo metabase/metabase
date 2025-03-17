@@ -76,7 +76,7 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
 };
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
-  "minutely",
+  "every_n_minutes",
   "hourly",
   "daily",
   "weekly",

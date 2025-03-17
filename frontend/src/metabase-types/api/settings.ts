@@ -83,7 +83,7 @@ export interface ScheduleSettings {
 }
 
 export type ScheduleType =
-  | "minutely"
+  | "every_n_minutes"
   | "hourly"
   | "daily"
   | "weekly"

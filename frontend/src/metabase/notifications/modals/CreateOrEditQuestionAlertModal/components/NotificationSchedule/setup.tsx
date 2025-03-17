@@ -13,7 +13,7 @@ interface SetupOpts {
 }
 
 const mockScheduleOptions: ScheduleType[] = [
-  "minutely",
+  "every_n_minutes",
   "hourly",
   "daily",
   "weekly",

@@ -61,7 +61,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   let dayOfMonth: string = settings.schedule_day
     ? Cron.NoSpecificValue
     : Cron.AllValues;
-  if (settings.schedule_type === "minutely") {
+  if (settings.schedule_type === "every_n_minutes") {
     minute = everyToCronSyntax(minute);
   } else if (settings.schedule_type === "monthly" && settings.schedule_frame) {
     // There are two kinds of monthly schedule:
@@ -117,7 +117,7 @@ export const cronToScheduleSettings_unmemoized = (
   if (dayOfMonth === Cron.AllValues) {
     if (weekday === Cron.AllValues) {
       if (hour === Cron.AllValues) {
-        schedule_type = isRepeatingEvery(minute) ? "minutely" : "hourly";
+        schedule_type = isRepeatingEvery(minute) ? "every_n_minutes" : "hourly";
       } else {
         schedule_type = "daily";
       }
