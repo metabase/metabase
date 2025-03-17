@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
 import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
@@ -16,7 +18,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
+import type { Database, DatabaseId } from "metabase-types/api";
 
 export const DestinationDatabasesList = ({
   primaryDatabaseId,
@@ -52,40 +54,20 @@ export const DestinationDatabasesList = ({
           <>
             <Text>{t`Name`}</Text>
             <Divider my="sm" />
-            {destinationDatabases.slice(0, previewCount).map(({ id, name }) => (
-              <Flex justify="space-between" my="md" key={id}>
-                <Text key={id}>{name}</Text>
-                <Menu shadow="md" width={200} position="bottom-end">
-                  <Menu.Target>
-                    <UnstyledButton>
-                      <Icon name="ellipsis" />
-                    </UnstyledButton>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      component={ForwardRefLink}
-                      to={`/admin/databases/${primaryDatabaseId}/destination-databases/${id}`}
-                    >
-                      Edit
-                    </Menu.Item>
-                    {isAdmin && (
-                      <Menu.Item
-                        component={ForwardRefLink}
-                        to={`/admin/databases/${primaryDatabaseId}/destination-databases/${id}/remove`}
-                      >
-                        Remove
-                      </Menu.Item>
-                    )}
-                  </Menu.Dropdown>
-                </Menu>
-              </Flex>
+            {destinationDatabases.slice(0, previewCount).map(db => (
+              <DestinationDatabasesListItem
+                key={db.id}
+                database={db}
+                primaryDatabaseId={primaryDatabaseId}
+                isAdmin={isAdmin}
+              />
             ))}
             {destinationDatabases.length > previewCount && (
               <Text
                 component={Link}
                 c="brand"
                 td="underline"
-                to={`/admin/databases/${primaryDatabaseId}/destination-databases`}
+                to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >
                 View all {destinationDatabases.length}
               </Text>
@@ -94,5 +76,53 @@ export const DestinationDatabasesList = ({
         )}
       </Box>
     </LoadingAndErrorWrapper>
+  );
+};
+
+const DestinationDatabasesListItem = ({
+  primaryDatabaseId,
+  database,
+  isAdmin,
+}: {
+  primaryDatabaseId: Database["id"];
+  database: Database;
+  isAdmin: boolean;
+}) => {
+  return (
+    <Flex justify="space-between" my="md">
+      <Flex align="center" gap="sm">
+        <DatabaseConnectionHealthInfo
+          databaseId={database.id}
+          displayText="tooltip"
+        />
+        <Text>{database.name}</Text>
+      </Flex>
+      <Menu shadow="md" width={200} position="bottom-end">
+        <Menu.Target>
+          <UnstyledButton>
+            <Icon name="ellipsis" />
+          </UnstyledButton>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.editDestinationDatabase(primaryDatabaseId, database.id)}
+          >
+            Edit
+          </Menu.Item>
+          {isAdmin && (
+            <Menu.Item
+              component={ForwardRefLink}
+              to={Urls.removeDestinationDatabase(
+                primaryDatabaseId,
+                database.id,
+              )}
+            >
+              Remove
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    </Flex>
   );
 };
