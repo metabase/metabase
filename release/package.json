@@ -8,7 +8,6 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "auto-translate": "tsx src/auto-translate.ts",
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "copy-required-checks": "tsx ./src/required-checks.ts",
     "generate-changelog": "tsx generate-changelog.ts",
