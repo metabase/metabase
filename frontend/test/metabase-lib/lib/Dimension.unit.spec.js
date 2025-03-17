@@ -190,16 +190,6 @@ describe("Dimension", () => {
     });
   });
 
-  describe("INSTANCE METHODS", () => {
-    describe("getMLv1CompatibleDimension", () => {
-      it("should return itself without changes by default", () => {
-        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
-        const dimension = productsCategory.dimension();
-        expect(dimension.getMLv1CompatibleDimension()).toBe(dimension);
-      });
-    });
-  });
-
   describe("Field with integer ID", () => {
     const dimension = Dimension.parseMBQL(
       ["field", ORDERS.TOTAL, null],

@@ -206,10 +206,6 @@ export default class Dimension {
     return new Field();
   }
 
-  getMLv1CompatibleDimension() {
-    return this;
-  }
-
   /**
    * The display name of this dimension, e.x. the field's display_name
    * @abstract
@@ -575,12 +571,6 @@ export class FieldDimension extends Dimension {
       console.warn("FieldDimension.field()", this.mbql(), e);
       return null;
     }
-  }
-
-  getMLv1CompatibleDimension() {
-    return this.isIntegerFieldId()
-      ? this.withoutOptions("base-type", "effective-type")
-      : this;
   }
 
   tableId() {
