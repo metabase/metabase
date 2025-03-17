@@ -13,11 +13,11 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 ## Prerequisites
 
 - [Metabase](https://www.metabase.com/docs/latest/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample))
+- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable))
 
 ## Overview of the quickstart
 
-We're going to do some setup in Metabase, and in the sample application.
+If you _don't_ want to use your own application code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
 
 ### Set up Metabase for embedding
 
