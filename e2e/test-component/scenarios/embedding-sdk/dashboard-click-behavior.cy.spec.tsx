@@ -172,28 +172,30 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     });
   });
 
-  it("show the question visualization when the user drills down (metabase#55514 - EMB-266)", () => {
-    cy.intercept("GET", "/api/card/*").as("getCard");
-    cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
+  Cypress._.times(10, () => {
+    it.only("show the question visualization when the user drills down (metabase#55514 - EMB-266)", () => {
+      cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
 
-    cy.get("@dashboardId").then(dashboardId => {
-      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
-    });
-
-    getSdkRoot().within(() => {
-      H.getDashboardCard(2).within(() => {
-        cartesianChartCircle().eq(2).click();
+      cy.get("@dashboardId").then(dashboardId => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
       });
-      H.popover().within(() => {
-        cy.findByText("See these Orders").click();
+
+      getSdkRoot().within(() => {
+        H.getDashboardCard(2).within(() => {
+          cartesianChartCircle().eq(2).click();
+        });
+        H.popover().within(() => {
+          cy.findByText("See these Orders").click();
+        });
       });
-    });
 
-    cy.wait(["@getCard", "@datasetMetadata"]);
+      cy.wait(["@getCard", "@datasetMetadata"]);
 
-    getSdkRoot().within(() => {
-      cy.findByText("New question").should("be.visible");
-      cy.findByTestId("visualization-root").should("be.visible");
+      getSdkRoot().within(() => {
+        cy.findByText("New question").should("be.visible");
+        cy.findByTestId("visualization-root").should("be.visible");
+      });
     });
   });
 });

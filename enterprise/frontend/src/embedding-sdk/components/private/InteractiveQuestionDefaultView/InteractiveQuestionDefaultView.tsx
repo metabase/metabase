@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import {
   QuestionNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
@@ -77,13 +78,12 @@ export const InteractiveQuestionDefaultView = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if (
-    (!question || isCardIdError) &&
-    originalId &&
-    originalId !== "new" &&
-    originalId !== null
-  ) {
-    return <QuestionNotFoundError id={originalId} />;
+  if (!question) {
+    if (isCardIdError && originalId && originalId !== "new") {
+      return <QuestionNotFoundError id={originalId} />;
+    } else {
+      return <SdkError message={t`Question not found`} />;
+    }
   }
 
   const showSaveButton =

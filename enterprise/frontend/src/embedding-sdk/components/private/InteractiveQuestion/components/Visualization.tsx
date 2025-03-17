@@ -44,11 +44,12 @@ export const QuestionVisualization = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if (!question || isCardIdError) {
-    if (originalId && originalId !== "new" && originalId !== null) {
+
+  if (!question) {
+    if (isCardIdError && originalId && originalId !== "new") {
       return <QuestionNotFoundError id={originalId} />;
     } else {
-      return <SdkError message={t`Question not found`}></SdkError>;
+      return <SdkError message={t`Question not found`} />;
     }
   }
 
