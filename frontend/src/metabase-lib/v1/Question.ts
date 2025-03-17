@@ -25,9 +25,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import type BaseQuery from "metabase-lib/v1/queries/Query";
-import StructuredQuery, {
-  STRUCTURED_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
 import type {
@@ -176,10 +174,8 @@ class Question {
   _legacyQuery = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
-      if (QueryClass.isDatasetQueryType(datasetQuery)) {
-        return new QueryClass(this, datasetQuery);
-      }
+    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
+      return new NativeQuery(this, datasetQuery);
     }
 
     const isVirtualDashcard = !this._card.id;
@@ -188,18 +184,8 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery<UseStructuredQuery extends boolean>({
-    useStructuredQuery,
-  }: {
-    useStructuredQuery?: UseStructuredQuery;
-  } = {}): UseStructuredQuery extends true
-    ? StructuredQuery
-    : AtomicQuery | StructuredQuery {
-    const query = this._legacyQuery();
-    if (query instanceof StructuredQuery && !useStructuredQuery) {
-      throw new Error("StructuredQuery usage is forbidden. Use MLv2");
-    }
-    return query;
+  legacyQuery(): NativeQuery {
+    return this._legacyQuery();
   }
 
   /**
@@ -814,7 +800,7 @@ class Question {
   }
 
   query(): Query {
-    if (this._legacyQuery() instanceof InternalQuery) {
+    if (InternalQuery.isDatasetQueryType(this.datasetQuery())) {
       throw new Error("Internal query is not supported by MLv2");
     }
 
