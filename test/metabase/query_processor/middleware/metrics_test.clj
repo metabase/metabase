@@ -867,7 +867,7 @@
    #_#'lib/median
    #'lib/min ; ok
    #_lib/offset
-   #_#'lib/percentile
+   #'lib/percentile ; make it fail for some to see whether logs work
    #_lib/share
    #'lib/stddev ;ok
    #'lib/sum ; ok
