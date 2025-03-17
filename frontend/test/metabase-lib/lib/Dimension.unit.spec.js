@@ -814,12 +814,6 @@ describe("Dimension", () => {
             expect(dimension.mbql()).toEqual(templateTagClause);
           });
         });
-
-        describe("icon", () => {
-          it("should return the icon associated with the underlying field", () => {
-            expect(dimension.icon()).toEqual("string");
-          });
-        });
       });
     });
 
@@ -921,12 +915,6 @@ describe("Dimension", () => {
             expect(dimension.mbql()).toEqual(templateTagClause);
           });
         });
-
-        describe("icon", () => {
-          it("should return the icon associated with the underlying field", () => {
-            expect(dimension.icon()).toEqual("string");
-          });
-        });
       });
     });
 
@@ -985,12 +973,6 @@ describe("Dimension", () => {
         describe("name", () => {
           it("should evaluate to the tag's name instead of the field's", () => {
             expect(brokenDimension.name()).toEqual("foo");
-          });
-        });
-
-        describe("icon", () => {
-          it("should use a fallback icon", () => {
-            expect(brokenDimension.icon()).toEqual("label");
           });
         });
       });

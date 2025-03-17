@@ -249,14 +249,6 @@ export default class Dimension {
     return "";
   }
 
-  /**
-   * An icon name representing this dimension's type, to be used in the <Icon> component.
-   * @abstract
-   */
-  icon(): string | null | undefined {
-    return null;
-  }
-
   legacyQuery(
     _opts: { useStructuredQuery: true } = {},
   ): StructuredQuery | null | undefined {
@@ -932,16 +924,6 @@ export class TemplateTagDimension extends FieldDimension {
 
   mbql(): VariableTarget {
     return ["template-tag", this.tagName()];
-  }
-
-  icon() {
-    if (this.isValidDimensionType()) {
-      return this.dimension().icon();
-    } else if (this.isVariableType()) {
-      return this.variable().icon();
-    }
-
-    return "label";
   }
 }
 
