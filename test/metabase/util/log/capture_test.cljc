@@ -11,20 +11,37 @@
      metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-logp-test
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message"}]
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx nil}]
          (log.capture/with-log-messages-for-level [messages :warn]
            (log/info "not this one")
            (log/warn "a message")
            (messages))))
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one"}
-          {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message"}]
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one", :ctx nil}
+          {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx nil}]
          (log.capture/with-log-messages-for-level [messages :info]
            (log/info "here's one")
            (log/warn "a message")
            (messages))))
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78"}]
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78", :ctx nil}]
          (log.capture/with-log-messages-for-level [messages :info]
            (log/info :keyword 78)
+           (messages)))))
+
+(deftest ^:parallel logp-context-test
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+         (log.capture/with-log-messages-for-level [messages :warn]
+           (log/info "not this one")
+           (log/warn "a message" {:a/b 1})
+           (messages))))
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one", :ctx {:a/b 1}}
+          {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+         (log.capture/with-log-messages-for-level [messages :info]
+           (log/info "here's one")
+           (log/warn "a message" {:a/b 1})
+           (messages))))
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78", :ctx {:a/b 1}}]
+         (log.capture/with-log-messages-for-level [messages :info]
+           (log/info :keyword 78 {:a/b 1})
            (messages)))))
 
 (deftest ^:parallel logp-levels-test
@@ -36,12 +53,12 @@
                (log/info  "info")
                (log/debug "debug")
                (log/trace "trace"))
-        logs [{:namespace 'metabase.util.log.capture-test, :level :fatal, :e nil, :message "fatal"}
-              {:namespace 'metabase.util.log.capture-test, :level :error, :e nil, :message "error"}
-              {:namespace 'metabase.util.log.capture-test, :level :warn, :e  nil, :message "warn"}
-              {:namespace 'metabase.util.log.capture-test, :level :info, :e  nil, :message "info"}
-              {:namespace 'metabase.util.log.capture-test, :level :debug, :e nil, :message "debug"}
-              {:namespace 'metabase.util.log.capture-test, :level :trace, :e nil, :message "trace"}]]
+        logs [{:namespace 'metabase.util.log.capture-test, :level :fatal, :e nil, :ctx nil, :message "fatal"}
+              {:namespace 'metabase.util.log.capture-test, :level :error, :e nil, :ctx nil, :message "error"}
+              {:namespace 'metabase.util.log.capture-test, :level :warn, :e  nil, :ctx nil, :message "warn"}
+              {:namespace 'metabase.util.log.capture-test, :level :info, :e  nil, :ctx nil, :message "info"}
+              {:namespace 'metabase.util.log.capture-test, :level :debug, :e nil, :ctx nil, :message "debug"}
+              {:namespace 'metabase.util.log.capture-test, :level :trace, :e nil, :ctx nil, :message "trace"}]]
     (are [prefix level] (= (->> logs
                                 (filter #(contains? important-message (:message %)))
                                 (take prefix))
@@ -57,7 +74,7 @@
       6 :trace)))
 
 (deftest ^:parallel logf-formatting-test
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "input: 8, 3; output: ignored"}]
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "input: 8, 3; output: ignored", :ctx nil}]
          (log.capture/with-log-messages-for-level [messages :info]
            (log/infof "input: %d, %d; %s: ignored" 8 3 "output")
            (messages)))))
@@ -84,6 +101,7 @@
       (log/trace "a" "picture")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :trace
+               :ctx       nil
                :e         nil
                :message   "a picture"}]
              (messages))))))
@@ -96,6 +114,7 @@
       (log/debug "a picture")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :debug
+               :ctx       nil
                :e         nil
                :message   "a picture"}]
              (messages))))))
@@ -108,6 +127,7 @@
       (log/trace "a picture")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :trace
+               :ctx       nil
                :e         nil
                :message   "a picture"}]
              (messages))))))
@@ -120,6 +140,7 @@
       (log/trace "a picture")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :trace
+               :ctx       nil
                :e         nil
                :message   "a picture"}]
              (messages))))))
@@ -137,15 +158,14 @@
   (testing "Should be able to use `with-log-messages-for-level` multiple times"
     (log.capture/with-log-messages-for-level [util-trace-messages ["metabase.util" :trace]]
       (log.capture/with-log-messages-for-level [test-debug-messages [metabase.util.log.capture-test :debug]]
-        (is (= []
-               (util-trace-messages)))
-        (is (= []
-               (test-debug-messages)))
+        (is (= [] (util-trace-messages)))
+        (is (= [] (test-debug-messages)))
         (testing "trace message should only show up in :trace"
           (log/trace "a picture")
           (is (= [{:namespace 'metabase.util.log.capture-test
                    :level     :trace
                    :e         nil
+                   :ctx       nil
                    :message   "a picture"}]
                  (util-trace-messages)))
           (is (= []
@@ -155,15 +175,54 @@
           (is (= [{:namespace 'metabase.util.log.capture-test
                    :level     :trace
                    :e         nil
+                   :ctx       nil
                    :message   "a picture"}
                   {:namespace 'metabase.util.log.capture-test
                    :level     :debug
                    :e         nil
+                   :ctx       nil
                    :message   "a bug"}]
                  (util-trace-messages)))
           (is (= [{:namespace 'metabase.util.log.capture-test
                    :level     :debug
                    :e         nil
+                   :ctx       nil
+                   :message   "a bug"}]
+                 (test-debug-messages))))))))
+
+(deftest ^:parallel multiple-captures-ctx-test
+  (testing "Should be able to use `with-log-messages-for-level` multiple times"
+    (log.capture/with-log-messages-for-level [util-trace-messages ["metabase.util" :trace]]
+      (log.capture/with-log-messages-for-level [test-debug-messages [metabase.util.log.capture-test :debug]]
+        (is (= [] (util-trace-messages)))
+        (is (= [] (test-debug-messages)))
+        (testing "trace message should only show up in :trace"
+          (log/trace "me like we were" {:on-the "titanic"})
+          (is (= [{:namespace 'metabase.util.log.capture-test
+                   :level :trace
+                   :ctx {:on-the "titanic"}
+                   :e nil
+                   :message "me like we were"}]
+                 (util-trace-messages)))
+          (is (= []
+                 (test-debug-messages))))
+        (testing "debug message should show up in :trace and :debug"
+          (log/debug "a bug" {:we/will "fix"})
+          (is (= [{:namespace 'metabase.util.log.capture-test
+                   :level :trace
+                   :ctx {:on-the "titanic"}
+                   :e nil
+                   :message "me like we were"}
+                  {:namespace 'metabase.util.log.capture-test
+                   :level     :debug
+                   :e         nil
+                   :ctx       {:we/will "fix"}
+                   :message   "a bug"}]
+                 (util-trace-messages)))
+          (is (= [{:namespace 'metabase.util.log.capture-test
+                   :level     :debug
+                   :e         nil
+                   :ctx       nil
                    :message   "a bug"}]
                  (test-debug-messages))))))))
 
@@ -180,6 +239,7 @@
              (util-debug-messages)))
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :trace
+               :ctx       nil
                :e         nil
                :message   "a picture"}]
              (test-trace-messages))))
@@ -187,15 +247,18 @@
       (log/debugf "a %s" "bug")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :debug
+               :ctx       nil
                :e         nil
                :message   "a bug"}]
              (util-debug-messages)))
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :trace
+               :ctx       nil
                :e         nil
                :message   "a picture"}
               {:namespace 'metabase.util.log.capture-test
                :level     :debug
+               :ctx       nil
                :e         nil
                :message   "a bug"}]
              (test-trace-messages))))))

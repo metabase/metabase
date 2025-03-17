@@ -26,7 +26,7 @@
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
   be used to capture a log message, if messages at that level should be captured. Its signature is
 
-    (f namespace-str level-int) => (f e message)"
+    (f namespace-str level-int) => (f e message & [ctx])"
   (constantly nil))
 
 ;;; Code below converts log levels to integers right away, because a simple int comparison like `(<= 5 4)` is super
@@ -50,16 +50,18 @@
   ;; the prefix stuff is calculated outside of the function so we can be SUPER OPTIMIZED and not do anything
   ;; allocation in cases where we're not going to capture anything.
   (let [captured-namespace-prefix (str captured-namespace \.)]
-    (fn [message-namespace message-level-int]
+    (fn capture-logs-return-fn
+      [message-namespace message-level-int]
       ;; similarly, the level comparison is done first, because it's faster and will hopefully filter out a lot of
       ;; things we weren't going to capture anyway before we do the more expensive namespace check
       (when (and (<= message-level-int captured-level-int)
                  (or (= message-namespace captured-namespace)
                      (str/starts-with? message-namespace captured-namespace-prefix)))
         ;; VERY IMPORTANT! Only return the capturing function if we actually want to capture a log message.
-        (fn capture-fn [e message]
+        (fn capture-fn [e message & [ctx]]
           (swap! logs conj {:namespace (symbol message-namespace)
                             :level     (int->level message-level-int)
+                            :ctx       ctx
                             :e         e
                             :message   message}))))))
 
@@ -73,9 +75,9 @@
                                   (let [f1 (old-capture-fn a-message message-level-int)
                                         f2 (capture-fn a-message message-level-int)]
                                     (cond
-                                      (and f1 f2) (fn [e message]
-                                                    (f1 e message)
-                                                    (f2 e message))
+                                      (and f1 f2) (fn [e message ctx]
+                                                    (f1 e message ctx)
+                                                    (f2 e message ctx))
                                       f1          f1
                                       f2          f2)))]
       (f (fn [] @logs)))))
@@ -183,6 +185,15 @@
   (let [{:keys [e args]} (parse-args args)]
     (f e (str/join \space (map print-str args)))))
 
+(defn capture-logp2!
+  "Impl for log message capturing for [[metabase.util.log/logp]]."
+  [f & args]
+  (let [{:keys [e args]} (parse-args args)
+        has-ctx? (map? (last args))
+        msgs (if has-ctx? (butlast args) args)]
+    (f e (str/join \space (map print-str msgs))
+       (when has-ctx? (last args)))))
+
 (defn capture-logf!
   "Impl for log message capturing for [[metabase.util.log/logf]]."
   [f & args]
@@ -197,6 +208,12 @@
   [namespace-str level & args]
   `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
      (capture-logp! f# ~@args)))
+
+(defmacro capture-logp2
+  "Impl for log message capturing for [[metabase.util.log/logp2]]."
+  [namespace-str level & args]
+  `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
+     (capture-logp2! f# ~@args)))
 
 (defmacro capture-logf
   "Impl for log message capturing for [[metabase.util.log/logf]]."
