@@ -11,6 +11,6 @@
 
 .gridRoot {
   border: 1px solid var(--mb-color-border);
-  border-radius: 0.425rem;
+  border-radius: var(--mantine-radius-sm);
   overflow: hidden;
 }

@@ -1,4 +1,3 @@
-import type React from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Group, Icon, Title } from "metabase/ui";
@@ -16,7 +15,7 @@ export const EditTableDataHeader = ({
   table,
   onCreate,
   onDelete,
-}: EditTableDataHeaderProps): React.JSX.Element => {
+}: EditTableDataHeaderProps) => {
   return (
     <Flex
       p="lg"
