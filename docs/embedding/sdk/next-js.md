@@ -29,82 +29,13 @@ If you want to customize the loading of the components, you can create your own 
 In your app, create a `metabase` directory, and add a `EmbeddingSdkProvider.tsx` file to that directory. This file will contain the provider with the appropriate configuration.
 
 ```tsx
-"use client";
-
-import {
-  defineMetabaseAuthConfig,
-  MetabaseProvider,
-} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: process.env.NEXT_PUBLIC_METABASE_INSTANCE_URL,
-  authProviderUri: process.env.NEXT_PUBLIC_METABASE_AUTH_PROVIDER_URI,
-});
-
-export const EmbeddingSdkProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  return (
-    <MetabaseProvider authConfig={authConfig}>{children}</MetabaseProvider>
-  );
-};
+{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-embedded-sdk-provider.tsx" snippet="example" %}
 ```
 
 Next, add an `index.tsx` file to that `metabase` directory. This file will include the `use client` directive, and it'll export a lazy-loaded version of the `EmbeddingSdkProvider` with  SSR disabled.
 
 ```tsx
-"use client";
-
-import dynamic from "next/dynamic";
-
-import React from "react";
-
-// Lazy load the EmbeddingSdkProvider so and let it render children while it's being loaded
-export const EmbeddingSdkProviderLazy = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const EmbeddingSdkProvider = dynamic(
-    () =>
-      import("./EmbeddingSdkProvider").then(m => {
-        return { default: m.EmbeddingSdkProvider };
-      }),
-    {
-      ssr: false,
-      loading: () => {
-        // render children while loading
-        return <div>{children}</div>;
-      },
-    },
-  );
-
-  return <EmbeddingSdkProvider>{children}</EmbeddingSdkProvider>;
-};
-
-// Wrap all components that you need like this:
-
-export const StaticQuestion = dynamic(
-  () => import("@metabase/embedding-sdk-react").then(m => m.StaticQuestion),
-  {
-    ssr: false,
-    loading: () => {
-      return <div>Loading...</div>;
-    },
-  },
-);
-
-export const StaticDashboard = dynamic(
-  () => import("@metabase/embedding-sdk-react").then(m => m.StaticDashboard),
-  {
-    ssr: false,
-    loading: () => {
-      return <div>Loading...</div>;
-    },
-  },
-);
+{% include_file "{{ dirname }}/snippets/next-js/manual-wrapping-entrypoint.tsx" snippet="example" %}
 ```
 
 You can now import components like so:

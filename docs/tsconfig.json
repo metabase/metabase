@@ -2,11 +2,11 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "*": ["../enterprise/frontend/src/*"],
       "@metabase/embedding-sdk-react": ["../resources/embedding-sdk"]
     },
     "allowJs": true,
     "checkJs": true,
+    "moduleDetection": "force",
     "noEmit": true,
     "noImplicitAny": false
   },

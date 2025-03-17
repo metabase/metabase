@@ -1,4 +1,3 @@
-// [<snippet theme>]
 import { defineMetabaseTheme } from "@metabase/embedding-sdk-react";
 
 const theme = defineMetabaseTheme({
@@ -194,4 +193,3 @@ const theme = defineMetabaseTheme({
     },
   },
 });
-// [<endsnippet theme>]

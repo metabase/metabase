@@ -20,7 +20,7 @@ You can style your embedded Metabase components with a theme.
 Here's an example that includes the various styling options available:
 
 ```ts
-{% include_file "{{ dirname }}/snippets/theme.ts" %}
+{% include_file "{{ dirname }}/snippets/appearance/theme.ts" %}
 ```
 
 ### Customizing loader and error components
@@ -28,9 +28,9 @@ Here's an example that includes the various styling options available:
 You can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
 ```tsx
-{% include_file "{{ dirname }}/snippets/customizing-loader-and-components.tsx" snippet="imports" %}
+{% include_file "{{ dirname }}/snippets/appearance/customizing-loader-and-components.tsx" snippet="imports" %}
 
-{% include_file "{{ dirname }}/snippets/customizing-loader-and-components.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/snippets/appearance/customizing-loader-and-components.tsx" snippet="example" %}
 ```
 
 ## Limitations

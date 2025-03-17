@@ -8,7 +8,7 @@ import {
 
 const authConfig = {} as MetabaseAuthConfig;
 
-const template = () => {
+const Example = () => {
   return (
     // [<snippet example>]
     <MetabaseProvider
