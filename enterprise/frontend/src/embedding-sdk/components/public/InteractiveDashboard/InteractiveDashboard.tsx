@@ -1,9 +1,4 @@
-import {
-  type CSSProperties,
-  type ReactNode,
-  useCallback,
-  useEffect,
-} from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import _ from "underscore";
 
 import type {
@@ -35,19 +30,27 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { InteractiveDashboardProvider } from "./context";
 
+/**
+ * @public
+ * @interface
+ */
 export type InteractiveDashboardProps = {
-  className?: string;
-  style?: CSSProperties;
+  /**
+   * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
+   */
   plugins?: MetabasePluginsConfig;
 
+  // @todo pass the question context to the question view component,
+  //       once we have a public-facing question context.
   /**
    * A custom React component to render the question layout.
    * Use namespaced InteractiveQuestion components to build the layout.
-   *
-   * @todo pass the question context to the question view component,
-   *       once we have a public-facing question context.
    */
   renderDrillThroughQuestion?: () => ReactNode;
+
+  /**
+   * Height of a question component when drilled from the dashboard to a question level.
+   */
   drillThroughQuestionHeight?: number;
   drillThroughQuestionProps?: Omit<InteractiveQuestionProps, "questionId"> &
     InteractiveQuestionDefaultViewProps;
