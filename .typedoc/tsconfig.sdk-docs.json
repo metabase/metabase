@@ -1,0 +1,4 @@
+{
+  "extends": "../tsconfig.base.json",
+  "files": ["../resources/embedding-sdk/dist/index.d.ts"]
+}
