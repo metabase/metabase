@@ -127,7 +127,7 @@
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
-          :database-default           default
+          :database-default           (not-empty default) ; druid returns "" if no DEFAULT
           :database-is-auto-increment auto-increment?
           :database-is-generated      generated?
           :database-is-nullable       nullable?
