@@ -189,3 +189,7 @@
 (defmethod sql.tx/create-db-sql :starburst
   [driver {:keys [database-name]}]
   (format "create catalog %s using memory" (sql.u/quote-name driver :database database-name)))
+
+(defmethod tx/bad-connection-details :starburst
+  [_driver]
+  {:port (dec (Integer/parseInt (tx/db-test-env-var :starburst :port "8080")))})
