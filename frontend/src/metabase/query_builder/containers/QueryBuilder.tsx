@@ -41,7 +41,6 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabaseFields,
   getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
@@ -168,7 +167,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
     sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
