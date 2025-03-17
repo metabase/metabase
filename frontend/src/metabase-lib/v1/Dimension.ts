@@ -195,29 +195,6 @@ export default class Dimension {
     return _.isEqual(this.mbql(), otherDimension.mbql());
   }
 
-  /**
-   * Does this dimension have the same underlying base dimension, typically a field
-   */
-  isSameBaseDimension(
-    other: Dimension | null | undefined | FieldReference,
-  ): boolean {
-    if (other == null) {
-      return false;
-    }
-
-    const otherDimension: Dimension | null | undefined =
-      other instanceof Dimension ? other : this.parseMBQL(other);
-    const baseDimensionA = this.getMLv1CompatibleDimension().baseDimension();
-    const baseDimensionB =
-      otherDimension &&
-      otherDimension.getMLv1CompatibleDimension().baseDimension();
-    return (
-      !!baseDimensionA &&
-      !!baseDimensionB &&
-      baseDimensionA.isEqual(baseDimensionB)
-    );
-  }
-
   isExpression(): boolean {
     return false;
   }

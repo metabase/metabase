@@ -506,17 +506,6 @@ describe("Dimension", () => {
         });
       });
 
-      describe("isSameBaseDimension", () => {
-        it("should return true for another Dimension with the same underlying MBQL", () => {
-          const anotherDimension = Dimension.parseMBQL([
-            "field",
-            ORDERS.TOTAL,
-            { "join-alias": "join1" },
-          ]);
-          expect(dimension.isSameBaseDimension(anotherDimension)).toBe(true);
-        });
-      });
-
       describe("getMLv1CompatibleDimension", () => {
         it("should strip away *-type options", () => {
           const dimension = Dimension.parseMBQL(

@@ -24,19 +24,6 @@ export default class DimensionOptions {
     return [...dimensions, ...fksDimensions];
   }
 
-  hasDimension(dimension: Dimension): boolean {
-    // TO BE REMOVED
-    if (!dimension) {
-      console.error(
-        "attempted to call FieldDimension.hasDimension() with null dimension",
-        dimension,
-      );
-      return false;
-    }
-
-    return !!this.all().find(dim => dimension.isSameBaseDimension(dim));
-  }
-
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
     const dimension =
       this.dimensions.find(dimension => !dimension.isExpression()) ??
