@@ -11,7 +11,7 @@ import type { DashboardId } from "metabase-types/api";
 import { trackCustomHomepageDashboardEnabled } from "../../analytics";
 import { SettingHeader } from "../SettingHeader";
 
-import { AdminSettingInputComponent } from "./AdminSettingInput";
+import { BasicAdminSettingInput } from "./AdminSettingInput";
 
 export function CustomHomepageDashboardSetting() {
   const { value: customHomepage, updateSetting } =
@@ -65,7 +65,7 @@ export function CustomHomepageDashboardSetting() {
         title={t`Custom Homepage`}
         description={t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.`}
       />
-      <AdminSettingInputComponent
+      <BasicAdminSettingInput
         name="custom-homepage"
         inputType="boolean"
         value={customHomepage}
