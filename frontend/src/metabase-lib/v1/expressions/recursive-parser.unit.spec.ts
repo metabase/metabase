@@ -85,6 +85,7 @@ describe("recursive-parser", () => {
     expect(process("log(1 + sqrt(9))")).toEqual(["log", ["+", 1, ["sqrt", 9]]]);
     expect(process("power(log(2.1), 7)")).toEqual(["power", ["log", 2.1], 7]);
     expect(process("trim(ID)")).toEqual(["trim", ["dimension", "ID"]]);
+    expect(process("text(ID)")).toEqual(["text", ["dimension", "ID"]]);
   });
 
   it("should handle CASE expression", () => {
