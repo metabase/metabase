@@ -120,14 +120,12 @@
   (let [invalid-token?   (slack-token-error-codes (:error body))
         missing-channel? (= (:error body) "channel_not_found")
         message          (format "Slack API error: %s" (:error body))
+        error-stub       {:error-code (:error body)
+                          :error-type :slack/unknown}
         error            (cond
-                           invalid-token? {:error-code (:error body)
-                                           :error-type :slack/invalid-token}
-                           missing-channel? {:error-code (:error body)
-                                             :error-type :slack/channel-not-found}
-                           :else {:error-code (:error body)
-                                  :error-type :slack/unknown
-                                  :response   body})]
+                           invalid-token?   (assoc error-stub :error-type :slack/invalid-token)
+                           missing-channel? (assoc error-stub :error-type :slack/channel-not-found)
+                           :else            (assoc error-stub :response body))]
     (when (and invalid-token? *send-token-error-emails?*)
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
