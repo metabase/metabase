@@ -331,7 +331,7 @@ describe("Question", () => {
   describe("At the heart of a question is an MBQL query.", () => {
     describe("legacyQuery()", () => {
       it("returns a correct class instance for structured query", () => {
-        expect(() => orders_raw_question.legacyQuery()).toThrow();
+        expect(orders_raw_question.legacyQuery()).toBeUndefined();
       });
 
       it("returns a correct class instance for native query", () => {
