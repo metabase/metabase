@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Text, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Text, TextInput, Title } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
   addDataSource,
@@ -48,25 +48,19 @@ export const DataImporter = () => {
   return (
     <Flex
       direction="column"
-      bg="white"
       style={{
-        borderRadius: "var(--default-border-radius)",
         height: "100%",
-        border: `1px solid var(--mb-color-border)`,
       }}
     >
-      <Box
-        style={{
-          borderBottom: `
-        1px solid var(--mb-color-border)`,
-        }}
-      >
+      <Title order={4} mb="xs">{t`Add data`}</Title>
+      <Box>
         <TextInput
           m="xs"
           variant="filled"
           value={search}
           onChange={handleSearchChange}
           placeholder={t`Search for something`}
+          leftSection={<Icon name="search" />}
         />
       </Box>
       <Flex

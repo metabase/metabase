@@ -2,10 +2,29 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 import type { VisualizerColumnValueSource } from "metabase-types/store/visualizer";
 
 import { isDataSourceNameRef } from "./data-source";
+
+export function shouldSplitVisualizerSeries(
+  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
+  settings: VisualizationSettings,
+) {
+  const dimensions = settings["graph.dimensions"] ?? [];
+  const dimensionDataSources = _.uniq(
+    dimensions
+      .map(columnName => {
+        const mapping = columnValuesMapping[columnName];
+        if (isDataSourceNameRef(mapping[0])) {
+          return;
+        }
+        return mapping[0]?.sourceId;
+      })
+      .filter(isNotNull),
+  );
+  return dimensionDataSources.length > 1;
+}
 
 export function splitVisualizerSeries(
   series: RawSeries,

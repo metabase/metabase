@@ -1,13 +1,16 @@
 import { autocompletion } from "@codemirror/autocomplete";
 
 import { isNotNull } from "metabase/lib/types";
-import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
+import type * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-export type SuggestOptions = Omit<
-  SuggestArgs,
-  "source" | "targetOffset" | "getColumnIcon"
-> & {
-  shortcuts?: Shortcut[];
+export type SuggestOptions = {
+  query: Lib.Query;
+  stageIndex: number;
+  metadata: Metadata;
+  reportTimezone?: string;
+  startRule: "expression" | "boolean" | "aggregation";
+  expressionIndex: number | undefined;
 };
 
 import { suggestAggregations } from "./aggregations";
@@ -15,10 +18,7 @@ import { suggestFields } from "./fields";
 import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
 import { suggestMetrics } from "./metrics";
-import { suggestPopular } from "./popular";
 import { suggestSegments } from "./segments";
-import { suggestShortcuts } from "./shortcuts";
-import type { Shortcut } from "./types";
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
@@ -32,8 +32,6 @@ export function suggestions(options: SuggestOptions) {
       suggestFields(options),
       suggestMetrics(options),
       suggestSegments(options),
-      suggestPopular(options),
-      suggestShortcuts(options),
     ].filter(isNotNull),
   });
 }

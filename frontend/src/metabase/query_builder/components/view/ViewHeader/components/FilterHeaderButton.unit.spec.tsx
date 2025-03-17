@@ -47,11 +47,7 @@ const QUERY_WITHOUT_FILTERS = Question.create({
       aggregation: [["count"]],
     },
   },
-})
-  // eslint-disable-next-line no-restricted-syntax
-  .legacyQuery({ useStructuredQuery: true })
-  .question()
-  .query();
+}).query();
 
 describe("FilterHeaderButton", () => {
   it("should render filter button", () => {

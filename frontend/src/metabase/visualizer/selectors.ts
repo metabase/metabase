@@ -25,6 +25,7 @@ import {
   extractReferencedColumns,
   getDefaultVisualizationName,
   mergeVisualizerData,
+  shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "./utils";
 
@@ -34,7 +35,7 @@ type State = { visualizer: VisualizerState };
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
-const getCards = (state: State) => state.visualizer.cards;
+export const getCards = (state: State) => state.visualizer.cards;
 
 const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
 
@@ -156,7 +157,10 @@ export const getVisualizerRawSeries = createSelector(
       } as SingleSeries,
     ];
 
-    if (isCartesianChart(display)) {
+    if (
+      isCartesianChart(display) &&
+      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+    ) {
       return splitVisualizerSeries(series, columnValuesMapping);
     }
 

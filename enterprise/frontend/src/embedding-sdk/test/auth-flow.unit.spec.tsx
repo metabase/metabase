@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
@@ -17,6 +18,7 @@ import {
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -74,6 +76,7 @@ describe("SDK auth and init flow", () => {
 
     setupCardEndpoints(MOCK_CARD);
     setupCardQueryEndpoints(MOCK_CARD, {} as any);
+    setupCardQueryMetadataEndpoint(MOCK_CARD, createMockCardQueryMetadata());
   });
 
   it("should initialize the auth flow only once, not on rerenders", async () => {
@@ -97,6 +100,7 @@ describe("SDK auth and init flow", () => {
     expect(fetchMock.calls(AUTH_PROVIDER_URL)).toHaveLength(1);
 
     expect(screen.queryByText("Initializing...")).not.toBeInTheDocument();
+
     expect(
       // this is just something we know it's on the screen when everything is ok
       screen.getByTestId("query-visualization-root"),

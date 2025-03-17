@@ -1,33 +1,16 @@
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { type Diagnostic, linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
-import { styleTags, tags as t } from "@lezer/highlight";
 
 import type * as Lib from "metabase-lib";
-import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
-import { parser as baseParser } from "metabase-lib/v1/expressions/tokenizer/parser";
+import type { ErrorWithMessage } from "metabase-lib/v1/expressions";
+import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-export const tags = styleTags({
-  Identifier: t.variableName,
-  Boolean: t.bool,
-  String: t.string,
-  Number: t.number,
-  ColumnReference: t.processingInstruction,
-  Escape: t.escape,
-  "CallExpression/Identifier": t.function(t.variableName),
-  And: t.logicOperator,
-  Or: t.logicOperator,
-  Not: t.logicOperator,
-  '+ - "*" "/"': t.arithmeticOperator,
-  '< > =< => = "!-"': t.compareOperator,
-  "( )": t.paren,
-  "[ ]": t.bracket,
-  "{ }": t.brace,
-});
+import type { StartRule } from "../types";
 
-export const parser = baseParser.configure({
-  props: [tags],
-});
+import { DEBOUNCE_VALIDATION_MS } from "./constants";
+import { diagnoseAndCompileExpression } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
   parser,
@@ -35,38 +18,58 @@ const expressionLanguage = LRLanguage.define({
 });
 
 type LintOptions = {
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  name?: string | null;
-  expressionIndex: number | undefined;
+  name?: string;
+  expressionIndex?: number | undefined;
+  metadata: Metadata;
 };
 
 const lint = (options: LintOptions) =>
   linter(
     (view: EditorView): Diagnostic[] => {
       const source = view.state.doc.toString();
-      const error = diagnose({
-        source,
-        ...options,
-      });
-      if (!error || error.pos == null || error.len == null) {
+      if (source === "") {
+        return [];
+      }
+      const { error } = diagnoseAndCompileExpression(source, options);
+
+      if (!error) {
         return [];
       }
 
+      const position = getErrorPosition(error);
+
       return [
         {
-          from: error.pos,
-          to: error.pos + error.len,
           severity: "error",
           message: error.message,
+          ...position,
         },
       ];
     },
     {
+      delay: DEBOUNCE_VALIDATION_MS,
       tooltipFilter: () => [],
     },
   );
+
+function getErrorPosition(error: ErrorWithMessage | Error) {
+  if ("pos" in error && "len" in error) {
+    const pos = error.pos ?? 0;
+    const len = error.len ?? 0;
+    return {
+      from: pos,
+      to: pos + len,
+    };
+  }
+
+  return {
+    from: 0,
+    to: 0,
+  };
+}
 
 export function customExpression(options: LintOptions) {
   return new LanguageSupport(expressionLanguage, [lint(options)]);
