@@ -1342,6 +1342,7 @@ describe("issue 32037", () => {
 
     H.modal().within(() => {
       cy.findByText("Discard your changes?").should("be.visible");
+      cy.wait(100); // otherwise this test is flaky
       cy.findByText("Discard changes").click();
     });
 
