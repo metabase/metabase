@@ -5,8 +5,6 @@ import _ from "underscore";
 
 import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   getFieldValues,
   getRemappings,
@@ -41,8 +39,6 @@ import type {
   FieldValuesType,
   FieldVisibilityType,
 } from "metabase-types/api";
-
-import { FieldDimension } from "../Dimension";
 
 import Base from "./Base";
 import type Metadata from "./Metadata";
@@ -87,9 +83,6 @@ export default class Field extends Base {
   fk_target_field_id: FieldId | null;
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
-
-  // added when creating "virtual fields" that are associated with a given query
-  query?: StructuredQuery | NativeQuery;
 
   getPlainObject(): IField {
     return this._plainObject;
@@ -283,25 +276,6 @@ export default class Field extends Base {
     } else {
       return ["field", this.id, null];
     }
-  }
-
-  // 1. `_fieldInstance` is passed in so that we can shortwire any subsequent calls to `field()` form the dimension instance
-  // 2. The distinction between "fields" and "dimensions" is fairly fuzzy, and this method is "wrong" in the sense that
-  // The `ref` of this Field instance MIGHT be something like ["aggregation", "count"] which means that we should
-  // instantiate an AggregationDimension, not a FieldDimension, but there are bugs with that route, and this seems to work for now...
-  dimension() {
-    const ref = this.reference();
-    const fieldDimension = new FieldDimension(
-      ref[1],
-      ref[2],
-      this.metadata,
-      this.query,
-      {
-        _fieldInstance: this,
-      },
-    );
-
-    return fieldDimension;
   }
 
   // BREAKOUTS
