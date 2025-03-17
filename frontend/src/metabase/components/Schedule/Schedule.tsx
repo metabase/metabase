@@ -158,13 +158,12 @@ export const Schedule = ({
       .with(
         "minutely",
         () =>
+          // Converting to lowercase here, because 'minute` is used without pluralization on the backend,
+          // and it's impossible to have both pluralized and single form for the same string.
           c(
             "{0} is a verb like 'Check', {1} is an adverb like 'by the minute', {2} is a number of minutes.",
-          ).jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(
-            msgid`minute`,
-            "minutes",
-            schedule_minute as number,
-          )}`,
+          )
+            .jt`${verb} ${selectFrequency} every ${selectEveryMinute} ${ngettext(msgid`Minute`, "Minutes", schedule_minute as number).toLocaleLowerCase()}`,
       )
       .with("hourly", () => {
         return minutesOnHourPicker ? (

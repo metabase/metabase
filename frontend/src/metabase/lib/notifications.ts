@@ -245,7 +245,9 @@ export const formatNotificationCheckSchedule = ({
 
   switch (schedule_type) {
     case "minutely":
-      return t`Check every ${schedule_minute} ${ngettext(msgid`minute`, `minutes`, schedule_minute || 0)} `;
+      // Converting to lowercase here, because 'minute` is used without pluralization on the backend.
+      // and it's impossible to have both pluralized and single form for the same string.
+      return t`Check every ${ngettext(msgid`Minute`, `${schedule_minute} Minutes`, schedule_minute || 0).toLocaleLowerCase()}`;
     case "hourly":
       return t`Check hourly`;
     case "daily": {
