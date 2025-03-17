@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 
-import { RoutedDatabaesList } from "../RoutedDatabasesList";
+import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
-import S from "./RoutedDatabasesModal.module.css";
+import S from "./DestinationDatabasesModal.module.css";
 
-export const RoutedDatabasesModal = ({
+export const DestinationDatabasesModal = ({
   params,
 }: {
   params: { databaseId: string };
@@ -24,7 +24,7 @@ export const RoutedDatabasesModal = ({
   return (
     <Modal
       opened
-      title={t`Mirror databases`}
+      title={t`Destination databases`}
       onClose={handleCloseModal}
       padding="xl"
       classNames={{
@@ -33,7 +33,7 @@ export const RoutedDatabasesModal = ({
         body: S.modalBody,
       }}
     >
-      <RoutedDatabaesList primaryDatabaseId={primaryDbId} />
+      <DestinationDatabasesList primaryDatabaseId={primaryDbId} />
     </Modal>
   );
 };

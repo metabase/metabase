@@ -15,33 +15,35 @@ import type { DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 
-import S from "./RoutedDatabaseConnectionModal.module.css";
+import S from "./DestinationDatabaseConnectionModal.module.css";
 
-export const RoutedDatabaseConnectionModalInner = ({
-  params: { databaseId, mirrorDatabaseId },
+export const DestinationDatabaseConnectionModalInner = ({
+  params: { databaseId, destinationDatabaseId },
   route,
 }: {
-  params: { databaseId: string; mirrorDatabaseId?: string };
+  params: { databaseId: string; destinationDatabaseId?: string };
   route: Route;
 }) => {
   const dispatch = useDispatch();
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
-  const mirrorDbReq = useGetDatabaseQuery(paramIdToGetQuery(mirrorDatabaseId));
+  const destinationDbReq = useGetDatabaseQuery(
+    paramIdToGetQuery(destinationDatabaseId),
+  );
   const [createMirrorDatabase] = useCreateMirrorDatabaseMutation();
   const [updateDatabase] = useUpdateDatabaseMutation();
 
-  const isLoading = primaryDbReq.isLoading || mirrorDbReq.isLoading;
-  const error = primaryDbReq.error || mirrorDbReq.error;
-  const isNewDatabase = mirrorDatabaseId === undefined;
+  const isLoading = primaryDbReq.isLoading || destinationDbReq.isLoading;
+  const error = primaryDbReq.error || destinationDbReq.error;
+  const isNewDatabase = destinationDatabaseId === undefined;
 
-  const mirrorDatabase = useMemo(() => {
+  const destinationDatabase = useMemo(() => {
     return isNewDatabase
       ? { engine: primaryDbReq.currentData?.engine }
-      : mirrorDbReq.currentData;
-  }, [isNewDatabase, primaryDbReq.currentData, mirrorDbReq.currentData]);
+      : destinationDbReq.currentData;
+  }, [isNewDatabase, primaryDbReq.currentData, destinationDbReq.currentData]);
 
-  const addingNewDatabase = mirrorDatabaseId === undefined;
+  const addingNewDatabase = destinationDatabaseId === undefined;
 
   const handleCloseModal = () => {
     const id = primaryDbReq.currentData?.id;
@@ -79,7 +81,9 @@ export const RoutedDatabaseConnectionModalInner = ({
   return (
     <Modal
       title={
-        addingNewDatabase ? t`Add mirror database` : t`Edit mirror database`
+        addingNewDatabase
+          ? t`Add destination database`
+          : t`Edit destination database`
       }
       opened
       onClose={handleCloseModal}
@@ -92,7 +96,7 @@ export const RoutedDatabaseConnectionModalInner = ({
     >
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <DatabaseEditConnectionForm
-          database={mirrorDatabase}
+          database={destinationDatabase}
           isMirrorDatabase
           handleSaveDb={handleSaveDatabase}
           onSubmitted={handleOnSubmit}
@@ -105,6 +109,6 @@ export const RoutedDatabaseConnectionModalInner = ({
   );
 };
 
-export const RoutedDatabaseConnectionModal = title(
+export const DestinationDatabaseConnectionModal = title(
   ({ database }: { database: DatabaseData }) => database && database.name,
-)(RoutedDatabaseConnectionModalInner);
+)(DestinationDatabaseConnectionModalInner);

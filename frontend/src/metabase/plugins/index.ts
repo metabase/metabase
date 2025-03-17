@@ -603,5 +603,5 @@ export const PLUGIN_DB_ROUTING = {
     database: Database;
     refetchDatabase: () => void;
   }>,
-  mirrorDatabaseRoutes: null as React.ReactElement | null,
+  destinationDatabaseRoutes: null as React.ReactElement | null,
 };
