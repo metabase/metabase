@@ -103,6 +103,8 @@ describe("scenarios > custom column > literals", () => {
       .findByText("Pick a column to group by")
       .click();
     H.popover().findByText("Column").click();
+    H.getNotebookStep("summarize").button("Sort").click();
+    H.popover().findByText("Column").click();
     H.visualize();
     H.assertTableData({
       columns: ["Column", "Average of Column"],
