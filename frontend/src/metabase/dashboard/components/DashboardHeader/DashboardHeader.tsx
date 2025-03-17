@@ -93,6 +93,7 @@ export const DashboardHeaderInner = ({
       }),
     );
     dispatch(cancelEditingDashboard());
+    closeModal();
   };
 
   const getEditWarning = (dashboard: Dashboard) => {
