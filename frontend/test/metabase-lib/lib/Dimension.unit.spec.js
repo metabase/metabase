@@ -391,19 +391,6 @@ describe("Dimension", () => {
           expect(dimension.temporalUnit()).toEqual("month");
         });
       });
-
-      describe("withoutTemporalBucketing()", () => {
-        it("returns a dimension without temporal bucketing", () => {
-          const noBucketing = dimension.withoutTemporalBucketing();
-          expect(noBucketing.getOption("temporal-unit")).toBeFalsy();
-          expect(noBucketing.temporalUnit()).toBeFalsy();
-          expect(noBucketing.mbql()).toEqual([
-            "field",
-            ORDERS.CREATED_AT,
-            null,
-          ]);
-        });
-      });
     });
   });
 
@@ -452,19 +439,6 @@ describe("Dimension", () => {
     describe("temporal methods", () => {
       it("should return temporal unit correctly", () => {
         expect(dimension.temporalUnit()).toEqual("hour");
-      });
-
-      it("should remove temporal unit without removing FK source field", () => {
-        const noBucketing = dimension.withoutTemporalBucketing();
-        expect(noBucketing.temporalUnit()).toBeFalsy();
-        expect(noBucketing.getOption("source-field")).toEqual(
-          ORDERS.PRODUCT_ID,
-        );
-        expect(noBucketing.mbql()).toEqual([
-          "field",
-          PRODUCTS.CREATED_AT,
-          { "source-field": ORDERS.PRODUCT_ID },
-        ]);
       });
     });
   });

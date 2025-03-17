@@ -369,13 +369,6 @@ export default class Dimension {
   }
 
   /**
-   * Return a copy of this Dimension with any temporal unit options removed.
-   */
-  withoutTemporalBucketing(): Dimension {
-    return this.withoutOptions("temporal-unit");
-  }
-
-  /**
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
