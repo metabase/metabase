@@ -1697,3 +1697,61 @@
                                                                         nil))
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
+
+(defn- check-query [query db-type field]
+  (mt/native-query {:query (str "SELECT \"subquery\".\"TEXTCAST\",
+                                        CAST(\"subquery\".\"TEXTCAST\" AS " db-type ") = " (name field) " "
+                                "FROM ( "
+                                (-> query qp.compile/compile :query)
+                                " ) AS subquery "
+                                "LIMIT 100")}))
+
+(deftest ^:parallel text-cast-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date :db-type "DATE"}
+                                        {:field :name :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}
+                                        {:field :created_at :db-type "TIMESTAMPTZ"}]]]
+              {:keys [field db-type]} fields]
+        (testing (str "casting " table "." field "(" db-type ") to text")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "TEXTCAST" (lib/expression-clause :text [field-md] nil))
+                          (lib/limit 100))
+                result (-> query (check-query db-type field) qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols first :base_type)))
+            (doseq [[casted-value equals?] rows]
+              (is (string? casted-value))
+              (is equals? (str "Not equal for: " casted-value)))))))))
+
+(deftest ^:parallel text-cast-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
+                                                                                 [(lib.metadata/field mp (mt/id :people :name))
+                                                                                  (lib.metadata/field mp (mt/id :people :name))] nil)
+                                              :db-type "TEXT"}
+                                             {:expression (lib/expression-clause :get-day-of-week
+                                                                                 [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
+                                              :db-type "INTEGER"}]]]
+              {:keys [expression db-type]} expressions]
+        (testing (str "Casting " db-type " to text")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [])
+                          (lib/expression "UNCASTED" expression)
+                          (as-> q
+                                (lib/expression q "TEXTCAST" (lib/expression-clause :text [(lib/expression-ref q "UNCASTED")] nil)))
+                          (lib/limit 10))
+                result (-> query (check-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Text (-> cols first :base_type)))
+            (doseq [[casted-value equals?] rows]
+              (is (string? casted-value))
+              (is equals? (str "Not equal for: " casted-value)))))))))
+
