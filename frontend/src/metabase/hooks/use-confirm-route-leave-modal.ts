@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { goBack, push, replace } from "react-router-redux";
+import { useMountedState } from "react-use";
 import { match } from "ts-pattern";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
@@ -41,16 +42,14 @@ export const useConfirmRouteLeaveModal = ({
   isLocationAllowed = IS_LOCATION_ALLOWED,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
   const dispatch = useDispatch();
+  const isMounted = useMountedState();
   const [nextLocation, setNextLocation] = useState<Location | undefined>();
 
   const [opened, setOpened] = useState<boolean>(false);
   const close = useCallback(() => setOpened(false), []);
 
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const confirm = useCallback(() => {
-    setIsConfirmed(true);
-    setOpened(false);
-  }, []);
+  const confirm = useCallback(() => setIsConfirmed(true), []);
 
   useBeforeUnload(isEnabled);
 
@@ -68,14 +67,12 @@ export const useConfirmRouteLeaveModal = ({
 
   useEffect(() => {
     if (isConfirmed && nextLocation) {
-      setIsConfirmed(false);
-
       match(nextLocation.action)
         .with("POP", () => {
           /**
-           * There is no simple or reliable way to detect how many pages is user going back,
-           * so we use goBack() to go back just one page.
-           * Ideally we should be using dispatch(go(numberOfPages));
+           * Ideally we should be using dispatch(go(numberOfPages)), but there is no simple
+           * or reliable way to detect how many pages is user going back, so we use goBack()
+           * to go back just one page.
            */
           dispatch(goBack());
         })
@@ -86,8 +83,20 @@ export const useConfirmRouteLeaveModal = ({
           dispatch(replace(nextLocation));
         })
         .exhaustive();
+
+      /**
+       * Using setTimeout to allow programmatic navigation triggered above to be processed.
+       * Without this, in some cases confirmation modal would immediately reopen after submitting.
+       */
+      window.setTimeout(() => {
+        if (isMounted()) {
+          // This clean-up is needed in cases where this hook does not unmount after navigation.
+          setIsConfirmed(false);
+          setOpened(false);
+        }
+      }, 0);
     }
-  }, [dispatch, isConfirmed, nextLocation]);
+  }, [dispatch, isConfirmed, isMounted, nextLocation]);
 
   return {
     opened,
