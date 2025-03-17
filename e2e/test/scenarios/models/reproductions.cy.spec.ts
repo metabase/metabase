@@ -1346,6 +1346,7 @@ describe("issue 32037", () => {
     });
 
     H.appBar().should("be.visible");
+    cy.button("Save changes").should("not.exist");
     cy.get("@modelPathname").then(modelPathname => {
       cy.location("pathname").should("eq", modelPathname);
     });
