@@ -184,13 +184,13 @@ describe("command palette", () => {
       H.commandPalette().within(() => {
         H.commandPaletteInput().type("Settings -");
         cy.log("check admin sees all settings links");
-        H.commandPaletteAction("Settings - Setup").should("exist");
-        H.commandPaletteAction("Settings - General").should("exist");
+        H.commandPaletteAction("Settings - General").should("be.visible");
+        H.commandPaletteAction("Settings - Email").should("be.visible");
         H.commandPaletteInput().clear();
 
-        cy.log("shouldsee admin links");
+        cy.log("should see admin links");
         H.commandPaletteInput().type("Performance");
-        H.commandPaletteAction("Performance").should("exist");
+        H.commandPaletteAction("Performance").should("be.visible");
       });
     });
 

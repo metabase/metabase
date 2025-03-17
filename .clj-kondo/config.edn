@@ -299,6 +299,8 @@
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
+  :discouraged-tag {p {:message "You can use it, but don't commit it." }}
+
   :unresolved-var
   {:exclude
    [colorize.core]}
@@ -465,6 +467,7 @@
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
     metabase.sync.schedules                                       sync.schedules
+    metabase.sync.sync-metadata.crufty                            crufty
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
     metabase.sync.util                                            sync-util
     metabase.sync.util-test                                       sync.util-test
@@ -797,7 +800,7 @@
    :name    source-namespaces}
   {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
    :name    printable-namespaces}
-  {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\.*"
+  {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
   ;;
   ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and

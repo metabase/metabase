@@ -492,7 +492,7 @@ describe("issue 40435", () => {
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("User ID").click();
     });
     H.getNotebookStep("data").button("Pick columns").click();
@@ -557,7 +557,7 @@ describe(
     });
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
-      cy.get("#main-data-grid")
+      H.tableInteractiveBody()
         .findAllByRole("gridcell")
         .first()
         .then($cell => {
@@ -610,7 +610,7 @@ describe(
           // The preview should show only one row
           const ordersColumns = 10;
           cy.findByTestId("preview-root")
-            .get("#main-data-grid")
+            .findByTestId("table-body")
             .findAllByTestId("cell-data")
             .should("have.length.at.most", ordersColumns);
 
@@ -1502,6 +1502,7 @@ describe("issue 44668", () => {
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
       name: "Custom String",
+      format: true,
     });
     H.popover().button("Done").click();
 
@@ -1713,7 +1714,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", () => {
+describe("issue 45063", { tags: "@flaky" }, () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",
@@ -2439,12 +2440,9 @@ describe("issue 47940", () => {
       coercion_strategy: "Coercion/UNIXMicroSeconds->DateTime",
     });
 
-    cy.log("get new query results with coercion applied");
-    H.queryBuilderHeader().findByTestId("run-button").click();
+    cy.log("reload to get new query results with coercion applied");
+    cy.reload();
     cy.wait("@cardQuery");
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().button("Save").click();
-    cy.wait("@updateCard");
 
     cy.log("turn into a model");
     H.openQuestionActions();

@@ -500,7 +500,7 @@ describe("issue 30165", () => {
     cy.get("@dataset.all").should("have.length", 0);
     cy.get("@cardQuery.all").should("have.length", 0);
     cy.findByTestId("query-builder-main")
-      .findByText("Here's where your results will appear")
+      .findByText("Query results will appear here.")
       .should("be.visible");
   });
 });
@@ -672,7 +672,7 @@ function updateQuestion() {
 
 function removeSourceColumns() {
   cy.findByTestId("fields-picker").click();
-  H.popover().findByText("Select none").click();
+  H.popover().findByText("Select all").click();
 }
 
 function createAdHocQuestion(questionName) {
@@ -690,7 +690,7 @@ function createAdHocQuestion(questionName) {
 
 function visualizeAndAssertColumns() {
   H.visualize();
-  cy.findByTestId("TableInteractive-root").within(() => {
+  H.tableInteractive().within(() => {
     cy.findByText("ID").should("exist");
     cy.findByText("Total").should("not.exist");
   });

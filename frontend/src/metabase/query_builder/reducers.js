@@ -112,7 +112,6 @@ export const uiControls = handleActions(
         return {
           ...state,
           ...DEFAULT_UI_CONTROLS,
-          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           ...payload.uiControls,
         };
       },

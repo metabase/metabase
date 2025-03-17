@@ -158,7 +158,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={question.legacyNativeQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -238,7 +238,7 @@ const _DatasetEditorInner = props => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: question.legacyQuery(),
+      query: question.legacyNativeQuery(),
       viewHeight: height,
     });
   }, [question, height]);
@@ -418,7 +418,7 @@ const _DatasetEditorInner = props => {
   }, [focusedFieldIndex, previousFocusedFieldIndex]);
 
   const renderSelectableTableColumnHeader = useCallback(
-    (element, column, columnIndex) => {
+    (column, columnIndex) => {
       const isSelected = columnIndex === focusedFieldIndex;
       return (
         <Flex
@@ -427,6 +427,7 @@ const _DatasetEditorInner = props => {
           })}
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
           onFocus={() => handleColumnSelect(column)}
+          data-testid="model-column-header-content"
         >
           <Icon
             className={cx(DatasetEditorS.FieldTypeIcon, {
@@ -442,7 +443,7 @@ const _DatasetEditorInner = props => {
     [focusedFieldIndex, handleColumnSelect],
   );
 
-  const renderTableHeaderWrapper = useMemo(
+  const renderTableHeader = useMemo(
     () =>
       datasetEditorTab === "metadata"
         ? renderSelectableTableColumnHeader
@@ -561,7 +562,7 @@ const _DatasetEditorInner = props => {
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
-                renderTableHeaderWrapper={renderTableHeaderWrapper}
+                renderTableHeader={renderTableHeader}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                 renderEmptyMessage={isEditingMetadata}
               />

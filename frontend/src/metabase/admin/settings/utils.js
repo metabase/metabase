@@ -16,8 +16,7 @@ export const settingToFormField = setting => ({
 export const settingToFormFieldId = setting => `setting-${setting.key}`;
 
 export const useGetEnvVarDocsUrl = envName => {
-  return useDocsUrl(
-    "configuring-metabase/environment-variables",
-    envName?.toLowerCase(),
-  );
+  return useDocsUrl("configuring-metabase/environment-variables", {
+    anchor: envName?.toLowerCase(),
+  });
 };
