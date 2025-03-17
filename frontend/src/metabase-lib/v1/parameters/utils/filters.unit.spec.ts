@@ -1,9 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
-import Dimension from "metabase-lib/v1/Dimension";
+import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
-import { createMockParameter } from "metabase-types/api/mocks";
-import { PRODUCTS } from "metabase-types/api/mocks/presets";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import {
+  createMockNativeCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import { dimensionFilterForParameter } from "./filters";
 
@@ -147,10 +149,19 @@ function createMockField(mocks: Record<string, unknown>): Field {
   return Object.assign(new Field(), mocks);
 }
 
-function createMockDimension(mocks: Record<string, unknown>): Dimension {
-  const metadata = createMockMetadata({});
-  const dimension = checkNotNull(
-    Dimension.parseMBQL(["field", PRODUCTS.CREATED_AT, null], metadata),
+function createMockDimension(
+  mocks: Record<string, unknown>,
+): TemplateTagDimension {
+  const card = createMockNativeCard();
+  const metadata = createMockMetadata({ questions: [card] });
+  const question = metadata.question(card.id);
+  if (!question) {
+    throw new TypeError();
+  }
+  const dimension = new TemplateTagDimension(
+    "tag",
+    metadata,
+    question.legacyQuery() as NativeQuery,
   );
   return Object.assign({}, dimension, mocks);
 }

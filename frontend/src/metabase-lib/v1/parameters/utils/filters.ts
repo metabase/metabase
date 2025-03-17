@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type Dimension from "metabase-lib/v1/Dimension";
+import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getParameterOperatorName } from "metabase-lib/v1/parameters/utils/operators";
 import {
@@ -67,7 +67,10 @@ export function columnFilterForParameter(
 
 export function dimensionFilterForParameter(parameter: Parameter | string) {
   const fieldFilter = fieldFilterForParameter(parameter);
-  return (dimension: Dimension) => fieldFilter(dimension.field());
+  return (dimension: TemplateTagDimension) => {
+    const field = dimension.field();
+    return field != null && fieldFilter(field);
+  };
 }
 
 export function variableFilterForParameter(parameter: Parameter | string) {

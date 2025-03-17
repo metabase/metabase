@@ -1,4 +1,4 @@
-import type Dimension from "metabase-lib/v1/Dimension";
+import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 
 import type {
   DimensionFK,
@@ -11,24 +11,22 @@ export default class DimensionOptions {
   name?: string;
   icon?: string;
   count: number = 0;
-  dimensions: Dimension[] = [];
+  dimensions: TemplateTagDimension[] = [];
   fks: DimensionFK[] = [];
 
   constructor(properties?: DimensionOptionsProps) {
     Object.assign(this, properties || {});
   }
 
-  all(): Dimension[] {
+  all(): TemplateTagDimension[] {
     const dimensions = this.dimensions;
     const fksDimensions = this.fks.map(fk => fk.dimensions).flat();
     return [...dimensions, ...fksDimensions];
   }
 
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
-    const dimension =
-      this.dimensions.find(dimension => !dimension.isExpression()) ??
-      this.dimensions[0];
-    const table = dimension && dimension.field().table;
+    const dimension = this.dimensions[0];
+    const table = dimension && dimension.field()?.table;
     const tableName = table ? table.objectName() : null;
     const mainSection: DimensionOptionsSection = {
       name: this.name || tableName,
