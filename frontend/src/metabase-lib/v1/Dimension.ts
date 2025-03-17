@@ -251,10 +251,6 @@ export default class Dimension {
     return this._binningOptions() && this._binningOptions()[option];
   }
 
-  binningStrategy() {
-    return this._getBinningOption("strategy");
-  }
-
   /**
    * Return the join alias associated with this field, if any.
    */
