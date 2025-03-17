@@ -3,6 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
+import { MBQL_CLAUSES } from "./config";
+import { formatExample } from "./formatter";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -25,7 +27,7 @@ describe("getHelpText", () => {
       const helpText = getHelpText("count", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Count");
-      expect(helpText?.example).toBe("Count");
+      expect(helpText?.example).toEqual(["count"]);
       expect(helpText?.description).toMatch(/returns the count of rows/i);
       expect(helpText?.args).toBe(undefined);
     });
@@ -35,7 +37,11 @@ describe("getHelpText", () => {
       const helpText = getHelpText("percentile", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Percentile");
-      expect(helpText?.example).toBe("Percentile([Score], 0.9)");
+      expect(helpText?.example).toEqual([
+        "percentile",
+        ["dimension", "Score"],
+        0.9,
+      ]);
       expect(helpText?.description).toBe(
         "Returns the value of the column at the percentile value.",
       );
@@ -61,7 +67,11 @@ describe("getHelpText", () => {
       const helpText = getHelpText("offset", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Offset");
-      expect(helpText?.example).toBe("Offset(Sum([Total]), -1)");
+      expect(helpText?.example).toEqual([
+        "offset",
+        ["sum", ["dimension", "Total"]],
+        -1,
+      ]);
     });
 
     describe("datetimeDiff", () => {
@@ -107,6 +117,17 @@ describe("getHelpText", () => {
 
       expect(helpText?.description).toMatch("UTC");
     });
+  });
+
+  it("all help texts can be formatted", async () => {
+    for (const name in MBQL_CLAUSES) {
+      const { database } = setup();
+      const helpText = getHelpText(name, database, reportTimezone);
+      if (!helpText) {
+        continue;
+      }
+      expect(() => formatExample(helpText.example)).not.toThrow();
+    }
   });
 });
 

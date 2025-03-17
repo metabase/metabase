@@ -3,10 +3,7 @@ import { c, t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import {
-  Cron,
-  getScheduleStrings,
-} from "metabase/components/Schedule/constants";
+import { Cron, getScheduleStrings } from "metabase/components/Schedule/strings";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
@@ -155,10 +152,13 @@ export const cronToScheduleSettings_unmemoized = (
       schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
     }
   }
+
+  const scheduleMinute = minute === Cron.AllValues ? null : parseInt(minute);
+  const scheduleHour = hour === Cron.AllValues ? null : parseInt(hour);
   return {
     schedule_type,
-    schedule_minute: parseInt(minute),
-    schedule_hour: parseInt(hour),
+    schedule_minute: scheduleMinute,
+    schedule_hour: scheduleHour,
     schedule_day,
     schedule_frame,
   };
