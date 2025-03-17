@@ -8,15 +8,17 @@ import { Modal } from "metabase/ui";
 
 import { paramIdToGetQuery } from "./utils";
 
-export const RemoveRoutedDatabaseModal = ({
-  params: { databaseId, mirrorDatabaseId },
+export const RemoveDestinationDatabaseModal = ({
+  params: { databaseId, destinationDatabaseId },
 }: {
-  params: { databaseId: string; mirrorDatabaseId: string };
+  params: { databaseId: string; destinationDatabaseId: string };
 }) => {
   const dispatch = useDispatch();
 
-  const mirrorDbReq = useGetDatabaseQuery(paramIdToGetQuery(mirrorDatabaseId));
-  const mirrorDb = mirrorDbReq.data;
+  const destinationDbReq = useGetDatabaseQuery(
+    paramIdToGetQuery(destinationDatabaseId),
+  );
+  const destinationDb = destinationDbReq.data;
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
   // TODO: consolidate the handleCloseModal methods into a common util
@@ -25,7 +27,7 @@ export const RemoveRoutedDatabaseModal = ({
   };
 
   const handleDelete = async () => {
-    await deleteDatabase(parseInt(mirrorDatabaseId, 10)).unwrap();
+    await deleteDatabase(parseInt(destinationDatabaseId, 10)).unwrap();
   };
 
   return (
@@ -36,14 +38,14 @@ export const RemoveRoutedDatabaseModal = ({
       withCloseButton={false}
     >
       <LoadingAndErrorWrapper
-        loading={mirrorDbReq.isLoading}
-        error={mirrorDbReq.error}
+        loading={destinationDbReq.isLoading}
+        error={destinationDbReq.error}
       >
-        {mirrorDb && (
+        {destinationDb && (
           <DeleteDatabaseModal
             onClose={handleCloseModal}
             onDelete={handleDelete}
-            database={mirrorDb}
+            database={destinationDb}
           />
         )}
       </LoadingAndErrorWrapper>

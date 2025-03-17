@@ -18,7 +18,7 @@ import {
 } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
-export const RoutedDatabaesList = ({
+export const DestinationDatabasesList = ({
   primaryDatabaseId,
   previewCount = Infinity,
 }: {
@@ -27,22 +27,22 @@ export const RoutedDatabaesList = ({
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const mirrorDbsReq = useListDatabasesQuery({
+  const destinationDbsReq = useListDatabasesQuery({
     include_mirror_databases: primaryDatabaseId,
   });
 
-  const mirrorDatabases = useMemo(
-    () => mirrorDbsReq.data?.data ?? [],
-    [mirrorDbsReq],
+  const destinationDatabases = useMemo(
+    () => destinationDbsReq.data?.data ?? [],
+    [destinationDbsReq],
   );
 
   return (
     <LoadingAndErrorWrapper
-      loading={mirrorDbsReq.isLoading}
-      error={mirrorDbsReq.error}
+      loading={destinationDbsReq.isLoading}
+      error={destinationDbsReq.error}
     >
       <Box>
-        {mirrorDatabases.length === 0 ? (
+        {destinationDatabases.length === 0 ? (
           <Text
             ta="center"
             mt="5rem"
@@ -52,7 +52,7 @@ export const RoutedDatabaesList = ({
           <>
             <Text>{t`Name`}</Text>
             <Divider my="sm" />
-            {mirrorDatabases.slice(0, previewCount).map(({ id, name }) => (
+            {destinationDatabases.slice(0, previewCount).map(({ id, name }) => (
               <Flex justify="space-between" my="md" key={id}>
                 <Text key={id}>{name}</Text>
                 <Menu shadow="md" width={200} position="bottom-end">
@@ -64,14 +64,14 @@ export const RoutedDatabaesList = ({
                   <Menu.Dropdown>
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={`/admin/databases/${primaryDatabaseId}/mirror/${id}`}
+                      to={`/admin/databases/${primaryDatabaseId}/destination-databases/${id}`}
                     >
                       Edit
                     </Menu.Item>
                     {isAdmin && (
                       <Menu.Item
                         component={ForwardRefLink}
-                        to={`/admin/databases/${primaryDatabaseId}/mirror/${id}/remove`}
+                        to={`/admin/databases/${primaryDatabaseId}/destination-databases/${id}/remove`}
                       >
                         Remove
                       </Menu.Item>
@@ -80,14 +80,14 @@ export const RoutedDatabaesList = ({
                 </Menu>
               </Flex>
             ))}
-            {mirrorDatabases.length > previewCount && (
+            {destinationDatabases.length > previewCount && (
               <Text
                 component={Link}
                 c="brand"
                 td="underline"
-                to={`/admin/databases/${primaryDatabaseId}/mirrors`}
+                to={`/admin/databases/${primaryDatabaseId}/destination-databases`}
               >
-                View all {mirrorDatabases.length}
+                View all {destinationDatabases.length}
               </Text>
             )}
           </>
