@@ -14,7 +14,7 @@
   [:map
    [:id        {:description "Internal ID used by the LLM."} :string]
    [:name      ::metabot-v3.tools.interface/metadata.name]
-   [:arguments [:map-of ::metabot-v3.tools.interface/metadata.parameter.name :any]]])
+   [:arguments [:or :string [:map-of ::metabot-v3.tools.interface/metadata.parameter.name :any]]]])
 
 (mr/def ::message
   [:map
