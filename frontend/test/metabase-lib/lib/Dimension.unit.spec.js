@@ -253,33 +253,6 @@ describe("Dimension", () => {
           expect(field.base_type).toEqual("type/Float");
         });
       });
-
-      describe("getMLv1CompatibleDimension", () => {
-        it("should return itself without changes by default", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field", ORDERS.TOTAL, null],
-            metadata,
-          );
-          expect(dimension.getMLv1CompatibleDimension()).toBe(dimension);
-        });
-
-        it("should strip away *-type options", () => {
-          const dimension = Dimension.parseMBQL(
-            [
-              "field",
-              ORDERS.TOTAL,
-              { "base-type": "type/Float", "effective-type": "type/Float" },
-            ],
-            metadata,
-          );
-
-          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
-            "field",
-            ORDERS.TOTAL,
-            null,
-          ]);
-        });
-      });
     });
   });
 
@@ -324,29 +297,6 @@ describe("Dimension", () => {
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Title");
-        });
-      });
-
-      describe("getMLv1CompatibleDimension", () => {
-        it("should strip away *-type options", () => {
-          const dimension = Dimension.parseMBQL(
-            [
-              "field",
-              PRODUCTS.TITLE,
-              {
-                "base-type": "type/Text",
-                "effective-type": "type/Text",
-                "source-field": ORDERS.PRODUCT_ID,
-              },
-            ],
-            metadata,
-          );
-
-          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
-            "field",
-            PRODUCTS.TITLE,
-            { "source-field": ORDERS.PRODUCT_ID },
-          ]);
         });
       });
     });
@@ -399,29 +349,6 @@ describe("Dimension", () => {
           expect(dimension.field().id).toEqual(PRODUCTS.CREATED_AT);
           expect(dimension.field().metadata).toEqual(metadata);
           expect(dimension.field().displayName()).toEqual("Created At");
-        });
-      });
-
-      describe("getMLv1CompatibleDimension", () => {
-        it("should strip away *-type options", () => {
-          const dimension = Dimension.parseMBQL(
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              {
-                "base-type": "type/DateTime",
-                "effective-type": "type/DateTime",
-                "temporal-unit": "hour",
-              },
-            ],
-            metadata,
-          );
-
-          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
-            "field",
-            ORDERS.CREATED_AT,
-            { "temporal-unit": "hour" },
-          ]);
         });
       });
     });
@@ -493,29 +420,6 @@ describe("Dimension", () => {
             { "join-alias": "join1" },
           ]);
           expect(dimension.isEqual(anotherDimension)).toBe(true);
-        });
-      });
-
-      describe("getMLv1CompatibleDimension", () => {
-        it("should strip away *-type options", () => {
-          const dimension = Dimension.parseMBQL(
-            [
-              "field",
-              ORDERS.TOTAL,
-              {
-                "base-type": "type/DateTime",
-                "effective-type": "type/DateTime",
-                "join-alias": "join1",
-              },
-            ],
-            metadata,
-          );
-
-          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
-            "field",
-            ORDERS.TOTAL,
-            { "join-alias": "join1" },
-          ]);
         });
       });
     });
