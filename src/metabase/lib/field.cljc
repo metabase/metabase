@@ -88,7 +88,7 @@
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                                 :- ::lib.schema/query
    stage-number                                                          :- :int
-   [_field {:keys [join-alias source-field], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
+   [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (let [metadata (merge
                   (when-let [base-type (:base-type opts)]
                     {:base-type base-type})

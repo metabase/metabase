@@ -7,7 +7,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -123,7 +122,7 @@
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    {:keys [unique-name-fn] :as options} :- lib.metadata.calculation/ReturnedColumnsOptions]
-  (when-let [{fields :fields :as stage} (lib.util/query-stage query stage-number)]
+  (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
     (-> (for [[tag :as ref-clause] fields
               :let                 [source (case tag
                                              ;; you can't have an `:aggregation` reference in `:fields`; anything in

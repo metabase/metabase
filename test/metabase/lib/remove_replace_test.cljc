@@ -198,13 +198,13 @@
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
                   (lib/remove-clause 0 (first fields)))))
-      #_(is (=? {:stages [{:joins [{:fields [(second fields)]}]} (complement :fields) (complement :filters)]}
-                (-> query
-                    (lib/append-stage)
-                    (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"]])
-                    (lib/append-stage)
-                    (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
-                    (lib/remove-clause 0 (first fields))))))))
+      (is (=? {:stages [{:joins [{:fields [(second fields)]}]} (complement :fields) (complement :filters)]}
+              (-> query
+                  (lib/append-stage)
+                  (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"]])
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
+                  (lib/remove-clause 0 (first fields))))))))
 
 (deftest ^:parallel replace-clause-join-with-all-fields-test
   (testing "Joins with :all fields selected can be handled (#31858)"

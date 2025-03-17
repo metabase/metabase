@@ -86,15 +86,11 @@
      #(lib.util.match/replace
         %
         #{:field}
-        ;; XXX: These changes might not be necessary! The clause should already have been removed, not survive to this
-        ;; point.
         (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
               source-uuid (:lib/source-uuid old-matching-column)
-              new-column  (when source-uuid
-                            (source-uuid->new-column source-uuid))
+              new-column  (source-uuid->new-column source-uuid)
               new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
-          (cond-> &match
-            new-name (assoc 2 new-name)))))))
+          (assoc &match 2 new-name))))))
 
 (defn- update-stale-references
   "Update stale refs in query after clause removal.
@@ -206,8 +202,7 @@
   [query previous-stage-number unmodified-query-for-stage target-uuid]
   (if-let [stage-number (lib.util/next-stage-number unmodified-query-for-stage previous-stage-number)]
     (let [stage (lib.util/query-stage unmodified-query-for-stage stage-number)
-          cols  (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
-          target-ref-id (->> cols
+          target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
                                        (:lib/desired-column-alias column)))))]
