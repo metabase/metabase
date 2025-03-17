@@ -10,9 +10,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import type { Metadata, Query } from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
 import {
-  getBaseDimensionReference,
   isFieldReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
@@ -25,13 +23,6 @@ import type {
   VariableTarget,
 } from "metabase-types/api";
 
-/**
- * A dimension option returned by the query_metadata API
- */
-type DimensionOption = {
-  mbql: any;
-  name?: string;
-};
 /* Heirarchy:
  *
  * - Dimension (abstract)
@@ -55,9 +46,6 @@ export default class Dimension {
   _metadata: Metadata | null | undefined;
   _query: Query | null | undefined;
   _options: any;
-  // Display names provided by the backend
-  _subDisplayName: string | null | undefined;
-  _subTriggerDisplayName: string | null | undefined;
 
   /**
    * Dimension constructor
@@ -120,60 +108,6 @@ export default class Dimension {
   }
 
   /**
-   * Sub-dimensions for the provided dimension of this type.
-   * @abstract
-   */
-  // TODO Atte Keinänen 5/21/17: Rename either this or the instance method with the same name
-  // Also making it clear in the method name that we're working with sub-dimensions would be good
-  static dimensions(_parent: Dimension): Dimension[] {
-    return [];
-  }
-
-  /**
-   * Returns "sub-dimensions" of this dimension.
-   * @abstract
-   */
-  // TODO Atte Keinänen 5/21/17: Rename either this or the static method with the same name
-  // Also making it clear in the method name that we're working with sub-dimensions would be good
-  dimensions(DimensionTypes?: (typeof Dimension)[]): Dimension[] {
-    const dimensionOptions = this.field().dimension_options;
-
-    if (!DimensionTypes && dimensionOptions) {
-      return dimensionOptions.map(option => this._dimensionForOption(option));
-    } else {
-      return [].concat(
-        ...(DimensionTypes || []).map(DimensionType =>
-          DimensionType.dimensions(this),
-        ),
-      );
-    }
-  }
-
-  /**
-   * Internal method gets a Dimension from a DimensionOption
-   */
-  _dimensionForOption(option: DimensionOption) {
-    // fill in the parent field ref
-    const fieldRef = getBaseDimensionReference(this.mbql());
-    let mbql = option.mbql;
-
-    if (mbql) {
-      mbql = [mbql[0], fieldRef, ...mbql.slice(2)];
-    } else {
-      mbql = fieldRef;
-    }
-
-    const dimension = this.parseMBQL(mbql);
-
-    if (dimension && option.name) {
-      dimension._subDisplayName = option.name;
-      dimension._subTriggerDisplayName = option.name;
-    }
-
-    return dimension;
-  }
-
-  /**
    * Is this dimension identical to another dimension or MBQL clause
    */
   isEqual(
@@ -219,10 +153,6 @@ export default class Dimension {
     return this._query;
   }
 
-  setQuery(_query: StructuredQuery): Dimension {
-    return this;
-  }
-
   getOptions() {
     return this._options;
   }
@@ -240,70 +170,6 @@ export default class Dimension {
    */
   temporalUnit() {
     return this.getOption("temporal-unit");
-  }
-
-  // binning-strategy stuff
-  _binningOptions() {
-    return this.getOption("binning");
-  }
-
-  _getBinningOption(option) {
-    return this._binningOptions() && this._binningOptions()[option];
-  }
-
-  /**
-   * Return the join alias associated with this field, if any.
-   */
-  joinAlias() {
-    return this.getOption("join-alias");
-  }
-
-  sourceField() {
-    return this.getOption("source-field");
-  }
-
-  /**
-   * Return a copy of this Dimension that includes the specified `options`.
-   * @abstract
-   */
-  _withOptions(_options: any): Dimension {
-    return this;
-  }
-
-  /**
-   * Return a copy of this Dimension with option `key` set to `value`.
-   */
-  withOption(key: string, value: any): Dimension {
-    return this._withOptions({
-      [key]: value,
-    });
-  }
-
-  /**
-   * Return a copy of this Dimension, bucketed by the specified temporal unit.
-   */
-  withTemporalUnit(unit: string): Dimension {
-    return this._withOptions({
-      "temporal-unit": unit,
-    });
-  }
-
-  /**
-   * Return a copy of this Dimension with join alias set to `newAlias`.
-   */
-  withJoinAlias(newAlias) {
-    return this._withOptions({
-      "join-alias": newAlias,
-    });
-  }
-
-  /**
-   * Return a copy of this Dimension with a replacement source field.
-   */
-  withSourceField(sourceField) {
-    return this._withOptions({
-      "source-field": sourceField,
-    });
   }
 
   mbql(): FieldReference | null | undefined {
@@ -334,38 +200,6 @@ export class FieldDimension extends Dimension {
     return null;
   }
 
-  /**
-   * Parse MBQL field clause or log a warning message if it could not be parsed. Use this when you expect the clause to
-   * be a `:field` clause
-   */
-  static parseMBQLOrWarn(
-    mbql,
-    metadata = null,
-    query = null,
-  ): FieldDimension | null | undefined {
-    // if some some reason someone passes in a raw integer ID instead of a proper Field form, go ahead and parse it
-    // anyway -- there seems to be a lot of code that does this -- but log an error message so we can fix it.
-    if (typeof mbql === "number") {
-      console.error(
-        "FieldDimension.parseMBQLOrWarn() called with a raw integer Field ID. This is an error. Fixme!",
-        mbql,
-      );
-      return FieldDimension.parseMBQLOrWarn(
-        ["field", mbql, null],
-        metadata,
-        query,
-      );
-    }
-
-    const dimension = FieldDimension.parseMBQL(mbql, metadata, query);
-
-    if (!dimension) {
-      console.warn("Unknown MBQL Field clause", mbql);
-    }
-
-    return dimension;
-  }
-
   constructor(
     fieldIdOrName,
     options = null,
@@ -389,20 +223,6 @@ export class FieldDimension extends Dimension {
     }
 
     Object.freeze(this);
-  }
-
-  setQuery(query: StructuredQuery): FieldDimension {
-    return new FieldDimension(
-      this._fieldIdOrName,
-      this._options,
-      this._metadata,
-      query,
-      {
-        _fieldInstance: this._fieldInstance,
-        _subDisplayName: this._subDisplayName,
-        _subTriggerDisplayName: this._subTriggerDisplayName,
-      },
-    );
   }
 
   isEqual(somethingElse) {
@@ -535,128 +355,12 @@ export class FieldDimension extends Dimension {
     return this.field()?.table?.id;
   }
 
-  /**
-   * Return a copy of this FieldDimension that includes the specified `options`.
-   */
-  _withOptions(options: any): FieldDimension {
-    // optimization : if options is empty return self as-is
-    if (!options || !Object.entries(options).length) {
-      return this;
-    }
-
-    return new FieldDimension(
-      this._fieldIdOrName,
-      { ...this._options, ...options },
-      this._metadata,
-      this._query,
-      {
-        _fieldInstance: this._fieldInstance,
-        _subDisplayName: this._subDisplayName,
-        _subTriggerDisplayName: this._subTriggerDisplayName,
-      },
-    );
-  }
-
   displayName(...args) {
     return this.field().displayName(...args);
   }
 
   icon() {
     return this.field().icon();
-  }
-
-  dimensions(DimensionTypes?: (typeof Dimension)[]): FieldDimension[] {
-    let dimensions = super.dimensions(DimensionTypes);
-    const joinAlias = this.joinAlias();
-
-    if (joinAlias) {
-      return dimensions.map(d => d.withJoinAlias(joinAlias));
-    }
-
-    const sourceField = this.sourceField();
-
-    if (sourceField) {
-      return dimensions.map(d => d.withSourceField(sourceField));
-    }
-
-    const field = this.field();
-
-    // Add FK dimensions if this field is an FK
-    if (field.target?.table?.fields) {
-      const fkDimensions = field.target.table.fields.map(
-        field =>
-          new FieldDimension(
-            field.id,
-            {
-              "source-field": this._fieldIdOrName,
-            },
-            this._metadata,
-            this._query,
-          ),
-      );
-      dimensions = [...dimensions, ...fkDimensions];
-    }
-
-    // Add temporal dimensions
-    if (field.isDate() && !this.isIntegerFieldId()) {
-      const temporalDimensions = _.difference(
-        DATETIME_UNITS,
-        dimensions.map(dim => dim.temporalUnit()),
-      ).map(unit => this.withTemporalUnit(unit));
-
-      dimensions = [...dimensions, ...temporalDimensions];
-    }
-
-    const baseType = this.getOption("base-type");
-
-    if (baseType) {
-      dimensions = dimensions.map(dimension =>
-        dimension.withOption("base-type", baseType),
-      );
-    }
-
-    return dimensions;
-  }
-
-  _dimensionForOption(option): FieldDimension {
-    let dimension = option.mbql
-      ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
-      : this;
-
-    if (!dimension) {
-      console.warn(
-        "Don't know how to create Dimension for option",
-        this,
-        option,
-      );
-      return null;
-    }
-
-    // Field literal's sub-dimensions sometimes don't have a specified base-type
-    // This can break a query, so here we need to ensure it mirrors the parent dimension
-    if (this.getOption("base-type") && !dimension.getOption("base-type")) {
-      dimension = dimension.withOption(
-        "base-type",
-        this.getOption("base-type"),
-      );
-    }
-
-    const additionalProperties = {
-      _fieldIdOrName: this._fieldIdOrName,
-    };
-
-    if (option.name) {
-      additionalProperties._subDisplayName = option.name;
-      additionalProperties._subTriggerDisplayName = option.name;
-    }
-
-    return new FieldDimension(
-      dimension._fieldIdOrName,
-      dimension._options,
-      this._metadata,
-      this._query,
-      additionalProperties,
-    );
   }
 
   join() {

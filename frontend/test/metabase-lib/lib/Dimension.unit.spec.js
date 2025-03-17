@@ -256,27 +256,6 @@ describe("Dimension", () => {
     });
   });
 
-  // TODO -- there are some tests against fields that can be binned above -- we should merge them in with these ones
-  describe("Numeric Field that can be binned", () => {
-    const mbql = ["field", ORDERS.TOTAL, { "base-type": "type/Float" }];
-    const dimension = Dimension.parseMBQL(mbql, metadata);
-
-    describe("INSTANCE METHODS", () => {
-      describe("dimensions()[1]", () => {
-        it("should be a binned dimension", () => {
-          expect(dimension.dimensions()[1].mbql()).toEqual([
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-              binning: { strategy: "num-bins", "num-bins": 10 },
-            },
-          ]);
-        });
-      });
-    });
-  });
-
   describe("Field with FK source Field", () => {
     const dimension = Dimension.parseMBQL(
       ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
