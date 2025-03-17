@@ -2,6 +2,7 @@
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -1697,3 +1698,57 @@
                                                                         nil))
                           (lib/limit 1))]
             (is (->> query qp/process-query mt/rows))))))))
+
+(deftest column-attributes-test
+  (mt/test-driver :postgres
+    (drop-if-exists-and-create-db! "generated_cols_test")
+    (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "generated_cols_test"})
+          spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+          describe
+          (fn [column-defs]
+            (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS test_table"])
+              (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
+                                        (str/join ",")
+                                        (format "CREATE TABLE test_table (%s)"))])
+              (->> (driver/describe-fields :postgres database {:table-names ["test_table"]})
+                   (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
+                            ;; shorthand
+                              (set/rename-keys {:database-is-generated :g
+                                                :database-is-nullable  :n
+                                                :database-default      :d}))))))
+          do-test
+          (fn [& test-cases]
+            (let [test-cases' (partition 2 test-cases)
+                  results (describe (map first test-cases'))]
+              (is (= (count test-cases) (* 2 (count results))))
+              (doseq [[[col-def expected] result] (map vector test-cases' results)]
+                (testing col-def
+                  (if (set? expected)
+                    (is (contains? expected result))
+                    (is (= expected result)))))))]
+      (do-test
+       ;; we might want to later distinguish between user specified
+       ;; defaulting and those expressions introduced by SERIAL & BIGSERIAL
+       ;; but for now:
+       "SERIAL"
+       {:g false, :n false, :d "nextval('test_table_col0_seq'::regclass)"}
+
+       "INT"
+       {:g false, :n true}
+
+       "INT GENERATED ALWAYS AS (col0 + 1) STORED"
+       {:g true,  :n true}
+
+       ;; note how postgres is permitted to rewrite the expression
+       "INT DEFAULT EXTRACT(EPOCH FROM NOW())"
+       ;; some versions of postgres only change the casing (e.g postgres:17)
+       #{{:g false, :n true, :d "EXTRACT(epoch FROM now())"}
+         ;; others completely rewrite the expression (e.g postgres:12)
+         {:g false, :n true, :d "date_part('epoch'::text, now())"}}
+
+       "INT NULL"
+       {:g false, :n true}
+
+       "INT NOT NULL"
+       {:g false, :n false}))))
