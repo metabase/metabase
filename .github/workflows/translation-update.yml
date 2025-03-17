@@ -64,12 +64,12 @@ jobs:
           ./bin/i18n/update-translation-template
 
           git add locales/metabase.po
-          git commit -m "Update translation sources $DATE"
+          git commit -m "Update translation sources $DATE" --no-verify
 
           ./bin/i18n/build-translation-resources
 
           git add locales/
-          git commit -a -m "Update translations $Date" --allow-empty
+          git commit -a -m "Update translations $Date" --allow-empty --no-verify
           git push -u origin $BRANCH_NAME
 
       - name: Crowdin upload
