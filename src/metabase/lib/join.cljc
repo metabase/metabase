@@ -290,7 +290,8 @@
                             join-cols
                             (for [field-ref fields
                                   :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (lib.equality/find-matching-column join-field join-cols)))]
+                              (assoc (lib.equality/find-matching-column join-field join-cols)
+                                     :lib/source-uuid (lib.options/uuid join-field))))]
       (mapv (fn [field-metadata]
               (->> (column-from-join-fields query stage-number field-metadata join-alias)
                    (adjust-ident join)

@@ -124,35 +124,20 @@
    stage-number                         :- :int
    {:keys [unique-name-fn] :as options} :- lib.metadata.calculation/ReturnedColumnsOptions]
   (when-let [{fields :fields :as stage} (lib.util/query-stage query stage-number)]
-    (let [columns (lib.metadata.calculation/visible-columns query stage-number stage
-                                                            {:include-implicitly-joinable? false})]
-      #_(clojure.pprint/pprint ['fields-columns/for-source columns])
-      (-> (for [[tag :as ref-clause] fields
-                :let                 [source (case tag
-                                               ;; you can't have an `:aggregation` reference in `:fields`; anything in
-                                               ;; `:aggregations` is returned automatically anyway
-                                               ;; by [[aggregations-columns]] above.
-                                               :field      :source/fields
-                                               :expression :source/expressions)
-                                      metadata (lib.metadata.calculation/metadata query stage-number ref-clause)
-                                      original (lib.equality/find-matching-column query stage-number ref-clause columns)]]
-            (assoc metadata
-                   :lib/source               source
-                   :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
-                   :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) original)
-                                                 (:name metadata))
-                   :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata))
-                   ;; XXX: Maybe this is where the `:ident nil` is coming from? Experiment if I can't find a better.
-                   :ident                    (or (:ident original)
-                                                 (:ident metadata)
-                                                 #_(clojure.pprint/pprint ['error1
-                                                                           :stage stage
-                                                                           :metadata metadata
-                                                                           :original original])
-                                                 #_(throw (ex-info "nil ident in fields-columns"
-                                                                   {:query query, :original original, :metadata metadata})))))
-          (as-> $cols (concat $cols (remapped-columns query stage-number $cols options)))
-          not-empty))))
+    (-> (for [[tag :as ref-clause] fields
+              :let                 [source (case tag
+                                             ;; you can't have an `:aggregation` reference in `:fields`; anything in
+                                             ;; `:aggregations` is returned automatically anyway
+                                             ;; by [[aggregations-columns]] above.
+                                             :field      :source/fields
+                                             :expression :source/expressions)
+                                    metadata (lib.metadata.calculation/metadata query stage-number ref-clause)]]
+          (assoc metadata
+                 :lib/source               source
+                 :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
+                 :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata))))
+        (as-> $cols (concat $cols (remapped-columns query stage-number $cols options)))
+        not-empty)))
 
 (mu/defn- summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query        :- ::lib.schema/query
@@ -331,7 +316,9 @@
          vec)))
 
 (defn- column-signature [column-metadata]
-  (dissoc column-metadata :source-alias :ident :lib/source :lib/source-uuid :lib/desired-column-alias))
+  (dissoc column-metadata
+          :source-alias :ident :lib/source :lib/source-uuid
+          :lib/desired-column-alias :lib/hack-original-name))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return

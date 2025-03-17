@@ -172,21 +172,6 @@
                     (lib/remove-clause 0 (first fields))
                     (lib/fields 0)))))))
 
-(comment
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
-                  (lib/join (-> (lib/join-clause (lib.tu/venues-query)
-                                                 [(lib/= (meta/field-metadata :venues :price) 4)])
-                                (lib/with-join-fields [(meta/field-metadata :venues :price)
-                                                       (meta/field-metadata :venues :id)]))))
-        fields (lib/join-fields (first (lib/joins query)))
-
-        before (-> query
-                   (lib/append-stage)
-                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1)))
-        after  (lib/remove-clause before 0 (first fields))]
-    #_(clojure.pprint/pprint (clojure.data/diff before after))
-    after))
-
 (deftest ^:parallel remove-clause-join-fields-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
                   (lib/join (-> (lib/join-clause (lib.tu/venues-query)
