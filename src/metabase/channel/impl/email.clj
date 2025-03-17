@@ -23,7 +23,11 @@
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec])
+  (:import
+   (net.redhogs.cronparser CronExpressionDescriptor Options)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private EmailMessage
   [:map
@@ -195,7 +199,7 @@
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         html-content
                                                ;; UI only allow one subscription per card notification
-                                               :alert_schedule  (messages/notification-card-schedule-text (first subscriptions))
+                                               :alert_schedule  (some-> subscriptions first :cron_schedule channel.shared/friendly-cron-description)
                                                :goal_value      goal
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"

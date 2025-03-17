@@ -358,7 +358,9 @@
         (format "Run weekly on %s at %s %s"
                 (schedule-day-text schedule)
                 (schedule-hour-text schedule)
-                (schedule-timezone))))))
+                (schedule-timezone))
+
+        "dont know"))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
