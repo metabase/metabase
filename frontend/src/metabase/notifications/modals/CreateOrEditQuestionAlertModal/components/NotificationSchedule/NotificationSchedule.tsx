@@ -6,7 +6,6 @@ import {
   scheduleSettingsToCron,
 } from "metabase/admin/performance/utils";
 import { Schedule } from "metabase/components/Schedule/Schedule";
-import type { ScheduleChangeProp } from "metabase/components/Schedule/types";
 import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { DEFAULT_ALERT_SCHEDULE } from "metabase/notifications/utils";
