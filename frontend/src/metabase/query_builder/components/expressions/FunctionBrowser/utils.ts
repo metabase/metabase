@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import {
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
+  type HelpText,
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
 } from "metabase-lib/v1/expressions";
@@ -91,8 +92,14 @@ export function getFilteredClauses({
     .map(category => ({
       category,
       displayName: getCategoryName(category),
-      clauses: filteredClauses.filter(clause => clause.category === category),
+      clauses: filteredClauses
+        .filter(clause => clause.category === category)
+        .sort(byName),
     }));
+}
+
+function byName(a: HelpText, b: HelpText) {
+  return a.name.localeCompare(b.name);
 }
 
 export function getDatabase(query: Lib.Query, metadata: Metadata) {
