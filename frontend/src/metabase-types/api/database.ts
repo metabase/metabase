@@ -170,15 +170,15 @@ export interface UpdateDatabaseRequest {
   id: DatabaseId;
   name?: string;
   engine?: string;
-  refingerprint?: boolean;
+  refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
   auto_run_queries?: boolean;
-  cache_ttl?: number;
-  settings?: DatabaseSettings;
+  cache_ttl?: number | null;
+  settings?: DatabaseSettings | null;
 }
 
 export interface DatabaseIdFieldListQuery {
