@@ -135,10 +135,7 @@ interface NativeQueryEditorState {
   isPromptInputVisible: boolean;
 }
 
-export class NativeQueryEditor extends Component<
-  Props,
-  NativeQueryEditorState
-> {
+class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
   editor = createRef<CodeMirrorEditorRef>();
 
@@ -472,10 +469,10 @@ export class NativeQueryEditor extends Component<
   }
 }
 
-const NativeQueryEditorRefWrapper = forwardRef<
+const NativeQueryEditorWrapper = forwardRef<
   HTMLDivElement,
   Omit<Props, "toggleEditor">
->(function _NativeQueryEditorRefWrapper(props, ref) {
+>(function NativeQueryEditorWrapper(props, ref) {
   const screenSize = useNotebookScreenSize();
   const dispatch = useDispatch();
   const { isNativeEditorOpen } = props;
@@ -506,4 +503,4 @@ export default _.compose(
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   ExplicitSize(),
-)(NativeQueryEditorRefWrapper);
+)(NativeQueryEditorWrapper);
