@@ -369,7 +369,7 @@
             {:reference {}
              :copy {}
              :discard []}
-            dashcards)))
+            (filter :card_id dashcards))))
 
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
@@ -416,8 +416,11 @@
                     dashcards)]
     (keep (fn [dashboard-card]
             (cond
+              (:action_id dashboard-card)
+              nil
+
               ;; text cards need no manipulation
-              (nil? (:card_id dashboard-card))
+              (some-> dashboard-card :visualization_settings :virtual_card :display #{"text" "heading"})
               dashboard-card
 
               ;; referenced cards need no manipulation

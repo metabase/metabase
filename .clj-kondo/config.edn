@@ -297,6 +297,8 @@
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
+  :discouraged-tag {p {:message "You can use it, but don't commit it." }}
+
   :unresolved-var
   {:exclude
    [colorize.core]}
