@@ -11,7 +11,6 @@ import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
-import AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type Variable from "metabase-lib/v1/variables/Variable";
 import type {
@@ -82,15 +81,16 @@ export function updateCardTemplateTagNames(
 ///////////////////////////
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class NativeQuery extends AtomicQuery {
-  _nativeDatasetQuery: NativeDatasetQuery;
+export default class NativeQuery {
+  _question: Question;
+  _datasetQuery: DatasetQuery;
 
   constructor(
     question: Question,
     datasetQuery: DatasetQuery = NATIVE_QUERY_TEMPLATE,
   ) {
-    super(question, datasetQuery);
-    this._nativeDatasetQuery = datasetQuery as NativeDatasetQuery;
+    this._question = question;
+    this._datasetQuery = datasetQuery;
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
@@ -105,11 +105,30 @@ export default class NativeQuery extends AtomicQuery {
     return this.question().setQuery(query).legacyQuery();
   }
 
-  /* Query superclass methods */
+  /**
+   * Returns a question updated with the current dataset query.
+   * Can only be applied to query that is a direct child of the question.
+   */
+  question = _.once((): Question => {
+    return this._question.setLegacyQuery(this);
+  });
 
   /**
-   * @deprecated use MLv2
+   * Convenience method for accessing the global metadata
    */
+  metadata() {
+    return this._question.metadata();
+  }
+
+  /**
+   * Returns the dataset_query object underlying this Query
+   */
+  datasetQuery(): DatasetQuery {
+    return this._datasetQuery;
+  }
+
+  /* Query superclass methods */
+
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -128,22 +147,15 @@ export default class NativeQuery extends AtomicQuery {
     return this._databaseId() == null || this.queryText().length === 0;
   }
 
-  /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
     return (database && database.tables) || null;
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _databaseId(): DatabaseId | null | undefined {
     return Lib.databaseID(this._query());
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
     return databaseId != null ? this._metadata.database(databaseId) : null;
