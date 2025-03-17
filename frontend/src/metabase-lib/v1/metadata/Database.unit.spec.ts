@@ -1,6 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
@@ -174,31 +173,6 @@ describe("Database", () => {
     });
   });
 
-  describe("question", () => {
-    it("should create a question using the `metadata` found on the Database instance", () => {
-      const database = setup();
-      const question = database.question();
-
-      expect(question.legacyQuery({ useStructuredQuery: true })).toBeInstanceOf(
-        StructuredQuery,
-      );
-      expect(question.metadata()).toEqual(database.metadata);
-    });
-
-    it("should create a question using the given Database instance's id in the question's query", () => {
-      const table = createMockTable();
-      const database = setup({
-        database: createMockDatabase({ tables: [table] }),
-      });
-      const question = database.question({
-        "source-table": table.id,
-      });
-
-      expect(question.databaseId()).toBe(database.id);
-      expect(question.legacyQueryTableId()).toBe(table.id);
-    });
-  });
-
   describe("nativeQuestion", () => {
     it("should create a native question using the `metadata` found on the Database instance", () => {
       const database = setup();
@@ -214,15 +188,6 @@ describe("Database", () => {
 
       const query = question.legacyQuery() as NativeQuery;
       expect(query.queryText()).toBe("SELECT 1");
-    });
-  });
-
-  describe("newQuestion", () => {
-    it("should return new question with defaulted query and display", () => {
-      const database = setup();
-      const question = database.newQuestion();
-
-      expect(question.display()).toBe("table");
     });
   });
 
