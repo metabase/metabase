@@ -423,4 +423,28 @@
   (let [card  (:venues/native (lib.tu/mock-cards))
         mp    (lib.tu/metadata-provider-with-mock-card card)
         query (lib/query mp (lib.metadata/card mp (:id card)))]
-    (prn (lib/returned-columns query))))
+    (is (=? [{:name         "ID"
+              :display-name "ID"
+              :ident        (lib/native-ident "ID" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "NAME"
+              :display-name "Name"
+              :ident        (lib/native-ident "NAME" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "CATEGORY_ID"
+              :display-name "Category ID"
+              :ident        (lib/native-ident "CATEGORY_ID" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "LATITUDE"
+              :display-name "Latitude"
+              :ident        (lib/native-ident "LATITUDE" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "LONGITUDE"
+              :display-name "Longitude"
+              :ident        (lib/native-ident "LONGITUDE" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "PRICE"
+              :display-name "Price"
+              :ident        (lib/native-ident "PRICE" (:entity_id card))
+              :lib/source   :source/card}]
+            (lib/returned-columns query)))))
