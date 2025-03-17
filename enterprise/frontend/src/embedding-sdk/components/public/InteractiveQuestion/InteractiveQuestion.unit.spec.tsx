@@ -12,9 +12,9 @@ import {
 } from "__support__/server-mocks";
 import { act, screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import {
-  InteractiveQuestionResult,
-  type InteractiveQuestionResultProps,
-} from "embedding-sdk/components/private/InteractiveQuestionResult";
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -76,7 +76,7 @@ function InteractiveQuestionCustomLayout({
   return (
     <div>
       <button onClick={resetQuestion}>Run Query</button>
-      <InteractiveQuestionResult title={title} />
+      <InteractiveQuestionDefaultView title={title} />
     </div>
   );
 }
@@ -94,7 +94,10 @@ const setup = ({
   initialSqlParameters,
 }: Partial<
   Pick<InteractiveQuestionProps, "initialSqlParameters"> &
-    Pick<InteractiveQuestionResultProps, "withChartTypeSelector" | "title"> & {
+    Pick<
+      InteractiveQuestionDefaultViewProps,
+      "withChartTypeSelector" | "title"
+    > & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
     }

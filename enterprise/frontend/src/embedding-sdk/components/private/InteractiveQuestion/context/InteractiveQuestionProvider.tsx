@@ -20,8 +20,8 @@ import type {
 } from "./types";
 
 /**
- * Note: This context should only be used as a wrapper for the InteractiveQuestionResult
- * component. The idea behind this context is to allow the InteractiveQuestionResult component
+ * Note: This context should only be used as a wrapper for the InteractiveQuestionDefaultView
+ * component. The idea behind this context is to allow the InteractiveQuestionDefaultView component
  * to use components within the ./components folder, which use the context for display
  * and functions.
  * */

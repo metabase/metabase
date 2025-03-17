@@ -2,16 +2,14 @@
   (:require
    [clojure.data.csv]
    [clojure.string :as str]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -27,7 +25,7 @@
     :status                    200
     :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.csv\""
                                                               (or filename-prefix "query_result")
-                                                              (u.date/format (t/zoned-date-time)))}
+                                                              (streaming.common/export-filename-timestamp))}
     :write-keepalive-newlines? false}))
 
 ;; As a first step towards hollistically solving this issue: https://github.com/metabase/metabase/issues/44556
@@ -93,7 +91,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [col-names          (vec (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+        (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               opts               (when (and pivot? pivot-export-options)
                                    (-> (merge {:pivot-rows []
                                                :pivot-cols []
@@ -137,13 +135,13 @@
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
-                                                      (formatter (common/format-value r)))
+                                                      (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)
                                          (m/remove-nth pivot-grouping))]
                   (write-csv writer [formatted-row])
                   (.flush writer)))
               (let [formatted-row (perf/mapv (fn [formatter r]
-                                               (formatter (common/format-value r)))
+                                               (formatter (streaming.common/format-value r)))
                                              @ordered-formatters ordered-row)]
                 (write-csv writer [formatted-row])
                 (.flush writer))))))
