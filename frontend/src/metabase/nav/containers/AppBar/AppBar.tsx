@@ -16,7 +16,7 @@ import {
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/selectors/app";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
@@ -29,7 +29,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
-  isEmbedded: getIsEmbedded(state),
+  isEmbeddingIframe: getIsEmbeddingIframe(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
