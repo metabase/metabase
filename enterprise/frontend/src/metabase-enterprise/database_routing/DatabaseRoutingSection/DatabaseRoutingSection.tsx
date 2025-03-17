@@ -7,9 +7,11 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
+  Alert,
   Button,
   Flex,
   Icon,
@@ -23,7 +25,9 @@ import {
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { RoutedDatabaesList } from "../RoutedDatabasesList";
+import { DestinationDatabasesList } from "../DestinationDatabasesList";
+
+import { getDisabledFeatureMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -37,11 +41,22 @@ export const DatabaseRoutingSection = ({
   const shouldHideSection = database.is_attached_dwh;
   const userAttribute = database.router_user_attribute ?? undefined;
 
+  const uploadDbId = useSetting("uploads-settings")?.db_id;
+  const isUploadDb = database.id === uploadDbId;
+  const hasActionsEnabled = database.hasActionsEnabled();
+  const isPersisted = database.isPersisted();
   const [tempEnabled, setTempEnabled] = useState(false);
   const isFeatureEnabled = !!userAttribute;
 
   const isToggleEnabled = tempEnabled || isFeatureEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const disabledMsg = getDisabledFeatureMessage({
+    hasActionsEnabled,
+    isPersisted,
+    isUploadDb,
+  });
+  const isDbRoutingDisabled = !!disabledMsg;
 
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
   const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
@@ -98,6 +113,7 @@ export const DatabaseRoutingSection = ({
             id="database-routing-toggle"
             labelPosition="left"
             checked={isToggleEnabled}
+            disabled={isDbRoutingDisabled}
             onChange={e => handleToggle(e.currentTarget.checked)}
           />
           <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
@@ -105,6 +121,12 @@ export const DatabaseRoutingSection = ({
           </UnstyledButton>
         </Flex>
       </Flex>
+
+      {disabledMsg && (
+        <Alert icon={<Icon name="info" size={16} />} color={"brand"} mt="md">
+          <Text fw="bold">{disabledMsg}</Text>
+        </Alert>
+      )}
 
       {isExpanded && (
         <>
@@ -125,7 +147,7 @@ export const DatabaseRoutingSection = ({
             {isFeatureEnabled ? (
               <Button
                 component={Link}
-                to={`/admin/databases/${database.id}/mirror/create`}
+                to={`/admin/databases/${database.id}/destination-databases/create`}
               >{t`Add`}</Button>
             ) : (
               <Tooltip
@@ -137,7 +159,7 @@ export const DatabaseRoutingSection = ({
             )}
           </Flex>
 
-          <RoutedDatabaesList
+          <DestinationDatabasesList
             primaryDatabaseId={database.id}
             previewCount={5}
           />

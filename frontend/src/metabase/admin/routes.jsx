@@ -76,7 +76,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} />
-          {PLUGIN_DB_ROUTING.mirrorDatabaseRoutes}
+          {PLUGIN_DB_ROUTING.destinationDatabaseRoutes}
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
