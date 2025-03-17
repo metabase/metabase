@@ -9,6 +9,9 @@ import {
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";
 
+import { isEmbeddingSdk } from "metabase/env";
+import { Box } from "metabase/ui";
+
 import S from "./LegendLabel.module.css";
 
 interface Props {
@@ -50,6 +53,21 @@ export const LegendLabel = ({
       >
         {children}
       </div>
+    );
+  }
+
+  // If we are in the Embedding SDK, we should not be using the
+  // Link component, as internal links would be inaccessible.
+  if (isEmbeddingSdk) {
+    return (
+      <Box
+        className={cx(S.text, S.link, className)}
+        onClick={handleLinkClick}
+        onFocus={onFocus}
+        onMouseEnter={onMouseEnter}
+      >
+        {children}
+      </Box>
     );
   }
 

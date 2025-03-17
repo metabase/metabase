@@ -1502,6 +1502,7 @@ describe("issue 44668", () => {
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
       name: "Custom String",
+      format: true,
     });
     H.popover().button("Done").click();
 
@@ -1713,7 +1714,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", () => {
+describe("issue 45063", { tags: "@flaky" }, () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",

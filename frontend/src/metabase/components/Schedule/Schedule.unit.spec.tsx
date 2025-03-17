@@ -26,7 +26,7 @@ describe("Schedule", () => {
     expect(getInputValues()).toEqual(["weekly", "Monday", "8:00"]);
   });
 
-  it("shows first/last/mid value, day, and time when schedule is monthly", () => {
+  it("shows first/last/mid value, day, and time when schedule is monthly", async () => {
     setup({
       schedule: {
         schedule_type: "monthly",

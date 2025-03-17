@@ -121,6 +121,7 @@ module.exports = env => {
       ...mainConfig.externals,
       react: "react",
       "react-dom": "react-dom",
+      "react-dom/client": "react-dom/client",
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
@@ -170,6 +171,8 @@ module.exports = env => {
             memoryLimit: 4096,
           },
         }),
+      // we don't want to fail the build on type errors, we have a dedicated type check step for that
+      new TypescriptConvertErrorsToWarnings(),
       shouldAnalyzeBundles &&
         new BundleAnalyzerPlugin({
           analyzerMode: "static",
@@ -194,3 +197,14 @@ module.exports = env => {
 
   return config;
 };
+
+// https://github.com/TypeStrong/fork-ts-checker-webpack-plugin/issues/232#issuecomment-1322651312
+class TypescriptConvertErrorsToWarnings {
+  apply(compiler) {
+    const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
+
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
+      issues.map(issue => ({ ...issue, severity: "warning" })),
+    );
+  }
+}

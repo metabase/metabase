@@ -9,11 +9,16 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
@@ -25,6 +30,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.xrays.core :as xrays]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -62,6 +68,34 @@
     (-> (api-perm-check-fn :model/Table id)
         (t2/hydrate :db :pk_field)
         fix-schema)))
+
+(api.macros/defendpoint :get "/:table-id/data"
+  "Get the data for the given table"
+  [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  (let [table (t2/select-one :model/Table :id table-id)
+        db-id (:db_id table)]
+    (api/read-check table)
+    (qp.store/with-metadata-provider db-id
+      (let [mp       (qp.store/metadata-provider)
+            query    (-> (lib/query mp (lib.metadata/table mp table-id))
+                         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                         qp/userland-query-with-default-constraints
+                         (update :info merge {:executed-by api/*current-user-id*
+                                              :context     :table-grid
+                                              :card-id     nil}))]
+        (events/publish-event! :event/table-read {:object  table
+                                                  :user-id api/*current-user-id*})
+        (span/with-span!
+          {:name "query-table-async"}
+          (qp.streaming/streaming-response [rff :api]
+            (qp/process-query query
+             ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+             ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+             ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                              (qp.streaming/transforming-query-response
+                               rff
+                               (fn [response]
+                                 (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`

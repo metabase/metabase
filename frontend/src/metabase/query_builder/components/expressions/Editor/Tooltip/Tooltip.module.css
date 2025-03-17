@@ -1,5 +1,6 @@
 .dropdown {
   display: flex;
+  flex-direction: row;
 }
 
 .target {
@@ -15,6 +16,8 @@
   background: var(--mb-color-background);
   z-index: 1000;
   width: 400px;
+  max-height: 500px;
+  display: flex;
   flex-grow: 1;
   flex-direction: column;
   font-size: 14px;
@@ -22,13 +25,4 @@
   &:empty {
     display: none;
   }
-}
-
-.hasHelpText {
-  height: calc(100% - 5rem);
-}
-
-.isHelpTextOpen {
-  height: calc(50% - 2.5rem);
-  flex-grow: 0;
 }

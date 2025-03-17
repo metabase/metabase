@@ -1,24 +1,12 @@
 .wrapper {
-  display: flex;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 8px;
-  min-height: 40px;
-  align-items: center;
-  padding-left: 0.6875rem;
-  padding-right: 0.6875rem;
-  transition: border-color 100ms ease;
-
-  &:focus-within {
-    border-color: var(--mb-color-brand);
-  }
+  position: relative;
+  height: 220px;
+  width: 100%;
+  border-bottom: 1px solid var(--mb-color-border);
 
   &.formatting {
     background-color: var(--mb-color-bg-medium);
   }
-}
-
-.prefix {
-  font-weight: bold;
 }
 
 .error {
@@ -27,14 +15,26 @@
   white-space: pre-wrap;
 }
 
+.toolbar {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
 .editor {
+  overflow: auto;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   color: var(--mb-color-text-dark);
 
   :global {
     .cm-editor {
       background: none;
+      height: 100%;
+      white-space: pre;
     }
 
     .cm-focused {
@@ -42,13 +42,12 @@
     }
 
     .cm-scroller {
-      padding-top: 4px;
-      padding-bottom: 4px;
       background-color: none;
     }
 
     .cm-content {
       color: var(--mb-color-text-dark);
+      padding-top: 10px;
       background: none;
     }
 
@@ -57,9 +56,11 @@
     }
 
     .cm-gutters {
-      display: none;
-      background-color: var(--mb-color-bg-light);
       border: none;
+    }
+
+    .cm-gutter {
+      background-color: var(--mb-color-bg-light);
     }
 
     .cm-gutterElement {
@@ -69,7 +70,7 @@
       vertical-align: baseline;
       display: flex;
       align-items: center;
-      justify-content: end;
+      justify-content: flex-end;
 
       span[title="Fold line"] {
         position: relative;
@@ -107,6 +108,10 @@
       font-style: italic;
       background: none;
     }
+
+    .cm-lintPoint {
+      display: none;
+    }
   }
 }
 
@@ -121,4 +126,11 @@
       display: none;
     }
   }
+}
+
+.shortcuts {
+  position: absolute;
+  bottom: var(--mantine-spacing-sm);
+  left: calc(1.6rem + var(--mantine-spacing-sm));
+  transition: opacity 300ms;
 }
