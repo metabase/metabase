@@ -14,17 +14,21 @@
   Database but no current user exists, an exception will be thrown."
   [current-user db-or-id]
   (when-let [attr-name (user-attribute db-or-id)]
-    (let [database-name (get (:login_attributes @current-user) attr-name)]
+    (let [database-name #p (get #p (:login_attributes @current-user) #p attr-name)]
       (cond
+        (nil? @current-user)
+        (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
+
         (= database-name "__METABASE_ROUTER__")
         (u/the-id db-or-id)
 
         (nil? database-name)
-        (throw (ex-info "Anonymous access to a Router Database is prohibited." {}))
+        (throw (ex-info "User attribute missing, cannot lookup Mirror Database" {:database-name database-name
+                                                                                 :router-database-id (u/the-id db-or-id)}))
 
         :else
         (or (t2/select-one-pk :model/Database
                               :router_database_id (u/the-id db-or-id)
                               :name database-name)
-            (throw (ex-info "No MirrorDB found for user attribute" {:database-name database-name
-                                                                    :router-database-id (u/the-id db-or-id)})))))))
+            (throw (ex-info "No Mirror Database found for user attribute" {:database-name database-name
+                                                                           :router-database-id (u/the-id db-or-id)})))))))
