@@ -5,7 +5,7 @@
   --main-width: 688px;
   --main-height: 280px;
   --footer-height: 46px;
-  --sidebar-width: 230px;
+  --sidebar-width: 424px;
 
   grid-template-rows: min-content min-content min-content;
   grid-template-columns:
