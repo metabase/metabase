@@ -12,7 +12,6 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
 import {
-  BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
   getBaseDimensionReference,
   isFieldReference,
   isTemplateTagReference,
@@ -333,21 +332,6 @@ export default class Dimension {
     });
   }
 
-  /**
-   * Return a copy of this Dimension that excludes `options`.
-   * @abstract
-   */
-  withoutOptions(..._options: string[]): Dimension {
-    return this;
-  }
-
-  /**
-   * Return a copy of this Dimension with any temporal bucketing or binning options removed.
-   */
-  baseDimension(): Dimension {
-    return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
-  }
-
   mbql(): FieldReference | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
@@ -575,23 +559,6 @@ export class FieldDimension extends Dimension {
 
   tableId() {
     return this.field()?.table?.id;
-  }
-
-  /**
-   * Return a copy of this FieldDimension that excludes `options`.
-   */
-  withoutOptions(...options: string[]): FieldDimension {
-    // optimization: if we don't have any options, we can return ourself as-is
-    if (!this._options) {
-      return this;
-    }
-
-    return new FieldDimension(
-      this._fieldIdOrName,
-      _.omit(this._options, ...options),
-      this._metadata,
-      this._query,
-    );
   }
 
   /**
