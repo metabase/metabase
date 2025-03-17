@@ -153,7 +153,6 @@ const ORDER_DETAIL_QUERY = {
 
 const SOURCE_QUESTION_ID = 305;
 const SOURCE_QUESTION_VIRTUAL_ID = `card__${SOURCE_QUESTION_ID}`;
-const SOURCE_QUESTION_NAME = "Another saved question";
 const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
 
 // Factories
@@ -199,29 +198,6 @@ function getAdHocProductsQuestion() {
 
 function getAdHocPeopleQuestion() {
   return getAdHocQuestion({ dataset_query: PEOPLE_QUERY });
-}
-
-function getNestedQuestionTableMock(isMultiSchemaDB) {
-  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
-  const metadata = getMetadata();
-
-  return {
-    id: SOURCE_QUESTION_VIRTUAL_ID,
-    db: metadata.database(dbId),
-    db_id: dbId,
-    display_name: SOURCE_QUESTION_NAME,
-    schema_name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
-    schema: {
-      id: `-1337:${SOURCE_QUESTION_COLLECTION_SCHEMA_NAME}`,
-      name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
-      database: {
-        id: -1337,
-        is_saved_questions: true,
-      },
-    },
-    displayName: () => SOURCE_QUESTION_NAME,
-    hasSchema: () => isMultiSchemaDB,
-  };
 }
 
 class ErrorBoundary extends Component {
@@ -553,14 +529,7 @@ describe("QuestionDataSource", () => {
 
       describe(questionType, () => {
         it("does not display virtual schema (metabase#12616)", () => {
-          const { question } = setup({ card, subHead: true });
-
-          const isMultiSchemaDB =
-            card.dataset_query.database === MULTI_SCHEMA_DB_ID;
-
-          // eslint-disable-next-line no-restricted-syntax
-          question.legacyQuery({ useStructuredQuery: true }).table = () =>
-            getNestedQuestionTableMock(isMultiSchemaDB);
+          setup({ card, subHead: true });
 
           const node = screen.queryByText(
             SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,

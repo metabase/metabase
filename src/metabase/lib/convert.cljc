@@ -451,7 +451,7 @@
 (doseq [tag [::aggregation ::expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression))
 
-(doseq [tag [:count :avg :count-where :distinct
+(doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
              :share :stddev :sum :sum-where]]
   (lib.hierarchy/derive tag ::aggregation))

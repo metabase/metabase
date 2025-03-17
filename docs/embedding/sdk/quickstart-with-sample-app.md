@@ -8,6 +8,8 @@ title: Embedded analytics SDK - quickstart with sample app
 
 This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
+{% include youtube.html id='AtMn-G-Al80' %}
+
 ## Prerequisites
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).

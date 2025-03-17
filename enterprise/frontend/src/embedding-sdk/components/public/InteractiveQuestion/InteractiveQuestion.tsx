@@ -7,6 +7,8 @@ import {
   BreakoutDropdown,
   ChartTypeDropdown,
   ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
   Editor,
   EditorButton,
   Filter,
@@ -26,28 +28,27 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
-  InteractiveQuestionResult,
-  type InteractiveQuestionResultProps,
-} from "embedding-sdk/components/private/InteractiveQuestionResult";
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SDKCollectionReference } from "embedding-sdk/store/collections";
+import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId: InteractiveQuestionProviderProps["questionId"];
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-  /**
-   * When this is defined, the collection picker will be hidden and
-   * the question will be saved to this collection.
-   **/
-  saveToCollection?: SDKCollectionReference;
 }> &
+  Pick<SaveQuestionProps<SDKCollectionReference>, "targetCollection"> &
   Pick<
     InteractiveQuestionProviderProps,
+    | "questionId"
     | "onBeforeSave"
     | "onSave"
     | "entityTypeFilter"
     | "isSaveEnabled"
     | "initialSqlParameters"
+    | "withDownloads"
   >;
 
 export const _InteractiveQuestion = ({
@@ -64,11 +65,12 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollection,
+  targetCollection,
   withChartTypeSelector = true,
+  withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps &
+  InteractiveQuestionDefaultViewProps &
   FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
@@ -77,11 +79,12 @@ export const _InteractiveQuestion = ({
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
     {children ?? (
-      <InteractiveQuestionResult
+      <InteractiveQuestionDefaultView
         height={height}
         width={width}
         className={className}
@@ -119,6 +122,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -143,5 +148,6 @@ InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-
+InteractiveQuestion.DownloadWidget = DownloadWidget;
+InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
 export { InteractiveQuestion };
