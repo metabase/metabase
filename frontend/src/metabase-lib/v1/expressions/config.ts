@@ -578,6 +578,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "if",
+  "case",
   "coalesce",
 ]);
 
