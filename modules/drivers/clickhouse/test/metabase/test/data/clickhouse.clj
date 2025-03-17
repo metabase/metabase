@@ -43,20 +43,20 @@
    [3 "baz" (t/offset-date-time "2012-10-19T10:23:54Z") #t "2012-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]])
 
 (def default-connection-params
-  {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-   :subprotocol "clickhouse"
-   :subname "//localhost:8123/default"
-   :user "default"
-   :password ""
-   :ssl false
+  {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+   :subprotocol                    "clickhouse"
+   :subname                        "//localhost:8123/default"
+   :user                           "default"
+   :password                       ""
+   :ssl                            false
    :use_server_time_zone_for_dates true
-   :product_name (format "metabase/%s" (:tag config/mb-version-info))
+   :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
-   :jdbc_schema_term "schema",
-   :max_open_connections 100
-   :remember_last_set_roles true
-   :http_connection_provider "HTTP_URL_CONNECTION"
-   :custom_http_params ""})
+   :jdbc_schema_term               "schema",
+   :max_open_connections           100
+   :remember_last_set_roles        true
+   :http_connection_provider       "HTTP_URL_CONNECTION"
+   :custom_http_params             ""})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")

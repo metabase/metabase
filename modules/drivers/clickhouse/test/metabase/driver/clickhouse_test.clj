@@ -70,8 +70,28 @@
     (testing "nil dbname handling"
       (is (= ctd/default-connection-params
              (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              {:dbname nil}))))))
+              :clickhouse {:dbname nil}))))
+    (testing "schema removal"
+      (doall
+       (for [host ["localhost" "http://localhost" "https://localhost"]]
+         (testing (str "for host " host)
+           (is (= ctd/default-connection-params
+                  (sql-jdbc.conn/connection-details->spec
+                   :clickhouse {:host host}))))))
+      (doall
+       (for [host ["myhost" "http://myhost" "https://myhost"]]
+         (testing (str "for host " host)
+           (is (= (merge ctd/default-connection-params
+                         {:subname "//myhost:8123/default"})
+                  (sql-jdbc.conn/connection-details->spec
+                   :clickhouse {:host host}))))))
+      (doall
+       (for [host ["sub.example.com" "http://sub.example.com" "https://sub.example.com"]]
+         (testing (str "for host " host " with some additional params")
+           (is (= (merge ctd/default-connection-params
+                         {:subname "//sub.example.com:8443/mydb" :ssl true})
+                  (sql-jdbc.conn/connection-details->spec
+                   :clickhouse {:host host :dbname "mydb" :port 8443 :ssl true})))))))))
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
   (mt/with-dynamic-fn-redefs [;; This function's implementation requires the connection details to actually
