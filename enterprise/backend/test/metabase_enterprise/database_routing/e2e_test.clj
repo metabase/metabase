@@ -10,15 +10,20 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
-(defmacro with-blueberries-dbs [bindings & body]
+(defmacro with-temp-dbs [bindings & body]
   (letfn [(wrap [names body]
-            (prn names body)
             (if (empty? names)
               `(do ~@body)
-              `(one-off-dbs/with-blueberries-db
+              `(one-off-dbs/with-blank-db
                  (let [~(first names) (data/db)]
+                   (doseq [statement# ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                                       "SET DB_CLOSE_DELAY -1;"
+                                       "CREATE TABLE \"my_database_name\" (str TEXT NOT NULL);"
+                                       "GRANT ALL ON \"my_database_name\" TO GUEST;"]]
+                     (jdbc/execute! one-off-dbs/*conn* [statement#]))
                    ~(wrap (rest names) body)))))]
     (wrap bindings body)))
 
@@ -34,40 +39,31 @@
   (mt/with-premium-features #{:database-routing}
     (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
       (sandbox.test-util/with-user-attributes!
-        :rasta
-        {"db_name" "foo"}
+        :crowberto
+        {"db_name" "__METABASE_ROUTER__"}
         (sandbox.test-util/with-user-attributes!
-          :lucky
-          {"db_name" "bar"}
-          (with-blueberries-dbs [router-db mirror-db-1 mirror-db-2]
-            (doseq [db [router-db mirror-db-1 mirror-db-2]]
-              (execute-statement! db "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"))
-            (mt/with-temp [:model/Database router-db {:engine  :h2
-                                                      :details (assoc (:details router-db)
-                                                                      :USER "GUEST")}
-                           :model/DatabaseRouter _ {:database_id    (u/the-id router-db)
-                                                    :user_attribute "db_name"}
-                           :model/Database mirror-db-1 {:name               "foo"
-                                                        :router_database_id (u/the-id router-db)
-                                                        :engine             :h2
-                                                        :details            (assoc (:details mirror-db-1)
-                                                                                   :USER "GUEST")}
-                           :model/Database mirror-db-2 {:name               "bar"
-                                                        :router_database_id (u/the-id router-db)
-                                                        :engine             :h2
-                                                        :details            (assoc (:details mirror-db-2)
-                                                                                   :USER "GUEST")}
-                           :model/Card card {:name          "Some Name"
-                                             :dataset_query {:database (u/the-id router-db)
-                                                             :type     :native
-                                                             :native   {:query "select * from blueberries_consumed"}}}]
+          :rasta
+          {"db_name" "foo"}
+          (sandbox.test-util/with-user-attributes!
+            :lucky
+            {"db_name" "bar"}
+            (with-temp-dbs [router-db mirror-db-1 mirror-db-2]
+              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "foo" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "bar" :router_database_id (u/the-id router-db)})
               (sync/sync-database! router-db)
-              (doseq [db [router-db mirror-db-1 mirror-db-2]]
-                (execute-statement! db "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"))
-              (execute-statement! router-db "INSERT INTO blueberries_consumed (str) VALUES ('router')")
-              (execute-statement! mirror-db-1 "INSERT INTO blueberries_consumed (str) VALUES ('mirror-1')")
-              (execute-statement! mirror-db-2 "INSERT INTO blueberries_consumed (str) VALUES ('mirror-2')")
-              (let [response (mt/user-http-request :rasta :post 202 (str "card/" (u/the-id card) "/query"))]
-                (is (= [["mirror-1"]] (mt/rows response))))
-              (let [response (mt/user-http-request :lucky :post 202 (str "card/" (u/the-id card) "/query"))]
-                (is (= [["mirror-2"]] (mt/rows response)))))))))))
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
+                                                      :user_attribute "db_name"}
+                             :model/Card card {:name          "Some Name"
+                                               :dataset_query {:database (u/the-id router-db)
+                                                               :type     :query
+                                                               :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
+                (sync/sync-database! router-db)
+                (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
+                (execute-statement! mirror-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-1')")
+                (execute-statement! mirror-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-2')")
+                (let [response (mt/user-http-request :rasta :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= [["mirror-1"]] (mt/rows response))))
+                (let [response (mt/user-http-request :lucky :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= [["mirror-2"]] (mt/rows response))))
+                (let [response (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= [["router"]] (mt/rows response))))))))))))
