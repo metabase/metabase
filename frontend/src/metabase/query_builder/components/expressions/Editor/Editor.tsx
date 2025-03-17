@@ -173,7 +173,6 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
-  error: prevError,
 }: EditorProps<S> & {
   metadata: Metadata;
 }) {
@@ -181,6 +180,7 @@ function useExpression<S extends StartRule = "expression">({
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
+  const errorRef = useRef<ErrorWithMessage | null>(null);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
@@ -218,6 +218,7 @@ function useExpression<S extends StartRule = "expression">({
   const handleChange = useCallback<typeof onChange>(
     (clause, error) => {
       setIsValidated(true);
+      errorRef.current = error;
       onChange(clause, error);
     },
     [onChange],
@@ -247,7 +248,7 @@ function useExpression<S extends StartRule = "expression">({
         metadata,
         name,
       });
-      if (immediate || prevError) {
+      if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
         handleChange(clause, error);
       } else {
@@ -263,7 +264,7 @@ function useExpression<S extends StartRule = "expression">({
       expressionIndex,
       handleChange,
       debouncedOnChange,
-      prevError,
+      // prevError,
     ],
   );
 

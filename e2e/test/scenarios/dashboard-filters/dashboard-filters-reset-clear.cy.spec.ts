@@ -626,7 +626,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         filter(label).click();
         H.popover().within(() => {
           cy.findAllByRole("listitem").contains("Select all").click();
-          cy.findAllByRole("listitem").contains("Select none").click();
+          cy.findAllByRole("listitem").contains("Select all").click();
 
           value
             .split(",")
@@ -715,6 +715,55 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
         parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
       });
       checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
+    });
+  });
+
+  describe("issue 46177", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should update value inside popover when resetting value to default (metabase#46177)", () => {
+      const ORDERS_QUESTION = {
+        name: "Orders question",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+      };
+
+      const targetField: LocalFieldReference = ["field", ORDERS.TAX, null];
+      const numberFilter = {
+        name: "Number filter",
+        slug: "number_filter",
+        id: "10c0d4bc",
+        type: "number/=",
+        sectionId: "number",
+        default: 2.9,
+      };
+
+      createDashboardWithParameters(ORDERS_QUESTION, targetField, [
+        numberFilter,
+      ]);
+
+      cy.log("update filter value");
+
+      filter(numberFilter.name).click();
+      cy.findByTestId("token-field").icon("close").click();
+      cy.findByTestId("token-field").findByRole("textbox").type("3");
+      cy.realPress("Tab");
+      H.popover().findByText("Update filter").click();
+
+      filter(numberFilter.name).should("have.text", "3");
+
+      cy.log("reset value to default with filter widget open");
+      filter(numberFilter.name).click();
+      cy.findByRole("dialog").should("be.visible");
+      filter(numberFilter.name).icon("revert").click();
+
+      filter(numberFilter.name).should("have.text", numberFilter.default);
+      cy.findByRole("dialog").should("not.exist");
     });
   });
 });

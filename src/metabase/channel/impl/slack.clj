@@ -26,8 +26,8 @@
       (str/replace "<" "&lt;")
       (str/replace ">" "&gt;")))
 
-(defn- truncate-mrkdwn
-  "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
+(defn- truncate
+  "If a string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
   [mrkdwn limit]
   (if (> (count mrkdwn) limit)
@@ -36,8 +36,9 @@
         (str "…"))
     mrkdwn))
 
-(def ^:private block-text-length-limit 3000)
-(def ^:private attachment-text-length-limit 2000)
+(def header-text-limit       "Header block character limit"    150)
+(def block-text-length-limit "Section block character limit"   3000)
+(def ^:private attachment-text-length-limit                    2000)
 
 (defn- text->markdown-block
   [text]
@@ -45,7 +46,7 @@
     (when (not (str/blank? mrkdwn))
       {:blocks [{:type "section"
                  :text {:type "mrkdwn"
-                        :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
+                        :text (truncate mrkdwn block-text-length-limit)}}]})))
 
 (defn- part->attachment-data
   [part]
@@ -71,6 +72,15 @@
   many columns) is truncated."
   1200)
 
+(defn- mkdwn-link-text [url label]
+  (let [url-length       (count url)
+        const-length     3
+        max-label-length (- block-text-length-limit url-length const-length)
+        label' (escape-mkdwn label)]
+    (if (< max-label-length 10)
+      (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
+      (format "<%s|%s>" url (truncate label' max-label-length)))))
+
 (defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its content into an image and uploading it.
   Attachments containing `:blocks` lists containing text cards are returned unmodified."
@@ -81,7 +91,7 @@
     (:render/text rendered-info)
     {:blocks [{:type "section"
                :text {:type     "mrkdwn"
-                      :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                      :text     (mkdwn-link-text title_link title)
                       :verbatim true}}
               {:type "section"
                :text {:type "plain_text"
@@ -92,7 +102,7 @@
           {file-id :id} (slack/upload-file! image-bytes attachment-name)]
       {:blocks [{:type "section"
                  :text {:type     "mrkdwn"
-                        :text     (format "<%s|%s>" title_link (escape-mkdwn title))
+                        :text     (mkdwn-link-text title_link title)
                         :verbatim true}}
                 {:type       "image"
                  :slack_file {:id file-id}
@@ -121,7 +131,7 @@
   [_channel-type {:keys [payload]} _template recipients]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
-                                       :text (str "🔔 " (-> payload :card :name))
+                                       :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
                                        :emoji true}}]}
                      (part->attachment-data (:card_part payload))]]
     (for [channel-id (map notification-recipient->channel-id recipients)]
@@ -134,7 +144,7 @@
 
 (defn- filter-text
   [filter]
-  (truncate-mrkdwn
+  (truncate
    (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
@@ -144,14 +154,15 @@
   [dashboard creator-name parameters]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
-                                :text (:name dashboard)
+                                :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
-                                   :text (format "<%s | *Sent from %s by %s*>"
-                                                 (urls/dashboard-url (:id dashboard) parameters)
-                                                 (public-settings/site-name)
-                                                 creator-name)}]}
+                                   :text (mkdwn-link-text
+                                          (urls/dashboard-url (:id dashboard) parameters)
+                                          (format "*Sent from %s by %s*"
+                                                  (public-settings/site-name)
+                                                  creator-name))}]}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})

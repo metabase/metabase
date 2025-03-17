@@ -54,8 +54,9 @@ export const InteractiveQuestionDefaultView = ({
     onCreate,
     onSave,
     isSaveEnabled,
-    saveToCollection,
+    targetCollection,
     isCardIdError,
+    withDownloads,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
@@ -147,10 +148,13 @@ export const InteractiveQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <InteractiveQuestion.EditorButton
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
+            <Group gap="sm">
+              {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+              <InteractiveQuestion.EditorButton
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+            </Group>
           </Group>
         </Stack>
       )}
@@ -177,7 +181,7 @@ export const InteractiveQuestionDefaultView = ({
             await onSave(question);
             closeSaveModal();
           }}
-          saveToCollection={saveToCollection}
+          targetCollection={targetCollection}
         />
       )}
     </FlexibleSizeComponent>

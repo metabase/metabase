@@ -8,6 +8,11 @@
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
   task to the scheduler as usual via `schedule-task!`.
 
+  ## Documentation
+
+  For more detailed information about using Quartz in Metabase, including examples and best practices,
+  see the [QUARTZ.md](src/metabase/task/QUARTZ.md) documentation.
+
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
