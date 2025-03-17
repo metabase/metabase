@@ -73,7 +73,7 @@ const DataSelectorFieldPicker = ({
         field={item.field}
         position="top-end"
         size={18}
-        icon={item.field.dimension().icon() as unknown as IconName}
+        icon={item.field.icon() as unknown as IconName}
       />
     );
 

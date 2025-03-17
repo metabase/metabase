@@ -31,7 +31,7 @@ const argTypes = {
     control: { type: "json" },
   },
   size: {
-    options: ["sm", "md", "lg"],
+    options: ["xs", "sm", "md", "lg", "xl"],
     control: { type: "inline-radio" },
   },
   asyncDataFetch: {
@@ -123,9 +123,12 @@ function ComboboxTemplate(props: StorybookProps) {
 }
 
 export default {
-  title: "Components/Inputs/Combobox",
+  title: "Components/Ask Before Using/Combobox",
   component: Combobox,
-  args,
+  args: {
+    size: "md",
+    children: "Text",
+  },
   argTypes,
 };
 

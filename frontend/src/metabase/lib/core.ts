@@ -1,8 +1,17 @@
 import { t } from "ttag";
 
+import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-export const field_semantic_types = [
+interface FieldSemanticType {
+  id: string;
+  name: string;
+  section: string;
+  description?: string;
+  icon: IconName;
+}
+
+export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
   /* Overall Row */
   {
     id: TYPE.PK,
@@ -333,18 +342,18 @@ export const field_semantic_types = [
   },
 ];
 
-export const field_semantic_types_map = field_semantic_types.reduce(
+export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
   {},
 );
 
-export const has_field_values_options = [
+export const HAS_FIELD_VALUES_OPTIONS = [
   { name: t`Search box`, value: "search" },
   { name: t`A list of all values`, value: "list" },
   { name: t`Plain input box`, value: "none" },
 ];
 
-export const field_visibility_types = [
+export const FIELD_VISIBILITY_TYPES = [
   {
     id: "normal",
     name: t`Everywhere`,
