@@ -17,6 +17,7 @@ import {
   Group,
   PopoverBackButton,
   Stack,
+  Text,
 } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
@@ -200,7 +201,7 @@ function ExcludeValuePicker({
       <Stack p="md">
         <Checkbox
           checked={isAll}
-          label={isAll ? t`Select none` : t`Select all`}
+          label={<Text c="text-secondary">{t`Select all`}</Text>}
           onChange={event => handleToggleAll(event.target.checked)}
         />
         <Divider />

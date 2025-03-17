@@ -52,7 +52,7 @@ jobs:
     needs: [get-build-requirements]
     if: ${{ !cancelled() && !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     strategy:
       matrix:
         edition: [oss, ee]
@@ -74,7 +74,9 @@ jobs:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
+        timeout-minutes: 10
+        run:  ./bin/build.sh
+        shell: bash
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
@@ -148,8 +150,8 @@ jobs:
 
   e2e-tests-result:
     needs:
-     - e2e-tests
-     - flaky-e2e-tests
+      - e2e-tests
+      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
