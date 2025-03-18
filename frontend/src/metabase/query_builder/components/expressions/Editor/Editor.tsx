@@ -18,6 +18,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import type { ClauseType, StartRule } from "../types";
 
+import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import type { Shortcut } from "./Shortcuts";
@@ -62,6 +63,7 @@ export function Editor<S extends StartRule = "expression">(
     error,
     reportTimezone,
     shortcuts,
+    onCloseEditor,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -69,6 +71,7 @@ export function Editor<S extends StartRule = "expression">(
 
   const {
     source,
+    hasSourceChanged,
     onSourceChange,
     onBlur,
     formatExpression,
@@ -78,6 +81,10 @@ export function Editor<S extends StartRule = "expression">(
     ...props,
     metadata,
     error,
+  });
+
+  const { showModal, closeModal } = useCloseModal({
+    allowPopoverExit: source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -147,6 +154,12 @@ export function Editor<S extends StartRule = "expression">(
       </Flex>
 
       {portal}
+      {showModal && (
+        <CloseModal
+          onKeepEditing={closeModal}
+          onDiscardChanges={onCloseEditor}
+        />
+      )}
     </Flex>
   );
 }
