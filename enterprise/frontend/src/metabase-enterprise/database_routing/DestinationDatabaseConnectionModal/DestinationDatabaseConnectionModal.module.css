@@ -1,0 +1,13 @@
+.modalRoot {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.modalHeader {
+  flex-shrink: 0;
+}
+
+.modalBody {
+  overflow-y: auto;
+}

@@ -48,6 +48,16 @@ export const DatabaseInfoSection = ({
 
 // NOTE: not using Card.Section since it won't work if
 // it's rendered within a React.Fragment: https://mantine.dev/core/card/#cardsection
-export const DatabaseInfoSectionDivider = () => {
-  return <Divider w="calc(100% + 3rem)" ml="-1.5rem" my="1rem" />;
+export const DatabaseInfoSectionDivider = ({
+  condensed = false,
+}: {
+  condensed?: boolean;
+}) => {
+  return (
+    <Divider
+      w="calc(100% + 3rem)"
+      ml="-1.5rem"
+      my={condensed ? "1rem" : "1.5rem"}
+    />
+  );
 };

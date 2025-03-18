@@ -597,3 +597,11 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     downloads?: boolean | null;
   }) => true,
 };
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: Database;
+    refetchDatabase: () => void;
+  }>,
+  destinationDatabaseRoutes: null as React.ReactElement | null,
+};

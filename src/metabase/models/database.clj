@@ -451,6 +451,7 @@
                                          ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
+               :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
@@ -493,3 +494,9 @@
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:initial-sync-status true}})
+
+(defenterprise router-user-attribute
+  "OSS implementation. Returns the user attribute, if set, that will be used for the DB routing feature."
+  metabase-enterprise.database-routing.model
+  [_db-id]
+  nil)
