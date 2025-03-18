@@ -20,10 +20,11 @@
       `(mt/with-temp
          [:model/Card ~card-sym {:type (tu.rng/rand-nth [:question :model])
                                  :dataset_query (random-card-query ~mp)}]
-         ;; TODO: should `binding` go into `do-with-random-card`?
-         (binding [lib.tu.gen/*available-cards* ((fnil conj []) lib.tu.gen/*available-cards* ~card-sym)]
+         (binding [lib.tu.gen/*available-cards* ((fnil conj []) lib.tu.gen/*available-cards*
+                                                                (lib.metadata/card ~mp (:id ~card-sym)))]
            (with-random-cards ~mp ~(dec card-count) ~@body))))
-    `(do ~@body)))
+    `(let [~(quote &cards) lib.tu.gen/*available-cards*]
+       ~@body)))
 
 (comment
 
