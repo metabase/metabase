@@ -429,8 +429,9 @@
 (defn- merge-visualizer-data
   "Takes visualizer dashcard series/column data and returns a row-major matrix of data
    with respect to the visualizer specific column settings. The point of this function is to support visualizer display
-   types in static viz that still hit the `LegacyRenderChart` entry point. EChart display types use the shared version
-   of this function thru the static viz bundle. See frontend/src/metabase/visualizer/utils/merge-data.ts or SHA 18259ef
+   types in static viz that still hit the `LegacyRenderChart` entry point, though currently this has only been tested
+   for funnel charts. EChart display types use the shared version of this function thru the static viz bundle.
+   See frontend/src/metabase/visualizer/utils/merge-data.ts or SHA 18259ef
 
    Visualizer specific settings have four distinct parts:
      1. [:display]  - The display type of the visualization
