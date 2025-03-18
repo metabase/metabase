@@ -88,6 +88,25 @@ describe("getFilteredClauses", () => {
     ]);
   });
 
+  it("should filter clauses based on display name", () => {
+    const results = setup({
+      filter: "regexex",
+    });
+
+    expect(results.map(group => group.category)).toEqual(["string"].sort());
+    expect(results[0].clauses.map(clause => clause.name)).toEqual([
+      "regex-match-first",
+    ]);
+  });
+
+  it("should not filter clauses based on display name", () => {
+    const results = setup({
+      filter: "regex-match-first",
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
   it("should find case", () => {
     const results = setup({
       filter: "case",
