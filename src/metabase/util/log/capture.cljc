@@ -182,12 +182,6 @@
 (defn capture-logp!
   "Impl for log message capturing for [[metabase.util.log/logp]]."
   [f & args]
-  (let [{:keys [e args]} (parse-args args)]
-    (f e (str/join \space (map print-str args)))))
-
-(defn capture-logp2!
-  "Impl for log message capturing for [[metabase.util.log/logp]]."
-  [f & args]
   (let [{:keys [e args]} (parse-args args)
         has-ctx? (map? (last args))
         msgs (if has-ctx? (butlast args) args)]
@@ -208,12 +202,6 @@
   [namespace-str level & args]
   `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
      (capture-logp! f# ~@args)))
-
-(defmacro capture-logp2
-  "Impl for log message capturing for [[metabase.util.log/logp2]]."
-  [namespace-str level & args]
-  `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
-     (capture-logp2! f# ~@args)))
 
 (defmacro capture-logf
   "Impl for log message capturing for [[metabase.util.log/logf]]."
