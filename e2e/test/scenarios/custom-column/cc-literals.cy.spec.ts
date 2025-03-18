@@ -31,24 +31,9 @@ describe("scenarios > custom column > literals", () => {
       H.getNotebookStep("data").button("Pick columns").click();
     }
 
-    function addCustomColumns() {
-      columns.forEach(({ name, expression }, index) => {
-        if (index === 0) {
-          H.getNotebookStep("data").button("Custom column").click();
-        } else {
-          H.getNotebookStep("expression").icon("add").click();
-        }
-        H.enterCustomColumnDetails({ formula: expression, name });
-        H.popover().button("Done").click();
-        H.getNotebookStep("expression").findByText(name).click();
-        H.CustomExpressionEditor.value().should("eq", expression);
-        cy.realPress("Escape");
-      });
-    }
-
     H.openProductsTable({ mode: "notebook" });
     removeTableFields();
-    addCustomColumns();
+    addCustomColumns(columns);
     H.visualize();
     H.assertTableData({
       columns: ["ID", ...columns.map(({ name }) => name)],
@@ -61,21 +46,6 @@ describe("scenarios > custom column > literals", () => {
       { name: "TrueColumn", expression: "True" },
       { name: "FalseColumn", expression: "False" },
     ];
-
-    function addCustomColumns() {
-      columns.forEach(({ name, expression }, index) => {
-        if (index === 0) {
-          H.getNotebookStep("data").button("Custom column").click();
-        } else {
-          H.getNotebookStep("expression").icon("add").click();
-        }
-        H.enterCustomColumnDetails({ formula: expression, name });
-        H.popover().button("Done").click();
-        H.getNotebookStep("expression").findByText(name).click();
-        H.CustomExpressionEditor.value().should("eq", expression);
-        cy.realPress("Escape");
-      });
-    }
 
     function testFilterLiteral({
       filterExpression,
@@ -110,7 +80,7 @@ describe("scenarios > custom column > literals", () => {
     }
 
     H.openProductsTable({ mode: "notebook" });
-    addCustomColumns();
+    addCustomColumns(columns);
     testFilterLiteral({
       filterExpression: "False",
       filterDisplayName: "false",
@@ -162,3 +132,20 @@ describe("scenarios > custom column > literals", () => {
     });
   });
 });
+
+type CustomColumnInfo = { name: string; expression: string };
+
+function addCustomColumns(columns: CustomColumnInfo[]) {
+  columns.forEach(({ name, expression }, index) => {
+    if (index === 0) {
+      H.getNotebookStep("data").button("Custom column").click();
+    } else {
+      H.getNotebookStep("expression").icon("add").click();
+    }
+    H.enterCustomColumnDetails({ formula: expression, name });
+    H.popover().button("Done").click();
+    H.getNotebookStep("expression").findByText(name).click();
+    H.CustomExpressionEditor.value().should("eq", expression);
+    cy.realPress("Escape");
+  });
+}
