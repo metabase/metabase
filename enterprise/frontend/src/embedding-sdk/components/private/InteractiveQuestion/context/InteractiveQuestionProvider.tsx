@@ -56,6 +56,7 @@ export const InteractiveQuestionProvider = ({
   saveToCollection,
   targetCollection: _targetCollection,
   initialSqlParameters,
+  withDownloads,
 }: InteractiveQuestionProviderProps) => {
   const targetCollection = _targetCollection || saveToCollection;
 
@@ -159,6 +160,7 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     isCardIdError,
+    withDownloads,
   };
 
   useEffect(() => {
