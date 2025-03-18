@@ -98,7 +98,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     requiresFeature: "percentile-aggregations",
   },
   // cast functions
-  text: { displayName: "text", type: "string", args: ["expression"] },
+  text: {
+    displayName: "text",
+    type: "string",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
