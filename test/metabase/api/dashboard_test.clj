@@ -1805,15 +1805,14 @@
                                                        :dashboard_tab_id -1
                                                        :visualization_settings {:table_id table-id}}]})]
           (testing "the dashcard gets turned into something richer, that supports filtering."
-            (let []
-              (is (=? [{:id               (mt/malli=? [:fn pos-int?])
-                        :size_x           1
-                        :size_y           1
-                        :col              3
-                        :row              3
-                        :card_id          int?
-                        :visualization_settings {:table_id table-id}}]
-                      (:dashcards resp))))))))))
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp)))))))))
 
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
