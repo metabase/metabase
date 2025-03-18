@@ -1849,8 +1849,8 @@
                                                        :size_y           2
                                                        :col              2
                                                        :row              2}
-                                                     ;; remove the dashcard3 and create a new card using negative numbers
-                                                     ;; and assign into the newly created dashcard
+                                                      ;; remove the dashcard3 and create a new card using negative numbers
+                                                      ;; and assign into the newly created dashcard
                                                       {:id               -1
                                                        :size_x           1
                                                        :size_y           1
