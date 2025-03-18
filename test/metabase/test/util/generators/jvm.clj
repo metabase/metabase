@@ -12,16 +12,16 @@
 
 (defmacro with-random-cards
   "Wrap `body` in sequence of `(with-temp..(binding..))` forms. Generate one wrapping for per one `card-count`.
-  Purpose is to have [[lib.tu.gen/*available-card-ids*]] bound prior _execution_ of inner wrappers, so outer temporary
+  Purpose is to have [[lib.tu.gen/*available-cards*]] bound prior _execution_ of inner wrappers, so outer temporary
   cards can be used for generation of inner cards."
   [mp card-count & body]
   (if (< 0 card-count)
-    (let [id-sym (gensym "card-id-")]
+    (let [card-sym (gensym "card-")]
       `(mt/with-temp
-         [:model/Card {~id-sym :id} {:type (tu.rng/rand-nth [:question :model])
-                                     :dataset_query (random-card-query ~mp)}]
+         [:model/Card ~card-sym {:type (tu.rng/rand-nth [:question :model])
+                                 :dataset_query (random-card-query ~mp)}]
          ;; TODO: should `binding` go into `do-with-random-card`?
-         (binding [lib.tu.gen/*available-card-ids* ((fnil conj []) lib.tu.gen/*available-card-ids* ~id-sym)]
+         (binding [lib.tu.gen/*available-cards* ((fnil conj []) lib.tu.gen/*available-cards* ~card-sym)]
            (with-random-cards ~mp ~(dec card-count) ~@body))))
     `(do ~@body)))
 
