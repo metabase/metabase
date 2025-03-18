@@ -5,7 +5,6 @@ enterprise/frontend/src/embedding-sdk @metabase/embedding
 frontend/src/metabase/embedding-sdk @metabase/embedding
 frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 # snowplow/* @metabase/data
-e2e @filiphric
 
 .github @metabase/devexp
 .clj-kondo @metabase/devexp
