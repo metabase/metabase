@@ -171,11 +171,11 @@
                     :database-required true,
                     :database-type "DateTime('America/New_York')",
                     :name "c2"}
-                   {:base-type :type/DateTimeWithLocalTZ,
+                   {:base-type :type/DateTime,
                     :database-required true,
                     :database-type "DateTime",
                     :name "c3"}
-                   {:base-type :type/DateTimeWithLocalTZ,
+                   {:base-type :type/DateTime,
                     :database-required true,
                     :database-type "DateTime64(3)",
                     :name "c4"}
@@ -187,11 +187,11 @@
                     :database-required false,
                     :database-type "Nullable(DateTime64(6, 'America/New_York'))",
                     :name "c6"}
-                   {:base-type :type/DateTimeWithLocalTZ,
+                   {:base-type :type/DateTime,
                     :database-required false,
                     :database-type "Nullable(DateTime64(0))",
                     :name "c7"}
-                   {:base-type :type/DateTimeWithLocalTZ,
+                   {:base-type :type/DateTime,
                     :database-required false,
                     :database-type "Nullable(DateTime)",
                     :name "c8"}}
@@ -441,6 +441,7 @@
       (is (= {:name "aggregate_functions_filter_test"
               :fields #{(merge base-field
                                {:name "id",
+                                :pk? true,
                                 :database-type "Int32",
                                 :base-type :type/Integer,
                                 :database-required true

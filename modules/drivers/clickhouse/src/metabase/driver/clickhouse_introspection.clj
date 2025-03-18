@@ -56,10 +56,10 @@
     ;; :type/DateTime
     ;; DateTime64
     (str/starts-with? db-type "datetime64")
-    :type/DateTimeWithLocalTZ
+    (if (> (count db-type) 13) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; DateTime
     (str/starts-with? db-type "datetime")
-    :type/DateTimeWithLocalTZ
+    (if (> (count db-type) 8) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; Enum*
     (str/starts-with? db-type "enum")
     :type/Text
