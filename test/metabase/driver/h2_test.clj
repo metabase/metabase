@@ -420,21 +420,34 @@
 (deftest column-attributes-test
   (mt/test-driver :h2
     (mt/with-empty-db
-      (let [spec (mdb/spec :h2 (:details (mt/db)))
-            describe
+      (let [spec       (mdb/spec :h2 (:details (mt/db)))
+            table-name (str "COLUMN_ATTRIBUTES_TEST_" (System/currentTimeMillis))
+
+            drop-table!
+            (fn []
+              (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" table-name)]))
+
+            create-table!
             (fn [column-defs]
-              (jdbc/execute! spec ["DROP TABLE IF EXISTS TEST_TABLE"])
               (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
                                         (str/join ",")
-                                        (format "CREATE TABLE TEST_TABLE (%s)"))])
-              (->> (driver/describe-table :h2 (mt/db) {:name "TEST_TABLE"})
-                   :fields
-                   (sort-by :database-position)
-                   (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
-                              ;; shorthand
-                              (set/rename-keys {:database-is-generated :g
-                                                :database-is-nullable  :n
-                                                :database-default      :d})))))
+                                        (format "CREATE TABLE %s (%s)" table-name))]))
+
+            describe
+            (fn [column-defs]
+              (try
+                (create-table! column-defs)
+                (->> (driver/describe-table :h2 (mt/db) {:name table-name})
+                     :fields
+                     (sort-by :database-position)
+                     (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
+                                ;; shorthand
+                                (set/rename-keys {:database-is-generated :g
+                                                  :database-is-nullable  :n
+                                                  :database-default      :d}))))
+                (finally
+                  (drop-table!))))
+
             do-test
             (fn [& test-cases]
               (let [test-cases' (partition 2 test-cases)

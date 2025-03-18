@@ -1701,22 +1701,35 @@
 
 (deftest column-attributes-test
   (mt/test-driver :postgres
-    (drop-if-exists-and-create-db! "generated_cols_test")
-    (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "generated_cols_test"})
-          spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+    (drop-if-exists-and-create-db! "column_attributes_test_db")
+    (let [details    (mt/dbdef->connection-details :postgres :db {:database-name "column_attributes_test_db"})
+          spec       (sql-jdbc.conn/connection-details->spec :postgres details)
+          table-name (str "column_attributes_test_" (System/currentTimeMillis))
+
+          drop-table!
+          (fn []
+            (jdbc/execute! spec [(format "DROP TABLE IF EXISTS %s" table-name)]))
+
+          create-table!
+          (fn [column-defs]
+            (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
+                                      (str/join ",")
+                                      (format "CREATE TABLE %s (%s)" table-name))]))
+
           describe
           (fn [column-defs]
             (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-              (jdbc/execute! spec ["DROP TABLE IF EXISTS test_table"])
-              (jdbc/execute! spec [(->> (map #(format "col%d %s" %1 %2) (range) column-defs)
-                                        (str/join ",")
-                                        (format "CREATE TABLE test_table (%s)"))])
-              (->> (driver/describe-fields :postgres database {:table-names ["test_table"]})
-                   (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
-                            ;; shorthand
-                              (set/rename-keys {:database-is-generated :g
-                                                :database-is-nullable  :n
-                                                :database-default      :d}))))))
+              (try
+                (create-table! column-defs)
+                (->> (driver/describe-fields :postgres database {:table-names [table-name]})
+                     (mapv #(-> (select-keys % [:database-is-generated :database-is-nullable :database-default])
+                               ;; shorthand
+                                (set/rename-keys {:database-is-generated :g
+                                                  :database-is-nullable  :n
+                                                  :database-default      :d}))))
+                (finally
+                  (drop-table!)))))
+
           do-test
           (fn [& test-cases]
             (let [test-cases' (partition 2 test-cases)
@@ -1732,7 +1745,7 @@
        ;; defaulting and those expressions introduced by SERIAL & BIGSERIAL
        ;; but for now:
        "SERIAL"
-       {:g false, :n false, :d "nextval('test_table_col0_seq'::regclass)"}
+       {:g false, :n false, :d (format "nextval('%s_col0_seq'::regclass)" table-name)}
 
        "INT"
        {:g false, :n true}
