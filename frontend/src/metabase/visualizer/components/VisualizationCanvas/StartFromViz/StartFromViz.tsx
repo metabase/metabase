@@ -16,9 +16,9 @@ const options = _.shuffle([
     icon: "bar",
   },
   {
-    label: t`Region map`,
-    value: "map",
-    icon: "pinmap",
+    label: t`Line`,
+    value: "line",
+    icon: "line",
   },
   {
     label: t`Scatterplot`,
