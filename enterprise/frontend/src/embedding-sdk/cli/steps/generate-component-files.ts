@@ -61,7 +61,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     isNextJs,
 
     // Enable user switching only when a valid license is present
-    // as JWT requires a valid license, and using a sample database.
+    // as JWT requires a valid license, and does not use a sample database.
     userSwitcherEnabled: !!token && !state.useSampleDatabase,
   });
 
