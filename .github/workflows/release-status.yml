@@ -50,7 +50,7 @@ jobs:
         sparse-checkout: release
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn --frozen-lockfile && yarn build
-    - name: Check release status and post to Slack
+    - name: Check backport status and post to Slack
       uses: actions/github-script@v7
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
