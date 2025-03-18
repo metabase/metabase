@@ -280,6 +280,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "integer",
+    structure: "integer",
+    description: () =>
+      t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The number or date to convert to text.`,
+        example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     description: () => t`Returns the string of text in all lower case.`,

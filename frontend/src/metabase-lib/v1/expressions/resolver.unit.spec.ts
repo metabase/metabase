@@ -141,6 +141,7 @@ describe("resolve", () => {
       expect(expr(["coalesce", P, Q, R]).dimensions).toEqual(["P", "Q", "R"]);
       expect(expr(["in", A, B, C]).dimensions).toEqual(["A", "B", "C"]);
       expect(expr(["text", A]).dimensions).toEqual(["A"]);
+      expect(expr(["integer", A]).dimensions).toEqual(["A"]);
     });
 
     it("should allow any number of arguments in a variadic function", () => {
