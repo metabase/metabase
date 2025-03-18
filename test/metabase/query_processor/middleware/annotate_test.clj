@@ -487,7 +487,14 @@
                    [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test-3
-  (qp.store/with-metadata-provider meta/metadata-provider
+  (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:cards [{:id            1
+                                              :database-id   (meta/id)
+                                              :name          "Some metric"
+                                              :type          :metric
+                                              :dataset-query (lib.tu.macros/mbql-query orders
+                                                               {:aggregation [[:sum $subtotal]]})}]})
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
       (is (=? {:cols [{:display_name   "Total Events"

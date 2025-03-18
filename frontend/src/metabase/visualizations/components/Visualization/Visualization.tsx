@@ -52,7 +52,7 @@ import {
 } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -126,7 +126,7 @@ type VisualizationOwnProps = {
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
-  query?: Query;
+  query?: NativeQuery;
   rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
