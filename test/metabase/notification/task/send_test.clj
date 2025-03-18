@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.driver :as driver]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -83,3 +84,60 @@
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (task.notification/init-send-notification-triggers!)
             (is (empty? (notification.tu/send-notification-triggers subscription-id)))))))))
+
+(deftest init-send-notification-triggers-inactive-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp-scheduler!
+      (task/init! ::task.notification/SendNotifications)
+      (let [notification          (models.notification/create-notification!
+                                   {:payload_type :notification/testing
+                                    :active       true}
+                                   [{:type :notification-subscription/cron
+                                     :cron_schedule "0 0 * 1/1 * ? *"}]
+                                   [])
+            subscription-id       (-> notification models.notification/hydrate-notification :subscriptions first :id)
+            notification-triggers (notification.tu/send-notification-triggers subscription-id)]
+        (testing "sanity check that it has triggers to begin with"
+          (is (not-empty notification-triggers)))
+
+        (testing "skips triggers for inactive notifications"
+          ;; Deactivate the notification
+          (t2/update! :model/Notification (:id notification) {:active false})
+          (task.notification/init-send-notification-triggers!)
+          (is (empty? (notification.tu/send-notification-triggers subscription-id))))
+
+        (testing "recreates triggers when notification is reactivated"
+          ;; Reactivate the notification
+          (t2/update! :model/Notification (:id notification) {:active true})
+          (task.notification/init-send-notification-triggers!)
+          (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
+
+(deftest update-send-notification-triggers-timezone-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+      (mt/with-temp-scheduler!
+        (task/init! ::task.notification/SendNotifications)
+        (let [notification    (models.notification/create-notification!
+                               {:payload_type :notification/testing}
+                               [{:type :notification-subscription/cron
+                                 :cron_schedule "0 0 * 1/1 * ? *"}]
+                               [])
+              subscription-id (-> notification models.notification/hydrate-notification :subscriptions first :id)]
+
+          (testing "sanity check that trigger exists with initial timezone"
+            (let [triggers (notification.tu/send-notification-triggers subscription-id)]
+              (is (not-empty triggers))
+              (is (= "UTC" (:timezone (first triggers))))))
+
+          (testing "updates timezone of triggers when report timezone changes"
+            (let [new-timezone "America/Los_Angeles"]
+              ;; Change the report timezone
+              (driver/report-timezone! new-timezone)
+
+              ;; Call the function under test
+              (task.notification/update-send-notification-triggers-timezone!)
+
+              ;; Verify the timezone was updated
+              (let [updated-triggers (notification.tu/send-notification-triggers subscription-id)]
+                (is (not-empty updated-triggers))
+                (is (= new-timezone (:timezone (first updated-triggers))))))))))))

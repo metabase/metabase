@@ -326,9 +326,8 @@ export const PLUGIN_COLLECTIONS = {
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (
     _collection: Collection,
-  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+  ): { menuItems: JSX.Element[] } => ({
     menuItems: [],
-    showIndicator: false,
   }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
@@ -569,8 +568,19 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GsheetConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+  reconnect: boolean;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
+  GsheetsSyncStatus: PluginPlaceholder,
+  GsheetConnectionModal:
+    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
+  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
+  GsheetConnectButton: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

@@ -22,7 +22,6 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
@@ -50,7 +49,7 @@ export type InteractiveDashboardProps = {
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId,
+  dashboardId: initialDashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -73,8 +72,10 @@ const InteractiveDashboardInner = ({
     refreshPeriod,
     onRefreshPeriodChange,
     setRefreshElapsedHook,
-  } = useSdkDashboardParams({
     dashboardId,
+    isLoading,
+  } = useSdkDashboardParams({
+    dashboardId: initialDashboardId,
     withDownloads,
     withTitle,
     withFooter,
@@ -101,6 +102,30 @@ const InteractiveDashboardInner = ({
       }),
     [plugins],
   );
+
+  const errorPage = useSdkSelector(getErrorPage);
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dispatch, dashboardId]);
+
+  if (isLoading) {
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <SdkLoader />
+      </StyledPublicComponentWrapper>
+    );
+  }
+
+  if (!dashboardId || errorPage?.status === 404) {
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <DashboardNotFoundError id={initialDashboardId} />
+      </StyledPublicComponentWrapper>
+    );
+  }
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
@@ -151,39 +176,5 @@ const InteractiveDashboardInner = ({
 };
 
 export const InteractiveDashboard = renderOnlyInSdkProvider(
-  ({ dashboardId: initialDashboardId, ...rest }: InteractiveDashboardProps) => {
-    const { id: resolvedDashboardId, isLoading } = useValidatedEntityId({
-      type: "dashboard",
-      id: initialDashboardId,
-    });
-
-    const errorPage = useSdkSelector(getErrorPage);
-    const dispatch = useSdkDispatch();
-    useEffect(() => {
-      if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
-      }
-    }, [dispatch, resolvedDashboardId]);
-
-    const { style, className } = rest;
-    if (isLoading) {
-      return (
-        <StyledPublicComponentWrapper className={className} style={style}>
-          <SdkLoader />
-        </StyledPublicComponentWrapper>
-      );
-    }
-
-    if (!resolvedDashboardId || errorPage?.status === 404) {
-      return (
-        <StyledPublicComponentWrapper className={className} style={style}>
-          <DashboardNotFoundError id={initialDashboardId} />
-        </StyledPublicComponentWrapper>
-      );
-    }
-
-    return (
-      <InteractiveDashboardInner dashboardId={resolvedDashboardId} {...rest} />
-    );
-  },
+  InteractiveDashboardInner,
 );

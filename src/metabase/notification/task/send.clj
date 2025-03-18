@@ -14,7 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -111,7 +111,7 @@
                                                         :notification_subscription_id subscription-id
                                                         :cron_schedule                (:cron_schedule subscription)
                                                         :notification_ids             [notification-id]}}
-          (notification.send/send-notification! notification))
+          (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
         (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
         (catch Exception e
           (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
@@ -126,13 +126,24 @@
         (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
         (delete-trigger-for-subscription! subscription-id)))))
 
+(defn- active-cron-subscription-id->subscription
+  []
+  (t2/select-pk->fn identity :model/NotificationSubscription
+                    :type :notification-subscription/cron
+                    {:select [:ns.*]
+                     :from   [[:notification_subscription :ns]]
+                     :join   [[:notification :n] [:= :ns.notification_id :n.id]]
+                     :where   [:and
+                               [:= :ns.type "notification-subscription/cron"]
+                               [:= :n.active true]]}))
+
 ;; called in [driver/report-timezone] setter
 (defn update-send-notification-triggers-timezone!
   "Update the timezone of all SendPulse triggers if the report timezone changes."
   []
-  (let [triggers     (-> send-notification-job-key task/job-info :triggers)
-        new-timezone (send-notification-timezone)
-        subscription-id->cron (t2/select-fn->fn :id :cron_schedule :model/NotificationSubscription :type :notification-subscription/cron)]
+  (let [triggers              (-> send-notification-job-key task/job-info :triggers)
+        new-timezone          (send-notification-timezone)
+        subscription-id->cron (update-vals (active-cron-subscription-id->subscription) :cron_schedule)]
     (doseq [trigger triggers
             :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
       (let [trigger-key     (:key trigger)
@@ -156,18 +167,19 @@
   ;; Get all existing triggers and subscription IDs
   (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
         existing-triggers-subscription-ids (map #(get-in % [:data "subscription-id"]) existing-triggers)
-        subscription-id->cron              (t2/select-pk->fn identity :model/NotificationSubscription :type :notification-subscription/cron)
-        db-subscription-ids                (keys subscription-id->cron)
-        [to-delete to-create _to-skip]     (diff existing-triggers-subscription-ids db-subscription-ids)]
+        subscription-id->subscription      (active-cron-subscription-id->subscription)
+        db-subscription-ids                (keys subscription-id->subscription)
+        [to-delete to-create _to-skip]     (diff (set existing-triggers-subscription-ids) (set db-subscription-ids))]
     (doseq [subscription-id to-delete]
       (delete-trigger-for-subscription! subscription-id))
     (doseq [subscription-id to-create]
-      (create-new-trigger! (get subscription-id->cron subscription-id)))))
+      (create-new-trigger! (get subscription-id->subscription subscription-id)))))
 
 (jobs/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."}
+    Run once on startup."
+    DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]
   (log/info "Initializing SendNotification triggers")

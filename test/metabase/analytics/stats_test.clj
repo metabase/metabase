@@ -337,6 +337,44 @@
                                          ["6-10" [:int {:min 1}]]]]]
                 (#'stats/alert-metrics)))))
 
+(deftest question-metrics-test
+  (testing "Returns metrics for cards using a single sql query"
+    (mt/with-temp [:model/User      u {}
+                   :model/Dashboard d {:creator_id (u/the-id u)}
+                   :model/Card      _ {}
+                   :model/Card      _ {:query_type "native"}
+                   :model/Card      _ {:query_type "gui"}
+                   :model/Card      _ {:public_uuid (str (random-uuid))}
+                   :model/Card      _ {:dashboard_id (u/the-id d)}
+                   :model/Card      _ {:enable_embedding true}
+                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
+                                       :embedding_params {:category_name "locked" :name_category "disabled"}}
+                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :string}}}}
+                                       :embedding_params {:category_name "enabled" :name_category "enabled"}}]
+      (testing "reported metrics for all app db types"
+        (is (malli= [:map
+                     [:questions [:map
+                                  [:total [:= 8]]
+                                  [:native [:= 1]]
+                                  [:gui [:= 1]]
+                                  [:is_dashboard_question [:= 1]]]]
+                     [:public [:map
+                               [:total [:= 3]]]]
+                     [:embedded [:map
+                                 [:total [:= 3]]]]]
+                    (#'stats/question-metrics))))
+      (when (contains? #{:mysql :postgres} (mdb/db-type))
+        (testing "reports json column derived-metrics"
+          (let [reported (#'stats/question-metrics)]
+            (is (= 2 (get-in reported [:questions :with_params])))
+            (is (= 2 (get-in reported [:public :with_params])))
+            (is (= 2 (get-in reported [:embedded :with_params])))
+            (is (= 1 (get-in reported [:embedded :with_enabled_params])))
+            (is (= 1 (get-in reported [:embedded :with_locked_params])))
+            (is (= 1 (get-in reported [:embedded :with_disabled_params])))))))))
+
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
@@ -487,16 +525,80 @@
             "There are never more query executions in the 24h version than all-of-time.")))))
 
 (deftest query-execution-24h-filtering-test
-  (let [before (#'stats/->snowplow-grouped-metric-info)]
-    ;; run 2 internal queries, set one to happen a year ago:
-    (mt/with-temp [:model/QueryExecution _internal-year-ago
-                   (merge query-execution-defaults
-                          {:started_at (-> (t/offset-date-time) (t/minus (t/years 1)))})
-                   :model/QueryExecution _internal-new query-execution-defaults]
+  (let [before (#'stats/->snowplow-grouped-metric-info)
+        one-year-ago-defaults (assoc query-execution-defaults
+                                     :started_at (-> (t/offset-date-time)
+                                                     (t/minus (t/years 1))))]
+    (mt/with-temp [:model/User           u {}
+                   :model/QueryExecution _ one-year-ago-defaults
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-sdk-react")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc one-year-ago-defaults
+                                                  :embedding_client "embedding-iframe"
+                                                  :executor_id (u/the-id u))
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-question)
+                   :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-csv-download)
+                   :model/QueryExecution _ query-execution-defaults
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
+                   :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
       (let [after (#'stats/->snowplow-grouped-metric-info)
-            before-internal (-> before :query-executions (get "internal"))
-            after-internal (-> after :query-executions (get "internal"))
-            before-24h-internal (-> before :query-executions-24h (get "internal"))
-            after-24h-internal (-> after :query-executions-24h (get "internal"))]
+            before-internal (-> before :query-executions :internal)
+            after-internal (-> after :query-executions :internal)
+            before-24h-internal (-> before :query-executions-24h :internal)
+            after-24h-internal (-> after :query-executions-24h :internal)]
         (is (= 2 (- after-internal before-internal)))
-        (is (= 1 (- after-24h-internal before-24h-internal)))))))
+        (is (= 1 (- after-24h-internal before-24h-internal)))
+        (is (= 2 (- (-> after :query-executions :sdk_embed)
+                    (-> before :query-executions :sdk_embed))))
+        (is (= 4 (- (-> after :query-executions :static_embed)
+                    (-> before :query-executions :static_embed))))
+        (is (= 4 (- (-> after :query-executions :public_link)
+                    (-> before :query-executions :public_link))))
+        (is (= 1 (- (-> after :query-executions :interactive_embed)
+                    (-> before :query-executions :interactive_embed))))
+        (is (= 1 (- (-> after :query-executions-24h :sdk_embed)
+                    (-> before :query-executions-24h :sdk_embed))))
+        (is (= 2 (- (-> after :query-executions-24h :static_embed)
+                    (-> before :query-executions-24h :static_embed))))
+        (is (= 2 (- (-> after :query-executions-24h :public_link)
+                    (-> before :query-executions-24h :public_link))))
+        (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
+                    (-> before :query-executions-24h :interactive_embed))))))))
+
+(deftest snowplow-setting-tests
+  (testing "snowplow formated settings"
+    (let [instance-stats (#'stats/instance-settings)
+          snowplow-settings (#'stats/snowplow-settings instance-stats)]
+      (testing "matches expected schema"
+        (is (malli= [:map
+                     [:is_embedding_app_origin_sdk_set :boolean]
+                     [:is_embedding_app_origin_interactive_set :boolean]
+                     [:application_name [:enum "default" "changed"]]
+                     [:help_link [:enum "hidden" "custom" "metabase"]]
+                     [:logo [:enum "default" "changed"]]
+                     [:favicon [:enum "default" "changed"]]
+                     [:loading_message [:enum "default" "changed"]]
+                     [:show_metabot_greeting :boolean]
+                     [:show_login_page_illustration [:enum "default" "changed" "none"]]
+                     [:show_landing_page_illustration [:enum "default" "changed" "none"]]
+                     [:show_no_data_illustration [:enum "default" "changed" "none"]]
+                     [:show_no_object_illustration [:enum "default" "changed" "none"]]
+                     [:ui_color [:enum "default" "changed"]]
+                     [:chart_colors [:enum "default" "changed"]]
+                     [:show_mb_links :boolean]
+                     [:font :string]
+                     [:samesite :string]
+                     [:site_locale :string]
+                     [:report_timezone :string]
+                     [:start_of_week :string]]
+                    (zipmap (map (comp keyword :key) snowplow-settings) (map :value snowplow-settings)))))
+      (testing "is_embedding_app_origin_sdk_set"
+        (is (= false (get-in snowplow-settings [0 :value]))))
+      (testing "stringifies help link"
+        (is (= "metabase" (get-in snowplow-settings [3 :value]))))
+      (testing "converts boolean changed? to string"
+        (is (= "default" (get-in snowplow-settings [4 :value])))))))

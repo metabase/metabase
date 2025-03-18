@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
+import { getEngineNativeType } from "metabase/lib/engine";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
@@ -251,3 +252,22 @@ export const getReferencedCardIds = createSelector(
     },
   },
 );
+
+export const getPlaceholderText = (engine?: string | null): string => {
+  if (!engine) {
+    return "";
+  }
+
+  const SQLPlaceholder = "SELECT * FROM TABLE_NAME";
+  const MongoPlaceholder = `[ { "$project": { "_id": "$_id" } } ]`;
+
+  const engineType = getEngineNativeType(engine);
+  switch (true) {
+    case engineType === "sql":
+      return SQLPlaceholder;
+    case engine === "mongo":
+      return MongoPlaceholder;
+    default:
+      return "";
+  }
+};

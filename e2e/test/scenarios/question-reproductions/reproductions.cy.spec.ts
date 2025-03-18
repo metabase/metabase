@@ -20,84 +20,92 @@ describe("issue 39487", () => {
     cy.viewport(1280, 1000);
   });
 
-  it("calendar has constant size when using single date picker filter (metabase#39487)", () => {
-    createTimeSeriesQuestionWithFilter([">", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
+  it(
+    "calendar has constant size when using single date picker filter (metabase#39487)",
+    { tags: "@flaky" },
+    () => {
+      createTimeSeriesQuestionWithFilter([">", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
-    cy.log("timeseries filter button");
-    cy.findByTestId("timeseries-filter-button").click();
-    checkSingleDateFilter();
+      cy.log("timeseries filter button");
+      cy.findByTestId("timeseries-filter-button").click();
+      checkSingleDateFilter();
 
-    cy.log("filter pills");
-    cy.findByTestId("filters-visibility-control").click();
-    cy.findByTestId("filter-pill").click();
-    checkSingleDateFilter();
+      cy.log("filter pills");
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill").click();
+      checkSingleDateFilter();
 
-    cy.log("filter modal");
-    cy.button(/Filter/).click();
-    H.modal().findByText("After Jan 1, 2015").click();
-    checkSingleDateFilter();
-    H.modal().button("Close").click();
+      cy.log("filter modal");
+      cy.button(/Filter/).click();
+      H.modal().findByText("After Jan 1, 2015").click();
+      checkSingleDateFilter();
+      H.modal().button("Close").click();
 
-    cy.log("filter drill");
-    cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Created At: Year");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByText("Specific dates…").click();
-    H.popover().findByText("After").click();
-    H.popover().findByRole("textbox").clear().type("2015/01/01");
-    checkSingleDateFilter();
+      cy.log("filter drill");
+      cy.findByLabelText("Switch to data").click();
+      H.tableHeaderClick("Created At: Year");
+      H.popover().findByText("Filter by this column").click();
+      H.popover().findByText("Specific dates…").click();
+      H.popover().findByText("After").click();
+      H.popover().findByRole("textbox").clear().type("2015/01/01");
+      checkSingleDateFilter();
 
-    cy.log("notebook editor");
-    H.openNotebook();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .first()
-      .click();
-    checkSingleDateFilter();
-  });
+      cy.log("notebook editor");
+      H.openNotebook();
+      H.getNotebookStep("filter")
+        .findAllByTestId("notebook-cell-item")
+        .first()
+        .click();
+      checkSingleDateFilter();
+    },
+  );
 
-  it("calendar has constant size when using date range picker filter (metabase#39487)", () => {
-    createTimeSeriesQuestionWithFilter([
-      "between",
-      CREATED_AT_FIELD,
-      "2024-05-01", // 5 day rows
-      "2024-06-01", // 6 day rows
-    ]);
+  it(
+    "calendar has constant size when using date range picker filter (metabase#39487)",
+    { tags: "@flaky" },
+    () => {
+      createTimeSeriesQuestionWithFilter([
+        "between",
+        CREATED_AT_FIELD,
+        "2024-05-01", // 5 day rows
+        "2024-06-01", // 6 day rows
+      ]);
 
-    cy.log("timeseries filter button");
-    cy.findByTestId("timeseries-filter-button").click();
-    checkDateRangeFilter();
+      cy.log("timeseries filter button");
+      cy.findByTestId("timeseries-filter-button").click();
+      checkDateRangeFilter();
 
-    cy.log("filter pills");
-    cy.findByTestId("filters-visibility-control").click();
-    cy.findByTestId("filter-pill").click();
-    checkDateRangeFilter();
+      cy.log("filter pills");
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill").click();
+      checkDateRangeFilter();
 
-    cy.log("filter modal");
-    cy.button(/Filter/).click();
-    H.modal().findByText("May 1 – Jun 1, 2024").click();
-    checkDateRangeFilter();
-    H.modal().button("Close").click();
+      cy.log("filter modal");
+      cy.button(/Filter/).click();
+      H.modal().findByText("May 1 – Jun 1, 2024").click();
+      checkDateRangeFilter();
+      H.modal().button("Close").click();
 
-    cy.log("filter drill");
-    cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Created At: Year");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByText("Specific dates…").click();
-    H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
-    previousButton().click();
-    checkDateRangeFilter();
+      cy.log("filter drill");
+      cy.findByLabelText("Switch to data").click();
+      H.tableHeaderClick("Created At: Year");
+      H.popover().findByText("Filter by this column").click();
+      H.popover().findByText("Specific dates…").click();
+      H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+      // eslint-disable-next-line no-unsafe-element-filtering
+      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      previousButton().click();
+      checkDateRangeFilter();
 
-    cy.log("notebook editor");
-    H.openNotebook();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .first()
-      .click();
-    checkDateRangeFilter();
-  });
+      cy.log("notebook editor");
+      H.openNotebook();
+      H.getNotebookStep("filter")
+        .findAllByTestId("notebook-cell-item")
+        .first()
+        .click();
+      checkDateRangeFilter();
+    },
+  );
 
   it("date picker is scrollable when overflows (metabase#39487)", () => {
     cy.viewport(1280, 800);
