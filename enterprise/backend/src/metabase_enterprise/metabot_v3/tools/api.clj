@@ -372,11 +372,14 @@
 (mr/def ::columns
   [:sequential ::column])
 
+(mr/def ::full-metric
+  [:merge ::basic-metric [:map [:queryable_dimensions ::columns]]])
+
 (mr/def ::get-metric-details-result
   [:or
    [:map
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:merge ::basic-metric [:map [:queryable_dimensions ::columns]]]]]
+    [:structured_output ::full-metric]]
    [:map [:output :string]]])
 
 (mr/def ::get-query-details-result
@@ -418,20 +421,48 @@
 
 (mr/def ::basic-table
   [:map
-   [:id :int]
+   [:id [:or :int :string]]
    [:name :string]
    [:fields ::columns]
    [:description {:optional true} [:maybe :string]]
    [:metrics {:optional true} [:sequential ::basic-metric]]])
 
+(mr/def ::full-table
+  [:merge
+   ::basic-table
+   [:map [:queryable_foreign_key_tables {:optional true} [:sequential ::basic-table]]]])
+
 (mr/def ::get-table-details-result
   [:or
    [:map
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:merge
-                         ::basic-table
-                         [:map [:queryable_foreign_key_tables {:optional true} [:sequential ::basic-table]]]]]]
+    [:structured_output ::full-table]]
    [:map [:output :string]]])
+
+(mr/def ::answer-sources-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:metrics [:sequential ::full-metric]]
+                         [:models  [:sequential ::full-table]]]]]
+   [:map [:output :string]]])
+
+(def metabot-collection-name
+  "The name of the collection exposed by the answer-sources tool."
+  "__METABOT__")
+
+(api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
+  "Create a dashboard subscription."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
+  (doto (-> (mc/decode ::answer-sources-result
+                       (metabot-v3.dummy-tools/answer-sources metabot-collection-name)
+                       (mtx/transformer {:name :tool-api-response}))
+            (assoc :conversation_id conversation_id))
+    (metabot-v3.context/log :llm.log/be->llm)))
 
 (api.macros/defendpoint :post "/create-dashboard-subscription" :- [:merge
                                                                    [:map [:output :string]]
@@ -589,7 +620,7 @@
   [_route-params
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments  ::get-table-details-arguments]]
+                                                    [:map [:arguments ::get-table-details-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log (assoc body :api :get-table-details) :llm.log/llm->be)
   (doto (-> (mc/decode ::get-table-details-result

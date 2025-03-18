@@ -100,25 +100,54 @@
                                                         (not-empty (foreign-key-tables mp cols))))))))
 
 (defn- card-details
-  [id]
-  (when-let [base (metabot-v3.tools.u/get-card id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
-          card-metadata (lib.metadata/card mp id)
-          dataset-query (get card-metadata :dataset-query)
-          ;; pivot questions have strange result-columns so we work with the dataset-query
-          card-query (lib/query mp (if (and (#{:question} (:type base))
-                                            (#{:pivot} (:display base))
-                                            (#{:query} (:type dataset-query)))
-                                     dataset-query
-                                     card-metadata))
-          cols (lib/returned-columns card-query)
-          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
-      (-> {:id id
-           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
-           :name (lib/display-name card-query)}
-          (m/assoc-some :description (:description base)
-                        :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics card-query)))
-                        :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
+  "Get details for a card."
+  ([id]
+   (when-let [card (metabot-v3.tools.u/get-card id)]
+     (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
+  ([base metadata-provider]
+   (let [id (:id base)
+         card-metadata (lib.metadata/card metadata-provider id)
+         dataset-query (get card-metadata :dataset-query)
+         ;; pivot questions have strange result-columns so we work with the dataset-query
+         card-query (lib/query metadata-provider (if (and (#{:question} (:type base))
+                                                          (#{:pivot} (:display base))
+                                                          (#{:query} (:type dataset-query)))
+                                                   dataset-query
+                                                   card-metadata))
+         cols (lib/returned-columns card-query)
+         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
+     (-> {:id id
+          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
+          :name (lib/display-name card-query)}
+         (m/assoc-some :description (:description base)
+                       :metrics (not-empty (mapv #(convert-metric % metadata-provider) (lib/available-metrics card-query)))
+                       :queryable-foreign-key-tables (not-empty (foreign-key-tables metadata-provider cols)))))))
+
+(defn- cards-details
+  [card-type database-id cards]
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+        detail-fn (case card-type
+                    :metric metric-details
+                    :model card-details)]
+    (lib.metadata/bulk-metadata mp :metadata/card (map :id cards))
+    (map #(-> % (detail-fn mp) (assoc :type card-type)) cards)))
+
+(defn answer-sources
+  "Get the details metrics and models from the collection with name `collection-name`."
+  [metabot-collection]
+  (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-collection)
+        {metrics :metric, models :model}
+        (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
+                   detail (cards-details card-type database-id cards)]
+               detail)
+             (group-by :type))]
+    {:structured-output {:metrics (mapv #(dissoc % :type) metrics)
+                         :models  (mapv #(dissoc % :type) models)}}))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})]
+    (answer-sources "Usage analytics" #_"t b's Personal Collection"))
+  -)
 
 (defn get-table-details
   "Get information about the table or model with ID `table-id`.
