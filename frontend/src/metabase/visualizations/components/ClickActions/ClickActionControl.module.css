@@ -5,15 +5,10 @@
 
     .nested {
       color: var(--mb-color-text-white);
-      background-color: var(--mb-color-brand);
+    }
 
-      .nested {
-        color: var(--mb-color-text-white);
-      }
-
-      .ClickActionButtonIcon {
-        color: white;
-      }
+    .ClickActionButtonIcon {
+      color: white;
     }
   }
 
