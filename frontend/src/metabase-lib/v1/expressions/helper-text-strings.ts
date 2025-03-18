@@ -95,6 +95,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     structure: "DistinctIf",
     description: () =>
       t`The count of distinct values in this column for rows where the condition is true.`,
+    category: "aggregation",
     args: [
       {
         name: t`column`,
