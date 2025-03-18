@@ -64,7 +64,7 @@
 (defn friendly-cron-description
   "Convert a cron string to a human-readable description."
   [cron-string]
-  (let [[seconds minutes hours day-of-month month day-of-week _] (str/split cron-string #"\s+")
+  (let [[seconds minutes hours day-of-month month day-of-week year] (str/split cron-string #"\s+")
         timezone (schedule-timezone)]
     (cond
       ;; Hourly pattern
@@ -72,6 +72,7 @@
        (= seconds "0")
        (= minutes "0")
        (= hours "*")
+       (or (nil? year) (= year "*"))
        (not= day-of-month "?")
        (not= month "?"))
       (format "Run hourly %s" timezone)
@@ -81,6 +82,7 @@
        (= seconds "0")
        (re-matches #"\d+" minutes)
        (= hours "*")
+       (or (nil? year) (= year "*"))
        (not= day-of-month "?")
        (not= month "?"))
       (format "Run hourly at %d minutes past the hour %s"
@@ -92,6 +94,7 @@
        (= seconds "0")
        (re-matches #"\d+" minutes)
        (re-matches #"\d+" hours)
+       (or (nil? year) (= year "*"))
        (= day-of-month "*")
        (= month "*"))
       (format "Run daily at %s %s"
@@ -103,6 +106,7 @@
        (= seconds "0")
        (re-matches #"\d+" minutes)
        (re-matches #"\d+" hours)
+       (or (nil? year) (= year "*"))
        (= day-of-month "?")
        (= month "*")
        (re-matches #"\d+" day-of-week))
