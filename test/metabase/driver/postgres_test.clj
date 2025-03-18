@@ -1704,7 +1704,7 @@
   ([query db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ",
                                  CAST(" casted-field " AS " db-type ") = " (name uncasted-field) ", "
-                                 uncasted-field " "
+                                 (name uncasted-field) " "
                                  "FROM ( "
                                  (-> query qp.compile/compile :query)
                                  " ) AS subquery "
