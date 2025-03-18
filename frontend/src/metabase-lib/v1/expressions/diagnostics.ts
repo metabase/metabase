@@ -10,12 +10,7 @@ import { isExpression } from "./matchers";
 import { DiagnosticError } from "./pratt";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, StartRule, Token } from "./types";
-import {
-  getDatabase,
-  getExpressionMode,
-  isErrorWithMessage,
-  renderError,
-} from "./utils";
+import { getDatabase, getExpressionMode, renderError } from "./utils";
 
 export function diagnose(options: {
   source: string;
@@ -180,28 +175,16 @@ function checkCompiledExpression({
   expression: Expression;
   expressionIndex?: number;
 }): ErrorWithMessage | null {
-  try {
-    const error = Lib.diagnoseExpression(
-      query,
-      stageIndex,
-      getExpressionMode(startRule),
-      expression,
-      expressionIndex,
-    );
+  const error = Lib.diagnoseExpression(
+    query,
+    stageIndex,
+    getExpressionMode(startRule),
+    expression,
+    expressionIndex,
+  );
 
-    if (error) {
-      throw error;
-    }
-  } catch (error) {
-    console.warn("diagnostic error", error);
-
-    // diagnoseExpression returns some messages which are user-friendly and
-    // some which are not. If the `friendly` flag is true, we can use the
-    // error as-is; if not then use a generic message.
-    if (isErrorWithMessage(error) && error.friendly) {
-      return error;
-    }
-    return new DiagnosticError(t`Invalid expression`);
+  if (error) {
+    throw error;
   }
   return null;
 }
