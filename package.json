@@ -453,7 +453,6 @@
     "test-unit-watch:cljs": "yarn concurrently -n 'cljs,tests' 'yarn build-watch:cljs' 'yarn test-unit-keep-cljs --watch'",
     "test-visual:loki": "loki test --chromeFlags='--headless --disable-gpu'",
     "test-visual:loki-approve-diff": "ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ cp _ .loki/reference/",
-    "test-visual:loki-update": "loki update --chromeFlags='--headless --disable-gpu'",
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
     "test-visual:loki-report-open": "yarn test-visual:loki || (echo 'Visual test failed, opening report...' && yarn test-visual:loki-report && open-cli .loki/report.html)",
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
