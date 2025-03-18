@@ -10,6 +10,7 @@ import {
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
 import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
@@ -29,7 +30,10 @@ export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
 }: EditTableDataGridProps) => {
-  const { cols, rows } = data.data;
+  const { cols, rows } = useMemo(
+    () => extractRemappedColumns(data.data),
+    [data.data],
+  );
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
