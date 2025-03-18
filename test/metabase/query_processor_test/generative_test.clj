@@ -65,11 +65,8 @@
         {:gentest.default-limit/iterations 1}
         []
         (tu.gen.jvm/with-random-cards mp 6
-          ;; random query that probably contains a card join
           (let [query (lib.tu.gen/random-query mp)
-                result @(def pro (qp/process-query (lib/query mp query)))]
-            (def qqq query)
-            @(def those-cards (toucan2.core/select-fn-vec :dataset_query :model/Card {:where [:in :id lib.tu.gen/*available-card-ids*]}))
+                result (qp/process-query (lib/query mp query))]
             (testing "Successful query execution"
               (or (is (= :completed
                          (:status result)))

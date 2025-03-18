@@ -2,7 +2,8 @@
   (:require
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.test-util.generators :as lib.tu.gen]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.util.random :as tu.rng]))
 
 (defn random-card-query
   "Generate single random legacy query. For use in [[with-random-cards]]."
@@ -20,7 +21,7 @@
          [:model/Card {~id-sym :id} {:type (tu.rng/rand-nth [:question :model])
                                      :dataset_query (random-card-query ~mp)}]
          ;; TODO: should `binding` go into `do-with-random-card`?
-         (binding [lib.tu.gen/*available-card-ids* ((fnil conj #{}) lib.tu.gen/*available-card-ids* ~id-sym)]
+         (binding [lib.tu.gen/*available-card-ids* ((fnil conj []) lib.tu.gen/*available-card-ids* ~id-sym)]
            (with-random-cards ~mp ~(dec card-count) ~@body))))
     `(do ~@body)))
 
@@ -28,8 +29,9 @@
 
   (def mp (metabase.lib.metadata.jvm/application-database-metadata-provider (mt/id)))
 
-  (-> '(with-random-cards-3 mp 1 (+ 1 1))
+  (-> '(with-random-cards mp 1 (+ 1 1))
       macroexpand-1)
 
-  (-> '(with-random-cards-3 mp 2 (+ 1 1))
-      clojure.walk/macroexpand-all))
+  (-> '(with-random-cards mp 3 (+ 1 1))
+      clojure.walk/macroexpand-all)
+  )

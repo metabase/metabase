@@ -338,7 +338,7 @@
 (add-step {:kind   :join
            :weight 30})
 
-(def ^:dynamic *available-card-ids* nil)
+(def ^:dynamic *available-card-ids* [])
 
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
@@ -354,7 +354,7 @@
                                           :when (seq conditions)]
                                       [table conditions])
                                     ;; TODO: *available-card-ids* -> *available-cards*
-                                    (for [card (lib.metadata/bulk-metadata query :metadata/card *available-card-ids*)
+                                    (for [card (sort-by :id (lib.metadata/bulk-metadata query :metadata/card *available-card-ids*))
                                           :let [conditions [(lib/= (lib/+ 1 1) 2)]]]
                                       [card conditions]))]
     (when-let [[target conditions] (and (seq condition-space)
@@ -633,8 +633,7 @@
   [mp]
   (let [tables (lib.metadata/tables mp)
         ;; this is dummy -- one way or another I have to make mp call per new card
-        cards  (lib.metadata/bulk-metadata mp :metadata/card *available-card-ids*)]
+        cards  (sort-by :id (lib.metadata/bulk-metadata mp :metadata/card *available-card-ids*))]
     (->  (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
                               (inc (tu.rng/rand-int sane-iterations-limit)))
          last)))
-
