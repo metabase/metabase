@@ -1,10 +1,11 @@
 (ns metabase.util.log-test
-  (:require [clojure.test :refer [deftest is]]
-            [clojure.test.check.clojure-test :refer [defspec]]
-            [clojure.test.check.properties :as prop]
-            [malli.generator :as mg]
-            [metabase.util.log :as log]
-            [metabase.util.malli.schema :as ms]))
+  (:require
+   [clojure.test :refer [deftest is]]
+   [clojure.test.check.clojure-test :refer [defspec]]
+   [clojure.test.check.properties :as prop]
+   [malli.generator :as mg]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]))
 
 (deftest log-parse-args-test
   (is (= ["Must have at least one string in arguments" nil]
@@ -21,13 +22,19 @@
                           {:ex-message (ex-message e)
                            :ex-data (ex-data e)}))))))
 
+(def oddity
+  [:and
+   {:gen/elements [(ex-info "woops" {:problem true})
+                   (ex-info "uh o" {:problem :yea})
+                   (ex-info "oops" {:problem :nope})]}
+   (ms/InstanceOfClass Throwable)])
+
 (def ^:private valid-args [:cat
-                           [:? [:and
-                                {:gen/elements [(ex-info "woops" {:problem true})
-                                                (ex-info "uh o" {:problem :yea})
-                                                (ex-info "oops" {:problem :nope})]}
-                                (ms/InstanceOfClass Throwable)]]
-                           [:+ :string]
+                           [:? oddity]
+
+                           ;; anything printable with at least 1 string.
+                           [:* :any] :string [:* :any]
+
                            [:? :map]])
 
 (defspec can-valid-log-args
@@ -42,14 +49,14 @@
       true)))
 
 (defspec enforces-at-least-one-string
-  (prop/for-all [log-args (mg/generator [:cat [:? ::exception] [:* :string] [:? :map]])]
+  (prop/for-all [log-args (mg/generator [:cat [:? oddity] [:* :string] [:? :map]])]
     (if (seq (filter string? log-args))
       true
       (try (apply #'log/parse-args log-args)
            (catch Exception e (= "Must have at least one string in arguments" (ex-message e)))))))
 
 (defspec enforces-at-least-one-string-with-any
-  (prop/for-all [log-args (mg/generator [:cat [:? ::exception] [:* :any] [:? :map]])]
+  (prop/for-all [log-args (mg/generator [:cat [:? oddity] [:* :any] [:? :map]])]
     (if (seq (filter string? log-args))
       true
       (try (apply #'log/parse-args log-args)

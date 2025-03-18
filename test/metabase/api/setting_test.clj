@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]))
 
 (comment h2/keep-me)
