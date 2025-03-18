@@ -443,7 +443,7 @@ describe.skip("issue 40635", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -456,7 +456,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -471,7 +471,7 @@ describe.skip("issue 40635", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -1323,6 +1323,56 @@ describe("issue 37300", () => {
       cy.findByText("No results!").should("be.visible");
     });
   });
+});
+
+describe("issue 32037", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.visit("/browse/models");
+    cy.findByLabelText("Orders Model").click();
+    H.tableInteractive().should("be.visible");
+    cy.location("pathname").as("modelPathname");
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+    H.openQuestionActions("Edit query definition");
+    cy.button("Save changes").should("be.disabled");
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("1").blur();
+      cy.button("Add filter").click();
+    });
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+    H.openQuestionActions("Edit metadata");
+    cy.button("Save changes").should("be.disabled");
+    cy.findByLabelText("Description").type("123").blur();
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    verifyDiscardingChanges();
+  });
+
+  function verifyDiscardingChanges() {
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.tableInteractive().should("be.visible");
+    cy.button("Save changes").should("not.exist");
+    cy.get("@modelPathname").then(modelPathname => {
+      cy.location("pathname").should("eq", modelPathname);
+    });
+  }
 });
 
 describe("issue 51925", () => {

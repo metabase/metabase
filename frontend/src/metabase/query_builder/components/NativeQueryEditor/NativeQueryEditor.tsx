@@ -1,5 +1,11 @@
 import cx from "classnames";
-import { Component, type ForwardedRef, createRef, forwardRef } from "react";
+import {
+  Component,
+  type ForwardedRef,
+  createRef,
+  forwardRef,
+  useCallback,
+} from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
@@ -8,8 +14,14 @@ import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
+import { useDispatch } from "metabase/lib/redux";
+import {
+  setIsNativeEditorOpen,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -77,6 +89,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
 
   editorContext?: "question";
 
+  toggleEditor: () => void;
   handleResize: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
@@ -123,10 +136,7 @@ interface NativeQueryEditorState {
   isPromptInputVisible: boolean;
 }
 
-export class NativeQueryEditor extends Component<
-  Props,
-  NativeQueryEditorState
-> {
+class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
   editor = createRef<CodeMirrorEditorRef>();
 
@@ -233,10 +243,6 @@ export class NativeQueryEditor extends Component<
     }
     this.editor.current?.focus();
   }
-
-  toggleEditor = () => {
-    this.props.setIsNativeEditorOpen?.(!this.props.isNativeEditorOpen);
-  };
 
   // Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
@@ -394,7 +400,7 @@ export class NativeQueryEditor extends Component<
                 <VisibilityToggler
                   isOpen={isNativeEditorOpen}
                   readOnly={!!readOnly}
-                  toggleEditor={this.toggleEditor}
+                  toggleEditor={this.props.toggleEditor}
                 />
               )}
           </Flex>
@@ -466,11 +472,33 @@ export class NativeQueryEditor extends Component<
   }
 }
 
-const NativeQueryEditorRefWrapper = forwardRef<HTMLDivElement, Props>(
-  function _NativeQueryEditorRefWrapper(props, ref) {
-    return <NativeQueryEditor {...props} forwardedRef={ref} />;
-  },
-);
+const NativeQueryEditorWrapper = forwardRef<
+  HTMLDivElement,
+  Omit<Props, "toggleEditor">
+>(function NativeQueryEditorWrapper(props, ref) {
+  const screenSize = useNotebookScreenSize();
+  const dispatch = useDispatch();
+  const { isNativeEditorOpen } = props;
+
+  /**
+   * do not show reference sidebar on small screens automatically
+   */
+  const toggleEditor = useCallback(() => {
+    if (screenSize === "small") {
+      dispatch(setUIControls({ isNativeEditorOpen: !isNativeEditorOpen }));
+    } else {
+      dispatch(setIsNativeEditorOpen(!isNativeEditorOpen));
+    }
+  }, [dispatch, isNativeEditorOpen, screenSize]);
+
+  return (
+    <NativeQueryEditor
+      toggleEditor={toggleEditor}
+      {...props}
+      forwardedRef={ref}
+    />
+  );
+});
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
@@ -478,4 +506,4 @@ export default _.compose(
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   ExplicitSize(),
-)(NativeQueryEditorRefWrapper);
+)(NativeQueryEditorWrapper);

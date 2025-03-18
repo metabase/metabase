@@ -15,7 +15,10 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbeddingIframe,
+} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
@@ -462,13 +465,15 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.header,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || !!embedOptions.additional_info,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || !!embedOptions.additional_info,
 );
 
 export const getTabs = createSelector([getDashboard], dashboard => {
