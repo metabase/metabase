@@ -188,39 +188,26 @@
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
 
-(def ^:private segment-id 100)
-
-(def ^:private segment-definition
-  (:query (lib.tu.macros/mbql-query venues
-            {:aggregation [[:count]]
-             :filter      [:and
-                           [:> $id [:* $price 11]]
-                           [:contains $name "BBQ" {:case-sensitive true}]]})))
-
-(def ^:private segments-db
-  {:segments [{:id          segment-id
-               :name        "PriceID-BBQ"
-               :table-id    (meta/id :venues)
-               :definition  segment-definition
-               :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]})
-
-(def ^:private metadata-provider
-  (lib.tu/mock-metadata-provider meta/metadata-provider segments-db))
-
-(def ^:private segment-clause
-  [:segment {:lib/uuid (str (random-uuid))} segment-id])
-
-(def ^:private query-with-segment
-  (-> (lib/query metadata-provider (meta/table-metadata :venues))
-      (lib/filter (lib/= (meta/field-metadata :venues :id) 5))
-      (lib/filter segment-clause)))
-
-(def ^:private segment-metadata
-  (lib.metadata/segment query-with-segment segment-id))
-
 (deftest ^:parallel is-segment-metadata-test
-  (is (true? (lib.js/is-segment-metadata segment-metadata)))
-  (is (false? (lib.js/is-segment-metadata 42))))
+  (let [segment-id         100
+        segment-definition (:query (lib.tu.macros/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :filter      [:and
+                                                    [:> $id [:* $price 11]]
+                                                    [:contains $name "BBQ" {:case-sensitive true}]]}))
+        segments-db        {:segments [{:id         segment-id
+                                        :name        "PriceID-BBQ"
+                                        :table-id    (meta/id :venues)
+                                        :definition  segment-definition
+                                        :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]}
+        metadata-provider  (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
+        segment-clause     [:segment {:lib/uuid (str (random-uuid))} segment-id]
+        query-with-segment (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                               (lib/filter (lib/= (meta/field-metadata :venues :id) 5))
+                               (lib/filter segment-clause))
+        segment-metadata   (lib.metadata/segment query-with-segment segment-id)]
+    (is (true? (lib.js/is-segment-metadata segment-metadata)))
+    (is (false? (lib.js/is-segment-metadata 42)))))
 
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
