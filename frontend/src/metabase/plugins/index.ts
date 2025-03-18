@@ -34,6 +34,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -60,6 +61,7 @@ import type {
   ModelCacheRefreshStatus,
   Pulse,
   Revision,
+  TableId,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
@@ -528,9 +530,18 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export interface SimpleDataPickerProps {
+  filterByDatabaseId: number | null;
+  selectedEntity?: TableId;
+  isInitiallyOpen: boolean;
+  triggerElement: ReactNode;
+  setSourceTableFn: (tableId: TableId) => void;
+  entityTypes: EmbeddingEntityType[];
+}
+
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
-  SimpleDataPicker: (_props: any) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

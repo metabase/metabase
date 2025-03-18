@@ -31,6 +31,7 @@ function setup(opts?: SetupOpts) {
   const onClick = jest.fn();
   renderWithProviders(
     <SimpleDataPicker
+      entityTypes={["model", "table"]}
       isInitiallyOpen={true}
       setSourceTableFn={onClick}
       filterByDatabaseId={null}

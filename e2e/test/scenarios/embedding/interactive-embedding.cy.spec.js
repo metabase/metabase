@@ -340,8 +340,15 @@ describe("scenarios > embedding > full app", () => {
       },
     };
 
-    function startNewEmbeddingQuestion() {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+    /**
+     * @param {object} option
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
+    function startNewEmbeddingQuestion({ searchParameters } = {}) {
+      H.visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { new_button: true, ...searchParameters },
+      });
       cy.button("New").click();
       H.popover().findByText("Question").click();
     }
@@ -382,6 +389,33 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    });
+
+    it('should respect "entity_types" search parameter (EMB-272)', () => {
+      cy.log("test default `entity_types`");
+      startNewEmbeddingQuestion();
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Orders" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
+
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Orders" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      });
+
+      cy.log('test `entity_types=["model"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "model" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Orders" }).should("not.exist");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
     });
 
     describe("table", () => {
