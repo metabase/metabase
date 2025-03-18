@@ -27,7 +27,11 @@ export function applyPasses(
   return res;
 }
 
-// ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
+/**
+ * Groups case/if assertion/result pairs and adds a default result.
+ *
+ * ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
+ */
 export const adjustCaseOrIf: CompilerPass = tree =>
   modify(tree, node => {
     if (isCallExpression(node) && isCaseOrIfOperator(node[0])) {
@@ -55,18 +59,36 @@ export const adjustCaseOrIf: CompilerPass = tree =>
     return node;
   });
 
+/**
+ * Adds options to offset.
+ *
+ * ["offset", X, Y] becomes ["offset", {}, X, Y]
+ */
 export const adjustOffset: CompilerPass = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
-      const [operator, expr, n] = node;
+      const [operator] = node;
       if (operator === "offset") {
-        const opts = {};
-        return withAST([operator, opts, expr, n], node);
+        if (node.length === 3) {
+          const [, expr, n] = node;
+          const opts = {};
+          return withAST([operator, opts, expr, n], node);
+        }
+        if (node.length === 4) {
+          const [, opts, expr, n] = node;
+          return withAST([operator, opts, expr, n], node);
+        }
       }
     }
     return node;
   });
 
+/**
+ * Replaces "case-insensitive" and "include-current" options with an options object.
+ *
+ * ["contains", X, Y, "case-insensitive"] becomes ["contains", X, Y, {"case-sensitive": false}]
+ * ["contains", X, Y] becomes ["contains", X, Y]
+ */
 export const adjustOptions: CompilerPass = tree =>
   modify(tree, node => {
     if (isCallExpression(node)) {
@@ -125,9 +147,13 @@ export const adjustMultiArgOptions: CompilerPass = tree =>
     return node;
   });
 
+/**
+ * Replaces boolean fields X with [=, X, true] in places where a boolean is expected.
+ *
+ * Assumes adjustCaseOrIf has already been run
+ */
 export const adjustBooleans: CompilerPass = tree =>
   modify(tree, node => {
-    // Assumes adjustCaseOrIf has already been run
     if (isCaseOrIf(node)) {
       const [operator, pairs, options] = node;
       return [
