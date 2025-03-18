@@ -116,6 +116,7 @@
   [limit-spec thunk]
   (let [limit-fn (limit-spec->limit-fn limit-spec)
         seed (atom *initial-seed*)]
+    (log/infof "INITIAL SEED: %d" *initial-seed*)
     ;; TODO: Double check binding works as expected. "exprs executed first and _bound_ in parallel"
     (binding [*original-report* clojure.test/report
               clojure.test/report report]
@@ -123,6 +124,7 @@
         (when (limit-fn)
           (binding [*iteration-seed* @seed
                     tu.rng/*generator* (Random. @seed)]
+            (log/info "ITERATION SEED: %d" *iteration-seed*)
             (try
               (thunk)
               (catch Exception e
