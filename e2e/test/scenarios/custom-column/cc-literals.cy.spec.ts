@@ -57,17 +57,31 @@ describe("scenarios > custom column > literals", () => {
   });
 
   it("should support literals in filters", () => {
+    function addCustomColumn({
+      name,
+      expression,
+    }: {
+      name: string;
+      expression: string;
+    }) {
+      H.getNotebookStep("data").button("Custom column").click();
+      H.enterCustomColumnDetails({ name, formula: expression });
+      H.popover().button("Done").click();
+    }
+
     function testFilterLiteral({
+      notebookStep,
       filterExpression,
       filterDisplayName,
       expectedRowCount,
     }: {
+      notebookStep: "data" | "expression";
       filterExpression: string;
       filterDisplayName: string;
       expectedRowCount: number;
     }) {
       cy.log("add filter");
-      H.getNotebookStep("data").button("Filter").click();
+      H.getNotebookStep(notebookStep).button("Filter").click();
       H.popover().findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: filterExpression,
@@ -91,14 +105,36 @@ describe("scenarios > custom column > literals", () => {
 
     H.openProductsTable({ mode: "notebook" });
     testFilterLiteral({
+      notebookStep: "data",
       filterExpression: "False",
       filterDisplayName: "false",
       expectedRowCount: 0,
     });
     testFilterLiteral({
+      notebookStep: "data",
       filterExpression: "True",
       filterDisplayName: "true",
       expectedRowCount: 200,
+    });
+    addCustomColumn({
+      name: "TrueColumn",
+      expression: "True",
+    });
+    testFilterLiteral({
+      notebookStep: "expression",
+      filterExpression: "[TrueColumn]",
+      filterDisplayName: "TrueColumn",
+      expectedRowCount: 200,
+    });
+    addCustomColumn({
+      name: "FalseColumn",
+      expression: "False",
+    });
+    testFilterLiteral({
+      notebookStep: "expression",
+      filterExpression: "[FalseColumn]",
+      filterDisplayName: "FalseColumn",
+      expectedRowCount: 0,
     });
   });
 
