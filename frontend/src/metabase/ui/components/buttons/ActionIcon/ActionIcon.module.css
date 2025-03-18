@@ -1,4 +1,8 @@
 .root {
+  /* Should mirror heights of Input.module.css */
+  --ai-size-input-md: rem(40px);
+  --ai-size-input-xs: rem(32px);
+
   &[data-disabled] {
     color: var(--mb-color-text-light);
     pointer-events: all;

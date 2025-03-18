@@ -204,7 +204,8 @@
   }
 }
 
-.popoverWrapper {
+/* Make selector more specific to an HTML element, to override default popover class styles */
+div.popoverWrapper {
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 }
 

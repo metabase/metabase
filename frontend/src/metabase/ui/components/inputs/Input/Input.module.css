@@ -1,6 +1,7 @@
 .wrapper {
   --input-height-md: rem(40px);
   --input-height-xs: rem(32px);
+  --input-placeholder-color: var(--mb-color-text-light);
   --inset-inline-end: 0;
 
   line-height: 1rem;
