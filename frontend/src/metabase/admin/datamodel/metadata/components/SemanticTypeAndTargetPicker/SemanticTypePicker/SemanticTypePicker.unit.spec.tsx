@@ -13,7 +13,13 @@ interface SetupOpts {
 function TestComponent({ initialValue = null }: SetupOpts) {
   const [value, setValue] = useState<string | null>(initialValue);
 
-  return <SemanticTypePicker value={value} onChange={setValue} />;
+  return (
+    <SemanticTypePicker
+      baseType={TYPE.Date}
+      value={value}
+      onChange={setValue}
+    />
+  );
 }
 
 const setup = ({ initialValue }: SetupOpts = {}) => {
