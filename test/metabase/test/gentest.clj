@@ -1,4 +1,5 @@
 (ns metabase.test.gentest
+  (:refer-clojure :exclude [iterate])
   (:require
    [clojure.test]
    [java-time.api :as t]
@@ -161,3 +162,55 @@
                                                           {:type ::execution
                                                            :bindings ~quoted-bindings}
                                                           e#)))))))))
+
+;;;;;;;;; another approach; defgentest + gentest/iterate
+
+(defmacro iterate
+  [limit-spec bindings & body]
+  (let [safer-bindings (map-indexed (fn [i form]
+                                      (if (zero? (mod i 2))
+                                        form
+                                        `(try ~form
+                                              (catch Exception e#
+                                                (throw (ex-info "Generation failed"
+                                                                {:type ::generation
+                                                                 :form (quote ~form)}
+                                                                e#))))))
+                                    bindings)
+        quoted-bindings (into [] (comp (take-nth 2)
+                                       (mapcat (fn [binding-sym]
+                                                 [`(quote ~binding-sym) binding-sym])))
+                              bindings)]
+    `(do-with-gentest ~limit-spec (fn []
+                                    (let [~@safer-bindings]
+                                      (try
+                                        ~@body
+                                        (catch Exception e#
+                                          (throw (ex-info "Execution failed"
+                                                          {:type ::execution
+                                                           :bindings ~quoted-bindings}
+                                                          e#)))))))))
+
+(def ^:dynamic *context-seed* nil)
+
+(defn context-seed
+  []
+  (or (config/config-long :mb-gentest-seed)
+      (.nextLong ^Random (Random.))))
+
+(comment
+  (context-seed)
+  )
+
+;; TODO: reporting?
+(defmacro defgentest
+  [test-sym & body]
+  `(clojure.test/deftest ~test-sym
+     ;; TODO: separate root instead of when
+     (when (config/config-bool :mb-gentest-run)
+       (let [seed# (context-seed)]
+         ;; TODO: Print
+         (binding [*context-seed* seed#
+                   tu.rng/*generator* (Random. seed#)]
+           (log/fatal seed#)
+           ~@body)))))

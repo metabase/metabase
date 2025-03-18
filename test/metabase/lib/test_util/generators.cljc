@@ -632,7 +632,7 @@
   [mp]
   (let [tables (lib.metadata/tables mp)
         ;; this is dummy -- one way or another I have to make mp call per new card
-        cards  *available-cards*]
-    (->  (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
-                              (inc (tu.rng/rand-int sane-iterations-limit)))
-         last)))
+        cards *available-cards*]
+    (-> (random-queries-from (lib/query mp (tu.rng/rand-nth (concat tables cards)))
+                             (inc (tu.rng/rand-int sane-iterations-limit)))
+        last)))
