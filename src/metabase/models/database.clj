@@ -136,12 +136,6 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn check-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
-  []
-  (doseq [database (t2/select :model/Database)]
-    (check-and-schedule-tasks-for-db! database)))
-
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here
 
