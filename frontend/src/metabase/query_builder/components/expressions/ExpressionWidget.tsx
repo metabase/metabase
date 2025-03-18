@@ -192,6 +192,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         shortcuts={shortcuts}
         error={error}
         hasHeader={Boolean(header)}
+        onCloseEditor={onClose}
       />
 
       <LayoutFooter>

@@ -24,6 +24,7 @@ import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 import type { ClauseType, StartRule } from "../types";
 
+import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import type { Shortcut } from "./Shortcuts";
@@ -46,6 +47,7 @@ type EditorProps<S extends StartRule> = {
   readOnly?: boolean;
   error?: ErrorWithMessage | Error | null;
   hasHeader?: boolean;
+  onCloseEditor?: () => void;
 
   onChange: (
     clause: ClauseType<S> | null,
@@ -73,6 +75,7 @@ export function Editor<S extends StartRule = "expression">(
     reportTimezone,
     shortcuts,
     hasHeader,
+    onCloseEditor,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -82,6 +85,7 @@ export function Editor<S extends StartRule = "expression">(
 
   const {
     source,
+    hasSourceChanged,
     onSourceChange,
     onBlur,
     formatExpression,
@@ -91,6 +95,10 @@ export function Editor<S extends StartRule = "expression">(
     ...props,
     metadata,
     error,
+  });
+
+  const { showModal, closeModal } = useCloseModal({
+    allowPopoverExit: source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -201,6 +209,13 @@ export function Editor<S extends StartRule = "expression">(
           />
         </LayoutSidebar>
       )}
+
+      {showModal && (
+        <CloseModal
+          onKeepEditing={closeModal}
+          onDiscardChanges={onCloseEditor}
+        />
+      )}
     </>
   );
 }
@@ -214,7 +229,6 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
-  error: prevError,
 }: EditorProps<S> & {
   metadata: Metadata;
 }) {
@@ -222,6 +236,7 @@ function useExpression<S extends StartRule = "expression">({
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
+  const errorRef = useRef<ErrorWithMessage | null>(null);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
@@ -259,6 +274,7 @@ function useExpression<S extends StartRule = "expression">({
   const handleChange = useCallback<typeof onChange>(
     (clause, error) => {
       setIsValidated(true);
+      errorRef.current = error;
       onChange(clause, error);
     },
     [onChange],
@@ -288,7 +304,7 @@ function useExpression<S extends StartRule = "expression">({
         metadata,
         name,
       });
-      if (immediate || prevError) {
+      if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
         handleChange(clause, error);
       } else {
@@ -304,7 +320,7 @@ function useExpression<S extends StartRule = "expression">({
       expressionIndex,
       handleChange,
       debouncedOnChange,
-      prevError,
+      // prevError,
     ],
   );
 
