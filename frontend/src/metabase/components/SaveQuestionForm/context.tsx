@@ -10,6 +10,7 @@ import {
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -67,10 +68,16 @@ export const SaveQuestionProvider = ({
   );
 
   const currentUser = useSelector(getCurrentUser);
+  const { id: collectionId } = useValidatedEntityId({
+    type: "collection",
+    id: userTargetCollection,
+  });
+
   const targetCollection =
-    currentUser && userTargetCollection === "personal"
+    collectionId ||
+    (currentUser && userTargetCollection === "personal"
       ? currentUser.personal_collection_id
-      : userTargetCollection;
+      : userTargetCollection);
 
   const initialValues: FormValues = useMemo(
     () => getInitialValues(originalQuestion, question, defaultCollectionId),
