@@ -5,7 +5,7 @@ import {
 
 import { Api } from "./api";
 
-const validEntityTypes = [
+export const VALID_ENTITY_TYPES = [
   "action",
   "card",
   "collection",
@@ -25,7 +25,7 @@ const validEntityTypes = [
   "user",
 ] as const;
 
-export type EntityType = (typeof validEntityTypes)[number];
+export type EntityType = (typeof VALID_ENTITY_TYPES)[number];
 
 type TranslateEntityIdRequest = Partial<Record<EntityType, BaseEntityId[]>>;
 
