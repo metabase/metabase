@@ -1,19 +1,19 @@
-# Function: ~~ModifyQuestion()~~
+## ~~ModifyQuestion()~~
 
 ```ts
 function ModifyQuestion(__namedParameters: InteractiveQuestionProps): Element
 ```
 
-## Parameters
+### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `__namedParameters` | `InteractiveQuestionProps` |
+| `__namedParameters` | [`InteractiveQuestionProps`](../InteractiveQuestion/InteractiveQuestion.md#interactivequestionprops) |
 
-## Returns
+### Returns
 
 `Element`
 
-## Deprecated
+### Deprecated
 
 Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.
