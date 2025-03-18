@@ -77,7 +77,7 @@ export function FunctionBrowser({
         {filteredClauses.map(group => (
           <>
             <Text
-              size="xs"
+              size="sm"
               p="md"
               pb="sm"
               c="var(--mb-color-text-medium)"
@@ -125,7 +125,7 @@ function FunctionBrowserItem({
       onMouseDown={handleMouseDown}
     >
       <dt className={S.name}>
-        <Text size="sm">{clause.structure}</Text>
+        <Text size="md">{clause.structure}</Text>
       </dt>
       <dd className={S.description}>
         <Text size="sm" c="var(--mb-color-text-medium)">
