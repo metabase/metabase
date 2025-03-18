@@ -792,21 +792,13 @@
     (lib.types.isa/searchable? field) :search
     :else                             :none))
 
-(mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
-  "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column                :- ::lib.schema.metadata/column]
-  (when (lib.types.isa/foreign-key? column)
-    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-      (lib.metadata/field metadata-providerable remap-field-id))))
-
 (mu/defn- search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (let [col (or (when (lib.types.isa/primary-key? column)
                   (when-let [name-field (:name-field column)]
                     (lib.metadata/field metadata-providerable (u/the-id name-field))))
-                (remapped-field metadata-providerable column)
+                (lib.metadata/remapped-field metadata-providerable column)
                 column)]
     (when (lib.types.isa/searchable? col)
       col)))

@@ -75,22 +75,6 @@
                       {:lib/source source-type})
                      (update :lib/desired-column-alias unique-name-fn))))))))))
 
-(defn- remapped-columns
-  "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
-  (when (and include-remaps?
-             (= (lib.util/canonical-stage-index query stage-number) 0))
-    (for [column source-cols
-          :let [remapped (lib.field/remapped-field query column)]
-          :when remapped]
-      (assoc remapped
-             :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
-             :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number remapped)
-             :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
-                                           (:name remapped))
-             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-             :ident                    (str "remapped__" (:ident column) "__to__" (:ident remapped))))))
-
 (mu/defn- breakouts-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
@@ -102,7 +86,7 @@
                       :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) breakout)
                       :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout))))]
     (not-empty (concat cols
-                       (remapped-columns query stage-number cols options)))))
+                       (lib.metadata.calculation/remapped-columns query stage-number cols options)))))
 
 (mu/defn- aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query                    :- ::lib.schema/query
@@ -135,7 +119,7 @@
                  :lib/source               source
                  :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
                  :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata))))
-        (as-> $cols (concat $cols (remapped-columns query stage-number $cols options)))
+        (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
         not-empty)))
 
 (mu/defn- summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
@@ -298,10 +282,10 @@
        (expressions-metadata query stage-number unique-name-fn {}))
      ;; 3: remapped columns - which are only when requested with `:include-remaps?`, and only on the first stage.
      ;; (Otherwise they've already been added.)
-     (remapped-columns query stage-number source-columns options)
+     (lib.metadata.calculation/remapped-columns query stage-number source-columns options)
      ;; 4: columns added by joins at this stage
      (when include-joined?
-       (lib.join/all-joins-visible-columns query stage-number unique-name-fn)))))
+       (lib.join/all-joins-visible-columns query stage-number options)))))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
@@ -366,7 +350,7 @@
          (concat
           source-cols
           (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
-          (remapped-columns query stage-number source-cols options)
+          (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
           (lib.join/all-joins-expected-columns query stage-number options)))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native

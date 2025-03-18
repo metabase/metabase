@@ -35,6 +35,11 @@
   [column-name card-entity-id]
   (str "native__" card-entity-id "__" column-name))
 
+(defn remap-ident
+  "Returns the `:ident` for a \"remapped\" field."
+  [target-ident source-ident]
+  (str "remapped__" source-ident "__to__" target-ident))
+
 (def ^:dynamic *enforce-idents-present*
   "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the
   query is in a broken state, such as during the cleanup of dangling references in `remove-clause`.

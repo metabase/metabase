@@ -285,18 +285,20 @@
                        ensure-previous-stages-have-metadata
                        (ensure-previous-stages-have-metadata -1 options))
           join-cols       (lib.metadata.calculation/returned-columns
-                           join-query -1 (lib.util/query-stage join-query -1) options)
+                           join-query -1 (lib.util/query-stage join-query -1)
+                           (assoc options :include-remaps? false))
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields
                                   :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
                               (assoc (lib.equality/find-matching-column join-field join-cols)
-                                     :lib/source-uuid (lib.options/uuid join-field))))]
-      (mapv (fn [field-metadata]
-              (->> (column-from-join-fields query stage-number field-metadata join-alias)
-                   (adjust-ident join)
-                   (add-source-and-desired-aliases join unique-name-fn)))
-            field-metadatas))))
+                                     :lib/source-uuid (lib.options/uuid join-field))))
+          cols  (mapv (fn [field-metadata]
+                        (->> (column-from-join-fields query stage-number field-metadata join-alias)
+                             (adjust-ident join)
+                             (add-source-and-desired-aliases join unique-name-fn)))
+                      field-metadatas)]
+      (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join
   [query stage-number join options]
@@ -306,14 +308,14 @@
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
+   options        :- lib.metadata.calculation/VisibleColumnsOptions]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/visible-columns query
-                                                            stage-number
-                                                            join
-                                                            {:unique-name-fn               unique-name-fn
-                                                             :include-implicitly-joinable? false})))
+                  (lib.metadata.calculation/visible-columns
+                   query stage-number join
+                   (-> options
+                       (select-keys [:unique-name-fn :include-remaps?])
+                       (assoc :include-implicitly-joinable? false)))))
         (:joins (lib.util/query-stage query stage-number))))
 
 (mu/defn all-joins-expected-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
