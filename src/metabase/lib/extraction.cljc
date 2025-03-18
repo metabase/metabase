@@ -48,6 +48,12 @@
    :column       column
    :display-name (i18n/tru "Host")})
 
+(defn path-extraction [column]
+  {:lib/type     ::extraction
+   :tag          :path
+   :column       column
+   :display-name (i18n/tru "Path")})
+
 (defn- email-extractions [column]
   [(domain-extraction    column)
    (host-extraction      column)])
@@ -55,7 +61,8 @@
 (defn- url-extractions [column]
   [(domain-extraction    column)
    (subdomain-extraction column)
-   (host-extraction      column)])
+   (host-extraction      column)
+   (path-extraction      column)])
 
 (mu/defn column-extractions :- [:maybe [:sequential ::lib.schema.extraction/extraction]]
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
@@ -93,7 +100,8 @@
     ;; URLs and emails
     :domain          (lib.expression/domain column)
     :subdomain       (lib.expression/subdomain column)
-    :host            (lib.expression/host column)))
+    :host            (lib.expression/host column)
+    :path            (lib.expression/path column)))
 
 (mu/defn extract :- ::lib.schema/query
   "Given a query, stage and extraction as returned by [[column-extractions]], apply that extraction to the query."
