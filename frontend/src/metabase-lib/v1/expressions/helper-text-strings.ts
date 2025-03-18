@@ -358,11 +358,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "path",
     structure: "path",
-    description: () => t`Extracts the path (eg. "/my/path") from a URL`,
+    description: () =>
+      t`Extracts the pathname from a URL. E.g., path("https://www.example.com/path/to/page.html?key1=value") would return "/path/to/page.html".`,
     args: [
       {
         name: t`url`,
-        description: t`Extracts the pathname from a URL. E.g., path("https://www.example.com/path/to/page.html?key1=value") would return "/path/to/page.html".`,
+        description: t`The URL column to extract the pathname from.`,
         example: ["dimension", t`URL`],
       },
     ],
