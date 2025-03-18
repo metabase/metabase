@@ -4,7 +4,8 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID, PEOPLE } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -1371,5 +1372,69 @@ describe("scenarios > question > custom column > distinctIf", () => {
     H.popover().button("Update").click();
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "147");
+  });
+});
+
+describe("scenarios > question > custom column > path", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use a path function", () => {
+    const CC_NAME = "URL_URL";
+    const questionDetails = {
+      name: "path from url",
+      query: {
+        "source-table": PEOPLE_ID,
+        limit: 2,
+        expressions: {
+          [CC_NAME]: [
+            "concat",
+            "http://",
+            ["domain", ["field", PEOPLE.EMAIL, null]],
+            ".com/my/path",
+          ],
+        },
+      },
+      type: "model",
+    };
+
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    });
+
+    cy.get("@modelId").then(modelId => {
+      H.setModelMetadata(modelId, field => {
+        if (field.name === CC_NAME) {
+          return { ...field, semantic_type: "type/URL" };
+        }
+
+        return field;
+      });
+
+      H.visitModel(modelId);
+    });
+
+    H.openNotebook();
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: `Path([${CC_NAME}])`,
+      name: "extracted path",
+    });
+
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("table-scroll-container").scrollTo("right");
+    cy.findAllByRole("gridcell")
+      .filter(":contains('/my/path')")
+      .should("have.length", "4");
+    cy.findAllByRole("gridcell")
+      .filter(":contains('/my/path')")
+      .eq(3)
+      .should("have.text", "/my/path");
   });
 });
