@@ -709,7 +709,7 @@
       (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
         (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
                       slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Invalid token"
+                                                               (throw (ex-info "Slack API error: token_revoked"
                                                                                {:error-type :slack/invalid-token})))]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}

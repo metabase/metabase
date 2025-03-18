@@ -1,6 +1,7 @@
 (ns metabase.integrations.slack-test
   (:require
    [clj-http.fake :as http-fake]
+   [clojure.set :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.integrations.slack :as slack]
@@ -68,13 +69,13 @@
       (tu/with-temporary-setting-values [slack-app-token "test-token"]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid token"
+             #"Slack API error: invalid_auth"
              (thunk)))
-        (try
-          (thunk)
-          (catch clojure.lang.ExceptionInfo e
-            (is (= {:slack-token "Invalid token"}
-                   (:errors (ex-data e))))))))))
+        (let [expected-error-markers (set {:error-code "invalid_auth" :error-type :slack/invalid-token})]
+          (try
+            (thunk)
+            (catch clojure.lang.ExceptionInfo e
+              (is (s/subset? expected-error-markers (set (ex-data e)))))))))))
 
 (defn- test-auth!
   "Test that a Slack API `endpoint` function works as expected when Slack token is missing or invalid."
@@ -237,7 +238,7 @@
             (try
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
-                (is (= "Invalid token" (ex-message e)))
+                (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
                   (is (=? {:from "notifications@metabase.com",
                            :subject "Your Slack connection stopped working",
@@ -252,7 +253,7 @@
             (try
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
-                (is (= "Invalid token" (ex-message e)))
+                (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
 
         (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
