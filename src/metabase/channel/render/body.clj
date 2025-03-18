@@ -714,8 +714,11 @@
 
 (defn- get-funnel-data
   "Return data for funnel, repackaging if for a visualizer built dashcard"
-  [card dashcard data]
-  (if (render.util/is-visualizer-dashcard? dashcard)
+  [card dashcard data funnel-type]
+  (if (and (render.util/is-visualizer-dashcard? dashcard)
+           (= "funnel" funnel-type))
+    ;; Funnel charts with funnel type funnel should use the backend visualizer data merge
+    ;; Funnel charts with funnel type bar should use the static viz shared visualizer data merge
     (let [cards-with-data (series-cards-with-data dashcard card data)
           visualizer-settings (get-in dashcard [:visualization_settings :visualization])]
       (merge-visualizer-data cards-with-data visualizer-settings))
@@ -724,9 +727,10 @@
 (mu/defmethod render :funnel :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
   (let [viz-settings   (if (render.util/is-visualizer-dashcard? dashcard)
-                         (get dashcard :visualization_settings)
+                         (get-in dashcard [:visualization_settings :visualization :settings])
                          (get card :visualization_settings))
-        data       (get-funnel-data card dashcard data)]
+        funnel-type  (get viz-settings :funnel.type)
+        data       (get-funnel-data card dashcard data funnel-type)]
     (if (= (get viz-settings :funnel.type) "bar")
       (render :javascript_visualization render-type timezone-id card dashcard data)
       (render :funnel_normal render-type timezone-id card dashcard data))))
