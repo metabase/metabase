@@ -5,7 +5,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -68,6 +68,10 @@ const URL_CASES = [
     option: "Host",
     value: "yahoo.com",
     example: "example.com, online.com",
+  },
+  {
+    option: "Path",
+    example: "/en/docs/feature",
   },
 ];
 
@@ -287,6 +291,53 @@ H.describeWithSnowplow("extract action", () => {
           example,
           extraction: "Extract domain, subdomain…",
         });
+      });
+    });
+
+    it("should be able to extract path from URL column", () => {
+      const CC_NAME = "Path";
+      const questionDetails = {
+        name: "path from url",
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 2,
+          expressions: {
+            [CC_NAME]: [
+              "concat",
+              "http://",
+              ["domain", ["field", PEOPLE.EMAIL, null]],
+              ".com/my/path",
+            ],
+          },
+        },
+        type: "model",
+      };
+
+      H.createQuestion(questionDetails, {
+        wrapId: true,
+        idAlias: "modelId",
+      });
+
+      cy.get("@modelId").then(modelId => {
+        H.setModelMetadata(modelId, field => {
+          if (field.name === CC_NAME) {
+            return { ...field, semantic_type: "type/URL" };
+          }
+
+          return field;
+        });
+
+        cy.visit(`/model/${modelId}`);
+        // TODO: await for query
+      });
+
+      const urlCase = URL_CASES.find(c => c.option === "Path");
+      extractColumnAndCheck({
+        column: CC_NAME,
+        option: urlCase.option,
+        value: "/my/path",
+        example: urlCase.example,
+        extraction: "Extract domain, subdomain…",
       });
     });
   });
