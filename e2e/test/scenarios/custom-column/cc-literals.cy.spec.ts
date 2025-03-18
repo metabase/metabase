@@ -9,10 +9,16 @@ describe("scenarios > custom column > literals", () => {
   it("should support literals in custom columns", () => {
     const columns = [
       { name: "True", expression: "True", value: "true" },
-      // TODO false doesn't work atm. Uncomment when it is fixed
-      // { name: "false", expression: "False", value: "false" },
+      { name: "False", expression: "False", value: "false" },
       { name: "Text", expression: '"abc"', value: "abc" },
       { name: "Number", expression: "10", value: "10" },
+      { name: "DateString", expression: '"2024-01-01"', value: "2024-01-01" },
+      {
+        name: "DateTimeString",
+        expression: '"2024-01-01T10:20:00"',
+        value: "2024-01-01T10:20:00",
+      },
+      { name: "TimeString", expression: '"10:20"', value: "10:20" },
       { name: "Column", expression: "[Number]", value: "10" },
       { name: "Expression", expression: "[Number] + [Number]", value: "20" },
     ];
@@ -32,6 +38,9 @@ describe("scenarios > custom column > literals", () => {
         }
         H.enterCustomColumnDetails({ formula: expression, name });
         H.popover().button("Done").click();
+        H.getNotebookStep("expression").findByText(name).click();
+        H.CustomExpressionEditor.value().should("eq", expression);
+        H.popover().button("Cancel").click();
       });
     }
 
@@ -55,12 +64,20 @@ describe("scenarios > custom column > literals", () => {
       filterDisplayName: string;
       expectedRowCount: number;
     }) {
+      cy.log("add filter");
       H.getNotebookStep("data").button("Filter").click();
       H.popover().findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: filterExpression,
       });
       H.popover().button("Done").click();
+
+      cy.log("assert expression");
+      H.getNotebookStep("filter").findByText(filterDisplayName).click();
+      H.CustomExpressionEditor.value().should("eq", filterExpression);
+      H.popover().button("Cancel").click();
+
+      cy.log("assert query results");
       H.visualize();
       H.assertQueryBuilderRowCount(expectedRowCount);
       H.openNotebook();
