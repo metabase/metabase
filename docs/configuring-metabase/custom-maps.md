@@ -28,16 +28,16 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 
 ## Custom region maps
 
-Metabase comes with two built-in [region maps](../questions/visualizations/map.md#region-maps): world map with countries and United States map with states. If you need a map of other regions - like EU countries or NYC neighborhoods - you can upload a GeoJSON file containing region information.
+Metabase comes with two built-in [region maps](../questions/visualizations/map.md#region-maps): world map with countries and United States map with states.
 
-If you need a GeoJSON file for specific custom regions, you can often find it just by searching online for "[Your region] + geojson", like "NYC neighborhoods GeoJSON", because community members and government organization have already developed map files for many common regions. You can also create your own GeoJSON with a tool like [MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/).
+If you need a map of other regions - like EU countries or NYC neighborhoods - you can upload a GeoJSON file containing region information. You can often find GeoJSON maps by searching online for "[Your region] + geojson", like "NYC neighborhoods GeoJSON." Many community members and government organizations have already developed map files for common regions. You can also create your own GeoJSON with a tool like [MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/).
 
 Your GeoJSON file should:
 
 - Be less than 5 MB in size.
 - Contain polygon features defining regions (not just points or coordinates)
 - Use geographic coordinates (latitude and longitude) to define region polygons. Metabase doesn't support projected coordinates, so you'll need to convert projected coordinates to geographic coordinates.
-- Accessible by a public URL
+- Accessible by a public URL. Currently, you can't upload a GeoJSON to Metabase.
 
 To add a custom map:
 
@@ -50,8 +50,8 @@ To add a custom map:
 ![Uploading a custom GeoJSON](./images/custom-geojson.png)
 
 - **Name of the map** will be displayed in the region selector for [custom region maps](../questions/visualizations/map.md#custom-regions)
-- **Region's identifier** is a GeoJSON field that identifies your region. The values in this field should match how the regions are referenced in your data. It does not need to match the display name.
-- **Region's display name** is a GeoJSON field that specifies how your region name will be displayed on a map. It can be different from region's identifier.
+- **Region's identifier** is a GeoJSON field that identifies your region. The values in this field should match how the regions are referenced in your data. The field does not need to match the display name .
+- **Region's display name** is a GeoJSON field that specifies how your region name will be displayed on a map. This field can be different from region's identifier.
 
 To pre-load one or more region maps when Metabase starts, you can use the environment variable [`MB_CUSTOM_GEOJSON`](./environment-variables.md#mb_custom_geojson) or a [config file option](./config-file.md) `custom-geojson` .
 
