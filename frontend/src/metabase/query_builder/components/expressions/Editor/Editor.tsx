@@ -14,7 +14,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { format } from "metabase-lib/v1/expressions";
+import { MBQL_CLAUSES, format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
@@ -125,25 +125,31 @@ export function Editor<S extends StartRule = "expression">(
     extensions: [customTooltip],
   });
 
-  const handleFunctionBrowserClauseClick = useCallback(
-    (displayName: string) => {
-      const view = ref.current?.view;
-      if (!view) {
-        return;
-      }
-      view?.focus();
-      view?.dispatch(
-        view.state.changeByRange(range => ({
-          range: EditorSelection.range(
-            range.to + displayName.length + 1,
-            range.to + displayName.length + 1,
-          ),
-          changes: [{ from: range.from, insert: `${displayName}()` }],
-        })),
-      );
-    },
-    [],
-  );
+  const handleFunctionBrowserClauseClick = useCallback((name: string) => {
+    const view = ref.current?.view;
+    if (!view) {
+      return;
+    }
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    const text =
+      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
+    const pos =
+      clause.args.length > 0
+        ? clause.displayName.length + 1
+        : clause.displayName.length;
+
+    view?.focus();
+    view?.dispatch(
+      view.state.changeByRange(range => ({
+        range: EditorSelection.range(pos, pos),
+        changes: [{ from: range.from, insert: text }],
+      })),
+    );
+  }, []);
 
   return (
     <>

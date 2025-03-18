@@ -12,7 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { type HelpText, MBQL_CLAUSES } from "metabase-lib/v1/expressions";
+import type { HelpText } from "metabase-lib/v1/expressions";
 
 import type { StartRule } from "../types";
 
@@ -110,8 +110,7 @@ function FunctionBrowserItem({
     (evt: MouseEvent<HTMLDivElement>) => {
       evt.preventDefault();
       if (clause.name) {
-        const structure = MBQL_CLAUSES[clause.name].displayName;
-        onClauseClick?.(structure);
+        onClauseClick?.(clause.name);
       }
     },
     [onClauseClick, clause.name],
