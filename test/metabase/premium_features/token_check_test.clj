@@ -184,4 +184,4 @@
         (is (zero? (premium-features/active-users-count)))))))
 
 (deftest token-contents-test
-  (is (= "what is here" token-check/*token-features*)))
+  (is (= "what is here" (token-check/*token-features*))))
