@@ -57,6 +57,7 @@ export const InteractiveQuestionDefaultView = ({
     isSaveEnabled,
     targetCollection,
     withDownloads,
+    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
@@ -76,7 +77,10 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  if (!question) {
+  if (
+    !question ||
+    (isCardIdError && originalId !== "new" && originalId !== null)
+  ) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
