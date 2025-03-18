@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { Box, Center, Flex, Text } from "metabase/ui";
+import { Center, Flex, Text } from "metabase/ui";
 import { getDataSources } from "metabase/visualizer/selectors";
 
 import { DatasetList } from "./DatasetList";
@@ -19,11 +19,6 @@ export const DataManager = () => {
         border: `1px solid var(--mb-color-border)`,
       }}
     >
-      <Box px={12} py={8}>
-        <Text fw="bold" mb={3}>
-          {t`Data`}
-        </Text>
-      </Box>
       {dataSources.length > 0 ? (
         <DatasetList />
       ) : (
