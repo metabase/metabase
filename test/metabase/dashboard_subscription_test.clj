@@ -245,7 +245,7 @@
                       [:card     :map]
                       [:dashcard :map]
                       [:result   :map]
-                      [:type     [:= :card]]]]
+                      [:type     [:= :dashcard]]]]
                     result))))))
 
 (deftest ^:parallel execute-dashboard-test-2
@@ -976,8 +976,8 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (defn- result-attachment
-  [part]
-  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/realize-data-rows part)]
+  [_card result _options]
+  (let [{{:keys [rows]} :data, :as result}  (channel.shared/realize-result-rows result)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
          (with-open [os baos]

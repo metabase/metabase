@@ -1,6 +1,7 @@
 (ns metabase.notification.send
   (:require
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
@@ -128,6 +129,15 @@
   [notification-info]
   (some-> notification-info meta :notification/triggered-at-ns u/since-ms))
 
+(defn- sanize-notification
+  [notification]
+  (case (:payload_type notification)
+    :notification/card
+    (-> notification
+        (m/dissoc-in [:notification_card :card]))
+
+    notification))
+
 (mu/defn ^:private send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [{:keys [id payload_type] :as notification-info} :- ::notification.payload/Notification]
@@ -143,7 +153,7 @@
         (task-history/with-task-history {:task          "notification-send"
                                          :task_details {:notification_id       id
                                                         :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-          (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
+          (let [notification-payload (sanize-notification (notification.payload/notification-payload (dissoc hydrated-notification :handlers)))]
             (if (notification.payload/should-send-notification? notification-payload)
               (do
                 (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
@@ -374,3 +384,5 @@
     (if (:notification/sync? options)
       (send-notification-sync! notification)
       (send-notification-async! notification))))
+
+#_(send-notification-sync! (t2/select-one :model/Notification 4))

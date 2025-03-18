@@ -35,7 +35,7 @@
                                (:skip_if_empty dashboard_subscription)
                                (remove (fn [{part-type :type :as part}]
                                          (and
-                                          (= part-type :card)
+                                          (= part-type :dashcard)
                                           (zero? (get-in part [:result :row_count] 0))))))
      :dashboard              dashboard
      :style                  {:color_text_dark   channel.render/color-text-dark

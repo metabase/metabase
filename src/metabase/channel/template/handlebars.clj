@@ -29,6 +29,8 @@
 
 (defn- wrap-context
   [context]
+  ;; TEMPORARY DISABLE TO MAKE IT EASY TO DEBUG
+  #_context
   (walk/postwalk
    #(if (keyword? %)
       (u/qualified-name %)
