@@ -37,6 +37,9 @@ serdes/meta:
   model: Table
 - id: BIRTH_DATE
   model: Field
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
 entity_id: QTEhFM69RUzvOmN54uzW3
