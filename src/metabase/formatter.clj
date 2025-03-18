@@ -74,7 +74,7 @@
      - 0.100 -> 1 (counting 1, ignoring trailing zeros)
      - 1.23 -> 2 (counting 23)
      - 1.0 -> 0 (no significant figures after decimal)"
-  [value decimal]
+  [value]
   (if (zero? value)
     0
     (let [;; Convert number to string with appropriate precision
@@ -83,7 +83,7 @@
                        java.lang.Double (format "%.20f" value)
                        java.lang.Float (format "%.20f" value)
                        (str value))
-          decimal-idx (str/index-of val-string decimal)]
+          decimal-idx (str/index-of val-string ".")]
       (if decimal-idx
         (let [;; Get everything after the decimal point
               after-decimal (subs val-string (inc decimal-idx))
@@ -175,7 +175,7 @@
                                   percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                   :else       (if (>= (abs scaled-value) 1)
                                                 (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                                (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
+                                                (let [n-figs (sig-figs-after-decimal scaled-value)]
                                                   (if (> n-figs 2)
                                                     (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
                                                     decimals-in-value))))
