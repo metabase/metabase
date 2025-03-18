@@ -206,7 +206,10 @@ export const Visualizer = (props: VisualizerProps) => {
                   cursor: "pointer",
                 }}
               >
-                <div onClick={() => handlers.toggle()}>Adjust columns</div>
+                <Button
+                  variant="transparent"
+                  onClick={() => handlers.toggle()}
+                >{t`Adjust columns`}</Button>
                 <Icon name="chevrondown" />
               </Flex>
             </Flex>
