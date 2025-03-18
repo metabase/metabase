@@ -21,7 +21,6 @@ const getLabels = (question: Question) => {
 
   if (type === "model") {
     return {
-      image: EmptyModel,
       title: t`You can filter and summarize any model, and save your results as a question`,
       message: t`If you want to edit the model itself, click on the model's three-dot menu and select Edit query definition.`,
     };
