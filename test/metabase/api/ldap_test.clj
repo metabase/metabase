@@ -22,8 +22,33 @@
         (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details)))
 
       (testing "Invalid LDAP settings return a server error"
-        (mt/user-http-request :crowberto :put 500 "ldap/settings"
-                              (assoc (ldap-test-details) :ldap-password "wrong-password")))
+        (is (= {:errors {:ldap-password "Password was incorrect"}}
+               (mt/user-http-request :crowberto :put 500 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-password "wrong-password")))))
+
+      (testing "Unreachable port setting returns a server error"
+        (is (= {:errors {:ldap-host "Wrong host or port"
+                         :ldap-port "Wrong host or port"}}
+               (mt/user-http-request :crowberto :put 500 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-port 5299)))))
+
+      (testing "LDAP settings that don't match the provided schema error"
+        (is (= {:specific-errors {:ldap-enabled ["should be a boolean, received: 0"]}
+                :errors {:ldap-enabled "nullable boolean"}}
+               (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-enabled 0))))
+        (is (= {:specific-errors {:ldap-host ["should be a string, received: 0"]}
+                :errors {:ldap-host "nullable string"}}
+               (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-host 0))))
+        (is (= {:specific-errors {:ldap-password ["should be a string, received: 0"]}
+                :errors {:ldap-password "nullable string"}}
+               (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-password 0))))
+        (is (= {:specific-errors {:ldap-port ["should be a positive int, received: 0"]}
+                :errors {:ldap-port "nullable integer greater than 0"}}
+               (mt/user-http-request :crowberto :put 400 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-port "0")))))
 
       (testing "Valid LDAP settings can still be saved if port is a integer (#18936)"
         (mt/user-http-request :crowberto :put 200 "ldap/settings"

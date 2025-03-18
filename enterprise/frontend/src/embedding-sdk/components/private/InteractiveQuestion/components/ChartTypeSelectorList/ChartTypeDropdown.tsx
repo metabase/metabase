@@ -61,8 +61,9 @@ export const ChartTypeDropdown = (menuProps: MenuProps) => {
       <Menu.Target>
         <ToolbarButton
           data-testid="chart-type-selector-button"
-          label={selectedElem.label}
-          icon={selectedElem.iconName}
+          disabled={!selectedElem}
+          label={selectedElem?.label}
+          icon={selectedElem?.iconName}
           isHighlighted={false}
           variant="default"
           px={undefined}
