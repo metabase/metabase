@@ -185,7 +185,8 @@
   upper
   lower
   offset
-  text]
+  text
+  integer]
  [lib.extraction
   column-extractions
   extract

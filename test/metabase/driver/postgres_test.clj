@@ -1899,3 +1899,23 @@
             (is (= :type/Text (-> cols first :base_type)))
             (doseq [[casted-value _equals? _uncasted-value] rows]
               (is (string? casted-value)))))))))
+
+;; integer()
+
+(defn- check-integer-query
+  ([query db-type uncasted-field]
+   (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
+  ([query db-type uncasted-field casted-field]
+   (mt/native-query {:query (str "SELECT " casted-field ", "
+                                 (case db-type
+                                   ;; need to do regex because some strings have 0 in front
+                                   "TEXT"    (str (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'")
+                                   "INTEGER" (str "CAST(" casted-field " AS " db-type ") = " (name uncasted-field))
+                                   "FLOAT"   (str "ABS(CAST(" casted-field " AS " db-type ") - " (name uncasted-field) ") < 1"))
+                                 ", "
+                                 (name uncasted-field) " "
+                                 "FROM ( "
+                                 (-> query qp.compile/compile :query)
+                                 " ) AS subquery "
+                                 "LIMIT 100")})))
+

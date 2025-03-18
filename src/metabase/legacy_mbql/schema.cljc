@@ -413,7 +413,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -625,6 +625,10 @@
 
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :cast}} integer
+  x [:or NumericExpressionArg
+     StringExpressionArg])
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -938,7 +942,7 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 

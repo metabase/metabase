@@ -639,6 +639,10 @@
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
 
+(defmethod sql.qp/->honeysql [:postgres :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
         [pattern-sql & pattern-args]       (sql/format-expr pattern {:nested true})]
