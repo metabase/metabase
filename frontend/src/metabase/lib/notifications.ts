@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
@@ -293,7 +293,7 @@ export const formatNotificationScheduleDescription = ({
     case "monthly": {
       if (schedule_hour != null) {
         const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day");
-        return t`at ${ampm}`;
+        return c("time with AM/PM label").t`at ${ampm}`;
       }
       break;
     }

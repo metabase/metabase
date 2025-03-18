@@ -124,7 +124,7 @@ export const HourlyOnSpecificMinute = {
   args: {
     schedule: {
       schedule_type: "hourly",
-      shedule_hour: null,
+      schedule_hour: null,
       schedule_minute: 10,
     },
     longVerb: false,
