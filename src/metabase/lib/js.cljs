@@ -678,7 +678,9 @@
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
                                         ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+      ;; Ignore :info since it contains the randomized :card-entity-id.
+      (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
