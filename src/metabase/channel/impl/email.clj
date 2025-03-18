@@ -23,9 +23,7 @@
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [ring.util.codec :as codec])
-  (:import
-   (net.redhogs.cronparser CronExpressionDescriptor Options)))
+   [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 

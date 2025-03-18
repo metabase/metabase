@@ -12,6 +12,8 @@
   (:import
    (net.redhogs.cronparser CronExpressionDescriptor Options)))
 
+(set! *warn-on-reflection* true)
+
 (defn validate-channel-details
   "Validate a value against a schema and throw an exception if it's invalid.
   The :errors key are used on the UI to display field-specific error messages."

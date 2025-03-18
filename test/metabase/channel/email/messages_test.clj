@@ -8,7 +8,6 @@
    [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.util.cron :as u.cron]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt])
   (:import
