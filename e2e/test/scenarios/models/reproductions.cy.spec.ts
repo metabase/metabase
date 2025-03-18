@@ -1350,7 +1350,6 @@ describe("issue 32037", () => {
   });
 
   it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
-    cy.log("when editing model's metadata");
     H.openQuestionActions("Edit metadata");
     cy.button("Save changes").should("be.disabled");
     cy.findByLabelText("Description").type("123").blur();
