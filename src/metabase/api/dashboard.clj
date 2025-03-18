@@ -879,7 +879,7 @@
     (-> dashcard
         ;; This is a downside to creating a new card. If we find more pockets like this we should pivot to reusing
         ;; the existing card.
-        (update :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
+        (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
         (assoc :dashboard_id dashboard-id
                :card_id card-id))))
 
