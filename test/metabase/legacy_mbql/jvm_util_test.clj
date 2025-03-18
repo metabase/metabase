@@ -88,6 +88,19 @@
     nil         "www.dot.va.gov"
     "licensing" "www.licensing.dot.va.gov"))
 
+(t/deftest ^:parallel path-regex-on-urls-test
+  (t/are [path url] (= path (re-find @#'mbql.jvm-u/path-regex url))
+    "/some.txt"          "https://cdbaby.com/some.txt"
+    "/some/path/Vatini"  "https://fema.gov/some/path/Vatini?search=foo"
+    "/some/path/Turbitt" "https://www.geocities.jp/some/path/Turbitt?search=foo"
+    "/some/path/Kirsz"   "https://jalbum.net/some/path/Kirsz?search=foo"
+    "/some/path/Curdell" "https://usa.gov/some/path/Curdell?search=foo"
+    "/some/path/Marritt" "http://taxes.va.gov/some/path/Marritt?search=foo"
+    "/some/path/Cambden" "http://log.stuff.gmpg.org/some/path/Cambden?search=foo"
+    "/"                  "http://hatena.ne.jp/"
+    nil                  "//telegraph.co.uk?foo=bar#tail"
+    "/some/path"         "bbc.co.uk/some/path?search=foo"))
+
 (t/deftest ^:parallel desugar-host-and-domain-test
   (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.jvm-u/host-regex)]
            (mbql.u/desugar-expression [:host [:field 1 nil]]))
@@ -97,4 +110,7 @@
         "`domain` should desugar to a `regex-match-first` clause with the domain regex")
   (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.jvm-u/subdomain-regex)]
            (mbql.u/desugar-expression [:subdomain [:field 1 nil]]))
-        "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"))
+        "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex")
+  (t/is (= [:regex-match-first [:field 1 nil] (str @#'mbql.jvm-u/path-regex)]
+           (mbql.u/desugar-expression [:path [:field 1 nil]]))
+        "`path` should desugar to a `regex-match-first` clause with the path regex"))
