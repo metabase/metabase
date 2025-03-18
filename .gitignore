@@ -39,7 +39,6 @@
 /docs/**/node_modules
 /docs/**/package.json
 /docs/**/yarn.lock
-/bin/embedding-sdk/templates/yarn.lock
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*

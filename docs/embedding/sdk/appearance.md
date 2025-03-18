@@ -1,14 +1,5 @@
 ---
-version: v0.53
-has_magic_breadcrumbs: true
-show_category_breadcrumb: true
-show_title_breadcrumb: true
-category: Embedding
-title: Embedded analytics SDK - appearance
-source_url: >-
-  https://github.com/metabase/metabase/blob/master/docs/embedding/sdk/appearance.md
-layout: new-docs
-latest: true
+title: "Embedded analytics SDK - appearance"
 ---
 
 # Embedded analytics SDK - appearance
