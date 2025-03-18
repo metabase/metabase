@@ -73,6 +73,13 @@
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))
 
+(defn- latest-task-history-entry
+  [task-name]
+  (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
+                    :model/TaskHistory
+                    {:order-by [[:started_at :desc]]
+                     :where [:= :task (name task-name)]}))
+
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
     (notification.tu/with-notification-testing-setup!
@@ -110,7 +117,6 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (testing "send-notification! retries on failure"
-          (t2/delete! :model/TaskHistory :task "channel-send")
           (testing "and record exception in task history"
             (let [retry-count (atom 0)
                   send-args   (atom nil)
@@ -130,7 +136,7 @@
                                       :retry_errors      (mt/malli=? [:sequential [:map {:closed true}
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
-                      (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
+                      (latest-task-history-entry "channel-send"))))))))))
 
 (deftest notification-send-skip-retry-still-report-failed-task-history-test
   (notification.tu/with-notification-testing-setup!
@@ -143,7 +149,6 @@
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (testing (str "if channel/send! throws an exception and should-skip-retry? returns true"
                       "the task history should still be recorded and status is failed")
-          (t2/delete! :model/TaskHistory :task "channel-send")
           (testing "and record exception in task history"
             (let [send!       (fn [& _args]
                                 (throw (ex-info "Failed to send" {:metadata 42})))]
@@ -160,7 +165,7 @@
                                       :retry_errors      (mt/malli=? [:sequential [:map {:closed true}
                                                                                    [:timestamp :string]
                                                                                    [:message :string]]])}}
-                      (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
+                      (latest-task-history-entry "channel-send"))))))))))
 
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
   (let [metrics (bean (.getMetrics retry))]
@@ -196,6 +201,8 @@
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/email} fake-email-notification)
           (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
+          (testing "no retry errors recorded"
+            (is (zero? (-> (latest-task-history-entry "channel-send") :task_details :retry_errors count))))
           (is (= 1 (count @mt/inbox)))))))
   (testing "send email succeeds hiding SMTP host not set error"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
@@ -271,13 +278,6 @@
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry))))))))
-
-(defn- latest-task-history-entry
-  [task-name]
-  (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
-                    :model/TaskHistory
-                    {:order-by [[:started_at :desc]]
-                     :where [:= :task (name task-name)]}))
 
 (deftest send-channel-record-task-history-test
   (with-redefs [notification.send/default-retry-config {:max-attempts            4
