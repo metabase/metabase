@@ -3,6 +3,8 @@ import _ from "underscore";
 import { QA_POSTGRES_PORT } from "e2e/support/cypress_data";
 import type { DatabaseData } from "metabase-types/api";
 
+import { interceptPerformanceRoutes } from "./performance/helpers/e2e-performance-helpers";
+
 const { H } = cy;
 
 describe("admin > database > database routing", () => {
@@ -194,9 +196,61 @@ describe("admin > database > database routing", () => {
     //   .should("exist");
   });
 
-  it("should interact with other settings correctly", () => {});
-  // - [ ] should not be able to turn db routing on if other conflicting features are enabled
-  // - [ ] should not be able to turn coflicting features on if db routing is enabled
+  it("should not allow turning on db routing on if other conflicting features are enabled", () => {
+    cy.log("setup");
+    interceptPerformanceRoutes();
+    cy.visit("/admin");
+    cy.findByRole("link", { name: "Performance" }).click();
+    cy.findByRole("tab", { name: "Model persistence" }).click();
+    cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
+    cy.wait("@enablePersistence");
+    cy.visit("/admin/databases/2");
+
+    cy.log("should be disabled if model actions is enabled");
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model actions")
+      .should("be.checked");
+    assertDbRoutingDisabled();
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model actions")
+      .click({ force: true });
+    assertDbRoutingNotDisabled();
+
+    cy.log("should be disabled if model persistence is enabled");
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("not.be.checked")
+      .click({ force: true });
+    assertDbRoutingDisabled();
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("be.checked")
+      .click({ force: true });
+    assertDbRoutingNotDisabled();
+
+    cy.log("should be disabled if uploads are enabled for the database");
+    cy.visit("/admin/settings/uploads");
+    cy.findByLabelText("Upload Settings Form")
+      .findByText("Select a database")
+      .click();
+    H.popover().findByText("Writable Postgres12").click();
+    cy.findByLabelText("Upload Settings Form")
+      .findByText("Select a schema")
+      .click();
+
+    H.popover().findByText("public").click();
+    cy.findByLabelText("Upload Settings Form").button("Enable uploads").click();
+
+    cy.visit("/admin/databases/2");
+    assertDbRoutingDisabled();
+  });
+
+  it.skip("should not allow turning conflicting features if db routing is enabled", () => {
+    // [ ] turn on db routing
+    // [ ] model persistence
+    // [ ] model actions
+    // [ ] uploads
+  });
 
   it.skip("should show db routing settings in the right circumstances", () => {});
   // - [ ] should not show for users w/o the token feature
@@ -207,6 +261,21 @@ describe("admin > database > database routing", () => {
 
 function dbRoutingSection() {
   return cy.findByTestId("database-routing-section");
+}
+
+function assertDbRoutingNotDisabled() {
+  dbRoutingSection().within(() => {
+    cy.findByText(/Database routing can't be enabled if/).should("not.exist");
+    cy.findByLabelText("Enable database routing").should("not.be.disabled");
+  });
+}
+function assertDbRoutingDisabled() {
+  dbRoutingSection().within(() => {
+    cy.findByText(/Database routing can't be enabled if/).should("exist");
+    cy.findByLabelText("Enable database routing")
+      .should("not.be.checked")
+      .should("be.disabled");
+  });
 }
 
 const BASE_POSTGRES_MIRROR_DB_INFO = {
