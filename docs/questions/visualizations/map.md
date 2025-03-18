@@ -12,8 +12,8 @@ description: "Maps in Metabase allow you to visualize geographical data either u
 
 Metabase has three types of map visualization:
 
-- [**Pin map**](#pin-maps) for putting individual data points on a map using longitude and latitude coordinates;
-- [**Grid map**](#grid-maps) for distributing a large number of points over a specified area.
+- [**Pin map**](#pin-map) for putting individual data points on a map using longitude and latitude coordinates;
+- [**Grid map**](#grid-map) for distributing a large number of points over a specified area.
 - [**Region map**](#region-maps) for data broken out by regions, like countries or states. Metabase comes with two built-in maps, but you can upload your own custom regions.
 
 When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographical data have the [right metadata](../../data-modeling/metadata-editing.md).
