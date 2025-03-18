@@ -56,6 +56,8 @@
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -749,6 +751,11 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
+(defn- coerce-schema [data schemas]
+  (reduce (fn [data [k schema]] (update data k #(mc/coerce schema % mtx/string-transformer)))
+          data
+          schemas))
+
 (defn- xform-one [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
@@ -764,7 +771,8 @@
                     :when (and (not= res ::skip)
                                (or (some? res)
                                    (contains? ingested import-k)))]
-                [k res])))))
+                [k res]))
+        (coerce-schema (:schema spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (make-spec model-name nil)]
