@@ -3,8 +3,6 @@ on:
   schedule:
     - cron: 30 5 * * 2 # tuesday morning, UTC
   workflow_dispatch:
-  pull_request:
-    types: [ synchronize ] # FIXME for testing
 
 permissions:
   contents: write
