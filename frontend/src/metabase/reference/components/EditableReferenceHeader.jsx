@@ -84,12 +84,7 @@ const EditableReferenceHeader = ({
           ]
         )}
         {user && user.is_superuser && !isEditing && (
-          <Button
-            aria-label={t`Edit`}
-            icon="pencil"
-            style={{ fontSize: 14 }}
-            onClick={startEditing}
-          >
+          <Button icon="pencil" style={{ fontSize: 14 }} onClick={startEditing}>
             {t`Edit`}
           </Button>
         )}

@@ -762,7 +762,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
       });
 
-      cy.button("Edit").should("be.visible").realClick();
+      cy.button(/Edit/).should("be.visible").realClick();
 
       cy.findByPlaceholderText("No description yet").should("be.visible");
       cy.get("main").findByText("Something’s gone wrong").should("not.exist");
