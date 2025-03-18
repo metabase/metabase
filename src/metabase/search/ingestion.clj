@@ -17,19 +17,13 @@
 (set! *warn-on-reflection* true)
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^BlockingQueue queue (queue/delay-queue))
+(defonce ^:private ^BlockingQueue queue (queue/blocking-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
 (def ^:private delay-ms
   "The minimum time we must wait before updating the index. This delay exists to dedupe and batch changes efficiently."
   100)
-
-(def ^:private max-batch-items
-  "The maximum number of update messages to process together.
-  Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
-  the tables within a given database when it is renamed."
-  50)
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -150,20 +144,28 @@
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue delay-ms update))
+           (queue/put! queue update))
          (track-queue-size!)
          true)))))
 
-(defn- report->prometheus! [duration report]
+(defn report->prometheus!
+  "Send a search index update report to Prometheus"
+  [duration report]
   (analytics/inc! :metabase-search/index-ms duration)
   (doseq [[model cnt] report]
     (analytics/inc! :metabase-search/index {:model model} cnt)))
 
-(queue/listen! "search-index-update" queue bulk-ingest!
-               {:result-handler  (fn [result duration _]
-                                   (when (seq result)
-                                     (report->prometheus! duration result)
-                                     (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
-                :err-handler     #(analytics/inc! :metabase-search/index-error)
-                :finally-handler track-queue-size!
-                :max-batch-items max-batch-items})
+(defn start-listener!
+  "Starts the ingestion listener on the queue"
+  []
+  (queue/listen! "search-index-update" queue bulk-ingest!
+                 {:result-handler     (fn [result duration _]
+                                        (when (seq result)
+                                          (report->prometheus! duration result)
+                                          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
+                  :err-handler        #(analytics/inc! :metabase-search/index-error)
+                  :finally-handler    track-queue-size!
+     ;; Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
+     ;; the tables within a given database when it is renamed.
+                  :max-batch-messages 50
+                  :max-next-ms        delay-ms}))
