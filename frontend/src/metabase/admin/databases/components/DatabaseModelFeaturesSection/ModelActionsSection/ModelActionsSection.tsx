@@ -9,11 +9,13 @@ import { Description, Error, Label } from "../ModelFeatureToggles";
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;
   onToggleModelActionsEnabled: (enabled: boolean) => Promise<void>;
+  disabled: boolean;
 }
 
 export function ModelActionsSection({
   hasModelActionsEnabled,
   onToggleModelActionsEnabled,
+  disabled,
 }: ModelActionsSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,7 @@ export function ModelActionsSection({
           }
           labelPosition="left"
           error={error}
+          disabled={disabled}
         />
       </Flex>
       <Box maw="22.5rem">

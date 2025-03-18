@@ -20,13 +20,15 @@ import {
 } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
+export interface DestinationDatabasesListProps {
+  primaryDatabaseId: DatabaseId;
+  previewCount?: number;
+}
+
 export const DestinationDatabasesList = ({
   primaryDatabaseId,
   previewCount = Infinity,
-}: {
-  primaryDatabaseId: DatabaseId;
-  previewCount?: number;
-}) => {
+}: DestinationDatabasesListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
   const destinationDbsReq = useListDatabasesQuery({
@@ -89,11 +91,16 @@ const DestinationDatabasesListItem = ({
   isAdmin: boolean;
 }) => {
   return (
-    <Flex justify="space-between" my="md">
+    <Flex
+      justify="space-between"
+      my="md"
+      data-testid="destination-db-list-item"
+    >
       <Flex align="center" gap="sm">
         <DatabaseConnectionHealthInfo
           databaseId={database.id}
           displayText="tooltip"
+          data-testid="destination-db-health-info"
         />
         <Text>{database.name}</Text>
       </Flex>

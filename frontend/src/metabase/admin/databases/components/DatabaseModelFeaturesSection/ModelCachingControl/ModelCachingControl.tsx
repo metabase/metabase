@@ -17,6 +17,7 @@ import { Description, Error, Label } from "../ModelFeatureToggles";
 
 interface Props {
   database: Database;
+  disabled: boolean;
 }
 
 interface ErrorResponse {
@@ -29,7 +30,7 @@ function isLackPermissionsError(response: ErrorResponse) {
   return response?.data?.message?.startsWith("Lack permissions");
 }
 
-export function ModelCachingControl({ database }: Props) {
+export function ModelCachingControl({ database, disabled }: Props) {
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
 
@@ -73,6 +74,7 @@ export function ModelCachingControl({ database }: Props) {
           labelPosition="left"
           checked={isEnabled}
           onChange={handleCachingChange}
+          disabled={disabled}
         />
       </Flex>
       <Box maw="22.5rem">

@@ -14,10 +14,9 @@ export const DestinationDatabasesModal = ({
 }: {
   params: { databaseId: string };
 }) => {
-  const dispatch = useDispatch();
-
   const primaryDbId = parseInt(params.databaseId, 10);
 
+  const dispatch = useDispatch();
   const handleCloseModal = () => {
     dispatch(push(Urls.viewDatabase(primaryDbId)));
   };
