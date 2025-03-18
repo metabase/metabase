@@ -92,6 +92,7 @@ jobs:
             --head $BRANCH_NAME \
             --title "Update translations $DATE" \
             --body "Synchronize translations with Crowdin" \
+            --label "no-backport" \
             --label "Customization/i18n")
 
           PR_NUMBER=${URL##*/}
