@@ -684,7 +684,7 @@ class Question {
         includeOriginalCardId: false,
       });
       if (currentCardSerialized !== origCardSerialized) {
-        return false;
+        return true;
       }
 
       return !Lib.areLegacyQueriesEqual(
