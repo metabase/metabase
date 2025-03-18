@@ -33,6 +33,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
+  withDownloads?: boolean;
 } & Pick<
   SaveQuestionProps<SDKCollectionReference>,
   "targetCollection" | "saveToCollection"
@@ -64,7 +65,7 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "targetCollection"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
   Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
