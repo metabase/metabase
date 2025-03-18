@@ -88,6 +88,10 @@ export const useConfirmRouteLeaveModal = ({
   );
 
   useEffect(
+    /**
+     * We need to reset the state in case programmatic navigation from confirmNavigation effect
+     * does not cause useConfirmRouteLeaveModal hook to unmount.
+     */
     function resetState() {
       setIsConfirmed(false);
       setOpened(false);
