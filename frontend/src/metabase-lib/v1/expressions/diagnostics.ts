@@ -7,6 +7,7 @@ import type { Expression } from "metabase-types/api";
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { isExpression } from "./matchers";
+import { DiagnosticError } from "./pratt";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, StartRule, Token } from "./types";
 import {
@@ -48,7 +49,7 @@ export function diagnoseAndCompile<S extends StartRule>({
 }): CompileResult<S> {
   try {
     if (!source || source.length === 0) {
-      throw { message: t`Expression is empty` };
+      throw new DiagnosticError(t`Expression is empty`);
     }
 
     const { tokens, errors } = tokenize(source);
@@ -81,7 +82,7 @@ export function diagnoseAndCompile<S extends StartRule>({
     });
 
     if (!isExpression(result.expression) || result.expressionClause === null) {
-      const error = result.error ?? { message: t`Invalid expression` };
+      const error = result.error ?? new DiagnosticError(t`Invalid expression`);
       throw error;
     }
 
@@ -122,9 +123,13 @@ function checkOpenParenthesisAfterFunction(
           next.type !== TOKEN.Operator ||
           next.op !== OPERATOR.OpenParenthesis
         ) {
-          return {
-            message: t`Expecting an opening parenthesis after function ${functionName}`,
-          };
+          return new DiagnosticError(
+            t`Expecting an opening parenthesis after function ${functionName}`,
+            {
+              pos: token.start,
+              len: token.end - token.start,
+            },
+          );
         }
       }
     }
@@ -136,21 +141,17 @@ function checkOpenParenthesisAfterFunction(
 function checkMatchingParentheses(tokens: Token[]): ErrorWithMessage | null {
   const mismatchedParentheses = countMatchingParentheses(tokens);
   if (mismatchedParentheses === 1) {
-    return {
-      message: t`Expecting a closing parenthesis`,
-    };
+    return new DiagnosticError(t`Expecting a closing parenthesis`);
   } else if (mismatchedParentheses > 1) {
-    return {
-      message: t`Expecting ${mismatchedParentheses} closing parentheses`,
-    };
+    return new DiagnosticError(
+      t`Expecting ${mismatchedParentheses} closing parentheses`,
+    );
   } else if (mismatchedParentheses === -1) {
-    return {
-      message: t`Expecting an opening parenthesis`,
-    };
+    return new DiagnosticError(t`Expecting an opening parenthesis`);
   } else if (mismatchedParentheses < -1) {
-    return {
-      message: t`Expecting ${-mismatchedParentheses} opening parentheses`,
-    };
+    return new DiagnosticError(
+      t`Expecting ${-mismatchedParentheses} opening parentheses`,
+    );
   }
   return null;
 }
@@ -200,7 +201,7 @@ function checkCompiledExpression({
     if (isErrorWithMessage(error) && error.friendly) {
       return error;
     }
-    return { message: t`Invalid expression` };
+    return new DiagnosticError(t`Invalid expression`);
   }
   return null;
 }
@@ -242,11 +243,13 @@ function checkMissingCommasInArgumentList(
     if (token.type === TOKEN.Identifier) {
       if (nextToken && nextToken.type !== TOKEN.Operator) {
         const text = source.slice(nextToken.start, nextToken.end);
-        return {
-          message: `Expecting operator but got ${text} instead`,
-          pos: nextToken.start,
-          len: nextToken.end - nextToken.start,
-        };
+        return new DiagnosticError(
+          `Expecting operator but got ${text} instead`,
+          {
+            pos: nextToken.start,
+            len: nextToken.end - nextToken.start,
+          },
+        );
       }
     }
   }
