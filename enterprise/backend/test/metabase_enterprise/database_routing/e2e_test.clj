@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is]]
-   [metabase-enterprise.sandbox.test-util :as sandbox.test-util]
+   [metabase-enterprise.test :as met]
    [metabase.db :as mdb]
    [metabase.driver.h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -42,19 +42,19 @@
 (deftest mirror-databases-get-used
   (mt/with-premium-features #{:database-routing}
     (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
-      (sandbox.test-util/with-user-attributes!
+      (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
-        (sandbox.test-util/with-user-attributes!
+        (met/with-user-attributes!
           :rasta
-          {"db_name" "foo"}
-          (sandbox.test-util/with-user-attributes!
+          {"db_name" "mirror-db-1"}
+          (met/with-user-attributes!
             :lucky
-            {"db_name" "bar"}
+            {"db_name" "mirror-db-2"}
             (with-temp-dbs! [router-db mirror-db-1 mirror-db-2]
               ;; configure the Mirror Databases
-              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "foo" :router_database_id (u/the-id router-db)})
-              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "bar" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "mirror-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "mirror-db-2" :router_database_id (u/the-id router-db)})
               ;; sync the Router database
               (sync/sync-database! router-db)
               ;; Configure the router database and set up a card that uses it.
@@ -77,7 +77,7 @@
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}
     (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
-      (sandbox.test-util/with-user-attributes!
+      (met/with-user-attributes!
         :crowberto
         {"db_name" "nonexistent_database_name"}
         (with-temp-dbs! [router-db mirror-db]
@@ -103,10 +103,10 @@
 (deftest caching-works
   (mt/with-premium-features #{:database-routing}
     (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
-      (sandbox.test-util/with-user-attributes!
+      (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
-        (sandbox.test-util/with-user-attributes!
+        (met/with-user-attributes!
           :rasta
           {"db_name" "mirror database"}
           (with-temp-dbs! [router-db mirror-db]

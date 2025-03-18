@@ -493,6 +493,7 @@
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
+   :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute
