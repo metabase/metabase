@@ -1,14 +1,18 @@
 {
   "entryPoints": [
-    "enterprise/frontend/src/embedding-sdk"
+    "enterprise/frontend/src/embedding-sdk/components/public/*"
   ],
+  "entryPointStrategy": "expand",
   "out": "docs/typedoc",
   "plugin": [
-    "typedoc-plugin-markdown"
+    "typedoc-plugin-markdown",
+    "typedoc-plugin-missing-exports",
+    "typedoc-plugin-merge-modules"
   ],
   "readme": "none",
-  "flattenOutputFiles": true,
+  "flattenOutputFiles": false,
   "excludePrivate": true,
+  "excludeExternals": true,
   "excludeInternal": true,
   "excludeNotDocumented": true,
   "excludeReferences": false,
@@ -27,22 +31,21 @@
     "Accessor",
     "GetSignature",
     "SetSignature",
-    "TypeAlias",
     "Reference"
   ],
+  "treatWarningsAsErrors": true,
   "hideBreadcrumbs": true,
   "useCodeBlocks": true,
   "expandObjects": true,
   "expandParameters": true,
   "hidePageHeader": true,
-  "hidePageTitle": false,
+  "hidePageTitle": true,
   "hideGroupHeadings": true,
   "disableSources": true,
   "indexFormat": "table",
   "parametersFormat": "table",
   "interfacePropertiesFormat": "table",
   "classPropertiesFormat": "table",
-  "typeAliasPropertiesFormat": "table",
   "enumMembersFormat": "table",
   "propertyMembersFormat": "table",
   "typeDeclarationFormat": "table",
@@ -54,5 +57,15 @@
     "hideSources": true,
     "hideValues": false,
     "leftAlignHeaders": false
-  }
+  },
+  "internalModule": "__internal__",
+  "validation": {
+    "notExported": true,
+    "invalidLink": false,
+    "rewrittenLink": true,
+    "notDocumented": false,
+    "unusedMergeModuleWith": true
+  },
+  "mergeModulesMergeMode": "module",
+  "outputFileStrategy": "Modules"
 }

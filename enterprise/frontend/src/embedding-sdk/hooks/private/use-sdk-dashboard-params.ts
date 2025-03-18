@@ -47,8 +47,8 @@ export type SdkDashboardDisplayProps = {
   withFooter?: boolean;
 
   /**
-   * A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).
-   */
+   * A list of parameters to hide {@link ../../embedding/public-links.md#appearance-parameters}.
+   **/
   hiddenParameters?: string[];
 
   /**
