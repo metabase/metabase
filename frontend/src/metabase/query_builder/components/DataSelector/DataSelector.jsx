@@ -164,6 +164,8 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
+    canSelectModel: PropTypes.bool,
+    canSelectTable: PropTypes.bool,
     canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
 
@@ -197,6 +199,8 @@ export class UnconnectedDataSelector extends Component {
     hasTriggerExpandControl: true,
     isPopover: true,
     isMantine: false,
+    canSelectModel: true,
+    canSelectTable: true,
     canSelectMetric: false,
     canSelectSavedQuestion: true,
   };
@@ -456,8 +460,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   hasModels = () => {
-    const { models, loaded } = this.props;
-    return loaded && models && models.length > 0;
+    const { models, loaded, canSelectModel } = this.props;
+    return loaded && models && models.length > 0 && canSelectModel;
   };
 
   hasUsableModels = () => {
@@ -494,7 +498,9 @@ export class UnconnectedDataSelector extends Component {
     // "Saved Questions" are presented in a different picker step
     // So it should be excluded from a regular databases list
     const shouldRemoveSavedQuestionDatabaseFromList =
-      !this.props.hasNestedQueriesEnabled || this.hasUsableModelsOrMetrics();
+      !this.props.hasNestedQueriesEnabled ||
+      this.hasUsableModelsOrMetrics() ||
+      !this.props.canSelectSavedQuestion;
 
     return shouldRemoveSavedQuestionDatabaseFromList
       ? databases.filter(db => !db.is_saved_questions)
@@ -906,6 +912,7 @@ export class UnconnectedDataSelector extends Component {
             <DataBucketPicker
               dataTypes={getDataTypes({
                 hasModels: this.hasModels(),
+                hasTables: this.props.canSelectTable,
                 hasNestedQueriesEnabled,
                 hasSavedQuestions: this.hasSavedQuestions(),
                 hasMetrics: this.hasMetrics(),

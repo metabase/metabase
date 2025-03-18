@@ -772,8 +772,15 @@ describe("scenarios > embedding > full app", () => {
       metric: "Metrics",
     };
 
+    /**
+     *
+     * @param {object} option
+     * @param {boolean} [option.isMultiStageDataPicker]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,
+      searchParameters,
     } = {}) {
       if (isMultiStageDataPicker) {
         cy.intercept("GET", "/api/search*", req => {
@@ -789,6 +796,7 @@ describe("scenarios > embedding > full app", () => {
         url: "/",
         qs: {
           new_button: true,
+          ...searchParameters,
         },
       });
       cy.button("New").click();
@@ -1235,6 +1243,45 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Models").should("be.visible");
           cy.findByText("Raw Data").should("be.visible");
           cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe('"entity_types" query parameter', () => {
+      it('should show only the provided "entity_types"', () => {
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "table",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("not.exist");
+          cy.findByText("Sample Database").should("be.visible");
+          cy.findByRole("option", { name: "Orders" }).should("be.visible");
+        });
+      });
+
+      it('should show models and tables as a default value when not providing "entity_types"', () => {
+        cy.log("Test providing `entity_types` as an empty string");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
+        });
+
+        cy.log("Test not providing `entity_types`");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
         });
       });
     });
