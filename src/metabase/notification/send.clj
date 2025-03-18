@@ -100,16 +100,6 @@
                                                                     :channel-type channel-type})
         (log/errorf e "[Notification %d] Error sending notification!" notification-id)))))
 
-(do
-  (defn f
-    []
-    (log/info "sending")
-    (throw (ex-info "error" {::skip-retry? true})))
-
-  (let [retrier (retry/make (assoc default-retry-config :retry-on-exception-pred (fn [e]
-                                                                                   (false? (::skip-retry? (ex-data e))))))]
-    (retrier f)))
-
 (defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
