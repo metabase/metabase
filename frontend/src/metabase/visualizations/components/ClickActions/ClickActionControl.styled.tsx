@@ -3,12 +3,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { alpha } from "metabase/lib/colors";
-import { Icon, rem } from "metabase/ui";
-
-export const ClickActionButtonIcon = styled(Icon)`
-  margin-right: 0.2rem;
-  transition: all 200ms linear;
-`;
+import { rem } from "metabase/ui";
 
 export const ClickActionButtonTextIcon = styled.span`
   margin-right: ${rem(4)};

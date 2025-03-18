@@ -1,20 +1,30 @@
-.horizontalButton[data-variant="inverse"] {
-  &:hover {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-brand);
-
-    .nested {
+.horizontalButton {
+  &[data-variant="inverse"] {
+    &:hover {
       color: var(--mb-color-text-white);
+      background-color: var(--mb-color-brand);
+
+      .nested {
+        color: var(--mb-color-text-white);
+      }
+
+      .ClickActionButtonIcon {
+        color: white;
+      }
+    }
+
+    .inner {
+      width: 100%;
+    }
+
+    .label {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
     }
   }
+}
 
-  .inner {
-    width: 100%;
-  }
-
-  .label {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-  }
+.ClickActionButtonIcon {
+  margin-right: 0.2rem;
 }
