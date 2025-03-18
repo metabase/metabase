@@ -2,6 +2,9 @@
 title: Maps
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/maps
+  - /learn/basics/visualizing-data/maps
+  - /learn/visualization/maps
+  - /learn/metabase-basics/querying-and-dashboards/visualization/maps
 description: "Maps in Metabase allow you to visualize geographical data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
 ---
 
