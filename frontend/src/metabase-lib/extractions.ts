@@ -48,7 +48,7 @@ export type ColumnExtractionTag =
   | "domain"
   | "host"
   | "subdomain"
-  | "url-pathname";
+  | "path";
 
 export function functionsUsedByExpression(
   query: Query,

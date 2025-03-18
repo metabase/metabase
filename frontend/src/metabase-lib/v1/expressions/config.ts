@@ -116,8 +116,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["string", "string"],
     requiresFeature: "regex",
   },
-  "url-pathname": {
-    displayName: `urlPathname`,
+  path: {
+    displayName: `path`,
     type: "string",
     args: ["string"],
   },
@@ -536,7 +536,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "upper",
   "substring",
   "regex-match-first",
-  "url-pathname",
+  "path",
   "concat",
   "replace",
   "trim",

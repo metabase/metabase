@@ -356,17 +356,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "concat",
   },
   {
-    name: "url-pathname",
-    structure: "urlPathname",
-    description: () => t`Extracts the pathname (eg. "/my/path") from a URL`,
+    name: "path",
+    structure: "path",
+    description: () => t`Extracts the path (eg. "/my/path") from a URL`,
     args: [
       {
         name: t`url`,
-        description: t`The URL column to extract the pathname from.`,
+        description: t`Extracts the pathname from a URL. E.g., path("https://www.example.com/path/to/page.html?key1=value") would return "/path/to/page.html".`,
         example: ["dimension", t`URL`],
       },
     ],
-    docsPage: "url-pathname",
+    docsPage: "path",
   },
   {
     name: "replace",

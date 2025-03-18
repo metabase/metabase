@@ -24,7 +24,7 @@ export function getExample(info: Lib.ColumnExtractionInfo) {
       return "example.com, online.com";
     case "subdomain":
       return "www, maps";
-    case "url-pathname":
+    case "path":
       return "/en/docs/feature";
   }
 
