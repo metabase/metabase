@@ -62,6 +62,7 @@ const SemanticTypeAndTargetPicker = ({
       className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
     >
       <SemanticTypePicker
+        baseType={field.base_type}
         className={className}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}

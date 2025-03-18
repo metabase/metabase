@@ -7,17 +7,24 @@ import {
   FIELD_SEMANTIC_TYPES,
 } from "metabase/lib/core";
 import { Select } from "metabase/ui";
+import type { Field } from "metabase-types/api";
 
 const NULL_VALUE = "null";
 
 interface Props {
+  baseType: Field["base_type"];
   className?: string;
   value: string | null;
   onChange: (value: string | null) => void;
 }
 
-export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
-  const data = useMemo(() => getData(value), [value]);
+export const SemanticTypePicker = ({
+  baseType,
+  className,
+  value,
+  onChange,
+}: Props) => {
+  const data = useMemo(() => getData({ baseType, value }), [baseType, value]);
 
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
@@ -50,7 +57,7 @@ function stringifyValue(value: string | null): string {
   return value === null ? NULL_VALUE : value;
 }
 
-function getData(value: string | null) {
+function getData({ baseType, value }: Pick<Props, "baseType" | "value">) {
   const options = [
     ...FIELD_SEMANTIC_TYPES,
     {
