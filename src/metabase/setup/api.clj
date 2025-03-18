@@ -3,20 +3,13 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
-   [metabase.integrations.slack :as slack]
-   [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -148,169 +141,6 @@
         (events/publish-event! :event/user-joined {:user-id user-id}))
       ;; return response with session ID and set the cookie as well
       (request/set-session-cookies request {:id session-key} session (t/zoned-date-time (t/zone-id "GMT"))))))
-
-;;; Admin Checklist
-
-(def ^:private ChecklistState
-  "Malli schema for the state to annotate the checklist."
-  [:map {:closed true}
-   [:db-type [:enum :h2 :mysql :postgres]]
-   [:hosted? :boolean]
-   [:embedding [:map
-                [:interested? :boolean]
-                [:done? :boolean]
-                [:app-origin :boolean]]]
-   [:configured [:map
-                 [:email :boolean]
-                 [:slack :boolean]
-                 [:sso :boolean]]]
-   [:counts [:map
-             [:user :int]
-             [:card :int]
-             [:table :int]]]
-   [:exists [:map
-             [:model :boolean]
-             [:non-sample-db :boolean]
-             [:dashboard :boolean]
-             [:pulse :boolean]
-             [:hidden-table :boolean]
-             [:collection :boolean]
-             [:embedded-resource :boolean]]]])
-
-(mu/defn- state-for-checklist :- ChecklistState
-  []
-  {:db-type    (mdb/db-type)
-   :hosted?    (premium-features/is-hosted?)
-   :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
-                :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
-                :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
-   :configured {:email (email/email-configured?)
-                :slack (slack/slack-configured?)
-                :sso   (setting/get :google-auth-enabled)}
-   :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
-                :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
-                :table (val (ffirst (t2/query {:select [:%count.*]
-                                               :from   [[(t2/table-name :model/Table) :t]]
-                                               :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-                                               :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})))}
-   :exists     {:non-sample-db     (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
-                :dashboard         (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
-                :pulse             (t2/exists? :model/Pulse)
-                :hidden-table      (t2/exists? :model/Table {:where [:and
-                                                                     [:not= :visibility_type nil]
-                                                                     (mi/exclude-internal-content-hsql :model/Table)]})
-                :collection        (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-                :model             (t2/exists? :model/Card {:where [:and
-                                                                    [:= :type "model"]
-                                                                    (mi/exclude-internal-content-hsql :model/Card)]})
-                :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
-                                       (t2/exists? :model/Dashboard :enable_embedding true))}})
-
-(defn- get-connected-tasks
-  [{:keys [configured counts exists embedding] :as _info}]
-  [{:title       (tru "Add a database")
-    :group       (tru "Get connected")
-    :description (tru "Connect to your data so your whole team can start to explore.")
-    :link        "/admin/databases/create"
-    :completed   (exists :non-sample-db)
-    :triggered   :always}
-   {:title       (tru "Set up email")
-    :group       (tru "Get connected")
-    :description (tru "Add email credentials so you can more easily invite team members and get updates via Pulses.")
-    :link        "/admin/settings/email"
-    :completed   (configured :email)
-    :triggered   :always}
-   {:title       (tru "Set Slack credentials")
-    :group       (tru "Get connected")
-    :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
-    :link        "/admin/settings/notifications/slack"
-    :completed   (configured :slack)
-    :triggered   :always}
-   {:title       (tru "Setup embedding")
-    :group       (tru "Get connected")
-    :description (tru "Get customizable, flexible, and scalable customer-facing analytics in no time")
-    :link        "/admin/settings/embedding-in-other-applications"
-    :completed   (or (embedding :done?)
-                     (and (configured :sso) (embedding :app-origin))
-                     (exists :embedded-resource))
-    :triggered   (embedding :interested?)}
-   {:title       (tru "Invite team members")
-    :group       (tru "Get connected")
-    :description (tru "Share answers and data with the rest of your team.")
-    :link        "/admin/people/"
-    :completed   (> (counts :user) 1)
-    :triggered   (or (exists :dashboard)
-                     (exists :pulse)
-                     (>= (counts :card) 5))}])
-
-(defn- productionize-tasks
-  [info]
-  [{:title       (tru "Switch to a production-ready app database")
-    :group       (tru "Productionize")
-    :description (tru "Migrate off of the default H2 application database to PostgreSQL or MySQL")
-    :link        "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2"
-    :completed   (not= (:db-type info) :h2)
-    :triggered   (and (= (:db-type info) :h2) (not (:hosted? info)))}])
-
-(defn- curate-tasks
-  [{:keys [counts exists] :as _info}]
-  [{:title       (tru "Hide irrelevant tables")
-    :group       (tru "Curate your data")
-    :description (tru "If your data contains technical or irrelevant info you can hide it.")
-    :link        "/admin/datamodel/database"
-    :completed   (exists :hidden-table)
-    :triggered   (>= (counts :table) 20)}
-   {:title       (tru "Organize questions")
-    :group       (tru "Curate your data")
-    :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
-    :link        "/collection/root"
-    :completed   (exists :collection)
-    :triggered   (>= (counts :card) 30)}
-   {:title       (tru "Create a model")
-    :group       (tru "Curate your data")
-    :description (tru "Set up friendly starting points for your team to explore data")
-    :link        "/model/new"
-    :completed   (exists :model)
-    :triggered   (not (exists :model))}])
-
-(mu/defn- checklist-items
-  [info :- ChecklistState]
-  (remove nil?
-          [{:name  (tru "Get connected")
-            :tasks (get-connected-tasks info)}
-           (when-not (:hosted? info)
-             {:name  (tru "Productionize")
-              :tasks (productionize-tasks info)})
-           {:name  (tru "Curate your data")
-            :tasks (curate-tasks info)}]))
-
-(defn- annotate
-  "Add `is_next_step` key to all the `steps` from `admin-checklist`, and ensure `triggered` is a boolean.
-  The next step is the *first* step where `:triggered` is `true` and `:completed` is `false`."
-  [checklist]
-  (let [next-step        (->> checklist
-                              (mapcat :tasks)
-                              (filter (every-pred :triggered (complement :completed)))
-                              first
-                              :title)
-        mark-next-step   (fn identity-task-by-name [task]
-                           (assoc task :is_next_step (= (:title task) next-step)))
-        update-triggered (fn [task]
-                           (update task :triggered boolean))]
-    (for [group checklist]
-      (update group :tasks
-              (partial map (comp update-triggered mark-next-step))))))
-
-(defn- admin-checklist
-  ([] (admin-checklist (state-for-checklist)))
-  ([checklist-info]
-   (annotate (checklist-items checklist-info))))
-
-(api.macros/defendpoint :get "/admin_checklist"
-  "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
-  []
-  (validation/check-has-application-permission :setting)
-  (admin-checklist))
 
 ;; User defaults endpoint
 

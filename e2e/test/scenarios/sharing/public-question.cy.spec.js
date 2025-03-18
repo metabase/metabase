@@ -132,7 +132,7 @@ describe("scenarios > public > question", () => {
 
     // Create a snippet
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
