@@ -3,12 +3,6 @@ name: E2E Component Tests for Embedding SDK
 on:
   workflow_call:
 
-
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   files-changed:
     name: Check which files changed
