@@ -169,6 +169,68 @@
                   :conversation_id conversation-id}
                  response)))))))
 
+(deftest query-metric-e2e-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
+                           (lib/breakout (lib/with-temporal-bucket
+                                           (lib.metadata/field mp (mt/id :products :created_at)) :week)))
+          metric-data {:name "Metrica"
+                       :description "Metric description"
+                       :dataset_query (lib/->legacy-MBQL source-query)
+                       :type :metric}]
+      (mt/with-temp [:model/Card {metric-id :id} metric-data]
+        (let [fid #(format "c%d/%d" metric-id %)
+              filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
+                       {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
+                       {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
+                       {:field_id (fid 7), :operation "month-equals", :values [4 5 9]}  ; Created At
+                       {:field_id (fid 7), :bucket "day-of-month" :operation "not-equals", :values [14 15 19]}
+                       {:field_id (fid 7), :bucket "day-of-week" :operation "equals", :values [1 7]}
+                       {:field_id (fid 7), :operation "year-equals", :value 2008}]
+              breakouts [{:field_id (fid 7), :field_granularity "week"}
+                         {:field_id (fid 7), :field_granularity "day"}]
+              response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-metric"
+                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                             {:arguments       {:metric_id metric-id
+                                                                :filters   filters
+                                                                :group_by  breakouts}
+                                              :conversation_id conversation-id})
+              query-id (-> response :structured_output :query_id)]
+          (is (=? {:structured_output
+                   {:type "query"
+                    :query_id string?
+                    :query (mt/mbql-query products
+                             {:aggregation [[:metric metric-id]]
+                              :breakout [!week.products.created_at !day.products.created_at]
+                              :filter [:and
+                                       [:> [:field %id {}] 50]
+                                       [:= [:field %title {}] "3" "4"]
+                                       [:!= [:field %rating {}] 3 4]
+                                       [:= [:get-month [:field %created_at {}]] 4 5 9]
+                                       [:!= !day-of-month.products.created_at 14 15 19]
+                                       [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
+                                       [:= [:get-year [:field %created_at {}]] 2008]]})
+                    :result_columns
+                    [{:field_id (str "q" query-id "/0")
+                      :name "Created At: Week"
+                      :type "datetime"
+                      :semantic_type "creation_timestamp"}
+                     {:field_id (str "q" query-id "/1")
+                      :name "Created At: Day"
+                      :type "datetime"
+                      :semantic_type "creation_timestamp"}
+                     {:field_id (str "q" query-id "/2")
+                      :name "Metrica"
+                      :type "number"
+                      :semantic_type "score"}]}
+                   :conversation_id conversation-id}
+                  (-> response
+                      (update-in [:structured_output :query] mbql.normalize/normalize)))))))))
+
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])

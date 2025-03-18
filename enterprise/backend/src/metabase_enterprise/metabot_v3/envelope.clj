@@ -24,15 +24,15 @@
         navigate-reaction (when-let [nav-path (:navigate-to msg)]
                             {:type :metabot.reaction/redirect
                              :url nav-path})]
-    (filter some? [message-reaction navigate-reaction])))
+    (remove nil? [message-reaction navigate-reaction])))
 
 (defn reactions
   "Gets the reactions from the LLM."
   [messages]
-  (->> messages
-       (filter #(= (:role %) :assistant))
-       (mapcat message->reactions)
-       (into [])))
+  (into []
+        (comp (filter #(= (:role %) :assistant))
+              (mapcat message->reactions))
+        messages))
 
 (defn user-message
   "Create a user message structure with `msg` as content."
