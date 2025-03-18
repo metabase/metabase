@@ -3,16 +3,19 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetDatabaseHealthQuery } from "metabase/api";
-import { Badge, Flex, Text, Tooltip } from "metabase/ui";
+import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
+
+interface DatabaseConnectionHealthInfoProps extends FlexProps {
+  databaseId: DatabaseId;
+  displayText?: "inline" | "tooltip";
+}
 
 export const DatabaseConnectionHealthInfo = ({
   databaseId,
   displayText = "inline",
-}: {
-  databaseId: DatabaseId;
-  displayText?: "inline" | "tooltip";
-}) => {
+  ...props
+}: DatabaseConnectionHealthInfoProps) => {
   const healthQuery = useGetDatabaseHealthQuery(databaseId);
   const health = useMemo(() => {
     return match(healthQuery)
@@ -42,8 +45,8 @@ export const DatabaseConnectionHealthInfo = ({
   }, [healthQuery]);
 
   return (
-    <Flex align="center" gap="sm">
-      <Tooltip disabled={displayText !== "tooltip"} label={health.message}>
+    <Flex align="center" gap="sm" {...props}>
+      <Tooltip label={health.message}>
         <Badge size="12" circle bg={health.color} style={{ flexShrink: 0 }} />
       </Tooltip>
       {displayText === "inline" && <Text lh="1.4">{health.message}</Text>}
