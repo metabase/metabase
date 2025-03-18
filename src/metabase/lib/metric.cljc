@@ -145,11 +145,10 @@
     (-> inner-meta
         (assoc :display-name           (:name metric-meta) ; Metric card's name
                :lib/hack-original-name (:name metric-meta) ; Metric card's name
-               :name                   (:name inner-meta)  ; Name of the inner aggregation column
-               :ident                  (:ident opts))      ; Ident of the `[:metric ...]` reference!
-        ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation!
-        ;; If the `[:metric ...]` ref is a top-level aggregation it will have its own ident, which we should use.
-        ;; If there is not `:opts` in the
+               :name                   (:name inner-meta)) ; Name of the inner aggregation column
+        ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation from the metric's definition.
+        ;; If the `[:metric ...]` ref is a top-level aggregation, it will have its own ident, which we should use.
+        ;; If there is no ident in the `[:metric ...]` ref then *drop* the ident from column.
         (u/assoc-dissoc :ident (:ident opts))
         ;; If the :metric ref has a :name option, that overrides the metric card's name.
         (cond-> (:name opts) (assoc :name (:name opts))))))

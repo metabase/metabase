@@ -198,7 +198,7 @@
    join-alias   :- ::lib.schema.common/non-blank-string]
   (let [stage-index (lib.util/canonical-stage-index query stage-number)]
     (some #(maybe-resolve-join query % join-alias)
-          ;; Every stage from the input `stage-number` down to 1, but excluding 0.
+          ;; Every stage from the input `stage-number` down to 0.
           (range stage-index -1 -1))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join

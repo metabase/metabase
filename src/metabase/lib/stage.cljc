@@ -244,29 +244,25 @@
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)
-           ;; 1b or 1c
-           (when-let [cols (or
-                            ;; 1b: default visible Fields for the source Table
-                            (when source-table
-                              (assert (integer? source-table))
-                              (let [table-metadata (lib.metadata/table query source-table)]
-                                (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-                            ;; 1e. Metadata associated with a Metric
-                            (when metric-based?
-                              (metric-metadata query stage-number card options))
-                            ;; 1c. Metadata associated with a saved Question
-                            (when source-card
-                              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-                            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-                            (for [col (:columns (:lib/stage-metadata this-stage))]
-                              (assoc col
-                                     :lib/source :source/native
-                                     :lib/source-column-alias  (:name col)
-                                     ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                                     ;; that gets added later gets deduplicated from these.
-                                     :lib/desired-column-alias (unique-name-fn (:name col)))))]
-             cols
-             #_(concat cols (remapped-columns query stage-number cols options)))))))
+           ;; 1b: default visible Fields for the source Table
+           (when source-table
+             (assert (integer? source-table))
+             (let [table-metadata (lib.metadata/table query source-table)]
+               (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+           ;; 1e. Metadata associated with a Metric
+           (when metric-based?
+             (metric-metadata query stage-number card options))
+           ;; 1c. Metadata associated with a saved Question
+           (when source-card
+             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+           ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+           (for [col (:columns (:lib/stage-metadata this-stage))]
+             (assoc col
+                    :lib/source :source/native
+                    :lib/source-column-alias  (:name col)
+                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                    ;; that gets added later gets deduplicated from these.
+                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -308,7 +304,6 @@
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
 (defmethod lib.metadata.calculation/returned-columns-method ::stage
   [query stage-number _stage {:keys [include-remaps? unique-name-fn], :as options}]
-  #_(clojure.pprint/pprint ['RCM/stage _stage])
   (or
    (existing-stage-metadata query stage-number unique-name-fn)
    (let [query        (ensure-previous-stages-have-metadata query stage-number options)
@@ -323,7 +318,7 @@
        (let [_          (doall field-cols)           ; force generation of unique names before join columns
              join-cols  (lib.join/all-joins-expected-columns query stage-number options)
              ;; The field-cols may contain would-be joined cols already! We de-duplicate them, but take the :ident
-             ;; from the first of the duplicates.
+             ;; from the last of the duplicates.
              ;; TODO: This almost certainly doesn't work properly with double-joins, and should be powered by
              ;; "original ident" where possible. Or field-cols should return the correct joins; then taking that
              ;; copy doesn't hurt anything.
