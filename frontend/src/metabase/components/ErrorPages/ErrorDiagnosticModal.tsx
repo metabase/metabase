@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
@@ -184,7 +184,7 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
-  if (getIsEmbedded()) {
+  if (getIsEmbeddingIframe()) {
     return null;
   }
 

@@ -13,7 +13,10 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
 import { getAlerts } from "metabase/notifications/redux/selectors";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import {
+  getEmbedOptions,
+  getIsEmbeddingIframe,
+} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -992,18 +995,21 @@ export const getTimeoutId = createSelector(
 );
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    !isEmbeddingIframe || embedOptions.additional_info,
 );
 
 export const getDataReferenceStack = createSelector(
