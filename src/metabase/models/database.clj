@@ -187,7 +187,7 @@
                (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
 (defn check-health!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
   (doseq [database (t2/select :model/Database)]
     (health-check-database! database)))
