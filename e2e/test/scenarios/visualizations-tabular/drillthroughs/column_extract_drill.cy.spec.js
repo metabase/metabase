@@ -295,7 +295,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should be able to extract path from URL column", () => {
-      const CC_NAME = "Path";
+      const CC_NAME = "URL_URL";
       const questionDetails = {
         name: "path from url",
         query: {
@@ -327,9 +327,10 @@ H.describeWithSnowplow("extract action", () => {
           return field;
         });
 
-        cy.visit(`/model/${modelId}`);
-        // TODO: await for query
+        H.visitModel(modelId);
       });
+
+      cy.findByTestId("table-scroll-container").scrollTo("right");
 
       const urlCase = URL_CASES.find(c => c.option === "Path");
       extractColumnAndCheck({
