@@ -17,7 +17,6 @@
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.models.database :as database]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
