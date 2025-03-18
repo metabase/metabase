@@ -441,7 +441,6 @@
       (is (= {:name "aggregate_functions_filter_test"
               :fields #{(merge base-field
                                {:name "id",
-                                :pk? true,
                                 :database-type "Int32",
                                 :base-type :type/Integer,
                                 :database-required true
