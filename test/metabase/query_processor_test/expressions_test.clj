@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -448,6 +449,234 @@
                                                   [:field (mt/id :users :id) {:join-alias "users__via__user_id"}]]}]})
                  mt/rows
                  ffirst))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               LITERAL EXPRESSIONS                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private standard-literal-expression-defs
+  {"empty"  [:value ""    {:base_type :type/Text}]
+   "foo"    [:value "foo" {:base_type :type/Text}]
+   "zero"   [:value 0     {:base_type :type/Integer}]
+   "12345"  [:value 12345 {:base_type :type/Integer}]
+   "float"  [:value 1.234 {:base_type :type/Float}]
+   "True"   [:value true  {:base_type :type/Boolean}]
+   "False"  [:value false {:base_type :type/Boolean}]})
+
+(def ^:private standard-literal-expression-refs
+  [[:expression "empty"]
+   [:expression "foo"]
+   [:expression "zero"]
+   [:expression "12345"]
+   [:expression "float"]
+   [:expression "True"]
+   [:expression "False"]])
+
+(def ^:private standard-literal-expression-column-refs
+  [[:field "empty" {:base_type :type/Text}]
+   [:field "foo"   {:base_type :type/Text}]
+   [:field "zero"  {:base_type :type/Integer}]
+   [:field "12345" {:base_type :type/Integer}]
+   [:field "float" {:base_type :type/Float}]
+   [:field "True"  {:base_type :type/Boolean}]
+   [:field "False" {:base_type :type/Boolean}]])
+
+(def ^:private standard-literal-expression-row-formats
+  [str str int int 3.0 mt/boolish->bool mt/boolish->bool])
+
+(def ^:private standard-literal-expression-row-formats-with-id
+  (into [int] standard-literal-expression-row-formats))
+
+(def ^:private standard-literal-expression-values
+  (map second (vals standard-literal-expression-defs)))
+
+(defmethod driver/database-supports? [::driver/driver ::expression-literals]
+  [driver _feature database]
+  (driver/database-supports? driver :expressions database))
+
+;; top-level literal expressions not yet supported for these drivers
+(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
+  (defmethod driver/database-supports? [driver ::expression-literals]
+    [_driver _feature _database]
+    false))
+
+(deftest ^:parallel basic-literal-expression-test
+  (testing "basic literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+      (is (= [[1 "" "foo" 0 12345 1.234 true false]
+              [2 "" "foo" 0 12345 1.234 true false]]
+             (mt/formatted-rows
+              standard-literal-expression-row-formats-with-id
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :fields      (into [$id] standard-literal-expression-refs)
+                 :order-by    [[:asc  $id]]
+                 :limit       2})))))))
+
+(deftest ^:parallel filter-literal-expression-with-=-!=-test
+  (doseq [[and-or eq-ne expected] [[:and :=  [standard-literal-expression-values]]
+                                   [:or  :!= []]]]
+    (testing (str "filter literal expressions with " and-or " " eq-ne)
+      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+        (is (= expected
+               (mt/formatted-rows
+                standard-literal-expression-row-formats
+                (mt/run-mbql-query orders
+                  {:expressions standard-literal-expression-defs
+                   :fields      standard-literal-expression-refs
+                   :filter      (into [and-or] (map #(vector eq-ne % %) standard-literal-expression-refs))
+                   :limit       1}))))))))
+
+(deftest ^:parallel nested-literal-expression-test
+  (testing "nested literal expression"
+    ;; TODO Fix this test for H2 (QUE-726)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
+                                     #{:h2})
+      (is (= [(into [1] standard-literal-expression-values)]
+             (mt/formatted-rows
+              standard-literal-expression-row-formats-with-id
+              (mt/run-mbql-query venues
+                {:fields       (into [$id] standard-literal-expression-column-refs)
+                 :source-query {:source-table $$venues
+                                :expressions  standard-literal-expression-defs
+                                :fields       (into [$id] standard-literal-expression-refs)}
+                 :order-by     [[:asc $id]]
+                 :limit        1})))))))
+
+(deftest ^:parallel order-by-literal-expression-test
+  (testing "order-by integer literal expression"
+    ;; ORDER BY a non-negative integer literal is broadly supported (maybe even standard?) and means "order by the Nth
+    ;; column in the select list". Nevertheless, it's questionable whether anyone would actually want to do this.
+    (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+      (is (= [[1 1]
+              [2 1]]
+             (mt/rows
+              (mt/run-mbql-query orders
+                {:expressions {"One" [:value 1 nil]}
+                 :fields      [$id [:expression "One"]]
+                 :order-by    [[:asc [:expression "One"]]]
+                 :limit       2}))))))
+  ;; TODO Should ORDER BY for literal expressions of all types be allowed? It's not clear that ORDER BY for a literal
+  ;; value makes much sense, and DB support varies.
+  #_(testing "order-by all literal expression types"
+      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+        (is (= [[1 "" "foo" 0 12345 1.234 true false]
+                [2 "" "foo" 0 12345 1.234 true false]]
+               (mt/formatted-rows
+                standard-literal-expression-row-formats-with-id
+                (mt/run-mbql-query orders
+                  {:expressions standard-literal-expression-defs
+                   :fields      (into [$id] standard-literal-expression-refs)
+                   :order-by    (into [[:asc  $id]]
+                                      (map #(conj [:asc] %) standard-literal-expression-refs))
+                   :limit       2})))))))
+
+;; This fails, but also fails for non-literal expressions.
+#_(deftest ^:parallel filter-literal-expression-with-and-or-test
+    (doseq [op [:and :or]]
+      (testing (str "filter literal expressions with " op)
+        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+          (is (= [standard-literal-expression-values]
+                 (mt/formatted-rows
+                  standard-literal-expression-row-formats
+                  (mt/run-mbql-query orders
+                    {:expressions standard-literal-expression-defs
+                     :fields      standard-literal-expression-refs
+                     :filter      (into [op] standard-literal-expression-refs)
+                     :limit       1}))))))))
+
+;; This fails, but also fails for non-literal expressions.
+#_(deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
+    (doseq [[expression expected] [[[:expression "True"] [standard-literal-expression-values]]
+                                   [[:expression "False"] []]]]
+      (testing (str "filter literal expressions with " expression)
+        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+          (is (= expected
+                 (mt/formatted-rows
+                  standard-literal-expression-row-formats
+                  (mt/run-mbql-query orders
+                    {:expressions standard-literal-expression-defs
+                     :fields      standard-literal-expression-refs
+                     :filter      expression
+                     :limit       1}))))))))
+
+(deftest ^:parallel nested-and-filtered-literal-expression-test
+  (testing "nested aggregated and filtered literal expression"
+    ;; TODO Fix this test for H2 (QUE-726)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
+                                     #{:h2})
+      (is (= [[2 "Stout Burgers & Beers" true "Red Medicine" 1 2 "Bob's Burgers"]
+              [3 "The Apple Pan" true "Red Medicine" 1 2 "Bob's Burgers"]
+              [4 "Wurstküche" true "Red Medicine" 1 2 "Bob's Burgers"]]
+             (mt/formatted-rows
+              [int str mt/boolish->bool str int int str]
+              (mt/run-mbql-query venues
+                {:fields       [$id
+                                $name
+                                [:expression "True"]
+                                [:expression "Name"]
+                                *One/Integer
+                                *Two/Integer
+                                *Bob/Text]
+                 :expressions  {"True"  [:value true {:base_type :type/Boolean}]
+                                "Name"  [:value "Red Medicine" {:base_type :type/Text}]}
+                 :source-query {:source-table $$venues
+                                :fields       [$id
+                                               $name
+                                               [:expression "One"]
+                                               [:expression "Two"]
+                                               [:expression "Bob"]]
+                                :expressions  {"One" [:value 1.0 {:base_type :type/Float}]
+                                               "Two" [:value 2 {:base_type :type/Integer}]
+                                               "Bob" [:value "Bob's Burgers" {:base_type :type/Text}]}
+                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
+                 :filters      [[:!= *Bob/Text [:expression "Name"]]
+                                [:!= $name [:expression "Name"]]
+                                [:= true [:expression "True"]]
+                                [:= [:expression "True"] true]
+                                [:=
+                                 [:expression "Name"]
+                                 [:concat [:expression "Name"] ""]]]
+                 :order-by     [[$id :asc]]
+                 :limit        3})))))))
+
+(deftest ^:parallel joined-literal-expression-test
+  (testing "joined literal expression"
+    ;; TODO Fix this test for H2 (QUE-726)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :left-join :nested-queries)
+                                     #{:h2})
+      (is (= [[2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "25°"]
+              [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "In-N-Out Burger"]
+              [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "The Apple Pan"]]
+             (mt/formatted-rows
+              [int str int 1.0 mt/boolish->bool int str str]
+              (mt/run-mbql-query venues
+                {:fields      [$id
+                               $name
+                               $price
+                               [:expression "InversePrice"]
+                               [:expression "NameEquals"]
+                               &JoinedCategories.*LiteralInt/Integer
+                               &JoinedCategories.*LiteralString/Text
+                               &JoinedCategories.venues.name]
+                 :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
+                               "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
+                 :filters     [[:= true [:expression "NameEquals"]]]
+                 :joins       [{:strategy     :left-join
+                                :condition    [:= $category_id &JoinedCategories.venues.category_id]
+                                :source-query {:source-table $$venues
+                                               :expressions  {"LiteralInt"    [:value 1 nil]
+                                                              "LiteralString" [:value "Stout Burgers & Beers" nil]}
+                                               :filters     [[:!= $name [:expression "LiteralString"]]]
+                                               :fields       [$category_id
+                                                              $name
+                                                              [:expression "LiteralInt"]
+                                                              [:expression "LiteralString"]]
+                                               :order-by     [[:asc $category_id]
+                                                              [:asc $id]]}
+                                :alias        "JoinedCategories"}]
+                 :order-by    [[:asc &JoinedCategories.venues.name]]
+                 :limit       3})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MISC BUG FIXES                                                 |
