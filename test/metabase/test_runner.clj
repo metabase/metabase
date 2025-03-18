@@ -102,7 +102,4 @@
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
-  (prn ["ENV" (System/getenv)])
-  (prn ["OPTIONS" options])
-  (prn ["TOTAL OPTIONS" (merge (default-options) options)])
   (hawk/find-and-run-tests-cli (merge (default-options) options)))
