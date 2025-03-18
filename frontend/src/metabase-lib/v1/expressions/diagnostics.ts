@@ -26,7 +26,7 @@ export function diagnose(options: {
   return null;
 }
 
-export function diagnoseAndCompile<S extends StartRule = "expression">({
+export function diagnoseAndCompile<S extends StartRule>({
   source,
   startRule,
   query,
