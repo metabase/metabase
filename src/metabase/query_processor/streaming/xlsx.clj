@@ -658,19 +658,23 @@
     {:workbook workbook
      :sheet    sheet}))
 
-(defn- update-pivot-area-ref [workbook last-row-num last-cell-num]
+(defn- update-pivot-area-ref [workbook last-row-num]
   ;; Update the area reference of the pivot table in the pivot sheet
   ;; based on the number of columns in the first row and the number of rows in the last row of the data sheet.
   (when-let [xssfworkbook (.getXSSFWorkbook workbook)]
     (when-let [sheet (.getSheet xssfworkbook "pivot")]
       (when-let [pivot-ables (.getPivotTables sheet)]
         (when-let [pivot-table (first pivot-ables)]
-          (-> pivot-table
-              .getPivotCacheDefinition
-              .getCTPivotCacheDefinition
-              .getCacheSource
-              .getWorksheetSource
-              (.setRef (format "A1:%s%s" (CellReference/convertNumToColString (dec last-cell-num)) last-row-num))))))))
+          (let [sheet-data (.getSheet xssfworkbook "data")
+                ;; TODO Always return 0 before saving sheet to outputstrem.
+                ;; last-row-num (.getLastRowNum sheet-data)
+                last-cell-num (.getLastCellNum (.getRow sheet-data 0))]
+            (-> pivot-table
+                .getPivotCacheDefinition
+                .getCTPivotCacheDefinition
+                .getCacheSource
+                .getWorksheetSource
+                (.setRef (format "A1:%s%s" (CellReference/convertNumToColString (dec last-cell-num)) last-row-num)))))))))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -744,8 +748,8 @@
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
             ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
-          (when (and (not (nil? @last-row-num)) (not (nil? @cell-styles)))
-            (update-pivot-area-ref workbook (inc @last-row-num) (count @cell-styles)))
+          (when (not (nil? @last-row-num))
+            (update-pivot-area-ref workbook (inc @last-row-num)))
           (try
             (spreadsheet/save-workbook-into-stream! os workbook)
             (finally
