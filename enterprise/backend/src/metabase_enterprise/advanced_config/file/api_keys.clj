@@ -18,7 +18,7 @@
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
   (s/and string?
-         #(re-matches #"mb_.{5,}.*" %)
+         (re-matches #"mb_.*" %)
          #(>= (count %) 8)))
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
