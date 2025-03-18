@@ -144,6 +144,7 @@ jobs:
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
+        secrets: inherit
         env:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN}}
         run: >-
