@@ -9,7 +9,12 @@ import { MBQL_CLAUSES, getMBQLName } from "./config";
 import { isExpression } from "./matchers";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, StartRule, Token } from "./types";
-import { getDatabase, getExpressionMode, isErrorWithMessage } from "./utils";
+import {
+  getDatabase,
+  getExpressionMode,
+  isErrorWithMessage,
+  renderError,
+} from "./utils";
 
 export function diagnose(options: {
   source: string;
@@ -41,75 +46,64 @@ export function diagnoseAndCompile<S extends StartRule>({
   metadata?: Metadata;
   expressionIndex?: number;
 }): CompileResult<S> {
-  if (!source || source.length === 0) {
-    return {
-      expression: null,
-      expressionClause: null,
-      error: { message: t`Expression is empty` },
-    };
-  }
-
-  const { tokens, errors } = tokenize(source);
-  if (errors && errors.length > 0) {
-    return {
-      expression: null,
-      expressionClause: null,
-      error: errors[0],
-    };
-  }
-
-  const checks = [
-    checkOpenParenthesisAfterFunction,
-    checkMatchingParentheses,
-    checkMissingCommasInArgumentList,
-  ];
-
-  for (const check of checks) {
-    const error = check(tokens, source);
-    if (error) {
-      return {
-        expression: null,
-        expressionClause: null,
-        error,
-      };
+  try {
+    if (!source || source.length === 0) {
+      throw { message: t`Expression is empty` };
     }
-  }
 
-  const database = getDatabase(query, metadata);
+    const { tokens, errors } = tokenize(source);
+    if (errors && errors.length > 0) {
+      throw errors[0];
+    }
 
-  // make a simple check on expression syntax correctness
-  const result = compileExpression({
-    source,
-    startRule,
-    query,
-    stageIndex,
-    database,
-  });
+    const checks = [
+      checkOpenParenthesisAfterFunction,
+      checkMatchingParentheses,
+      checkMissingCommasInArgumentList,
+    ];
 
-  if (!isExpression(result.expression) || result.expressionClause === null) {
+    for (const check of checks) {
+      const error = check(tokens, source);
+      if (error) {
+        throw error;
+      }
+    }
+
+    const database = getDatabase(query, metadata);
+
+    // make a simple check on expression syntax correctness
+    const result = compileExpression({
+      source,
+      startRule,
+      query,
+      stageIndex,
+      database,
+    });
+
+    if (!isExpression(result.expression) || result.expressionClause === null) {
+      const error = result.error ?? { message: t`Invalid expression` };
+      throw error;
+    }
+
+    const error = checkCompiledExpression({
+      query,
+      stageIndex,
+      startRule,
+      expression: result.expression,
+      expressionIndex,
+    });
+    if (error) {
+      throw error;
+    }
+
+    return result;
+  } catch (error) {
     return {
       expression: null,
       expressionClause: null,
-      error: result.error ?? { message: t`Invalid expression` },
+      error: renderError(error),
     };
   }
-
-  const error = checkCompiledExpression({
-    query,
-    stageIndex,
-    startRule,
-    expression: result.expression,
-    expressionIndex,
-  });
-  if (error) {
-    return {
-      expression: null,
-      expressionClause: null,
-      error,
-    };
-  }
-
-  return result;
 }
 
 function checkOpenParenthesisAfterFunction(

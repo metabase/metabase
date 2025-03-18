@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
@@ -16,7 +14,7 @@ import {
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
 import type { ClauseType, ErrorWithMessage, StartRule } from "./types";
-import { isErrorWithMessage } from "./utils";
+import { renderError } from "./utils";
 
 export type CompileResult<S extends StartRule> =
   | {
@@ -83,14 +81,4 @@ export function compileExpression<S extends StartRule>({
       error: renderError(error),
     };
   }
-}
-
-function renderError(error: unknown) {
-  if (isErrorWithMessage(error) && error.friendly) {
-    return error;
-  }
-  return {
-    message: t`Invalid expression`,
-    friendly: true,
-  };
 }

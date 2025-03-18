@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -18,6 +20,16 @@ export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
     err != null &&
     typeof (err as any).message === "string"
   );
+}
+
+export function renderError(error: unknown) {
+  if (isErrorWithMessage(error) && error.friendly) {
+    return error;
+  }
+  return {
+    message: t`Invalid expression`,
+    friendly: true,
+  };
 }
 
 export function getExpressionMode(startRule: string): Lib.ExpressionMode {
