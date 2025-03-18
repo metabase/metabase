@@ -10,7 +10,7 @@ describe("scenarios > custom column > literals", () => {
     const columns = [
       { name: "True", expression: "True", value: "true" },
       { name: "False", expression: "False", value: "false" },
-      { name: "Text", expression: '"abc"', value: "abc" },
+      { name: "String", expression: '"abc"', value: "abc" },
       { name: "Number", expression: "10", value: "10" },
       { name: "DateString", expression: '"2024-01-01"', value: "2024-01-01" },
       {
