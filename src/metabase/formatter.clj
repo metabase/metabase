@@ -40,6 +40,13 @@
   Object
   (toString [_] num-str))
 
+(p.types/defrecord+ TextWrapper [^String text-str ^Object original-value]
+  hiccup.util/ToString
+  (to-str [_] text-str)
+
+  Object
+  (toString [_] text-str))
+
 (defn- strip-trailing-zeroes
   [num-as-string decimal]
   (let [decimal (str decimal)]
@@ -292,4 +299,7 @@
      dictionary-formatter
 
      :else
-     (if apply-formatting? str identity))))
+     (if apply-formatting?
+       (fn [value]
+         (->TextWrapper (str value) value))
+       identity))))
