@@ -1,5 +1,65 @@
 const { H } = cy;
 
+type CastTestCase = {
+  name: string;
+  expression: string;
+  filterOperator: string;
+  filterValue: string;
+  expectedRowCount: number;
+};
+
+const TEXT_TEST_CASES: CastTestCase[] = [
+  {
+    name: "Boolean",
+    expression: "text(false)",
+    filterOperator: "Starts with",
+    filterValue: "FA",
+    expectedRowCount: 200,
+  },
+  {
+    name: "Number",
+    expression: "text(10.5)",
+    filterOperator: "Ends with",
+    filterValue: ".5",
+    expectedRowCount: 200,
+  },
+  {
+    name: "String",
+    expression: 'text("abc")',
+    filterOperator: "Is",
+    filterValue: "abc",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberColumn",
+    expression: "text([ID])",
+    filterOperator: "Contains",
+    filterValue: "10",
+    expectedRowCount: 12,
+  },
+  {
+    name: "StringColumn",
+    expression: "text([Category])",
+    filterOperator: "Does not contain",
+    filterValue: "gadget",
+    expectedRowCount: 147,
+  },
+  {
+    name: "DateColumn",
+    expression: "text([Created At])",
+    filterOperator: "Contains",
+    filterValue: "2018",
+    expectedRowCount: 53,
+  },
+  {
+    name: "NumberExpression",
+    expression: "text([ID] * 2)",
+    filterOperator: "Starts with",
+    filterValue: "10",
+    expectedRowCount: 6,
+  },
+];
+
 describe(
   "scenarios > custom column > cast functions",
   { tags: "@external" },
@@ -10,98 +70,25 @@ describe(
     });
 
     it("should support text function", () => {
-      const testCases = [
-        {
-          name: "Boolean",
-          expression: "text(false)",
-          filterOperator: "Starts with",
-          filterValue: "FA",
-          expectedRowCount: 200,
-        },
-        {
-          name: "Number",
-          expression: "text(10.5)",
-          filterOperator: "Ends with",
-          filterValue: ".5",
-          expectedRowCount: 200,
-        },
-        {
-          name: "String",
-          expression: 'text("abc")',
-          filterOperator: "Is",
-          filterValue: "abc",
-          expectedRowCount: 200,
-        },
-        {
-          name: "NumberColumn",
-          expression: "text([ID])",
-          filterOperator: "Contains",
-          filterValue: "10",
-          expectedRowCount: 12,
-        },
-        {
-          name: "StringColumn",
-          expression: "text([Category])",
-          filterOperator: "Does not contain",
-          filterValue: "gadget",
-          expectedRowCount: 147,
-        },
-        {
-          name: "DateColumn",
-          expression: "text([Created At])",
-          filterOperator: "Contains",
-          filterValue: "2018",
-          expectedRowCount: 53,
-        },
-        {
-          name: "NumberExpression",
-          expression: "text([ID] * 2)",
-          filterOperator: "Starts with",
-          filterValue: "10",
-          expectedRowCount: 6,
-        },
-      ];
-
-      function startNewQuestion() {
-        H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
-          cy.findByText("QA Postgres12").click();
-          cy.findByText("Products").click();
-        });
-      }
-
-      function removeTableFields() {
-        H.getNotebookStep("data").button("Pick columns").click();
-        H.popover().findByText("Select all").click();
-        H.getNotebookStep("data").button("Pick columns").click();
-      }
-
-      startNewQuestion();
-      removeTableFields();
-      H.visualize();
-      H.assertQueryBuilderRowCount(200);
-      H.openNotebook();
-
-      testCases.forEach(testCase => {
-        cy.log(testCase.name);
-        addCustomColumn({
-          name: testCase.name,
-          expression: testCase.expression,
-        });
-        addStringFilter({
-          column: testCase.name,
-          operator: testCase.filterOperator,
-          value: testCase.filterValue,
-        });
-        H.visualize();
-        H.assertQueryBuilderRowCount(testCase.expectedRowCount);
-        H.openNotebook();
-        removeCustomColumn({ name: testCase.name });
-      });
+      testCastFunction(TEXT_TEST_CASES);
     });
   },
 );
+
+function startNewQuestion() {
+  H.startNewQuestion();
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalTab("Tables").click();
+    cy.findByText("QA Postgres12").click();
+    cy.findByText("Products").click();
+  });
+}
+
+function removeTableFields() {
+  H.getNotebookStep("data").button("Pick columns").click();
+  H.popover().findByText("Select all").click();
+  cy.realPress("Escape");
+}
 
 function addCustomColumn({
   name,
@@ -119,7 +106,7 @@ function removeCustomColumn({ name }: { name: string }) {
   H.getNotebookStep("expression").findByText(name).icon("close").click();
 }
 
-function addStringFilter({
+function addFilter({
   column,
   operator,
   value,
@@ -134,5 +121,30 @@ function addStringFilter({
   H.popover().within(() => {
     cy.findByLabelText("Filter value").type(value);
     cy.button("Add filter").click();
+  });
+}
+
+function testCastFunction(testCases: CastTestCase[]) {
+  startNewQuestion();
+  removeTableFields();
+  H.visualize();
+  H.assertQueryBuilderRowCount(200);
+  H.openNotebook();
+
+  testCases.forEach(testCase => {
+    cy.log(testCase.name);
+    addCustomColumn({
+      name: testCase.name,
+      expression: testCase.expression,
+    });
+    addFilter({
+      column: testCase.name,
+      operator: testCase.filterOperator,
+      value: testCase.filterValue,
+    });
+    H.visualize();
+    H.assertQueryBuilderRowCount(testCase.expectedRowCount);
+    H.openNotebook();
+    removeCustomColumn({ name: testCase.name });
   });
 }
