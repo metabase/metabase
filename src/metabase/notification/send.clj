@@ -38,12 +38,13 @@
    :initial-interval-millis 500
    :multiplier              2.0
    :randomization-factor    0.1
-   :max-interval-millis     30000})
+   :max-interval-millis     30000
+   :retry-on-exception-pred #(-> % ex-data ::skip-retry? not)})
 
-(defn- should-retry-sending?
+(defn- should-skip-retry?
   [exception channel-type]
-  (not (and (= :channel/slack channel-type)
-            (contains? (:errors (ex-data exception)) :slack-token))))
+  (and (= :channel/slack channel-type)
+       (contains? (:errors (ex-data exception)) :slack-token)))
 
 (defn- channel-send-retrying!
   [notification-id payload-type handler message]
@@ -62,12 +63,17 @@
                               (try
                                 (channel/send! channel message)
                                 (catch Exception e
-                                  (when (should-retry-sending? e (:type channel))
+                                  (let [skip-retry? (should-skip-retry? e (:type channel))
+                                        new-e       (ex-info (ex-message e)
+                                                             (assoc (ex-data e) ::skip-retry? skip-retry?))]
                                     (vswap! retry-errors conj {:message   (u/strip-error e)
                                                                :timestamp (t/offset-date-time)})
-                                    (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..."
-                                               notification-id (handler->channel-name handler))
-                                    (throw e)))))
+                                    (if skip-retry?
+                                      (log/warnf e "[Notification %d] Failed to send to channel %s, retrying..."
+                                                 notification-id (handler->channel-name handler))
+                                      (log/warnf e "[Notification %d] Failed to send to channel %s, not retrying"
+                                                 notification-id (handler->channel-name handler)))
+                                    (throw new-e)))))
             retrier         (retry/make retry-config)]
         (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
         (task-history/with-task-history {:task            "channel-send"
@@ -84,7 +90,6 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
-
           (retrier send!)
           (log/debugf "[Notification %d] Sent to channel %s with %d retries"
                       notification-id (handler->channel-name handler) (count @retry-errors))))
@@ -94,6 +99,16 @@
         (prometheus/inc! :metabase-notification/channel-send-error {:payload-type payload-type
                                                                     :channel-type channel-type})
         (log/errorf e "[Notification %d] Error sending notification!" notification-id)))))
+
+(do
+  (defn f
+    []
+    (log/info "sending")
+    (throw (ex-info "error" {::skip-retry? true})))
+
+  (let [retrier (retry/make (assoc default-retry-config :retry-on-exception-pred (fn [e]
+                                                                                   (false? (::skip-retry? (ex-data e))))))]
+    (retrier f)))
 
 (defn- hydrate-notification
   [notification-info]
