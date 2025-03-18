@@ -19,12 +19,10 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
-import type BaseQuery from "metabase-lib/v1/queries/Query";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
@@ -171,7 +169,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  _legacyQuery = _.once((): AtomicQuery => {
+  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
     if (NativeQuery.isDatasetQueryType(datasetQuery)) {
@@ -184,15 +182,15 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery(): NativeQuery {
-    return this._legacyQuery();
+  legacyNativeQuery(): NativeQuery | undefined {
+    return this._legacyNativeQuery();
   }
 
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setLegacyQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: NativeQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -340,7 +338,7 @@ class Question {
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
     return isNative
-      ? this.legacyQuery().canRun()
+      ? this.legacyNativeQuery().canRun()
       : Lib.canRun(this.query(), this.type());
   }
 
@@ -564,7 +562,7 @@ class Question {
     const query = this.query();
     const { isNative } = Lib.queryDisplayInfo(query);
     if (isNative) {
-      return this.legacyQuery().table();
+      return this.legacyNativeQuery().table();
     } else {
       const tableId = Lib.sourceTableOrCardId(query);
       const metadata = this.metadata();
