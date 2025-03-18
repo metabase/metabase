@@ -40,6 +40,7 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   BaseUser,
   Bookmark,
@@ -57,6 +58,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  Pulse,
   Revision,
   User,
 } from "metabase-types/api";
@@ -263,9 +265,20 @@ export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
-export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
-  Component: undefined,
-};
+interface PluginDashboardSubscriptionParametersSectionOverride {
+  Component?: ComponentType<{
+    className?: string;
+    parameters: UiParameter[];
+    hiddenParameters?: string;
+    dashboard: Dashboard;
+    pulse: Pulse;
+    setPulseParameters: (parameters: UiParameter[]) => void;
+  }>;
+}
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDashboardSubscriptionParametersSectionOverride =
+  {
+    Component: undefined,
+  };
 
 export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
   isEnabled: () => false,
@@ -548,8 +561,19 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GsheetConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+  reconnect: boolean;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
+  GsheetsSyncStatus: PluginPlaceholder,
+  GsheetConnectionModal:
+    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
+  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
+  GsheetConnectButton: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

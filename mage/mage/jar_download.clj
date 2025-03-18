@@ -32,10 +32,12 @@
   (when-not (.exists (io/file dir))
     (println (c/blue "Creating directory " dir " ..."))
     (fs/create-dirs dir)
+    (download version dir)
     (println (c/green "Created.\n")))
   (try
     (println (str "Downloading from: " (url version)
                   "\n              to: " (dir->file version dir) " ..."))
+    (download version dir)
     (println (str "Downloaded " version ".jar to " dir))
     (catch Exception e
       (println (str "Error downloading version " version ". Do both the directory and version exist?"))

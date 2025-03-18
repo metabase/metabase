@@ -232,6 +232,14 @@ Inline styling and inline scripts are not supported.
 
 Replace the word “Metabase” wherever it appears.
 
+### `MB_ATTACHMENT_ROW_LIMIT`
+
+- Type: positive-integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `attachment-row-limit`.
+
+Row limit in file attachments excluding the header.
+
 ### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
 
 - Type: positive-integer
@@ -361,11 +369,11 @@ Whether or not the default GeoJSON maps are enabled.
 
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
-- Type: integer
+- Type: positive-integer
 - Default: `null`
 - [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
 
-Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
+Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
 
 ### `MB_EE_AI_FEATURES_ENABLED`
 
@@ -471,6 +479,18 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 SMTP username.
 
+### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+> DEPRECATED: 0.51.0
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `embedding-app-origin`
+
+Allow this origin to embed the full Metabase application.
+
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -507,6 +527,17 @@ Embedding homepage status, indicating if its visible, hidden or has been dismiss
 - [Configuration file name](./config-file.md): `embedding-secret-key`
 
 Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
+
+### `MB_ENABLE_EMBEDDING [DEPRECATED]`
+
+> DEPRECATED: 0.51.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `enable-embedding`.
+- [Configuration file name](./config-file.md): `enable-embedding`
+
+Allow admins to securely embed questions and dashboards within other applications?
 
 ### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
@@ -617,6 +648,15 @@ Client ID for Google Sign-In.
 - [Configuration file name](./config-file.md): `google-auth-enabled`
 
 Is Google Sign-in currently enabled?
+
+### `MB_GSHEETS`
+
+- Type: json
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `gsheets`.
+- [Configuration file name](./config-file.md): `gsheets`
+
+Information about Google Sheets Integration.
 
 ### `MB_HEALTH_CHECK_LOGGING_ENABLED`
 
@@ -1292,6 +1332,17 @@ open it in a text editor, then copy and paste the certificates contents here.
 This is a unique identifier for the IdP. Often referred to as Entity ID or simply Issuer. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`.
 
+### `MB_SAML_IDENTITY_PROVIDER_SLO_URI`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `saml-identity-provider-slo-uri`
+
+This is the URL where your users go to logout of your identity provider. Depending on which IdP you're
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`.
+
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1627,6 +1678,33 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 Well notify you here when theres a new version of this type of release.
 
+### `MB_UPLOADS_DATABASE_ID [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: integer
+- Default: `null`
+
+Database ID for uploads.
+
+### `MB_UPLOADS_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: boolean
+- Default: `false`
+
+Whether or not uploads are enabled.
+
+### `MB_UPLOADS_SCHEMA_NAME [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: string
+- Default: `null`
+
+Schema name for uploads.
+
 ### `MB_UPLOADS_SETTINGS`
 
 - Type: json
@@ -1634,6 +1712,15 @@ Well notify you here when theres a new version of this type of release.
 - [Configuration file name](./config-file.md): `uploads-settings`
 
 Upload settings.
+
+### `MB_UPLOADS_TABLE_PREFIX [DEPRECATED]`
+
+> DEPRECATED: 0.50.0
+
+- Type: string
+- Default: `null`
+
+Prefix for upload table names.
 
 ### `MB_USER_VISIBILITY`
 

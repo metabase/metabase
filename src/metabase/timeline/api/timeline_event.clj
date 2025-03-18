@@ -1,7 +1,7 @@
 (ns metabase.timeline.api.timeline-event
   "/api/timeline-event endpoints."
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
@@ -43,12 +43,12 @@
                            :timestamp  parsed}
                           (when-not icon
                             {:icon (t2/select-one-fn :icon :model/Timeline :id timeline_id)}))]
-      (snowplow/track-event! ::snowplow/timeline
-                             (cond-> {:event         :new-event-created
-                                      :time_matters  time_matters
-                                      :collection_id (:collection_id timeline)}
-                               (boolean source)      (assoc :source source)
-                               (boolean question_id) (assoc :question_id question_id)))
+      (analytics/track-event! :snowplow/timeline
+                              (cond-> {:event         :new-event-created
+                                       :time_matters  time_matters
+                                       :collection_id (:collection_id timeline)}
+                                (boolean source)      (assoc :source source)
+                                (boolean question_id) (assoc :question_id question_id)))
       (first (t2/insert-returning-instances! :model/TimelineEvent tl-event)))))
 
 (api.macros/defendpoint :get "/:id"

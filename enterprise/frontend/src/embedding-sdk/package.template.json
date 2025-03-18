@@ -1,6 +1,6 @@
 {
   "name": "@metabase/embedding-sdk-react",
-  "version": "0.53.9",
+  "version": "0.53.11",
   "description": "Metabase Embedding SDK for React",
   "bin": "./dist/cli.js",
   "repository": {
@@ -27,7 +27,7 @@
   },
   "types": "./dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
   "peerDependencies": {
-    "react": ">=17 <=18",
-    "react-dom": ">=17 <=18"
+    "react": ">=17 <=19",
+    "react-dom": ">=17 <=19"
   }
 }

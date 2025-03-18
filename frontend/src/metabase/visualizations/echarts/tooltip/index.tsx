@@ -65,6 +65,7 @@ export const getTooltipBaseOption = (
   containerRef: React.RefObject<HTMLDivElement>,
 ) => {
   return {
+    enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
       let container = document.querySelector(

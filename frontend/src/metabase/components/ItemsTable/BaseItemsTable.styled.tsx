@@ -1,12 +1,17 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
+import cx from "classnames";
+import {
+  type HTMLAttributes,
+  type TableHTMLAttributes,
+  forwardRef,
+} from "react";
 
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
-import type { TextProps } from "metabase/ui";
+import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
 
 import { RawMaybeLink } from "../Badge/Badge.styled";
@@ -14,7 +19,18 @@ import { RawMaybeLink } from "../Badge/Badge.styled";
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
-export const Table = styled.table<{ isInDragLayer?: boolean }>`
+type TableProps = TableHTMLAttributes<HTMLTableElement> & {
+  isInDragLayer?: boolean;
+};
+
+export const Table = styled(
+  (props: TableProps) => (
+    <table {...props} className={cx(props.className, AdminS.ContentTable)} />
+  ),
+  {
+    shouldForwardProp: prop => prop !== "isInDragLayer",
+  },
+)`
   background-color: var(--mb-color-bg-white);
   table-layout: fixed;
   border-collapse: unset;
@@ -39,8 +55,6 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
   ${props => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
-
-Table.defaultProps = { className: AdminS.ContentTable };
 
 export const hideResponsively = ({
   hideAtContainerBreakpoint,
@@ -115,17 +129,17 @@ export const ItemNameCell = styled.td`
   }
 `;
 
-export const SortingIcon = styled(FixedSizeIcon)`
+export const SortingIcon = styled(
+  forwardRef<SVGSVGElement, IconProps>(function SortingIcon(props, ref) {
+    return <FixedSizeIcon {...props} size={props.size ?? 8} ref={ref} />;
+  }),
+)`
   margin-inline-start: 4px;
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
   color: var(--mb-color-text-medium);
 `;
-
-SortingIcon.defaultProps = {
-  size: 8,
-};
 
 export const SortingControlContainer = styled.div<{
   isActive: boolean;
@@ -134,7 +148,9 @@ export const SortingControlContainer = styled.div<{
   display: flex;
   align-items: center;
   color: ${({ isActive }) => isActive && "var(--mb-color-text-dark)"};
-  ${props => (props.isSortable ? `cursor: pointer; user-select: none;` : "")}
+
+  ${({ isSortable = true }) =>
+    isSortable ? `cursor: pointer; user-select: none;` : ""}
 
   .Icon {
     visibility: ${props => (props.isActive ? "visible" : "hidden")};
@@ -148,7 +164,6 @@ export const SortingControlContainer = styled.div<{
     }
   }
 `;
-SortingControlContainer.defaultProps = { isSortable: true };
 
 export const RowActionsContainer = styled.div`
   display: flex;

@@ -19,9 +19,11 @@
   (reduce (fn [settings k] (assoc settings k nil)) settings settings-to-reset))
 
 (defn settings
-  "Gets valid config settings."
+  "Gets valid config settings. We include deprecated settings in the env var docs,
+   but we exclude them from the config file template."
   []
-  (dox/filter-env-vars (dox/get-settings)))
+  (->> (dox/get-settings)
+       dox/filter-env-vars))
 
 (defn get-name-and-default
   "Get a setting's name and its default."
@@ -34,6 +36,7 @@
   "Creates a sorted map of settings from their names and defaults."
   [settings]
   (->> settings
+       (remove :deprecated)
        (map get-name-and-default)
        (into (sorted-map))))
 

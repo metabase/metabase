@@ -34,13 +34,19 @@ export const ExpandToggleButton = styled.button`
   visibility: ${props => (props.hidden ? "hidden" : "visible")};
 `;
 
-interface ExpandToggleIconProps {
+interface ExpandToggleIconProps extends IconProps {
   isExpanded: boolean;
 }
 
-export const ExpandToggleIcon = styled(Icon, {
-  shouldForwardProp: propName => propName !== "isExpanded",
-})<ExpandToggleIconProps & IconProps>`
+export const ExpandToggleIcon = styled(
+  ({ isExpanded, ...props }: ExpandToggleIconProps) => (
+    <Icon
+      {...props}
+      name={props.name ?? "chevronright"}
+      size={props.size ?? 12}
+    />
+  ),
+)`
   transition: transform 200ms;
 
   ${props =>
@@ -49,11 +55,6 @@ export const ExpandToggleIcon = styled(Icon, {
       transform: rotate(90deg);
     `}
 `;
-
-ExpandToggleIcon.defaultProps = {
-  name: "chevronright",
-  size: 12,
-};
 
 export const NameContainer = styled.div`
   word-break: break-word;
@@ -65,9 +66,5 @@ export const IconContainer = styled.div<{ transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: ${props => (props.transparent ? 0.5 : 1)};
+  opacity: ${({ transparent = true }) => (transparent ? 0.5 : 1)};
 `;
-
-IconContainer.defaultProps = {
-  transparent: true,
-};

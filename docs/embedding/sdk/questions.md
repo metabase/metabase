@@ -73,7 +73,8 @@ export default function App() {
 | `onSave`                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`                                                                                                                                                                                                                                                                                                                          |
 | `plugins`               | `{ mapQuestionClickActions: Function }` or null                      | Additional mapper function to override or add drill-down menu                                                                                                                                                                                                                                                                                                                                                                                   |
 | `questionId`            | number or string                                                     | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`<br>- The `entity_id` key of the question object. You can find a question's Entity ID in the info panel when viewing a question<br>- `new` to show the notebook editor for creating new questions. `isSaveEnabled` must be `true` to allow saving the question |
-| `saveToCollection`      | number \| "root" \| "personal"                                       | (optional) The target collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions                                                                                                                                                                                                                                                                                    |
+| `saveToCollection`      | number \| "root" \| "personal"                                       | _Deprecated:_ use `targetCollection` instead                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `targetCollection`      | number \| "root" \| "personal"                                       | (optional) The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions                                                                                                                                                                                                                                                                                           |
 | `title`                 | boolean \| string \| `ReactNode` \| `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout                                                                                                                                                                                                        |
 | `withChartTypeSelector` | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout                                                                                                                                                                                                                                                                                 |
 | `withResetButton`       | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                                                                                                                                                         |
@@ -319,6 +320,23 @@ No props. Uses question context for summarization functionality.
 Dropdown button for the Summarize component.
 
 Uses [Popover props](https://v6.mantine.dev/core/popover/?t=props) except `onClose`, `children`, and `opened` under the hood, as well as:
+
+| Prop      | Type                | Description                                     |
+| --------- | ------------------- | ----------------------------------------------- |
+| className | string              | Custom CSS class name for styling the component |
+| style     | React.CSSProperties | Inline styles to apply to the component         |
+
+### InteractiveQuestion.DownloadWidget
+
+Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `JSON`, and `PNG` depending on the visualization).
+
+No props
+
+### InteractiveQuestion.DownloadWidgetDropdown
+
+Provides a button that contains a dropdown that shows the `DownloadWidget`.
+
+Uses [Popover props](https://mantine.dev/core/popover/?t=props) under the hood, as well as:
 
 | Prop      | Type                | Description                                     |
 | --------- | ------------------- | ----------------------------------------------- |

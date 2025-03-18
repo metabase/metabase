@@ -479,7 +479,8 @@
 (defmulti count-with-field-filter-query
   "Generate a native query that returns the count of a Table with `table-name` with a field filter against a Field with
   `field-name`."
-  {:arglists '([driver table-name field-name])}
+  {:arglists '([driver table-name field-name]
+               [driver table-name field-name sample-value])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

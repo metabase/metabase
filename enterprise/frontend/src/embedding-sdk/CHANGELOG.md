@@ -1,3 +1,37 @@
+## [0.53.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.10...embedding-sdk-0.53.11) (2025-03-17)
+
+
+### Bug Fixes
+
+* **sdk:** Popovers not working on Safari ([#55012](https://github.com/metabase/metabase/issues/55012)) ([#55021](https://github.com/metabase/metabase/issues/55021)) ([c72aa49](https://github.com/metabase/metabase/commit/c72aa49becf0628c855d7c43d979134f6e1474de))
+
+
+### Features
+
+* **sdk:** Add DownloadWidget and DownloadWidgetDropdown ([#55148](https://github.com/metabase/metabase/issues/55148)) ([bfdc47c](https://github.com/metabase/metabase/commit/bfdc47c72b8acbc75ca175fe5c1c60fefa7b5138))
+* **sdk:** Add entity IDs to CollectionBrowser ([#54985](https://github.com/metabase/metabase/issues/54985)) ([#55085](https://github.com/metabase/metabase/issues/55085)) ([b206331](https://github.com/metabase/metabase/commit/b20633136873db712356561da5eab982ae841315))
+* **sdk:** Add stable ID support where missing ([#54975](https://github.com/metabase/metabase/issues/54975)) ([#55079](https://github.com/metabase/metabase/issues/55079)) ([b6f7bbe](https://github.com/metabase/metabase/commit/b6f7bbee4739ed79d03d20e4b3a98d9ecc18f628))
+* **sdk:** Ensure that all dashboards use entity ID the same way ([#55010](https://github.com/metabase/metabase/issues/55010)) ([#55091](https://github.com/metabase/metabase/issues/55091)) ([008e73a](https://github.com/metabase/metabase/commit/008e73af79cf024e7cc6968c37302059f6ba80f1))
+
+
+
+## [0.53.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.9...embedding-sdk-0.53.10) (2025-03-12)
+
+
+### Bug Fixes
+
+* **sdk:** Fix ColorRangeSelector in Conditional Formatting ([#54615](https://github.com/metabase/metabase/issues/54615)) ([ed511f9](https://github.com/metabase/metabase/commit/ed511f94bbf53746b4991fc64f7cadc4c114873e))
+* **sdk:** Improve _.compose type + fix SDK type ([#54850](https://github.com/metabase/metabase/issues/54850)) ([#54951](https://github.com/metabase/metabase/issues/54951)) ([16d2f76](https://github.com/metabase/metabase/commit/16d2f76ae63cc58663f1ec8b9a93631bbc3492ed))
+* **sdk:** mark react-dom/client as external to fix warnings in React 19 ([#54919](https://github.com/metabase/metabase/issues/54919)) ([#54923](https://github.com/metabase/metabase/issues/54923)) ([8f47f13](https://github.com/metabase/metabase/commit/8f47f1399f08da150d7e9e3e225eea0c58f70c47))
+* **sdk:** remove react-router console error in LegendLabel when in React 19 ([#54926](https://github.com/metabase/metabase/issues/54926)) ([#54952](https://github.com/metabase/metabase/issues/54952)) ([a8ca5db](https://github.com/metabase/metabase/commit/a8ca5dbf3dd632128a1b9a9031c4933c43333832))
+
+
+### Features
+
+* **sdk:** experimental react 19 version range support ([#54904](https://github.com/metabase/metabase/issues/54904)) ([#55001](https://github.com/metabase/metabase/issues/55001)) ([8450f01](https://github.com/metabase/metabase/commit/8450f0159d67192b039cd9ac08174d380a715aea))
+
+
+
 ## [0.53.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.8...embedding-sdk-0.53.9) (2025-02-27)
 
 

@@ -11,10 +11,10 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.server.core :as server]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
@@ -31,20 +31,6 @@
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
-
-(defsetting prometheus-server-port
-  (deferred-trs (str "Port to serve prometheus metrics from. If set, prometheus collectors are registered"
-                     " and served from `localhost:<port>/metrics`."))
-  :type       :integer
-  :visibility :internal
-  ;; settable only through environmental variable
-  :setter     :none
-  :getter     (fn reading-prometheus-port-setting []
-                (let [parse (fn [raw-value]
-                              (if-let [parsed (parse-long raw-value)]
-                                parsed
-                                (log/warnf "MB_PROMETHEUS_SERVER_PORT value of '%s' is not parseable as an integer." raw-value)))]
-                  (setting/get-raw-value :prometheus-server-port integer? parse))))
 
 (p.types/defprotocol+ PrometheusActions
   (stop-web-server [this]))
@@ -76,7 +62,7 @@
 
 ;;; Collectors
 
-(defn c3p0-stats
+(defn- c3p0-stats
   "Takes `raw-stats` from [[connection-pool-info]] and groups by each property type rather than each database.
   {\"metabase-postgres-app-db\" {:numConnections 15,
                                  :numIdleConnections 15,
@@ -154,7 +140,7 @@
   []
   (reduce conn-pool-bean-diag-info {} (jmx/mbean-names "com.mchange.v2.c3p0:type=PooledDataSource,*")))
 
-(def c3p0-collector
+(def ^:private c3p0-collector
   "c3p0 collector delay"
   (letfn [(collect-metrics []
             (-> (connection-pool-info)
@@ -276,7 +262,16 @@
                        {:description "Number of errors when sending channel notifications."
                         :labels [:payload-type :channel-type]})
    (prometheus/gauge :metabase-notification/concurrent-tasks
-                     {:description "Number of concurrent notification sends."})])
+                     {:description "Number of concurrent notification sends."})
+   (prometheus/counter :metabase-gsheets/connection-creation-began
+                       {:description "How many times the instance has initiated a Google Sheets connection creation."})
+   (prometheus/counter :metabase-gsheets/connection-creation-ok
+                       {:description "How many times the instance has created a Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-creation-error
+                       {:description "How many failures there were when creating a Google Sheets connection."
+                        :labels [:reason]})
+   (prometheus/counter :metabase-gsheets/connection-deleted
+                       {:description "How many times the instance has deleted their Google Sheets connection."})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -334,7 +329,8 @@
                          :port        port
                          :max-threads 8}))
 
-;;; API: call [[setup!]] once, call [[shutdown!]] on shutdown
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public API: call [[setup!]] once, call [[shutdown!]] on shutdown
 
 (defn setup!
   "Start the prometheus metric collector and web-server."
@@ -417,5 +413,15 @@
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
 (comment
+  ;; want to see what's in the registry?
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (:registry system))))
+  (spit "metrics" (iapetos.export/text-format (:registry system)))
+
+  ;; need to restart the server to see the metrics? use:
+  (shutdown!)
+
+  ;; get the value of a metric:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-began)
+
+  ;; w/ a label:
+  (prometheus/value (:registry system) :metabase-gsheets/connection-creation-error [[:reason "timeout"]]))

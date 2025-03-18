@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
+import type { SDKCollectionReference } from "embedding-sdk/store/collections";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
@@ -32,24 +33,25 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "saveToCollection">;
+  withDownloads?: boolean;
+} & Pick<
+  SaveQuestionProps<SDKCollectionReference>,
+  "targetCollection" | "saveToCollection"
+>;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
   params: { slug?: string };
 };
 
-export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
-  InteractiveQuestionConfig & QuestionMockLocationParameters
->;
-
 // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
 export type InteractiveQuestionId = CardId | "new" | (string & {});
 
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & {
-      cardId: InteractiveQuestionId;
+    Omit<LoadSdkQuestionParams, "questionId"> & {
+      questionId: InteractiveQuestionId;
+      variant?: "static" | "interactive";
     }
 >;
 
@@ -59,8 +61,9 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollection"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
+  Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;

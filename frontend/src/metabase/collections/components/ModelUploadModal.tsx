@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   Button,
   Flex,
@@ -45,19 +45,17 @@ export function ModelUploadModal({
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
   const [tableId, setTableId] = useState<TableId | null>(null);
-  const models = useSearchListQuery({
-    query: {
-      collection: collectionId,
-      models: ["dataset"],
-    },
+
+  const { data, isLoading } = useListCollectionItemsQuery({
+    id: collectionId,
+    models: ["dataset"],
   });
 
   const uploadableModels = useMemo(
-    () => models.data?.filter(model => !!model.based_on_upload),
-    [models],
+    () => data?.data?.filter(model => !!model.based_on_upload),
+    [data],
   );
-  const hasNoUploadableModels =
-    models.isLoaded && uploadableModels?.length === 0;
+  const hasNoUploadableModels = !isLoading && uploadableModels?.length === 0;
 
   useEffect(
     function setDefaultTableId() {
@@ -79,7 +77,7 @@ export function ModelUploadModal({
 
       return onUpload({
         tableId: Number(tableId),
-        modelId: modelForTableId?.id,
+        modelId: modelForTableId?.id as number,
         uploadMode: uploadMode,
       });
     }
@@ -143,6 +141,7 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
+            aria-label="Select a model"
             icon={<Icon name="model" />}
             placeholder="Select a model"
             value={tableId ? String(tableId) : ""}
