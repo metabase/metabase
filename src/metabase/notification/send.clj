@@ -39,7 +39,7 @@
    :multiplier              2.0
    :randomization-factor    0.1
    :max-interval-millis     30000
-   :retry-on-exception-pred #(-> % ex-data ::skip-retry? not)})
+   :retry-on-exception-pred (comp not ::skip-retry? ex-data)})
 
 (defn- should-skip-retry?
   [exception channel-type]
@@ -65,12 +65,14 @@
                                 (catch Exception e
                                   (let [skip-retry? (should-skip-retry? e (:type channel))
                                         new-e       (ex-info (ex-message e)
-                                                             (assoc (ex-data e) ::skip-retry? skip-retry?))]
-                                    (vswap! retry-errors conj {:message   (u/strip-error e)
-                                                               :timestamp (t/offset-date-time)})
-                                    (if skip-retry?
-                                      (log/warnf e "[Notification %d] Failed to send to channel %s, retrying..."
-                                                 notification-id (handler->channel-name handler))
+                                                             (assoc (ex-data e) ::skip-retry? skip-retry?)
+                                                             e)]
+                                    (if-not skip-retry?
+                                      (do
+                                        (vswap! retry-errors conj {:message   (u/strip-error e)
+                                                                   :timestamp (t/offset-date-time)})
+                                        (log/warnf e "[Notification %d] Failed to send to channel %s, retrying..."
+                                                   notification-id (handler->channel-name handler)))
                                       (log/warnf e "[Notification %d] Failed to send to channel %s, not retrying"
                                                  notification-id (handler->channel-name handler)))
                                     (throw new-e)))))

@@ -152,7 +152,7 @@
                 (#'notification.send/send-notification-sync! n))
               (is (=? {:task "channel-send"
                        :status       :failed
-                       :task_details {:attempted_retries 1
+                       :task_details {:attempted_retries 0
                                       :message           "Failed to send"
                                       :ex-data           {:metadata 42
                                                           :metabase.notification.send/skip-retry? true}
