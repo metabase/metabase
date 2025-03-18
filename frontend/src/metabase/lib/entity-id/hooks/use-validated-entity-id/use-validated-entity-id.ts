@@ -17,6 +17,29 @@ type SUPPORTED_ENTITIES = {
   collection: CollectionId;
 };
 
+export interface UseTranslateEntityIdProps<
+  TEntity extends keyof SUPPORTED_ENTITIES = keyof SUPPORTED_ENTITIES,
+> {
+  type: TEntity;
+  id: BaseEntityId | string | number | null | undefined;
+}
+
+export type UseTranslateEntityIdReturned<
+  TEntity extends keyof SUPPORTED_ENTITIES = keyof SUPPORTED_ENTITIES,
+  TReturnedId = SUPPORTED_ENTITIES[TEntity],
+> =
+  | { id: TReturnedId; isLoading: false; isError: false }
+  | {
+      id: null;
+      isLoading: true;
+      isError: false;
+    }
+  | {
+      id: null;
+      isLoading: false;
+      isError: true;
+    };
+
 /**
  * A hook that validates and potentially translates an entity ID.
  *
@@ -35,21 +58,10 @@ export const useValidatedEntityId = <
 >({
   type,
   id,
-}: {
-  type: TEntity;
-  id: BaseEntityId | string | number | null | undefined;
-}):
-  | { id: TReturnedId; isLoading: false; isError: false }
-  | {
-      id: null;
-      isLoading: true;
-      isError: false;
-    }
-  | {
-      id: null;
-      isLoading: false;
-      isError: true;
-    } => {
+}: UseTranslateEntityIdProps<TEntity>): UseTranslateEntityIdReturned<
+  TEntity,
+  TReturnedId
+> => {
   const isEntityId = isBaseEntityID(id);
   const {
     data: entity_ids,
@@ -81,7 +93,7 @@ export const useValidatedEntityId = <
       } as const;
     }
 
-    if (!isEntityId || isError) {
+    if (isError || !isEntityId) {
       return {
         id: null,
         isLoading: false,
@@ -103,6 +115,10 @@ export const useValidatedEntityId = <
 };
 
 const isStringifiedNumber = (value: unknown): boolean => {
+  if (value === null || value === undefined) {
+    return false;
+  }
+
   const numberValue = Number(value);
   return !isNaN(numberValue) && isFinite(numberValue);
 };
