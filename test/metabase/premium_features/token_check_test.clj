@@ -182,3 +182,6 @@
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
         (is (zero? (premium-features/active-users-count)))))))
+
+(deftest token-contents-test
+  (is (= "what is here" token-check/*token-features*)))
