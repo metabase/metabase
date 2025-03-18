@@ -101,18 +101,21 @@ describe("getFilteredClauses", () => {
       args: [
         {
           description: "Something that should evaluate to true or false.",
-          example: "[Weight] > 200",
+          example: [">", ["dimension", "Weight"], 200],
           name: "condition",
         },
         {
           description:
             "The value that will be returned if the preceding condition is true.",
-          example: '"Large"',
+          example: "Large",
           name: "output",
         },
         {
           description: "You can add more conditions to test.",
-          example: '[Weight] > 150, "Medium", "Small"',
+          example: [
+            "args",
+            [[">", ["dimension", "Weight"], 150], "Medium", "Small"],
+          ],
           name: "…",
         },
       ],
@@ -120,8 +123,16 @@ describe("getFilteredClauses", () => {
       description:
         "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
       docsPage: "case",
-      example:
-        'case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")',
+      example: [
+        "case",
+        [
+          [[">", ["dimension", "Weight"], 200], "Large"],
+          [[">", ["dimension", "Weight"], 150], "Medium"],
+        ],
+        {
+          default: "Small",
+        },
+      ],
       name: "case",
       structure: "case",
     });
