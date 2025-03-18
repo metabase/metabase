@@ -1897,5 +1897,5 @@
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols first :base_type)))
-            (doseq [[casted-value equals? uncasted-value] rows]
+            (doseq [[casted-value _equals? _uncasted-value] rows]
               (is (string? casted-value)))))))))
