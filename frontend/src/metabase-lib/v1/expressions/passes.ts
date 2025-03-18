@@ -134,12 +134,17 @@ export const adjustMultiArgOptions: CompilerPass = tree =>
     if (isCallExpression(node)) {
       const [operator, ...args] = node;
       const clause = MBQL_CLAUSES[operator];
+
+      if (isOptionsObject(args.at(0))) {
+        return node;
+      }
+
       if (clause != null && clause.multiple && clause.hasOptions) {
-        const options = args.at(-1);
-        if (isOptionsObject(options) && args.length > 3) {
-          return withAST([operator, options, ...args.slice(0, -1)], node);
+        const lastArg = args.at(-1);
+        if (isOptionsObject(lastArg) && args.length > 3) {
+          return withAST([operator, lastArg, ...args.slice(0, -1)], node);
         }
-        if (args.length > 2 && !isOptionsObject(args.at(-1))) {
+        if (!isOptionsObject(lastArg) && args.length > 2) {
           return withAST([operator, {}, ...args], node);
         }
       }
