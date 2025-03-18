@@ -12,6 +12,7 @@ import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
   CardId,
+  ConcreteTableId,
   DashCardId,
   DashboardCard,
   DashboardId,
@@ -189,6 +190,25 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
+
+export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
+  tableId: ConcreteTableId;
+};
+
+export const addEditableTableDashCardToDashboard =
+  ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
+  (dispatch: Dispatch) => {
+    // trackCardCreated("table-editable", dashId); // TODO [WRK]: add tracking
+    const card = createVirtualCard("text"); // it doesn't matter which type we use here, it will be changed on the BE
+    const dashcardOverrides = {
+      card,
+      visualization_settings: {
+        table_id: tableId,
+      },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
+  };
+
 export const addIFrameDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
