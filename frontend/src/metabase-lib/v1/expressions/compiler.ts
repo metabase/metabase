@@ -2,7 +2,7 @@ import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { renderError } from "./errors";
+import { type ExpressionError, renderError } from "./errors";
 import { resolverPass } from "./field-resolver";
 import {
   adjustBooleans,
@@ -14,11 +14,11 @@ import {
   applyPasses,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
-import type { ClauseType, ErrorWithMessage, StartRule } from "./types";
+import type { ClauseType, StartRule } from "./types";
 
 export type CompileResult<S extends StartRule> =
   | {
-      error: ErrorWithMessage;
+      error: ExpressionError;
       expression: null;
       expressionClause: null;
     }

@@ -7,7 +7,7 @@ import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
   ClauseType,
-  ErrorWithMessage,
+  ExpressionError,
   StartRule,
 } from "metabase-lib/v1/expressions";
 
@@ -62,7 +62,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
   const [name, setName] = useState(initialName || "");
   const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
-  const [error, setError] = useState<ErrorWithMessage | null>(null);
+  const [error, setError] = useState<ExpressionError | null>(null);
 
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
@@ -91,7 +91,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }, [clause, handleCommit]);
 
   const handleExpressionChange = useCallback(
-    (clause: Clause | null, error: ErrorWithMessage | null = null) => {
+    (clause: Clause | null, error: ExpressionError | null = null) => {
       if (error) {
         setError(error);
         return;

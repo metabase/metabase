@@ -1,14 +1,13 @@
 import { t } from "ttag";
 
 import type { Node } from "./pratt";
-import type { ErrorWithMessage } from "./types";
 
 /*
  * This class helps anything that handles parser errors to use instanceof to
  * easily distinguish between compilation error exceptions and exceptions due to
  * bugs
  */
-abstract class ExpressionError extends Error {
+export abstract class ExpressionError extends Error {
   abstract get pos(): number | null;
   abstract get len(): number | null;
   abstract get friendly(): boolean;
@@ -77,9 +76,7 @@ export class DiagnosticError extends ExpressionError {
   }
 }
 
-export function isErrorWithMessage(
-  err: unknown,
-): err is ErrorWithMessage | ExpressionError {
+export function isExpressionError(err: unknown): err is ExpressionError {
   return (
     typeof err === "object" &&
     err != null &&
@@ -87,12 +84,9 @@ export function isErrorWithMessage(
   );
 }
 
-export function renderError(error: unknown) {
-  if (isErrorWithMessage(error) && error.friendly) {
+export function renderError(error: unknown): ExpressionError {
+  if (isExpressionError(error) && error.friendly) {
     return error;
   }
-  return {
-    message: t`Invalid expression`,
-    friendly: true,
-  };
+  return new DiagnosticError(t`Invalid expression`);
 }

@@ -16,7 +16,7 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   type ClauseType,
-  type ErrorWithMessage,
+  type ExpressionError,
   type StartRule,
   MBQL_CLAUSES,
   diagnoseAndCompile,
@@ -48,13 +48,13 @@ type EditorProps<S extends StartRule> = {
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
-  error?: ErrorWithMessage | Error | null;
+  error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
 
   onChange: (
     clause: ClauseType<S> | null,
-    error: ErrorWithMessage | null,
+    error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
 };
@@ -243,7 +243,7 @@ function useExpression<S extends StartRule = "expression">({
   const [initialSource, setInitialSource] = useState("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
-  const errorRef = useRef<ErrorWithMessage | null>(null);
+  const errorRef = useRef<ExpressionError | null>(null);
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {

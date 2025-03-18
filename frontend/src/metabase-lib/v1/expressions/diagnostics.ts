@@ -6,10 +6,10 @@ import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
-import { DiagnosticError, renderError } from "./errors";
+import { DiagnosticError, type ExpressionError, renderError } from "./errors";
 import { isExpression } from "./matchers";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage, StartRule, Token } from "./types";
+import type { StartRule, Token } from "./types";
 import { getDatabase, getExpressionMode } from "./utils";
 
 export function diagnose(options: {
@@ -19,7 +19,7 @@ export function diagnose(options: {
   stageIndex: number;
   expressionIndex?: number;
   metadata?: Metadata;
-}): ErrorWithMessage | null {
+}): ExpressionError | null {
   const result = diagnoseAndCompile(options);
   if (result.error) {
     return result.error;
@@ -105,7 +105,7 @@ export function diagnoseAndCompile<S extends StartRule>({
 function checkOpenParenthesisAfterFunction(
   tokens: Token[],
   source: string,
-): ErrorWithMessage | null {
+): ExpressionError | null {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
     if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
@@ -133,7 +133,7 @@ function checkOpenParenthesisAfterFunction(
   return null;
 }
 
-function checkMatchingParentheses(tokens: Token[]): ErrorWithMessage | null {
+function checkMatchingParentheses(tokens: Token[]): ExpressionError | null {
   const mismatchedParentheses = countMatchingParentheses(tokens);
   if (mismatchedParentheses === 1) {
     return new DiagnosticError(t`Expecting a closing parenthesis`);
@@ -174,7 +174,7 @@ function checkCompiledExpression({
   startRule: string;
   expression: Expression;
   expressionIndex?: number;
-}): ErrorWithMessage | null {
+}): ExpressionError | null {
   const error = Lib.diagnoseExpression(
     query,
     stageIndex,
@@ -192,7 +192,7 @@ function checkCompiledExpression({
 function checkMissingCommasInArgumentList(
   tokens: Token[],
   source: string,
-): ErrorWithMessage | null {
+): ExpressionError | null {
   const CALL = 1;
   const GROUP = 2;
   const stack = [];

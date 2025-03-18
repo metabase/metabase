@@ -3,7 +3,7 @@ import { type Diagnostic, linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 
 import type * as Lib from "metabase-lib";
-import type { ErrorWithMessage, StartRule } from "metabase-lib/v1/expressions";
+import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
 import { diagnoseAndCompile } from "metabase-lib/v1/expressions";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -52,7 +52,7 @@ const lint = (options: LintOptions) =>
     },
   );
 
-function getErrorPosition(error: ErrorWithMessage | Error) {
+function getErrorPosition(error: ExpressionError | Error) {
   if ("pos" in error && "len" in error) {
     const pos = error.pos ?? 0;
     const len = error.len ?? 0;
