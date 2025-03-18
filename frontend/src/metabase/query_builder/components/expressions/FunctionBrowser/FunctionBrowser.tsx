@@ -121,11 +121,13 @@ function FunctionBrowserItem({
       key={clause.name}
       className={S.clause}
       px="md"
-      py="xs"
+      py="sm"
       onMouseDown={handleMouseDown}
     >
-      <dt className={S.name}>
-        <Text size="md">{clause.structure}</Text>
+      <dt>
+        <Text size="md" pb="xs" fw="bold" className={S.name}>
+          {clause.structure}
+        </Text>
       </dt>
       <dd className={S.description}>
         <Text size="sm" c="var(--mb-color-text-medium)">

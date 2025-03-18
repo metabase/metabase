@@ -7,10 +7,14 @@
 .results {
   overflow: auto;
   height: 100%;
-}
 
-.name {
-  font-weight: bold;
+  /* specificity */
+  .name {
+    line-height: 1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .description {
