@@ -103,11 +103,11 @@
   have a different value. Updates will come out as a deletion and an addition. In the future we could make these an
   update if desired."
   [{:keys [current-index source-values]}]
-  #p (let [current #p (set current-index)
+  (let [current (set current-index)
         ;; into {} to ensure that each id appears only once. Later values "win".
-           source  #p (set (into {} source-values))]
-       {:additions (set/difference source current)
-        :deletions (set/difference current source)}))
+        source  (set (into {} source-values))]
+    {:additions (set/difference source current)
+     :deletions (set/difference current source)}))
 
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
