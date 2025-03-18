@@ -38,7 +38,12 @@ export function tokenize(expression: string) {
   }
 
   function error(node: SyntaxNodeRef, message: string) {
-    errors.push(new ParseError(message, node));
+    errors.push(
+      new ParseError(message, {
+        pos: node.from,
+        len: node.to - node.from,
+      }),
+    );
   }
 
   cursor.iterate(function (node) {
@@ -162,21 +167,25 @@ function parseOperator(op: string): OPERATOR | null {
 }
 
 export class ParseError extends ExpressionError {
-  node: SyntaxNodeRef;
+  pos: number | null;
+  len: number | null;
 
-  constructor(message: string, node: SyntaxNodeRef) {
+  constructor(
+    message: string,
+    {
+      pos = null,
+      len = null,
+    }: {
+      pos?: number | null;
+      len?: number | null;
+    } = {},
+  ) {
     super(message);
-    this.node = node;
+    this.pos = pos;
+    this.len = len;
   }
 
   get friendly(): boolean {
     return true;
-  }
-  get pos(): number | null {
-    return this.node.from;
-  }
-
-  get len(): number | null {
-    return this.node.to - this.node.from;
   }
 }
