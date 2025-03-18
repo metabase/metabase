@@ -559,6 +559,18 @@ describe("Question", () => {
           underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
         ).toBe(true);
       });
+
+      it("questions with different randomized idents are considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(false);
+      });
     });
   });
 

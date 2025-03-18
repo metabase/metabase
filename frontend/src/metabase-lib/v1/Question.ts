@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { assoc, assocIn, chain, dissoc, getIn, updateIn } from "icepick";
+import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
@@ -666,21 +666,31 @@ class Question {
   // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
-      // if it's new, then it's dirty if it is runnable
+      // If it's new, then it's dirty if it is runnable
       return true;
     } else {
-      // if it's saved, then it's dirty when the current card doesn't match the last saved version
+      // If it's saved, then it's dirty when the current card doesn't match the last saved version.
+      // Omit `entity_id` and `dataset_query` as they have randomized idents
       const origCardSerialized =
         originalQuestion &&
         originalQuestion._serializeForUrl({
+          includeEntityId: false,
+          includeDatasetQuery: false,
           includeOriginalCardId: false,
         });
-
       const currentCardSerialized = this._serializeForUrl({
+        includeEntityId: false,
+        includeDatasetQuery: false,
         includeOriginalCardId: false,
       });
+      if (currentCardSerialized !== origCardSerialized) {
+        return false;
+      }
 
-      return currentCardSerialized !== origCardSerialized;
+      return !Lib.areLegacyQueriesEqual(
+        this.datasetQuery(),
+        originalQuestion.datasetQuery(),
+      );
     }
   }
 
@@ -708,47 +718,56 @@ class Question {
 
   // Internal methods
   _serializeForUrl({
+    includeEntityId = true,
+    includeDatasetQuery = true,
     includeOriginalCardId = true,
     includeDisplayIsLocked = false,
     creationType,
+  }: {
+    includeEntityId?: boolean;
+    includeDatasetQuery?: boolean;
+    includeOriginalCardId?: boolean;
+    includeDisplayIsLocked?: boolean;
+    creationType?: string;
   } = {}) {
-    const query = this.query();
-
+    const card = this._card;
     const cardCopy = {
-      name: this._card.name,
-      description: this._card.description,
-      collection_id: this._card.collection_id,
-      dashboard_id: this._card.dashboard_id,
-      entity_id: this._card.entity_id,
-      dataset_query: Lib.toLegacyQuery(query),
-      display: this._card.display,
-      ...(_.isEmpty(this._card.parameters)
+      name: card.name,
+      description: card.description,
+      collection_id: card.collection_id,
+      dashboard_id: card.dashboard_id,
+      ...(includeEntityId ? { entity_id: card.entity_id } : {}),
+      ...(includeDatasetQuery
+        ? { dataset_query: Lib.toLegacyQuery(this.query()) }
+        : {}),
+      display: card.display,
+      ...(_.isEmpty(card.parameters)
         ? undefined
         : {
-            parameters: this._card.parameters,
+            parameters: card.parameters,
           }),
-      type: this._card.type,
+      type: card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
             parameterValues: this._parameterValues,
           }),
       // this is kinda wrong. these values aren't really part of the card, but this is a convenient place to put them
-      visualization_settings: this._card.visualization_settings,
+      visualization_settings: card.visualization_settings,
       ...(includeOriginalCardId
         ? {
-            original_card_id: this._card.original_card_id,
+            original_card_id: card.original_card_id,
           }
         : {}),
       ...(includeDisplayIsLocked
         ? {
-            displayIsLocked: this._card.displayIsLocked,
+            displayIsLocked: card.displayIsLocked,
           }
         : {}),
 
       ...(creationType ? { creationType } : {}),
-      dashboardId: this._card.dashboardId,
-      dashcardId: this._card.dashcardId,
+      dashboardId: card.dashboardId,
+      dashcardId: card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -908,7 +927,8 @@ class Question {
     // If the card has a top-level entity_id, use that. Otherwise, use the one on the query info.
     // If neither of those exists, synthesize a random one.
     const innerEntityIdPath = ["dataset_query", "info", "card-entity-id"];
-    const entity_id = card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
+    const entity_id =
+      card.entity_id || getIn(card, innerEntityIdPath) || Lib.randomIdent();
 
     // Then set both locations.
     card = chain(card)
