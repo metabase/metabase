@@ -1,4 +1,6 @@
 const { H } = cy;
+import { dedent } from "ts-dedent";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -43,7 +45,11 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    H.enterCustomColumnDetails({
+      formula: "1 + 1",
+      name: "Math",
+      format: true,
+    });
     cy.button("Done").click();
 
     H.visualize();
@@ -633,25 +639,18 @@ describe("scenarios > question > custom column", () => {
       .should("be.visible");
   });
 
-  it("should allow switching focus with Tab", () => {
+  it("should allow indenting using Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
     H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
 
-    // next focus: the textbox for the name
+    // Tab should insert indentation
     cy.realPress("Tab");
-    cy.focused().should("have.attr", "value").and("eq", "");
-    cy.focused()
-      .should("have.attr", "placeholder")
-      .and("eq", "Something nice and descriptive");
-
-    // Shift+Tab and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+    H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
   });
 
-  it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
+  it("should not format expression when pressing tab in the editor", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -661,6 +660,24 @@ describe("scenarios > question > custom column", () => {
     cy.realPress(["Shift", "Tab"]);
 
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    H.CustomExpressionEditor.value().should("equal", "1+1");
+    H.CustomExpressionEditor.type("2");
+
+    // Fix prevents display value from being `1 +2 1` due to cursor position
+    // being wrong after formatting.
+    // That's because the caret position after refocusing on textarea
+    // would still be after the 3rd character
+    H.CustomExpressionEditor.value().should("equal", "1+12");
+  });
+
+  it("should format expression when clicking the format button", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    H.CustomExpressionEditor.format();
     H.CustomExpressionEditor.value().should("equal", "1 + 1");
     H.CustomExpressionEditor.type("2");
 
@@ -668,6 +685,73 @@ describe("scenarios > question > custom column", () => {
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
     H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should format long expressions on multiple lines", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula:
+        "concat(coalesce([Product → Created At], [Created At]), 'foo', 'bar')",
+      format: true,
+    });
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        concat(
+          coalesce([Product → Created At], [Created At]),
+          "foo",
+          "bar"
+        )
+      `.trim(),
+    );
+  });
+
+  it("should not allow formatting when the expression contains an error", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+    });
+    H.CustomExpressionEditor.formatButton().should("not.exist");
+  });
+
+  it("should show the format button when the expression editor is empty", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    H.CustomExpressionEditor.formatButton().should("not.exist");
+  });
+
+  it("should not allow saving the expression when it is invalid", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+      name: "A custom expression",
+    });
+
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+    H.CustomExpressionEditor.nameInput().focus().type("{enter}");
+    H.expressionEditorWidget().should("be.visible");
+  });
+
+  it("should validate the expression when typing", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat('foo', ",
+      name: "A custom expression",
+    });
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+
+    cy.log("Fix the expression");
+    H.CustomExpressionEditor.type("{leftarrow}'bar')", { focus: true });
+    H.expressionEditorWidget().button("Done").should("not.be.disabled");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
@@ -682,19 +766,39 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
+  });
 
-    // Tab to focus on the name box
-    cy.realPress("Tab");
+  it("should be possible to use the suggestion snippet arguments", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
 
-    cy.focused().should("have.attr", "value").and("eq", "");
-    cy.focused()
-      .should("have.attr", "placeholder")
-      .and("eq", "Something nice and descriptive");
+    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
+  });
 
-    // Shift+Tab and we're back at the editor
-    cy.realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+  it("should be possible to use the suggestion templates", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+
+    H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Wait for error check to render, it should not affect the state of the snippets
+    cy.wait(1300);
+
+    H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
+      focus: false,
+      delay: 50,
+    });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      "coalesce([Tax], [User ID])",
+    );
   });
 
   // TODO: fixme!
@@ -714,13 +818,11 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
-        name: "If",
-      });
-      cy.button("Done").click();
+    H.enterCustomColumnDetails({
+      formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
+      name: "If",
     });
+    H.expressionEditorWidget().button("Done").click();
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
@@ -769,13 +871,11 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'in("Gadget", [Vendor], [Category])',
-        name: "InColumn",
-      });
-      cy.button("Done").click();
+    H.enterCustomColumnDetails({
+      formula: 'in("Gadget", [Vendor], [Category])',
+      name: "InColumn",
     });
+    H.expressionEditorWidget().button("Done").click();
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("InColumn").click();
@@ -787,13 +887,11 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - notIn");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("InColumn").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: 'notIn("Gadget", [Vendor], [Category])',
-        name: "InColumn",
-      });
-      cy.button("Update").should("not.be.disabled").click();
+    H.enterCustomColumnDetails({
+      formula: 'notIn("Gadget", [Vendor], [Category])',
+      name: "InColumn",
     });
+    H.expressionEditorWidget().button("Update").click();
     H.visualize();
     H.assertQueryBuilderRowCount(147);
 
@@ -827,7 +925,7 @@ describe("scenarios > question > custom column", () => {
       cy.findByLabelText("Back").click();
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "notIn([ID], 1, 2, 3)" });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.visualize();
     H.assertQueryBuilderRowCount(197);
@@ -853,13 +951,11 @@ describe("scenarios > question > custom column", () => {
     cy.log("aggregations - notIn");
     H.openNotebook();
     H.getNotebookStep("summarize").findByText("CountIfIn").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "countIf(notIn([ID], 1, 2))",
-        name: "CountIfIn",
-      });
-      cy.button("Update").click();
+    H.enterCustomColumnDetails({
+      formula: "countIf(notIn([ID], 1, 2))",
+      name: "CountIfIn",
     });
+    H.expressionEditorWidget().button("Update").click();
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
@@ -1134,7 +1230,7 @@ describe("scenarios > question > custom column > help text", () => {
     cy.log(
       "Pressing `escape` key should also remove the expression helper popover",
     );
-    cy.get("@formula").type("{esc}");
+    H.CustomExpressionEditor.blur();
     H.CustomExpressionEditor.helpText().should("not.exist");
   });
 
@@ -1151,5 +1247,129 @@ describe("scenarios > question > custom column > help text", () => {
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .should("contain", "round([Temperature])");
+  });
+});
+
+describe("scenarios > question > custom column > exiting the editor", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.openProductsTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+  });
+
+  it("should be possible to close the custom expression editor by pressing Escape when it is empty", () => {
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("not.exist");
+  });
+
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
+    H.CustomExpressionEditor.type("count(");
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("be.visible");
+  });
+
+  it("should be possible to exit the editor by clicking outside of it when there is no text", () => {
+    H.getNotebookStep("data").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+  });
+
+  it("should be possible to exit the editor by clicking outside of it when there is no text, by clicking an interactive element", () => {
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+    H.popover().findByText("Select all").should("be.visible");
+  });
+
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", blur: false });
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("Select all").should("not.exist");
+    H.expressionEditorWidget().should("exist");
+
+    H.modal().within(() => {
+      cy.findByText("Keep editing your custom expression?").should(
+        "be.visible",
+      );
+      cy.button("Discard changes").should("be.enabled");
+      cy.button("Keep editing").click();
+    });
+
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("exist");
+  });
+
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should be possible to discard changes when clicking outside of the editor", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", blur: false });
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.expressionEditorWidget().should("exist");
+    H.popover().findByText("Select all").should("not.exist");
+
+    H.modal().within(() => {
+      cy.findByText("Keep editing your custom expression?").should(
+        "be.visible",
+      );
+      cy.button("Keep editing").should("be.enabled");
+      cy.button("Discard changes").click();
+    });
+
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+  });
+
+  // This test is skipped until we can implement the "save unsaved changes"
+  // dialog for the Custom Expression popover.
+  it.skip("should be possible to discard changes by clicking cancel button", () => {
+    H.enterCustomColumnDetails({ formula: "1+1", name: "OK" });
+    H.expressionEditorWidget().button("Cancel").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+    H.getNotebookStep("expression").findByText("OK").should("not.exist");
+  });
+});
+
+describe("scenarios > question > custom column > distinctIf", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use a distinctIf function", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Summarize").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] = 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "53");
+
+    cy.log("modify the expression");
+    H.openNotebook();
+    H.getNotebookStep("summarize").findByText("Distinct").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      'DistinctIf([ID], [Category] = "Gadget")',
+    );
+    H.enterCustomColumnDetails({
+      formula: "DistinctIf([ID], [Category] != 'Gadget')",
+      name: "Distinct",
+    });
+    H.popover().button("Update").click();
+    H.visualize();
+    cy.findByTestId("scalar-value").should("have.text", "147");
   });
 });

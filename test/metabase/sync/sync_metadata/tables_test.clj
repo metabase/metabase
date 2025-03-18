@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.models.table :as table]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -97,6 +98,21 @@
                                 :model/Table
                                 :db_id
                                 (u/the-id db))))))))
+
+(defn run-auto-cruft-hidden-test! [original-vis-type]
+  (testing (str "Make sure a db's settings.auto-cruft-tables do not unhide " original-vis-type " tables")
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
+                                       :settings {:auto-cruft-tables []}}]
+      (sync-metadata/sync-db-metadata! db)
+      (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type original-vis-type})
+      (sync-metadata/sync-db-metadata! db)
+      (is (= #{["employees" original-vis-type]
+               ["transactions" original-vis-type]}
+             (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
+
+(deftest auto-cruft-no-tables-hidden-test
+  (doseq [vis-type (sort table/visibility-types)]
+    (run-auto-cruft-hidden-test! vis-type)))
 
 (deftest auto-cruft-employee-table-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
