@@ -909,6 +909,24 @@ describe("scenarios > embedding > full app", () => {
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
+    it('should respect "entity_types" search parameter (EMB-228)', () => {
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        isMultiStageDataPicker: true,
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        /**
+         * When we're in table step, it means we don't show models, otherwise, we would have shown
+         * the bucket step which has "Raw Data" and "Models" options instead.
+         */
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByRole("heading", { name: "Orders" }).should("be.visible");
+      });
+
+      // We don't have to test every permutations here because we already cover those cases in `EmbeddingDataPicker.unit.spec.tsx`
+    });
+
     describe("table", () => {
       it("should select a table in the only database", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
