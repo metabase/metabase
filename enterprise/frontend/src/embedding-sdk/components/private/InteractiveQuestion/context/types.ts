@@ -44,10 +44,6 @@ export type QuestionMockLocationParameters = {
   params: { slug?: string };
 };
 
-export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
-  InteractiveQuestionConfig & QuestionMockLocationParameters
->;
-
 // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
 export type InteractiveQuestionId = CardId | "new" | (string & {});
 
