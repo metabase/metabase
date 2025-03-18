@@ -222,12 +222,18 @@
    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
 
-(mr/def ::result-column
+(mr/def ::field-type
+  [:enum "boolean" "date" "datetime" "time" "number" "string"])
+
+(mr/def ::column
   [:map
    [:field_id :string]
    [:name :string]
-   [:type :string]
-   [:description {:optional true} :string]])
+   [:type [:maybe ::field-type]]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::columns
+  [:sequential ::column])
 
 (mr/def ::filtering-result
   [:or
@@ -238,7 +244,7 @@
       [:type [:= :query]]
       [:query_id :string]
       [:query mbql.s/Query]
-      [:result_columns [:sequential ::result-column]]]]]
+      [:result_columns [:sequential ::column]]]]]
    [:map
     [:output :string]]])
 
@@ -283,16 +289,28 @@
                   [:map [:table_id :string]]]]
    [:filters [:sequential ::filter]]])
 
+(mr/def ::basic-metric
+  [:map
+   [:id :int]
+   [:type [:= :metric]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
+
+(mr/def ::full-metric
+  [:merge ::basic-metric [:map [:queryable_dimensions ::columns]]])
+
 (mr/def ::find-metric-result
   [:or
    [:map
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
+                         [:type [:= :metric]]
                          [:name :string]
                          [:description [:maybe :string]]
-                         [:default_time_dimension_field_id [:maybe ::result-column]]
-                         [:queryable_dimensions [:sequential ::result-column]]]]]
+                         [:default_time_dimension_field_id [:maybe ::column]]
+                         [:queryable_dimensions [:sequential ::column]]]]]
    [:map [:output :string]]])
 
 (mr/def ::find-outliers-arguments
@@ -338,6 +356,7 @@
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
+                         [:type [:= :user]]
                          [:name :string]
                          [:email_address :string]]]]
    [:map [:output :string]]])
@@ -348,32 +367,10 @@
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
+                         [:type [:= :dashboard]]
                          [:name :string]
                          [:description {:optional true} :string]]]]
    [:map [:output :string]]])
-
-(mr/def ::field-type
-  [:enum "boolean" "date" "number" "string"])
-
-(mr/def ::column
-  [:map
-   [:field_id :string]
-   [:name :string]
-   [:type [:maybe ::field-type]]
-   [:description {:optional true} [:maybe :string]]])
-
-(mr/def ::basic-metric
-  [:map
-   [:id :int]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
-
-(mr/def ::columns
-  [:sequential ::column])
-
-(mr/def ::full-metric
-  [:merge ::basic-metric [:map [:queryable_dimensions ::columns]]])
 
 (mr/def ::get-metric-details-result
   [:or
@@ -405,6 +402,7 @@
     {:decode/tool-api-response #(metabot-v3.u/recursive-update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
                          [:id :int]
+                         [:type [:= :question]]
                          [:name :string]
                          [:description {:optional true} [:maybe :string]]
                          [:result_columns ::columns]]]]
@@ -421,7 +419,8 @@
 
 (mr/def ::basic-table
   [:map
-   [:id [:or :int :string]]
+   [:id :int]
+   [:type [:enum :model :table]]
    [:name :string]
    [:fields ::columns]
    [:description {:optional true} [:maybe :string]]
