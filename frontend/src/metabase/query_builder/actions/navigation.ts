@@ -70,11 +70,11 @@ export const popState = createThunkAction(
           // Do not run the question as the query without data source is invalid.
           await dispatch(initializeQB(location, {}));
         } else {
+          await dispatch(resetUIControls());
           await dispatch(
             setCardAndRun(location.state.card, { shouldUpdateUrl }),
           );
           await dispatch(setCurrentState(location.state));
-          await dispatch(resetUIControls());
         }
       }
     }

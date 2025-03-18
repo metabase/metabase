@@ -25,10 +25,12 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      H.createQuestion(modelDetails).then(({ body: { id } }) => {
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
-      });
+      H.createQuestion(modelDetails, { wrapId: true }).then(
+        ({ body: { id } }) => {
+          cy.visit(`/model/${id}`);
+          cy.wait("@dataset");
+        },
+      );
     });
 
     it("should edit GUI model metadata", () => {
@@ -78,6 +80,14 @@ describe("scenarios > models metadata", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal")
         .and("not.contain", "Pre-tax");
+
+      // Ensure back navigation works correctly metabase#55162
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Edit metadata").click();
+      cy.go("back");
+      cy.get("@questionId").then(id => {
+        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
+      });
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {

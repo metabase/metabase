@@ -20,7 +20,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  queryBuilderMode: "view", // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
