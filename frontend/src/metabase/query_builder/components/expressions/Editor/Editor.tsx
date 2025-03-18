@@ -169,7 +169,7 @@ export function Editor<S extends StartRule = "expression">(
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        <Flex className={S.toolbar} pt="sm" pr="sm" direction="column">
+        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
           <ButtonTooltip label={t`Function browser`}>
             <Button
               aria-label={t`Function browser`}
@@ -186,6 +186,7 @@ export function Editor<S extends StartRule = "expression">(
               <Button
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
+                className={S.toolbarButton}
                 variant="subtle"
                 size="xs"
                 p="xs"
