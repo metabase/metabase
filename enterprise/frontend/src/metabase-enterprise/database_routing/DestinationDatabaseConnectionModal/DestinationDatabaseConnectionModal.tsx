@@ -75,10 +75,14 @@ export const DestinationDatabaseConnectionModalInner = ({
   };
 
   const handleOnSubmit = () => {
-    handleCloseModal();
     dispatch(
-      addUndo({ message: t`Destination database created successfully` }),
+      addUndo({
+        message: addingNewDatabase
+          ? t`Destination database created successfully`
+          : t`Destination database updated successfully`,
+      }),
     );
+    handleCloseModal();
   };
 
   return (

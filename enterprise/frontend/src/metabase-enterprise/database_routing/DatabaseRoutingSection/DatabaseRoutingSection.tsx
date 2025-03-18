@@ -136,6 +136,7 @@ export const DatabaseRoutingSection = ({
           <Flex justify="space-between" align="center" mb="xl">
             <Text>{t`User attribute to use for connection slug`}</Text>
             <Select
+              data-testid="db-routing-user-attribute"
               placeholder={t`Choose an attribute`}
               data={userAttributeOptions}
               value={userAttribute}

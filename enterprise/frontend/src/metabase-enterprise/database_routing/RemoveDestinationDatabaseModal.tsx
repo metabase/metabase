@@ -15,7 +15,7 @@ export const RemoveDestinationDatabaseModal = ({
   const dispatch = useDispatch();
 
   const dbId = parseInt(params.databaseId, 10);
-  const destDbId = parseInt(params.databaseId, 10);
+  const destDbId = parseInt(params.destinationDatabaseId, 10);
 
   const destinationDbReq = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();
