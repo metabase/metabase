@@ -60,6 +60,44 @@ const TEXT_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const INTEGER_TEST_CASES: CastTestCase[] = [
+  {
+    name: "Number",
+    expression: "integer(3.14)",
+    filterOperator: "Equals to",
+    filterValue: "3",
+    expectedRowCount: 200,
+  },
+  {
+    name: "String",
+    expression: 'integer("10")',
+    filterOperator: "Equals to",
+    filterValue: "10",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberColumn",
+    expression: "integer([Price])",
+    filterOperator: "Equals to",
+    filterValue: "29",
+    expectedRowCount: 4,
+  },
+  {
+    name: "NumberExpression",
+    expression: "integer([Price] + 10)",
+    filterOperator: "Equals to",
+    filterValue: "38",
+    expectedRowCount: 2,
+  },
+  {
+    name: "StringExpression",
+    expression: 'integer(concat([ID], ""))',
+    filterOperator: "Equals to",
+    filterValue: "29",
+    expectedRowCount: 1,
+  },
+];
+
 describe(
   "scenarios > custom column > cast functions",
   { tags: "@external" },
@@ -71,6 +109,10 @@ describe(
 
     it("should support text function", () => {
       testCastFunction(TEXT_TEST_CASES);
+    });
+
+    it("should support integer function", () => {
+      testCastFunction(INTEGER_TEST_CASES);
     });
   },
 );
