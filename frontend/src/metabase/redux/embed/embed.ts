@@ -52,7 +52,7 @@ const interactiveEmbedSlice = createSlice({
         normalizeEntityTypes,
         excludeNonInteractiveEmbeddingOptions,
         parseSearchOptions,
-        normalizeCommaSeparatedSearchOptions(["entity_types"]),
+        normalizeEntityTypesCommaSeparatedSearchParameter,
       )(action.payload.search);
 
       state.options = {
@@ -73,28 +73,25 @@ const interactiveEmbedSlice = createSlice({
 });
 
 /**
- * this functions turns a string like `param=value1,value2` into `param=value1&param=value2` that matches the URLSearchParams format
+ * this functions turns a string like `entity_types=value1,value2` into `entity_types=value1&entity_types=value2` that matches the URLSearchParams format
  */
-function normalizeCommaSeparatedSearchOptions(
-  options: (keyof InteractiveEmbeddingOptions)[],
-): (search: string) => string {
-  return function (search: string) {
-    const searchParams = new URLSearchParams(search);
+function normalizeEntityTypesCommaSeparatedSearchParameter(
+  search: string,
+): string {
+  const searchParams = new URLSearchParams(search);
 
-    for (const option of options) {
-      const [optionValues] = searchParams.getAll(option);
-      if (optionValues && isArrayString(optionValues)) {
-        searchParams.delete(option);
-        optionValues.split(",").forEach(value => {
-          const normalizedValue = value.trim();
-          if (normalizedValue) {
-            searchParams.append(option, normalizedValue);
-          }
-        });
+  const PARAMETER = "entity_types";
+  const [optionValues] = searchParams.getAll(PARAMETER);
+  if (optionValues && isArrayString(optionValues)) {
+    searchParams.delete(PARAMETER);
+    optionValues.split(",").forEach(value => {
+      const normalizedValue = value.trim();
+      if (normalizedValue) {
+        searchParams.append(PARAMETER, normalizedValue);
       }
-    }
-    return searchParams.toString();
-  };
+    });
+  }
+  return searchParams.toString();
 }
 
 function isArrayString(string: string) {

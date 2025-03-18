@@ -776,11 +776,11 @@ describe("scenarios > embedding > full app", () => {
      *
      * @param {object} option
      * @param {boolean} [option.isMultiStageDataPicker]
-     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.qs]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
      */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,
-      qs,
+      searchParameters,
     } = {}) {
       if (isMultiStageDataPicker) {
         cy.intercept("GET", "/api/search*", req => {
@@ -796,7 +796,7 @@ describe("scenarios > embedding > full app", () => {
         url: "/",
         qs: {
           new_button: true,
-          ...qs,
+          ...searchParameters,
         },
       });
       cy.button("New").click();
@@ -1251,7 +1251,7 @@ describe("scenarios > embedding > full app", () => {
       it('should show only the provided "entity_types"', () => {
         startNewEmbeddingQuestion({
           isMultiStageDataPicker: true,
-          qs: {
+          searchParameters: {
             entity_types: "table",
           },
         });
@@ -1266,7 +1266,7 @@ describe("scenarios > embedding > full app", () => {
         cy.log("Test providing `entity_types` as an empty string");
         startNewEmbeddingQuestion({
           isMultiStageDataPicker: true,
-          qs: {
+          searchParameters: {
             entity_types: "",
           },
         });
