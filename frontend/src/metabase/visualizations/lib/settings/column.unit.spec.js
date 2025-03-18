@@ -114,7 +114,7 @@ describe("column settings", () => {
   });
 
   describe("NUMBER_COLUMN_SETTINGS", () => {
-    it("should have coherent options and onChange", () => {
+    it("should have coherent options and onChange (metabase#54728)", () => {
       const onChangeSpy = jest.fn();
       const { options, onChange } =
         NUMBER_COLUMN_SETTINGS.currency_in_header.getProps(
