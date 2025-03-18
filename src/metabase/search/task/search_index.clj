@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics.core :as analytics]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as ingestion]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -28,11 +29,6 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
-(defn- report->prometheus! [duration report]
-  (analytics/inc! :metabase-search/index-ms duration)
-  (doseq [[model cnt] report]
-    (analytics/inc! :metabase-search/index {:model model} cnt)))
-
 (defn init!
   "Create a new index, if necessary"
   []
@@ -42,7 +38,7 @@
             report   (search/init-index! {:force-reset? false, :re-populate? false})
             duration (u/since-ms timer)]
         (if (seq report)
-          (do (report->prometheus! duration report)
+          (do (ingestion/report->prometheus! duration report)
               (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
               true)
           (log/info "Found existing search index, and using it.")))
@@ -59,7 +55,7 @@
       (let [timer    (u/start-timer)
             report   (search/reindex!)
             duration (u/since-ms timer)]
-        (report->prometheus! duration report)
+        (ingestion/report->prometheus! duration report)
         (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
         report)
       (catch Exception e
@@ -98,6 +94,9 @@
                        (simple/with-interval-in-hours 1)
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
+
+(defmethod task/init! ::SearchIndexUpdate [_]
+  (ingestion/start-listener!))
 
 (comment
   (task/job-exists? reindex-job-key))
