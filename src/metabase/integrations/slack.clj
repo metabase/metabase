@@ -136,8 +136,6 @@
     (when invalid-token?
       (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"
                                       " update your integration in Admin Settings -> Slack."))))
-    (when missing-channel?
-      (log/warn (u/colorize :red "🔍 The Slack channel you've configured doesn't exist. Please update it.")))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [headers status body]}]
