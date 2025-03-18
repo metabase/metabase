@@ -50,7 +50,13 @@ const Template: StoryFn<typeof Schedule> = args => {
   const [
     {
       schedule,
-      scheduleOptions = ["hourly", "daily", "weekly", "monthly"],
+      scheduleOptions = [
+        "every_n_minutes",
+        "hourly",
+        "daily",
+        "weekly",
+        "monthly",
+      ],
       timezone = "UTC",
       locale = "en",
       longVerb = false,
@@ -97,5 +103,32 @@ export const LongVerb = {
     schedule: defaultSchedule,
     longVerb: true,
     locale: "en",
+  },
+};
+
+export const EveryNMinutes = {
+  render: Template,
+  args: {
+    schedule: {
+      schedule_type: "every_n_minutes",
+      shedule_hour: null,
+      schedule_minute: 15,
+    },
+    longVerb: false,
+    locale: "en",
+  },
+};
+
+export const HourlyOnSpecificMinute = {
+  render: Template,
+  args: {
+    schedule: {
+      schedule_type: "hourly",
+      shedule_hour: null,
+      schedule_minute: 10,
+    },
+    longVerb: false,
+    locale: "en",
+    minutesOnHourPicker: true,
   },
 };
