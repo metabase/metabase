@@ -36,23 +36,23 @@ Your GeoJSON file should:
 
 - Be less than 5 MB in size.
 - Contain polygon features defining regions (not just points or coordinates)
-- Use geographic coordinates (latitude and longitude) to define region polygons. Metabase doesn't support projected coordinates, so you'll first need to convert projected coordinates to geographic coordinates.
+- Use geographic coordinates (latitude and longitude) to define region polygons. Metabase doesn't support projected coordinates, so you'll need to convert projected coordinates to geographic coordinates.
 - Accessible by a public URL
 
 To add a custom map:
 
-1. Go to **Admin Settings > Maps > Custom Maps**;
-2. Click "Add a Map";
-3. Enter a name for your map;
-4. Provide the URL to your GeoJSON file;
+1. Go to **Admin Settings > Maps > Custom Maps**.
+2. Click **Add a Map**.
+3. Enter a name for your map.
+4. Provide the URL to your GeoJSON file.
 5. Specify the JSON properties that should serve as region identifier and region name.
 
 ![Uploading a custom GeoJSON](./images/custom-geojson.png)
 
 - **Name of the map** will be displayed in the region selector for [custom region maps](../questions/visualizations/map.md#custom-regions)
 - **Region's identifier** is a GeoJSON field that identifies your region. The values in this field should match how the regions are referenced in your data. It does not need to match the display name.
-- **Region's display name** is a GeoJSON field that contains how your region name will be displayed on a map. If can be different from region's identifier.
+- **Region's display name** is a GeoJSON field that specifies how your region name will be displayed on a map. It can be different from region's identifier.
 
-You can also use the environment variable [`MB_CUSTOM_GEOJSON`](./environment-variables.md#mb_custom_geojson) or a [config file option](./config-file.md) `custom-geojson` to pre-load one or more region maps.
+To pre-load one or more region maps when Metabase starts, you can use the environment variable [`MB_CUSTOM_GEOJSON`](./environment-variables.md#mb_custom_geojson) or a [config file option](./config-file.md) `custom-geojson` .
 
-To disable creation of custom maps, use the [`MB_CUSTOM_GEOJSON_ENABLED`](./environment-variables.md#mb_custom_geojson_enabled) or a [config file option](./config-file.md) `custom-geojson-enabled`.
+To disable the creation of custom maps, use the [`MB_CUSTOM_GEOJSON_ENABLED`](./environment-variables.md#mb_custom_geojson_enabled) or a [config file option](./config-file.md) `custom-geojson-enabled`.

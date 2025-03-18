@@ -10,7 +10,7 @@ description: "Maps in Metabase allow you to visualize geographical data either u
 Metabase has three types of map visualization:
 
 - [**Pin map**](#pin-maps) for putting individual data points on a map using longitude and latitude coordinates;
-- [**Grid map**](#grid-maps)
+- [**Grid map**](#grid-maps) for distributing a large number of points over a specified area.
 - [**Region map**](#region-maps) for data broken out by regions, like countries or states. Metabase comes with two built-in maps, but you can upload your own custom regions.
 
 When you select the **Map** visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set, as long as the columns with the geographical data have the [right metadata](../../data-modeling/metadata-editing.md).
@@ -44,7 +44,7 @@ To create a pin map:
 
 ### Pin maps display 2000 pins by default
 
-By default, pin maps will display 2000 pins even if there are more rows in your query results (this limit is the same for every chart displaying unaggregated data in Metabase). You can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit) to increase the number of data points rendered on charts based on unaggregated queries, but keep that this will affect all charts - not just the pin maps - and it might significantly slow down your Metabase and your browser.
+By default, pin maps will display 2000 pins even if there are more rows in your query results (this limit is the same for every chart displaying unaggregated data in Metabase). You can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit) to increase the number of data points rendered on charts based on unaggregated queries, but keep in mind that this setting will affect all charts—not just the pin maps—and it might significantly slow down your Metabase and your browser.
 
 If you need to display a large number of geographical data points, consider using a grid map to display the distribution instead.
 
@@ -191,6 +191,9 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 - You need to use category (not location) dashboard filter types when connecting custom region maps to dashboard filters.
 - You can't specify different background tiles for different maps.
 
-If the relative locations of regions on the map are not the main focus of your visualization, consider using a bar or row chart instead. For example, sales by state are often better represented as a bar chart rather than a region map.
+
+## When NOT to use a map to visualize geographic data
+
+If the relative locations of regions on the map aren't the main focus of your visualization, consider using a bar or row chart instead. For example, sales by state are often better represented as a row or bar chart rather than a region map.
 
 ![Bar chart as alternative to map](../images/map-alternative.png)
