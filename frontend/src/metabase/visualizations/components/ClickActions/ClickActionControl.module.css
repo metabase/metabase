@@ -15,16 +15,16 @@
         color: white;
       }
     }
+  }
 
-    .inner {
-      width: 100%;
-    }
+  .inner {
+    width: 100%;
+  }
 
-    .label {
-      display: flex;
-      justify-content: space-between;
-      width: 100%;
-    }
+  .label {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
   }
 }
 
