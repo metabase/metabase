@@ -27,22 +27,23 @@
            (log/info :keyword 78)
            (messages)))))
 
-(deftest ^:parallel logp-context-test
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
-         (log.capture/with-log-messages-for-level [messages :warn]
-           (log/info "not this one")
-           (log/warn "a message" {:a/b 1})
-           (messages))))
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one", :ctx {:a/b 1}}
-          {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
-         (log.capture/with-log-messages-for-level [messages :info]
-           (log/info "here's one")
-           (log/warn "a message" {:a/b 1})
-           (messages))))
-  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78", :ctx {:a/b 1}}]
-         (log.capture/with-log-messages-for-level [messages :info]
-           (log/info :keyword 78 {:a/b 1})
-           (messages)))))
+#?(:clj
+   (deftest ^:parallel logp-context-test
+     (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+            (log.capture/with-log-messages-for-level [messages :warn]
+              (log/info "not this one")
+              (log/warn "a message" {:a/b 1})
+              (messages))))
+     (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one", :ctx {:a/b 1}}
+             {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message", :ctx {:a/b 1}}]
+            (log.capture/with-log-messages-for-level [messages :info]
+              (log/info "here's one")
+              (log/warn "a message" {:a/b 1})
+              (messages))))
+     (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78", :ctx {:a/b 1}}]
+            (log.capture/with-log-messages-for-level [messages :info]
+              (log/info :keyword 78 {:a/b 1})
+              (messages))))))
 
 (deftest ^:parallel logp-levels-test
   (let [important-message #{"fatal" "error" "warn" "info" "debug" "trace"}
