@@ -243,8 +243,7 @@
 (defmacro ^:deprecated tracef
   "Log a message at the `:trace` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into trace,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use trace, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :trace ~@args))
@@ -252,8 +251,7 @@
 (defmacro ^:deprecated debugf
   "Log a message at the `:debug` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into debug,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use debug, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :debug ~@args))
@@ -261,8 +259,7 @@
 (defmacro ^:deprecated infof
   "Log a message at the `:info` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into info,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use info, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :info ~@args))
@@ -270,8 +267,7 @@
 (defmacro ^:deprecated warnf
   "Log a message at the `:warn` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into warn,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use warn, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :warn ~@args))
@@ -279,8 +275,7 @@
 (defmacro ^:deprecated errorf
   "Log a message at the `:error` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into error,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use error, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :error ~@args))
@@ -288,8 +283,7 @@
 (defmacro ^:deprecated fatalf
   "Log a message at the `:fatal` level by applying `format` to a format string and args.
 
-  Instead of using formatted string logging, look into fatal,
-  which supports a context map as the last arg."
+  DEPRECATION WARNING: Instead of using formatted string logging, use fatal, with a map as the last arg."
   {:arglists '([format-string & args] [e format-string & args])}
   [& args]
   `(logf :fatal ~@args))
