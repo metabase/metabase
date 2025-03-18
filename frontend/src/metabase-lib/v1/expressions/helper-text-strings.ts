@@ -356,6 +356,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "concat",
   },
   {
+    name: "path",
+    structure: "path",
+    description: () => t`Extracts the path (eg. "/my/path") from a URL`,
+    args: [
+      {
+        name: t`url`,
+        description: t`Extracts the pathname from a URL. E.g., path("https://www.example.com/path/to/page.html?key1=value") would return "/path/to/page.html".`,
+        example: ["dimension", t`URL`],
+      },
+    ],
+    docsPage: "path",
+  },
+  {
     name: "replace",
     structure: "replace",
     description: () => t`Replaces a part of the input text with new text.`,

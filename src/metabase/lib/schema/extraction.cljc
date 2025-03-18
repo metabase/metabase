@@ -7,7 +7,7 @@
   [:map
    [:lib/type     [:= :metabase.lib.extraction/extraction]]
    [:tag          [:enum
-                   :domain :subdomain :host
+                   :domain :subdomain :host :path
                    :hour-of-day :day-of-month :day-of-week :month-of-year :quarter-of-year :year]]
    [:column       ::lib.schema.metadata/column]
    [:display-name :string]])
