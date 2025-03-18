@@ -21,8 +21,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
@@ -53,7 +55,7 @@ function createDashboardState(
   dashboard: Dashboard,
   dashcards: DashboardCard[],
 ) {
-  return {
+  return createMockDashboardState({
     dashboardId: dashboard.id,
     dashcards: dashcards.reduce(
       (acc, card) => {
@@ -68,7 +70,7 @@ function createDashboardState(
         dashcards: dashcards.map(d => d.id),
       },
     },
-  } as DashboardState;
+  });
 }
 
 export function setup(
