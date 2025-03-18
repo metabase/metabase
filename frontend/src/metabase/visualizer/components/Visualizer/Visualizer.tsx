@@ -195,15 +195,20 @@ export const Visualizer = (props: VisualizerProps) => {
                 </Flex>
                 <DataImporter />
               </Box>
-              <Box
+              <Flex
                 bg="white"
                 p="md"
+                align="center"
+                justify="center"
                 flex={1}
-                style={{ borderTop: "1px solid var(--mb-color-border)" }}
+                style={{
+                  borderTop: "1px solid var(--mb-color-border)",
+                  cursor: "pointer",
+                }}
               >
-                17 columns
-                <div onClick={() => handlers.toggle()}>Toggle</div>
-              </Box>
+                <div onClick={() => handlers.toggle()}>Adjust columns</div>
+                <Icon name="chevrondown" />
+              </Flex>
             </Flex>
           ) : (
             <Flex direction="column" miw={320} p="md" h="100%">
