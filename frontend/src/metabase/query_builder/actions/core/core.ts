@@ -17,7 +17,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import Query from "metabase-lib/v1/queries/Query";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -176,7 +176,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof Query) {
+    if (datasetQuery instanceof NativeQuery) {
       datasetQuery = datasetQuery.datasetQuery();
     }
 

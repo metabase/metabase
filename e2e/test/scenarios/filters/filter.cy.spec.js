@@ -700,9 +700,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.value().should("equal", "[Tax]> 42  ");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should allow hiding the suggestion list with Escape", () => {
+  it("should allow hiding the suggestion list with Escape", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
