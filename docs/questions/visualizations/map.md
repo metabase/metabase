@@ -179,7 +179,7 @@ Admins can customize the background tiles that are used for pin and grid maps, s
 
 Currently, Metabase uses a single tile server per instance. You can't specify different tiles for different maps.
 
-## Limitations and alternatives
+## Limitations
 
 - Currently, you can't customize the following visualization settings on maps:
 
