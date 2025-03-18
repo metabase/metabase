@@ -26,16 +26,30 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
+  bgColor = "white",
+  theme,
 }: {
   series: RawSeries;
   isDashboard?: boolean;
-}) => (
-  <VisualizationWrapper>
-    <Box h="calc(100vh - 2rem)">
+  bgColor?: string;
+  theme?: MetabaseTheme;
+}) => {
+  const storyContent = (
+    <Box h="calc(100vh - 2rem)" bg={bgColor}>
       <Visualization rawSeries={series} isDashboard={isDashboard} />,
     </Box>
-  </VisualizationWrapper>
-);
+  );
+
+  if (theme != null) {
+    return (
+      <SdkVisualizationWrapper theme={theme}>
+        {storyContent}
+      </SdkVisualizationWrapper>
+    );
+  }
+
+  return <VisualizationWrapper>{storyContent}</VisualizationWrapper>;
+};
 
 export const DefaultTable = {
   render: DefaultTemplate,
@@ -51,30 +65,42 @@ export const DashboardTable = {
   },
 };
 
-export const DashboardTableEmbeddingTheme: StoryFn = () => {
-  const theme: MetabaseTheme = {
-    colors: {
-      brand: "#eccc68",
-      "text-primary": "#4c5773",
-      "text-secondary": "#696e7b",
-      "text-tertiary": "#ffffff",
-    },
-    components: {
-      dashboard: {
-        card: { backgroundColor: "#2f3542" },
+export const DashboardTableEmbeddingTheme = {
+  render: DefaultTemplate,
+  args: {
+    series: data.ordersWithPeople,
+    isDashboard: true,
+    theme: {
+      colors: {
+        brand: "#eccc68",
+        "text-primary": "#4c5773",
+        "text-secondary": "#696e7b",
+        "text-tertiary": "#ffffff",
       },
-      table: {
-        cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
-        idColumn: { textColor: "#fff", backgroundColor: "#eccc6855" },
+      components: {
+        dashboard: {
+          card: { backgroundColor: "#2f3542" },
+        },
+        table: {
+          cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
+          idColumn: { textColor: "#fff", backgroundColor: "#eccc6855" },
+        },
       },
     },
-  };
+  },
+};
 
-  return (
-    <SdkVisualizationWrapper theme={theme}>
-      <Box h={500}>
-        <Visualization rawSeries={data.ordersWithPeople as any} isDashboard />,
-      </Box>
-    </SdkVisualizationWrapper>
-  );
+export const DashboardTableEmbeddingThemeWithStickyBackgroundColor = {
+  render: DefaultTemplate,
+  args: {
+    series: data.ordersWithPeople,
+    isDashboard: true,
+    theme: {
+      components: {
+        table: {
+          stickyBackgroundColor: "#dbdbdb",
+        },
+      },
+    },
+  },
 };

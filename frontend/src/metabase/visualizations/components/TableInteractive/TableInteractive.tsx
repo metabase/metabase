@@ -586,6 +586,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const dataGridTheme: DataGridTheme = useMemo(() => {
     return {
+      stickyBackgroundColor: tableTheme.stickyBackgroundColor,
       fontSize: tableTheme.cell.fontSize,
       cell: {
         backgroundColor: tableTheme.cell.backgroundColor ?? backgroundColor,

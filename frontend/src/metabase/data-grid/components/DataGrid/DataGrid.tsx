@@ -129,9 +129,10 @@ export const DataGrid = function DataGrid<TData>({
   const backgroundColor =
     theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
   const stickyElementsBackgroundColor =
-    backgroundColor == null || backgroundColor === "transparent"
+    theme?.stickyBackgroundColor ??
+    (backgroundColor == null || backgroundColor === "transparent"
       ? "var(--mb-color-background)"
-      : backgroundColor;
+      : backgroundColor);
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -213,7 +214,10 @@ export const DataGrid = function DataGrid<TData>({
                       ) : (
                         <SortableHeader
                           className={cx(S.headerCell, classNames?.headerCell)}
-                          style={{ backgroundColor, ...styles?.headerCell }}
+                          style={{
+                            backgroundColor: stickyElementsBackgroundColor,
+                            ...styles?.headerCell,
+                          }}
                           isSortingDisabled={isSortingDisabled}
                           header={header}
                           onClick={onHeaderCellClick}

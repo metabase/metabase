@@ -112,6 +112,9 @@ export interface DataGridTheme {
   /** Table font size, defaults to ~12.5px */
   fontSize?: string;
 
+  /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
+  stickyBackgroundColor?: string;
+
   cell?: {
     /** Text color default body cells, defaults to `text-primary`. */
     textColor?: string;
