@@ -49,12 +49,14 @@ jobs:
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:cli-snippets:type-check
 
-
-
+  sdk-e2e-tests:
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
+    secrets: inherit
 
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
+      - sdk-e2e-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

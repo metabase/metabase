@@ -1,12 +1,9 @@
 name: E2E Component Tests for Embedding SDK
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_call:
+
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -201,16 +198,3 @@ jobs:
              const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
-
-# This doesn't do anything at the moment, this was used as stub when the task was required but the job is currently not required (but it should)
-# e2e-tests-skipped-stub:
-#   needs: [e2e-tests]
-#   if: |
-#     !cancelled() &&
-#     needs.e2e-tests.result == 'skipped'
-#   runs-on: ubuntu-22.04
-#   timeout-minutes: 5
-#   name: e2e-tests-embedding-sdk
-#   steps:
-#     - run: |
-#         echo "Didn't run due to conditional filtering"
