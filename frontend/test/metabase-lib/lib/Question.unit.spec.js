@@ -560,7 +560,7 @@ describe("Question", () => {
         ).toBe(true);
       });
 
-      it("questions with different randomized idents are considered equal", () => {
+      it("questions that differ only by randomized idents are considered equal", () => {
         const question1 = Question.create({
           databaseId: SAMPLE_DB_ID,
           tableId: ORDERS_ID,
