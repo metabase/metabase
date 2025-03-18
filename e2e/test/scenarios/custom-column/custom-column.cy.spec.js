@@ -1395,27 +1395,29 @@ describe("scenarios > question > custom column > function browser", () => {
     H.expressionEditorWidget().button("Function browser").click();
 
     H.CustomExpressionEditor.functionBrowser()
-      .findByText("concat")
+      .findByText("dayName")
       .should("be.visible");
     H.CustomExpressionEditor.functionBrowser()
-      .findByText("Combine two or more string of text together.")
+      .findByText(
+        "Returns the localized name of a day of the week, given the day's number.",
+      )
       .should("be.visible");
 
-    H.CustomExpressionEditor.functionBrowser().findByText("concat").click();
+    H.CustomExpressionEditor.functionBrowser().findByText("dayName").click();
 
-    H.CustomExpressionEditor.value().should("equal", "concat()");
-    H.CustomExpressionEditor.value().should("equal", "concat()");
+    H.CustomExpressionEditor.value().should("equal", "dayName()");
+    H.CustomExpressionEditor.value().should("equal", "dayName()");
 
-    H.CustomExpressionEditor.functionBrowser().findByText("rtrim").click();
-    H.CustomExpressionEditor.value().should("equal", "concat(rtrim())");
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "dayName(day())");
 
     H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
-    H.CustomExpressionEditor.value().should("equal", 'concat(rtrim("foo"), )');
+    H.CustomExpressionEditor.value().should("equal", 'dayName(day("foo"), )');
 
-    H.CustomExpressionEditor.functionBrowser().findByText("ltrim").click();
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
     H.CustomExpressionEditor.value().should(
       "equal",
-      'concat(rtrim("foo"), ltrim())',
+      'dayName(day("foo"), day())',
     );
   });
 
@@ -1425,12 +1427,12 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("con");
 
-      cy.findByText("upper").should("not.exist");
+      cy.findByText("dayName").should("not.exist");
       cy.findByText("concat").should("be.visible");
       cy.findByText("second").should("be.visible");
-
+      //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("upper").should("be.visible");
+      cy.findByText("dayName").should("be.visible");
     });
   });
 
