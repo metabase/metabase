@@ -72,11 +72,11 @@
       :type :metric
       :name (:name card)
       :description (:description card)
-      :default_time_dimension_field_id (when default-temporal-breakout
+      :default-time-dimension-field-id (when default-temporal-breakout
                                          (-> (metabot-v3.tools.u/->result-column
                                               metric-query default-temporal-breakout visible-cols field-id-prefix)
-                                             :field_id))
-      :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column metric-query % visible-cols field-id-prefix)
+                                             :field-id))
+      :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column metric-query % visible-cols field-id-prefix)
                                   filterable-cols)})))
 
 (comment
@@ -87,7 +87,7 @@
 (defn- convert-metric
   [db-metric metadata-provider]
   (-> db-metric (metric-details metadata-provider)
-      (select-keys  [:id :type :name :description :default_time_dimension_field_id])))
+      (select-keys  [:id :type :name :description :default-time-dimension-field-id])))
 
 (defn- table-details
   ([id] (table-details id nil))
@@ -214,7 +214,7 @@
                   (let [details (card-details report-id)]
                     (some-> details
                             (select-keys [:id :type :description :name])
-                            (assoc :result_columns (:fields details))))
+                            (assoc :result-columns (:fields details))))
                   "invalid report_id")]
     (if (map? details)
       {:structured-output details}
@@ -228,9 +228,9 @@
         query (lib/query mp legacy-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
-     :query_id query-id
+     :query-id query-id
      :query legacy-query
-     :result_columns (into []
+     :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 

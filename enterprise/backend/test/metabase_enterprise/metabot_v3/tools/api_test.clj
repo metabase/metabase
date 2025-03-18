@@ -8,12 +8,14 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- ai-session-token
@@ -36,26 +38,37 @@
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:dashboard_id 1
                                                                 :email        "user@example.com"
-                                                                :schedule     {:frequency "hourly"}}
+                                                                :schedule     {:frequency "monthly"
+                                                                               :hour 15
+                                                                               :day_of_month "middle-of-month"}}
                                               :conversation_id conversation-id})]
+          (is (= [{:dashboard-id 1
+                   :email        "user@example.com"
+                   :schedule     {:frequency :monthly
+                                  :hour 15
+                                  :day-of-month :middle-of-month}}]
+                 @tool-requests))
           (is (=? {:output output
                    :conversation_id conversation-id}
                   response)))))))
 
 (deftest filter-records-test
-  (doseq [data-source [{:query {:database 1}, :query_id "query ID"}
-                       {:query {:database 1}}
-                       {:report_id 1}
-                       {:table_id "1"}]]
-    (mt/with-premium-features #{:metabot-v3}
+  (mt/with-premium-features #{:metabot-v3}
+    (doseq [data-source [{:query {:database 1}, :query_id "query ID"}
+                         {:query {:database 1}}
+                         {:report_id 1}
+                         {:table_id "1"}]]
       (let [tool-requests (atom [])
             conversation-id (str (random-uuid))
-            output (str (random-uuid))
+            query-id (str (random-uuid))
             ai-token (ai-session-token)]
         (with-redefs [metabot-v3.tools.filters/filter-records
                       (fn [arguments]
                         (swap! tool-requests conj arguments)
-                        {:structured-output output})]
+                        {:structured-output {:type :query
+                                             :query-id query-id
+                                             :query {}
+                                             :result-columns []}})]
           (let [filters [{:field_id "q2a/1", :operation "is-not-null"}
                          {:field_id "q2a/2", :operation "equals", :value "3"}
                          {:field_id "q2a/3", :operation "equals", :values ["3" "4"]}
@@ -68,7 +81,12 @@
                                                {:arguments       {:data_source data-source
                                                                   :filters     filters}
                                                 :conversation_id conversation-id})]
-            (is (=? {:structured_output output
+            (is (=? [{:data-source (metabot-v3.u/recursive-update-keys data-source u/->kebab-case-en)}]
+                    @tool-requests))
+            (is (=? {:structured_output {:type "query"
+                                         :query_id query-id
+                                         :query {}
+                                         :result_columns []}
                      :conversation_id conversation-id}
                     response))))))))
 
@@ -99,8 +117,8 @@
     (mt/with-premium-features #{:metabot-v3}
       (let [tool-requests (atom [])
             conversation-id (str (random-uuid))
-            output (str (random-uuid))
-            ai-token (ai-session-token)]
+            ai-token (ai-session-token)
+            output [{:dimension "2024-11-13", :value 42}]]
         (with-redefs [metabot-v3.tools.find-outliers/find-outliers
                       (fn [arguments]
                         (swap! tool-requests conj arguments)
@@ -149,7 +167,10 @@
       (with-redefs [metabot-v3.tools.filters/query-metric
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
-                      {:structured-output output})]
+                      {:structured-output {:type :query
+                                           :query-id output
+                                           :query {}
+                                           :result-columns []}})]
         (let [filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
                        {:field_id "c2/3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2/5", :operation "not-equals", :values [3 4]}
@@ -165,7 +186,10 @@
                                                                 :filters   filters
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})]
-          (is (= {:structured_output output
+          (is (= {:structured_output {:type "query"
+                                      :query_id output
+                                      :query {}
+                                      :result_columns []}
                   :conversation_id conversation-id}
                  response)))))))
 
@@ -240,7 +264,10 @@
       (with-redefs [metabot-v3.tools.filters/query-model
                     (fn [arguments]
                       (swap! tool-requests conj arguments)
-                      {:structured-output output})]
+                      {:structured-output {:type :query
+                                           :query-id output
+                                           :query {}
+                                           :result-columns []}})]
         (let [fields [{:field_id "c2/8", :bucket "year-of-era"}
                       {:field_id "c2/9"}]
               filters [{:field_id "c2/7", :operation "number-greater-than", :value 50}
@@ -262,7 +289,10 @@
                                                                 :aggregations aggregations
                                                                 :group_by     breakouts}
                                               :conversation_id conversation-id})]
-          (is (= {:structured_output output
+          (is (= {:structured_output {:type "query"
+                                      :query_id output
+                                      :query {}
+                                      :result_columns []}
                   :conversation_id conversation-id}
                  response)))))))
 
@@ -270,7 +300,12 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [tool-requests (atom [])
           conversation-id (str (random-uuid))
-          output (str (random-uuid))
+          output {:type :query
+                  :query-id "query-id"
+                  :query {:database 1
+                          :type :query
+                          :query {:source-table 1}}
+                  :result-columns []}
           ai-token (ai-session-token)]
       (with-redefs [metabot-v3.tools.filters/query-model
                     (fn [arguments]
@@ -284,7 +319,12 @@
                                                                 :fields       fields
                                                                 :filters      filters}
                                               :conversation_id conversation-id})]
-          (is (= {:structured_output output
+          (is (= {:structured_output {:type "query"
+                                      :query_id "query-id"
+                                      :query {:database 1
+                                              :type "query"
+                                              :query {:source-table 1}}
+                                      :result_columns []}
                   :conversation_id conversation-id}
                  response)))))))
 

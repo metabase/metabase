@@ -36,7 +36,7 @@
             base-data {:dashboard-id dashboard-id
                        :email email
                        :schedule {:frequency "monthly"
-                                  :day_of_month "last-sunday"
+                                  :day-of-month "last-sunday"
                                   :hour 7}}]
         (testing "Subscription can be created"
           (is (= {:output "success"}
