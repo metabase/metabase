@@ -68,17 +68,33 @@
          0)))))
 
 (defn- sig-figs-after-decimal
+  "Count the number of significant figures after the decimal point in a number.
+   Examples:
+     - 0.00123 -> 3 (counting 123)
+     - 0.100 -> 1 (counting 1, ignoring trailing zeros)
+     - 1.23 -> 2 (counting 23)
+     - 1.0 -> 0 (no significant figures after decimal)"
   [value decimal]
   (if (zero? value)
     0
-    (let [val-string (-> (condp = (type value)
-                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                           java.lang.Double (format "%.20f" value)
-                           java.lang.Float (format "%.20f" value)
-                           (str value))
-                         (strip-trailing-zeroes (str decimal)))
-          figs (last (str/split val-string #"[\.0]+"))]
-      (count figs))))
+    (let [;; Convert number to string with appropriate precision
+          val-string (condp = (type value)
+                       java.math.BigDecimal (.toPlainString ^BigDecimal value)
+                       java.lang.Double (format "%.20f" value)
+                       java.lang.Float (format "%.20f" value)
+                       (str value))
+          decimal-idx (str/index-of val-string decimal)]
+      (if decimal-idx
+        (let [;; Get everything after the decimal point
+              after-decimal (subs val-string (inc decimal-idx))
+              ;; Find the first non-zero digit (1-9) in the decimal portion
+              first-non-zero (when-let [match (re-find #"[1-9]" after-decimal)]
+                               (str/index-of after-decimal match))]
+          (if first-non-zero
+            ;; Count all digits from first non-zero onwards, excluding trailing zeros
+            (count (str/replace (subs after-decimal first-non-zero) #"0+$" ""))
+            0))
+        0))))
 
 (defn- qualify-keys
   [m]
