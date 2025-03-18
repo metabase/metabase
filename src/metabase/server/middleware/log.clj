@@ -152,8 +152,7 @@
            :as opts}
           (some #(when ((:status-pred %) status) %)
                 log-options)]
-      (log/with-context (merge {:response-status status} (performance-info info))
-        (log-fn (u/format-color color (format-info info opts)))))
+      (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
       (log/error e "Error logging API request"))))
 
@@ -172,16 +171,14 @@
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
-      (log/with-context {:core-async-response? true}
-        (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))))))
+      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
 
 (defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log/with-context {:streaming-response? true}
-          (log-info (assoc info :async-status (name result))))))))
+        (log-info (assoc info :async-status (name result)))))))
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value

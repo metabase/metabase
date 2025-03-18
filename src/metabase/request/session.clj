@@ -44,7 +44,7 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (log/with-context {:log/user-id metabase-user-id}
+    (log/with-context {:mb/user-id metabase-user-id}
       (perms/with-relevant-permissions-for-user metabase-user-id
         (thunk)))))
 
