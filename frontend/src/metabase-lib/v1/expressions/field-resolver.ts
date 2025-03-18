@@ -4,8 +4,9 @@ import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
+import { ResolverError } from "./errors";
 import { parseDimension, parseMetric, parseSegment } from "./identifier";
-import { type Node, ResolverError } from "./pratt";
+import type { Node } from "./pratt";
 import { resolve } from "./resolver";
 import type { StartRule } from "./types";
 

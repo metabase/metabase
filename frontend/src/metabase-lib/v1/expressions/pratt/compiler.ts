@@ -4,6 +4,7 @@ import { t } from "ttag";
 import type { Expression } from "metabase-types/api";
 
 import { getMBQLName as defaultGetMBQLName } from "../config";
+import { CompileError } from "../errors";
 import { unescapeString } from "../string";
 
 import {
@@ -26,7 +27,7 @@ import {
   STRING,
   SUB,
 } from "./syntax";
-import { CompileError, type Node, type NodeType, assert } from "./types";
+import { type Node, type NodeType, assert } from "./types";
 
 export type CompileOptions = {
   getMBQLName?: (expressionName: string) => string | undefined;

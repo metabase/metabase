@@ -6,11 +6,11 @@ import type { Expression } from "metabase-types/api";
 
 import { type CompileResult, compileExpression } from "./compiler";
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { DiagnosticError, renderError } from "./errors";
 import { isExpression } from "./matchers";
-import { DiagnosticError } from "./pratt";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage, StartRule, Token } from "./types";
-import { getDatabase, getExpressionMode, renderError } from "./utils";
+import { getDatabase, getExpressionMode } from "./utils";
 
 export function diagnose(options: {
   source: string;

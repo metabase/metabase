@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { CompileError } from "../errors";
 import { OPERATOR, TOKEN, tokenize } from "../tokenizer";
 
 import {
@@ -28,7 +29,7 @@ import {
   WS,
 } from "./syntax";
 import type { Hooks, Node, NodeType, Token } from "./types";
-import { CompileError, assert } from "./types";
+import { assert } from "./types";
 
 interface ParserOptions {
   hooks?: Hooks;

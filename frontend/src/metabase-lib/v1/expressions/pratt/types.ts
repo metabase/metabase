@@ -1,5 +1,7 @@
 import { isProduction } from "metabase/env";
 
+import type { CompileError } from "../errors";
+
 type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
 type Type = VariableKind | "string" | "number" | "boolean";
 type VariableId = number;
@@ -76,80 +78,6 @@ export interface Hooks {
   onUnexpectedTerminator?: HookErrFn;
   onMissinChildren?: HookErrFn;
   onChildConstraintViolation?: NodeErrFn;
-}
-
-/*
- * This class helps anything that handles parser errors to use instanceof to
- * easily distinguish between compilation error exceptions and exceptions due to
- * bugs
- */
-abstract class ExpressionError extends Error {
-  abstract get pos(): number | null;
-  abstract get len(): number | null;
-  abstract get friendly(): boolean;
-}
-
-export class CompileError extends ExpressionError {
-  constructor(
-    message: string,
-    private data: any,
-  ) {
-    super(message);
-  }
-
-  get friendly(): boolean {
-    return true;
-  }
-
-  get pos(): number | null {
-    return this.data?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.data?.token?.len ?? null;
-  }
-}
-
-export class ResolverError extends ExpressionError {
-  constructor(
-    message: string,
-    private node?: Node,
-  ) {
-    super(message);
-  }
-
-  get friendly(): boolean {
-    return true;
-  }
-
-  get pos(): number | null {
-    return this.node?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.node?.token?.length ?? null;
-  }
-}
-
-export class DiagnosticError extends ExpressionError {
-  pos: number | null;
-  len: number | null;
-
-  constructor(
-    message: string,
-    {
-      pos = null,
-      len = null,
-    }: { pos?: number | null; len?: number | null } = {},
-  ) {
-    super(message);
-    this.pos = pos;
-    this.len = len;
-  }
-
-  get friendly(): boolean {
-    return true;
-  }
 }
 
 class AssertionError extends Error {
