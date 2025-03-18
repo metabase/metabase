@@ -91,7 +91,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
         title={t`Regenerate JWT signing key?`}
         content={t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
         onConfirm={() => {
-          generateToken;
+          generateToken();
           closeModal();
         }}
         onClose={closeModal}
