@@ -25,7 +25,7 @@ export interface AppBarLargeProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
-  isEmbedded?: boolean;
+  isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -40,7 +40,7 @@ const AppBarLarge = ({
   isNavBarEnabled,
   isLogoVisible,
   isSearchVisible,
-  isEmbedded,
+  isEmbeddingIframe,
   isNewButtonVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -74,7 +74,8 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
+          {isSearchVisible &&
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
