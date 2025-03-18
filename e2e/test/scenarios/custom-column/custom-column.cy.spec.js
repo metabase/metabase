@@ -1470,4 +1470,13 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("Didn't find any results").should("be.visible");
     });
   });
+
+  it("should not insert parens when the clause has no arguments", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("now");
+      cy.findByText("now").click();
+    });
+    H.CustomExpressionEditor.value().should("equal", "now");
+  });
 });
