@@ -478,10 +478,10 @@
    (some #(cyclic-definition node->children %) (keys node->children)))
   ([node->children start]
    (cyclic-definition node->children start []))
-  ([node->children node path]
-   (if (some #{node} path)
-     (drop-while (complement #{node}) (conj path node))
-     (some #(cyclic-definition node->children % (conj path node))
+  ([node->children node node-path]
+   (if (some #{node} node-path)
+     (drop-while (complement #{node}) (conj node-path node))
+     (some #(cyclic-definition node->children % (conj node-path node))
            (node->children node)))))
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
@@ -511,16 +511,16 @@
           (let [error (explainer expr)
                 humanized (str/join ", " (me/humanize error))]
             {:message (i18n/tru "Type error: {0}" humanized)}))
-        (when-let [path (and (= expression-mode :expression)
-                             expression-position
-                             (let [exprs (expressions query stage-number)
-                                   edited-expr (nth exprs expression-position)
-                                   edited-name (expression->name edited-expr)
-                                   deps (-> (m/index-by expression->name exprs)
-                                            (assoc edited-name expr)
-                                            (update-vals referred-expressions))]
-                               (cyclic-definition deps)))]
-          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
+        (when-let [dependency-path (and (= expression-mode :expression)
+                                        expression-position
+                                        (let [exprs (expressions query stage-number)
+                                              edited-expr (nth exprs expression-position)
+                                              edited-name (expression->name edited-expr)
+                                              deps (-> (m/index-by expression->name exprs)
+                                                       (assoc edited-name expr)
+                                                       (update-vals referred-expressions))]
+                                          (cyclic-definition deps)))]
+          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset))
