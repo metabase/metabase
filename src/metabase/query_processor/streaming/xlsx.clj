@@ -687,8 +687,7 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)
-        last-row-num       (volatile! nil)]
+        pivot-grouping-idx (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
@@ -740,7 +739,6 @@
           (when (or (not group)
                     (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
-            (vreset! last-row-num (inc row-num))
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))
 
