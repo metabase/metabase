@@ -39,3 +39,4 @@ export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
     backports: staleBackports,
   });
 }
+
