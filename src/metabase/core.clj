@@ -139,6 +139,7 @@
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
+    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?
@@ -165,10 +166,8 @@
   (init-status/set-progress! 0.95)
 
   (settings/migrate-encrypted-settings!)
-   ;; start scheduler at end of init!
+  (database/check-health!)
   (task/start-scheduler!)
-   ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
-  (database/check-health-and-schedule-tasks!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]
