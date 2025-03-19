@@ -118,6 +118,7 @@ export const MoveModal = ({
 
   return (
     <CollectionPickerModal
+      opened
       title={title}
       value={{
         id: initialCollectionId,
@@ -188,6 +189,7 @@ export const BulkMoveModal = ({
 
   return (
     <CollectionPickerModal
+      opened
       title={title}
       value={{
         id: initialCollectionId,

@@ -95,6 +95,7 @@ export const AddToDashSelectDashModal = ({
 
   return (
     <DashboardPickerModal
+      opened
       title={getTitle(card)}
       onChange={onDashboardSelected}
       onClose={onClose}

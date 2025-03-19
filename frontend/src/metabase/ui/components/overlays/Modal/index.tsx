@@ -8,7 +8,6 @@ import { useState } from "react";
 import { useUnmount } from "react-use";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { PreventEagerPortal } from "metabase/ui";
 
 export type { ModalProps } from "@mantine/core";
 export { useModalStackContext } from "@mantine/core";
@@ -30,18 +29,10 @@ const _Modal = (props: ModalProps) => {
 };
 
 export const Modal = (props: ModalProps) => {
-  return (
-    <PreventEagerPortal {...props}>
-      <_Modal {...props} />
-    </PreventEagerPortal>
-  );
+  return <_Modal {...props} />;
 };
 
-const ModalRoot = (props: ModalRootProps) => (
-  <PreventEagerPortal>
-    <MantineModal.Root {...props} />
-  </PreventEagerPortal>
-);
+const ModalRoot = (props: ModalRootProps) => <MantineModal.Root {...props} />;
 
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;

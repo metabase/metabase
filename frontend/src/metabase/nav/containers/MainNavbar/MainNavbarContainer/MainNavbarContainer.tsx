@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import {
@@ -7,12 +7,10 @@ import {
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { logout } from "metabase/auth/actions";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
@@ -21,8 +19,8 @@ import Collections, {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { connect, useDispatch } from "metabase/lib/redux";
+import { setOpenModal } from "metabase/redux/ui";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -34,8 +32,6 @@ import { NavbarLoadingView } from "../NavbarLoadingView";
 import type { MainNavbarProps, SelectedItem } from "../types";
 
 import { MainNavbarView } from "./MainNavbarView";
-
-type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
 function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
@@ -87,7 +83,7 @@ function MainNavbarContainer({
   onReorderBookmarks,
   ...props
 }: Props) {
-  const [modal, setModal] = useState<NavbarModal>(null);
+  const dispatch = useDispatch();
 
   const {
     data: trashCollection,
@@ -150,25 +146,8 @@ function MainNavbarContainer({
   );
 
   const onCreateNewCollection = useCallback(() => {
-    setModal("MODAL_NEW_COLLECTION");
-  }, []);
-
-  const closeModal = useCallback(() => setModal(null), []);
-
-  const renderModalContent = useCallback(() => {
-    if (modal === "MODAL_NEW_COLLECTION") {
-      return (
-        <CreateCollectionModal
-          onClose={closeModal}
-          onCreate={(collection: Collection) => {
-            closeModal();
-            onChangeLocation(Urls.collection(collection));
-          }}
-        />
-      );
-    }
-    return null;
-  }, [modal, closeModal, onChangeLocation]);
+    dispatch(setOpenModal("collection"));
+  }, [dispatch]);
 
   const allError = props.allError || !!error;
   if (allError) {
@@ -196,8 +175,6 @@ function MainNavbarContainer({
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
       />
-
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
   );
 }

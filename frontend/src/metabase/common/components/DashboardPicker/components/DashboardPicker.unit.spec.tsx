@@ -224,6 +224,7 @@ const setupModal = async ({
 
   renderWithProviders(
     <DashboardPickerModal
+      opened
       onChange={onChange}
       value={initialValue}
       onClose={jest.fn()}

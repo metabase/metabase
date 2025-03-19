@@ -10,7 +10,6 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
@@ -75,6 +74,7 @@ export interface EntityPickerModalProps<
   Item extends TypeWithModel<Id, Model>,
 > {
   title?: string;
+  opened: boolean;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
@@ -104,6 +104,7 @@ export function EntityPickerModal<
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
+  opened,
   canSelectItem,
   selectedItem,
   initialValue,
@@ -161,8 +162,6 @@ export function EntityPickerModal<
   );
 
   assertValidProps(hydratedOptions, onConfirm);
-
-  const { open } = useModalOpen();
 
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -330,7 +329,7 @@ export function EntityPickerModal<
 
   return (
     <Modal
-      opened={open}
+      opened={opened}
       onClose={onClose}
       data-testid="entity-picker-modal"
       title={title}

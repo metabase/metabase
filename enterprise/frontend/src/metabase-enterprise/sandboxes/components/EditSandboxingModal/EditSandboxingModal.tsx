@@ -178,20 +178,19 @@ const EditSandboxingModal = ({
             >
               {policyCard?.name ?? t`Select a question`}
             </Button>
-            {showPickerModal && (
-              <QuestionPickerModal
-                value={
-                  policyCard && policy.card_id != null
-                    ? getQuestionPickerValue(policyCard)
-                    : undefined
-                }
-                onChange={newCard => {
-                  setPolicy({ ...policy, card_id: newCard.id });
-                  hideModal();
-                }}
-                onClose={hideModal}
-              />
-            )}
+            <QuestionPickerModal
+              opened={showPickerModal}
+              value={
+                policyCard && policy.card_id != null
+                  ? getQuestionPickerValue(policyCard)
+                  : undefined
+              }
+              onChange={newCard => {
+                setPolicy({ ...policy, card_id: newCard.id });
+                hideModal();
+              }}
+              onClose={hideModal}
+            />
           </div>
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&

@@ -41,6 +41,7 @@ function setup({
   renderWithProviders(
     <DataPickerModal
       title={title}
+      opened
       value={value}
       databaseId={databaseId}
       onChange={onChange}

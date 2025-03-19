@@ -31,6 +31,7 @@ export interface CollectionPickerModalProps {
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
   models?: CollectionPickerModel[];
+  opened: boolean;
 }
 
 const canSelectItem = (
@@ -51,6 +52,7 @@ const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
 
 export const CollectionPickerModal = ({
   title = t`Choose a collection`,
+  opened,
   onChange,
   onClose,
   value,
@@ -204,6 +206,7 @@ export const CollectionPickerModal = ({
   const modal = (
     <>
       <EntityPickerModal
+        opened={opened}
         title={title}
         onItemSelect={handleItemSelect}
         canSelectItem={

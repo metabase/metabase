@@ -32,34 +32,28 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   const handleModalClose = useCallback(() => {
     dispatch(closeModal());
   }, [dispatch]);
+  return (
+    <>
+      <CreateCollectionModal
+        opened={currentNewModal === "collection"}
+        onClose={handleModalClose}
+        collectionId={collectionId}
+      />
 
-  switch (currentNewModal) {
-    case "collection":
-      return (
-        <CreateCollectionModal
-          onClose={handleModalClose}
-          collectionId={collectionId}
-        />
-      );
+      <CreateDashboardModal
+        opened={currentNewModal === "dashboard"}
+        onClose={handleModalClose}
+        collectionId={collectionId}
+      />
 
-    case "dashboard":
-      return (
-        <CreateDashboardModal
-          opened
-          onClose={handleModalClose}
-          collectionId={collectionId}
-        />
-      );
-    case "action":
-      return (
+      {currentNewModal === "action" && (
         <Modal wide onClose={handleModalClose} enableTransition={false}>
           <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}
           />
         </Modal>
-      );
-    default:
-      return null;
-  }
+      )}
+    </>
+  );
 });
