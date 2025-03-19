@@ -346,15 +346,17 @@
                                                     :inner-join 10
                                                     :right-join 10
                                                     ;; TODO: Make the following driver dependent? Temporarily suppressed
-                                                    ;;       as I test against h2
+                                                    ;;       to enable testing with h2.
                                                     #_#_:full-join  5})
-        ;; WIP: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns; probably)
+        ;; WIP: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns?)
         condition-space     (concat (for [table (lib.metadata/tables query)
                                           :let [conditions (lib/suggested-join-conditions query stage-number table)]
                                           :when (seq conditions)]
                                       [table conditions])
                                     (for [card *available-cards*
-                                          :let [conditions [(lib/= (lib/+ 1 1) 2)]]]
+                                          ;; Using always false join condition for card joins as the results are not
+                                          ;; relevant at the time of writing.
+                                          :let [conditions [(lib/= (lib/+ 1 1) 999)]]]
                                       [card conditions]))]
     (when-let [[target conditions] (and (seq condition-space)
                                         (tu.rng/rand-nth condition-space))]
