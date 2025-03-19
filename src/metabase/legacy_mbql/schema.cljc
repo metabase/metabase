@@ -947,7 +947,7 @@
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a `:field` clause."
+  `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
