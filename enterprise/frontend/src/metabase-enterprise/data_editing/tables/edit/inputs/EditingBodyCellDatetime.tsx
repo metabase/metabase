@@ -9,6 +9,8 @@ import { DateInput } from "metabase/ui";
 import S from "./EditingBodyCellInput.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
+const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
+
 export const EditingBodyCellDatetime = ({
   initialValue,
   datasetColumn,
@@ -23,9 +25,7 @@ export const EditingBodyCellDatetime = ({
     ? new Date(initialValue?.toString())
     : null;
 
-  const valueFormat = isDateTime
-    ? `${DEFAULT_DATE_STYLE} ${DEFAULT_TIME_STYLE}`
-    : DEFAULT_DATE_STYLE;
+  const valueFormat = isDateTime ? DEFAULT_DATETIME_STYLE : DEFAULT_DATE_STYLE;
 
   const [value, setValue] = useState<Date | null>(initialDateValue);
 
