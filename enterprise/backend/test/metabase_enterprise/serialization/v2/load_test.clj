@@ -1390,8 +1390,8 @@
 
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db
-    (let [db         (ts/create! :model/Collection :name "mycoll")
-          [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id db)]]})
+    (let [coll       (ts/create! :model/Collection :name "mycoll")
+          [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id coll)]]})
           new-coll   (assoc coll-ser :entity_id nil)
           coll-count (fn [] (t2/count :model/Collection :name "mycoll"))]
       (serdes.load/load-metabase! (ingestion-in-memory [new-coll]))
