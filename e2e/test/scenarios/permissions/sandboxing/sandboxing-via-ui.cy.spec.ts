@@ -276,7 +276,6 @@ describe(
 
         const signIn = (state: string) => {
           const user = users[state];
-
           cy.log(`Sign in as user via an API call: ${user.email}`);
           cy.request("POST", "/api/session", {
             username: user.email,
