@@ -50,12 +50,12 @@ export function VisualizationCanvas({ className }: { className?: string }) {
   const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
 
   const display = useSelector(getVisualizationType);
+  const isLoading = useSelector(getIsLoading);
+
   let rawSeries = useSelector(getVisualizerRawSeries);
   if (display && isCartesianChart(display)) {
     rawSeries = disableAxisLabels(rawSeries);
   }
-
-  const isLoading = useSelector(getIsLoading);
 
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
 

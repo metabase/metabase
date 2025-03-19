@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 import {
   getDatasets,
+  getIsLoading,
   getVisualizationType,
 } from "metabase/visualizer/selectors";
 import {
@@ -23,6 +24,8 @@ export function Footer({ className }: { className?: string }) {
   const datasets = useSelector(getDatasets);
   const hasDatasets = Object.values(datasets).length > 0;
 
+  const isLoading = useSelector(getIsLoading);
+
   const handleChangeDisplay = useCallback(
     (nextDisplay: string) => {
       dispatch(setDisplay(nextDisplay as VisualizationDisplay));
@@ -31,7 +34,9 @@ export function Footer({ className }: { className?: string }) {
   );
   return (
     <Flex className={`${S.footer} ${className}`} px="xl" py="md">
-      <VisualizationPicker value={display} onChange={handleChangeDisplay} />
+      {display && !isLoading && (
+        <VisualizationPicker value={display} onChange={handleChangeDisplay} />
+      )}
       {hasDatasets && (
         <Button
           ml="auto"
