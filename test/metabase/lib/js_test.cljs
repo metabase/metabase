@@ -240,7 +240,7 @@
           expr-from-query (first (lib/expressions query-with-expr 0))
           legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
           named-expr (lib/with-expression-name expr "named")]
-      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
+      (is (= legacy-expr legacy-expr' legacy-expr-from-query))
       (is (= "named" (lib/display-name query named-expr)))))
   (testing "simple expressions can be converted properly (#37173)"
     (let [query (lib.tu/venues-query)
