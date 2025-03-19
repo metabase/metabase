@@ -76,7 +76,7 @@ export const useValidatedEntityId = <
   );
 
   return useMemo(() => {
-    if (_.isNumber(id) || isStringifiedNumber(id)) {
+    if (_.isNumber(id)) {
       // no need to translate anything if the id is already not a entity id
       return {
         id: Number(id) as TReturnedId,
@@ -93,7 +93,7 @@ export const useValidatedEntityId = <
       } as const;
     }
 
-    if (isError || !isEntityId) {
+    if (!isEntityId || isError) {
       return {
         id: null,
         isLoading: false,
@@ -112,12 +112,4 @@ export const useValidatedEntityId = <
     // something went wrong, either entity_ids is empty or the translation failed
     return { id: null, isLoading: false, isError: true } as const;
   }, [isEntityId, isLoading, isError, entity_ids, id]);
-};
-
-const isStringifiedNumber = (value: unknown): boolean => {
-  if (value === null || value === undefined) {
-    return false;
-  }
-
-  return Number.isFinite(Number(value));
 };
