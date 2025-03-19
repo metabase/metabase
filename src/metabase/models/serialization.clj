@@ -50,7 +50,8 @@
   - Put it in `:skip` if this column shouldn't be synchronized
   - You have to make decisions inside `:transform` column `:export` function (or `:import`)
   - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
-    format distinguishes between `nil` and absence)"
+    format distinguishes between `nil` and absence)
+  - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
    [clojure.core.match :refer [match]]
@@ -399,19 +400,20 @@
 ;;; *Note:* "descendants" and "dependencies" are quite different things!
 
 (defmulti make-spec
-  "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
+  "Return specification for serialization, should be a map of:
 
-  `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
-  mentioned. `:transform` is a map from field name to an `{:import (fn [v] ...) :export (fn [v] ...)}` map.
+  - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
+  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
+    are always skipped, no need to mention them).
+  - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
+    on `extract-one` and `xform-one`. There are a number of transfomers, see this field for `fk` and similar.
+  - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
 
-  For behavior, see `extract-one` and `xform-one`. Two fields - `id` and `updated_at` - are always skipped, no need to
-  mention them in `:skip`.
-
-  Example:
+  Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
     {:copy [:name :description]
-     :skip [;; it's nice to comment why it's skipped
+     :skip [;; please leave a comment why a field is skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}})"
   {:arglists '([model-name opts])}
@@ -751,7 +753,7 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defn- coerce-schema [data schemas]
+(defn- coerce-keys [data schemas]
   (reduce (fn [data [k schema]] (update data k #(mc/coerce schema % mtx/string-transformer)))
           data
           schemas))
@@ -772,7 +774,7 @@
                                (or (some? res)
                                    (contains? ingested import-k)))]
                 [k res]))
-        (coerce-schema (:schema spec)))))
+        (coerce-keys (:coerce spec)))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (make-spec model-name nil)]

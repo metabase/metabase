@@ -411,7 +411,7 @@
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :schema {:parameters [:maybe [:sequential ms/Parameter]]}})
+   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
