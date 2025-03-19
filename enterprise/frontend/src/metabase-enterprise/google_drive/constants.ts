@@ -1,0 +1,1 @@
+export const SYNC_INTERVAL_MINUTES = 15;

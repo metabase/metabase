@@ -1,14 +1,18 @@
+import dayjs from "dayjs";
 import { useState } from "react";
 import { useLocation } from "react-use";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { Button, Flex, Icon, Text } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
+import {
+  useGetGsheetsFolderQuery,
+  useSyncGsheetsFolderMutation,
+} from "metabase-enterprise/api";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 import { trackSheetConnectionClick } from "./analytics";
+import { SYNC_INTERVAL_MINUTES } from "./constants";
 import { useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
@@ -22,51 +26,125 @@ export function GdriveDbMenu() {
   );
 
   const isDwh = databaseInfo?.is_attached_dwh;
-
-  const gSheetsSetting = useSetting("gsheets");
-
   const showGdrive = useShowGdrive();
 
-  if (!showGdrive || !isDwh) {
+  const { data: folderInfo } = useGetGsheetsFolderQuery(
+    showGdrive ? undefined : skipToken,
+  );
+
+  if (!showGdrive || !isDwh || !folderInfo) {
     return null;
   }
 
-  const { status } = gSheetsSetting;
+  const { status } = folderInfo;
 
-  const buttonText = match(status)
-    .with("not-connected", () => t`Connect Google Sheets`)
-    .with("loading", () => t`Google Sheets connecting...`)
-    .with("complete", () => t`Disconnect`)
-    .otherwise(() => t`Google Sheets`);
+  if (status === "not-connected") {
+    return (
+      <>
+        <Button
+          variant="subtle"
+          onClick={() => {
+            setShowModal(true);
+            trackSheetConnectionClick({ from: "db-page" });
+          }}
+          leftSection={<Icon name="google_sheet" />}
+        >
+          {t`Connect Google Sheets`}
+        </Button>
+        <GdriveConnectionModal
+          isModalOpen={showModal}
+          onClose={() => setShowModal(false)}
+          reconnect={false}
+        />
+      </>
+    );
+  }
 
   return (
-    <Flex align="center" gap="sm">
-      {status === "complete" && (
-        <Flex align="center" gap="xs">
-          <Icon name="google_sheet" />
-          <Text>{t`Connected to Google Sheets`}</Text>
-        </Flex>
-      )}
-      <Text>{" · "}</Text>
-      <Button
-        p={0}
-        variant="subtle"
-        onClick={() => {
-          setShowModal(true);
-          trackSheetConnectionClick({ from: "db-page" });
-        }}
-        disabled={status === "loading"}
-        leftSection={
-          status === "complete" ? undefined : <Icon name="google_sheet" />
-        }
-      >
-        {buttonText}
-      </Button>
+    <>
+      <Menu>
+        <Menu.Target>
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="google_sheet" />}
+            rightSection={<Icon name="chevrondown" />}
+          >
+            {t`Google Sheets`}
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <SyncNowButton disabled={status === "loading"} />
+          <Menu.Item
+            leftSection={<Icon name="close" />}
+            fw="bold"
+            disabled={status === "loading"}
+            onClick={() => setShowModal(true)}
+          >
+            {t`Disconnect`}
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Label>
+            <MenuSyncStatus />
+          </Menu.Label>
+        </Menu.Dropdown>
+      </Menu>
       <GdriveConnectionModal
         isModalOpen={showModal}
         onClose={() => setShowModal(false)}
         reconnect={false}
       />
-    </Flex>
+    </>
   );
 }
+function SyncNowButton({ disabled }: { disabled: boolean }) {
+  const [doSync, { isLoading }] = useSyncGsheetsFolderMutation();
+
+  return (
+    <Menu.Item
+      disabled={disabled || isLoading}
+      leftSection={<Icon name="sync" />}
+      fw="bold"
+      onClickCapture={async (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await doSync();
+        // error handling?
+      }}
+    >
+      {t`Sync now`}
+    </Menu.Item>
+  );
+}
+
+function MenuSyncStatus() {
+  const { data: folderInfo } = useGetGsheetsFolderQuery();
+
+  const lastSync = folderInfo?.["folder-upload-time"];
+  const folderStatus = folderInfo?.status;
+
+  const lastSyncRelative = lastSync
+    ? dayjs.unix(lastSync).fromNow()
+    : t`unknown`;
+
+  const nextSyncRelative = lastSync
+    ? dayjs.unix(lastSync).add(SYNC_INTERVAL_MINUTES, "minutes").fromNow()
+    : t`a while`;
+
+  return (
+    <>
+      {folderStatus === "loading" ? (
+        <SyncingText />
+      ) : (
+        <Text fw="bold">{t`Next sync ${nextSyncRelative}`}</Text>
+      )}
+      <Text fz="sm">{t`Last synced ${lastSyncRelative}`}</Text>
+    </>
+  );
+}
+
+const SyncingText = () => (
+  <Flex justify="space-between">
+    <Text fw="bold">{t`Syncing`}</Text>
+    <Loader size="xs" />
+  </Flex>
+);
