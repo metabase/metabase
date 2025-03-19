@@ -73,6 +73,22 @@
             (is (not (nil? entity-id2)))
             (is (not (= entity-id1 entity-id2)))))))))
 
+(deftest ^:synchonized backfill-many-duplicates-test
+  (testing "Can backfill duplicate entities"
+    (binding [backfill-entity-ids/*retry-batch-size* 3]
+      (with-sample-data! :model/Database
+        (fn [{:keys [db-id db]}]
+          (mt/with-temp
+            [:model/Database {db-id2 :id} (select-keys db [:name :engine])
+             :model/Database {db-id3 :id} (select-keys db [:name :engine])
+             :model/Database {db-id4 :id} (select-keys db [:name :engine])
+             :model/Database {db-id5 :id} (select-keys db [:name :engine])]
+            (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
+            (let [entity-ids [t2/select-fn-set :entity_id :model/Database :id [:in [db-id db-id2 db-id3 db-id4 db-id5]]]]
+              (is (every? some? entity-ids))
+              ;; entity-ids are all unique
+              (is (= 5 (count entity-ids))))))))))
+
 (deftest ^:synchronized backfill-limit-test
   (testing "Only backfills up to batch-size records"
     (binding [backfill-entity-ids/*batch-size* 1]

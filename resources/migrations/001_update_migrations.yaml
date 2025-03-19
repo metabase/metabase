@@ -10834,6 +10834,57 @@ databaseChangeLog:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
 
+  - changeSet:
+      id: v54.2025-03-11T16:00:00
+      author: qnkhuat
+      comment: add notification_subscription.ui_display_type
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: ui_display_type
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: ui_display_type
+                  type: varchar(32)
+                  remarks: the display of the subscription, used for the UI only
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:44
+      author: noahmoss
+      comment: Migrating zh site locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE setting SET value = 'zh_CN' where key = 'site-locale' AND value = 'zh';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting SET `value` = 'zh_CN' where `key` = 'site-locale' AND `value` = 'zh';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting SET "VALUE" = 'zh_CN' where "KEY" = 'site-locale' AND "VALUE" = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:59
+      author: noahmoss
+      comment: Migrating zh user locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            sql: >-
+              UPDATE core_user SET locale = 'zh_CN' WHERE locale = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
