@@ -89,6 +89,7 @@ export function EmbeddingDataPicker({
           />
         }
         setSourceTableFn={onChange}
+        entityTypes={entityTypes}
       />
     );
   }
