@@ -8,6 +8,7 @@ import {
 } from "embedding-sdk/store/collections";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useSelector } from "metabase/lib/redux";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -25,13 +26,23 @@ const CreateDashboardModalInner = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps) => {
+  const { id, isLoading } = useValidatedEntityId<
+    "collection",
+    SDKCollectionReference
+  >({
+    type: "collection",
+    id: initialCollectionId,
+  });
+
+  const initId = !isLoading && (id ?? initialCollectionId);
+
   const translatedCollectionId = useSelector((state: State) =>
-    getCollectionIdSlugFromReference(state, initialCollectionId),
+    initId ? getCollectionIdSlugFromReference(state, initId) : undefined,
   );
 
   return (
     <CreateDashboardModalCoreWithLoading
-      opened={isOpen}
+      opened={!isLoading && isOpen}
       onCreate={onCreate}
       onClose={onClose}
       collectionId={translatedCollectionId}
