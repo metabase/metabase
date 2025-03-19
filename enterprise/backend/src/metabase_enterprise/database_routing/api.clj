@@ -41,36 +41,24 @@
       (doseq [database <>]
         (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})))))
 
-(api.macros/defendpoint :post "/router"
-  "Creates a new Router by marking an existing Database as a router."
-  [_route-params
-   _query-params
-   {:keys [user_attribute database_id]} :- [:map
-                                            [:user_attribute ms/NonBlankString]
-                                            [:database_id ms/PositiveInt]]]
-  (api/check-404 (t2/exists? :model/Database :id database_id))
-  (api/check-400 (not (t2/exists? :model/DatabaseRouter :database_id database_id)))
-  (t2/insert-returning-instance! :model/DatabaseRouter :user_attribute user_attribute :database_id database_id))
-
-(api.macros/defendpoint :put "/router/:id"
-  "Updates an existing Router to change the user attribute used."
+(api.macros/defendpoint :put "/router-database/:id"
+  "Updates an existing Database with the `user_attribute` to route on. Will either:
+  - turn an existing Database into a Router database
+  - change the `user_attribute` used to route for an existing Router database, or
+  - turn a Router database into a regular Database
+  depending on the value of `user_attribute`"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map [:user_attribute ms/NonBlankString]]]
-  (api/check-404 (t2/exists? :model/DatabaseRouter :id id))
-  (t2/update! :model/DatabaseRouter :id id {:user_attribute user_attribute}))
-
-(api.macros/defendpoint :delete "/router/:id"
-  "Deletes a router AND ALL ASSOCIATED MIRROR DATABASES."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-404 (t2/exists? :model/DatabaseRouter :id id))
-  (let [primary-db-id (t2/select-one-fn :database_id
-                                        [:model/DatabaseRouter :database_id]
-                                        :id id)]
+   {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+  (api/check-404 (t2/exists? :model/Database :id id))
+  (if (nil? user_attribute)
+    ;; delete the DatabaseRouter and all mirror databases.
     (t2/with-transaction [_conn]
-      (t2/delete! :model/DatabaseRouter :id id)
-      (t2/delete! :model/Database :router_database_id primary-db-id))
-    api/generic-204-no-content))
+      (t2/delete! :model/DatabaseRouter :database_id id)
+      (t2/delete! :model/Database :router_database_id id))
+    (if (t2/select-one :model/DatabaseRouter :database_id id)
+      (t2/update! :model/DatabaseRouter :database_id id {:user_attribute user_attribute})
+      (t2/insert! :model/DatabaseRouter {:database_id id :user_attribute user_attribute}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"

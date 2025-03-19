@@ -46,37 +46,29 @@
 (deftest we-can-mark-an-existing-database-as-being-a-router-database
   (mt/with-temp [:model/Database {db-id :id} {}]
     (mt/with-model-cleanup [:model/DatabaseRouter]
-      (mt/user-http-request :crowberto :post 200 "ee/database-routing/router"
-                            {:user_attribute "foo"
-                             :database_id db-id})
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "foo"})
       (is (t2/exists? :model/DatabaseRouter :database_id db-id :user_attribute "foo")))))
 
 (deftest marking-a-nonexistent-database-as-a-router-database-fails
   (let [nonexistent-id 123456789]
     (mt/with-model-cleanup [:model/DatabaseRouter]
-      (mt/user-http-request :crowberto :post 404 "ee/database-routing/router"
-                            {:user_attribute "foo"
-                             :database_id nonexistent-id})
+      (mt/user-http-request :crowberto :put 404 (str "ee/database-routing/router-database/" nonexistent-id)
+                            {:user_attribute "foo"})
       (is (not (t2/exists? :model/DatabaseRouter :database_id nonexistent-id :user_attribute "foo"))))))
-
-(deftest marking-something-that-is-already-a-router-database-fails
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
-    (mt/user-http-request :crowberto :post 400 "ee/database-routing/router"
-                          {:user_attribute "bar"
-                           :database_id db-id})))
 
 (deftest we-can-update-existing-router-databases-to-point-to-a-new-user-attribute
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}]
-    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router/" router-id)
-                          {:user_attribute "bar"})))
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                          {:user_attribute "bar"})
+    (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter router-id)))))
 
 (deftest deleting-database-routers-works
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}
                  :model/Database {mirror-db-id :id} {:router_database_id db-id}]
-    (mt/user-http-request :crowberto :delete 204 (str "ee/database-routing/router/" router-id))
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id) {:user_attribute nil})
     (is (not (t2/exists? :model/Database :id mirror-db-id)))
     (is (not (t2/exists? :model/DatabaseRouter :id router-id)))))
 
@@ -87,17 +79,17 @@
                             {:router_database_id (mt/id)
                              :mirrors [{:name "mirror database"
                                         :details (:details (mt/db))}]})))
-  (testing "POST /api/ee/database-routing/router"
+  (testing "PUT /api/ee/database-routing/router-database/:id"
     (mt/with-temp [:model/Database {db-id :id} {}]
       (mt/with-model-cleanup [:model/DatabaseRouter]
-        (mt/user-http-request :rasta :post 403 "ee/database-routing/router"
-                              {:user_attribute "foo"
-                               :database_id db-id}))))
-  (testing "PUT /api/ee/database-routing/router"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}]
-      (mt/user-http-request :rasta :put 403 (str "ee/database-routing/router/" router-id)
-                            {:user_attribute "bar"}))))
+        (mt/user-http-request :rasta :put 403 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "foo"})))))
+
+(deftest router-databases-have-a-router-user-attribute-on-the-get-api
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foobar"}]
+    (is (= "foobar"
+           (:router_user_attribute (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))))))
 
 (deftest mirror-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}
