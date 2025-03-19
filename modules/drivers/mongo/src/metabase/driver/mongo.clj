@@ -193,9 +193,13 @@
                                                                                        "then" "$$item.v"
                                                                                        "else" nil}}
                                                                 "type"       {"$type" "$$item.v"}
-                                                                "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                                                                           "args" ["$$item.v" {"$type" "$$item.v"}]
-                                                                                           "lang" "js"}}}}}}}
+                                                                "type-alias" {"$cond": {"if": {"$and": [
+                                                                                               {"$eq": [{"$type": "$$item.v"}, "binData"]}, 
+                                                                                               {"$eq": [{"$getField": {"field": "type", "input": "$$item.v"}}, 4]}
+                                                                                             ]},
+                                                                                         "then": "uuid",
+                                                                                         "else": {"$type": "$$item.v"}}}
+                                                               }}}}}}
                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                           {"$project" {"path"       {"$concat" ["$path" "." "$kvs.k"]}
                                        "type"       "$kvs.type"
@@ -228,9 +232,13 @@
                                                                                    "then" "$$item.v"
                                                                                    "else" nil}}
                                                             "type"       {"$type" "$$item.v"}
-                                                            "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                                                                       "args" ["$$item.v" {"$type" "$$item.v"}]
-                                                                                       "lang" "js"}}}}}}}
+                                                            "type-alias" {"$cond": {"if": {"$and": [
+                                                                                           {"$eq": [{"$type": "$$item.v"}, "binData"]}, 
+                                                                                           {"$eq": [{"$getField": {"field": "type", "input": "$$item.v"}}, 4]}
+                                                                                         ]},
+                                                                                     "then": "uuid",
+                                                                                     "else": {"$type": "$$item.v"}}}
+                                                           }}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"       "$kvs.k"
                                     "result"     {"$literal" false}

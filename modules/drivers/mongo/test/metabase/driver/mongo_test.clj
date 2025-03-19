@@ -209,9 +209,13 @@
                "object"
                {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
                "type"       {"$type" "$$item.v"},
-               "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                          "args" ["$$item.v" {"$type" "$$item.v"}]
-                                          "lang" "js"}}}}}}}
+               "type-alias" {"$cond": {"if": {"$and": [
+                                               {"$eq": [{"$type": "$$item.v"}, "binData"]}, 
+                                               {"$eq": [{"$getField": {"field": "type", "input": "$$item.v"}}, 4]}
+                                             ]},
+                                         "then": "uuid",
+                                         "else": {"$type": "$$item.v"}}}
+              }}}}}}
           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
           {"$project"
            {"path" "$kvs.k",
@@ -244,9 +248,13 @@
                   "object"
                   {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
                   "type"       {"$type" "$$item.v"},
-                  "type-alias" {"$function" {"body" "function(val, type) { return (type == 'binData' && val.type == 4) ? 'uuid' : type; }"
-                                             "args" ["$$item.v" {"$type" "$$item.v"}]
-                                             "lang" "js"}}}}}}}
+                  "type-alias" {"$cond": {"if": {"$and": [
+                                                  {"$eq": [{"$type": "$$item.v"}, "binData"]}, 
+                                                  {"$eq": [{"$getField": {"field": "type", "input": "$$item.v"}}, 4]}
+                                                ]},
+                                            "then": "uuid",
+                                            "else": {"$type": "$$item.v"}}}
+                 }}}}}}
              {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
              {"$project"
               {"path" {"$concat" ["$path" "." "$kvs.k"]},
@@ -806,8 +814,6 @@
                     (throw (ex-info (format "Error inserting row: %s" (ex-message e))
                                     {:database database-name, :collection collection-name, :details details, :row row}
                                     e)))))
-              (log/infof "Inserted %d rows into %s collection %s."
-                         (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
           (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
