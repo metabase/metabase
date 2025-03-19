@@ -509,6 +509,24 @@
                             {:name "Additional Information", :display-name "Additional Information"}]]
              :aggregation-idents {0 (u/generate-nano-id)}}}))
 
+(deftest ^:parallel round-trip-literal-expression-test-2
+  (are [literal] (test-round-trip {:database 1
+                                   :type     :query
+                                   :query    {:source-table 224
+                                              :expressions {"a" [:value literal nil]}
+                                              :expression-idents {"a" (u/generate-nano-id)}}})
+    true
+    false
+    0
+    10
+    -10
+    10.15
+    "abc"
+    "2020-10-20"
+    "2020-10-20T10:20:00"
+    "2020-10-20T10:20:00Z"
+    "10:20:00"))
+
 (deftest ^:parallel round-trip-segments-test
   (test-round-trip {:database 282
                     :type :query
@@ -1145,21 +1163,3 @@
         (testing "round trip to pMBQL and back with small changes"
           (is (= query
                  (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))
-
-(deftest ^:parallel round-trip-expression-literal-test
-  (are [literal] (test-round-trip {:database 1
-                                   :type     :query
-                                   :query    {:source-table 224
-                                              :expressions {"a" [:value literal nil]}
-                                              :expression-idents {"a" (u/generate-nano-id)}}})
-    true
-    false
-    0
-    10
-    -10
-    10.15
-    "abc"
-    "2020-10-20"
-    "2020-10-20T10:20:00"
-    "2020-10-20T10:20:00Z"
-    "10:20:00"))
