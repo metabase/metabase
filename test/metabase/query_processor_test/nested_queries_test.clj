@@ -73,8 +73,9 @@
               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
               :cols (mapv (fn [col-name]
-                            (-> (qp.test-util/native-query-col :venues col-name)
-                                (dissoc :database_type)))
+                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
+                                          (dissoc :database_type))]
+                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
                           [:id :longitude :category_id :price :name :latitude])}
              (mt/format-rows-by
               [int 4.0 int int str 4.0]
@@ -88,7 +89,11 @@
                         :limit        5}))
                     (update :cols (fn [cols]
                                     (mapv (fn [col]
-                                            (dissoc col :database_type))
+                                            (-> col
+                                                (dissoc :database_type)
+                                                ;; Overwrite the idents to make the card eid fixed.
+                                                (update :ident #(str "native__AAAAAAAAAAAAAAAAAAAAA__"
+                                                                     (subs % 31)))))
                                           cols)))))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]

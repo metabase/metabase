@@ -300,9 +300,15 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.metadata.ident
+  explicitly-joined-ident
   implicit-join-clause-ident
+  implicitly-joined-ident
   model-ident
-  native-ident]
+  native-ident
+  valid-basic-ident?
+  valid-model-ident?
+  valid-native-ident?
+  valid-native-model-ident?]
  [lib.native
   engine
   extract-template-tags

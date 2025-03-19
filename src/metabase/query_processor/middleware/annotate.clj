@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.config :as config]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -81,6 +82,7 @@
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
+    #_(tap> (list `annotate-native-cols :card-ident card-ident :query query))
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -243,6 +245,7 @@
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
+    :ident           (get-in inner-query [:expression-idents expression-name])
     :field_ref       (fe-friendly-expression-ref clause)}
    (when temporal-unit
      {:unit temporal-unit})))
@@ -276,11 +279,21 @@
       (string? id-or-name)
       (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
                          (dissoc :field_ref))
-                 {:name         id-or-name
-                  :display_name (humanization/name->human-readable-name id-or-name)}))
+                 ;; HACK: If the column can be found in the join's :source-metadata, use its :ident but still fall
+                 ;; back to the naive case.
+                 #_(u/prog1 (some-> (some #(when (= (:name %) id-or-name) %) (:source-metadata join))
+                                    (dissoc :field_ref))
+                     (tap> (list `col-info-for-field-clause* "string ref found in join" clause '=> <>)))
+                 (merge
+                  {:name         id-or-name
+                   :display_name (humanization/name->human-readable-name id-or-name)}
+                  (when-let [ident (some-> (some #(when (= (:name %) id-or-name) %) (:source-metadata join))
+                                           :ident)]
+                    {:ident ident}))))
 
       (integer? id-or-name)
       (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
+               #_(tap> (list `col-info-for-field-clause* "ID ref" clause '=> field))
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -302,6 +315,20 @@
 
       join
       (update :display_name display-name-for-joined-field join)
+
+      ;; When a new join is introduced, wrap all the input :idents with that join.
+      ;; If the clause is a number, then it needs re-joining. If it's a string, then any join clause should already
+      ;; be included.
+      (and join (or (integer? id-or-name)
+                    join-is-at-current-level?))
+      (update :ident lib/explicitly-joined-ident (:ident join))
+
+      ;; Sometimes we see an implicitly joined ref with `:source-field`, but no corresponding join clause.
+      ;; In that case, look up the FK's ident and use adjust this column's ident.
+      (and (:source-field opts)
+           (not join))
+      (update :ident lib/implicitly-joined-ident
+              (:ident (lib.metadata/field (qp.store/metadata-provider) (:source-field opts))))
 
       ;; Join with fk-field-id => IMPLICIT JOIN
       ;; Join w/o fk-field-id  => EXPLICIT JOIN
@@ -427,11 +454,13 @@
            :source :fields)))
 
 (mu/defn- cols-for-ags-and-breakouts
-  [{breakouts :breakout, :as inner-query} :- :map]
+  [{breakouts :breakout, breakout-idents :breakout-idents, :as inner-query} :- :map]
   (concat
-   (for [breakout breakouts]
-     (assoc (col-info-for-field-clause inner-query breakout)
-            :source :breakout))
+   (map-indexed (fn [i breakout]
+                  (assoc (col-info-for-field-clause inner-query breakout)
+                         :source :breakout
+                         :ident  (get breakout-idents i)))
+                breakouts)
    (for [[i aggregation] (m/indexed (col-info-for-aggregation-clauses inner-query))]
      (assoc aggregation
             :source            :aggregation
@@ -460,7 +489,21 @@
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
    (when (= (:unit col) :default)
-     (select-keys source-metadata-col [:unit]))))
+     (select-keys source-metadata-col [:unit]))
+
+   ;; Idents are sometimes preserved from the source, and sometimes replaced.
+   ;; TODO: Expressions the simply reference fields directly keep their IDs and might also need special handling here?
+   (when-let [ident (or ;; If the new col is an aggregation or breakout, use its ident for sure.
+                     (when (#{:aggregation :breakout} (:source col))
+                       (:ident col))
+                        ;; Otherwise prefer the ident of the source, if any.
+                        ;; If col is not an aggregation or breakout, then its ident probably comes from a naive re-read
+                        ;; by Field ID, and we don't want to overwrite the ident of a breakout or joined field from an
+                        ;; earlier stage.
+                     (:ident source-metadata-col)
+                        ;; If the source doesn't have an ident, keep col's ident.
+                     (:ident col))]
+     {:ident ident})))
 
 (defn- maybe-merge-source-metadata
   "Merge information from `source-metadata` into the returned `cols` for queries that return the columns of a source
@@ -482,32 +525,64 @@
      ;; we could preserve metadata such as :sematic_type or :unit from the source field.
       (if-let [source-metadata-for-field (and (not= :aggregation source)
                                               (get by-key (qp.util/field-ref->key field_ref)))]
-        (merge-source-metadata-col source-metadata-for-field
-                                   (merge col
-                                          (when model?
-                                            (select-keys source-metadata-for-field qp.util/preserved-keys))))
+        (let [col' (merge col
+                          (when model?
+                            (select-keys source-metadata-for-field qp.util/preserved-keys)))]
+          (u/prog1 (merge-source-metadata-col source-metadata-for-field
+                                              col')
+            #_(tap> (list `merge-source-metadata-col 'source source-metadata-for-field 'own-col col
+                          'augmented (if model? col' :same)
+                          '=> <>))))
         col))))
 
 (declare mbql-cols)
 
 (defn- cols-for-source-query
-  [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
+  [{:keys [source-metadata source-query/entity-id]
+    {native-source-query :native, :as source-query} :source-query}
+   {{:keys [card-entity-id]} :info, :as outer-query}
+   results]
   (let [columns       (if native-source-query
-                        (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
-                        (mbql-cols source-query results))]
+                        (maybe-merge-source-metadata
+                         source-metadata (column-info {:type :native
+                                                       :info {:card-entity-id (or entity-id card-entity-id)}}
+                                                      results))
+                        (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))
+
+(defn- idents-for-model
+  [cols card-entity-id]
+  ;; Safety checks during dev and test.
+  (when-not config/is-prod?
+    (when-not (every? :ident cols)
+      (throw (ex-info "idents-for-models with missing idents" {:cols           cols
+                                                               :card-entity-id card-entity-id})))
+    (when-not (string? card-entity-id)
+      (throw (ex-info "idents-for-models with blank card-entity-id" {:cols cols}))))
+
+  (for [col cols]
+    (update col :ident lib/model-ident card-entity-id)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query :source-query/model? fields], :as inner-query}, results]
+  [{:keys [source-metadata source-query fields]
+    :source-query/keys [entity-id model?]
+    :as inner-query}
+   outer-query
+   results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
-      (and (empty? cols) source-query)
-      (cols-for-source-query inner-query results)
-
       source-query
-      (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
+      (cond-> (u/prog1 (cols-for-source-query inner-query outer-query results)
+                #_(tap> (list `cols-for-source-query <>)))
+        (seq cols) (as-> $metadata (u/prog1 (flow-field-metadata $metadata cols model?)
+                                     #_(tap> (list `flow-field-metadata 'source-cols $metadata 'own-cols cols 'model? model?
+                                                   '=> ^{:portal.viewer/default :portal.viewer/diff} [(vec $metadata) (vec <>)]))))
+        model?     ((fn [$metadata]
+                      (u/prog1 (idents-for-model $metadata entity-id)
+                        #_(tap> (list `idents-for-model $metadata entity-id
+                                      '=> ^{:portal.viewer/default :portal.viewer/diff} [$metadata <>]))))))
 
       (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -529,10 +604,12 @@
 
 (defmethod column-info :query
   [{inner-query :query,
-    replaced-indexes :metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes}
+    replaced-indexes :metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes
+    :as outer-query}
    results]
   (u/prog1 (mbql-cols (cond-> inner-query
                         replaced-indexes (restore-cumulative-aggregations replaced-indexes))
+                      outer-query
                       results)
     (check-correct-number-of-columns-returned <> results)))
 

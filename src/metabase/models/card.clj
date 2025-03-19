@@ -796,6 +796,55 @@
        ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
        @hashed-eid (assoc :entity_id @entity-id)))))
 
+;; FIXME: This logic should only be applied as part of the 20->21 upgrade.
+(defn- backfill-result-metadata-idents*
+  [result-metadata {query :dataset_query, eid :entity_id, :as card}]
+  (case (:type query)
+    ;; For native queries, we only need to
+    :native (if eid
+              ;; NOTE: Deliberately prefer the field_ref name over :name here! :name is sometimes not unique, if the
+              ;; SQL contains duplicate names. Instead, using the string name from the `:field_ref`, which is
+              ;; disambiguated properly. Fall back to the :name if the :field_ref isn't provided.
+              (mapv (fn [{column-name :name, [_field ref-name] :field_ref, :as col}]
+                      (cond-> (assoc col :ident (lib/native-ident (or ref-name column-name)
+                                                                  eid))
+                        (= (:type card) :model) (update :ident lib/model-ident eid)))
+                    result-metadata)
+              (throw (ex-info (str "Cannot backfill result_metadata for a native card without an entity_id! "
+                                   "Include :entity_id in your query.")
+                              {:card card})))
+
+    ;; For MBQL queries, re-run the inference.
+    :query  (let [inferred (card.metadata/infer-metadata query)
+                  by-ref   (group-by :field_ref inferred)
+                  by-name  (group-by :name inferred)]
+              (u/prog1 (mapv (fn [original]
+                               (let [[{:keys [ident]} :as matches] (or (get by-ref (:field_ref original))
+                                                                       (get by-name (:name original)))
+                                     ident (cond-> ident
+                                             (and ident (= (:type card) :model)) (lib/model-ident eid))]
+                                 (when (> (count matches) 1)
+                                   (log/warn "Ambiguous match of saved result_metadata with inferred metadata."
+                                             {:column original
+                                              :candidates matches}))
+                                 (m/assoc-some original :ident ident)))
+                             result-metadata)
+                (tap> (list `backfill-result-metadata-idents* query 'card (into {} card)
+                            'saved (vec result-metadata) 'inferred inferred
+                            '=> ^{:portal.viewer/default :portal.viewer/diff} [(vec result-metadata) (vec <>)]))))
+    ;; Fallback: Do nothing.
+    result-metadata))
+
+(defn- backfill-result-metadata-idents
+  "If we load a card without `:ident`s in its `:result_metadata`, then recompute them dynamically.
+
+  Returns the possibly-updated card."
+  [{query :dataset_query, cols :result_metadata, :as card}]
+  (cond-> card
+    ;; Have the query and result_metadata, and the idents are not already filled in.
+    (and query (seq cols) (some (complement :ident) cols))
+    (update :result_metadata backfill-result-metadata-idents* card)))
+
 (defn- upgrade-card-schema-to-latest [card]
   (if (and (:id card)
            (or (:dataset_query card)
@@ -832,8 +881,17 @@
       add-query-description-to-metric-card
       serdes/add-entity-id
       ensure-clause-idents
-      ;; At this point, the card should be at schema version 20.
+      ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
+
+(defn- drop-idents-from-result-metadata
+  "We can't trust the :idents on result-metadata currently; they aren't correctly populated in all cases.
+
+  We don't want to store possibly-incorrect result-metadata in appdbs, so drop them for now."
+  [card-or-changes]
+  (m/update-existing card-or-changes :result_metadata
+                     (fn [metadata]
+                       (mapv #(dissoc % :ident) metadata))))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -841,6 +899,8 @@
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
       card.metadata/populate-result-metadata
+      ;; TODO: Remove this once idents on result-metadata are reliable and correct.
+      drop-idents-from-result-metadata
       pre-insert
       populate-query-fields
       (ensure-clause-idents ::before-insert)))
@@ -878,6 +938,8 @@
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
         card.metadata/populate-result-metadata)
+      ;; TODO: Remove this once idents on result-metadata are reliable and correct.
+      drop-idents-from-result-metadata
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))
@@ -1191,7 +1253,7 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?] :as m}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)

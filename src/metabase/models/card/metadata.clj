@@ -60,6 +60,28 @@ saved later when it is ready."
                               metadata')))}
       {:metadata (qp.util/combine-metadata result metadata')})))
 
+(comment
+  (t2/select-one :model/Card :id 114)
+  ;; XXX: START HERE: Just got the ad-hoc native query including its entity_id.
+  ;; I think that fix will apply to MBQL as well, though it matters less there.
+  ;; Next steps:
+  ;; - Update annotate to return correct idents for all columns.
+  ;; - Adjust add-source-metadata to pass along the idents from earlier queries.
+  ;;     - Since idents aren't in `:result_metadata` yet, this needs to be inferred!
+  ;;     - The inference may as well be cached centrally from the first, so it doesn't get repeatedly recomputed.
+
+  ;; See my lifecycle of `:result_metadata` in Logseq - it's the predictable shambles.
+  ;; To unify on that as a safety check before we commit to writing the idents into appdbs(!):
+  ;; - Refactor all of the call sites to pass through one function - `qp.metadata/legacy-result-metadata`?
+  ;; - Ensure that function is only called from outside the QP, on real, card-holding queries.
+  ;; - Put the safety checks for idents into it.
+
+  ;; If the tests are passing and that doesn't explode in stats, we can be reasonably confident that the idents are
+  ;; working globally!
+
+  ;; Cases to test: new/updated X native/MBQL plain/MBQL with summaries X query/model.
+  )
+
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
   [query]
   (log/debug "Querying for metadata")
@@ -129,6 +151,19 @@ saved later when it is ready."
   minutes."
   (u/minutes->ms 15))
 
+(defn- valid-ident?
+  "Validates that native queries have the right `native__CardEntityId__ColumnName` idents, and models have idents that
+  always start with `model__CardEntityId__`."
+  [card column]
+  (let [native?  (-> card :dataset_query :type (= :native))
+        model?   (= (:type card) :model)
+        valid-fn (cond
+                   (and native? model?) lib/valid-native-model-ident?
+                   native?              lib/valid-native-ident?
+                   model?               lib/valid-model-ident?
+                   :else                lib/valid-basic-ident?)]
+    (valid-fn column (:entity_id card))))
+
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
@@ -150,7 +185,9 @@ saved later when it is ready."
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
             :else
-            (let [current-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
+            (let [missing-idents   (remove :ident metadata)
+                  malformed-idents (remove #(valid-ident? card %) metadata)
+                  current-query    (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id id)]
               (if (= (:dataset_query card) current-query)
                 (do
                   (t2/update! :model/Card id {:result_metadata metadata})
@@ -160,12 +197,15 @@ saved later when it is ready."
           (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards."
+  "Infer the default result_metadata to store for MBQL cards.
+
+  Ignores any that might be present already."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
                  (qp.preprocess/query->expected-cols query)))))
 
+;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
   "Update cached result metadata to reflect changes to the underlying tables.
   For now, this only handles the additional and removal of columns, and does not get into things like type changes."

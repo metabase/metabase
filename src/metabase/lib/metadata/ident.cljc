@@ -1,5 +1,7 @@
 (ns metabase.lib.metadata.ident
-  "Helpers for working with `:ident` fields on columns.")
+  "Helpers for working with `:ident` fields on columns."
+  (:require
+   [clojure.string :as str]))
 
 (defn explicitly-joined-ident
   "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
@@ -39,6 +41,51 @@
   "Returns the `:ident` for a \"remapped\" field."
   [target-ident source-ident]
   (str "remapped__" source-ident "__to__" target-ident))
+
+;; Validation of idents for various things.
+(defn- ->ident [column-or-ident]
+  (cond-> column-or-ident
+    (map? column-or-ident) :ident))
+
+(defn valid-model-ident?
+  "Returns whether a given ident (or `:ident` from the column) is correct for the given model."
+  [column-or-ident card-entity-id]
+  (let [ident  (->ident column-or-ident)
+        prefix (model-ident "" card-entity-id)]
+    (and (string? ident)
+         (str/starts-with? ident prefix)
+         ;; The inner ident can't be empty, or it's also invalid.
+         (> (count ident) (count prefix)))))
+
+(defn valid-native-ident?
+  "Returns whether a given ident (or `:ident` from a column map) is correct, for the given native card `:entity_id`."
+  [column-or-ident card-entity-id]
+  (let [ident  (->ident column-or-ident)
+        prefix (native-ident "" card-entity-id)]
+    (and (string? ident)
+         (str/starts-with? ident prefix))))
+
+(defn valid-native-model-ident?
+  "A special case that checks if a native model's ident is correctly formed:
+  `model__CardEntityId__native__CardEntityId__columnName`."
+  [column-or-ident card-entity-id]
+  (let [ident  (->ident column-or-ident)
+        prefix (-> ""
+                   (native-ident card-entity-id)
+                   (model-ident card-entity-id))]
+    (and (string? ident)
+         (str/starts-with? ident prefix))))
+
+(defn valid-basic-ident?
+  "Validates a generic ident: a nonempty string!
+
+  Accepts an optional second argument (a `card-entity-id`) for uniformity with the other validators, but it's unused."
+  ([column-or-ident _card-entity-id]
+   (valid-basic-ident? column-or-ident))
+  ([column-or-ident]
+   (let [ident (->ident column-or-ident)]
+     (boolean (and (string? ident)
+                   (seq ident))))))
 
 (def ^:dynamic *enforce-idents-present*
   "The [[assert-idents-present!]] check is sometimes too zealous; this dynamic var can be overridden whe we know the
