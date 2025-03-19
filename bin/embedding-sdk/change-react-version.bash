@@ -10,15 +10,17 @@ function restore_package_files() {
   mv package.json.backup package.json
 }
 
-function install_react_version() {
+function install_packages() {
   local version=$1
+  local cypress_react_version=$(get_cypress_react_version "$version")
 
   if [[ ! $version =~ ^[0-9]+$ ]]; then
     echo "Error: Version must be a number"
     exit 1
   fi
 
-  yarn add react@^$version react-dom@^$version
+  # Install React and Cypress React test harness
+  yarn add react@^$version react-dom@^$version @cypress/react@^$cypress_react_version
 }
 
 function print_usage() {
@@ -31,22 +33,19 @@ function print_usage() {
 }
 
 # See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
-function install_cypress_react_version() {
+function get_cypress_react_version() {
   local version=$1
 
   if [[ $version -ge 19 ]]; then
-    echo "Installing @cypress/react@^9"
-    yarn add -D @cypress/react@^9
+    echo "9"
   else
-    echo "Installing @cypress/react@^8"
-    yarn add -D @cypress/react@^8
+    echo "8"
   fi
 }
 
 if [[ "$1" =~ ^[0-9]+$ ]]; then
   backup_package_files
-  install_react_version "$1"
-  install_cypress_react_version "$1"
+  install_packages "$1"
   exit 0
 elif [ "$1" == "restore" ]; then
   restore_package_files
