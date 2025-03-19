@@ -1,7 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import { getIn, merge, updateIn } from "icepick";
+import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { getDashboardById } from "metabase/dashboard/selectors";
@@ -181,70 +181,6 @@ export const getFirstQueryResult = createSelector([getQueryResults], results =>
   Array.isArray(results) ? results[0] : null,
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
-);
-
-export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult, getTableId],
-  (result, tableId) => {
-    if (!result) {
-      return;
-    }
-    const { cols } = result.data;
-
-    const hasMultiplePks =
-      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
-
-    if (hasMultiplePks) {
-      return -1;
-    }
-    return cols.findIndex(getIsPKFromTablePredicate(tableId));
-  },
-);
-
-export const getPKRowIndexMap = createSelector(
-  [getFirstQueryResult, getPKColumnIndex],
-  (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
-      return {};
-    }
-    const { rows } = result.data;
-    if (PKColumnIndex < 0) {
-      return rows.map((_, index) => index);
-    }
-    const map = {};
-    rows.forEach((row, index) => {
-      const PKValue = row[PKColumnIndex];
-      map[PKValue] = index;
-    });
-    return map;
-  },
-);
-
-// it's very similar to `getPKRowIndexMap` but it is required for covering "view details" click
-// we don't have objectId there, only rowId, mapping from `getPKRowIndexMap` is opposite
-// if rows are showing the same PK, only last one will have the entry in the map
-// and we'll not know which object to show
-export const getRowIndexToPKMap = createSelector(
-  [getFirstQueryResult, getPKColumnIndex],
-  (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
-      return {};
-    }
-    const { rows } = result.data;
-    if (PKColumnIndex < 0) {
-      return rows.map((_, index) => index);
-    }
-    const map = {};
-    rows.forEach((row, index) => {
-      const PKValue = row[PKColumnIndex];
-      map[index] = PKValue;
-    });
-    return map;
-  },
-);
-
 export const getQueryStartTime = state => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
@@ -261,46 +197,12 @@ export const getDatabasesList = state =>
     entityQuery: { include: "tables", saved: true },
   }) || getDatabasesListDefaultValue;
 
-const getTablesDefaultValue = [];
-export const getTables = createSelector(
-  [getDatabaseId, getDatabasesList],
-  (databaseId, databases) => {
-    if (databaseId != null && databases && databases.length > 0) {
-      const db = _.findWhere(databases, { id: databaseId });
-      if (db && db.tables) {
-        return db.tables;
-      }
-    }
-
-    return getTablesDefaultValue;
-  },
-);
-
-export const getTableMetadata = createSelector(
-  [getTableId, getMetadata],
-  (tableId, metadata) => metadata.table(tableId),
-);
-
-export const getTableForeignKeys = createSelector([getTableMetadata], table => {
-  const tableForeignKeys = table?.fks ?? [];
-  const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
-    tableForeignKey => tableForeignKey.origin != null,
-  );
-
-  return tableForeignKeysWithoutHiddenTables;
-});
-
 export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
   databases => {
     const sampleDatabase = _.findWhere(databases, { is_sample: true });
     return sampleDatabase && sampleDatabase.id;
   },
-);
-
-export const getDatabaseFields = createSelector(
-  [getDatabaseId, state => state.qb.databaseFields],
-  (databaseId, databaseFields) => [], // FIXME!
 );
 
 export const getParameters = createSelector(
@@ -402,6 +304,88 @@ export const getQuestion = createSelector(
     return (isModel || isMetric) && isEditable
       ? question.composeQuestion()
       : question;
+  },
+);
+
+export const getTableId = createSelector([getQuestion], question => {
+  if (!question) {
+    return;
+  }
+
+  return Lib.sourceTableOrCardId(question.query());
+});
+
+export const getTableMetadata = createSelector(
+  [getTableId, getMetadata],
+  (tableId, metadata) => metadata.table(tableId),
+);
+
+export const getTableForeignKeys = createSelector([getTableMetadata], table => {
+  const tableForeignKeys = table?.fks ?? [];
+  const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
+    tableForeignKey => tableForeignKey.origin != null,
+  );
+
+  return tableForeignKeysWithoutHiddenTables;
+});
+
+export const getPKColumnIndex = createSelector(
+  [getFirstQueryResult, getTableId],
+  (result, tableId) => {
+    if (!result) {
+      return;
+    }
+    const { cols } = result.data;
+
+    const hasMultiplePks =
+      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+
+    if (hasMultiplePks) {
+      return -1;
+    }
+    return cols.findIndex(getIsPKFromTablePredicate(tableId));
+  },
+);
+
+export const getPKRowIndexMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[PKValue] = index;
+    });
+    return map;
+  },
+);
+
+// it's very similar to `getPKRowIndexMap` but it is required for covering "view details" click
+// we don't have objectId there, only rowId, mapping from `getPKRowIndexMap` is opposite
+// if rows are showing the same PK, only last one will have the entry in the map
+// and we'll not know which object to show
+export const getRowIndexToPKMap = createSelector(
+  [getFirstQueryResult, getPKColumnIndex],
+  (result, PKColumnIndex) => {
+    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+      return {};
+    }
+    const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
+    const map = {};
+    rows.forEach((row, index) => {
+      const PKValue = row[PKColumnIndex];
+      map[index] = PKValue;
+    });
+    return map;
   },
 );
 
@@ -1027,10 +1011,6 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
-
-export const getTemplateTags = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "native", "template-tags"]),
-);
 
 export const getEmbeddingParameters = createSelector([getCard], card => {
   if (!card?.enable_embedding) {
