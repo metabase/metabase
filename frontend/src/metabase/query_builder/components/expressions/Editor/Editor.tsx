@@ -137,16 +137,16 @@ export function Editor<S extends StartRule = "expression">(
 
     const text =
       clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
-    const pos =
+    const len =
       clause.args.length > 0
-        ? clause.displayName.length + 1
+        ? clause.displayName.length + 1 // + 1 for the parenthesis
         : clause.displayName.length;
 
     view?.focus();
     view?.dispatch(
       view.state.changeByRange(range => ({
-        range: EditorSelection.range(pos, pos),
-        changes: [{ from: range.from, insert: text }],
+        range: EditorSelection.cursor(range.from + len),
+        changes: [{ from: range.from, to: range.to, insert: text }],
       })),
     );
   }, []);

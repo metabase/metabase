@@ -1395,30 +1395,47 @@ describe("scenarios > question > custom column > function browser", () => {
     H.expressionEditorWidget().button("Function browser").click();
 
     H.CustomExpressionEditor.functionBrowser()
-      .findByText("dayName")
+      .findByText("datetimeAdd")
       .should("be.visible");
     H.CustomExpressionEditor.functionBrowser()
-      .findByText(
-        "Returns the localized name of a day of the week, given the day's number.",
-      )
+      .findByText("Adds some units of time to a date or timestamp value.")
       .should("be.visible");
 
-    H.CustomExpressionEditor.functionBrowser().findByText("dayName").click();
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("datetimeAdd")
+      .click();
 
-    H.CustomExpressionEditor.value().should("equal", "dayName()");
-    H.CustomExpressionEditor.value().should("equal", "dayName()");
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
 
     H.CustomExpressionEditor.functionBrowser().findByText("day").click();
-    H.CustomExpressionEditor.value().should("equal", "dayName(day())");
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd(day())");
 
     H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
-    H.CustomExpressionEditor.value().should("equal", 'dayName(day("foo"), )');
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'datetimeAdd(day("foo"), )',
+    );
 
     H.CustomExpressionEditor.functionBrowser().findByText("day").click();
     H.CustomExpressionEditor.value().should(
       "equal",
-      'dayName(day("foo"), day())',
+      'datetimeAdd(day("foo"), day())',
     );
+  });
+
+  it("should be possible to replace text when inserting functions", () => {
+    H.CustomExpressionEditor.type("foo bar baz");
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "foo day() baz");
   });
 
   it("should be possible to filter functions in the function browser", () => {
