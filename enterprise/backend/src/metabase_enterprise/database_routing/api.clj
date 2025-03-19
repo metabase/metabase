@@ -24,6 +24,8 @@
                                                [:name               ms/NonBlankString]
                                                [:details            ms/Map]]]]]]
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
+  (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name mirrors)]))
+                 "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand]} (t2/select-one :model/Database :id router_database_id)]
     (u/prog1 (t2/insert-returning-instances!
               :model/Database

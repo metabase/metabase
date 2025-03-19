@@ -93,6 +93,16 @@
     (is (contains? (into #{} (map :router_user_attribute (:data (mt/user-http-request :crowberto :get 200 "database/"))))
                    "foobar"))))
 
+(deftest cannot-create-duplicate-names
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foobar"}
+                 :model/Database _ {:name "fluffy" :router_database_id db-id}]
+    (is (= "A destination database with that name already exists."
+           (mt/user-http-request :crowberto :post 400 "ee/database-routing/mirror-database"
+                                 {:router_database_id db-id
+                                  :mirrors [{:name "fluffy"
+                                             :details (:details (mt/db))}]})))))
+
 (deftest mirror-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}

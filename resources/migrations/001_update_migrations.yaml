@@ -10924,15 +10924,13 @@ databaseChangeLog:
         - not:
             - indexExists:
                 tableName: metabase_database
-                indexName: idx_metabase_database_router_database_id
+                indexName: idx_unique_metabase_database_router_database_id_name
       rollback: # will be deleted when column is deleted
       changes:
-        - createIndex:
+        - addUniqueConstraint:
             tableName: metabase_database
-            columns:
-              - column:
-                  name: router_database_id
-            indexName: idx_metabase_database_router_database_id
+            constraintName: idx_unique_metabase_database_router_database_id_name
+            columnNames: router_database_id, name
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
