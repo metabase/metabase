@@ -385,6 +385,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
+    true                         (assoc :router_user_attribute (database/router-user-attribute db))
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload

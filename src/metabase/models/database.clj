@@ -494,3 +494,9 @@
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:initial-sync-status true}})
+
+(defenterprise router-user-attribute
+  "OSS implementation. Returns the user attribute, if set, that will be used for the DB routing feature."
+  metabase-enterprise.database-routing.model
+  [_db-id]
+  nil)
