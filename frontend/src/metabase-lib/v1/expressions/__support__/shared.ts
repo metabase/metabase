@@ -118,6 +118,7 @@ const expression: TestCase[] = [
     ["concat", "http://mysite.com/user/", userId, "/"],
     "function with 3 arguments",
   ],
+  ["text([User ID])", ["text", userId], "text function"],
   [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [

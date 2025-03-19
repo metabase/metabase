@@ -389,7 +389,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :month-name :quarter-name :day-name})
+    :host :domain :subdomain :month-name :quarter-name :day-name :text})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -499,16 +499,16 @@
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
                        :else                             :else))}
-   [:number              number?]
-   [:boolean             :boolean]
-   [:boolean-expression  BooleanExpression]
-   [:numeric-expression  NumericExpression]
-   [:datetime-expression DatetimeExpression]
-   [:aggregation         Aggregation]
-   [:string              :string]
-   [:string-expression   StringExpression]
-   [:value               value]
-   [:else                Field]])
+   [:number               number?]
+   [:boolean              :boolean]
+   [:boolean-expression   BooleanExpression]
+   [:numeric-expression   NumericExpression]
+   [:datetime-expression  DatetimeExpression]
+   [:aggregation          Aggregation]
+   [:string               :string]
+   [:string-expression    StringExpression]
+   [:value                value]
+   [:else                 Field]])
 
 (def ^:private ExpressionArg
   [:ref ::ExpressionArg])
@@ -562,6 +562,9 @@
 
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
+
+(defclause ^{:requires-features #{:expressions :cast}} text
+  x :any)
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
 ;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
@@ -941,7 +944,7 @@
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain month-name quarter-name day-name))
+          subdomain month-name quarter-name day-name text))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a

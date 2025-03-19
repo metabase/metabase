@@ -188,7 +188,8 @@
   rtrim
   upper
   lower
-  offset]
+  offset
+  text]
  [lib.extraction
   column-extractions
   extract
