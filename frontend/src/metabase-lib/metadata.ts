@@ -239,3 +239,7 @@ export function columnKey(column: ColumnMetadata): string {
 export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
 }
+
+export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
+  return ML.is_metric_metadata(arg);
+}
