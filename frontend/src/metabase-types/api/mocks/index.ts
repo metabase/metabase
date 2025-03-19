@@ -8,6 +8,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./entity-id";
 export * from "./field";
 export * from "./group";
 export * from "./models";

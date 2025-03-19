@@ -719,6 +719,13 @@
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
 
+(defn- add-card-entity-id-to-query
+  "Queries now carry the card's entity ID in the `:info` block; make sure that's populated on reading the card."
+  [card]
+  (if-let [eid (and (:dataset_query card) (:entity_id card))]
+    (assoc-in card [:dataset_query :info :card-entity-id] eid)
+    card))
+
 (defn- derive-ident [prefix entity_id stage-number tail]
   (let [entity_id (cond-> entity_id
                     (instance? clojure.lang.IDeref entity_id) deref)]
@@ -830,6 +837,7 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ensure-clause-idents
+      add-card-entity-id-to-query
       ;; At this point, the card should be at schema version 20.
       upgrade-card-schema-to-latest))
 

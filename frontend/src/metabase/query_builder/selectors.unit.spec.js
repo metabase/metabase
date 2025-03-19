@@ -16,6 +16,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockEntityId,
   createMockTable,
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
@@ -69,11 +70,14 @@ describe("getQuestion", () => {
   });
 
   it("should return question instance correctly", () => {
+    const eid = createMockEntityId();
     const card = {
       id: 5,
+      entity_id: eid,
       dataset_query: {
         database: 1,
         type: "query",
+        info: { "card-entity-id": eid },
         query: {
           "source-table": 1,
         },
@@ -87,12 +91,15 @@ describe("getQuestion", () => {
   });
 
   it("should return composed dataset when dataset is open", () => {
+    const eid = createMockEntityId();
     const card = {
       id: 1,
+      entity_id: eid,
       type: "model",
       dataset_query: {
         database: SAMPLE_DB_ID,
         type: "query",
+        info: { "card-entity-id": eid },
         query: {
           "source-table": ORDERS_ID,
         },
@@ -107,12 +114,15 @@ describe("getQuestion", () => {
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
+    const eid = createMockEntityId();
     const card = {
       id: 5,
+      entity_id: eid,
       type: "model",
       dataset_query: {
         database: 1,
         type: "query",
+        info: { "card-entity-id": eid },
         query: {
           "source-table": 1,
         },

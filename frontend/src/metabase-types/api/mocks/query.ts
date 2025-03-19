@@ -5,6 +5,8 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
+import { MOCK_CARD_ENTITY_ID } from "./entity-id";
+
 export const createMockStructuredQuery = (
   opts?: Partial<StructuredQuery>,
 ): StructuredQuery => ({
@@ -24,6 +26,7 @@ export const createMockStructuredDatasetQuery = (
 ): StructuredDatasetQuery => ({
   type: "query",
   database: 1,
+  info: { "card-entity-id": MOCK_CARD_ENTITY_ID },
   query: createMockStructuredQuery(),
   ...opts,
 });
@@ -33,6 +36,7 @@ export const createMockNativeDatasetQuery = (
 ): NativeDatasetQuery => ({
   type: "native",
   database: 1,
+  info: { "card-entity-id": MOCK_CARD_ENTITY_ID },
   native: createMockNativeQuery(),
   ...opts,
 });

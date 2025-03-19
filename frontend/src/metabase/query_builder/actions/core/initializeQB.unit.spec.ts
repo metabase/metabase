@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
+import { dissoc } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import Databases from "metabase/entities/databases";
@@ -252,7 +253,7 @@ describe("QB Actions > initializeQB", () => {
 
           expect(loadMetadataForCardSpy).toHaveBeenCalledTimes(1);
           expect(loadMetadataForCardSpy).toHaveBeenCalledWith(
-            expect.objectContaining(card),
+            expect.objectContaining(dissoc(card, "entity_id")),
           );
         });
 
