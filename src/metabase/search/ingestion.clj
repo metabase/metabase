@@ -12,18 +12,23 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.util.concurrent BlockingQueue)))
+   (java.util.concurrent DelayQueue)))
 
 (set! *warn-on-reflection* true)
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^BlockingQueue queue (queue/blocking-queue))
+(defonce ^:private ^DelayQueue queue (queue/delay-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
-(def ^:private delay-ms
-  "The minimum time we must wait before updating the index. This delay exists to dedupe and batch changes efficiently."
+(def ^:private message-delay-ms
+  "The time a message should wait before coming off the queue.
+  This delay exists to ensure the data is fully committed before indexing."
   100)
+
+(def ^:private listener-name
+  "The name of the listener that consumes the queue"
+  "search-index-update")
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
@@ -131,12 +136,15 @@
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
 
+(defn- index-worker-exists? []
+  (queue/listener-exists? listener-name))
+
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing."
   ([updates]
-   (ingest-maybe-async! updates *force-sync*))
+   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
    (when-not *disable-updates*
      (if sync?
@@ -144,7 +152,7 @@
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)
-           (queue/put! queue update))
+           (queue/put-with-delay! queue message-delay-ms update))
          (track-queue-size!)
          true)))))
 
@@ -158,14 +166,18 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (queue/listen! "search-index-update" queue bulk-ingest!
-                 {:result-handler     (fn [result duration _]
-                                        (when (seq result)
-                                          (report->prometheus! duration result)
-                                          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))))
-                  :err-handler        #(analytics/inc! :metabase-search/index-error)
-                  :finally-handler    track-queue-size!
-     ;; Note that each message can correspond to multiple documents, for example there would be 1 message for updating all
+  (queue/listen! listener-name queue bulk-ingest!
+                 {:success-handler     (fn [result duration _]
+                                         (when (seq result)
+                                           (report->prometheus! duration result)
+                                           (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
+                                           (track-queue-size!)))
+                  :err-handler        (fn [err _]
+                                        (log/error err "Error indexing search entries")
+                                        (analytics/inc! :metabase-search/index-error)
+                                        (track-queue-size!))
+     ;; Note that each message can correspond to multiple documents,
+     ;; for example there would be 1 message for updating all
      ;; the tables within a given database when it is renamed.
                   :max-batch-messages 50
-                  :max-next-ms        delay-ms}))
+                  :max-batch-ms       100}))
