@@ -6,7 +6,7 @@ describe(
   () => {
     beforeEach(() => {
       H.restore("postgres-12");
-      cy.signInAsNormalUser();
+      cy.signInAsAdmin();
     });
 
     it("should support text function", () => {

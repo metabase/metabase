@@ -285,7 +285,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the string of text in all lower case.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column with values to convert to lower case.`,
         example: ["dimension", t`Status`],
       },
@@ -297,7 +297,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the text in all upper case.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column with values to convert to upper case.`,
         example: ["dimension", t`Status`],
       },
@@ -309,7 +309,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns a portion of the supplied text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to return a portion of.`,
         example: ["dimension", t`Title`],
       },
@@ -333,7 +333,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts matching substrings according to a regular expression.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to search through.`,
         example: ["dimension", t`Address`],
       },
@@ -374,7 +374,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Replaces a part of the input text with new text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to search through.`,
         example: ["dimension", t`Title`],
       },
@@ -396,7 +396,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the number of characters in text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to get the length of.`,
         example: ["dimension", t`Comment`],
       },
@@ -409,7 +409,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Removes leading and trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -421,7 +421,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -433,7 +433,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes leading whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -790,7 +790,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: 7,
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
@@ -813,7 +813,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "-1",
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "month",
       },
@@ -863,7 +863,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: -30,
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
