@@ -59,7 +59,8 @@ export interface Collection {
   id: CollectionId;
   name: string;
   slug?: string;
-  entity_id?: BaseEntityId;
+  // "" for the default for EE's CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID
+  entity_id?: BaseEntityId | "";
   description: string | null;
   can_write: boolean;
   can_restore: boolean;
