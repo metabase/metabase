@@ -8,6 +8,7 @@ import type { UpdatedRowCellsHandlerParams } from "../types";
 import {
   EditingBodyCellBasicInput,
   EditingBodyCellCategorySelect,
+  EditingBodyCellDatetime,
   EditingBodyCellFKSelect,
 } from "./inputs";
 
@@ -49,37 +50,53 @@ export const EditingBodyCellConditional = (
     [columnName, onCellEditCancel, onCellValueUpdate, rowIndex, initialValue],
   );
 
-  switch (column?.semantic_type) {
-    case "type/State":
-    case "type/Country":
-    case "type/Category":
-      return (
-        <EditingBodyCellCategorySelect
-          initialValue={initialValue}
-          datasetColumn={column}
-          onSubmit={doCellValueUpdate}
-          onCancel={onCellEditCancel}
-        />
-      );
-
-    case "type/FK":
-      return (
-        <EditingBodyCellFKSelect
-          initialValue={initialValue}
-          datasetColumn={column}
-          onSubmit={doCellValueUpdate}
-          onCancel={onCellEditCancel}
-        />
-      );
-
-    default:
-      return (
-        <EditingBodyCellBasicInput
-          initialValue={initialValue}
-          datasetColumn={column}
-          onSubmit={doCellValueUpdate}
-          onCancel={onCellEditCancel}
-        />
-      );
+  if (
+    column.semantic_type === "type/State" ||
+    column.semantic_type === "type/Country" ||
+    column.semantic_type === "type/Category"
+  ) {
+    return (
+      <EditingBodyCellCategorySelect
+        initialValue={initialValue}
+        datasetColumn={column}
+        onSubmit={doCellValueUpdate}
+        onCancel={onCellEditCancel}
+      />
+    );
   }
+
+  if (column.semantic_type === "type/FK") {
+    return (
+      <EditingBodyCellFKSelect
+        initialValue={initialValue}
+        datasetColumn={column}
+        onSubmit={doCellValueUpdate}
+        onCancel={onCellEditCancel}
+      />
+    );
+  }
+
+  if (
+    column.effective_type === "type/Date" ||
+    column.effective_type === "type/DateTime" ||
+    column.effective_type === "type/DateTimeWithLocalTZ"
+  ) {
+    return (
+      <EditingBodyCellDatetime
+        initialValue={initialValue}
+        datasetColumn={column}
+        onSubmit={doCellValueUpdate}
+        onCancel={onCellEditCancel}
+      />
+    );
+  }
+
+  return (
+    <EditingBodyCellBasicInput
+      initialValue={initialValue}
+      datasetColumn={column}
+      onSubmit={doCellValueUpdate}
+      onCancel={onCellEditCancel}
+    />
+  );
 };
