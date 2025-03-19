@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (defsetting test-api-setting-boolean
   (deferred-tru "Test setting - this only shows up in dev (3)")

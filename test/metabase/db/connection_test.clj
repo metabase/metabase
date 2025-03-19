@@ -14,7 +14,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :db))
+  (fixtures/initialize :db :scheduler))
 
 (deftest nested-transaction-test
   (let [user-1                    (mt/random-email)

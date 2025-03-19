@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins :test-drivers))
 
 (deftest driver-deprecation-test
   (mt/with-driver :driver-deprecation-test-legacy

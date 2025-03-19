@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins :test-drivers))
 
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is

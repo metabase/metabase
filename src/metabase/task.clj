@@ -44,7 +44,9 @@
 (defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
-  @*quartz-scheduler*)
+  (if-let [scheduler @*quartz-scheduler*]
+    scheduler
+    (throw (ex-info "scheduler has not been initialized" {}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |

@@ -18,7 +18,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest ^:parallel merge-count-maps-test
   (testing "Merging maps with various scenarios"

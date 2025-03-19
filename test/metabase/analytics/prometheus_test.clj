@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 ;; ensure a handler to instrument with jetty_stats and a db so the c3p0 stats have at least one connection
-(use-fixtures :once (fixtures/initialize :db :web-server))
+(use-fixtures :once (fixtures/initialize :db :scheduler :web-server))
 
 (def ^:private common-metrics
   "Common metric types from the registry"
