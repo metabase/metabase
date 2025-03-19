@@ -6,12 +6,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.channel.email :as email]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.integrations.slack :as slack]
-   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -20,9 +17,7 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
-   [metabase.util.retry :as retry]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
