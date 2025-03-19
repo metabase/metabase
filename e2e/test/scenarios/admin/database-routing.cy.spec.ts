@@ -1,11 +1,16 @@
 import _ from "underscore";
 
-import { QA_POSTGRES_PORT } from "e2e/support/cypress_data";
+import {
+  QA_POSTGRES_PORT,
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
 import type { DatabaseData } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "./performance/helpers/e2e-performance-helpers";
 
 const { H } = cy;
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("admin > database > database routing", () => {
   beforeEach(() => {
@@ -20,7 +25,7 @@ describe("admin > database > database routing", () => {
     cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
   });
 
-  it.skip("should be able to configure db routing and manage destination databases", () => {
+  it("should be able to configure db routing and manage destination databases", () => {
     // setup
     cy.visit("/admin/databases/2");
     cy.log("disable model actions");
@@ -79,7 +84,23 @@ describe("admin > database > database routing", () => {
     });
     H.tooltip().should("contain.text", "Connected");
 
-    // TODO: add a check that you can't create another db with the same name once BE implements it
+    // TODO: implement once BE is ready
+    // cy.log("should prevent adding a db with the same name");
+    // cy.findByRole("link", { name: /Add/ }).click();
+    //
+    // H.modal().within(() => {
+    //   H.typeAndBlurUsingLabel("Display name", "Destination DB 1");
+    //   H.typeAndBlurUsingLabel("Host", "localhost");
+    //   H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+    //   H.typeAndBlurUsingLabel("Database name", "sample");
+    //   H.typeAndBlurUsingLabel("Username", "metabase");
+    //   H.typeAndBlurUsingLabel("Password", "metasample123");
+    //
+    //   cy.button("Save").click();
+    //   cy.wait("@createMirrorDatabase");
+    //   // TODO: add check for error message once implemented on BE
+    //   cy.findByText("TODO")
+    // });
 
     // bulk creation via api (this is how we expect most users to create destination dbs)
     cy.log("should be able to bulk create destination dbs via API");
@@ -154,10 +175,18 @@ describe("admin > database > database routing", () => {
       cy.icon("close").click();
     });
 
-    // TODO: add a check that the list of databases is still preserved
+    // TODO: enable once the BE implements this
+    // cy.log(
+    //   "should not remove destination databases when turning the feature off",
+    // );
+    // dbRoutingSection().within(() => {
+    //   cy.icon("chevrondown").click();
+    //   cy.findByText("Destination DB 2").should("exist");
+    //   cy.findByText("No destination databases added yet").should("not.exist");
+    // });
   });
 
-  it.skip("should not leak destinations databases in the application", () => {
+  it("should not leak destinations databases in the application", () => {
     cy.log("setup db routing via API");
     configurDbRoutingViaAPI({
       router_database_id: 2,
@@ -194,16 +223,42 @@ describe("admin > database > database routing", () => {
     // H.commandPalette()
     //   .findByText("No results for “Destination DB”")
     //   .should("exist");
+
+    cy.log("should not see database in table metadata db list");
+    cy.visit("/admin/datamodel");
+    cy.findByTestId("selected-database").click();
+    H.popover()
+      .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+      .should("not.exist");
+
+    cy.log("should not see database in permissions pages");
+    cy.visit("/admin/permissions/data/database");
+    cy.get("aside")
+      .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+      .should("not.exist");
+
+    cy.log("should not see database in data picker");
+    cy.visit("/question/notebook");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText(BASE_POSTGRES_MIRROR_DB_INFO.name).should("not.exist");
+    });
+
+    cy.log("shoudl not see database in data reference");
+    H.startNewNativeQuestion();
+    cy.findByTestId("sidebar-header").icon("chevronleft").click();
+    cy.findByTestId("sidebar-header-title").should(
+      "have.text",
+      "Data Reference",
+    );
+    cy.findByTestId("sidebar-header-title")
+      .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+      .should("not.exist");
   });
 
   it("should not allow turning on db routing on if other conflicting features are enabled", () => {
     cy.log("setup");
-    interceptPerformanceRoutes();
-    cy.visit("/admin");
-    cy.findByRole("link", { name: "Performance" }).click();
-    cy.findByRole("tab", { name: "Model persistence" }).click();
-    cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
-    cy.wait("@enablePersistence");
+    setupModelPersistence();
     cy.visit("/admin/databases/2");
 
     cy.log("should be disabled if model actions is enabled");
@@ -245,20 +300,127 @@ describe("admin > database > database routing", () => {
     assertDbRoutingDisabled();
   });
 
-  it.skip("should not allow turning conflicting features if db routing is enabled", () => {
-    // [ ] turn on db routing
-    // [ ] model persistence
-    // [ ] model actions
-    // [ ] uploads
+  it("should not allow turning conflicting features if db routing is enabled", () => {
+    cy.log("setup");
+    setupModelPersistence();
+    cy.visit("/admin/databases/2");
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model actions")
+      .click({ force: true });
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model actions")
+      .should("not.be.checked");
+    configurDbRoutingViaAPI({ router_database_id: 2, user_attribute: "role" });
+    cy.reload();
+
+    cy.log("should not allow enabling model features");
+    cy.findAllByTestId("database-model-features-section").within(() => {
+      cy.findByText(
+        "Model features can not be enabled if database routing is enabled.",
+      ).should("exist");
+      cy.findByLabelText("Model actions")
+        .should("be.disabled")
+        .should("not.be.checked");
+      cy.findByLabelText("Model persistence")
+        .should("be.disabled")
+        .should("not.be.checked");
+    });
+
+    cy.log("should not allow enabling database for uploads");
+    // TODO: replace next two lines of code w/ cy.visit("/admin/settings/uploads") once BE returns values correctly,
+    // for now we'll rely on hacky entity store stuffs having the data we need
+    cy.get("nav").findByText("Settings").click();
+    cy.findByTestId("admin-layout-sidebar").findByText("Uploads").click();
+    cy.findByLabelText("Upload Settings Form")
+      .findByText("Select a database")
+      .click();
+    H.popover()
+      .findByText("Writable Postgres12 (DB Routing Enabled)")
+      .closest('[data-element-id="list-item"]')
+      .should("have.attr", "aria-disabled", "true");
   });
 
-  it.skip("should show db routing settings in the right circumstances", () => {});
-  // - [ ] should not show for users w/o the token feature
-  // - [ ] should show for admins
-  // - [ ] should show for users w/ db management permissions
-  // - [ ] should not show the feature if database is an attached dwh
+  describe("feature visibility", () => {
+    it("should only show db routing for valid database types", () => {
+      cy.log("should not show for sample databases");
+      cy.visit("/admin/databases/1");
+      dbConnectionInfoSection().should("exist");
+      dbRoutingSection().should("not.exist");
+
+      cy.log("should not show for attached data warehouses");
+      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
+        req.reply(res => {
+          res.body.is_attached_dwh = true;
+          res.body.is_sample = false;
+        });
+      }).as("loadDatabase");
+      cy.reload();
+      dbConnectionInfoSection().should("exist");
+      dbRoutingSection().should("not.exist");
+    });
+
+    it("should show for users with db management permissions but prevent removal of destination databases", () => {
+      cy.log("setup - db routing");
+      configurDbRoutingViaAPI({
+        router_database_id: 2,
+        user_attribute: "role",
+      });
+      createMirrorDatabasesViaAPI({
+        router_database_id: 2,
+        mirrors: [BASE_POSTGRES_MIRROR_DB_INFO],
+      });
+
+      cy.log("normal user should not see db routing");
+      cy.signOut();
+      cy.signInAsNormalUser();
+      cy.visit("/admin/databases/2");
+      cy.get("main").findByText(
+        "Sorry, you don’t have permission to see that.",
+      );
+
+      cy.log("grant db management permissions to all users");
+      cy.signOut();
+      cy.signInAsAdmin();
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+      const MANAGE_DATABASE_PERMISSION_INDEX = 4;
+      H.modifyPermission(
+        "Writable Postgres12",
+        MANAGE_DATABASE_PERMISSION_INDEX,
+        "Yes",
+      );
+      cy.button("Save changes").click();
+      H.modal().button("Yes").click();
+
+      cy.log("normal user should see db");
+      cy.signOut();
+      cy.signIn("normal");
+      cy.visit("/admin/databases/2");
+      // TODO: need help understanding why i'm getting a 403 back on /api/database/2
+      // but i get the same db back when making a request to /api/database
+      dbRoutingSection().should("exist");
+      dbRoutingSection()
+        .findByTestId("destination-db-list-item")
+        .icon("ellipsis")
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Edit").should("exist");
+        cy.findByText("Remove").should("not.exist");
+      });
+    });
+
+    describe("OSS", { tags: ["@OSS"] }, () => {
+      it("should not show the feature if not enabled in token features", () => {
+        cy.visit("/admin/databases/2");
+        dbConnectionInfoSection().should("exist");
+        dbRoutingSection().should("not.exist");
+      });
+    });
+  });
 });
 
+function dbConnectionInfoSection() {
+  return cy.findByTestId("database-connection-info-section");
+}
 function dbRoutingSection() {
   return cy.findByTestId("database-routing-section");
 }
@@ -327,4 +489,13 @@ function createMirrorDatabasesViaAPI({
     router_database_id,
     mirrors,
   });
+}
+
+function setupModelPersistence() {
+  interceptPerformanceRoutes();
+  cy.visit("/admin");
+  cy.findByRole("link", { name: "Performance" }).click();
+  cy.findByRole("tab", { name: "Model persistence" }).click();
+  cy.findByRole("switch", { name: "Disabled" }).click({ force: true });
+  cy.wait("@enablePersistence");
 }

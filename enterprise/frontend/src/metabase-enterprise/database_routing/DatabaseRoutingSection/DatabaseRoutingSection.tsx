@@ -7,7 +7,6 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
@@ -39,24 +38,16 @@ export const DatabaseRoutingSection = ({
 }) => {
   const dispatch = useDispatch();
 
-  const shouldHideSection = database.is_attached_dwh;
+  const shouldHideSection = database.is_attached_dwh || database.is_sample;
   const userAttribute = database.router_user_attribute ?? undefined;
 
-  const uploadDbId = useSetting("uploads-settings")?.db_id;
-  const isUploadDb = database.id === uploadDbId;
-  const hasActionsEnabled = database.hasActionsEnabled();
-  const isPersisted = database.isPersisted();
   const [tempEnabled, setTempEnabled] = useState(false);
   const isFeatureEnabled = !!userAttribute;
 
   const isToggleEnabled = tempEnabled || isFeatureEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const disabledMsg = getDisabledFeatureMessage({
-    hasActionsEnabled,
-    isPersisted,
-    isUploadDb,
-  });
+  const disabledMsg = getDisabledFeatureMessage(database);
   const isDbRoutingDisabled = !!disabledMsg;
 
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();

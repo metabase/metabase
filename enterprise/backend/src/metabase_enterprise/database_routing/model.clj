@@ -12,6 +12,6 @@
 
 (defenterprise router-user-attribute
   "Enterprise implementation. Returns the user attribute, if set, that will be used for the DB routing feature for this database."
-  :feature :serialization
+  :feature :database-routing
   [db-or-id]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
