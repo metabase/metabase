@@ -79,7 +79,7 @@ export const useValidatedEntityId = <
     if (_.isNumber(id)) {
       // no need to translate anything if the id is already not a entity id
       return {
-        id: Number(id) as TReturnedId,
+        id: id as TReturnedId,
         isLoading: false,
         isError: false,
       } as const;
