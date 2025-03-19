@@ -63,7 +63,6 @@ export const DatabaseDangerZoneSection = ({
               color="danger"
             >{t`Discard saved field values`}</Button>
             <ConfirmModal
-              data-testid="modal"
               opened={discardModalOpened}
               title={t`Discard saved field values`}
               onClose={closeDiscardModal}
