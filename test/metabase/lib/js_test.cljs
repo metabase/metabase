@@ -187,6 +187,28 @@
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
   (is (false? (lib.js/is-column-metadata 1))))
 
+(deftest ^:parallel is-metric-metadata-test
+  (let [metric-id         100
+        metric-definition (-> (lib.tu/venues-query)
+                              (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                              (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                              lib.convert/->legacy-MBQL)
+        metrics-db {:cards [{:id            metric-id
+                             :name          "Sum of Cans"
+                             :type          :metric
+                             :database-id   (meta/id)
+                             :table-id      (meta/id :venues)
+                             :dataset-query metric-definition
+                             :description   "Number of toucans plus number of pelicans"}]}
+        metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
+        metric-clause     [:metric {:lib/uuid (str (random-uuid))} metric-id]
+        query-with-metric (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate metric-clause))
+        metric-metadata   (lib.metadata/metric query-with-metric metric-id)]
+    (is (true? (lib.js/is-metric-metadata metric-metadata)))
+    (is (false? (lib.js/is-metric-metadata (meta/field-metadata :venues :id))))
+    (is (false? (lib.js/is-metric-metadata 42)))))
+
 (deftest ^:parallel cljs-key->js-key-test
   (is (= "isManyPks"
          (#'lib.js/cljs-key->js-key :many-pks?))))
