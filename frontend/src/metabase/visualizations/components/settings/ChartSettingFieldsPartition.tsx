@@ -141,7 +141,7 @@ export const ChartSettingFieldsPartition = ({
         return (
           <Box
             py="md"
-            className={index > 0 && CS.borderTop}
+            className={index > 0 ? CS.borderTop : undefined}
             key={partitionName}
           >
             <Text c="text-medium">{title}</Text>

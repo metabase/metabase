@@ -21,20 +21,18 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      cy.visit("/admin/settings/setup");
+      cy.visit("/admin/settings/cloud");
 
-      cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
-      H.expectGoodSnowplowEvent({
-        event: "upsell_viewed",
-        promoted_feature: "hosting",
-      });
-      cy.findByTestId("upsell-card")
+      cy.findByTestId("upsell-big-card").findByText(
+        /Migrate to Metabase Cloud/,
+      );
+      cy.findByTestId("upsell-big-card")
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
       H.expectGoodSnowplowEvent({
-        event: "upsell_clicked",
-        promoted_feature: "hosting",
+        event: "upsell_viewed",
+        promoted_feature: "cloud",
       });
       H.expectNoBadSnowplowEvents();
     },

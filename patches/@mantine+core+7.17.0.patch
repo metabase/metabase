@@ -25,7 +25,7 @@ index 79fe05c..29f5854 100644
    theme,
    children,
 diff --git a/node_modules/@mantine/core/styles.css b/node_modules/@mantine/core/styles.css
-index 2bd5e32..2a011a3 100644
+index 2bd5e32..3e64622 100644
 --- a/node_modules/@mantine/core/styles.css
 +++ b/node_modules/@mantine/core/styles.css
 @@ -1,34 +1,4 @@
@@ -42,7 +42,7 @@ index 2bd5e32..2a011a3 100644
 -select {
 -  font: inherit;
 -}
- 
+-
 -button,
 -select {
 -  text-transform: none;
@@ -56,10 +56,19 @@ index 2bd5e32..2a011a3 100644
 -  line-height: var(--mantine-line-height);
 -  background-color: var(--mantine-color-body);
 -  color: var(--mantine-color-text);
--
+ 
 -  -webkit-font-smoothing: var(--mantine-webkit-font-smoothing);
 -  -moz-osx-font-smoothing: var(--mantine-moz-font-smoothing);
 -}
  @media screen and (max-device-width: 31.25em) {
  body {
      -webkit-text-size-adjust: 100%
+@@ -79,8 +49,6 @@ fieldset:disabled .mantine-active:active {
+ /* ----- Default CSS variables ----- */
+ 
+ :root {
+-  color-scheme: var(--mantine-color-scheme);
+-
+   --mantine-z-index-app: 100;
+   --mantine-z-index-modal: 200;
+   --mantine-z-index-popover: 300;

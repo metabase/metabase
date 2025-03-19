@@ -1,15 +1,18 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import cx from "classnames";
 import type { CSSProperties, ElementType, ReactNode } from "react";
 
-import { SortableDiv } from "./Sortable.styled";
+import S from "./Sortable.module.css";
 
 export interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
   children: ReactNode;
   disabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
   draggingStyle?: CSSProperties;
   role?: string;
 }
@@ -20,9 +23,11 @@ export interface SortableProps {
  */
 export function Sortable({
   id,
-  as = "div",
+  as: Component = "div",
   children,
   disabled = false,
+  className,
+  style,
   draggingStyle,
   role = "button",
 }: SortableProps) {
@@ -40,12 +45,14 @@ export function Sortable({
   });
 
   return (
-    <SortableDiv
-      style={isDragging ? draggingStyle : {}}
-      as={as}
-      transform={CSS.Translate.toString(transform)}
-      transition={transition}
-      isDragging={isDragging}
+    <Component
+      className={cx(className, { [S.dragging]: isDragging })}
+      style={{
+        ...style,
+        ...(isDragging ? draggingStyle : {}),
+        transform: CSS.Translate.toString(transform),
+        transition: transition,
+      }}
       data-is-dragging={isDragging}
       ref={setNodeRef}
       {...attributes}
@@ -53,6 +60,6 @@ export function Sortable({
       role={role}
     >
       {children}
-    </SortableDiv>
+    </Component>
   );
 }

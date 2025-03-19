@@ -21,6 +21,7 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
+import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
   VisualizationProps,
@@ -152,7 +153,7 @@ function handleClick(
     column: chartModel.colDescs.metricDesc.column,
     data,
     dimensions: nodes.map(node => ({
-      value: node.key,
+      value: getValueFromDimensionKey(node.key),
       column: checkNotNull(node.column),
     })),
     settings,

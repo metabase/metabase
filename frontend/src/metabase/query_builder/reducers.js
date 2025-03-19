@@ -112,7 +112,6 @@ export const uiControls = handleActions(
         return {
           ...state,
           ...DEFAULT_UI_CONTROLS,
-          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           ...payload.uiControls,
         };
       },
@@ -203,6 +202,12 @@ export const uiControls = handleActions(
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingChartSettingsSidebar: true,
         initialChartSetting: payload,
+      }),
+    },
+    [CANCEL_QUESTION_CHANGES]: {
+      next: state => ({
+        ...state,
+        isModifiedFromNotebook: false,
       }),
     },
     // AGGREGATION

@@ -404,7 +404,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("isempty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
 
-    cy.button("Done").click();
+    cy.button("Update").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
@@ -433,7 +433,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
-    cy.button("Done").should("not.be.disabled").click();
+    cy.button("Update").should("not.be.disabled").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
@@ -512,7 +512,7 @@ describe("scenarios > question > filter", () => {
       cy.button("Back").click();
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
 
     // Back to GUI and "Include today" should be still checked
@@ -552,7 +552,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
-    cy.button("Done").click();
+    cy.button("Update").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
@@ -660,7 +660,7 @@ describe("scenarios > question > filter", () => {
     H.expressionEditorWidget().button("Done").should("be.disabled");
   });
 
-  it("should allow switching focus with Tab", () => {
+  it("should not allow switching focus with Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.filter({ mode: "notebook" });
@@ -670,8 +670,9 @@ describe("scenarios > question > filter", () => {
 
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
+    cy.focused().should("have.attr", "role", "textbox");
 
-    cy.focused().should("match", "button").and("have.text", "Cancel");
+    H.CustomExpressionEditor.value().should("equal", "[Tax] > 0  ");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
@@ -687,7 +688,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "cm-content");
+    cy.focused().should("have.attr", "role", "textbox");
 
     // Finish to complete a valid expression, i.e. [Tax] > 42
     H.CustomExpressionEditor.type("> 42");
@@ -695,7 +696,8 @@ describe("scenarios > question > filter", () => {
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
 
-    cy.focused().should("match", "button").and("have.text", "Cancel");
+    cy.focused().should("have.attr", "role", "textbox");
+    H.CustomExpressionEditor.value().should("equal", "[Tax]> 42  ");
   });
 
   it("should allow hiding the suggestion list with Escape", () => {
@@ -712,7 +714,7 @@ describe("scenarios > question > filter", () => {
     // Esc closes the suggestion popover
     cy.realPress("Escape");
 
-    H.CustomExpressionEditor.completions().should("not.exist");
+    H.CustomExpressionEditor.completions().should("be.visible");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
@@ -849,9 +851,8 @@ describe("scenarios > question > filter", () => {
       H.filter({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[Total] < [Product → Price]", {
-        allowFastSet: true,
-      }).blur();
+      H.CustomExpressionEditor.type("[Total] < [Product → Price]").blur();
+      H.CustomExpressionEditor.format();
       cy.button("Done").click();
       // Filter currently says "Total is less than..." but it can change in https://github.com/metabase/metabase/pull/16174 to "Total < Price"
       // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
@@ -953,11 +954,9 @@ describe("scenarios > question > filter", () => {
         H.filter({ mode: "notebook" });
 
         H.popover().contains("Custom Expression").click();
-        H.expressionEditorWidget().within(() => {
-          H.enterCustomColumnDetails({ formula: `boolean = ${condition}` });
 
-          cy.button("Done").click();
-        });
+        H.enterCustomColumnDetails({ formula: `boolean = ${condition}` });
+        H.expressionEditorWidget().button("Done").click();
 
         H.visualize(() => {
           assertOnTheResult();
@@ -1001,11 +1000,9 @@ describe("scenarios > question > filter", () => {
       H.filter({ mode: "notebook" });
 
       H.popover().contains("Custom Expression").click();
-      H.expressionEditorWidget().within(() => {
-        H.enterCustomColumnDetails({ formula: "boolean = true" });
 
-        cy.button("Done").click();
-      });
+      H.enterCustomColumnDetails({ formula: "boolean = true" });
+      H.expressionEditorWidget().button("Done").click();
 
       H.visualize(() => {
         cy.contains("45").should("exist");
@@ -1017,13 +1014,11 @@ describe("scenarios > question > filter", () => {
       H.openNotebook();
       H.summarize({ mode: "notebook" });
       H.popover().contains("Custom Expression").click();
-      H.expressionEditorWidget().within(() => {
-        H.enterCustomColumnDetails({
-          formula: "CountIf(boolean)",
-          name: "count if boolean is true",
-        });
-        cy.findByText("Done").click();
+      H.enterCustomColumnDetails({
+        formula: "CountIf(boolean)",
+        name: "count if boolean is true",
       });
+      H.expressionEditorWidget().button("Done").click();
       cy.findByTestId("aggregate-step")
         .contains("count if boolean is true")
         .should("exist");

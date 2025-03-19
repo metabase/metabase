@@ -645,9 +645,9 @@
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
-      (let [query     (cond-> query
-                        (seq escaped->original) ;; if we replaced aliases, restore them
-                        (escape-join-aliases/restore-aliases escaped->original))
+      (let [query    (cond-> query
+                       (seq escaped->original) ;; if we replaced aliases, restore them
+                       (escape-join-aliases/restore-aliases escaped->original))
             metadata (cond-> (assoc metadata :cols (merged-column-info query metadata))
                        (seq model-metadata)
                        (update :cols qp.util/combine-metadata model-metadata))]

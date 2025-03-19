@@ -13,10 +13,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
-
   (:import
    (java.util.concurrent Callable Executors ExecutorService)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
@@ -181,23 +181,100 @@
       (prometheus/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
     nil))
 
+(defn- cron->next-execution-times
+  "Returns the next n fired times for a given cron schedule.
+
+   If the cron schedule doesn't have n future executions (e.g., one-off schedules),
+   returns as many execution times as available."
+  [cron-schedule n]
+  (let [cron-expression (CronExpression. ^String cron-schedule)
+        now             (t/java-date)]
+    (loop [times     []
+           next-time now
+           remaining n]
+      (if (zero? remaining)
+        times
+        (if-let [next-execution (.getNextValidTimeAfter cron-expression next-time)]
+          (recur (conj times (t/instant next-execution))
+                 next-execution
+                 (dec remaining))
+          ;; No more executions available
+          times)))))
+
+(defn- avg-interval-seconds
+  "Returns the average seconds between executions for a given cron schedule by sampling future execution times.
+
+   Using the average across multiple executions (rather than mean interval) helps handle
+   irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
+   fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
+
+   For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
+  [cron-schedule n]
+  (assert (pos? n) "Need at least 1 execution time to calculate average")
+  (let [times (cron->next-execution-times cron-schedule n)]
+    (if (< (count times) 2)
+      ;; Handle one-off schedules that don't repeat or have only one execution
+      10
+      (/ (t/as (t/duration (first times) (last times)) :seconds)
+         (dec (count times))))))
+
+(defn- subscription->deadline
+  "Calculates a deadline for notification execution with priority based on frequency.
+
+  More frequent notifications (based on cron schedule) receive shorter deadlines,
+  which results in higher priority when multiple notifications are scheduled at
+  the same time."
+  [{:keys [type cron_schedule]}]
+  (let [deadline-bonus (case type
+                         :notification-subscription/cron
+                         (let [avg-interval-seconds (avg-interval-seconds cron_schedule 10)
+                               interval-less-than   (fn [duration] (< avg-interval-seconds (t/as duration :seconds)))]
+                           (cond
+                             (interval-less-than (t/minutes 1))  (t/seconds 5)
+                             (interval-less-than (t/minutes 5))  (t/seconds 10)
+                             (interval-less-than (t/minutes 30)) (t/seconds 15)
+                             (interval-less-than (t/hours 1))    (t/seconds 30)
+                             :else                               (t/seconds 60)))
+                         ;; default to 30 seconds for non-cron subscriptions
+                         (t/seconds 30))]
+    (t/plus (t/local-date-time) deadline-bonus)))
+
+;; A notification that can be put into a queue but has equal checks based on its ID
+(deftype NotificationQueueEntry [id deadline]
+  Object
+  (equals [this  other]
+    (and (instance? NotificationQueueEntry other)
+         (= (.id this) (.id ^NotificationQueueEntry other))))
+
+  (hashCode [this]
+    (hash (.id this)))
+  Comparable
+  (compareTo [this other]
+    (compare (.id this) (.id ^NotificationQueueEntry other))))
+
+(defn- deadline-comparator
+  "Comparator for sorting notifications by deadline."
+  [a b]
+  (compare (.deadline ^NotificationQueueEntry a) (.deadline ^NotificationQueueEntry b)))
+
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
   (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
   (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
 
 (deftype ^:private NotificationQueue
-         [^java.util.LinkedList                     ids-list
+         [^java.util.PriorityQueue                  items-list
           ^java.util.concurrent.ConcurrentHashMap   id->notification
           ^java.util.concurrent.locks.ReentrantLock queue-lock
           ^java.util.concurrent.locks.Condition     not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ notification]
-    (let [id (or (:id notification) (str (random-uuid)))]
+    (let [id   (or (:id notification) (str (random-uuid)))
+          item (NotificationQueueEntry. id (subscription->deadline (:triggering_subscription notification)))]
       (.lock queue-lock)
       (try
         (when-not (.containsKey id->notification id)
-          (.add ids-list id))
+          (.offer items-list item))
         (.put id->notification id notification)
         ;; Signal that a notification is available
         (.signal not-empty-cond)
@@ -208,24 +285,25 @@
     (.lock queue-lock)
     (try
       ;; Wait until there's at least one notification
-      (while (.isEmpty ids-list)
+      (while (.isEmpty items-list)
         (.await not-empty-cond))
-      (let [id           (.removeFirst ids-list)
-            notification (.remove id->notification id)]
-        notification)
+      (let [^NotificationQueueEntry entry (.poll items-list)
+            id                            (.id entry)]
+        (.remove id->notification id))
       (finally
         (.unlock queue-lock)))))
 
 (defn- create-notification-queue
-  "A thread-safe, notification queue with the following properties:
+  "A thread-safe, prioritized notification queue with the following properties:
   - Notifications are identified by unique IDs
+  - Prioritized by deadline
   - Adding a notification with an ID already in the queue replaces the existing one
   - Taking from an empty queue blocks until a notification is available
   - Multiple threads can safely add and take from the queue concurrently"
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.LinkedList.)
+    (->NotificationQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
                          (java.util.concurrent.ConcurrentHashMap.)
                          queue-lock
                          not-empty-cond)))

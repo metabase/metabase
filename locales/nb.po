@@ -2232,7 +2232,7 @@ msgid "Send password reset email"
 msgstr "Send e-post for tilbskestilling av passord"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "Sjekk din e-post konto for instruksjoner på hvordan du skal tilbakestille passordet."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30

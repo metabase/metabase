@@ -426,7 +426,7 @@
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :metric :aggregation-options :count :offset})
+    :distinct-where :metric :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
@@ -992,6 +992,9 @@
 (defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::FieldOrExpressionDef])
 (defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::FieldOrExpressionDef])
 
+(defclause ^{:requires-features #{:distinct-where}} distinct-where
+  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
   field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
 
@@ -1030,7 +1033,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
+   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation

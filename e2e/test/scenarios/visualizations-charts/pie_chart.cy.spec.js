@@ -1,8 +1,17 @@
 const { H } = cy;
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const {
+  ACCOUNTS,
+  ACCOUNTS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  ORDERS_ID,
+  ORDERS,
+  PEOPLE,
+} = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -495,6 +504,39 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Count is equal to 606").should("be.visible");
     });
+  });
+
+  it("should apply correct filter when drilling through an 'empty' slice (VIZ-210)", () => {
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ACCOUNTS_ID}`, { visibility_type: null });
+    cy.signInAsNormalUser();
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", ACCOUNTS.SOURCE, { "base-type": "type/Text" }]],
+          "source-table": ACCOUNTS_ID,
+        },
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.echartsContainer().findByText("(empty)").click();
+
+    H.popover().findByText("See these Accounts").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Source is empty")
+      .should("be.visible");
+
+    H.assertQueryBuilderRowCount(835);
   });
 
   it("should handle click behavior correctly", () => {

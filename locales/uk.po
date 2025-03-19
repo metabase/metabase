@@ -2242,7 +2242,7 @@ msgid "Send password reset email"
 msgstr "Послати емаил для скидання пароля"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "Послати емаил з інструкцією як скинути пароль."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30

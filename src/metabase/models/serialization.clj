@@ -182,6 +182,13 @@
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
 
+(defn- increment-hash-values
+  "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
+  [values increment]
+  (if (= increment 0)
+    values
+    (conj values (str "metabase-increment-" increment))))
+
 (defn identity-hash
   "Returns an identity hash string (8 hex digits) from an `entity` map.
 
@@ -190,20 +197,25 @@
   - passing the `entity` to each function it returns
   - calling [[hash]] on that list
   - converting to an 8-character hex string"
-  [entity]
-  {:pre [(some? entity)]}
-  (-> (for [f (hash-fields entity)]
-        (f entity))
-      raw-hash))
+  ([entity]
+   (identity-hash entity 0))
+  ([entity increment]
+   {:pre [(some? entity)]}
+   (-> (for [f (hash-fields entity)]
+         (f entity))
+       (increment-hash-values increment)
+       raw-hash)))
 
 (defn backfill-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field:
   - Return the `:entity_id` if it's set.
   - Compute the backfill `:entity_id` based on the [[identity-hash]]."
-  [entity]
-  (or (:entity_id entity)
-      (:entity-id entity)
-      (u/generate-nano-id (identity-hash entity))))
+  ([entity]
+   (backfill-entity-id entity 0))
+  ([entity increment]
+   (or (:entity_id entity)
+       (:entity-id entity)
+       (u/generate-nano-id (identity-hash entity increment)))))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."

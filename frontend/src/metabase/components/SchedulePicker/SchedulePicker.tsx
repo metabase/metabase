@@ -31,7 +31,7 @@ import {
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
 
-const optionNameTranslations = {
+const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
   hourly: t`Hourly`,
   daily: t`Daily`,
   weekly: t`Weekly`,
@@ -61,6 +61,9 @@ export interface SchedulePickerProps {
 
 const DEFAULT_DAY = "mon";
 
+/**
+ * @deprecated use "metabase/components/Schedule" instead
+ */
 class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,

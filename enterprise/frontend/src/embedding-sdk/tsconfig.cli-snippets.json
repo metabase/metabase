@@ -1,0 +1,14 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "*": ["./*"],
+      "@metabase/embedding-sdk-react": ["../../../../resources/embedding-sdk"]
+    },
+    "noImplicitAny": false,
+    "allowJs": true,
+    "noEmit": true,
+    "checkJs": true
+  },
+  "include": ["./cli-snippets-tmp"]
+}

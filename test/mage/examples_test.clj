@@ -13,7 +13,7 @@
 
 (def ^:private excluded-public-task-examples #{"nrepl"})
 
-(defn run-example-tests
+(defn run-tests
   "This takes a while to run, so it is not run by default. To run it, use the `./bin/mage -test-examples` command."
   []
   (let [public-tasks (set (u/public-bb-tasks-list))]
@@ -27,4 +27,5 @@
       (try (u/sh cmd)
            (catch Exception _ (println "Failed" task-name ":" cmd))
            (println "OK"))))
-  (println "Done."))
+  (println "Done.")
+  :ok)

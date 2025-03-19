@@ -72,7 +72,7 @@
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
   [table :- i/TableInstance]
-  (sync.fingerprint/fingerprint-fields! table)
+  (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (update-fields-last-analyzed! table))

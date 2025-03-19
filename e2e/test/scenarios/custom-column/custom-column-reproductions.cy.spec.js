@@ -1,4 +1,5 @@
 const { H } = cy;
+import { dedent } from "ts-dedent";
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -1020,18 +1021,28 @@ describe("issue 49342", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be possible to leave the expression input with the Tab key (metabase#49342)", () => {
+  it("should not be possible to leave the expression input with the Tab key ", () => {
+    // This test used to be a repro for #49342, but the product feature change
+    // so that the expression input can no longer be tabbed out of.
+
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
     cy.realPress("Tab");
-    cy.findByTestId("expression-name").should("be.focused");
+    H.CustomExpressionEditor.value().should("equal", "[Total]  ");
+    H.CustomExpressionEditor.nameInput().should("not.be.focused");
 
-    cy.log("should contain focus within the popover");
-    cy.findByTestId("expression-name").realPress(["Shift", "Tab"]);
-    cy.focused().should("have.attr", "class", "cm-content");
+    cy.log("Shift-tab from name input should stay within the popover");
+    H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    cy.focused().should("have.attr", "role", "textbox");
+
     cy.realPress(["Shift", "Tab"]);
     cy.button("Cancel").should("be.focused");
+
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().should("be.focused");
   });
 });
 
@@ -1078,7 +1089,10 @@ describe("issue 49882", () => {
     });
 
     // "Cut" [Tax]
-    H.CustomExpressionEditor.type("{end}{leftarrow}", { focus: false });
+    H.CustomExpressionEditor.type("{end}{leftarrow}", {
+      focus: false,
+      blur: false,
+    });
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Shift", "ArrowLeft"]);
@@ -1086,7 +1100,10 @@ describe("issue 49882", () => {
     cy.realPress(["Shift", "ArrowLeft"]);
     cy.realPress(["Backspace"]);
 
-    H.CustomExpressionEditor.type("{leftarrow}".repeat(43));
+    H.CustomExpressionEditor.type("{leftarrow}".repeat(42), {
+      focus: false,
+      blur: false,
+    });
 
     // Paste [Tax] before case
     H.CustomExpressionEditor.paste("[Tax]");
@@ -1095,11 +1112,10 @@ describe("issue 49882", () => {
       "equal",
       'case([Tax] > 1,[Tax] case([Total] > 200, [Total], "Nothing"), )',
     );
-    H.CustomExpressionEditor.blur();
 
     H.popover()
       .findByText("Expecting comma but got case instead")
-      .should("be.visible");
+      .should("be.visible", { timeout: 5000 });
   });
 
   // TODO: we no longer have wrapped lines (for now)
@@ -1166,7 +1182,14 @@ describe("issue 49304", () => {
       cy.findByText("Custom Expression").click();
       H.CustomExpressionEditor.value().should(
         "equal",
-        'contains([Category], "gadget", "widget", "case-insensitive")',
+        dedent`
+          contains(
+            [Category],
+            "gadget",
+            "widget",
+            "case-insensitive"
+          )
+        `.trim(),
       );
     });
 
@@ -1178,7 +1201,7 @@ describe("issue 49304", () => {
         formula:
           'contains([Category], "gadget", "widget", "gizmo", "case-insensitive")',
       });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 3 selections")
@@ -1216,7 +1239,7 @@ describe("issue 49304", () => {
       H.enterCustomColumnDetails({
         formula: 'contains([Category], "gadget", "widget", "gizmo")',
       });
-      cy.button("Done").click();
+      cy.button("Update").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 3 selections")
@@ -1378,15 +1401,93 @@ describe("issue 48562", () => {
   it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
+
     H.getNotebookStep("expression").findByText("CustomColumn").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Field]");
-    cy.realPress("Escape");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
+    H.expressionEditorWidget().button("Cancel").click();
+
     H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
     H.popover().findByText("Custom Expression").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Segment]");
-    cy.button("Cancel").click();
-    cy.realPress("Escape");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
+    H.expressionEditorWidget().button("Cancel").click();
+
     H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
-    H.CustomExpressionEditor.get().should("contain.text", "[Unknown Metric]");
+    H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
+  });
+});
+
+describe("issue 54638", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to click documentation links in the expression editor help text popover (metabase#54638)", () => {
+    H.CustomExpressionEditor.type("case(");
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText("Learn more")
+        .scrollIntoView()
+        .should("be.visible")
+        .then($a => {
+          expect($a).to.have.attr("target", "_blank");
+          // Update attr to open in same tab, since Cypress does not support
+          // testing in multiple tabs.
+          $a.attr("target", "_self");
+        })
+        .click();
+      cy.url().should(
+        "equal",
+        "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
+      );
+    });
+  });
+});
+
+describe("issue #54722", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    cy.focused().should("have.attr", "role", "textbox");
+    H.expressionEditorWidget().button("Cancel").click();
+  });
+});
+
+describe("issue #31964", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should focus the editor when opening it (metabase#54722)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
+    cy.realPress("Enter");
+    H.CustomExpressionEditor.type("[Product -> Categ", { focus: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        case([Product → Category] = "Widget", 1,
+        [Product → Category])
+      `,
+    );
   });
 });

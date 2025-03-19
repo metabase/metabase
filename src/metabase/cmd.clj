@@ -61,7 +61,7 @@
 ;; Command implementations
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `down-force`, `print`, or `release-locks`."
   [direction]
   (classloader/require 'metabase.cmd.migrate)
   ((resolve 'metabase.cmd.migrate/migrate!) direction))

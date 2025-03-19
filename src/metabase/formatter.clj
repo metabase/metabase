@@ -9,7 +9,7 @@
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
@@ -96,9 +96,9 @@
     col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
   (let [global-type-settings (try
-                               (common/global-type-settings col viz-settings)
+                               (streaming.common/global-type-settings col viz-settings)
                                (catch Exception _e
-                                 (common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
+                                 (streaming.common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
         col-id               (or col-id (second field-ref))
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
                                  (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))

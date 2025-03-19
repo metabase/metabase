@@ -14,7 +14,7 @@ import {
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { HighlightExpression } from "../../HighlightExpression";
+import { HighlightExampleExpression } from "../../HighlightExpression";
 
 import S from "./HelpText.module.css";
 
@@ -95,6 +95,7 @@ export function HelpText({
         className={S.usage}
         onMouseDown={handleMouseDown}
         data-testid="expression-helper-popover-structure"
+        role="button"
       >
         <Box>
           {structure}
@@ -153,7 +154,11 @@ export function HelpText({
           {example && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
-              <HighlightExpression expression={example} />
+              <HighlightExampleExpression
+                expression={example}
+                printWidth={50}
+                data-testid="helptext-example"
+              />
             </>
           )}
 

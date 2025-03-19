@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
@@ -170,36 +171,91 @@
   []
   {:groups (t2/count :model/PermissionsGroup)})
 
-(defn- card-has-params? [card]
-  (boolean (get-in card [:dataset_query :native :template-tags])))
+(defn- and-not-nil
+  ([not-nil-field]
+   (and-not-nil nil not-nil-field))
+  ([case-boolean not-nil-field]
+   (cond->> [:!= not-nil-field nil]
+     case-boolean (conj [:and case-boolean]))))
+
+(defn- count-case
+  [case-boolean]
+  [:count [:case case-boolean [:inline 1] :else [:inline nil]]])
+
+(defn- card-has-params
+  []
+  (condp = (db/db-type)
+    :mysql [:json_contains_path
+            :dataset_query
+            [:inline "one"]
+            [:inline "$.native.\"template-tags\".*"]]
+    :postgres [:jsonb_path_exists
+               [:cast :dataset_query :jsonb]
+               [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+
+(defn- contains-embedding-param
+  [param]
+  (condp = (db/db-type)
+    :mysql [:!= [:json_search
+                 :embedding_params
+                 [:inline "one"]
+                 [:inline param]]
+            nil]
+    :postgres [:jsonb_path_exists
+               [:cast :embedding_params :jsonb]
+               [:inline (str "$.* ? (@ == \"" param "\")")]]))
+
+(def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query
-                          :dashboard_id :entity_id :created_at :collection_id :name]
-                         {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:questions (merge-count-maps (for [card cards]
-                                    (let [native? (= (keyword (:query_type card)) :native)
-                                          dq? (some? (:dashboard_id card))]
-                                      {:total                 1
-                                       :native                native?
-                                       :gui                   (not native?)
-                                       :is_dashboard_question dq?
-                                       :with_params           (card-has-params? card)})))
-     :public    (merge-count-maps (for [card  cards
-                                        :when (:public_uuid card)]
-                                    {:total       1
-                                     :with_params (card-has-params? card)}))
-     :embedded  (merge-count-maps (for [card  cards
-                                        :when (:enable_embedding card)]
-                                    (let [embedding-params-vals (set (vals (:embedding_params card)))]
-                                      {:total                1
-                                       :with_params          (card-has-params? card)
-                                       :with_enabled_params  (contains? embedding-params-vals "enabled")
-                                       :with_locked_params   (contains? embedding-params-vals "locked")
-                                       :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
+  (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))
+        cards (t2/select-one (cond-> [:model/Card
+                                      [:%count.* :total]
+                                      [(count-case [:= [:inline "native"] :query_type])
+                                       :native]
+                                      [(count-case [:!= [:inline "native"] :query_type])
+                                       :gui]
+                                      [(count-case [:!= :dashboard_id nil])
+                                       :is_dashboard_question]
+                                      [(count-case [:= :enable_embedding [:inline true]])
+                                       :total_embedded]
+                                      [(count-case (and-not-nil :public_uuid))
+                                       :total_public]]
+                               ;; json_exists/contains which we use to query json encoded data stored in text
+                               ;; columns is not supported on h2 databases, so we exclude these stats when
+                               ;; the app db is h2.
+                               json-supported? (conj
+                                                [(count-case (card-has-params))
+                                                 :with_params]
+                                                [(count-case (and-not-nil (card-has-params) :public_uuid))
+                                                 :with_params_public]
+                                                [(count-case [:and embedding-on (card-has-params)])
+                                                 :with_params_embedded]
+                                                [(count-case [:and (contains-embedding-param "enabled")
+                                                              embedding-on])
+                                                 :with_enabled_params]
+                                                [(count-case [:and (contains-embedding-param "locked")
+                                                              embedding-on])
+                                                 :with_locked_params]
+                                                [(count-case [:and (contains-embedding-param "disabled")
+                                                              embedding-on])
+                                                 :with_disabled_params]))
+                             {:where (mi/exclude-internal-content-hsql :model/Card)})]
+    ;; duplicate previous behaviour where these are empty maps if there are no matching cards in the given
+    ;; category
+    (cond-> {:questions {} :public {} :embedded {}}
+      (> (:total cards) 0) (assoc :questions (select-keys cards [:total :native :gui :is_dashboard_question :with_params]))
+      (> (:total_public cards) 0) (assoc :public (-> (select-keys cards [:total_public :with_params_public])
+                                                     (set/rename-keys {:total_public :total :with_params_public :with_params})))
+      (> (:total_embedded cards) 0) (assoc :embedded (-> (select-keys cards [:total_embedded
+                                                                             :with_params_embedded
+                                                                             :with_enabled_params
+                                                                             :with_locked_params
+                                                                             :with_disabled_params])
+                                                         (set/rename-keys {:total_embedded :total :with_params_embedded :with_params}))))))
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
@@ -601,30 +657,38 @@
   (u/prog1 eid-translation/default-counter
     (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
-(defn- categorize-query-execution [{:keys [context embedding_client executor_id]}]
-  (cond
-    (= "embedding-sdk-react" embedding_client)                        "sdk_embed"
-    (and (= "embedding-iframe" embedding_client) (some? executor_id)) "interactive_embed"
-    (and (= "embedding-iframe" embedding_client) (nil? executor_id))  "static_embed"
-    (some-> context name (str/starts-with? "public-"))                "public_link"
-    :else                                                             "internal"))
-
 (defn- ->one-day-ago []
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  (let [qe (t2/select [:model/QueryExecution :embedding_client :context :executor_id :started_at])
+  (let [qe-query [:model/QueryExecution
+                  [(count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
+                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
+                                [:!= :executor_id nil]])
+                   :interactive_embed]
+                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
+                                [:= :executor_id nil]])
+                   :static_embed]
+                  [(count-case [:and
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-sdk-react"]]
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-iframe"]]
+                                [:like :context "public-%"]])
+                   :public_link]
+                  [(count-case [:and
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-sdk-react"]]
+                                [:or [:= :embedding_client nil]
+                                 [:!= :embedding_client "embedding-iframe"]]
+                                [:not [:like :context "public-%"]]])
+                   :internal]]
+
+        qe          (t2/select-one qe-query)
         one-day-ago (->one-day-ago)
-        ;; reuse the query data:
-        qe-24h (filter (fn [{started-at :started_at}] (t/after? started-at one-day-ago)) qe)]
-    {:query-executions (merge
-                        {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                        (-> (group-by categorize-query-execution qe)
-                            (update-vals count)))
-     :query-executions-24h (merge
-                            {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                            (-> (group-by categorize-query-execution qe-24h)
-                                (update-vals count)))
+        qe-24h      (t2/select-one qe-query {:where [:> :started_at one-day-ago]})]
+    {:query-executions     qe
+     :query-executions-24h qe-24h
      :eid-translations-24h (get-translation-count)}))
 
 (defn- deep-string-keywords
@@ -633,6 +697,12 @@
   (walk/postwalk
    (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
    data))
+
+(defn- get-query-exeuction-counts
+  [executions]
+  (mapv (fn [qe-group]
+          {:group (str qe-group) :value (get executions qe-group)})
+        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -646,13 +716,10 @@
     :as _snowplow-grouped-metric-info}]
   (deep-string-keywords
    [{:name :query_executions_by_source
-     :values (mapv (fn [qe-group]
-                     {:group qe-group :value (get query-executions qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions)
      :tags ["embedding"]}
     {:name :query_executions_by_source_24h
-     :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
-                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :values (get-query-exeuction-counts query-executions-24h)
      :tags ["embedding"]}
     {:name :entity_id_translations_last_24h
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
@@ -865,7 +932,10 @@
     :enabled   (t2/exists? :model/Collection :namespace "snippets")}
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
-    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}])
+    :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :sdk-embedding
+    :available true
+    :enabled   (setting/get :enable-embedding-sdk)}])
 
 (defn- snowplow-features
   []
@@ -880,20 +950,63 @@
            (walk/stringify-keys)))
      features)))
 
+(defn- bool->default-or-changed
+  [changed]
+  (if changed "changed" "default"))
+
+(def ^:private snowplow-settings-metric-defs
+  [{:key "is_embedding_app_origin_sdk_set" :value :embedding_app_origin_sdk_set :tags ["embedding"]}
+   {:key "is_embedding_app_origin_interactive_set" :value (comp boolean :embedding_app_origin_interactive_set) :tags ["embedding"]}
+   {:key "application_name" :value (comp bool->default-or-changed :appearance_site_name) :tags ["appearance"]}
+   {:key "help_link" :value (comp name :appearance_help_link) :tags ["appearance"]}
+   {:key "logo" :value (comp bool->default-or-changed :appearance_logo) :tags ["appearance"]}
+   {:key "favicon" :value (comp bool->default-or-changed :appearance_favicon) :tags ["appearance"]}
+   {:key "loading_message" :value (comp bool->default-or-changed :appearance_loading_message) :tags ["appearance"]}
+   {:key "show_metabot_greeting" :value :appearance_metabot_greeting :tags ["appearance"]}
+   {:key "show_login_page_illustration" :value :appearance_login_page_illustration :tags ["appearance"]}
+   {:key "show_landing_page_illustration" :value :appearance_landing_page_illustration :tags ["appearance"]}
+   {:key "show_no_data_illustration" :value :appearance_no_data_illustration :tags ["appearance"]}
+   {:key "show_no_object_illustration" :value :appearance_no_object_illustration :tags ["appearance"]}
+   {:key "ui_color" :value (comp bool->default-or-changed :appearance_ui_colors) :tags ["appearance"]}
+   {:key "chart_colors" :value (comp bool->default-or-changed :appearance_chart_colors) :tags ["appearance"]}
+   {:key "show_mb_links" :value :appearance_show_mb_links :tags ["appearance"]}
+   {:key "font"
+    :value (fn [_] (public-settings/application-font))
+    :tags ["appearance"]}
+   {:key "samesite"
+    :value (fn [_] (str (or (setting/get :session-cookie-samesite) "lax")))
+    :tags ["embedding" "auth"]}
+   {:key "site_locale"
+    :value (fn [_] (public-settings/site-locale))
+    :tags ["locale"]}
+   {:key "report_timezone"
+    :value (fn [_] (or (setting/get :report-timezone) (System/getProperty "user.timezone")))
+    :tags ["locale"]}
+   {:key "start_of_week"
+    :value (fn [_] (str (public-settings/start-of-week)))
+    :tags ["locale"]}])
+
+(defn- snowplow-settings
+  [stats]
+  (letfn [(update-setting-value [setting-value-getter]
+            (setting-value-getter stats))]
+    (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)))
+
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
         grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
-        features            (snowplow-features)]
+        features            (snowplow-features)
+        settings            (snowplow-settings stats)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
     {"analytics_uuid"      (analytics.settings/analytics-uuid)
      "features"            features
      "grouped_metrics"     grouped-metrics
      "instance_attributes" instance-attributes
      "metrics"             metrics
-     "settings"            []}))
+     "settings"            settings}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"

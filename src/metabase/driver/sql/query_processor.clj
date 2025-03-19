@@ -1054,6 +1054,12 @@
   [driver [_ pred]]
   [:/ (->honeysql driver [:count-where pred]) :%count.*])
 
+(defmethod ->honeysql [:sql :distinct-where]
+  [driver [_ arg pred]]
+  [::h2x/distinct-count
+   [:case
+    (->honeysql driver pred) (->honeysql driver arg)]])
+
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
   [:trim (->honeysql driver arg)])

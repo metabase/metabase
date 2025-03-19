@@ -3,12 +3,6 @@ const { H } = cy;
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
- * Empty section title element is rendered.
- * TODO: https://github.com/metabase/metabase/issues/47218
- */
-const NAMELESS_SECTION = "";
-
-/**
  * Abbreviations used for card aliases in this test suite:
  *  qbq = question-based question
  *  qbm = question-based model
@@ -105,21 +99,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
         }
 
@@ -168,11 +152,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
         }
 
@@ -229,11 +213,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]]],
+            [[null, ["Count", "Sum of Total", "5 * Count"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]]],
+            [[null, ["Count", "Sum of Total", "5 * Count"]]],
           );
         }
       });
@@ -418,21 +402,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Count", "Sum of Reviews - Created At: Month → Rating"],
-              ],
-            ],
+            [[null, ["Count", "Sum of Reviews - Created At: Month → Rating"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Count", "Sum of Reviews - Created At: Month → Rating"],
-              ],
-            ],
+            [[null, ["Count", "Sum of Reviews - Created At: Month → Rating"]]],
           );
         }
       });
@@ -698,7 +672,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
             [
               [
-                NAMELESS_SECTION,
+                null,
                 [
                   "Reviews - Created At: Month → Reviewer",
                   "Products Via Product ID Category",
@@ -710,7 +684,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.MODEL_BASED_MODEL_INDEX,
             [
               [
-                NAMELESS_SECTION,
+                null,
                 [
                   "Reviews - Created At: Month → Reviewer",
                   "Products Via Product ID Category",
@@ -1093,7 +1067,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
             [
               [
-                NAMELESS_SECTION,
+                null,
                 [
                   "Reviews - Created At: Month → Reviewer",
                   "Products Via Product ID Category",
@@ -1105,7 +1079,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.MODEL_BASED_MODEL_INDEX,
             [
               [
-                NAMELESS_SECTION,
+                null,
                 [
                   "Reviews - Created At: Month → Reviewer",
                   "Products Via Product ID Category",
@@ -1170,21 +1144,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Count", "Sum of Reviews - Created At: Month → Rating"],
-              ],
-            ],
+            [[null, ["Count", "Sum of Reviews - Created At: Month → Rating"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Count", "Sum of Reviews - Created At: Month → Rating"],
-              ],
-            ],
+            [[null, ["Count", "Sum of Reviews - Created At: Month → Rating"]]],
           );
         }
       });

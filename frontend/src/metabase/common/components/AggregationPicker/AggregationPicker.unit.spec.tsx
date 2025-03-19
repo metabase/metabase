@@ -316,8 +316,14 @@ describe("AggregationPicker", () => {
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));
-      await userEvent.type(screen.getByLabelText("Expression"), expression);
-      await userEvent.type(screen.getByLabelText("Name"), expressionName);
+      await userEvent.type(
+        screen.getByTestId("custom-expression-query-editor"),
+        expression,
+      );
+      await userEvent.type(
+        screen.getByTestId("expression-name"),
+        expressionName,
+      );
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });

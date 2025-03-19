@@ -74,6 +74,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["boolean"],
   },
+  "distinct-where": {
+    displayName: `DistinctIf`,
+    type: "aggregation",
+    args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
+  },
   "sum-where": {
     displayName: `SumIf`,
     type: "aggregation",
@@ -507,6 +513,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",

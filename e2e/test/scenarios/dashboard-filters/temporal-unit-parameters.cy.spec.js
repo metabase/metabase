@@ -806,7 +806,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       editParameter(parameterDetails.name);
       H.dashboardParameterSidebar().findByText("All").click();
       H.popover().within(() => {
-        cy.findByLabelText("Select none").click();
+        cy.findByLabelText("Select all").click();
         cy.findByLabelText("Month").click();
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();

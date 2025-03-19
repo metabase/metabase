@@ -2257,7 +2257,7 @@ msgid "Send password reset email"
 msgstr "发送密码重置电子邮件"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "检查您的电子邮件以获取有关如何重置密码的说明。"
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30

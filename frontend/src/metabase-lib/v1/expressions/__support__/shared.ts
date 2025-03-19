@@ -1,7 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
-import type { Expression } from "metabase-types/api";
+import type {
+  Expression,
+  FieldReference,
+  LocalFieldReference,
+} from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -44,18 +48,16 @@ const metadata = createMockMetadata({
   ],
 });
 
-const created = checkNotNull(metadata.field(ORDERS.CREATED_AT))
-  .dimension()
-  .mbql();
-const total = checkNotNull(metadata.field(ORDERS.TOTAL)).dimension().mbql();
-const subtotal = checkNotNull(metadata.field(ORDERS.SUBTOTAL))
-  .dimension()
-  .mbql();
-const tax = checkNotNull(metadata.field(ORDERS.TAX)).dimension().mbql();
-const userId = checkNotNull(metadata.field(ORDERS.USER_ID)).dimension().mbql();
-const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
-  .foreign(metadata.field(PEOPLE.NAME))
-  .mbql();
+const created: LocalFieldReference = ["field", ORDERS.CREATED_AT, null];
+const total: LocalFieldReference = ["field", ORDERS.TOTAL, null];
+const subtotal: LocalFieldReference = ["field", ORDERS.SUBTOTAL, null];
+const tax: LocalFieldReference = ["field", ORDERS.TAX, null];
+const userId: LocalFieldReference = ["field", ORDERS.USER_ID, null];
+const userName: FieldReference = [
+  "field",
+  PEOPLE.NAME,
+  { "source-field": ORDERS.USER_ID },
+];
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
@@ -358,6 +360,11 @@ const aggregation: TestCase[] = [
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
+  [
+    "DistinctIf([User ID], [Total] > 50)",
+    ["distinct-where", userId, [">", total, 50]],
+    "distinct-where aggregation",
+  ],
 ];
 
 const filter: TestCase[] = [
@@ -424,15 +431,5 @@ export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
   ["aggregation", aggregation, { query, stageIndex }],
   ["filter", filter, { query, stageIndex }],
 ] as const;
-
-/**
- * @type {import("metabase-lib/v1/metadata/Table").default}
- */
-export const ordersTable = metadata.table(ORDERS_ID);
-
-/**
- * @type {import("metabase-lib/v1/metadata/Field").default}
- */
-export const ordersTotalField = metadata.field(ORDERS.TOTAL);
 
 export const sharedMetadata = metadata;

@@ -38,7 +38,7 @@ export const SaveQuestionForm = ({
     originalQuestion,
     showSaveType,
     values,
-    saveToCollection,
+    targetCollection,
     saveToDashboard,
   } = useSaveQuestionContext();
 
@@ -58,7 +58,7 @@ export const SaveQuestionForm = ({
       : ["collection"];
 
   const showPickerInput =
-    values.saveType === "create" && !saveToCollection && !saveToDashboard;
+    values.saveType === "create" && !targetCollection && !saveToDashboard;
 
   return (
     <Form>

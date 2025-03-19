@@ -48,6 +48,6 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
   return (
     isNative &&
     question.canRun() &&
-    (question.legacyQuery() as NativeQuery).hasVariableTemplateTags()
+    (question.legacyNativeQuery() as NativeQuery).hasVariableTemplateTags()
   );
 };

@@ -21,6 +21,7 @@ interface ConfirmContentProps {
   cancelButtonText?: string;
 }
 
+/** @deprecated use ConfirmModal.tsx instead */
 const ConfirmContent = ({
   "data-testid": dataTestId,
   title,

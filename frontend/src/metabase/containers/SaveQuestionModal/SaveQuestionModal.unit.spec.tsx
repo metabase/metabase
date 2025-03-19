@@ -25,7 +25,6 @@ import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 import {
   createMockCollection,
@@ -806,7 +805,7 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    const query = Question.create({
+    const question = Question.create({
       metadata,
       dataset_query: {
         type: "query",
@@ -816,10 +815,7 @@ describe("SaveQuestionModal", () => {
           aggregation: [["count"]],
         },
       },
-      // eslint-disable-next-line no-restricted-syntax
-    }).legacyQuery({ useStructuredQuery: true }) as StructuredQuery;
-
-    const question = query.question();
+    });
 
     describe("OSS", () => {
       it("is not shown", async () => {

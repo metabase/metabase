@@ -56,10 +56,10 @@ export function useCustomTooltip({
     const el = evt.relatedTarget as HTMLElement | null;
 
     if (
-      el === null ||
-      tooltipRef.current === el ||
-      tooltipRef.current?.contains(el) ||
-      el?.contains(tooltipRef.current)
+      el !== null &&
+      (tooltipRef.current === el ||
+        tooltipRef.current?.contains(el) ||
+        el?.contains(tooltipRef.current))
     ) {
       return;
     }

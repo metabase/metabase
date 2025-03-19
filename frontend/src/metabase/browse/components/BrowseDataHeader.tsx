@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
 import {
@@ -36,12 +37,7 @@ export const BrowseDataHeader = () => {
 };
 
 const LearnAboutDataLink = () => (
-  <Flex
-    p=".75rem"
-    justify="flex-end"
-    align="center"
-    style={{ flexBasis: "40.0%", marginInlineStart: "auto" }}
-  >
+  <Flex p=".75rem" justify="flex-end" align="center" gap="md">
     <Link to="reference">
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
@@ -50,5 +46,6 @@ const LearnAboutDataLink = () => (
         </Text>
       </BrowseHeaderIconContainer>
     </Link>
+    <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectButton />
   </Flex>
 );
