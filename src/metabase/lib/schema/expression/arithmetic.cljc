@@ -221,6 +221,6 @@
     ;; specific as `:type/Integer` but better than `:type/*` or `::expression/type.unknown`.
     :type/Float))
 
-(mbql-clause/define-tuple-mbql-clause :integer :- :type/Integer
+(mbql-clause/define-tuple-mbql-clause :integer :- :type/BigInteger
   [:schema [:or [:ref ::expression/number]
             [:ref ::expression/string]]])
