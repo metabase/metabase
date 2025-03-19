@@ -358,13 +358,11 @@
   {:offset-date-time {:regex   common/offset-datetime-regex
                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSSZ"
                                     "YYYY-MM-DDTHH:mm:ssZ"
-                                    "YYYY-MM-DDTHH:mmZ"
-                                    "YYYY-MM-DDTHHZ"]}
+                                    "YYYY-MM-DDTHH:mmZ"]}
    :local-date-time  {:regex   common/local-datetime-regex
                       :formats #js ["YYYY-MM-DDTHH:mm:ss.SSS"
                                     "YYYY-MM-DDTHH:mm:ss"
-                                    "YYYY-MM-DDTHH:mm"
-                                    "YYYY-MM-DDTHH"]}
+                                    "YYYY-MM-DDTHH:mm"]}
    :local-date       {:regex   common/local-date-regex
                       :formats #js ["YYYY-MM-DD"
                                     "YYYY-MM"
@@ -372,13 +370,11 @@
    :offset-time      {:regex   common/offset-time-regex
                       :formats #js ["HH:mm:ss.SSSZ"
                                     "HH:mm:ssZ"
-                                    "HH:mmZ"
-                                    "HHZ"]}
+                                    "HH:mmZ"]}
    :local-time       {:regex   common/local-time-regex
                       :formats #js ["HH:mm:ss.SSS"
                                     "HH:mm:ss"
-                                    "HH:mm"
-                                    "HH"]}})
+                                    "HH:mm"]}})
 
 (defn- iso-8601->moment+type
   [s]
