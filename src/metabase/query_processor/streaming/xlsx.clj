@@ -576,6 +576,39 @@
         (assoc :aggregation-functions agg-fns)
         (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
 
+(defmulti ^:private get-data-format-str
+  "Get data-format form cell-styles, base-type is in col-settings"
+  {:arglists '([base-type cell-styles typed-cell-styles])}
+  (fn [base-type _cell-styles _typed-cell-styles]
+    (keyword base-type)))
+
+(defn- get-fmt
+  [cell-styles typed-cell-styles base-type]
+  (or (not-empty (when (and cell-styles (seq cell-styles))
+                   (.getDataFormatString (first cell-styles))))
+      (when-let [typed-cell-style (typed-cell-styles base-type)]
+        (.getDataFormatString typed-cell-style))))
+
+(defmethod get-data-format-str :type/Date
+  [_ cell-styles typed-cell-styles]
+  (get-fmt cell-styles typed-cell-styles :date))
+
+(defmethod get-data-format-str :type/Integer
+  [_ cell-styles typed-cell-styles]
+  (get-fmt cell-styles typed-cell-styles :integer))
+
+(defmethod get-data-format-str :type/Float
+  [_ cell-styles typed-cell-styles]
+  (get-fmt cell-styles typed-cell-styles :float))
+
+(defmethod get-data-format-str :type/DateTime
+  [_ cell-styles typed-cell-styles]
+  (get-fmt cell-styles typed-cell-styles :date))
+
+(defmethod get-data-format-str :default
+  [_base-type _cell-styles _typed-cell-styles]
+  nil)
+
 ;; Below, we need to provide an AreaReference to create a pivot table.
 ;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
 ;; the more memory we use, and the larger the filesize.
@@ -619,15 +652,29 @@
                                                        (CellReference. 0 0)
                                                        ^XSSFSheet data-sheet)]
     (doseq [idx pivot-rows]
-      (.addRowLabel pivot-table idx))
+      (.addRowLabel pivot-table idx)
+      ;; Method addRowLabel has no fmt argument
+      (let [orderd-col (nth ordered-cols idx)
+            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)
+            numFmtId   (when fmt (.getFormat data-format fmt))]
+        (when numFmtId
+          (-> pivot-table
+              .getCTPivotTableDefinition
+              .getPivotFields
+              (.getPivotFieldArray idx)
+              (.setNumFmtId numFmtId)))))
     (doseq [idx pivot-cols]
-      (.addColLabel pivot-table idx))
+      (let [orderd-col (nth ordered-cols idx)
+            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)]
+        (.addColLabel pivot-table idx fmt)))
     (doseq [idx pivot-measures]
       ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
       ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
-      (let [col-name (or (not-empty (nth col-names idx))
-                         (get-in ordered-cols [idx :display_name]))]
-        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
+      (let [orderd-col (nth ordered-cols idx)
+            col-name   (or (not-empty (nth col-names idx))
+                           (orderd-col :display_name))
+            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)]
+        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name fmt)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
                       :ascending  STFieldSortType/ASCENDING
@@ -658,18 +705,18 @@
     {:workbook workbook
      :sheet    sheet}))
 
-(defn- update-pivot-area-ref [sxxsfworkbook sxxsfsheet-data]
+(defn- update-pivot-area-ref [sxxsfworkbook data-sxxsfsheet]
   ;; Update the area reference of the pivot table in the pivot sheet
   ;; based on the number of columns in the first row and the number of rows in the last row of the data sheet.
   ;; The pivot table and head row in xssfworkbook, other data row in sxxsfworkbook.
   (when-let [xssfworkbook (.getXSSFWorkbook sxxsfworkbook)]
-    (when-let [xssfsheet-pivot (spreadsheet/select-sheet "pivot" xssfworkbook)]
-      (when-let [pivot-ables (.getPivotTables xssfsheet-pivot)]
+    (when-let [pivot-xssfsheet (spreadsheet/select-sheet "pivot" xssfworkbook)]
+      (when-let [pivot-ables (.getPivotTables pivot-xssfsheet)]
         (when-let [pivot-table (first pivot-ables)]
-          (let [last-row-num (.getLastRowNum sxxsfsheet-data)
-                xssfsheet-data (spreadsheet/select-sheet "data" xssfworkbook)
+          (let [last-row-num (.getLastRowNum data-sxxsfsheet)
+                data-xssfsheet (spreadsheet/select-sheet "data" xssfworkbook)
                 ;; The head row of sxssfsheet-data is null, so get head row from xssfsheet-data.
-                last-cell-num (.getLastCellNum (.getRow xssfsheet-data 0))]
+                last-cell-num (.getLastCellNum (.getRow data-xssfsheet 0))]
             (-> pivot-table
                 .getPivotCacheDefinition
                 .getCTPivotCacheDefinition
