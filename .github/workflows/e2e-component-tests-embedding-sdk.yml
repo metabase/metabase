@@ -146,7 +146,6 @@ jobs:
     timeout-minutes: 45
     strategy:
       matrix:
-        # TODO: add React 17 to the matrix
         react-version: [18, 19]
       fail-fast: false
     name: React ${{ matrix.react-version }}

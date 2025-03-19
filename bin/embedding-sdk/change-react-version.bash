@@ -36,7 +36,7 @@ function print_usage() {
 
 # React 19+ uses @cypress/react@^9
 # React 18 uses cypress/react18, an internal package in Cypress 13 -- @cypress/react@^8 is installed to prevent import errors.
-# React 17 uses @cypress/react@^8
+# React 17 uses @cypress/react@^8 (only supported on 53 and below)
 # See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
 function get_cypress_react_package() {
   local version=$1
