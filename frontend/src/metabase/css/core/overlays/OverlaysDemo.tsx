@@ -318,6 +318,7 @@ export const OverlaysDemo = ({ enableNesting }: OverlaysDemoProps) => {
       ))}
       {Array.from({ length: entityPickerCount }).map((_value, index) => (
         <EntityPickerModal
+          opened
           key={`entity-picker-${index}`}
           title={`Entity Picker content`}
           selectedItem={null}

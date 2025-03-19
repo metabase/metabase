@@ -466,6 +466,7 @@ class DashboardGridInner extends Component<
 
     return (
       <QuestionPickerModal
+        opened={hasValidDashCard}
         title={t`Pick what you want to replace this with`}
         value={
           replaceCardModalDashCard.card.id

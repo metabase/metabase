@@ -37,6 +37,7 @@ const MoveTimelineModal = ({
 
   return (
     <CollectionPickerModal
+      opened
       value={{ id: timeline.collection_id ?? "root", model: "collection" }}
       title={t`Move ${getTimelineName(timeline)}`}
       onClose={onClose}

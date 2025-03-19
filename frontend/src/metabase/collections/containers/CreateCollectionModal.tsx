@@ -15,6 +15,7 @@ import { CreateCollectionForm } from "../components/CreateCollectionForm";
 interface CreateCollectionModalOwnProps
   extends Omit<CreateCollectionFormOwnProps, "onCancel"> {
   onClose: () => void;
+  opened: boolean;
 }
 
 interface CreateCollectionModalDispatchProps {
@@ -31,6 +32,7 @@ function CreateCollectionModal({
   onCreate,
   onChangeLocation,
   onClose,
+  opened,
   ...props
 }: Props) {
   const handleCreate = useCallback(
@@ -47,7 +49,7 @@ function CreateCollectionModal({
 
   return (
     <Modal
-      opened
+      opened={opened}
       onClose={onClose}
       size="lg"
       data-testid="new-collection-modal"

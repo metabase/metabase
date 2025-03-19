@@ -29,6 +29,7 @@ import { NewDashboardDialog } from "./NewDashboardDialog";
 
 export interface DashboardPickerModalProps {
   title?: string;
+  opened: boolean;
   onChange: (item: DashboardPickerValueItem) => void;
   onClose: () => void;
   options?: DashboardPickerOptions;
@@ -76,6 +77,7 @@ const mergeOptions = (
 
 export const DashboardPickerModal = ({
   title = t`Choose a dashboard`,
+  opened,
   onChange,
   onClose,
   value = { model: "collection", id: "root" },
@@ -192,6 +194,7 @@ export const DashboardPickerModal = ({
     <>
       <EntityPickerModal
         title={title}
+        opened={opened}
         onItemSelect={handleItemSelect}
         canSelectItem={
           !isCreateDialogOpen &&

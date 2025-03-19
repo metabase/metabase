@@ -241,16 +241,15 @@ export function FormCollectionAndDashboardPicker({
           )}
         </Button>
       </FormField>
-      {isPickerOpen && (
-        <CollectionPickerModal
-          title={pickerTitle}
-          value={pickerValue}
-          onChange={handleChange}
-          onClose={handleModalClose}
-          options={options}
-          {...collectionPickerModalProps}
-        />
-      )}
+      <CollectionPickerModal
+        opened={isPickerOpen}
+        title={pickerTitle}
+        value={pickerValue}
+        onChange={handleChange}
+        onClose={handleModalClose}
+        options={options}
+        {...collectionPickerModalProps}
+      />
     </>
   );
 }
