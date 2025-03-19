@@ -10833,6 +10833,53 @@ databaseChangeLog:
               - column:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
+  - changeSet:
+      id: v54.2025-03-13T16:14:34
+      author: wotbrew
+      comment: Add metabase_field.database_is_nullable
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is nullable"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+  - changeSet:
+      id: v54.2025-03-13T16:14:35
+      author: wotbrew
+      comment: Add metabase_field.database_is_generated
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the column is generated/computed"
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+  - changeSet:
+      id: v54.2025-03-13T16:14:36
+      author: wotbrew
+      comment: Add metabase_field.database_default
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  type: ${text.type}
+                  remarks: "The columns DEFAULT expression as a dialect specific SQL string."
+                  constraints:
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -33,6 +33,8 @@
                             :database-type "TIMESTAMP",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable false
                             :base-type :type/DateTime,
                             :database-position 0,
                             :json-unfolding false}
@@ -40,6 +42,8 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 10,
                             :json-unfolding false}
@@ -47,6 +51,8 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 1,
                             :json-unfolding false}
@@ -54,6 +60,8 @@
                             :database-type "COMPLEX<hyperUnique>",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/DruidHyperUnique,
                             :database-position 11,
                             :json-unfolding false}
@@ -61,6 +69,8 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 2,
                             :json-unfolding false}
@@ -68,6 +78,8 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 3,
                             :json-unfolding false}
@@ -75,6 +87,8 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 4,
                             :json-unfolding false}
@@ -82,6 +96,8 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 5,
                             :json-unfolding false}
@@ -89,6 +105,8 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 6,
                             :json-unfolding false}
@@ -96,6 +114,8 @@
                             :database-type "DOUBLE",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Float,
                             :database-position 7,
                             :json-unfolding false}
@@ -103,6 +123,8 @@
                             :database-type "VARCHAR",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/Text,
                             :database-position 8,
                             :json-unfolding false}
@@ -110,6 +132,8 @@
                             :database-type "BIGINT",
                             :database-required false,
                             :database-is-auto-increment false,
+                            :database-is-generated false
+                            :database-is-nullable true
                             :base-type :type/BigInteger,
                             :database-position 9,
                             :json-unfolding false}}}
