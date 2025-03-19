@@ -52,8 +52,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       // Should show a visualization after clicking "Visualize"
       // and should not show an error message (metabase#55398)
       cy.findByText("Question not found").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
-      cy.findByText(/Rows 1-[6,7] of first 2000/).should("be.visible");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
@@ -123,8 +122,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       // Should show a visualization after clicking "Visualize"
       // and should not show an error message (metabase#55398)
       cy.findByText("Question not found").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
-      cy.findByText(/Rows 1-[6,7] of first 2000/).should("be.visible");
+      cy.findByText("110.93").should("be.visible"); // table data
 
       // Should be able to save to a new question right away
       cy.findByRole("button", { name: "Save" }).click();
