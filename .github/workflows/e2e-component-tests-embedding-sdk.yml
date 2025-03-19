@@ -89,8 +89,12 @@ jobs:
           m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
+      # - name: Build uberjar with ./bin/build.sh
+      #   run: ./bin/build.sh
+      # TODO: remove this
+      - name: FOR TESTING PURPOSES - Download fake uberjar
+        shell: bash
+        run: wget -O ./target/uberjar/metabase.jar https://github.com/metabase/metabase/releases/download/v0.53.7/metabase.jar
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
