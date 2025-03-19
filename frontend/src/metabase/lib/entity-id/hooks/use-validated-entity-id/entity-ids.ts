@@ -7,8 +7,8 @@ type MockData =
   | { type: "card"; data: Card[] }
   | { type: "dashboard"; data: Dashboard[] };
 
-export function setupTranslateEntityIdEndpoints(mockData: MockData): void {
-  fetchMock.post("path:/api/util/entity_id", async (_, options) => {
+export function setupTranslateEntityIdEndpoints(mockData: MockData) {
+  return fetchMock.post("path:/api/util/entity_id", async (_, options) => {
     const requestEntities = (await options.body)?.toString();
 
     if (!requestEntities) {

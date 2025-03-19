@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
 import {
@@ -104,6 +105,8 @@ describe("useValidatedEntityId", () => {
 
       await waitForLoaderToBeRemoved();
 
+      expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
+
       expect(getHookResult()).toEqual({
         id: translatedId,
         isLoading: false,
@@ -129,7 +132,7 @@ describe("useValidatedEntityId", () => {
     });
 
     it("should return error state when API request fails", async () => {
-      const entityId = "oisin";
+      const entityId = "oisinoisinoisinoisino";
 
       const { getHookResult } = setup({
         type: "dashboard",
@@ -137,6 +140,8 @@ describe("useValidatedEntityId", () => {
       });
 
       await waitForLoaderToBeRemoved();
+
+      expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
 
       // Should have error state
       expect(getHookResult()).toEqual({
