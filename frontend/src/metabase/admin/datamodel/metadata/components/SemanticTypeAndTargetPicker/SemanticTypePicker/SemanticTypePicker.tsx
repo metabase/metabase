@@ -7,6 +7,7 @@ import {
   FIELD_SEMANTIC_TYPES,
 } from "metabase/lib/core";
 import { Select } from "metabase/ui";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 
@@ -81,6 +82,14 @@ function getData({ baseType, value }: Pick<Props, "baseType" | "value">) {
 
       if (isDeprecated) {
         return false;
+      }
+
+      if (baseType === TYPE.Text) {
+        /**
+         * Hack: allow "casting" text types to numerical types
+         * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
+         */
+        return isa(option.id, baseType) || isa(option.id, TYPE.Number);
       }
 
       return isa(option.id, baseType);
