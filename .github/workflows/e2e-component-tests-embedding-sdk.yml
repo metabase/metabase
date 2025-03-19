@@ -89,14 +89,14 @@ jobs:
           m2-cache-key: uberjar
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
-      # - name: Build uberjar with ./bin/build.sh
-      #   run: ./bin/build.sh
-      # TODO: remove this
-      - name: FOR TESTING PURPOSES - Download fake uberjar
-        shell: bash
-        run: |
-          mkdir -p ./target/uberjar
-          wget -O ./target/uberjar/metabase.jar https://downloads.metabase.com/v0.53.7/metabase.jar
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      # - name: FOR TESTING PURPOSES - Download fake uberjar
+      #   shell: bash
+      #   run: |
+      #     mkdir -p ./target/uberjar
+      #     wget -O ./target/uberjar/metabase.jar https://downloads.metabase.com/v0.53.7/metabase.jar
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
@@ -146,7 +146,8 @@ jobs:
     timeout-minutes: 45
     strategy:
       matrix:
-        react-version: [17, 18, 19]
+        # TODO: add React 17 to the matrix
+        react-version: [18, 19]
       fail-fast: false
     name: React ${{ matrix.react-version }}
     env:
