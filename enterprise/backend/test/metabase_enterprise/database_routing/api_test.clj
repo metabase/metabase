@@ -33,15 +33,22 @@
 
 (deftest invalid-details-doesnt-matter
   (mt/with-model-cleanup [:model/Database]
-    (with-redefs [driver/can-connect? (fn [_]
+    (with-redefs [driver/can-connect? (fn [_ _]
                                         (throw (ex-info "nope" {})))]
       (let [[{db-id :id}] (mt/user-http-request :crowberto :post 200 "ee/database-routing/mirror-database"
                                                 {:router_database_id (mt/id)
-                                                 :mirrors [{:name "mirror database"
+                                                 :mirrors [{:name (str (random-uuid))
                                                             :details {:db "meow"}}]})]
         (is (t2/exists? :model/Database
                         :router_database_id (mt/id)
-                        :id db-id))))))
+                        :id db-id)))
+      (testing "unless you pass the `check_connection_details` flag"
+        (let [db-name (str (random-uuid))]
+          (is (= {(keyword db-name) {:message "nope"}}
+                 (mt/user-http-request :crowberto :post 400 "ee/database-routing/mirror-database?check_connection_details=true"
+                                       {:router_database_id (mt/id)
+                                        :mirrors [{:name db-name
+                                                   :details {:db "meow"}}]}))))))))
 
 (deftest we-can-mark-an-existing-database-as-being-a-router-database
   (mt/with-temp [:model/Database {db-id :id} {}]
