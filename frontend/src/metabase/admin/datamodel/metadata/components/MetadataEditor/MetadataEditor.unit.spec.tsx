@@ -338,9 +338,9 @@ describe("MetadataEditor", () => {
       );
 
       await userEvent.clear(typeInput);
-      await userEvent.type(typeInput, "Pri");
-      expect(popover.getByText("Price")).toBeInTheDocument();
-      expect(popover.queryByText("Score")).not.toBeInTheDocument();
+      await userEvent.type(typeInput, "Ci");
+      expect(popover.getByText("City")).toBeInTheDocument();
+      expect(popover.queryByText("Category")).not.toBeInTheDocument();
     });
 
     it("should show the foreign key target for foreign keys", async () => {

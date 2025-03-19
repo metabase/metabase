@@ -5,7 +5,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   ColumnNameColumnSplitSetting,
@@ -203,9 +203,7 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-function databaseSupportsPivotTables(
-  query: StructuredQuery | null | undefined,
-) {
+function databaseSupportsPivotTables(query: NativeQuery | null | undefined) {
   if (!query) {
     return true;
   }
@@ -228,7 +226,7 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 export function checkRenderable(
   [{ data }]: [{ data: DatasetData }],
   settings: VisualizationSettings,
-  query?: StructuredQuery | null,
+  query?: NativeQuery | null,
 ) {
   if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);

@@ -6,10 +6,9 @@ import type {
   HelpTextConfig,
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
+import type { Expression } from "metabase-types/api";
 
-import { formatStringLiteral } from "./string";
-
-import { formatIdentifier } from "./";
+import { adjustCaseOrIf } from "./recursive-parser";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -58,7 +57,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to sum.`,
-        example: formatIdentifier(t`Subtotal`),
+        example: ["dimension", t`Subtotal`],
       },
     ],
   },
@@ -70,7 +69,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to sum.`,
-        example: formatIdentifier(t`Subtotal`),
+        example: ["dimension", t`Subtotal`],
       },
     ],
   },
@@ -82,7 +81,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column whose distinct values to count.`,
-        example: formatIdentifier(t`Last Name`),
+        example: ["dimension", t`Last Name`],
       },
     ],
   },
@@ -95,14 +94,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column to count distinct values in.`,
-        example: formatIdentifier(t`Customer ID`),
+        example: ["dimension", t`Customer ID`],
       },
       {
         name: t`condition`,
         description: t`Something that evaluates to true or false.`,
-        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
-          t`Completed`,
-        )}`,
+        example: ["=", ["dimension", t`Order Status`], "Completed"],
       },
     ],
   },
@@ -114,7 +111,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column to get standard deviation of.`,
-        example: formatIdentifier(t`Population`),
+        example: ["dimension", t`Population`],
       },
     ],
   },
@@ -127,12 +124,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`expression`,
         description: t`The value to get from a different row.`,
-        example: `Sum(${formatIdentifier(t`Total`)})`,
+        example: ["sum", ["dimension", t`Total`]],
       },
       {
         name: t`rowOffset`,
         description: t`Row number relative to the current row, for example -1 for the previous row or 1 for the next row.`,
-        example: "-1",
+        example: -1,
       },
     ],
   },
@@ -144,7 +141,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column whose values to average.`,
-        example: formatIdentifier(t`Quantity`),
+        example: ["dimension", t`Quantity`],
       },
     ],
   },
@@ -156,7 +153,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column whose values to average.`,
-        example: formatIdentifier(t`Quantity`),
+        example: ["dimension", t`Quantity`],
       },
     ],
   },
@@ -168,7 +165,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column whose minimum you want to find.`,
-        example: formatIdentifier(t`Salary`),
+        example: ["dimension", t`Salary`],
       },
     ],
   },
@@ -180,7 +177,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column whose maximum you want to find.`,
-        example: formatIdentifier(t`Age`),
+        example: ["dimension", t`Age`],
       },
     ],
   },
@@ -193,9 +190,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
-        example: `${formatIdentifier(t`Source`)} = ${formatStringLiteral(
-          t`Google`,
-        )}`,
+        example: ["=", ["dimension", t`Source`], "Google"],
       },
     ],
   },
@@ -207,7 +202,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
-        example: `${formatIdentifier(t`Subtotal`)} > 100`,
+        example: [">", ["dimension", t`Subtotal`], 100],
       },
     ],
   },
@@ -220,14 +215,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The numeric column to sum.`,
-        example: formatIdentifier(t`Subtotal`),
+        example: ["dimension", t`Subtotal`],
       },
       {
         name: t`condition`,
         description: t`Something that evaluates to true or false.`,
-        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
-          t`Valid`,
-        )}`,
+        example: ["=", ["dimension", t`Order Status`], "Valid"],
       },
     ],
   },
@@ -239,7 +232,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to get the variance of.`,
-        example: formatIdentifier(t`Temperature`),
+        example: ["dimension", t`Temperature`],
       },
     ],
   },
@@ -251,7 +244,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to get the median of.`,
-        example: formatIdentifier(t`Age`),
+        example: ["dimension", t`Age`],
       },
     ],
   },
@@ -264,12 +257,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to get the percentile of.`,
-        example: formatIdentifier(t`Score`),
+        example: ["dimension", t`Score`],
       },
       {
         name: t`percentile-value`,
         description: t`The value of the percentile.`,
-        example: "0.9",
+        example: 0.9,
       },
     ],
   },
@@ -281,7 +274,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column with values to convert to lower case.`,
-        example: formatIdentifier(t`Status`),
+        example: ["dimension", t`Status`],
       },
     ],
   },
@@ -293,7 +286,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column with values to convert to upper case.`,
-        example: formatIdentifier(t`Status`),
+        example: ["dimension", t`Status`],
       },
     ],
   },
@@ -305,17 +298,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text to return a portion of.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`position`,
         description: t`The position to start copying characters. Index starts at position 1.`,
-        example: "1",
+        example: 1,
       },
       {
         name: t`length`,
         description: t`The number of characters to return.`,
-        example: "10",
+        example: 10,
       },
     ],
     docsPage: "substring",
@@ -329,12 +322,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text to search through.`,
-        example: formatIdentifier(t`Address`),
+        example: ["dimension", t`Address`],
       },
       {
         name: t`regular_expression`,
         description: t`The regular expression to match.`,
-        example: formatStringLiteral("[0-9]+"),
+        example: "[0-9]+",
       },
     ],
     docsPage: "regexextract",
@@ -347,17 +340,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or text to begin with.`,
-        example: formatIdentifier(t`Last Name`),
+        example: ["dimension", t`Last Name`],
       },
       {
         name: t`value2`,
         description: t`This will be added to the end of value1.`,
-        example: formatStringLiteral(", "),
+        example: ", ",
       },
       {
         name: "…",
         description: t`This will be added to the end of value2, and so on.`,
-        example: formatIdentifier(t`First Name`),
+        example: ["dimension", t`First Name`],
       },
     ],
     docsPage: "concat",
@@ -370,17 +363,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text to search through.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`find`,
         description: t`The text to find.`,
-        example: formatStringLiteral(t`Enormous`),
+        example: t`Enormous`,
       },
       {
         name: t`replace`,
         description: t`The text to use as the replacement.`,
-        example: formatStringLiteral(t`Gigantic`),
+        example: t`Gigantic`,
       },
     ],
   },
@@ -392,7 +385,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text you want to get the length of.`,
-        example: formatIdentifier(t`Comment`),
+        example: ["dimension", t`Comment`],
       },
     ],
   },
@@ -405,7 +398,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text you want to trim.`,
-        example: formatIdentifier(t`Comment`),
+        example: ["dimension", t`Comment`],
       },
     ],
   },
@@ -417,7 +410,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text you want to trim.`,
-        example: formatIdentifier(t`Comment`),
+        example: ["dimension", t`Comment`],
       },
     ],
   },
@@ -429,7 +422,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`The column or text you want to trim.`,
-        example: formatIdentifier(t`Comment`),
+        example: ["dimension", t`Comment`],
       },
     ],
   },
@@ -442,7 +435,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`urlOrEmail`,
         description: t`The URL or Email column to extract the host from.`,
-        example: formatIdentifier(t`Email`),
+        example: ["dimension", t`Email`],
       },
     ],
   },
@@ -455,7 +448,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`urlOrEmail`,
         description: t`The URL or Email column to extract domain names from.`,
-        example: formatIdentifier(t`Email`),
+        example: ["dimension", t`Email`],
       },
     ],
   },
@@ -468,7 +461,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`url`,
         description: t`The URL column to extract the subdomain from.`,
-        example: formatIdentifier(t`ProfileImage`),
+        example: ["dimension", t`ProfileImage`],
       },
     ],
   },
@@ -481,7 +474,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`monthNumber`,
         description: t`Column or expression giving the number of a month in the year, 1 to 12.`,
-        example: formatIdentifier(t`Birthday Month`),
+        example: ["dimension", t`Birthday Month`],
       },
     ],
   },
@@ -493,7 +486,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`quarterNumber`,
         description: t`Column or expression giving the number of a quarter of the year, 1 to 4.`,
-        example: formatIdentifier(t`Fiscal Quarter`),
+        example: ["dimension", t`Fiscal Quarter`],
       },
     ],
   },
@@ -506,7 +499,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`dayNumber`,
         description: t`Column or expression giving the number of a day of the week, 1 to 7. Which day is 1 is defined in your localization setting; default Sunday.`,
-        example: formatIdentifier(t`Weekday`),
+        example: ["dimension", t`Weekday`],
       },
     ],
   },
@@ -519,7 +512,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to return absolute (positive) value of.`,
-        example: formatIdentifier(t`Debt`),
+        example: ["dimension", t`Debt`],
       },
     ],
   },
@@ -531,7 +524,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to round down.`,
-        example: formatIdentifier(t`Price`),
+        example: ["dimension", t`Price`],
       },
     ],
   },
@@ -543,7 +536,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to round up.`,
-        example: formatIdentifier(t`Price`),
+        example: ["dimension", t`Price`],
       },
     ],
   },
@@ -556,7 +549,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to round to nearest integer.`,
-        example: formatIdentifier(t`Temperature`),
+        example: ["dimension", t`Temperature`],
       },
     ],
   },
@@ -568,7 +561,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to return square root value of.`,
-        example: formatIdentifier(t`Hypotenuse`),
+        example: ["dimension", t`Hypotenuse`],
       },
     ],
   },
@@ -580,12 +573,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number raised to the exponent.`,
-        example: formatIdentifier(t`Length`),
+        example: ["dimension", t`Length`],
       },
       {
         name: t`exponent`,
         description: t`The value of the exponent.`,
-        example: "2",
+        example: 2,
       },
     ],
   },
@@ -597,7 +590,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to return the natural logarithm value of.`,
-        example: formatIdentifier(t`Value`),
+        example: ["dimension", t`Value`],
       },
     ],
   },
@@ -610,17 +603,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`datetime1`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`datetime2`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`Shipped At`),
+        example: ["dimension", t`Shipped At`],
       },
       {
         name: t`unit`,
         description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, or ${"second"}.`,
-        example: formatStringLiteral("month"),
+        example: "month",
       },
     ],
     docsPage: "datetimediff",
@@ -634,7 +627,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column or number to return the exponential value of.`,
-        example: formatIdentifier(t`Interest Months`),
+        example: ["dimension", t`Interest Months`],
       },
     ],
   },
@@ -647,22 +640,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Small`),
+        example: t`Small`,
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Medium`),
+        example: t`Medium`,
       },
       {
-        name: "case-insensitive",
+        name: "caseInsensitive",
         description: t`Optional. To perform a case-insensitive match.`,
-        example: formatStringLiteral("case-insensitive"),
+        example: "case-insensitive",
       },
     ],
   },
@@ -675,22 +668,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Small`),
+        example: t`Small`,
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Medium`),
+        example: t`Medium`,
       },
       {
-        name: "case-insensitive",
+        name: "caseInsensitive",
         description: t`Optional. To perform a case-insensitive match.`,
-        example: formatStringLiteral("case-insensitive"),
+        example: "case-insensitive",
       },
     ],
   },
@@ -703,22 +696,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Small`),
+        example: t`Small`,
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Medium`),
+        example: t`Medium`,
       },
       {
-        name: "case-insensitive",
+        name: "caseInsensitive",
         description: t`Optional. To perform a case-insensitive match.`,
-        example: formatStringLiteral("case-insensitive"),
+        example: "case-insensitive",
       },
     ],
   },
@@ -731,22 +724,22 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`string1`,
         description: t`The column or text to check.`,
-        example: formatIdentifier(t`Title`),
+        example: ["dimension", t`Title`],
       },
       {
         name: t`string2`,
         description: t`The string of text to look for.`,
-        example: formatStringLiteral(t`Small`),
+        example: t`Small`,
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral(t`Medium`),
+        example: t`Medium`,
       },
       {
-        name: "case-insensitive",
+        name: "caseInsensitive",
         description: t`Optional. To perform a case-insensitive match.`,
-        example: formatStringLiteral("case-insensitive"),
+        example: "case-insensitive",
       },
     ],
   },
@@ -759,17 +752,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The date or numeric column that should be within the start and end values.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`start`,
         description: t`The beginning of the range.`,
-        example: formatStringLiteral("2019-01-01"),
+        example: "2019-01-01",
       },
       {
         name: t`end`,
         description: t`The end of the range.`,
-        example: formatStringLiteral("2022-12-31"),
+        example: "2022-12-31",
       },
     ],
   },
@@ -781,12 +774,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
-        example: "7",
+        example: 7,
       },
       {
         name: t`text`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("day"),
+        example: "day",
       },
     ],
   },
@@ -799,7 +792,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The date column to return interval of.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`number`,
@@ -809,7 +802,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`text`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("month"),
+        example: "month",
       },
     ],
   },
@@ -822,27 +815,27 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The date column to check.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`value`,
         description: t`Period of the interval, where negative numbers go back in time.`,
-        example: "-20",
+        example: -20,
       },
       {
         name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("month"),
+        example: "month",
       },
       {
         name: t`offsetValue`,
         description: t`The initial interval period to start from, where negative values are back in time.`,
-        example: "-10",
+        example: -10,
       },
       {
         name: t`offsetUnit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("year"),
+        example: "year",
       },
     ],
   },
@@ -854,12 +847,12 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
-        example: "-30",
+        example: -30,
       },
       {
         name: t`text`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
-        example: formatStringLiteral("day"),
+        example: "day",
       },
     ],
   },
@@ -871,7 +864,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column to check.`,
-        example: formatIdentifier(t`Discount`),
+        example: ["dimension", t`Discount`],
       },
     ],
     docsPage: "isnull",
@@ -884,7 +877,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column to check.`,
-        example: formatIdentifier(t`Discount`),
+        example: ["dimension", t`Discount`],
       },
     ],
   },
@@ -896,7 +889,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column to check.`,
-        example: formatIdentifier(t`Name`),
+        example: ["dimension", t`Name`],
       },
     ],
     docsPage: "isempty",
@@ -909,7 +902,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column to check.`,
-        example: formatIdentifier(t`Name`),
+        example: ["dimension", t`Name`],
       },
     ],
   },
@@ -922,17 +915,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or value to return.`,
-        example: formatIdentifier(t`Comments`),
+        example: ["dimension", t`Comments`],
       },
       {
         name: t`value2`,
         description: t`If value1 is empty, value2 gets returned if its not empty.`,
-        example: formatIdentifier(t`Notes`),
+        example: ["dimension", t`Notes`],
       },
       {
         name: "…",
         description: t`If value1 is empty, and value2 is empty, the next non-empty one will be returned.`,
-        example: formatStringLiteral(t`No comments`),
+        example: t`No comments`,
       },
     ],
     docsPage: "coalesce",
@@ -946,19 +939,20 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
-        example: `${formatIdentifier(t`Weight`)} > 200`,
+        example: [">", ["dimension", t`Weight`], 200],
       },
       {
         name: t`output`,
         description: t`The value that will be returned if the preceding condition is true.`,
-        example: formatStringLiteral(t`Large`),
+        example: t`Large`,
       },
       {
         name: "…",
         description: t`You can add more conditions to test.`,
-        example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
-          t`Medium`,
-        )}, ${formatStringLiteral(t`Small`)}`,
+        example: [
+          "args",
+          [[">", ["dimension", t`Weight`], 150], t`Medium`, t`Small`],
+        ],
       },
     ],
     docsPage: "case",
@@ -972,19 +966,20 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
-        example: `${formatIdentifier(t`Weight`)} > 200`,
+        example: [">", ["dimension", t`Weight`], 200],
       },
       {
         name: t`output`,
         description: t`The value that will be returned if the preceding condition is true.`,
-        example: formatStringLiteral(t`Large`),
+        example: t`Large`,
       },
       {
         name: "…",
         description: t`You can add more conditions to test.`,
-        example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
-          t`Medium`,
-        )}, ${formatStringLiteral(t`Small`)}`,
+        example: [
+          "args",
+          [[">", ["dimension", t`Weight`], 150], t`Medium`, t`Small`],
+        ],
       },
     ],
   },
@@ -997,17 +992,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or value to check.`,
-        example: formatIdentifier(t`Category`),
+        example: ["dimension", t`Category`],
       },
       {
         name: t`value2`,
         description: t`The column or value to look for.`,
-        example: formatStringLiteral("Widget"),
+        example: "Widget",
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral("Gadget"),
+        example: "Gadget",
       },
     ],
   },
@@ -1020,17 +1015,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`value1`,
         description: t`The column or value to check.`,
-        example: formatIdentifier(t`Category`),
+        example: ["dimension", t`Category`],
       },
       {
         name: t`value2`,
         description: t`The column or value to look for.`,
-        example: formatStringLiteral("Widget"),
+        example: "Widget",
       },
       {
         name: "…",
         description: t`You can add more values to look for.`,
-        example: formatStringLiteral("Gadget"),
+        example: "Gadget",
       },
     ],
   },
@@ -1043,7 +1038,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1056,7 +1051,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1069,7 +1064,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1081,7 +1076,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The name of the column with your date or datetime value.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`mode`,
@@ -1092,7 +1087,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
 - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
 `,
-        example: formatStringLiteral("iso"),
+        example: "iso",
       },
     ],
   },
@@ -1105,7 +1100,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1118,7 +1113,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1131,7 +1126,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1144,7 +1139,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1157,7 +1152,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The datetime column.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
     ],
   },
@@ -1169,17 +1164,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`amount`,
         description: t`The number of units to be added.`,
-        example: "1",
+        example: 1,
       },
       {
         name: t`unit`,
         description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
-        example: formatStringLiteral("month"),
+        example: "month",
       },
     ],
     docsPage: "datetimeadd",
@@ -1193,17 +1188,17 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`amount`,
         description: t`The number of units to be subtracted.`,
-        example: "1",
+        example: 1,
       },
       {
         name: t`unit`,
         description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
-        example: formatStringLiteral("month"),
+        example: "month",
       },
     ],
     docsPage: "datetimesubtract",
@@ -1222,17 +1217,17 @@ We support tz database time zone names.`,
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
-        example: formatIdentifier(t`Created At`),
+        example: ["dimension", t`Created At`],
       },
       {
         name: t`target`,
         description: t`The timezone you want to assign to your column.`,
-        example: formatStringLiteral("Asia/Ho_Chi_Minh"),
+        example: "Asia/Ho_Chi_Minh",
       },
       {
         name: t`source`,
         description: t`The current time zone. Only required for timestamps with no time zone.`,
-        example: formatStringLiteral("UTC"),
+        example: "UTC",
       },
     ],
     docsPage: "converttimezone",
@@ -1259,11 +1254,21 @@ export const getHelpText = (
   };
 };
 
-const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
-  const exampleParameters =
-    args?.length && args.map(({ example }) => example).join(", ");
+function isArgsExpression(x: unknown): x is ["args", Expression[]] {
+  return Array.isArray(x) && x[0] === "args";
+}
 
-  return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
+const getHelpExample = ({ name, args = [] }: HelpTextConfig): Expression => {
+  const parameters: Expression[] = [];
+  for (const arg of args) {
+    if (isArgsExpression(arg.example)) {
+      parameters.push(...arg.example[1]);
+    } else {
+      parameters.push(arg.example);
+    }
+  }
+
+  return adjustCaseOrIf([name, ...parameters]);
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
