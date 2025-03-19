@@ -54,10 +54,8 @@
    {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-404 (t2/exists? :model/Database :id id))
   (if (nil? user_attribute)
-    ;; delete the DatabaseRouter and all mirror databases.
-    (t2/with-transaction [_conn]
-      (t2/delete! :model/DatabaseRouter :database_id id)
-      (t2/delete! :model/Database :router_database_id id))
+    ;; delete the DatabaseRouter
+    (t2/delete! :model/DatabaseRouter :database_id id)
     (if (t2/select-one :model/DatabaseRouter :database_id id)
       (t2/update! :model/DatabaseRouter :database_id id {:user_attribute user_attribute})
       (t2/insert! :model/DatabaseRouter {:database_id id :user_attribute user_attribute}))))

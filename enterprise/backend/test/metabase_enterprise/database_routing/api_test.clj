@@ -69,7 +69,8 @@
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}
                  :model/Database {mirror-db-id :id} {:router_database_id db-id}]
     (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id) {:user_attribute nil})
-    (is (not (t2/exists? :model/Database :id mirror-db-id)))
+    ;; the mirror databases are left around
+    (is (t2/exists? :model/Database :id mirror-db-id))
     (is (not (t2/exists? :model/DatabaseRouter :id router-id)))))
 
 (deftest endpoint-are-locked-down-to-superusers-only
