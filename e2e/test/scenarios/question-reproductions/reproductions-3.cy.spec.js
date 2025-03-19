@@ -2499,3 +2499,28 @@ describe("issue 53036", () => {
     });
   });
 });
+
+describe("issue 54708", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should submit form on enter right after modal appearance (metabase#54708)", () => {
+    H.openOrdersTable();
+    cy.findByTestId("qb-save-button").click();
+
+    cy.findByRole("dialog").within(() => {
+      cy.focused().should("have.attr", "value", "Orders");
+    });
+
+    cy.log("submit form by pressing Enter");
+    cy.realPress("Enter");
+
+    cy.log("verify that form was submitted");
+    cy.findByRole("dialog").should(
+      "contain",
+      "Saved! Add this to a dashboard?",
+    );
+  });
+});
