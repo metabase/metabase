@@ -43,6 +43,8 @@ jobs:
           m2-cache-key: "files-changed"
       - name: Build static-viz frontend
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ee
       - name: Upload Static Viz Bundle Artifact
         uses: actions/upload-artifact@v4
         with:
