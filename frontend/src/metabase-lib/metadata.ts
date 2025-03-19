@@ -235,3 +235,7 @@ export function tableOrCardDependentMetadata(
 export function columnKey(column: ColumnMetadata): string {
   return ML.column_key(column);
 }
+
+export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.is_column_metadata(arg);
+}

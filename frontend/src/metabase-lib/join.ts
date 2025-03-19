@@ -7,8 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
-import { isColumnMetadata } from "./internal";
-import { displayInfo } from "./metadata";
+import { displayInfo, isColumnMetadata } from "./metadata";
 import type {
   Bucket,
   CardMetadata,
