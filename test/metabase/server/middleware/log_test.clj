@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest log-info-input-tests
   (testing "log-info handles nil status input"

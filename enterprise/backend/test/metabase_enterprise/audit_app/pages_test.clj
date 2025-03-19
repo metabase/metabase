@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [ring.util.codec :as codec]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (defn- all-query-methods
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."

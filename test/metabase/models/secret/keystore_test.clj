@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins :test-drivers))
 
 (defn create-test-jks-instance
   "Creates a JKS instance and stores the given `entries` in it, using the given `ks-password` as the store password.

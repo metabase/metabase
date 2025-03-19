@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 

@@ -31,7 +31,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users :notifications))
+  (fixtures/initialize :test-users :notifications :scheduler))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work (not sure if this is still true)

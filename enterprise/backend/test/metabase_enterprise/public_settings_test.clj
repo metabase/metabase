@@ -7,7 +7,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest can-turn-off-password-login-with-jwt-enabled
   (mt/with-premium-features #{:sso-jwt}

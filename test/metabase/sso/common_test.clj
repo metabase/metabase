@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (defn- group-memberships
   "Return set of names of PermissionsGroups `user` currently belongs to."

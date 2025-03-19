@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest no-collections-test
   (testing "Dumping a card when there are no active collection should work properly (#16931)"

@@ -27,7 +27,7 @@
 ;; loaded
 (comment h2/keep-me)
 
-(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :web-server :test-users))
 
 (defn- reset-throttlers! []
   (doseq [throttler (vals @#'api.session/login-throttlers)]

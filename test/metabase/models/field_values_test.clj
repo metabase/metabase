@@ -17,7 +17,7 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (def ^:private base-types-without-field-values
   #{:type/*

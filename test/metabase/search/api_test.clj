@@ -27,7 +27,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered

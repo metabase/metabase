@@ -66,7 +66,7 @@
   metabase.test-runner.assert-exprs/keep-me
   metabase.test.util.log/keep-me)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."

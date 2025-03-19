@@ -16,7 +16,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :web-server))
+(use-fixtures :once (fixtures/initialize :db :scheduler :web-server))
 
 (deftest authentication-test
   (testing "POST /api/notify/db/:id"

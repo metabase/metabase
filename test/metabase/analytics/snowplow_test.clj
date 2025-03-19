@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (def ^:dynamic *snowplow-collector*
   "Fake Snowplow collector"

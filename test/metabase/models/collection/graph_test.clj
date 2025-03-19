@@ -15,7 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users :test-users-personal-collections))
 
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))

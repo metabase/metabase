@@ -60,6 +60,7 @@
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)
+      (prn "STEP" step)
       (check-for-circular-deps step)
       (locking step
         (when-not (@initialized step)
@@ -117,6 +118,12 @@
 (define-initialization :notifications
   (initialize-if-needed! :db)
   (notification/seed-notification!))
+
+(define-initialization :scheduler
+  (prn "INITIALIZED")
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.scheduler)
+  ((resolve 'metabase.test.initialize.scheduler/init!)))
 
 (defn- all-components
   "Set of all components/initialization steps that are defined."

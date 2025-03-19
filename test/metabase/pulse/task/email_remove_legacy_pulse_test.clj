@@ -6,7 +6,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest send-emails-to-admins-if-instance-has-legacy-pulse
   (mt/with-temp

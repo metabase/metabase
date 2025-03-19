@@ -9,7 +9,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest ^:parallel api-name->model-test
   (testing "api-name->model should be up-to-date"

@@ -50,5 +50,6 @@
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
   `quartz.properties` file.)"
   [db-type]
+  (prn db-type)
   (when (= db-type :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))

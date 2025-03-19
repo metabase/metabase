@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest connection-pool-spec-test
   (testing "Should be able to create a connection pool"

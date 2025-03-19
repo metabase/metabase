@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest google-auth-create-new-user!-test
   (mt/with-premium-features #{:sso-google}

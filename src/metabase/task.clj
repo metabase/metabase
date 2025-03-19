@@ -44,7 +44,9 @@
 (defn scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
-  @*quartz-scheduler*)
+  (if-let [scheduler @*quartz-scheduler*]
+    scheduler
+    (throw (ex-info "scheduler has not been initialized" {}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
@@ -106,10 +108,10 @@
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
-        (qs/standby new-scheduler)
-        (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)
-        (init-tasks!)))))
+        (init-tasks!))
+      (qs/standby new-scheduler)
+      (log/info "Task scheduler initialized into standby mode."))))
 
 ;;; this is a function mostly to facilitate testing.
 (defn- disable-scheduler? []
@@ -127,7 +129,8 @@
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
   []
-  (let [[old-scheduler] (reset-vals! *quartz-scheduler* nil)]
+  (prn "SHUTTING DOWN")
+  (let [[old-scheduler] #p (reset-vals! *quartz-scheduler* nil)]
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 

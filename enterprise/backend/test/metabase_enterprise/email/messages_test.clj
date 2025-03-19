@@ -7,7 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :scheduler :test-users))
 
 (deftest admin-or-ee-monitoring-details-emails-test
   (let [db-id (:id (mt/db))]

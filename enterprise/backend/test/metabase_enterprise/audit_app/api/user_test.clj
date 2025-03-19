@@ -9,7 +9,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"

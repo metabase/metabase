@@ -28,7 +28,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins))
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (deftest ^:parallel correct-driver-test
   (mt/test-driver :redshift

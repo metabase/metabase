@@ -46,7 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins :test-drivers))
 
 ;; HELPER FNS
 

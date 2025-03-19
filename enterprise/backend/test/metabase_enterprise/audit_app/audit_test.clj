@@ -20,7 +20,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :plugins))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins))
 
 (defmacro with-audit-db-restoration [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then

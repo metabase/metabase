@@ -31,7 +31,7 @@
                                                  @#'token-check/store-circuit-breaker-config)]
     (f)))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 (use-fixtures :each reset-circuit-breaker-fixture)
 
 (defn- token-status-response
