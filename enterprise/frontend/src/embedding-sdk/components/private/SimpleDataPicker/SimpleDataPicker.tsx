@@ -105,7 +105,7 @@ function translateEntityTypesToSearchModels(
   }
 
   if (entityTypes.includes("table")) {
-    searchModels.push("card");
+    searchModels.push("table");
   }
 
   return searchModels;

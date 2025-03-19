@@ -395,7 +395,7 @@ describe("scenarios > embedding > full app", () => {
       cy.log("test default `entity_types`");
       startNewEmbeddingQuestion();
       H.popover().within(() => {
-        cy.findByRole("link", { name: "Orders" }).should("be.visible");
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
         cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       });
 
@@ -404,7 +404,7 @@ describe("scenarios > embedding > full app", () => {
         searchParameters: { entity_types: "table" },
       });
       H.popover().within(() => {
-        cy.findByRole("link", { name: "Orders" }).should("be.visible");
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
         cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
       });
 
@@ -413,7 +413,7 @@ describe("scenarios > embedding > full app", () => {
         searchParameters: { entity_types: "model" },
       });
       H.popover().within(() => {
-        cy.findByRole("link", { name: "Orders" }).should("not.exist");
+        cy.findByRole("link", { name: "Reviews" }).should("not.exist");
         cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       });
     });
