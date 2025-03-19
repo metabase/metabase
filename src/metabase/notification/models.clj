@@ -181,14 +181,21 @@
   #{:notification-subscription/system-event
     :notification-subscription/cron})
 
+(def ^:private subscription-ui-display-types
+  #{:cron/raw
+    :cron/builder
+    nil})
+
 (t2/deftransforms :model/NotificationSubscription
-  {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
-   :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
+  {:type            (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
+   :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
+   :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 
 (mr/def ::NotificationSubscription
   "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
+
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
@@ -196,8 +203,10 @@
       [:cron_schedule {:optional true} nil?]]]
     [:notification-subscription/cron
      [:map
-      [:cron_schedule                  :string]
-      [:event_name    {:optional true} nil?]]]]])
+      [:cron_schedule                    :string]
+      [:event_name      {:optional true} nil?]
+      ;; enum values can change depending on UI
+      [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
 
 (defn- validate-subscription
   "Validate a NotificationSubscription."
@@ -553,7 +562,7 @@
                                   :extra-cols   [:card_id]}
                   :subscriptions {:model        :model/NotificationSubscription
                                   :fk-column    :notification_id
-                                  :compare-cols [:notification_id :type :event_name :cron_schedule]
+                                  :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id

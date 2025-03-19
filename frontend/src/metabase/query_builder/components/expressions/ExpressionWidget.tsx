@@ -15,13 +15,12 @@ import {
 import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
 import type { Shortcut } from "./Editor/Shortcuts";
-import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
+import { Layout, LayoutFooter, LayoutHeader } from "./Layout";
 import { NameInput } from "./NameInput";
 import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
-const EDITOR_WIDGET_WIDTH = 688;
 
 export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
   startRule?: S;
@@ -152,14 +151,12 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   if (startRule === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
-        <ExpressionWidgetHeader
-          title={t`Select columns to combine`}
-          onBack={handleCancel}
-        />
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
+          withTitle
         />
       </Box>
     );
@@ -179,13 +176,8 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }
 
   return (
-    <Box
-      w="calc(100vw - 2 * var(--mantine-spacing-lg))"
-      maw={EDITOR_WIDGET_WIDTH}
-      data-testid="expression-editor"
-      data-ignore-editor-clicks="true"
-    >
-      {header}
+    <Layout data-testid="expression-editor" data-ignore-editor-clicks="true">
+      {header && <LayoutHeader>{header}</LayoutHeader>}
 
       <Editor
         id="expression-content"
@@ -199,37 +191,39 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
         error={error}
+        hasHeader={Boolean(header)}
         onCloseEditor={onClose}
       />
 
-      <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
-        {withName && (
-          <NameInput
-            value={name}
-            onChange={setName}
-            onSubmit={handleSubmit}
-            startRule={startRule}
-          />
-        )}
-
-        <Flex py="sm" pr="sm" gap="sm">
-          {onClose && (
-            <Button
-              onClick={onClose}
-              variant="subtle"
-              size="xs"
-            >{t`Cancel`}</Button>
+      <LayoutFooter>
+        <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
+          {withName && (
+            <NameInput
+              value={name}
+              onChange={setName}
+              onSubmit={handleSubmit}
+              startRule={startRule}
+            />
           )}
-          <Button
-            variant="filled"
-            disabled={!isValid}
-            onClick={handleSubmit}
-            size="xs"
-          >
-            {initialName || initialClause ? t`Update` : t`Done`}
-          </Button>
+          <Flex py="sm" pr="sm" gap="sm">
+            {onClose && (
+              <Button
+                onClick={onClose}
+                variant="subtle"
+                size="xs"
+              >{t`Cancel`}</Button>
+            )}
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              onClick={handleSubmit}
+              size="xs"
+            >
+              {initialName || initialClause ? t`Update` : t`Done`}
+            </Button>
+          </Flex>
         </Flex>
-      </Flex>
-    </Box>
+      </LayoutFooter>
+    </Layout>
   );
 };

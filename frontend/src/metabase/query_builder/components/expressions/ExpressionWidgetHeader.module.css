@@ -4,6 +4,7 @@
   border-bottom: 1px solid var(--mb-color-border);
   display: flex;
   align-items: center;
+  height: 3rem;
 
   .HeaderButton {
     color: var(--mb-color-text-light);

@@ -298,7 +298,7 @@ describe("scenarios > question > filter", () => {
 
     // Avoid flakiness caused by CodeMirror not accepting the keypress
     // immediately
-    cy.wait(100);
+    cy.wait(200);
     cy.realPress("ArrowDown");
 
     H.CustomExpressionEditor.completion("ceil")
