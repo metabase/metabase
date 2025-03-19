@@ -13,6 +13,7 @@ function restore_package_files() {
 function install_packages() {
   local version=$1
   local cypress_react_package=$(get_cypress_react_package "$version")
+  local dependencies="react@^$version react-dom@^$version $cypress_react_package"
 
   if [[ ! $version =~ ^[0-9]+$ ]]; then
     echo "Error: Version must be a number"
@@ -20,7 +21,8 @@ function install_packages() {
   fi
 
   # Install React and Cypress React test harness
-  yarn add "react@^$version react-dom@^$version $cypress_react_package"
+  echo "Installing $dependencies"
+  yarn add $dependencies
 }
 
 function print_usage() {
