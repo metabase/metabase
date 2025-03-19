@@ -11,80 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; should following be set during startup?
-(defonce ^:dynamic *initial-seed* (doto (or (config/config-long :mb-gentest-seed)
-                                            (.nextLong ^Random (Random.)))
-                                    (as-> $ (log/infof "Initial seed: %d" $))))
-
-(defonce ^:dynamic *iteration-seed* nil)
-
-(comment
-  (alter-var-root #'*initial-seed* (fn [& _] (.nextLong ^Random (Random.))))
-  (alter-var-root #'*initial-seed* (fn [& _] 1784144538647289715)))
-
-(def ^:dynamic *original-report* nil)
-
-#_:clj-kondo/ignore ;; because of println as done in clojure.test, subject to change
-(defn- report
-  [m]
-  ;; temporary hack for printing non-exceptional results.
-  (when (and (not (::iteration-seed m)) (#{:fail :error} (:type m)))
-    (clojure.test/with-test-out
-      (println "Iteration seed: %d" *iteration-seed*)))
-  (case (:type m)
-    (::generation ::execution)
-    (clojure.test/with-test-out
-      (clojure.test/inc-report-counter :error)
-      (println "\nERROR in" (clojure.test/testing-vars-str m))
-      (when (seq clojure.test/*testing-contexts*)
-        (println (clojure.test/testing-contexts-str)))
-      ;; this prints context
-      (clojure.pprint/pprint m))
-
-    (*original-report* m)))
-
-;; TODO: this is not written best possible way; later
-(defn pretty-stacktrace
-  ([stacktrace]
-   (mapv (fn [^StackTraceElement s]
-           [(.getClassName s) (.getFileName s) (.getLineNumber s)])
-         stacktrace))
-  ([stacktrace limit]
-   (let [ps (pretty-stacktrace stacktrace)]
-     (subvec ps 0 (min (count ps) limit)))))
-
-(defn- ex->map
-  [^Exception e]
-  (let [se ^StackTraceElement (first (.getStackTrace e))]
-    (merge {:message (ex-message e)
-            :file (.getFileName se)
-            :line (.getLineNumber se)}
-           (when-some [data (ex-data e)]
-             {:data data})
-           {:stacktrace (vec (cond->> (pretty-stacktrace (.getStackTrace e))
-                               (some? (ex-cause e)) (take 10)))})))
-
-(defn process-exception-chain
-  [^Exception e]
-  (when (some? e)
-    (into [(ex->map e)]
-          (process-exception-chain (ex-cause e)))))
-
-(defn generate-report
-  [iteration-index iteration-seed ^Exception e]
-  (let [toplevel (ex->map e)]
-    (merge
-     {:type (-> toplevel :data :type)
-      ::iteration-index iteration-index
-      ::iteration-seed iteration-seed
-      :message (-> toplevel :message)
-      :file (-> toplevel :file)
-      :line (-> toplevel :line)}
-     ;; temporarily? hardcoded!!!
-     (select-keys (:data toplevel) [:form :bindings])
-     {:chain (process-exception-chain (ex-cause e))})))
-
-;; TODO: Add repl override!
+;; TODO: Refactor!
 (defn limit-spec->limit-fn
   [limit-spec]
   (let [env-iterations (config/config-int :mb-gentest-limit-iterations)
@@ -114,104 +41,28 @@
           (fn []
             (< (swap! counter inc) 1))))))
 
-;; TODO: Maybe add testing context?
-(defn do-with-gentest
-  [limit-spec thunk]
-  (let [limit-fn (limit-spec->limit-fn limit-spec)
-        seed (atom *initial-seed*)]
-    (log/infof "INITIAL SEED: %d" *initial-seed*)
-    ;; TODO: Double check binding works as expected. "exprs executed first and _bound_ in parallel"
-    (binding [*original-report* clojure.test/report
-              clojure.test/report report]
-      (loop [iteration-index 0]
-        (when (limit-fn)
-          (binding [*iteration-seed* @seed
-                    tu.rng/*generator* (Random. @seed)]
-            (log/info "ITERATION SEED: %d" *iteration-seed*)
-            (try
-              (thunk)
-              (catch Exception e
-                (when-not (#{::generation ::execution} (:type (ex-data e)))
-                  ;; TODO: Should wrap in unhandled exception
-                  (throw e))
-                (report (generate-report iteration-index *iteration-seed* e)))
-              (finally
-                (reset! seed (.nextLong ^Random tu.rng/*generator*)))))
-          (recur (inc iteration-index)))))))
+;; It is written this way in case we decide for multiple parameters in fmtstr.
+(defmacro testing
+  [[fmtstr & args] & body]
+  `(clojure.test/testing (format ~(str "\nwith " fmtstr "\n%s\n")
+                                   ~@(map (fn [form]
+                                            `(with-out-str (clojure.pprint/pprint ~form)))
+                                          args))
+       ~@body))
 
-(defmacro with-gentest
-  [limit-spec bindings & body]
-  (let [safer-bindings (map-indexed (fn [i form]
-                                      (if (zero? (mod i 2))
-                                        form
-                                        `(try ~form
-                                              (catch Exception e#
-                                                (throw (ex-info "Generation failed"
-                                                                {:type ::generation
-                                                                 :form (quote ~form)}
-                                                                e#))))))
-                                    bindings)
-        quoted-bindings (into [] (comp (take-nth 2)
-                                       (mapcat (fn [binding-sym]
-                                                 [`(quote ~binding-sym) binding-sym])))
-                              bindings)]
-    `(do-with-gentest ~limit-spec (fn []
-                                    (let [~@safer-bindings]
-                                      (try
-                                        ~@body
-                                        (catch Exception e#
-                                          (throw (ex-info "Execution failed"
-                                                          {:type ::execution
-                                                           :bindings ~quoted-bindings}
-                                                          e#)))))))))
-
-;;;;;;;;; another approach; defgentest + gentest/iterate
-
-
-(def ^:dynamic *context* nil)
-
-;; This I won't need!
-(defn generate-report-2
-  [iteration-index iteration-seed ^Exception e]
-  (let [toplevel (ex->map e)]
-    ;; this should be modified
-    (merge
-     {:type (-> toplevel :data :type)
-      ::iteration-index iteration-index
-      ::iteration-seed iteration-seed
-      :message (-> toplevel :message)
-      :file (-> toplevel :file)
-      :line (-> toplevel :line)}
-     ;; temporarily? hardcoded!!!
-     (select-keys (:data toplevel) [:form :bindings])
-     {:chain (process-exception-chain (ex-cause e))})))
-
-;; to print also context I need special report
-(defn report-2
-  [m]
-  (*original-report* (cond-> m
-                       (#{:fail :error} (:type m)) (assoc :context @*context*))))
-
-
+;; sole purpose of this is just to signal to [[initial-iteration-seed]] It should use bound tu.rng/*generator* to
+;; generate initial interation seed. This smells.
 (def ^:dynamic *context-seed* nil)
+
+;; Print this on load so it is included in CI log, just in case everything passed and we would want verbatim replay.
+(when-some [seed (config/config-long :mb-gentest-context-seed)]
+  (log/infof "ENV context-seed %d" seed))
 
 (defn context-seed
   "Context seed is either plain random or from env"
   []
   (or (config/config-long :mb-gentest-context-seed)
       (.nextLong ^Random (Random.))))
-
-(defn empty-context
-  []
-  (volatile! {}))
-
-(defn update-context!
-  [k f & args]
-  (vswap! *context* update k #(apply f % args)))
-
-(defn spit-context!
-  [k v]
-  (vswap! *context* assoc k v))
 
 (defn initial-iteration-seed
   "Iteration seed is 1 from env 2 dependent on context or 3 random"
@@ -221,76 +72,58 @@
         (.nextLong ^Random tu.rng/*generator*))
       (.nextLong ^Random (Random.))))
 
-(defn do-with-iterate!
+(defn do-iterate
   [limit-spec thunk]
   (let [limit-fn (limit-spec->limit-fn limit-spec)
-        seed (atom (initial-iteration-seed))]
-    (spit-context! :iteration/seed @seed)
+        ;; TODO: the atom can be removed!!!
+        iteration-seed (atom (initial-iteration-seed))]
     (loop [iteration-index 0]
       (when (limit-fn)
-        (log/fatalf "ITERATION SEED: %d" @seed)
-        (binding [tu.rng/*generator* (Random. @seed)]
-          (try
-            (thunk)
-            (catch Exception e
-              ;; This should be completely removed -- which exceptions to catch? any?
-              (when-not (#{::generation ::execution} (:type (ex-data e)))
-                  ;; TODO: Should wrap in unhandled exception
-                (def eee e)
-                (throw e))
-              ;; this is not called right away!
-              (report-2 (generate-report-2 iteration-index *iteration-seed* e)))
-            (finally
-              (let [next-seed (.nextLong ^Random tu.rng/*generator*)]
-                (spit-context! :iteration/seed next-seed)
-                (reset! seed next-seed)))))
+        (testing ["iteration index" iteration-index]
+          (testing ["iteration seed" @iteration-seed]
+            (binding [tu.rng/*generator* (Random. @iteration-seed)]
+              (try
+                (thunk)
+                (catch Throwable t
+                  ;; TODO: Consider setting actual to cause instead.
+                  (clojure.test/do-report {:type :error, :message nil, :expected nil, :actual t}))
+                (finally
+                  (reset! iteration-seed (.nextLong ^Random tu.rng/*generator*)))))))
         (recur (inc iteration-index))))))
 
-;; TODO: add context manipulation in here, ie add things into the context
 (defmacro iterate
   [limit-spec bindings & body]
   (let [safer-bindings (mapcat (fn [[sym form]]
-                                 [sym
-                                  (let [result-sym (gensym "result-")]
-                                    `(try
-                                       (let [~result-sym ~form]
-                                         (update-context! :iteration/bindings
-                                                          (fnil into []) [(quote ~sym) ~result-sym])
-                                         ~result-sym)
-                                       (catch Exception e#
-                                         (throw (ex-info "Binding error"
-                                                         {:type :iteration/binding-error
-                                                          :form (quote ~form)}
-                                                         e#)))))])
+                                 [sym `(try
+                                         ~form
+                                         (catch Exception e#
+                                           (throw (ex-info "Binding error"
+                                                           {:type :error
+                                                            ;; form is unused atm, maybe will be in do-with-
+                                                            :form (quote ~form)}
+                                                           e#))))])
                                (partition 2 bindings))]
-    `(do-with-iterate! ~limit-spec (fn []
-                                    (let [~@safer-bindings]
-                                      (try
-                                        ~@body
-                                        (catch Exception e#
-                                          (throw (ex-info "Execution error"
-                                                          {:type :iteration/execution-error}
-                                                          e#)))))))))
+    `(do-iterate ~limit-spec
+                 (fn []
+                   (let [~@safer-bindings]
+                     (testing ["iteration bindings" ~(mapv (fn [sym#]
+                                                             [`'~sym# sym#])
+                                                           (take-nth 2 safer-bindings))]
+                       (try
+                         ~@body
+                         (catch Exception e#
+                           (throw (ex-info "Execution error"
+                                           {:type :error}
+                                           e#))))))))))
 
-(comment
-  (macroexpand '(iterate 
-                 {:gentest.default-limit/iterations 1}
-                 [a (- 1 10)
-                  b (+ 1 20)]
-                 1))
-)
-
-;; TODO: consider do-with-gentest
+;; TODO: Consider do-with-gentest.
 (defmacro defgentest
   [test-sym & body]
-  `(clojure.test/deftest ~test-sym
-     (binding [*original-report* clojure.test/report
-               clojure.test/report report-2]
-       (when (config/config-bool :mb-gentest-run)
-         (binding [*context* (volatile! {})]
+  `(do (def ~test-sym nil)
+       (clojure.test/deftest ~test-sym
+         (when (config/config-bool :mb-gentest-run)
            (let [seed# (context-seed)]
-             (spit-context! :context/seed seed#)
              (binding [*context-seed* seed#
                        tu.rng/*generator* (Random. seed#)]
-               (log/fatalf "CONTEXT SEED: %d" seed#)
-               ~@body)))))))
+               (testing ["context-seed" seed#]
+                 ~@body)))))))
