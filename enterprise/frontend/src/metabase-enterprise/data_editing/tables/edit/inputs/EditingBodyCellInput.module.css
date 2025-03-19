@@ -1,9 +1,10 @@
 .input {
   transition: none;
   outline: 2px solid var(--mb-base-color-blue-50);
+  outline-offset: -2px;
   border-color: transparent;
-  border-radius: 0.25rem;
   box-sizing: border-box;
+  font-weight: 700;
 
   /* needed to avoid outline truncation for a focused cell */
   z-index: 5;

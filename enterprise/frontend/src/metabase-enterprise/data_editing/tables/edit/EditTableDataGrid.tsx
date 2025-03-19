@@ -24,8 +24,6 @@ type EditTableDataGridProps = {
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
 
-const TABLE_DATA_VIEW_HEADER_HEIGHT = 32;
-
 export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
@@ -85,7 +83,6 @@ export const EditTableDataGrid = ({
     columnOrder,
     columnSizingMap,
     columnsOptions,
-    defaultRowHeight: TABLE_DATA_VIEW_HEADER_HEIGHT,
   });
 
   const handleCellClick = useCallback(
@@ -110,7 +107,6 @@ export const EditTableDataGrid = ({
     <DataGrid
       {...tableProps}
       classNames={{
-        tableGrid: S.tableGrid,
         headerContainer: S.tableHeaderContainer,
         headerCell: S.tableHeaderCell,
         bodyContainer: S.tableBodyContainer,
@@ -118,8 +114,6 @@ export const EditTableDataGrid = ({
         row: S.tableRow,
       }}
       styles={{
-        // Overrides HEADER_HEIGHT JS const
-        row: { height: TABLE_DATA_VIEW_HEADER_HEIGHT },
         // Overrides theme constants and default white bg
         bodyCell: {
           backgroundColor: undefined,
