@@ -588,20 +588,21 @@
                      :filter      (into [op] standard-literal-expression-refs)
                      :limit       1}))))))))
 
-;; This fails, but also fails for non-literal expressions.
-#_(deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
-    (doseq [[expression expected] [[[:expression "True"] [standard-literal-expression-values]]
-                                   [[:expression "False"] []]]]
-      (testing (str "filter literal expressions with " expression)
-        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
-          (is (= expected
-                 (mt/formatted-rows
-                  standard-literal-expression-row-formats
-                  (mt/run-mbql-query orders
-                    {:expressions standard-literal-expression-defs
-                     :fields      standard-literal-expression-refs
-                     :filter      expression
-                     :limit       1}))))))))
+(deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
+  (doseq [[expression expected] [[[:value true nil]     [standard-literal-expression-values]]
+                                 [[:value false nil]    []]
+                                 [[:expression "True"]  [standard-literal-expression-values]]
+                                 [[:expression "False"] []]]]
+    (testing (str "filter literal expressions with " expression)
+      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+        (is (= expected
+               (mt/formatted-rows
+                standard-literal-expression-row-formats
+                (mt/run-mbql-query orders
+                  {:expressions standard-literal-expression-defs
+                   :fields      standard-literal-expression-refs
+                   :filter      expression
+                   :limit       1}))))))))
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
