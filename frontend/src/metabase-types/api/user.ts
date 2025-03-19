@@ -117,6 +117,7 @@ export type UpdateUserRequest = {
 
 export type UserKeyValue =
   | { namespace: "test"; key: string; value: any }
+  | { namespace: "indicator-menu"; key: string; value: string[] }
   | {
       namespace: "user_acknowledgement";
       key: string;
