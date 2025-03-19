@@ -5,25 +5,11 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.queue :as queue])
-  (:import (java.time Duration Instant)
-           (java.util.concurrent DelayQueue Delayed DelayQueue TimeUnit)))
+  (:import (java.util.concurrent LinkedBlockingQueue)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private timeout-ms 5000)
-
-(defrecord DelayValue [value ^Instant ready-at]
-  Delayed
-  (getDelay [_ unit]
-    (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
-  (compareTo [this other]
-    (Long/compare (.getDelay this TimeUnit/MILLISECONDS)
-                  (.getDelay ^Delayed other TimeUnit/MILLISECONDS))))
-
-(defn- put-with-delay!
-  "Put an item on the delay queue, with a delay given in milliseconds."
-  [^DelayQueue queue delay-ms value]
-  (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
 
 (defn- simulate-queue! [queue &
                         {:keys [realtime-threads realtime-events backfill-events]
@@ -100,67 +86,80 @@
       (mt/ordered-subset? realtime-events processed))))
 
 (deftest ^:synchronized take-batch-test
-  (let [q (DelayQueue.)                                     ;using a delay queue to simulate a queue with intermittent messages
-        n 5
-        batch-size 3
+  (let [q           (queue/delay-queue)
+        n           5
+        batch-size  3
         first-delay 300
         extra-delay 200
-        buffer 50
-        msg-delay #(+ first-delay (* extra-delay %))]
+        buffer      50
+        msg-delay   #(+ first-delay (* extra-delay %))]
     (dotimes [i n]
-      (put-with-delay! q (msg-delay i) i))
+      (queue/put-with-delay! q (msg-delay i) i))
     ;; queue an outlier
-    (put-with-delay! q (msg-delay 10) 10)
+    (queue/put-with-delay! q (msg-delay 10) 10)
     (let [started-roughly (u/start-timer)
           since-start #(u/since-ms started-roughly)
           time-until-nth #(max 0 (+ buffer (- (msg-delay %) (since-start))))]
       (binding [queue/*take-batch-wait-ms* (time-until-nth 10)]
         (testing "Take-batch will wait for the first message to be ready"
-          (is (= [0 1 2] (map :value (queue/take-batch! q batch-size (time-until-nth 3))))))
+          (is (= [0 1 2] (queue/take-batch! q batch-size (time-until-nth 3)))))
         (testing "Some time later we can read an additional batch of messages without any polling delay"
           (Thread/sleep ^long (time-until-nth n))
-          (is (= [3 4] (map :value (queue/take-batch! q batch-size 0)))))
+          (is (= [3 4] (queue/take-batch! q batch-size 0))))
         (testing "Eventually the outlier is ready on its own"
-          (is (= [10] (map :value (queue/take-batch! q batch-size (time-until-nth 10))))))
+          (is (= [10] (queue/take-batch! q batch-size (time-until-nth 10)))))
         (testing "Afterwards the queue is empty"
           (is (nil? (queue/take-batch! q batch-size 0))))))))
+
+(deftest non-delayed-take-batch-test
+  (testing "take-batch works with any blocking queue"
+    (binding [queue/*take-batch-wait-ms* 500]               ; keep the test from hanging
+      (let [q (LinkedBlockingQueue.)
+            n 5]
+        (dotimes [i n]
+          (.offer q i))
+        (is (= [0 1 2] (queue/take-batch! q 3 10)))
+        (is (= [3 4] (queue/take-batch! q 3 10)))))))
 
 (defn- thread-name-running? [name]
   (some #(= name (.getName ^Thread %)) (keys (Thread/getAllStackTraces))))
 
 (deftest listener-handler-test
   (testing "Standard behavior with a handler"
-    (binding [queue/*take-batch-wait-ms* 500] ; keep the test from hanging
+    (binding [queue/*take-batch-wait-ms* 500]               ; keep the test from hanging
       (let [listener-name "test-listener"
             items-handled (atom 0)
             last-batch (atom nil)
-            queue (queue/blocking-queue)
+            queue (queue/delay-queue)
             thread-name "queue-test-listener-1"]
         (is (not (thread-name-running? thread-name)))
+        (is (not (queue/listener-exists? listener-name)))
 
         (queue/listen! listener-name queue
                        (fn [batch] (swap! items-handled + (count batch)) (reset! last-batch batch))
-                       {:max-next-ms 5})
+                       {:max-batch-ms 5})
         (is (thread-name-running? thread-name))
+        (is (queue/listener-exists? listener-name))
 
         (is (nil? (queue/listen! listener-name queue
                                  (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))
-                                 {:max-next-ms 5})))
+                                 {:max-batch-ms 5})))
 
-        (queue/put! queue "a")
+        (queue/put-with-delay! queue 0 "a")
         (Thread/sleep 10)
         (is (= 1 @items-handled))
         (is (= ["a"] @last-batch))
 
-        (queue/put! queue "b")
-        (queue/put! queue "c")
-        (queue/put! queue "d")
+        (queue/put-with-delay! queue 0 "b")
+        (queue/put-with-delay! queue 0 "c")
+        (queue/put-with-delay! queue 0 "d")
         (Thread/sleep 10)
         (is (= 4 @items-handled))
         (is (some #{"d"} @last-batch))
 
         (queue/stop-listening! listener-name)
         (is (not (thread-name-running? thread-name)))
+        (is (not (queue/listener-exists? listener-name)))
 
         ; additional calls to stop are no-ops
         (is (nil? (queue/stop-listening! listener-name)))))))
@@ -168,7 +167,7 @@
 (deftest result-listener-test
   (testing "When result and error handlers are defined, they are called correctly"
     (let [listener-name "test-result-listener"
-          queue (queue/blocking-queue)
+          queue (queue/delay-queue)
           result-count (atom 0)
           error-count (atom 0)
           last-error (atom nil)]
@@ -176,18 +175,18 @@
                      (fn [batch] (if (some #{"err"} batch)
                                    (throw (ex-info "Test Error" {:batch batch}))
                                    (count batch)))
-                     {:result-handler (fn [result duration name]
-                                        (is (= listener-name name))
-                                        (is (< 0 duration))
-                                        (swap! result-count + result))
-                      :err-handler    (fn [e] (swap! error-count inc) (reset! last-error e))
-                      :max-next-ms    5})
-      (queue/put! queue "a")
+                     {:success-handler (fn [result duration name]
+                                         (is (= listener-name name))
+                                         (is (< 0 duration))
+                                         (swap! result-count + result))
+                      :err-handler     (fn [e _] (swap! error-count inc) (reset! last-error e))
+                      :max-batch-ms    5})
+      (queue/put-with-delay! queue 0 "a")
       (Thread/sleep 10)
       (is (= 0 @error-count))
       (is (= 1 @result-count))
 
-      (queue/put! queue "err")
+      (queue/put-with-delay! queue 0 "err")
       (Thread/sleep 10)
       (is (= 1 @error-count))
       (is (= 1 @result-count))
@@ -200,7 +199,7 @@
     (let [listener-name "test-multithreaded-listener"
           batches-handled (atom 0)
           handlers-used (atom #{})
-          queue (queue/blocking-queue)]
+          queue (queue/delay-queue)]
       (is (not (thread-name-running? (str "queue-" listener-name "-1"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-2"))))
       (is (not (thread-name-running? (str "queue-" listener-name "-3"))))
@@ -208,16 +207,16 @@
       (queue/listen! listener-name
                      queue
                      (fn [batch] (is (<= 10 (count batch))) (count batch))
-                     {:result-handler  (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
-                      :pool-size       3
+                     {:success-handler    (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
+                      :pool-size          3
                       :max-batch-messages 10
-                      :max-next-ms     5})
+                      :max-batch-ms       5})
       (is (thread-name-running? (str "queue-" listener-name "-1")))
       (is (thread-name-running? (str "queue-" listener-name "-2")))
       (is (thread-name-running? (str "queue-" listener-name "-3")))
 
       (dotimes [i 100]
-        (queue/put! queue i))
+        (queue/put-with-delay! queue 0 i))
 
       (Thread/sleep 100)
       (is (= 100 @batches-handled))

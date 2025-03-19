@@ -95,8 +95,6 @@
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
-  ;(clojure.stacktrace/print-stack-trace (ex-info "test" {}))
-
   (when (supports-index?)
     (when-let [updates (->> (search.spec/search-models-to-update instance always?)
                             (remove (comp search.util/impossible-condition? second))
