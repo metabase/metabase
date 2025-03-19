@@ -1,231 +1,175 @@
-import fetchMock from "fetch-mock";
-import { match } from "ts-pattern";
-
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDashboard,
-} from "metabase-types/api/mocks";
-
-import { setupTranslateEntityIdEndpoints } from "../../../../../../test/__support__/server-mocks/entity-ids";
+import { type RenderHookOptions, waitFor } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 
 import {
-  type UseTranslateEntityIdProps,
-  useValidatedEntityId,
-} from "./use-validated-entity-id";
+  callsToTranslateEntityIdEndpoint,
+  setupTranslateEntityIdEndpoint,
+} from "__support__/server-mocks/entity-ids";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { getStore } from "metabase/store";
+import type { BaseEntityId } from "metabase-types/api";
 
-const TestComponent = ({ type, id }: UseTranslateEntityIdProps) => {
-  const result = useValidatedEntityId({ type, id });
+import { useValidatedEntityId } from "./use-validated-entity-id";
 
-  return (
-    <div>
-      <div data-testid="entity-id">
-        {result.id !== null ? result.id.toString() : "null"}
-      </div>
-      <div data-testid="is-loading">{result.isLoading.toString()}</div>
-      <div data-testid="is-error">{result.isError.toString()}</div>
-    </div>
+function renderHookWithReduxProvider<TProps, TResult>(
+  hook: (props: TProps) => TResult,
+  options?: Omit<RenderHookOptions<TProps>, "wrapper">,
+) {
+  const store = getStore();
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
   );
-};
 
-interface SetupProps extends UseTranslateEntityIdProps {}
-
-const MOCK_CARD = createMockCard();
-const MOCK_DASHBOARD = createMockDashboard();
-const MOCK_COLLECTION = createMockCollection();
-
-const setup = ({ type = "card", id = null }: Partial<SetupProps> = {}) => {
-  const mockData = match(type)
-    .with("dashboard", type => ({ type, data: [MOCK_DASHBOARD] }))
-    .with("collection", type => ({ type, data: [MOCK_COLLECTION] }))
-    .otherwise(type => ({ type, data: [MOCK_CARD] }));
-
-  setupTranslateEntityIdEndpoints(mockData);
-
-  renderWithProviders(<TestComponent type={type} id={id} />);
-
-  const getHookResult = () => {
-    const entityId = screen.getByTestId("entity-id").textContent;
-    const isLoading = screen.getByTestId("is-loading").textContent === "true";
-    const isError = screen.getByTestId("is-error").textContent === "true";
-
-    return {
-      id: entityId === "null" ? null : Number(entityId),
-      isLoading,
-      isError,
-    };
-  };
-
-  const waitForIsLoading = async () => {
-    return waitFor(async () => {
-      expect(await screen.findByTestId("is-loading")).toHaveTextContent(
-        "false",
-      );
-    });
-  };
-
-  return {
-    getHookResult,
-    waitForIsLoading,
-  };
-};
+  return renderHook(hook, {
+    wrapper,
+    ...options,
+  });
+}
 
 describe("useValidatedEntityId", () => {
-  describe("handling numeric IDs", () => {
-    it("should return the numeric ID directly without translation", () => {
-      const { getHookResult } = setup({ id: 123 });
+  it("should pass through numeric IDs without calling the translation endpoint", () => {
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: 123 }),
+    );
 
-      expect(getHookResult()).toEqual({
-        id: 123,
-        isLoading: false,
-        isError: false,
-      });
+    expect(result.current).toEqual({
+      id: 123,
+      isLoading: false,
+      isError: false,
+    });
+
+    expect(callsToTranslateEntityIdEndpoint()).toHaveLength(0);
+  });
+
+  it("should handle undefined ID", () => {
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: undefined }),
+    );
+
+    expect(result.current).toEqual({
+      id: null,
+      isLoading: false,
+      isError: true,
     });
   });
 
-  describe("handling entity IDs", () => {
-    it("should return loading state initially and then translated ID when API responds", async () => {
-      const entityId = MOCK_CARD.entity_id;
-      const translatedId = MOCK_CARD.id;
+  it("should handle null ID", () => {
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: null }),
+    );
 
-      const { getHookResult, waitForIsLoading } = setup({
-        id: entityId,
-      });
-
-      await waitForIsLoading();
-
-      expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
-
-      expect(getHookResult()).toEqual({
-        id: translatedId,
-        isLoading: false,
-        isError: false,
-      });
-    });
-
-    it("should return error state when translation fails", async () => {
-      const entityId = "oisin";
-
-      const { getHookResult, waitForIsLoading } = setup({
-        type: "collection",
-        id: entityId,
-      });
-
-      await waitForIsLoading();
-
-      expect(getHookResult()).toEqual({
-        id: null,
-        isLoading: false,
-        isError: true,
-      });
-    });
-
-    it("should return error state when API request fails", async () => {
-      const entityId = "oisinoisinoisinoisino";
-
-      const { getHookResult, waitForIsLoading } = setup({
-        type: "dashboard",
-        id: entityId,
-      });
-
-      await waitForIsLoading();
-
-      expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
-
-      expect(getHookResult()).toEqual({
-        id: null,
-        isLoading: false,
-        isError: true,
-      });
+    expect(result.current).toEqual({
+      id: null,
+      isLoading: false,
+      isError: true,
     });
   });
 
-  describe("handling invalid or null IDs", () => {
-    it("should return error state for undefined ID", () => {
-      const { getHookResult } = setup({ id: undefined });
+  it("should handle invalid entity ID strings", () => {
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: "not-an-entity-id" }),
+    );
 
-      expect(getHookResult()).toEqual({
-        id: null,
-        isLoading: false,
-        isError: true,
-      });
-    });
-
-    it("should return error state for null ID", () => {
-      const { getHookResult } = setup({ id: null });
-
-      expect(getHookResult()).toEqual({
-        id: null,
-        isLoading: false,
-        isError: true,
-      });
-    });
-
-    it("should return error state for non-entity ID strings", () => {
-      const { getHookResult } = setup({ id: "not-an-entity-id" });
-
-      expect(getHookResult()).toEqual({
-        id: null,
-        isLoading: false,
-        isError: true,
-      });
+    expect(result.current).toEqual({
+      id: null,
+      isLoading: false,
+      isError: true,
     });
   });
 
-  describe("handling different entity types", () => {
-    it("should handle card entity IDs correctly", async () => {
-      const entityId = MOCK_CARD.entity_id;
-      const translatedId = MOCK_CARD.id;
+  it("should translate card entity IDs correctly", async () => {
+    const validEntityId = "2".repeat(21) as BaseEntityId;
 
-      const { getHookResult } = setup({
+    setupTranslateEntityIdEndpoint({
+      [validEntityId]: {
         type: "card",
-        id: entityId,
-      });
-
-      await waitFor(() => expect(getHookResult().isLoading).toBe(false));
-
-      expect(getHookResult()).toEqual({
-        id: translatedId,
-        isLoading: false,
-        isError: false,
-      });
+        status: "ok",
+        id: 123,
+      },
     });
 
-    it("should handle dashboard entity IDs correctly", async () => {
-      const entityId = MOCK_DASHBOARD.entity_id;
-      const translatedId = MOCK_DASHBOARD.id;
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: validEntityId }),
+    );
 
-      const { getHookResult } = setup({
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current).toEqual({
+      id: 123,
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it("should translate dashboard entity IDs correctly", async () => {
+    const validEntityId = "3".repeat(21) as BaseEntityId;
+
+    setupTranslateEntityIdEndpoint({
+      [validEntityId]: {
         type: "dashboard",
-        id: entityId,
-      });
-
-      await waitFor(() => expect(getHookResult().isLoading).toBe(false));
-
-      expect(getHookResult()).toEqual({
-        id: translatedId,
-        isLoading: false,
-        isError: false,
-      });
+        status: "ok",
+        id: 456,
+      },
     });
 
-    it("should handle collection entity IDs correctly", async () => {
-      const entityId = MOCK_COLLECTION.entity_id;
-      const translatedId = MOCK_COLLECTION.id;
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "dashboard", id: validEntityId }),
+    );
 
-      const { getHookResult } = setup({
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current).toEqual({
+      id: 456,
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it("should translate collection entity IDs correctly", async () => {
+    const validEntityId = "4".repeat(21) as BaseEntityId;
+
+    setupTranslateEntityIdEndpoint({
+      [validEntityId]: {
         type: "collection",
-        id: entityId,
-      });
+        status: "ok",
+        id: 789,
+      },
+    });
 
-      await waitFor(() => expect(getHookResult().isLoading).toBe(false));
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "collection", id: validEntityId }),
+    );
 
-      expect(getHookResult()).toEqual({
-        id: translatedId,
-        isLoading: false,
-        isError: false,
-      });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current).toEqual({
+      id: 789,
+      isLoading: false,
+      isError: false,
+    });
+  });
+
+  it("should handle failed translations", async () => {
+    const invalidEntityId = "5".repeat(21) as BaseEntityId;
+
+    setupTranslateEntityIdEndpoint({
+      [invalidEntityId]: {
+        type: "card",
+        status: "not-found",
+        id: null,
+      },
+    });
+
+    const { result } = renderHookWithReduxProvider(() =>
+      useValidatedEntityId({ type: "card", id: invalidEntityId }),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current).toEqual({
+      id: null,
+      isLoading: false,
+      isError: true,
     });
   });
 });
