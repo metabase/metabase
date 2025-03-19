@@ -1201,12 +1201,11 @@
       #js {:operator (name operator)
            :column   column})))
 
-;; TODO remove once all filter-parts are migrated to MBQL lib
 (defn ^:export is-column-metadata
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
-  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
-  and we should see if there's a better way to get the needed information."
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
