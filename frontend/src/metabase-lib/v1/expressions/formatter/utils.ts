@@ -48,4 +48,6 @@ export const pathMatchers = lift({
   ...nodeMatchers,
   isExpressionParts: Lib.isExpressionParts,
   isColumnMetadata: Lib.isColumnMetadata,
+  isMetricMetadata: Lib.isMetricMetadata,
+  isSegmentMetadata: Lib.isSegmentMetadata,
 });
