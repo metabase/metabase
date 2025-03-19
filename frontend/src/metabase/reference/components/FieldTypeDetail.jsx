@@ -6,7 +6,10 @@ import { t } from "ttag";
 
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseCore from "metabase/lib/core";
+import {
+  FIELD_SEMANTIC_TYPES,
+  FIELD_SEMANTIC_TYPES_MAP,
+} from "metabase/lib/core";
 import D from "metabase/reference/components/Detail.module.css";
 import { isNumericBaseType, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
@@ -28,17 +31,15 @@ const FieldTypeDetail = ({
             <Select
               placeholder={t`Select a field type`}
               value={fieldTypeFormField.value || field.semantic_type}
-              options={MetabaseCore.field_semantic_types
-                .concat({
-                  id: null,
-                  name: t`No field type`,
-                  section: t`Other`,
-                })
-                .filter(type =>
-                  !isNumericBaseType(field)
-                    ? !(type.id && type.id.startsWith("timestamp_"))
-                    : true,
-                )}
+              options={FIELD_SEMANTIC_TYPES.concat({
+                id: null,
+                name: t`No field type`,
+                section: t`Other`,
+              }).filter(type =>
+                !isNumericBaseType(field)
+                  ? !(type.id && type.id.startsWith("timestamp_"))
+                  : true,
+              )}
               optionValueFn={o => o.id}
               onChange={({ target: { value } }) =>
                 fieldTypeFormField.onChange(value)
@@ -46,10 +47,8 @@ const FieldTypeDetail = ({
             />
           ) : (
             <span>
-              {getIn(MetabaseCore.field_semantic_types_map, [
-                field.semantic_type,
-                "name",
-              ]) || t`No field type`}
+              {getIn(FIELD_SEMANTIC_TYPES_MAP, [field.semantic_type, "name"]) ||
+                t`No field type`}
             </span>
           )}
         </span>
@@ -78,6 +77,7 @@ const FieldTypeDetail = ({
     </div>
   </div>
 );
+
 FieldTypeDetail.propTypes = {
   field: PropTypes.object.isRequired,
   foreignKeys: PropTypes.object.isRequired,

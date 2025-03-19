@@ -11,7 +11,6 @@ import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
-import AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type Variable from "metabase-lib/v1/variables/Variable";
 import type {
@@ -82,15 +81,16 @@ export function updateCardTemplateTagNames(
 ///////////////////////////
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class NativeQuery extends AtomicQuery {
-  _nativeDatasetQuery: NativeDatasetQuery;
+export default class NativeQuery {
+  _question: Question;
+  _datasetQuery: DatasetQuery;
 
   constructor(
     question: Question,
     datasetQuery: DatasetQuery = NATIVE_QUERY_TEMPLATE,
   ) {
-    super(question, datasetQuery);
-    this._nativeDatasetQuery = datasetQuery as NativeDatasetQuery;
+    this._question = question;
+    this._datasetQuery = datasetQuery;
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
@@ -102,14 +102,33 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   private _setQuery(query: Lib.Query): NativeQuery {
-    return this.question().setQuery(query).legacyQuery();
+    return this.question().setQuery(query).legacyNativeQuery();
+  }
+
+  /**
+   * Returns a question updated with the current dataset query.
+   * Can only be applied to query that is a direct child of the question.
+   */
+  question = _.once((): Question => {
+    return this._question.setLegacyQuery(this);
+  });
+
+  /**
+   * Convenience method for accessing the global metadata
+   */
+  metadata() {
+    return this._question.metadata();
+  }
+
+  /**
+   * Returns the dataset_query object underlying this Query
+   */
+  datasetQuery(): DatasetQuery {
+    return this._datasetQuery;
   }
 
   /* Query superclass methods */
 
-  /**
-   * @deprecated use MLv2
-   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -128,25 +147,18 @@ export default class NativeQuery extends AtomicQuery {
     return this._databaseId() == null || this.queryText().length === 0;
   }
 
-  /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
     return (database && database.tables) || null;
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _databaseId(): DatabaseId | null | undefined {
     return Lib.databaseID(this._query());
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this.metadata().database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
@@ -157,7 +169,10 @@ export default class NativeQuery extends AtomicQuery {
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
-      const metadataProvider = Lib.metadataProvider(databaseId, this._metadata);
+      const metadataProvider = Lib.metadataProvider(
+        databaseId,
+        this.metadata(),
+      );
       const newQuery = Lib.withDifferentDatabase(
         this._query(),
         databaseId,
@@ -319,11 +334,13 @@ export default class NativeQuery extends AtomicQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).legacyQuery();
+    return this.question()
+      .setParameter(tag.id, newParameter)
+      .legacyNativeQuery();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
-    return this.question().setDatasetQuery(datasetQuery).legacyQuery();
+    return this.question().setDatasetQuery(datasetQuery).legacyNativeQuery();
   }
 
   dimensionOptions(

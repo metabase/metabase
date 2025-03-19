@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -177,7 +178,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("fields-picker").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("City").click();
       cy.findByText("State").click();
       cy.findByText("Birth Date").click();
@@ -392,6 +393,190 @@ describe("scenarios > visualizations > table", () => {
 
     cy.tick(5000);
     cy.findByTestId("query-builder-main").findByText("Waiting for results...");
+  });
+});
+
+describe("scenarios > visualizations > table > dashboards context", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow viewing data in dashboards", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    // Ensure it works on a regular dashboard
+    assertCanViewOrdersTableDashcard();
+
+    // Ensure it works on a public dashboard
+    H.openSharingMenu("Create a public link");
+    cy.findByTestId("public-link-input")
+      .invoke("val")
+      .should("not.be.empty")
+      .then(publicLink => {
+        cy.signOut();
+        cy.visit(publicLink);
+      });
+
+    assertCanViewOrdersTableDashcard();
+  });
+
+  it("should support text wrapping setting", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "reviews",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+        },
+        visualization_settings: {
+          "table.column_widths": [246, 195, 69, 116, 134, 83],
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+          "table.columns": [
+            {
+              name: "BODY",
+              enabled: true,
+            },
+            {
+              name: "CREATED_AT",
+              enabled: true,
+            },
+            {
+              name: "ID",
+              enabled: true,
+            },
+            {
+              name: "PRODUCT_ID",
+              enabled: true,
+            },
+            {
+              name: "REVIEWER",
+              enabled: true,
+            },
+            {
+              name: "RATING",
+              enabled: true,
+            },
+          ],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      const wrappedRowInitialHeight = 104.5;
+      const updatedRowHeight = 87;
+      H.visitDashboard(dashboard_id);
+
+      H.assertRowHeight(0, wrappedRowInitialHeight);
+
+      H.resizeTableColumn("BODY", 100);
+
+      // Ensure resizing led to the reduction of the row height
+      H.assertRowHeight(0, updatedRowHeight);
+
+      // Ensure resizing did not permanently changed the row height
+      cy.reload();
+      H.assertRowHeight(0, wrappedRowInitialHeight);
+
+      // Disable text wrapping from dashcard settings
+      H.editDashboard();
+
+      H.getDashboardCard(0)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Show visualization options").click();
+        });
+
+      cy.findByTestId("Body-settings-button").click();
+
+      H.popover().findByText("Wrap text").click();
+
+      cy.button("Done").click();
+
+      // Ensure rows have fixed default height
+      H.assertRowHeight(0, 36);
+    });
+  });
+
+  it("should support the row index setting", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.findByLabelText("Show visualization options").click();
+      });
+    H.modal().findByText("Show row index").click();
+
+    cy.button("Done").click();
+
+    H.saveDashboard();
+
+    H.tableInteractiveBody()
+      .findAllByTestId("row-id-cell")
+      .eq(0)
+      .should("have.text", 1);
+
+    // Apply sorting to ensure row index does not change
+    H.tableHeaderClick("ID");
+
+    H.tableInteractiveBody()
+      .findAllByTestId("row-id-cell")
+      .eq(0)
+      .should("have.text", 1);
+  });
+
+  it("should support resizing columns in dashcard viz settings", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(ID)")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
+        cy.wrap(originalWidth).as("originalWidth");
+      });
+
+    H.editDashboard();
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.findByLabelText("Show visualization options").click();
+      });
+
+    const resizeByWidth = 100;
+    H.resizeTableColumn("ID", resizeByWidth, 1);
+
+    H.modal().findByText("Done").click();
+
+    H.saveDashboard();
+
+    cy.get("@originalWidth").then(originalWidth => {
+      cy.get("@headerCell").should($newCell => {
+        const newWidth = $newCell[0].getBoundingClientRect().width;
+        expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
+      });
+    });
+
+    // Ensure it persists after page reload
+    cy.reload();
+
+    cy.get("@originalWidth").then(originalWidth => {
+      cy.get("@headerCell").should($newCell => {
+        const newWidth = $newCell[0].getBoundingClientRect().width;
+        expect(newWidth).to.be.gte(originalWidth + resizeByWidth);
+      });
+    });
   });
 });
 
@@ -611,4 +796,97 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
 
 function headerCells() {
   return cy.findAllByTestId("header-cell");
+}
+
+function assertClientSideTableSorting({
+  columnName,
+  columnId,
+  descValue,
+  ascValue,
+  defaultValue,
+}) {
+  H.tableInteractiveScrollContainer().scrollTo("topLeft");
+
+  const cellSelector = `[data-column-id=${columnId}]`;
+
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .first()
+    .find(cellSelector)
+    .should("have.text", defaultValue);
+
+  // Descending sorting by ID
+  H.tableHeaderClick(columnName);
+  H.tableHeaderColumn(columnName)
+    .closest("[role=columnheader]")
+    .findByLabelText("chevrondown icon");
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .first()
+    .find(cellSelector)
+    .should("have.text", descValue);
+
+  // Ascending sorting by ID
+  H.tableHeaderClick(columnName);
+  H.tableHeaderColumn(columnName)
+    .closest("[role=columnheader]")
+    .findByLabelText("chevronup icon");
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .first()
+    .find(cellSelector)
+    .should("have.text", ascValue);
+
+  // Default sorting by ID
+  H.tableHeaderClick(columnName);
+  H.tableHeaderColumn(columnName)
+    .closest("[role=columnheader]")
+    .findByRole("img")
+    .should("not.exist");
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .first()
+    .find(cellSelector)
+    .should("have.text", defaultValue);
+}
+
+function assertCanViewOrdersTableDashcard() {
+  H.assertTableRowsCount(2000);
+  H.tableInteractiveScrollContainer().scrollTo("bottomLeft");
+
+  // Ensure it renders correct data
+  // eslint-disable-next-line no-unsafe-element-filtering
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .last()
+    .findAllByRole("gridcell")
+    .eq(0)
+    .should("have.text", "2000"); // Last Order ID
+
+  H.tableInteractiveScrollContainer().scrollTo("bottomRight");
+
+  // eslint-disable-next-line no-unsafe-element-filtering
+  H.tableInteractiveBody()
+    .findAllByRole("row")
+    .last()
+    .findAllByRole("gridcell")
+    .last()
+    .should("have.text", "9"); // Quantity of the last Order
+
+  // Ensure sorting works
+  assertClientSideTableSorting({
+    columnName: "ID",
+    columnId: "ID",
+    defaultValue: 1,
+    descValue: 2000,
+    ascValue: 1,
+  });
+
+  assertClientSideTableSorting({
+    columnName: "Created At",
+    columnId: "CREATED_AT",
+    defaultValue: "February 11, 2025, 9:40 PM",
+    descValue: "April 19, 2026, 2:07 PM",
+    ascValue: "June 1, 2022, 6:12 PM",
+  });
 }

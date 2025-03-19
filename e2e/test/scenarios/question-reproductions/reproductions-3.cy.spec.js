@@ -492,7 +492,7 @@ describe("issue 40435", () => {
     H.openNotebook();
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("User ID").click();
     });
     H.getNotebookStep("data").button("Pick columns").click();

@@ -363,7 +363,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByTestId("fields-picker").click();
 
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByLabelText("ID").should("be.disabled");
       cy.findByText("Tax").click();
       cy.findByLabelText("ID").should("be.enabled").click();
