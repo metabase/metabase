@@ -119,11 +119,10 @@
 ;; TODO: Consider do-with-gentest.
 (defmacro defgentest
   [test-sym & body]
-  `(do (def ~test-sym nil)
-       (clojure.test/deftest ~test-sym
-         (when (config/config-bool :mb-gentest-run)
-           (let [seed# (context-seed)]
-             (binding [*context-seed* seed#
-                       tu.rng/*generator* (Random. seed#)]
-               (testing ["context-seed" seed#]
-                 ~@body)))))))
+  `(clojure.test/deftest ~test-sym
+    (when (config/config-bool :mb-gentest-run)
+      (let [seed# (context-seed)]
+        (binding [*context-seed* seed#
+                  tu.rng/*generator* (Random. seed#)]
+          (testing ["context-seed" seed#]
+            ~@body))))))
