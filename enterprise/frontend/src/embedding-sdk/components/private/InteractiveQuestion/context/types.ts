@@ -33,6 +33,7 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
+  withDownloads?: boolean;
 } & Pick<
   SaveQuestionProps<SDKCollectionReference>,
   "targetCollection" | "saveToCollection"
@@ -42,10 +43,6 @@ export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
   params: { slug?: string };
 };
-
-export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
-  InteractiveQuestionConfig & QuestionMockLocationParameters
->;
 
 // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
 export type InteractiveQuestionId = CardId | "new" | (string & {});
@@ -64,7 +61,7 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "targetCollection"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
   Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
