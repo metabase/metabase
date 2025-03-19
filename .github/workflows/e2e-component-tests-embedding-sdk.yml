@@ -94,7 +94,9 @@ jobs:
       # TODO: remove this
       - name: FOR TESTING PURPOSES - Download fake uberjar
         shell: bash
-        run: wget -O ./target/uberjar/metabase.jar https://downloads.metabase.com/v0.53.7/metabase.jar
+        run: |
+          mkdir -p ./target/uberjar
+          wget -O ./target/uberjar/metabase.jar https://downloads.metabase.com/v0.53.7/metabase.jar
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
