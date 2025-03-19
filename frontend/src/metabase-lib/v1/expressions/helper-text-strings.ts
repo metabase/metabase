@@ -301,7 +301,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "integer",
     structure: "integer",
-    category: "string",
+    category: "conversion",
     description: () => t`Converts a string to an integer.`,
     args: [
       {
