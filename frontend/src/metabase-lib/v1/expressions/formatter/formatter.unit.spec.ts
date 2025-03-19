@@ -1,6 +1,7 @@
 /* eslint-disable jest/expect-expect */
 
 import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { dataForFormatting, query } from "../__support__/shared";
 import { processSource } from "../process";
@@ -20,16 +21,19 @@ function setup(printWidth: number, startRule: string = "expression") {
       };
 
       const source = dedent(expr);
-      const { expression: mbql, compileError } = processSource({
+      const { expressionClause, compileError } = processSource({
         ...options,
         source,
       });
 
-      if (!mbql || compileError) {
+      if (!expressionClause || compileError) {
         throw new Error(`Cannot compile expression: ${compileError?.message}`);
       }
 
-      const result = await format(mbql, {
+      const stageIndex = -1;
+      const parts = Lib.expressionParts(query, stageIndex, expressionClause);
+
+      const result = await format(parts, {
         ...options,
         printWidth,
       });
@@ -99,6 +103,9 @@ describe("format", () => {
             "BAD",
             "OK"
           )
+        `,
+        expression`
+          Offset([Total], -1)
         `,
         expression`
           startsWith(
@@ -199,7 +206,15 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           // unreachable
           return;
         }
-        const result = await format(expression, {
+
+        const stageIndex = -1;
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+        const parts = Lib.expressionParts(query, stageIndex, clause);
+        const result = await format(parts, {
           ...opts,
           printWidth: Infinity,
         });
