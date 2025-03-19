@@ -10932,6 +10932,22 @@ databaseChangeLog:
               UPDATE core_user SET locale = 'zh_CN' WHERE locale = 'zh';
       rollback: # nothing to do; zh_CN is backwards compatible
 
+  - changeSet:
+      id: v54.2025-03-19T16:00:00
+      author: qnkhuat
+      comment: Add `notification.condition` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: condition
+                  type: ${text.type}
+                  remarks: Condition for the notification
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
