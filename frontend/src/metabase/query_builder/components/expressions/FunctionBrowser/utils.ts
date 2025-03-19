@@ -51,6 +51,8 @@ function getCategoryName(category: string) {
       return t`String functions`;
     case "date":
       return t`Date functions`;
+    case "conversion":
+      return t`Conversions`;
     case "window":
       return t`Window functions`;
     case "aggregation":
