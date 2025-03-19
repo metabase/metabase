@@ -10834,6 +10834,22 @@ databaseChangeLog:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
 
+  - changeSet:
+      id: v54.2025-03-19T16:00:00
+      author: qnkhuat
+      comment: Add `notification.condition` column
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: condition
+                  type: ${text.type}
+                  remarks: Condition for the notification
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
