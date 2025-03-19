@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type {
+  BaseEntityId,
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
@@ -45,4 +46,4 @@ export const COLLECTION_TYPES: Record<
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
-  "okNLSZKdSxaoG58JSQY54";
+  "okNLSZKdSxaoG58JSQY54" as BaseEntityId;

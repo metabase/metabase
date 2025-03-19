@@ -1,4 +1,7 @@
-import { screen } from "__support__/ui";
+import { within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { mockScrollIntoView, screen } from "__support__/ui";
 import { setup } from "metabase/components/Schedule/test-utils";
 
 const getInputValues = () => {
@@ -8,6 +11,10 @@ const getInputValues = () => {
 };
 
 describe("Schedule", () => {
+  beforeAll(() => {
+    mockScrollIntoView();
+  });
+
   it("shows time when schedule is daily", () => {
     setup();
     expect(getInputValues()).toEqual(["daily", "12:00"]);
@@ -35,5 +42,49 @@ describe("Schedule", () => {
       },
     });
     expect(getInputValues()).toEqual(["monthly", "first", "Monday", "8:00"]);
+  });
+
+  it("shows 10 minutes by default for every_n_minutes schedule", () => {
+    setup({
+      schedule: { schedule_type: "every_n_minutes" },
+    });
+    expect(getInputValues()).toEqual(["by the minute", "10"]);
+    expect(screen.getByText("minutes")).toBeInTheDocument();
+  });
+
+  it("shows proper single noun for every_n_minutes schedule", () => {
+    setup({
+      schedule: { schedule_type: "every_n_minutes", schedule_minute: 1 },
+    });
+    expect(getInputValues()).toEqual(["by the minute", "1"]);
+    expect(screen.getByText("minute")).toBeInTheDocument();
+  });
+
+  it("shows proper plural noun for every_n_minutes schedule", () => {
+    setup({
+      schedule: { schedule_type: "every_n_minutes", schedule_minute: 5 },
+    });
+    expect(getInputValues()).toEqual(["by the minute", "5"]);
+    expect(screen.getByText("minutes")).toBeInTheDocument();
+  });
+
+  it("does not allow 0 minutes option for every_n_minutes schedule", async () => {
+    setup({
+      schedule: { schedule_type: "every_n_minutes" },
+    });
+
+    const minuteInput = screen.getByTestId("select-minute");
+    expect(minuteInput).toBeInTheDocument();
+
+    await userEvent.click(minuteInput);
+
+    const listbox = await screen.findByRole("listbox");
+    expect(listbox).toBeInTheDocument();
+
+    const options = within(listbox).getAllByRole("option");
+    const optionValues = options.map(option => option.getAttribute("value"));
+
+    expect(optionValues).not.toContain("0");
+    expect(Math.min(...optionValues.map(Number))).toBe(1);
   });
 });
