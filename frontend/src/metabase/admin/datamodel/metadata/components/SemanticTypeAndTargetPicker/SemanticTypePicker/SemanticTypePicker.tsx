@@ -7,9 +7,11 @@ import {
   FIELD_SEMANTIC_TYPES,
 } from "metabase/lib/core";
 import { Select } from "metabase/ui";
+import { isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 
-const NULL_VALUE = "null";
+const NO_SEMANTIC_TYPE = null;
+const NO_SEMANTIC_TYPE_STRING = "null";
 
 interface Props {
   baseType: Field["base_type"];
@@ -50,30 +52,38 @@ export const SemanticTypePicker = ({
 };
 
 function parseValue(value: string): string | null {
-  return value === NULL_VALUE ? null : value;
+  return value === NO_SEMANTIC_TYPE_STRING ? NO_SEMANTIC_TYPE : value;
 }
 
 function stringifyValue(value: string | null): string {
-  return value === null ? NULL_VALUE : value;
+  return value === NO_SEMANTIC_TYPE ? NO_SEMANTIC_TYPE_STRING : value;
 }
 
 function getData({ baseType, value }: Pick<Props, "baseType" | "value">) {
   const options = [
     ...FIELD_SEMANTIC_TYPES,
     {
-      id: null,
+      id: NO_SEMANTIC_TYPE,
       name: t`No semantic type`,
       section: t`Other`,
       icon: "empty" as const,
     },
   ]
     .filter(option => {
-      if (option.id === null) {
+      const isCurrentValue = option.id === value;
+      const isNoSemanticType = option.id === NO_SEMANTIC_TYPE;
+
+      if (isNoSemanticType || isCurrentValue) {
         return true;
       }
+
       const isDeprecated = DEPRECATED_FIELD_SEMANTIC_TYPES.includes(option.id);
-      const isCurrentValue = option.id === value;
-      return !isDeprecated || isCurrentValue;
+
+      if (isDeprecated) {
+        return false;
+      }
+
+      return isa(option.id, baseType);
     })
     .map(option => ({
       label: option.name,
