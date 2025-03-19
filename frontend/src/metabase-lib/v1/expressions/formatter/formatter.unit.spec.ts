@@ -1,6 +1,7 @@
 import expression from "ts-dedent";
 
 import type { Expression } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import { dataForFormatting, query } from "../__support__/shared";
 import { compileExpression } from "../compiler";
@@ -31,7 +32,16 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
         throw res.error;
       }
 
-      const result = await format(res.expression, {
+      if (!res.expressionClause) {
+        throw new Error("Cannot compile expression");
+      }
+
+      const parts = Lib.expressionParts(
+        query,
+        options.stageIndex,
+        res.expressionClause,
+      );
+      const result = await format(parts, {
         ...options,
         printWidth,
       });
@@ -101,6 +111,9 @@ describe("format", () => {
             "BAD",
             "OK"
           )
+        `,
+        expression`
+          Offset([Total], -1)
         `,
         expression`
           startsWith(
@@ -201,7 +214,15 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           // unreachable
           return;
         }
-        const result = await format(expression, {
+
+        const stageIndex = -1;
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+        const parts = Lib.expressionParts(query, stageIndex, clause);
+        const result = await format(parts, {
           ...opts,
           printWidth: Infinity,
         });
