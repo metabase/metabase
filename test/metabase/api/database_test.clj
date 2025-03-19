@@ -81,10 +81,11 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
-    {:engine               (u/qualified-name (:engine db))
-     :settings             {}
-     :features             (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status "complete"})))
+    {:engine                (u/qualified-name (:engine db))
+     :settings              {}
+     :features              (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status   "complete"
+     :router_user_attribute nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -627,7 +628,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details)
+    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
