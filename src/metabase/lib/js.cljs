@@ -1210,6 +1210,14 @@
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
+(defn ^:export is-metric-metadata
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
+
+  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
+  and we should see if there's a better way to get the needed information."
+  [arg]
+  (and (map? arg) (= :metadata/metric (:lib/type arg))))
+
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
 ;; functions provided to inspect and manage that list of fields.
