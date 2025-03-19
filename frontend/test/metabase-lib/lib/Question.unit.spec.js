@@ -329,22 +329,24 @@ describe("Question", () => {
   });
 
   describe("At the heart of a question is an MBQL query.", () => {
-    describe("legacyQuery()", () => {
+    describe("legacyNativeQuery()", () => {
       it("returns a correct class instance for structured query", () => {
-        expect(orders_raw_question.legacyQuery()).toBeUndefined();
+        expect(orders_raw_question.legacyNativeQuery()).toBeUndefined();
       });
 
       it("returns a correct class instance for native query", () => {
-        const query = native_orders_count_question.legacyQuery();
+        const query = native_orders_count_question.legacyNativeQuery();
         expect(query instanceof NativeQuery).toBe(true);
       });
     });
 
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = native_orders_count_question.legacyQuery();
+        const rawQuery = native_orders_count_question.legacyNativeQuery();
         const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
-        expect(newRawQuestion.legacyQuery() instanceof NativeQuery).toBe(true);
+        expect(newRawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
+          true,
+        );
       });
     });
 
@@ -354,7 +356,9 @@ describe("Question", () => {
           native_orders_count_question.datasetQuery(),
         );
 
-        expect(rawQuestion.legacyQuery() instanceof NativeQuery).toBe(true);
+        expect(rawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
+          true,
+        );
       });
     });
   });
@@ -554,6 +558,30 @@ describe("Question", () => {
         expect(
           underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
         ).toBe(true);
+      });
+
+      it("questions that differ only by randomized idents are considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(false);
+      });
+
+      it("questions that differ by query only are not considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: PRODUCTS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(true);
       });
     });
   });
