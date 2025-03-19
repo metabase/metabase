@@ -64,19 +64,8 @@ jobs:
               node_version: requirements.node,
             };
 
-  checkout-and-prepare:
-    needs: [files-changed, get-build-requirements]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: frontend
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-
   build-uberjar:
-    needs: [files-changed, checkout-and-prepare]
+    needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true'
@@ -88,6 +77,13 @@ jobs:
       # make sure that builds on release branches get licenses, because we use them for releases
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
@@ -103,7 +99,7 @@ jobs:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   build-embedding-sdk:
-    needs: [files-changed, checkout-and-prepare]
+    needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true'
@@ -112,6 +108,11 @@ jobs:
     env:
       MB_EDITION: ee
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Compile CLJS
         run: yarn build-pure:cljs
         shell: bash
