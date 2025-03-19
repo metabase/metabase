@@ -19,7 +19,6 @@
    "it"
    "ja"
    "ko"
-   "lt"
    "lv"
    "ms"
    "nb"
