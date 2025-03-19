@@ -68,22 +68,22 @@ export const MiniBarCell = <TValue,>({
         };
 
   if (isStatic) {
-    // @TSP TODO - This logic has issues
+    // @TSP TODO - Would be better to unify this with barStyle
     const svgBarStyle = !hasNegative
       ? {
-          width: barPercent + "%",
+          width: Math.round((barPercent / 100) * BAR_WIDTH),
           x: 0,
           rx: BORDER_RADIUS,
         }
       : isNegative
         ? {
-            width: barPercent / 2 + "%",
-            x: BAR_WIDTH / 2 - (barPercent / 2 / 100) * BAR_WIDTH,
+            width: Math.round((barPercent / 200) * BAR_WIDTH),
+            x: Math.round(BAR_WIDTH / 2 - (barPercent / 200) * BAR_WIDTH),
             rx: BORDER_RADIUS,
             rxLeft: 0,
           }
         : {
-            width: barPercent / 2 + "%",
+            width: Math.round((barPercent / 200) * BAR_WIDTH),
             x: BAR_WIDTH / 2,
             rx: BORDER_RADIUS,
             rxRight: 0,

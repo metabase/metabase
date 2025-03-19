@@ -79,7 +79,5 @@ function javascript_visualization(rawSeries, dashcardSettings, options) {
 }
 
 function minibar(minibarData) {
-  const content = StaticViz.RenderMinibar(JSON.parse(minibarData));
-  console.log("TSP content: ", content);
-  return content;
+  return StaticViz.RenderMinibar(JSON.parse(minibarData));
 }
