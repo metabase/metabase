@@ -1,6 +1,5 @@
 (ns metabase.notification.send
   (:require
-   [clojure.set :as s]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
@@ -42,7 +41,7 @@
    :max-interval-millis     30000
    :retry-on-exception-pred (comp not ::skip-retry? ex-data)})
 
-(defn- contains-unretriable-errors?
+(defn- unretriable-error?
   [error]
   (let [unretriable-errors #{:slack/invalid-token :slack/channel-not-found}]
     (contains? unretriable-errors error)))
@@ -51,7 +50,7 @@
   [exception channel-type]
   (let [error (:error-type (ex-data exception))]
     (and (= :channel/slack channel-type)
-         (contains-unretriable-errors? error))))
+         (unretriable-error? error))))
 
 (defn- channel-send-retrying!
   [notification-id payload-type handler message]
