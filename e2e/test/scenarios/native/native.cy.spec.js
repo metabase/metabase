@@ -348,7 +348,11 @@ describe("scenarios > question > native", () => {
     cy.log("open editor on a normal screen size");
     cy.findByTestId("visibility-toggler").click();
 
+    cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
+
     dataReferenceSidebar().should("be.visible");
+    // close sidebar explicitly
+    dataReferenceSidebar().icon("close").click();
 
     cy.findByTestId("visibility-toggler").click();
 
