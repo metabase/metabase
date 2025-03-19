@@ -92,12 +92,6 @@ jobs:
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
-      # - name: FOR TESTING PURPOSES - Download fake uberjar
-      #   shell: bash
-      #   run: |
-      #     mkdir -p ./target/uberjar
-      #     wget -O ./target/uberjar/metabase.jar https://downloads.metabase.com/v0.53.7/metabase.jar
-
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
