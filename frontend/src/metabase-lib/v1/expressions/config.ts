@@ -110,6 +110,31 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  split: {
+    displayName: `split`,
+    type: "string",
+    args: ["string", "string", "number"],
+    validator: function (_arg: any, _delimeter: string, position: number) {
+      if (position < 1) {
+        return t`Expected positive integer but found ${position}`;
+      }
+    },
+  },
+  "url-pathname": {
+    displayName: `urlPathname`,
+    type: "string",
+    args: ["string"],
+  },
+  cast: {
+    displayName: `cast`,
+    type: "any",
+    args: ["expression", "string"],
+    validator: function (_arg: any, type: string) {
+      if (!["Integer", "Text", "Date"].includes(type)) {
+        return t`Expected "Integer", "Text", or "Date" but found "${type}"`;
+      }
+    },
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
@@ -530,6 +555,9 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower",
   "upper",
   "substring",
+  "url-pathname",
+  "cast",
+  "split",
   "regex-match-first",
   "concat",
   "replace",

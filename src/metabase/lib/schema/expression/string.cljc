@@ -1,13 +1,14 @@
 (ns metabase.lib.schema.expression.string
   (:require
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]))
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.util.malli.registry :as mr]))
 
 (doseq [op [:trim :ltrim :rtrim :upper :lower]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text
     [:schema [:ref ::expression/string]]))
 
-(doseq [op [:host :domain :subdomain]]
+(doseq [op [:host :domain :subdomain :url-pathname]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text
     [:schema [:ref ::expression/string]]))
 
@@ -37,3 +38,18 @@
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+
+(mbql-clause/define-tuple-mbql-clause :split :- :type/Text
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/integer]])
+
+(mr/def ::mbql-type
+  [:enum "Integer" "Text" "Date"])
+
+(mbql-clause/define-mbql-clause :cast (mbql-clause/tuple-clause-schema :cast
+                                                                       [:schema :any]
+                                                                       [:schema [:ref ::mbql-type]]))
+(defmethod expression/type-of-method :cast
+  [[_cast opts _field cast-to-type]]
+  (keyword "type" cast-to-type))

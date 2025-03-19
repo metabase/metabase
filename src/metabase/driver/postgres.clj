@@ -30,6 +30,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.models.secret :as secret]
@@ -652,6 +653,67 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
+
+(defmethod sql.qp/->honeysql [:postgres :split]
+  [driver [_ text divider position]]
+  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+
+(defn- hack-type-of [expr]
+  (when (map? (nth expr 2))
+    (:base-type (nth expr 2))))
+
+(def ^:private cast-mbql->pg-type
+  {"Integer" "INTEGER"
+   "Text"    "TEXT"
+   "Date"    "DATE"})
+
+;; This is all a hack! Done at a hackathon!
+;; The simple types we work with are
+;; 1. Text
+;; 2. Date
+;; 3. Integer
+
+(defn- default-casting-function [value from-type to-type]
+  [:cast value [:raw to-type]])
+
+(def ^:private casting-functions
+  ;; take value and return honeysql
+  {"INTEGER" (fn [value from-type to-type]
+               (case from-type
+                 :type/Integer
+                 value
+
+                 :type/Text
+                 (let [value [:trim value]]
+                   [:case
+                    [(keyword "~") value [:raw "'^-?\\d+$'"]]
+                    [:cast value [:raw to-type]]
+
+                    [(keyword "~") value [:raw "'^-?\\d*[.]\\d+$'"]]
+                    [:cast [:cast value [:raw "DECIMAL"]] [:raw to-type]]
+
+                    :else
+                    [:raw "NULL"]])
+
+                 nil))
+
+   "DATE" (fn [value from-type to-type]
+            (case from-type
+              :type/Date
+              value
+
+              nil))})
+
+(defmethod sql.qp/->honeysql [:postgres :cast]
+  [driver [_ value type]]
+  (assert (contains? cast-mbql->pg-type type)
+          (str "Must be one of " (str/join ", " (keys cast-mbql->pg-type)) ". Got: " (pr-str type) "."))
+  (let [from-type (hack-type-of value)
+        pg-type (get cast-mbql->pg-type type)
+        value (sql.qp/->honeysql driver value)
+        f (get casting-functions pg-type default-casting-function)]
+    (or (f value from-type pg-type)
+        (default-casting-function value from-type pg-type))))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
