@@ -1,0 +1,5 @@
+{{> metabase/channel/email/_header.hbs }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
+    <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has inserted {{count payload.event_info.result.created-rows}} rows to {{payload.event_info.table.name}}</p>
+  </div>
+{{> metabase/channel/email/_footer.hbs }}

@@ -318,15 +318,44 @@
                      :when (seq emails)]
                  emails)))
 
+(def ^:private event-name->template
+  {:event/data-editing-bulk-create {:channel_type :channel/email
+                                    :details      {:type    :email/handlebars-resource
+                                                   :subject "New inserts on table {{payload.event_info.table.name}}"
+                                                   :path    "metabase/channel/email/data_editing_bulk_create.hbs"}}})
+
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
    notification-payload #_:- #_notification/NotificationPayload
    template             :- ::models.channel/ChannelTemplate
    recipients           :- [:sequential ::models.notification/NotificationRecipient]]
-  (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [event-topic (get-in notification-payload [:payload :event_topic])
+        template    (or
+                     template
+                     (get event-name->template event-topic))]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
+                      (notification-recipients->emails recipients notification-payload)
+                      [{:type    "text/html; charset=utf-8"
+                        :content (render-body template notification-payload)}]
+                      (-> template :details :recipient-type keyword))]))
+
+(comment
+  #_(ngoc/with-tc
+      (metabase.notification.models/create-notification!
+       {:payload_type :notification/system-event}
+       [{:type        :notification-subscription/system-event
+         :event_name :event/data-editing-bulk-create
+         #_:condition  #_(metabase.util.json/encode [:=])}]
+       [{:channel_type :channel/email
+         :recipients [{:type :notification-recipient/user
+                       :user_id (metabase.test/user->id :crowberto)}]}]))
+  (metabase.test/user-http-request
+   :crowberto
+   :post
+   ;; reviews table
+   (format "ee/data-editing/table/%d" (toucan2.core/select-one-pk :model/Table :name "REVIEWS" :db_id 1))
+   {:rows [{:PRODUCT_ID 1
+            :REVIEWER   "ngoc"
+            :RATING     5
+            :BODY       "Best data editing ever"}]}))

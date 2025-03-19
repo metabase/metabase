@@ -4,16 +4,27 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events :as events]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- perform-bulk-action! [action-kw table-id rows]
   (api/check-superuser)
-  (actions/perform-action! action-kw
-                           {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-                            :table-id table-id
-                            :arg      rows}
-                           :policy :data-editing))
+  (u/prog1
+    (actions/perform-action! action-kw
+                             {:database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+                              :table-id table-id
+                              :arg      rows}
+                             :policy :data-editing)
+    (events/publish-event! (case action-kw
+                             :bulk/create :event/data-editing-bulk-create
+                             :bulk/update :event/data-editing-bulk-update
+                             :bulk/delete :event/data-editing-bulk-delete)
+                           {:table_id table-id
+                            :rows     rows
+                            :actor_id api/*current-user-id*
+                            :result   <>})))
 
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."

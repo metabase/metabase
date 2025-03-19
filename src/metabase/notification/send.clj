@@ -144,17 +144,21 @@
                                          :task_details {:notification_id       id
                                                         :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
           (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
+            (def notification-payload notification-payload)
             (if (notification.payload/should-send-notification? notification-payload)
               (do
                 (log/debugf "[Notification %d] Found %d handlers" id (count handlers))
                 (doseq [handler handlers]
                   (try
+                    (def channel-type channel-type)
+                    (def notification-payload notification-payload)
+                    (def handler handler)
                     (let [channel-type (:channel_type handler)
-                          messages     (channel/render-notification
-                                        channel-type
-                                        notification-payload
-                                        (:template handler)
-                                        (:recipients handler))]
+                          messages     #p (channel/render-notification
+                                           #p channel-type
+                                           #p notification-payload
+                                           #p (:template handler)
+                                           #p (:recipients handler))]
                       (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
                                   id (count messages)
                                   (handler->channel-name handler)

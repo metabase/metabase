@@ -1,5 +1,5 @@
 (ns metabase.channel.template.handlebars-helper
-  (:refer-clojure :exclude [hash])
+  (:refer-clojure :exclude [count hash])
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
@@ -67,6 +67,12 @@
 ;;---------------- Predefined helpers ----------------;;
 
 ;; Generics
+
+(defhelper count
+  "Return the number of items in a collection."
+  [collection _params _kparams _options]
+  (clojure.core/count collection))
+
 (defhelper equals
   "Return true if two values are equal.
 
@@ -121,7 +127,8 @@
 
 (def default-helpers
   "A list of default helpers."
-  {"equals"        equals
+  {"count"         count
+   "equals"        equals
    "format-date"   format-date
    "now"           now
    "card-url"      card-url
