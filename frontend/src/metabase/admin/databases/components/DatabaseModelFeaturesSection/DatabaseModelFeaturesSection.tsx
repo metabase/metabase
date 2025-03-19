@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Alert, Flex, Icon, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
@@ -52,12 +52,6 @@ export const DatabaseModelFeaturesSection = ({
       data-testid="database-model-features-section"
     >
       <Flex direction="column" gap="md">
-        {isDbRoutingEnabled && (
-          <Alert icon={<Icon name="info" size={16} />} color={"brand"}>
-            <Text fw="bold">{t`Model features can not be enabled if database routing is enabled.`}</Text>
-          </Alert>
-        )}
-
         {contentVisibility.showModelActions && (
           <ModelActionsSection
             hasModelActionsEnabled={database.hasActionsEnabled()}

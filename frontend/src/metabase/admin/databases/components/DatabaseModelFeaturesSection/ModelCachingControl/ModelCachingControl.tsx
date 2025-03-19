@@ -9,7 +9,7 @@ import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
-import { Box, Flex, Switch } from "metabase/ui";
+import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
@@ -69,13 +69,20 @@ export function ModelCachingControl({ database, disabled }: Props) {
     <div>
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-persistence-toggle">{t`Model persistence`}</Label>
-        <Switch
-          id="model-persistence-toggle"
-          labelPosition="left"
-          checked={isEnabled}
-          onChange={handleCachingChange}
-          disabled={disabled}
-        />
+        <Tooltip
+          label={t`Model persistence can not be enabled if database routing is enabled.`}
+          disabled={!disabled}
+        >
+          <Box>
+            <Switch
+              id="model-persistence-toggle"
+              checked={isEnabled}
+              onChange={handleCachingChange}
+              styles={{ labelWrapper: { display: "none" } }}
+              disabled={disabled}
+            />
+          </Box>
+        </Tooltip>
       </Flex>
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}

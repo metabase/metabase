@@ -7,7 +7,6 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
@@ -18,6 +17,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase-enterprise/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 export interface DestinationDatabasesListProps {
