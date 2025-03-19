@@ -119,6 +119,5 @@ const isStringifiedNumber = (value: unknown): boolean => {
     return false;
   }
 
-  const numberValue = Number(value);
-  return !isNaN(numberValue) && isFinite(numberValue);
+  return Number.isFinite(Number(value));
 };
