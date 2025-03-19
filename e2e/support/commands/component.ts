@@ -27,6 +27,7 @@ const MAJOR_REACT_VERSION = getMajorReactVersion();
 // React 19 -> @cypress/react@^9
 // React 18 -> cypress/react18 (internal package in Cypress 13, using @cypress/react@^8 does not work)
 // React 17 -> @cypress/react@^8
+// See bin/embedding-sdk/change-react-version.bash for how running component tests across React versions is managed.
 const mountComponentFn = MAJOR_REACT_VERSION === 18 ? mountReact18 : mount;
 
 Cypress.Commands.add("mount", mountComponentFn);
