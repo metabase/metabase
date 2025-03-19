@@ -7,11 +7,11 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
-  Alert,
+  Box,
   Button,
   Flex,
   Icon,
@@ -23,6 +23,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
+import * as Urls from "metabase-enterprise/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
@@ -38,28 +39,37 @@ export const DatabaseRoutingSection = ({
 }) => {
   const dispatch = useDispatch();
 
+  const isAdmin = useSelector(getUserIsAdmin);
+
   const shouldHideSection = database.is_attached_dwh || database.is_sample;
   const userAttribute = database.router_user_attribute ?? undefined;
 
   const [tempEnabled, setTempEnabled] = useState(false);
-  const isFeatureEnabled = !!userAttribute;
-
-  const isToggleEnabled = tempEnabled || isFeatureEnabled;
+  const isDbRoutingEnabled = database.hasDatabaseRoutingEnabled();
+  const isToggleEnabled = tempEnabled || isDbRoutingEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
+  const userAttrsReq = useListUserAttributesQuery(
+    shouldHideSection ? skipToken : undefined,
+  );
+  const userAttributeOptions = userAttrsReq.data ?? [];
 
   const disabledMsg = getDisabledFeatureMessage(database);
   const isDbRoutingDisabled = !!disabledMsg;
-
-  const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
-  const { data: userAttributeOptions = [] } = useListUserAttributesQuery(
-    isToggleEnabled && !shouldHideSection ? undefined : skipToken,
-  );
+  const hasNoUserAttributeOptions =
+    !userAttrsReq.isLoading && userAttributeOptions.length === 0;
+  const selectDisabledMsg =
+    disabledMsg ??
+    (hasNoUserAttributeOptions
+      ? t`You must set user attributes on users for this feature to be available`
+      : "");
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
     refetchDatabase();
 
-    if (!isFeatureEnabled) {
+    if (!isDbRoutingEnabled) {
       dispatch(addUndo({ message: t`Database routing enabled` }));
     } else {
       dispatch(addUndo({ message: t`Database routing updated` }));
@@ -73,7 +83,7 @@ export const DatabaseRoutingSection = ({
       await updateRouterDatabase({ id: database.id, user_attribute: null });
       refetchDatabase();
 
-      if (isFeatureEnabled) {
+      if (isDbRoutingEnabled) {
         dispatch(addUndo({ message: t`Database routing disabled` }));
       }
     }
@@ -101,54 +111,61 @@ export const DatabaseRoutingSection = ({
           ) : null}
         </Stack>
         <Flex gap="md">
-          <Switch
-            id="database-routing-toggle"
-            labelPosition="left"
-            checked={isToggleEnabled}
-            disabled={isDbRoutingDisabled}
-            onChange={e => handleToggle(e.currentTarget.checked)}
-          />
+          <Tooltip label={disabledMsg} disabled={!disabledMsg}>
+            <Box>
+              <Switch
+                id="database-routing-toggle"
+                labelPosition="left"
+                checked={isToggleEnabled}
+                disabled={isDbRoutingDisabled}
+                onChange={e => handleToggle(e.currentTarget.checked)}
+              />
+            </Box>
+          </Tooltip>
           <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
             <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
           </UnstyledButton>
         </Flex>
       </Flex>
 
-      {disabledMsg && (
-        <Alert icon={<Icon name="info" size={16} />} color={"brand"} mt="md">
-          <Text fw="bold">{disabledMsg}</Text>
-        </Alert>
-      )}
-
       {isExpanded && (
         <>
           <DatabaseInfoSectionDivider />
 
-          <Flex justify="space-between" align="center" mb="xl">
-            <Text>{t`User attribute to use for connection slug`}</Text>
-            <Select
-              data-testid="db-routing-user-attribute"
-              placeholder={t`Choose an attribute`}
-              data={userAttributeOptions}
-              value={userAttribute}
-              onChange={handleUserAttributeChange}
-            />
-          </Flex>
-
-          <Flex justify="space-between" align="center">
-            <Text fw="bold">{t`Destination databases`}</Text>
-            {isFeatureEnabled ? (
-              <Button
-                component={Link}
-                to={Urls.createDestinationDatabase(database.id)}
-              >{t`Add`}</Button>
-            ) : (
-              <Tooltip
-                label={t`Please choose a user attribute first`}
-                withArrow
-              >
-                <Button disabled>{t`Add`}</Button>
+          <Box mb="xl">
+            <Flex justify="space-between" align="center">
+              <Text>{t`User attribute to use for connection slug`}</Text>
+              <Tooltip label={selectDisabledMsg} disabled={!selectDisabledMsg}>
+                <Select
+                  data-testid="db-routing-user-attribute"
+                  placeholder={t`Choose an attribute`}
+                  data={userAttributeOptions}
+                  disabled={!!selectDisabledMsg}
+                  value={userAttribute}
+                  onChange={handleUserAttributeChange}
+                />
               </Tooltip>
+            </Flex>
+          </Box>
+
+          <Flex justify="space-between" align="center" mih="2.5rem">
+            <Text fw="bold">{t`Destination databases`}</Text>
+            {isAdmin && (
+              <>
+                {isDbRoutingEnabled ? (
+                  <Button
+                    component={Link}
+                    to={Urls.createDestinationDatabase(database.id)}
+                  >{t`Add`}</Button>
+                ) : (
+                  <Tooltip
+                    label={t`Please choose a user attribute first`}
+                    withArrow
+                  >
+                    <Button disabled>{t`Add`}</Button>
+                  </Tooltip>
+                )}
+              </>
             )}
           </Flex>
 

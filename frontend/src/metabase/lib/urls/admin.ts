@@ -46,28 +46,6 @@ export function editDatabase(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/edit`;
 }
 
-export function viewDestinationDatabases(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}/destination-databases`;
-}
-
-export function createDestinationDatabase(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}/destination-databases/create`;
-}
-
-export function editDestinationDatabase(
-  databaseId: DatabaseId,
-  destinationDatabaseId: DatabaseId,
-) {
-  return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}`;
-}
-
-export function removeDestinationDatabase(
-  databaseId: DatabaseId,
-  destinationDatabaseId: DatabaseId,
-) {
-  return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}/remove`;
-}
-
 export function dataModelDatabase(databaseId: DatabaseId) {
   return `/admin/datamodel/database/${databaseId}`;
 }

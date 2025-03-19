@@ -603,5 +603,9 @@ export const PLUGIN_DB_ROUTING = {
     database: Database;
     refetchDatabase: () => void;
   }>,
-  destinationDatabaseRoutes: null as React.ReactElement | null,
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
 };

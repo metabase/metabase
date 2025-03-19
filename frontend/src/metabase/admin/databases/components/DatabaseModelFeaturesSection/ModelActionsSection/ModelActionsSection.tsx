@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Flex, Switch } from "metabase/ui";
+import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 
 import { Description, Error, Label } from "../ModelFeatureToggles";
 
@@ -32,16 +32,22 @@ export function ModelActionsSection({
     <div>
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
-        <Switch
-          id="model-actions-toggle"
-          checked={hasModelActionsEnabled}
-          onChange={e =>
-            handleToggleModelActionsEnabled(e.currentTarget.checked)
-          }
-          labelPosition="left"
-          error={error}
-          disabled={disabled}
-        />
+        <Tooltip
+          label={t`Model actions can not be enabled if database routing is enabled.`}
+          disabled={!disabled}
+        >
+          <Box>
+            <Switch
+              id="model-actions-toggle"
+              checked={hasModelActionsEnabled}
+              onChange={e =>
+                handleToggleModelActionsEnabled(e.currentTarget.checked)
+              }
+              styles={{ labelWrapper: { display: "none" } }}
+              disabled={disabled}
+            />
+          </Box>
+        </Tooltip>
       </Flex>
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}

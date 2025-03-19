@@ -9,6 +9,7 @@ import { ModelActionsSection } from "./ModelActionsSection";
 function ModelActionSectionWrapper({
   hasModelActionsEnabled: initialValue,
   onToggleModelActionsEnabled: onChange,
+  disabled,
 }: ModelActionsSectionProps) {
   const [isEnabled, setEnabled] = useState(initialValue);
 
@@ -21,6 +22,7 @@ function ModelActionSectionWrapper({
     <ModelActionsSection
       hasModelActionsEnabled={isEnabled}
       onToggleModelActionsEnabled={handleChange}
+      disabled={disabled}
     />
   );
 }
@@ -28,11 +30,13 @@ function ModelActionSectionWrapper({
 function setup({
   hasModelActionsEnabled = false,
   onToggleModelActionsEnabled = jest.fn(),
+  disabled = false,
 }: Partial<ModelActionsSectionProps>) {
   render(
     <ModelActionSectionWrapper
       hasModelActionsEnabled={hasModelActionsEnabled}
       onToggleModelActionsEnabled={onToggleModelActionsEnabled}
+      disabled={disabled}
     />,
   );
 
@@ -60,6 +64,11 @@ describe("ModelActionsSection", () => {
     expect(onToggleModelActionsEnabled).toHaveBeenLastCalledWith(false);
   });
 
+  it("should not allow toggling actions if section is disabled", async () => {
+    const { toggle } = setup({ disabled: true });
+    expect(toggle).toBeDisabled();
+  });
+
   it("should handle errors while toggling actions", async () => {
     const errorMessage = "Lacking write database permissions";
     const onToggleModelActionsEnabled = jest.fn().mockRejectedValueOnce({
@@ -73,7 +82,7 @@ describe("ModelActionsSection", () => {
 
     await userEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
 
     await userEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());

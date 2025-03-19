@@ -143,6 +143,8 @@ function DatabaseEditAppInner({
   });
   const onPermissionModalClose = () => setIsPermissionModalOpened(false);
 
+  PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
+
   return (
     <>
       <ErrorBoundary errorComponent={GenericError as ComponentType}>

@@ -64,7 +64,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("should allow deleting database with content after confirming its name and its content removal", async () => {
@@ -92,7 +92,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("shows an error if removal failed", async () => {

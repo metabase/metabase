@@ -60,7 +60,7 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
-  router_database_id?: string | null;
+  router_database_id?: number | null;
   router_user_attribute?: string | null;
 
   // Only appears in  GET /api/database/:id
