@@ -280,6 +280,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "integer",
+    structure: "integer",
+    description: () =>
+      t`Converts a string or number to an integer. For example, both ${'integer("3")'} and ${"integer(3.14)"}  would return ${3}.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string or number column to convert to integers.`,
+        example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     description: () => t`Returns the string of text in all lower case.`,
