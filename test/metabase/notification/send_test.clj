@@ -3,17 +3,15 @@
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
-   [metabase.models.notification :as models.notification]
    [metabase.channel.email :as email]
    [metabase.integrations.slack :as slack]
+   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2]))
 
@@ -135,7 +133,7 @@
                       (latest-task-history-entry "channel-send"))))))))))
 
 (deftest notification-send-skip-retry-still-report-failed-task-history-test
-  (notification.tu/with-notification-testing-setup!
+  (notification.tu/with-notification-testing-setup
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
