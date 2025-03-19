@@ -313,12 +313,7 @@ H.describeWithSnowplow("extract action", () => {
         type: "model",
       };
 
-      H.createQuestion(questionDetails, {
-        wrapId: true,
-        idAlias: "modelId",
-      });
-
-      cy.get("@modelId").then(modelId => {
+      H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {
         H.setModelMetadata(modelId, field => {
           if (field.name === CC_NAME) {
             return { ...field, semantic_type: "type/URL" };
@@ -327,7 +322,8 @@ H.describeWithSnowplow("extract action", () => {
           return field;
         });
 
-        H.visitModel(modelId);
+        cy.visit(`/model/${modelId}/query`);
+        cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
       });
 
       cy.findByTestId("table-scroll-container").scrollTo("right");
@@ -336,10 +332,15 @@ H.describeWithSnowplow("extract action", () => {
       extractColumnAndCheck({
         column: CC_NAME,
         option: urlCase.option,
-        value: "/my/path",
         example: urlCase.example,
         extraction: "Extract domain, subdomain…",
       });
+
+      const extractedValue = "/my/path";
+      cy.findAllByRole("gridcell")
+        .filter(`:contains('${extractedValue}')`)
+        // two from original URL and two from extracted path
+        .should("have.length", 4);
     });
   });
 });
