@@ -24,6 +24,7 @@ import {
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
+import { UploadSettingsForm } from "metabase/admin/settings/components/UploadSettings/UploadSettingsForm";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
@@ -575,6 +576,7 @@ type GsheetConnectionModalProps = {
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
+  UploadSettings: UploadSettingsForm,
   UploadManagementTable: PluginPlaceholder,
   GsheetsSyncStatus: PluginPlaceholder,
   GsheetConnectionModal:
