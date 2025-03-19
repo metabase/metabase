@@ -233,7 +233,7 @@
       (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
   (testing "simple values can be converted properly (#36459)"
     (let [query (lib.tu/venues-query)
-          legacy-expr ["value" 0 nil]
+          legacy-expr #js ["value" 0 nil]
           expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
           query-with-expr (lib/expression query 0 "expr" expr)
