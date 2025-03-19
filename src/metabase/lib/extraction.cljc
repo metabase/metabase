@@ -48,7 +48,7 @@
    :column       column
    :display-name (i18n/tru "Host")})
 
-(defn path-extraction [column]
+(defn- path-extraction [column]
   {:lib/type     ::extraction
    :tag          :path
    :column       column
