@@ -296,7 +296,8 @@
                                              ;; boolean types over others.
                                              (let [type (lib.schema.expression/type-of value)]
                                                (if (set? type)
-                                                 (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean :type/*])) type)
+                                                 (or (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean])) type)
+                                                     (first type))
                                                  type))))]
     (lib.options/ensure-uuid [:value opts value])))
 
