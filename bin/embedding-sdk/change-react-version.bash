@@ -32,16 +32,16 @@ function print_usage() {
   echo "  ./bin/embedding-sdk/change-react-version.bash restore    # Restore original package files"
 }
 
+# React 19+ uses @cypress/react@^9
+# React 18 uses cypress/react18, an internal package in Cypress 13 -- @cypress/react@^8 is installed to prevent import errors.
+# React 17 uses @cypress/react@^8
 # See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
 function get_cypress_react_package() {
   local version=$1
 
   if [[ $version -ge 19 ]]; then
-    # React 19 and higher -> @cypress/react@^9
     echo "@cypress/react@^9"
   else
-    # React 17 and lower -> @cypress/react@^8
-    # ! React 18 uses cypress/react18, an internal package in Cypress 13 -- this is just to prevent import errors.
     echo "@cypress/react@^8"
   fi
 }
