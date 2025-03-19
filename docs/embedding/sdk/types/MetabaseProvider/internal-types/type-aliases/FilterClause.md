@@ -1,0 +1,3 @@
+```ts
+type FilterClause = Filter;
+```

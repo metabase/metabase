@@ -1,0 +1,3 @@
+```ts
+type SegmentId = number;
+```

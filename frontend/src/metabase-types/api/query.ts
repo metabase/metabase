@@ -158,7 +158,7 @@ export type StructuredQuery = {
 
 export type AggregationClause = Aggregation[];
 
-type CountAgg = ["count"];
+export type CountAgg = ["count"];
 
 type CountFieldAgg = ["count", ConcreteFieldReference];
 type AvgAgg = ["avg", ConcreteFieldReference];
