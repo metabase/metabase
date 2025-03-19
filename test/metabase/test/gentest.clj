@@ -5,22 +5,22 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.test.util.random :as tu.rng]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    [java.util Random]))
 
 (set! *warn-on-reflection* true)
 
-;; TODO: Refactor!
+;; TODO: In later ms add option to override via spec!!!
 (defn limit-spec->limit-fn
   [limit-spec]
   (let [env-iterations (config/config-int :mb-gentest-limit-iterations)
         env-seconds (config/config-int :mb-gentest-limit-seconds)
-        ;; override the test provided limit-spec by environment
         limit-spec (cond env-iterations {:gentest.default-limit/iterations env-iterations}
                          env-seconds    {:gentest.default-limit/seconds env-seconds}
                          :else          limit-spec)]
-    (log/infof "limit-spec->limit-fn\n```%s\n```\n" (with-out-str #_:clj-kondo/ignore (clojure.pprint/pprint limit-spec)))
+    (log/debugf "limit-spec->limit-fn limit spec: %s" (u/pprint-to-str limit-spec))
     (or (and (map? limit-spec)
              (condp #(get %2 %1) limit-spec
                :gentest.default-limit/iterations
@@ -46,12 +46,12 @@
   [[fmtstr & args] & body]
   `(clojure.test/testing (format ~(str "\nwith " fmtstr "\n%s\n")
                                    ~@(map (fn [form]
-                                            `(with-out-str (clojure.pprint/pprint ~form)))
+                                            `(u/pprint-to-str ~form))
                                           args))
        ~@body))
 
-;; sole purpose of this is just to signal to [[initial-iteration-seed]] It should use bound tu.rng/*generator* to
-;; generate initial interation seed. This smells.
+;; Sole purpose of this is just to signal to [[initial-iteration-seed]] It should use bound tu.rng/*generator* to
+;; generate initial interation seed. This smells. TODO: Figure out better way.
 (def ^:dynamic *context-seed* nil)
 
 ;; Print this on load so it is included in CI log, just in case everything passed and we would want verbatim replay.
@@ -65,22 +65,24 @@
       (.nextLong ^Random (Random.))))
 
 (defn initial-iteration-seed
-  "Iteration seed is 1 from env 2 dependent on context or 3 random"
+  "Iteration seed is either (1) from environment or (2) dependent on context or (3) random."
   []
   (or (config/config-long :mb-gentest-iteration-seed)
       (when *context-seed*
         (.nextLong ^Random tu.rng/*generator*))
-      (.nextLong ^Random (Random.))))
+      (throw (Exception. "Explicit iteration seed in env or *context-seed* must be set."))))
 
 (defn do-iterate
   [limit-spec thunk]
   (let [limit-fn (limit-spec->limit-fn limit-spec)
-        ;; TODO: the atom can be removed!!!
+        ;; Atom is used to overcome recur over binding.
         iteration-seed (atom (initial-iteration-seed))]
     (loop [iteration-index 0]
       (when (limit-fn)
         (testing ["iteration index" iteration-index]
           (testing ["iteration seed" @iteration-seed]
+            (log/tracef "do-iterate: iteration-index: %s" iteration-index)
+            (log/tracef "do-iterate: iteration-seed: %s" @iteration-seed)
             (binding [tu.rng/*generator* (Random. @iteration-seed)]
               (try
                 (thunk)
@@ -116,7 +118,8 @@
                                            {:type :error}
                                            e#))))))))))
 
-;; TODO: Consider do-with-gentest.
+;; TODO: Consider do-defgentest.
+;; TODO: Later milestones: Because of debug log it makes sense to do-defgentest.
 (defmacro defgentest
   [test-sym & body]
   `(clojure.test/deftest ~test-sym
@@ -124,5 +127,6 @@
       (let [seed# (context-seed)]
         (binding [*context-seed* seed#
                   tu.rng/*generator* (Random. seed#)]
+          (log/debugf "defgentest: seed: %s" (pr-str seed#))
           (testing ["context-seed" seed#]
             ~@body))))))
