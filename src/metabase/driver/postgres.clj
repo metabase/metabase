@@ -77,6 +77,7 @@
                               :schemas                  true
                               :identifiers-with-spaces  true
                               :uuid-type                true
+                              :split-part               true
                               :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -652,6 +653,10 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
+
+(defmethod sql.qp/->honeysql [:postgres :split-part]
+  [driver [_ text divider position]]
+  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
