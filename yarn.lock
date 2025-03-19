@@ -1357,11 +1357,6 @@
     find-test-names "^1.19.0"
     globby "^11.0.4"
 
-"@cypress/react18@^2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@cypress/react18/-/react18-2.0.1.tgz#7bc6d9b557fd6a516a690996946092b12abbd3f9"
-  integrity sha512-T/bhFEvVDIu0lDOKXbEQqVEmmANKWc/pyFDyDoJw3OndRYv9QVEJSsE/VNXIaOQLDjWvQkKBOwd0lLe1hWF/Zg==
-
 "@cypress/react@^8":
   version "8.0.2"
   resolved "https://registry.yarnpkg.com/@cypress/react/-/react-8.0.2.tgz#ae6651f61b2182f4485a21300f320c3efa3cb9ce"
