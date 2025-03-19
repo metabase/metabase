@@ -61,7 +61,6 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
-        const shouldUpdateUrl = location.state.card.type === "model";
         const isEmptyQuery = !location.state.card.dataset_query.database;
 
         if (isEmptyQuery) {
@@ -70,10 +69,10 @@ export const popState = createThunkAction(
           // Do not run the question as the query without data source is invalid.
           await dispatch(initializeQB(location, {}));
         } else {
-          await dispatch(resetUIControls());
           await dispatch(
-            setCardAndRun(location.state.card, { shouldUpdateUrl }),
+            setCardAndRun(location.state.card, { shouldUpdateUrl: false }),
           );
+          await dispatch(resetUIControls());
           await dispatch(setCurrentState(location.state));
         }
       }
