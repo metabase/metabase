@@ -4,8 +4,7 @@ import { jt, t } from "ttag";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Box,
   Button,
@@ -35,20 +34,8 @@ export function GdriveConnectionModal({
   reconnect: boolean;
 }) {
   const gSheetsSetting = useSetting("gsheets");
-  const userIsAdmin = useSelector(getUserIsAdmin);
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
-
-  const gSheetsEnabled = useSetting("show-google-sheets-integration");
-
-  if (
-    !gSheetsEnabled ||
-    !gSheetsSetting ||
-    !userIsAdmin ||
-    !serviceAccountEmail
-  ) {
-    return null;
-  }
 
   const { status, folder_url } = gSheetsSetting;
 
