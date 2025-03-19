@@ -8,8 +8,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.formatter]
-   [metabase.models.visualization-settings :as mb.viz]
-   [cheshire.core :as json])
+   [metabase.models.visualization-settings :as mb.viz])
   (:import
    (metabase.formatter NumericWrapper)))
 
@@ -75,10 +74,6 @@
     (bar-td-style-numeric)
     (bar-td-style)))
 
-(defn- normalized-score->pixels
-  [score]
-  (int (* (/ score 100.0) max-bar-width)))
-
 (def ^:private max-column-character-length 16)
 
 (defn- truncate-text [text]
@@ -102,34 +97,19 @@
          (when bar-width
            [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
-(defn- render-bar
-  [bar-width normalized-zero]
-  (if (< bar-width normalized-zero)
-    (list
-     [:td {:style (style/style (bar-td-style) {:width :99%, :border-right "1px solid black", :padding-right 0})}
-      (render-bar-component (style/secondary-color)
-                            false
-                            (normalized-score->pixels (- normalized-zero bar-width))
-                            (normalized-score->pixels bar-width))]
-     [:td {:style (style/style (bar-td-style) {:width :99%})}])
-    (list
-     (when-not (zero? normalized-zero)
-       [:td {:style (style/style (bar-td-style) {:width :99%, :border-right "1px solid black"})}])
-     [:td {:style (style/style (bar-td-style) {:width :99%, :padding-left 0})}
-      (render-bar-component (style/primary-color)
-                            true
-                            (normalized-score->pixels (- bar-width normalized-zero)))])))
+(defn- minibar-data
+  [col cell-value row-idx]
+  (when-let [number-fingerprint (get-in col [:fingerprint :type :type/Number])]
+    {:value    cell-value
+     :extent   [(:min number-fingerprint) (:max number-fingerprint)]
+     :rowIndex row-idx
+     :columnId (:name col)}))
 
-(defn- render-bar-new
-  [cell-value]
-  (let [data (json/encode {:value cell-value
-                           :extent [0 100]
-                           :rowIndex 0
-                           :columnId "test"})
-        image-bundle (image-bundle/make-image-bundle :attachment (js.svg/minibar data))
+(defn- render-minibar
+  "Render Hiccup cell content for table cells with minibars enabled"
+  [data]
+  (let [image-bundle (image-bundle/make-image-bundle :attachment (js.svg/minibar data))
         image-src (:image-src image-bundle)]
-    (println "TSP render-bar-new")
-    (def image-bundle image-bundle)
     {:attachment (image-bundle/image-bundle->attachment image-bundle)
      :content (when image-src
                 [:img {:style (style/style {:width "100px" :height "auto"})
@@ -141,40 +121,39 @@
   `get-background-color` is a function that returned the background color for the current cell; it is invoked like
 
     (get-background-color cell-value column-name row-index)"
-  [get-background-color normalized-zero column-names rows viz-settings]
-  (def viz-settings viz-settings)
+  [get-background-color normalized-zero column-names rows viz-settings minibar-cols]
   (let [attachments (atom {})
         rows-with-idx (m/indexed rows)
         content [:tbody
                  (doall (map
-                  (fn [[row-idx {:keys [row bar-width]}]]
-                    [:tr {:style (style/style {:color style/color-gray-3})}
-                     (doall (map
-                      (fn [[col-idx cell]]
-                        [:td {:style (style/style
-                                      (row-style-for-type cell)
-                                      {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
-                                      (when (and bar-width (= col-idx 1))
-                                        {:font-weight 700})
-                                      (when (= row-idx (dec (count rows)))
-                                        {:border-bottom 0})
-                                      (when (= col-idx (dec (count row)))
-                                        {:border-right 0}))}
-                         (let [col-name (nth column-names col-idx)
-                               col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}] {})]
-                           (cond
-                             (= (get col-settings ::mb.viz/show-mini-bar) true)
-                             (let [bar-result (render-bar-new cell)]
-                               (def bar-result bar-result)
-                               (when-let [attachment (:attachment bar-result)]
-                                 (println "TSP adding attachment")
-                                 (swap! attachments merge attachment))
-                               (:content bar-result))
-                          
-                             :else
-                             (h cell)))])
-                      (m/indexed row)))])
-                  rows-with-idx))]]
+                         (fn [[row-idx {:keys [row bar-width]}]]
+                           [:tr {:style (style/style {:color style/color-gray-3})}
+                            (doall (map
+                                    (fn [[col-idx cell]]
+                                      [:td {:style (style/style
+                                                    (row-style-for-type cell)
+                                                    {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
+                                                    (when (and bar-width (= col-idx 1))
+                                                      {:font-weight 700})
+                                                    (when (= row-idx (dec (count rows)))
+                                                      {:border-bottom 0})
+                                                    (when (= col-idx (dec (count row)))
+                                                      {:border-right 0}))}
+                                       (let [col-name (nth column-names col-idx)
+                                             col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}] {})]
+                                         (cond
+                                           (= (get col-settings ::mb.viz/show-mini-bar) true)
+                                           (let [col        (first (filter #(= col-name (:name %)) minibar-cols))
+                                   ;; @TSP TODO - cell is actually a formatter instance, should pass into static viz
+                                                 bar-result (render-minibar (minibar-data col (:num-value cell) row-idx))]
+                                             (when-let [attachment (:attachment bar-result)]
+                                               (swap! attachments merge attachment))
+                                             (:content bar-result))
+
+                                           :else
+                                           (h cell)))])
+                                    (m/indexed row)))])
+                         rows-with-idx))]]
     {:content content
      :attachments @attachments}))
 
@@ -186,10 +165,10 @@
     `:col-names`, which is the is display_names of the visible columns
     `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
   If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names-map contents viz-settings]
-   (render-table color-selector 0 column-names-map contents viz-settings))
+  ([color-selector column-names-map contents viz-settings minibar-cols]
+   (render-table color-selector 0 column-names-map contents viz-settings minibar-cols))
 
-  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] viz-settings]
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] viz-settings minibar-cols]
    (let [pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
@@ -200,8 +179,7 @@
                                                          (let [group (:num-value (nth (:row row) pivot-grouping-idx))]
                                                            (when (= 0 group)
                                                              (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
-         table-body-result (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows viz-settings)]
-     (def table-body-result table-body-result)
+         table-body-result (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows viz-settings minibar-cols)]
      {:attachments (:attachments table-body-result)
       :content [:table {:style       (style/style {:max-width     "100%"
                                                    :white-space   :nowrap
@@ -209,5 +187,5 @@
                                                    :border-radius :6px})
                         :cellpadding "0"
                         :cellspacing "0"}
-               (render-table-head (vec col-names) header)
-               (:content table-body-result)]})))
+                (render-table-head (vec col-names) header)
+                (:content table-body-result)]})))

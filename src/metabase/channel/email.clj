@@ -148,8 +148,6 @@
   If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
   [smtp-credentials email-details]
   (check-email-throttle email-details)
-  (println "TSP send-email!")
-  (def email-details email-details)
   (postal/send-message smtp-credentials email-details))
 
 (defsetting email-configured?

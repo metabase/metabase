@@ -232,6 +232,15 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar's are enabled"
+  [cols viz-settings]
+  (let [column-settings (::mb.viz/column-settings viz-settings)]
+    (filter (fn [col]
+              (when-let [settings (get column-settings {::mb.viz/column-name (:name col)})]
+                (::mb.viz/show-mini-bar settings)))
+            cols)))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
@@ -239,25 +248,20 @@
    card
    dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
-  (println "TSP render :table")
-  (def dashcard dashcard)
-  (def card card)
-  (def viz-settings viz-settings)
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-result                (table/render-table
                                      (js.color/make-color-selector unordered-data viz-settings)
                                      {:cols-for-color-lookup (mapv :name filtered-cols)
                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                      (prep-for-html-rendering timezone-id card data)
-                                     viz-settings)]
-    (def table-result table-result)
-    {:attachments
-     (:attachments table-result)
-
+                                     viz-settings
+                                     minibar-cols)]
+    {:attachments (:attachments table-result)
      :content
      [:div
       (:content table-result)

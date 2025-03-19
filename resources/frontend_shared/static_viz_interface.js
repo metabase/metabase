@@ -78,10 +78,8 @@ function javascript_visualization(rawSeries, dashcardSettings, options) {
   });
 }
 
-function minibar(testString) {
-  const content = StaticViz.RenderMinibar(JSON.parse(testString));
-  return JSON.stringify({
-    type: "html",
-    content,
-  });
+function minibar(minibarData) {
+  const content = StaticViz.RenderMinibar(JSON.parse(minibarData));
+  console.log("TSP content: ", content);
+  return content;
 }

@@ -6,6 +6,7 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/lib/dayjs";
 
+import { formatValue } from "metabase/lib/formatting";
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
@@ -13,8 +14,8 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { extractRemappings } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+
 import { MiniBarCell } from "../visualizations/components/TableInteractive/cells/MiniBarCell";
-import { formatValue } from "metabase/lib/formatting";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -70,22 +71,16 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
   );
 }
 
-export function RenderMinibar(testString) {
-  const formatter = (value) => formatValue(value, { jsx: true, type: "cell" });
-  //const data = JSON.parse(testString);
-  const data = {
-    value: 30,
-    extent: [0, 100],
-    rowIndex: 0,
-    columnId: "test",
-  };
+export function RenderMinibar(data) {
+  // TSP TODO - formatter needs to respect column settings
   return ReactDOMServer.renderToStaticMarkup(
     <MiniBarCell
       value={data.value}
       extent={data.extent || [0, 100]}
-      formatter={formatter}
+      formatter={value => formatValue(value, { jsx: true, type: "cell" })}
       rowIndex={data.rowIndex || 0}
       columnId={data.columnId || "test"}
-    />
+      isStatic={true}
+    />,
   );
 }
