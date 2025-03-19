@@ -10,7 +10,7 @@ function restore_package_files() {
   mv package.json.backup package.json
 }
 
-function use_react_version() {
+function install_react_version() {
   local version=$1
 
   if [[ ! $version =~ ^[0-9]+$ ]]; then
@@ -30,9 +30,23 @@ function print_usage() {
   echo "  ./bin/embedding-sdk/change-react-version.bash restore    # Restore original package files"
 }
 
+# See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
+function install_cypress_react_version() {
+  local version=$1
+
+  if [[ $version -ge 19 ]]; then
+    echo "Installing @cypress/react@^9"
+    yarn add -D @cypress/react@^9
+  else
+    echo "Installing @cypress/react@^8"
+    yarn add -D @cypress/react@^8
+  fi
+}
+
 if [[ "$1" =~ ^[0-9]+$ ]]; then
   backup_package_files
-  use_react_version "$1"
+  install_react_version "$1"
+  install_cypress_react_version "$1"
   exit 0
 elif [ "$1" == "restore" ]; then
   restore_package_files
