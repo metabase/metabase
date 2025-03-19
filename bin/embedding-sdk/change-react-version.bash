@@ -12,7 +12,7 @@ function restore_package_files() {
 
 function install_packages() {
   local version=$1
-  local cypress_react_version=$(get_cypress_react_version "$version")
+  local cypress_react_package=$(get_cypress_react_package "$version")
 
   if [[ ! $version =~ ^[0-9]+$ ]]; then
     echo "Error: Version must be a number"
@@ -20,7 +20,7 @@ function install_packages() {
   fi
 
   # Install React and Cypress React test harness
-  yarn add react@^$version react-dom@^$version @cypress/react@^$cypress_react_version
+  yarn add "react@^$version react-dom@^$version $cypress_react_package"
 }
 
 function print_usage() {
@@ -32,16 +32,17 @@ function print_usage() {
   echo "  ./bin/embedding-sdk/change-react-version.bash restore    # Restore original package files"
 }
 
-# React 19 -> @cypress/react@^9
-# React 17/18 -> @cypress/react@^8
 # See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
-function get_cypress_react_version() {
+function get_cypress_react_package() {
   local version=$1
 
   if [[ $version -ge 19 ]]; then
-    echo "9"
+    # React 19 and higher -> @cypress/react@^9
+    echo "@cypress/react@^9"
   else
-    echo "8"
+    # React 17 and lower -> @cypress/react@^8
+    # ! React 18 uses cypress/react18, an internal package in Cypress 13 -- this is just to prevent import errors.
+    echo "@cypress/react@^8"
   fi
 }
 
