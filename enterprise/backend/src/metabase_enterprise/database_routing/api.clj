@@ -64,7 +64,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/check-404 (t2/exists? :model/Database :id id))
+  (api/check-404 (t2/exists? :model/Database :id id :router_database_id nil))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (t2/delete! :model/DatabaseRouter :database_id id)
