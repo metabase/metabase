@@ -89,7 +89,9 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foobar"}]
     (is (= "foobar"
-           (:router_user_attribute (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))))))
+           (:router_user_attribute (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))))
+    (is (contains? (into #{} (map :router_user_attribute (:data (mt/user-http-request :crowberto :get 200 "database/"))))
+                   "foobar"))))
 
 (deftest mirror-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}

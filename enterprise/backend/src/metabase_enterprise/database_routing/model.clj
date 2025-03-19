@@ -1,5 +1,6 @@
 (ns metabase-enterprise.database-routing.model
   (:require
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -10,8 +11,13 @@
 (doto :model/DatabaseRouter
   (derive :metabase/model))
 
-(defenterprise router-user-attribute
-  "Enterprise implementation. Returns the user attribute, if set, that will be used for the DB routing feature for this database."
+(defenterprise hydrate-router-user-attribute
+  "Enterprise implementation. Hydrates the router user attribute on the databases"
   :feature :database-routing
-  [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+  [k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   (fn [] #p (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter
+                               :database_id  [:in (map :id databases)]))
+   :id
+   {:default nil}))

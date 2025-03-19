@@ -266,6 +266,7 @@
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
+      true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
@@ -385,7 +386,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (assoc :router_user_attribute (database/router-user-attribute db))
+    true                         (t2/hydrate :router_user_attribute)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
