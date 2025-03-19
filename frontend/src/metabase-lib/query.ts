@@ -28,6 +28,11 @@ export function fromLegacyQuery(
   return ML.query(databaseId, metadataProvider, datasetQuery);
 }
 
+// Returns a NanoID string for a card and query to use.
+export function randomIdent(): string {
+  return ML.random_ident();
+}
+
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
