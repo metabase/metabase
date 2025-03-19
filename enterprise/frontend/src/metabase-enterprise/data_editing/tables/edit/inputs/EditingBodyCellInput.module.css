@@ -5,8 +5,13 @@
   border-color: transparent;
   box-sizing: border-box;
   font-weight: 700;
+  background-color: var(--mb-base-color-white);
 
   /* needed to avoid outline truncation for a focused cell */
   z-index: 5;
   position: relative;
+}
+
+.noBackground {
+  background-color: transparent;
 }
