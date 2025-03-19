@@ -17,8 +17,8 @@ import * as Lib from "metabase-lib";
 import {
   type ClauseType,
   type ExpressionError,
-  type StartRule,
   MBQL_CLAUSES,
+  type StartRule,
   diagnoseAndCompile,
   format,
 } from "metabase-lib/v1/expressions";
