@@ -543,33 +543,36 @@
                  :order-by     [[:asc $id]]
                  :limit        1})))))))
 
-(deftest ^:parallel order-by-literal-expression-test
+(deftest ^:parallel order-by-integer-literal-expression-test
   (testing "order-by integer literal expression"
-    ;; ORDER BY a non-negative integer literal is broadly supported (maybe even standard?) and means "order by the Nth
-    ;; column in the select list". Nevertheless, it's questionable whether anyone would actually want to do this.
+    ;; Verify that :order-by of [:expression "One"] does NOT mean ORDER BY 1, which would result in ordering by the
+    ;; first column in the select list $id. We want this to mean "order by the expression with value 1".
     (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
-      (is (= [[1 1]
-              [2 1]]
+      (is (= [[29 "20th Century Cafe" 1]
+              [8  "25°"               1]]
              (mt/rows
-              (mt/run-mbql-query orders
+              (mt/run-mbql-query venues
                 {:expressions {"One" [:value 1 nil]}
-                 :fields      [$id [:expression "One"]]
-                 :order-by    [[:asc [:expression "One"]]]
-                 :limit       2}))))))
-  ;; TODO Should ORDER BY for literal expressions of all types be allowed? It's not clear that ORDER BY for a literal
-  ;; value makes much sense, and DB support varies.
-  #_(testing "order-by all literal expression types"
-      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
-        (is (= [[1 "" "foo" 0 12345 1.234 true false]
-                [2 "" "foo" 0 12345 1.234 true false]]
-               (mt/formatted-rows
-                standard-literal-expression-row-formats-with-id
-                (mt/run-mbql-query orders
-                  {:expressions standard-literal-expression-defs
-                   :fields      (into [$id] standard-literal-expression-refs)
-                   :order-by    (into [[:asc  $id]]
-                                      (map #(conj [:asc] %) standard-literal-expression-refs))
-                   :limit       2})))))))
+                 :fields      [$id $name [:expression "One"]]
+                 :order-by    [[:asc $name]
+                               [:asc [:expression "One"]]]
+                 :limit       2})))))))
+
+(deftest ^:parallel order-by-literal-expression-test
+  ;; TODO Fix this test for H2 (QUE-726)
+  (testing "order-by all literal expression types"
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals)
+                                     #{:h2})
+      (is (= [[1 "" "foo" 0 12345 1.234 true false]
+              [2 "" "foo" 0 12345 1.234 true false]]
+             (mt/formatted-rows
+              standard-literal-expression-row-formats-with-id
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :fields      (into [$id] standard-literal-expression-refs)
+                 :order-by    (into [[:asc  $id]]
+                                    (map #(conj [:asc] %) standard-literal-expression-refs))
+                 :limit       2})))))))
 
 ;; This fails, but also fails for non-literal expressions.
 #_(deftest ^:parallel filter-literal-expression-with-and-or-test
@@ -601,7 +604,7 @@
                      :limit       1}))))))))
 
 (deftest ^:parallel nested-and-filtered-literal-expression-test
-  (testing "nested aggregated and filtered literal expression"
+  (testing "nested and filtered literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
     (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
                                      #{:h2})
