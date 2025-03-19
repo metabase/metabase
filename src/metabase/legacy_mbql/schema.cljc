@@ -912,12 +912,16 @@
                        (is-clause? numeric-functions x)  :numeric
                        (is-clause? string-functions x)   :string
                        (is-clause? boolean-functions x)  :boolean
+                       (is-clause? :value x)             :value
+                       (is-clause? :segment x)           :segment
                        :else                             :else))}
    [:datetime DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else     (one-of segment)]])
+   [:value    value]
+   [:segment  segment]
+   [:else     Field]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
