@@ -32,11 +32,7 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import {
-  getCards,
-  getDatasets,
-  getVisualizerComputedSettings,
-} from "./selectors";
+import { getCards, getDatasets } from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -207,12 +203,8 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
-export const setDisplay = createAsyncThunk(
+export const setDisplay = createAction<VisualizationDisplay>(
   "visualizer/setDisplay",
-  (display: VisualizationDisplay | null, { getState }) => {
-    const computedSettings = getVisualizerComputedSettings(getState());
-    return { display, computedSettings };
-  },
 );
 
 const visualizerHistoryItemSlice = createSlice({
@@ -300,12 +292,13 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
-      .addCase(setDisplay.fulfilled, (state, action) => {
-        const { display, computedSettings } = action.payload;
+      .addCase(setDisplay, (state, action) => {
+        const display = action.payload;
+
         const updatedSettings = getUpdatedSettingsForDisplay(
           state.columnValuesMapping,
           state.columns,
-          computedSettings,
+          state.settings,
           state.display,
           display,
         );
