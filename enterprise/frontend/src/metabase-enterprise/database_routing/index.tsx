@@ -8,8 +8,9 @@ import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnect
 import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
 import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
 
-// TODO: remove force conditional once feature is enabled on monday
-if (!!true || hasPremiumFeature("database_routing")) {
+if (hasPremiumFeature("database_routing")) {
+  PLUGIN_DB_ROUTING.DatabaseRoutingSection = DatabaseRoutingSection;
+
   PLUGIN_DB_ROUTING.destinationDatabaseRoutes = (
     <Route path="destination-databases">
       <IndexRoute component={DestinationDatabasesModal} />
@@ -20,6 +21,4 @@ if (!!true || hasPremiumFeature("database_routing")) {
       </Route>
     </Route>
   );
-
-  PLUGIN_DB_ROUTING.DatabaseRoutingSection = DatabaseRoutingSection;
 }

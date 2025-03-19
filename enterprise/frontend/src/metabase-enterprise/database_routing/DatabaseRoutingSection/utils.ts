@@ -1,12 +1,14 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-export const getDisabledFeatureMessage = (options: {
-  hasActionsEnabled: boolean;
-  isPersisted: boolean;
-  isUploadDb: boolean;
-}) => {
-  return match(options)
+import type Database from "metabase-lib/v1/metadata/Database";
+
+export const getDisabledFeatureMessage = (database: Database) => {
+  return match({
+    hasActionsEnabled: database.hasActionsEnabled(),
+    isPersisted: database.isPersisted(),
+    isUploadDb: database.uploads_enabled,
+  })
     .with(
       { hasActionsEnabled: true, isPersisted: true },
       () =>
