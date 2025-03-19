@@ -120,7 +120,12 @@ const NewItemMenu = ({
       });
     }
 
-    if (hasModels && hasDatabaseWithActionsEnabled && hasNativeWrite) {
+    if (
+      hasModels &&
+      hasDatabaseWithActionsEnabled &&
+      hasNativeWrite &&
+      !isEmbeddingIframe
+    ) {
       items.push({
         title: t`Action`,
         icon: "bolt",
