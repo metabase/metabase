@@ -294,11 +294,11 @@
                                              ;; cases, e.g. #{:type/Text :type/Date} for date literals. Since
                                              ;; `:effective-type` can be just one value, prefer string, numeric, and
                                              ;; boolean types over others.
-                                             (let [type (lib.schema.expression/type-of value)]
-                                               (if (set? type)
-                                                 (or (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean])) type)
-                                                     (first type))
-                                                 type))))]
+                                             (let [types (lib.schema.expression/type-of value)]
+                                               (if (set? types)
+                                                 (or (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean])) types)
+                                                     (first types))
+                                                 types))))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (doseq [tag [:case :if]]
