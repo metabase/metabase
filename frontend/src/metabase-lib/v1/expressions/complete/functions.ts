@@ -34,8 +34,7 @@ export function suggestFunctions({
   }
 
   const database = getDatabase(query, metadata);
-  const ALIASES = ["case"];
-  const functions = [...EXPRESSION_FUNCTIONS, ...ALIASES]
+  const functions = [...EXPRESSION_FUNCTIONS]
     .map(name => MBQL_CLAUSES[name])
     .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
