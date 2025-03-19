@@ -63,7 +63,7 @@ jobs:
     env:
       needs: ${{ toJson(needs) }}
     steps:
-      - name: Check frontend job status
+      - name: Check embedding SDK job status
         uses: actions/github-script@v7
         env:
           needs: ${{ toJson(needs) }}
@@ -83,7 +83,7 @@ jobs:
             }
 
             // otherwise, something failed
-            console.log('Some frontend jobs failed');
+            console.log('Some embedding SDK jobs failed');
             jobs.forEach((job) => {
               if (job.result !== 'success') {
                 console.log(`${job.name} - ${job.result}`);
