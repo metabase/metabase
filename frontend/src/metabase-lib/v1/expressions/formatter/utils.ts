@@ -47,4 +47,5 @@ function liftMatcher<T>(
 export const pathMatchers = lift({
   ...nodeMatchers,
   isExpressionParts: Lib.isExpressionParts,
+  isColumnMetadata: Lib.isColumnMetadata,
 });
