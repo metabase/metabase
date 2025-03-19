@@ -243,3 +243,7 @@ export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
 export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
   return ML.is_metric_metadata(arg);
 }
+
+export function isSegmentMetadata(arg: unknown): arg is SegmentMetadata {
+  return ML.is_segment_metadata(arg);
+}

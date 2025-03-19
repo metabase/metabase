@@ -1217,6 +1217,14 @@
   [arg]
   (and (map? arg) (= :metadata/metric (:lib/type arg))))
 
+(defn ^:export is-segment-metadata
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/segment (:lib/type arg))))
+
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
 ;; functions provided to inspect and manage that list of fields.
