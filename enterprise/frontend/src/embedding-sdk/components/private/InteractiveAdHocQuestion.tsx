@@ -2,9 +2,11 @@ import { type ReactNode, useMemo } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import * as Urls from "metabase/lib/urls";
+import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import {
-  InteractiveQuestionProviderWithLocation,
+  InteractiveQuestionProvider,
   type QuestionMockLocationParameters,
 } from "./InteractiveQuestion/context";
 import { InteractiveQuestionDefaultView } from "./InteractiveQuestionDefaultView";
@@ -31,10 +33,17 @@ export const InteractiveAdHocQuestion = ({
     [questionPath],
   );
 
+  // If we cannot extract an entity ID from the slug, assume we are creating a new question.
+  const questionId = Urls.extractEntityId(params.slug) ?? "new";
+
+  const { options, serializedCard } = parseHash(location.hash);
+  const deserializedCard = serializedCard && deserializeCard(serializedCard);
+
   return (
-    <InteractiveQuestionProviderWithLocation
-      location={location}
-      params={params}
+    <InteractiveQuestionProvider
+      questionId={questionId}
+      options={options}
+      deserializedCard={deserializedCard}
       componentPlugins={plugins}
       onNavigateBack={onNavigateBack}
     >
@@ -45,7 +54,7 @@ export const InteractiveAdHocQuestion = ({
           withChartTypeSelector
         />
       )}
-    </InteractiveQuestionProviderWithLocation>
+    </InteractiveQuestionProvider>
   );
 };
 
