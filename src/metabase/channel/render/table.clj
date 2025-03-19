@@ -5,7 +5,8 @@
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
-   [metabase.formatter])
+   [metabase.formatter]
+   [metabase.models.visualization-settings :as mb.viz])
   (:import
    (metabase.formatter NumericWrapper)))
 
@@ -122,7 +123,7 @@
   `get-background-color` is a function that returned the background color for the current cell; it is invoked like
 
     (get-background-color cell-value column-name row-index)"
-  [get-background-color normalized-zero column-names rows]
+  [get-background-color normalized-zero column-names rows viz-settings]
   [:tbody
    (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
      [:tr {:style (style/style {:color style/color-gray-3})}
@@ -136,7 +137,16 @@
                         {:border-bottom 0})
                       (when (= col-idx (dec (count row)))
                         {:border-right 0}))}
-         (h cell)])
+         (let [col-name (nth column-names col-idx)
+               col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name col-name}] {})]
+           (cond
+             (= (get col-settings ::mb.viz/view-as) "image")
+             [:img {:src (h cell)
+                    :style (style/style {:max-width "100%"
+                                         :max-height "18rem"
+                                         :object-fit "contain"})}]
+             :else
+             (h cell)))])
       (some-> bar-width (render-bar normalized-zero))])])
 
 (defn render-table
@@ -147,10 +157,10 @@
     `:col-names`, which is the is display_names of the visible columns
     `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
   If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names-map contents]
-   (render-table color-selector 0 column-names-map contents))
+  ([color-selector column-names-map contents viz-settings]
+   (render-table color-selector 0 column-names-map contents viz-settings))
 
-  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows]]
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] viz-settings]
    (let [pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
@@ -169,4 +179,4 @@
               :cellpadding "0"
               :cellspacing "0"}
       (render-table-head (vec col-names) header)
-      (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)])))
+      (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows viz-settings)])))
