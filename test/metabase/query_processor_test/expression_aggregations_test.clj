@@ -427,7 +427,7 @@
                                 [:=
                                  [:expression "Name"]
                                  [:concat [:expression "Name"] ""]]]
-                 :order-by     [[$category_id :asc]]
+                 :order-by     [[:asc $category_id]]
                  :limit        3})))))))
 
 (deftest ^:parallel literal-expressions-inside-joined-aggregations-test
@@ -455,5 +455,5 @@
                                                :aggregation  [[:aggregation-options [:max [:expression "One"]] {:name "MaxOne"}]]
                                                :breakout     [$category_id]}
                                 :alias        "JoinedCategories"}]
-                 :order-by    [[$id :asc]]
+                 :order-by    [[:asc $id]]
                  :limit       3})))))))

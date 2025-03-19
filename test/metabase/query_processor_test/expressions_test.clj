@@ -637,7 +637,7 @@
                                 [:=
                                  [:expression "Name"]
                                  [:concat [:expression "Name"] ""]]]
-                 :order-by     [[$id :asc]]
+                 :order-by     [[:asc $id]]
                  :limit        3})))))))
 
 (deftest ^:parallel joined-literal-expression-test
