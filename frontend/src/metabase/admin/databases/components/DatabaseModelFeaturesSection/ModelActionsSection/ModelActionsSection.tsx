@@ -5,7 +5,7 @@ import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
 
-import { Description, Error, Label } from "../ModelFeatureToggles";
+import { Description, Error, Label } from "../ModelFeatureToggles.styled";
 
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;

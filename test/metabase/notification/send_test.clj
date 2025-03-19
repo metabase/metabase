@@ -664,3 +664,19 @@
                                    vals)]
           (is (> (count consumer-counts) 1))
           (is (every? pos? consumer-counts)))))))
+
+(deftest send-notification-condition-properly-skip-test
+  (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
+                                                    [false (mt/user->id :rasta)]]]
+    (notification.tu/with-temp-notification
+      [notification {:notification {:payload_type :notification/testing
+                                    :creator_id   (mt/user->id :crowberto)
+                                    :condition    ["=" ["context" "creator" "id"] condition-creator-id]}
+                     :handlers     [notification.tu/default-testing-handler]}]
+      (let [channel-messages (notification.tu/with-captured-channel-send!
+                               (#'notification.send/send-notification-sync! notification))]
+        (if condition-passed?
+          (testing "received message when condition returns true"
+            (is (= {:channel/metabase-test 1} (update-vals channel-messages count))))
+          (testing "no messages received when condition returns false"
+            (is (empty? channel-messages))))))))

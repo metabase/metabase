@@ -51,7 +51,8 @@
     :notification/testing})
 
 (t2/deftransforms :model/Notification
-  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
+  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))
+   :condition    mi/transform-json})
 
 (t2/define-after-select :model/Notification
   [notification]

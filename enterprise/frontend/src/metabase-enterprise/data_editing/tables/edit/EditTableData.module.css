@@ -1,0 +1,58 @@
+.container {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.gridWrapper {
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.gridFooter {
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background);
+  color: var(--mb-color-text-secondary);
+}
+
+/** DataGrid overrides */
+
+.tableRow {
+  &:hover .tableBodyCell {
+    background-color: var(--mb-base-color-blue-10);
+  }
+
+  &:hover .tableHeaderCell {
+    /* Draggable hover highlight for `SortableHeader` */
+    box-shadow: none;
+  }
+}
+
+.tableHeaderContainer {
+  --cell-bg-color: var(--mb-base-color-orion-5);
+  --cell-hover-bg-color: var(--mb-base-color-orion-5);
+
+  border-bottom: none;
+}
+
+.tableHeaderCell {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.tableBodyContainer {
+  background-color: var(--mb-color-bg-white);
+}
+
+.tableBodyCell {
+  background-color: var(--mb-color-bg-white);
+  border-right: 1px solid var(--mb-color-border-alpha-30);
+}
+
+.headerCellContainer {
+  background-color: var(--cell-bg-color);
+  border-bottom: 1px solid var(--mb-color-border);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+}

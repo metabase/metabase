@@ -59,6 +59,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -94,6 +97,8 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values for display */
   formatter?: CellFormatter<TValue>;
+
+  getIsCellEditing?: (cellId: string) => boolean;
 }
 
 /**
@@ -177,6 +182,8 @@ export type BodyCellVariant = "text" | "pill";
 export type HeaderCellVariant = "light" | "outline";
 export type RowIdVariant = "indexExpand" | "expandButton";
 
+export type DataGridCellId = string;
+
 export type CellFormatter<TValue> = (
   value: TValue,
   rowIndex: number,
@@ -198,8 +205,11 @@ export interface DataGridInstance<TData> {
   ) => void;
   onBodyCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
-    rowIndex: number,
-    columnId: string,
+    cellProps: {
+      rowIndex: number;
+      columnId: string;
+      cellId: string;
+    },
   ) => void;
   onAddColumnClick?: React.MouseEventHandler<HTMLButtonElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;

@@ -597,3 +597,22 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     downloads?: boolean | null;
   }) => true,
 };
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+};

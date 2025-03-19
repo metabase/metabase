@@ -144,7 +144,9 @@
                                    :database-position          0
                                    :database-required          false
                                    :json-unfolding             false
-                                   :database-is-auto-increment false}}}
+                                   :database-is-auto-increment false
+                                   :database-is-generated      false
+                                   :database-is-nullable       true}}}
                        (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime

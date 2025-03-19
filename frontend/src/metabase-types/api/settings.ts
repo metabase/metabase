@@ -200,6 +200,7 @@ export const tokenFeatures = [
   "cache_granular_controls",
   "disable_password_login",
   "content_verification",
+  // "data_editing", // TODO[WRK]: enable this check after this feature token is added on the BE
   "embedding",
   "embedding_sdk",
   "hosting",
@@ -222,6 +223,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "table_data_editing",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
