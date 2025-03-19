@@ -32,6 +32,8 @@ function print_usage() {
   echo "  ./bin/embedding-sdk/change-react-version.bash restore    # Restore original package files"
 }
 
+# React 19 -> @cypress/react@^9
+# React 17/18 -> @cypress/react@^8
 # See https://docs.cypress.io/app/references/migration-guide#To-continue-using-React-below-v18
 function get_cypress_react_version() {
   local version=$1
