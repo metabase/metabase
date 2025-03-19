@@ -16,10 +16,11 @@
 (set! *warn-on-reflection* true)
 
 (comment
+  #_:clj-kondo/ignore
   (alter-var-root #'environ.core/env assoc
                   :mb-gentest-run "true"
                   :mb-gentest-context-seed "1")
-)
+  )
 
 (gt/defgentest basic-query-execution-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
