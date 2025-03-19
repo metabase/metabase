@@ -11,9 +11,11 @@
   (lib.convert/->legacy-MBQL (lib.tu.gen/random-query mp)))
 
 (defmacro with-random-cards
-  "Wrap `body` in sequence of `(with-temp..(binding..))` forms. Generate one wrapping for per one `card-count`.
-  Purpose is to have [[lib.tu.gen/*available-cards*]] bound prior _execution_ of inner wrappers, so outer temporary
-  cards can be used for generation of inner cards."
+  "Generate random cards (questions or models) and make those availble to caller through `&cards` anaphor.
+
+  Wraps `body` in sequence of nesting `(with-temp..(binding..))` forms. Each for generates a temp card and adds it
+  to [[lib.tu.gen/*available-cards*]] so this card can be used in generation of next card. Testing context is added
+  inside of [[mt/with-temp]] call so cards are printed on failure."
   [mp card-count & body]
   (if (< 0 card-count)
     (let [card-sym (gensym "card-")]
@@ -25,14 +27,3 @@
            (with-random-cards ~mp ~(dec card-count) ~@body))))
     `(let [~(quote &cards) lib.tu.gen/*available-cards*]
        ~@body)))
-
-(comment
-
-  (def mp (metabase.lib.metadata.jvm/application-database-metadata-provider (mt/id)))
-
-  (-> '(with-random-cards mp 1 (+ 1 1))
-      macroexpand-1)
-
-  (-> '(with-random-cards mp 3 (+ 1 1))
-      clojure.walk/macroexpand-all)
-  )
