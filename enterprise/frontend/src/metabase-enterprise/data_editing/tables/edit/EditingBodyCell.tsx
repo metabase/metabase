@@ -45,7 +45,7 @@ export const EditingBodyCellConditional = (
     (value: RowValue) => {
       if (value !== initialValue) {
         onCellValueUpdate({
-          data: { [columnName]: value },
+          updatedData: { [columnName]: value },
           rowIndex,
         });
       }

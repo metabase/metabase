@@ -10,7 +10,7 @@ import {
 } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
-import type { Dataset, RowValue, RowValues } from "metabase-types/api";
+import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
@@ -19,7 +19,7 @@ import { EditingBodyCellConditional } from "./EditingBodyCell";
 import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
-  data: Dataset;
+  data: DatasetData;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
 };
 
@@ -29,7 +29,7 @@ export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
 }: EditTableDataGridProps) => {
-  const { cols, rows } = data.data;
+  const { cols, rows } = data;
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();

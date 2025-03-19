@@ -689,6 +689,8 @@ class Visualization extends PureComponent<
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard?.size_y !== 1 || isMobile) && !isAction);
 
+    const isEditableTable = series?.[0]?.card?.display === "table-editable"; // TODO [WRK]: hacks needed for editable table, should be fixed
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -740,7 +742,13 @@ class Visualization extends PureComponent<
             series && (
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
-                className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+                className={cx(
+                  CS.flex,
+                  CS.flexColumn,
+                  CS.flexFull,
+                  isEditableTable && CS.flexBasis100,
+                  isEditableTable && CS.overflowHidden,
+                )}
               >
                 <CardVisualization
                   actionButtons={actionButtons}

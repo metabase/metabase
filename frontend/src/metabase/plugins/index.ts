@@ -51,9 +51,11 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   Dashboard,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -614,5 +616,11 @@ export const PLUGIN_DATA_EDITING = {
       dbId: string;
       tableId: string;
     };
+  }>,
+  // TODO [WRK]: add placeholder component
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    refetchTableDataQuery: () => void;
   }>,
 };

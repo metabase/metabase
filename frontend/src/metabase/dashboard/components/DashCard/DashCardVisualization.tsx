@@ -214,6 +214,7 @@ export function DashCardVisualization({
       isPublicOrEmbedded,
       isEditing,
       downloadsEnabled,
+      card: dashcard.card,
     });
 
     if (!shouldShowDashCardMenu) {
@@ -245,6 +246,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
+    dashcard.card,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
