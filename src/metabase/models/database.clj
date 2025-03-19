@@ -216,22 +216,33 @@
     (catch Throwable e
       (log/error e "Error unscheduling tasks for DB."))))
 
+(defn- is-destination?
+  "Is this database a destination database for some router database?"
+  [db]
+  (boolean (:router_database_id db)))
+
+(defn should-sync?
+  "Should this database be synced?"
+  [db]
+  (not (is-destination? db)))
+
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
   [database]
-  (t2/with-transaction [_conn]
-    (let [all-users-group  (perms/all-users-group)
-          non-magic-groups (perms/non-magic-groups)
-          non-admin-groups (conj non-magic-groups all-users-group)]
-      (if (:is_audit database)
-        (doseq [group non-admin-groups]
-          (perms/set-database-permission! group database :perms/view-data :unrestricted)
-          (perms/set-database-permission! group database :perms/create-queries :no)
-          (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-          (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-          (perms/set-database-permission! group database :perms/manage-database :no))
-        (doseq [group non-admin-groups]
-          (perms/set-new-database-permissions! group database))))))
+  (when-not (is-destination? database)
+    (t2/with-transaction [_conn]
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)]
+        (if (:is_audit database)
+          (doseq [group non-admin-groups]
+            (perms/set-database-permission! group database :perms/view-data :unrestricted)
+            (perms/set-database-permission! group database :perms/create-queries :no)
+            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+            (perms/set-database-permission! group database :perms/manage-database :no))
+          (doseq [group non-admin-groups]
+            (perms/set-new-database-permissions! group database)))))))
 
 (t2/define-after-insert :model/Database
   [database]
