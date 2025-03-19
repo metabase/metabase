@@ -67,7 +67,7 @@ export const EditingBodyCellCategorySelect = ({
           onClick={() => combobox.toggleDropdown()}
           onMouseDown={onCancel}
           className={S.input}
-          size="xs"
+          size="sm"
         />
       </Combobox.Target>
 

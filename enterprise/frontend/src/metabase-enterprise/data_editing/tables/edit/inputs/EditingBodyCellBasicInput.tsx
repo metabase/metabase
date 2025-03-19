@@ -13,7 +13,7 @@ export const EditingBodyCellBasicInput = ({
       defaultValue={(initialValue ?? "").toString()}
       className={S.input}
       variant="unstyled"
-      size="xs"
+      size="sm"
       autoFocus
       onKeyUp={event => {
         if (event.key === "Escape") {
