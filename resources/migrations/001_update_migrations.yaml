@@ -10853,7 +10853,7 @@ databaseChangeLog:
                   remarks: the display of the subscription, used for the UI only
                   constraints:
                     nullable: true
-                    
+
   - changeSet:
       id: v54.2025-03-17T18:52:44
       author: noahmoss
