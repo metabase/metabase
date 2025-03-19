@@ -15,6 +15,12 @@
 
 (set! *warn-on-reflection* true)
 
+(comment
+  (alter-var-root #'environ.core/env assoc
+                  :mb-gentest-run "true"
+                  :mb-gentest-context-seed "1")
+)
+
 (gt/defgentest basic-query-execution-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (gt/iterate
@@ -38,8 +44,11 @@
 
 (gt/defgentest execution-with-cards-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-    (tu.gen.jvm/with-random-cards mp 3
+    ;; TODO: What is the reasonable amount of cards to use in context? Hardcoding 8 for now as 8 tables are avail in
+    ;;       mp's test-data.
+    (tu.gen.jvm/with-random-cards mp 8
       (gt/iterate
+       #_{:gentest.default-limit/seconds 5}
        {:gentest.default-limit/iterations 1}
        [base-query (lib/query mp (tu.rng/rand-nth (concat (lib.metadata/tables mp) &cards)))
         limit      (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
