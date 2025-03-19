@@ -27,6 +27,11 @@
 .bodyContainer {
   display: grid;
   position: relative;
+  outline: none;
+}
+
+.selectableBody {
+  user-select: none;
 }
 
 .row {

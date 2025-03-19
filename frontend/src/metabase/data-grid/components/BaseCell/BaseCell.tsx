@@ -11,12 +11,14 @@ export type BaseCellProps = {
   align?: CellAlign;
   children?: React.ReactNode;
   className?: string;
+  isSelected?: boolean;
   backgroundColor?: string;
   hasHover?: boolean;
 } & React.HTMLProps<HTMLDivElement>;
 
 export const BaseCell = memo(function BaseCell({
   align = "left",
+  isSelected,
   backgroundColor,
   className,
   hasHover = true,
@@ -24,6 +26,14 @@ export const BaseCell = memo(function BaseCell({
   ...rest
 }: BaseCellProps) {
   const cellStyle = useMemo(() => {
+    if (isSelected) {
+      return {
+        "--cell-bg-color": `color-mix(in srgb, var(--mb-color-brand), white 90%)`,
+        "--cell-hover-bg-color": hasHover
+          ? `color-mix(in srgb, var(--mb-color-brand), white 80%)`
+          : undefined,
+      } as React.CSSProperties;
+    }
     if (!backgroundColor) {
       return {
         "--cell-hover-bg-color": hasHover
@@ -41,10 +51,11 @@ export const BaseCell = memo(function BaseCell({
       "--cell-bg-color": backgroundColor,
       "--cell-hover-bg-color": hasHover ? hoverColor : undefined,
     } as React.CSSProperties;
-  }, [backgroundColor, hasHover]);
+  }, [backgroundColor, hasHover, isSelected]);
 
   return (
     <div
+      aria-selected={isSelected}
       className={cx(
         styles.root,
         {

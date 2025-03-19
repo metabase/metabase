@@ -1,4 +1,5 @@
 import type {
+  Cell,
   CellContext,
   ColumnDefTemplate,
   ColumnSizingState,
@@ -18,6 +19,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
+    enableSelection?: boolean;
     headerClickTargetSelector?: string;
   }
 }
@@ -37,6 +39,7 @@ export type BodyCellBaseProps<TValue> = {
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
+  isSelected?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onExpand?: (id: string, formattedValue: React.ReactNode) => void;
@@ -163,6 +166,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Data grid theme */
   theme?: DataGridTheme;
 
+  /** Controlls whether cell selection is enabled */
+  enableSelection?: boolean;
+
   /** Callback when a column is resized */
   onColumnResize?: (columnSizingMap: ColumnSizingState) => void;
 
@@ -192,12 +198,41 @@ export type CellFormatter<TValue> = (
 
 export type ExpandedColumnsState = Record<string, boolean>;
 
+export type DataGridSelection = {
+  selectedCells: SelectedCell[];
+  isEnabled: boolean;
+  isCellSelected: (cell: Cell<any, any>) => boolean;
+  isRowSelected: (rowId: string) => boolean;
+  handlers: {
+    handleCellMouseDown: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseUp: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellMouseOver: (
+      e: React.MouseEvent<HTMLElement>,
+      cell: Cell<any, any>,
+    ) => void;
+    handleCellsKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  };
+};
+
+export type SelectedCell = {
+  rowId: string;
+  columnId: string;
+  cellId: string;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
+  selection: DataGridSelection;
   measureColumnWidths: () => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
