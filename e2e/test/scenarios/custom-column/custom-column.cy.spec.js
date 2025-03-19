@@ -1248,6 +1248,101 @@ describe("scenarios > question > custom column > help text", () => {
       .should("be.visible")
       .should("contain", "round([Temperature])");
   });
+
+  describe("scenarios > question > custom column > help text > visibility", () => {
+    beforeEach(() => {
+      H.enterCustomColumnDetails({ formula: "round(", blur: false });
+    });
+
+    it("should be possible to show and hide the help text when there are no suggestions", () => {
+      assertHelpTextIsVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+    });
+
+    it("should show the help text again when the suggestions are closed", () => {
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+
+      cy.log("suggestions should be visible");
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain visible when suggestions are picked");
+      // helptext should re-open when suggestion is picked
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to close the help text", () => {
+      cy.log("hide help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertNeitherAreVisible();
+
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain hidden after selecting a suggestion");
+      H.CustomExpressionEditor.selectCompletion("Rating");
+      assertNeitherAreVisible();
+    });
+
+    it("should be possible to prefer showing the help text over the suggestions", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertHelpTextIsVisible();
+    });
+
+    it("should be possible to prefer showing the suggestion when typing", () => {
+      cy.log("type to see suggestions");
+      H.CustomExpressionEditor.type("[Rat", { focus: false });
+      assertSuggestionsAreVisible();
+
+      cy.log("show help text by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertHelpTextIsVisible();
+
+      cy.log("show suggestions again by clicking the header");
+      H.CustomExpressionEditor.helpTextHeader().click();
+      assertSuggestionsAreVisible();
+
+      cy.log("help text should remain shown after finishing typing");
+      H.CustomExpressionEditor.type("ing], ", { focus: false });
+      assertNeitherAreVisible();
+    });
+
+    function assertSuggestionsAreVisible() {
+      cy.log("suggestions should be visible");
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findAllByRole("option")
+        .should("be.visible");
+    }
+    function assertHelpTextIsVisible() {
+      cy.log("help text should be visible");
+      H.CustomExpressionEditor.helpText().should("be.visible");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
+    function assertNeitherAreVisible() {
+      H.CustomExpressionEditor.helpText().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .findByRole("option")
+        .should("not.exist");
+    }
+  });
 });
 
 describe("scenarios > question > custom column > exiting the editor", () => {
