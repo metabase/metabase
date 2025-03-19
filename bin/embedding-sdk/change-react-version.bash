@@ -22,7 +22,7 @@ elif [ "$1" == "restore" ]; then
   restore_packages
   exit 0
 elif [ "$1" == "" ]; then
-  echo "Usage: ./bin/embedding-sdk/change-react-version.bash [react-19|restore]"
+  echo "Usage: ./bin/embedding-sdk/change-react-version.bash [19|restore]"
   exit 1
 fi
 
