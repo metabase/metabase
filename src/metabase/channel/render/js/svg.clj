@@ -213,3 +213,27 @@
     (binding [*svg-render-width*  (float 33)
               *svg-render-height* (float 33)]
       (svg-string->bytes svg-string))))
+
+(defn minibar
+  "Clojure entrypoint to render a minibar chart."
+  [test-string]
+  (let [response (.asString (js.engine/execute-fn-name (context) "minibar"
+                                                       (json/encode test-string)))
+        html-content (-> response
+                         json/decode+kw
+                         :content)
+        ;; Convert HTML content to pure SVG elements
+        svg-content (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"24\">"
+                         "<g transform=\"translate(0,0)\">"
+                         ;; Text element for the number
+                         "<text x=\"30\" y=\"16\" style=\"font-weight:700;text-anchor:end;font-size:12px\">30</text>"
+                         ;; Background bar
+                         "<g transform=\"translate(34,8)\">"
+                         "<rect width=\"70\" height=\"8\" rx=\"3\" fill=\"#509EE3\" fill-opacity=\"0.2\"/>"
+                         ;; Progress bar
+                         "<rect width=\"21\" height=\"8\" rx=\"3\" fill=\"#509EE3\"/>"
+                         "</g>"
+                         "</g>"
+                         "</svg>")]
+    (def html-content html-content)
+    (svg-string->bytes svg-content)))

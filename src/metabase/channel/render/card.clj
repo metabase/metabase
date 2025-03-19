@@ -167,6 +167,8 @@
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
+     (def title-attachments title-attachments)
+     (def body-attachments body-attachments)
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
@@ -211,6 +213,9 @@
                                                :channel.render/include-description? true}
                                               options)
          {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+     (println "TSP render-pulse-section")
+     (def content content)
+     (def attachments attachments)
      {:attachments attachments
       :content     [:div {:style (style/style {:margin-top    :20px
                                                :margin-bottom :20px})}

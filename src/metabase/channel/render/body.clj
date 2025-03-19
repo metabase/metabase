@@ -140,6 +140,7 @@
    rows
    viz-settings
    {:keys [bar-column min-value max-value]}]
+  (def rows rows)
   (let [formatters (into []
                          (map #(formatter/create-formatter timezone-id % viz-settings))
                          cols)]
@@ -236,25 +237,31 @@
    _render-type
    timezone-id :- [:maybe :string]
    card
-   _dashcard
+   dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
+  (println "TSP render :table")
+  (def dashcard dashcard)
+  (def card card)
+  (def viz-settings viz-settings)
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
-        table-body                  [:div
-                                     (table/render-table
-                                      (js.color/make-color-selector unordered-data viz-settings)
-                                      {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+        table-result                (table/render-table
+                                     (js.color/make-color-selector unordered-data viz-settings)
+                                     {:cols-for-color-lookup (mapv :name filtered-cols)
+                                      :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                     (prep-for-html-rendering timezone-id card data)
+                                     viz-settings)]
+    (def table-result table-result)
     {:attachments
-     nil
+     (:attachments table-result)
 
      :content
-     table-body}))
+     [:div
+      (:content table-result)
+      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]}))
 
 (def ^:private default-date-styles
   {:year "YYYY"

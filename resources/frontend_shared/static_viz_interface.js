@@ -77,3 +77,11 @@ function javascript_visualization(rawSeries, dashcardSettings, options) {
     content,
   });
 }
+
+function minibar(testString) {
+  const content = StaticViz.RenderMinibar(JSON.parse(testString));
+  return JSON.stringify({
+    type: "html",
+    content,
+  });
+}

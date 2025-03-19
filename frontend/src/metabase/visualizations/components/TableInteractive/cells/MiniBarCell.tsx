@@ -1,19 +1,13 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
+import { alpha, color } from "metabase/lib/colors";
 import {
   BaseCell,
   type CellAlign,
   type CellFormatter,
 } from "metabase/data-grid";
-import { alpha, color } from "metabase/lib/colors";
-
-import S from "./MiniBarCell.module.css";
 
 const BAR_HEIGHT = 8;
 const BAR_WIDTH = 70;
 const BORDER_RADIUS = 3;
-
 const LABEL_MIN_WIDTH = 30;
 
 export interface MiniBarCellProps<TValue> {
@@ -38,6 +32,8 @@ export const MiniBarCell = <TValue,>({
   if (typeof value !== "number") {
     return null;
   }
+
+  console.log("TSP MiniBarCellvalue", value);
 
   const hasNegative = min < 0;
   const isNegative = value < 0;
@@ -71,27 +67,41 @@ export const MiniBarCell = <TValue,>({
 
   return (
     <BaseCell
-      className={S.root}
+      style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        height: "100%",
+        padding: "0 8px",
+      }}
       backgroundColor={backgroundColor}
       align={align}
     >
       {/* TEXT VALUE */}
       <div
-        className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
-        style={{ minWidth: LABEL_MIN_WIDTH }}
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontWeight: 700,
+          textAlign: "right",
+          flex: 1,
+          minWidth: LABEL_MIN_WIDTH,
+        }}
       >
         {formatter(value, rowIndex, columnId)}
       </div>
       {/* OUTER CONTAINER BAR */}
       <div
         data-testid="mini-bar-container"
-        className={CS.ml1}
         style={{
           position: "relative",
           width: BAR_WIDTH,
           height: BAR_HEIGHT,
           backgroundColor: alpha(barColor, 0.2),
           borderRadius: BORDER_RADIUS,
+          marginLeft: "4px",
         }}
       >
         {/* INNER PROGRESS BAR */}

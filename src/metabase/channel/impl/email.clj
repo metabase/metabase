@@ -35,6 +35,8 @@
 
 (mu/defmethod channel/send! :channel/email
   [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
+  (println "TSP channel/send!")
+  (def message message)
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
@@ -205,6 +207,8 @@
                                                                   (let [email-handler-id (:notification_handler_id
                                                                                           (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
                                                                     (notification-unsubscribe-url-for-non-user email-handler-id non-user-email)))}))]
+    (println "TSP render-notification")
+    (def rendered-card rendered-card)
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
