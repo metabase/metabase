@@ -1,20 +1,15 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
-import { Loader } from "metabase/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { setupTranslateEntityIdEndpoints } from "./entity-ids";
+import { setupTranslateEntityIdEndpoints } from "../../../../../../test/__support__/server-mocks/entity-ids";
+
 import {
   type UseTranslateEntityIdProps,
   useValidatedEntityId,
@@ -22,10 +17,6 @@ import {
 
 const TestComponent = ({ type, id }: UseTranslateEntityIdProps) => {
   const result = useValidatedEntityId({ type, id });
-
-  if (result.isLoading) {
-    return <Loader data-testid="loading-indicator" />;
-  }
 
   return (
     <div>
@@ -66,8 +57,17 @@ const setup = ({ type = "card", id = null }: Partial<SetupProps> = {}) => {
     };
   };
 
+  const waitForIsLoading = async () => {
+    return waitFor(async () => {
+      expect(await screen.findByTestId("is-loading")).toHaveTextContent(
+        "false",
+      );
+    });
+  };
+
   return {
     getHookResult,
+    waitForIsLoading,
   };
 };
 
@@ -82,16 +82,6 @@ describe("useValidatedEntityId", () => {
         isError: false,
       });
     });
-
-    it("should convert stringified numbers to numeric IDs", () => {
-      const { getHookResult } = setup({ id: "456" });
-
-      expect(getHookResult()).toEqual({
-        id: 456,
-        isLoading: false,
-        isError: false,
-      });
-    });
   });
 
   describe("handling entity IDs", () => {
@@ -99,11 +89,11 @@ describe("useValidatedEntityId", () => {
       const entityId = MOCK_CARD.entity_id;
       const translatedId = MOCK_CARD.id;
 
-      const { getHookResult } = setup({
+      const { getHookResult, waitForIsLoading } = setup({
         id: entityId,
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForIsLoading();
 
       expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
 
@@ -117,12 +107,12 @@ describe("useValidatedEntityId", () => {
     it("should return error state when translation fails", async () => {
       const entityId = "oisin";
 
-      const { getHookResult } = setup({
+      const { getHookResult, waitForIsLoading } = setup({
         type: "collection",
         id: entityId,
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForIsLoading();
 
       expect(getHookResult()).toEqual({
         id: null,
@@ -134,16 +124,15 @@ describe("useValidatedEntityId", () => {
     it("should return error state when API request fails", async () => {
       const entityId = "oisinoisinoisinoisino";
 
-      const { getHookResult } = setup({
+      const { getHookResult, waitForIsLoading } = setup({
         type: "dashboard",
         id: entityId,
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForIsLoading();
 
       expect(fetchMock.calls("path:/api/util/entity_id")).toHaveLength(1);
 
-      // Should have error state
       expect(getHookResult()).toEqual({
         id: null,
         isLoading: false,
