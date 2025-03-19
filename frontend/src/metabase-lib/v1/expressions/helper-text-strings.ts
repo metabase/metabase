@@ -287,7 +287,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "text",
     structure: "text",
-    category: "string",
+    category: "conversion",
     description: () =>
       t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
     args: [
