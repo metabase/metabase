@@ -13,7 +13,7 @@ Before running Loki tests locally, ensure that both Storybook and Docker are run
 ### Commands
 
 - Run Visual Tests: `yarn test-visual:loki`
-- Update Snapshots: `yarn test-visual:loki-update`
+- Update failing snapshots: `yarn test-visual:loki-approve-diff`
 - Generate an HTML Report: `yarn test-visual:loki-report`
 - Generate and Open Report: `yarn test-visual:loki-report-open`
 

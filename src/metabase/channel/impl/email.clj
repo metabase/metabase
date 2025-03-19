@@ -25,6 +25,8 @@
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private EmailMessage
   [:map
    [:subject                         :string]
@@ -195,7 +197,7 @@
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         html-content
                                                ;; UI only allow one subscription per card notification
-                                               :alert_schedule  (messages/notification-card-schedule-text (first subscriptions))
+                                               :alert_schedule  (some-> subscriptions first :cron_schedule channel.shared/friendly-cron-description)
                                                :goal_value      goal
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"

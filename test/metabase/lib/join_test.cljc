@@ -9,6 +9,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -217,6 +218,9 @@
           metadata (lib/returned-columns query)]
       (is (=? [(merge (meta/field-metadata :categories :name)
                       {:display-name         "Name"
+                       :ident                (lib.metadata.ident/explicitly-joined-ident
+                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
+                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))

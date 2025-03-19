@@ -19,50 +19,28 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
   }
 
-  function getFieldType(type) {
-    return cy
-      .findByText("Field Type")
-      .closest("section")
-      .find("[data-testid='select-button-content']")
-      .contains(type);
+  function getFieldType() {
+    return cy.findByPlaceholderText("Select a semantic type");
   }
 
   function setFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      cy.findByText(oldValue).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-      searchFieldType(newValue);
       cy.findByText(newValue).click();
     });
   }
 
   function checkNoFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      searchFieldType(newValue);
       cy.findByText(newValue).should("not.exist");
     });
   }
 
-  function searchFieldType(value) {
-    // .type() is flaky when used for ListSearchField - typed characters can
-    // sometimes get rearranged while typing.
-    // Unclear why. Possibly because it's rendered as a virtualized list item.
-    cy.findByPlaceholderText("Find...").invoke("val", value).trigger("blur");
-  }
-
-  function getFKTargetField(targetField) {
-    return cy
-      .findByTestId("fk-target-select")
-      .as("targetField")
-      .invoke("text")
-      .should("eq", targetField);
-  }
-
   function setFKTargetField(field) {
-    cy.findByText("Select a target").click();
+    cy.findByPlaceholderText("Select a target").click();
 
     H.popover().contains(field).click();
   }
@@ -93,7 +71,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.reload();
     cy.wait("@metadata");
 
-    getFieldType("No semantic type");
+    getFieldType().should("have.value", "No semantic type");
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
@@ -112,7 +90,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.wait(["@metadata", "@metadata"]);
 
     getFieldType("Foreign Key");
-    getFKTargetField("Products → ID");
+    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
@@ -189,8 +167,7 @@ describe("scenarios > admin > datamodel > field", () => {
     it("lets you change field visibility", () => {
       H.visitAlias("@ORDERS_CREATED_AT_URL");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Everywhere").click();
+      cy.findByDisplayValue("Everywhere").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Do not include").click({ force: true });
       cy.wait("@fieldUpdate");
@@ -229,8 +206,7 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Use original value").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use foreign key").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Title").click();
+      H.popover().findByText("Title").click();
       cy.wait("@fieldDimensionUpdate");
 
       cy.reload();
@@ -753,6 +729,8 @@ describe("scenarios > admin > datamodel > segments", () => {
           aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
+      }).then(({ body }) => {
+        cy.wrap(body.id).as("segmentId");
       });
     });
 
@@ -777,6 +755,17 @@ describe("scenarios > admin > datamodel > segments", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Fields in ${SEGMENT_NAME}`);
       cy.findAllByText("Discount");
+    });
+
+    it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
+      cy.get("@segmentId").then(segmentId => {
+        cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
+      });
+
+      cy.button(/Edit/).should("be.visible").realClick();
+
+      cy.findByPlaceholderText("No description yet").should("be.visible");
+      cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
     it("should show up in UI list", () => {
@@ -1006,26 +995,44 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.get("input[value='User ID']");
-      cy.findAllByText("Foreign Key");
+      cy.findByTestId("column-ID").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Entity Key",
+        );
+      });
 
-      cy.get("input[value='Tax']");
-      cy.findAllByText("No semantic type");
+      cy.findByTestId("column-USER_ID").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Foreign Key",
+        );
+        cy.findByPlaceholderText("Select a target").should(
+          "have.value",
+          "People → ID",
+        );
+      });
 
-      cy.get("input[value='Discount']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount");
-    });
+      cy.findByTestId("column-TAX").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "No semantic type",
+        );
+      });
 
-    it("should see the id field", () => {
-      cy.get("input[value='ID']");
-      cy.findAllByText("Entity Key");
-    });
+      cy.findByTestId("column-DISCOUNT").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Discount",
+        );
+      });
 
-    it("should see the created_at timestamp field", () => {
-      cy.get("input[value='Created At']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Creation timestamp");
+      cy.findByTestId("column-CREATED_AT").within(() => {
+        cy.findByPlaceholderText("Select a semantic type").should(
+          "have.value",
+          "Creation timestamp",
+        );
+      });
     });
   });
 
