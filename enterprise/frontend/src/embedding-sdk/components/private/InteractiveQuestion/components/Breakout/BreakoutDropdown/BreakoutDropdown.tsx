@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { match } from "ts-pattern";
+import { c, t } from "ttag";
 
 import {
   MultiStepPopover,
@@ -31,9 +32,14 @@ export const BreakoutDropdownInner = ({
   const [selectedBreakout, setSelectedBreakout] = useState<SDKBreakoutItem>();
 
   const label = match(items.length)
-    .with(0, () => "Group")
-    .with(1, () => "1 grouping")
-    .otherwise(value => `${value} groupings`);
+    .with(0, () => t`Group`)
+    .with(1, () => t`1 grouping`)
+    .otherwise(
+      value =>
+        c(
+          "{0} refers to a number greater than 1 (i.e. 2 groupings, 10 groupings)",
+        ).t`${value} groupings`,
+    );
 
   const onSelectItem = (item?: SDKBreakoutItem) => {
     setSelectedBreakout(item);

@@ -12,6 +12,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -68,7 +69,8 @@
                                       (when (or (:source-card  stage)
                                                 (:source-table stage)
                                                 (:expressions  stage)
-                                                (:fields       stage))
+                                                (:fields       stage)
+                                                (pos-int? previous-stage-number))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
                                       (log/warnf "Cannot resolve column %s: stage has no metadata"
                                                  (pr-str column-name)))]
@@ -177,7 +179,9 @@
   [query
    stage-number
    metadata
-   [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+   [_tag {source-uuid :lib/uuid
+          :keys [base-type binning effective-type ident join-alias source-field temporal-unit], :as opts}
+    :as field-ref]]
   (let [metadata (merge
                   {:lib/type        :metadata/column}
                   metadata
@@ -189,8 +193,14 @@
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
-      source-field   (assoc :fk-field-id source-field)
-      join-alias     (lib.join/with-join-alias join-alias))))
+      source-field   (-> (assoc :fk-field-id source-field)
+                         (update :ident lib.metadata.ident/implicitly-joined-ident
+                                 (:ident (lib.metadata/field query source-field))))
+      join-alias     (-> (lib.join/with-join-alias join-alias)
+                         (update :ident lib.metadata.ident/explicitly-joined-ident
+                                 (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias))))
+      ;; Overwriting the ident with one from the options, eg. for a breakout clause.
+      ident          (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
@@ -782,20 +792,13 @@
     (lib.types.isa/searchable? field) :search
     :else                             :none))
 
-(mu/defn- remapped-field :- [:maybe ::lib.schema.metadata/column]
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column                :- ::lib.schema.metadata/column]
-  (when (lib.types.isa/foreign-key? column)
-    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-      (lib.metadata/field metadata-providerable remap-field-id))))
-
 (mu/defn- search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (let [col (or (when (lib.types.isa/primary-key? column)
                   (when-let [name-field (:name-field column)]
                     (lib.metadata/field metadata-providerable (u/the-id name-field))))
-                (remapped-field metadata-providerable column)
+                (lib.metadata/remapped-field metadata-providerable column)
                 column)]
     (when (lib.types.isa/searchable? col)
       col)))

@@ -6,7 +6,6 @@ import { deserializeCardFromUrl } from "metabase/lib/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
@@ -295,15 +294,6 @@ describe("Question", () => {
         tableId: ORDERS_ID,
       });
 
-      it("contains an empty structured query", () => {
-        expect(
-          question.legacyQuery({ useStructuredQuery: true }).constructor,
-        ).toBe(StructuredQuery);
-        expect(
-          question.legacyQuery({ useStructuredQuery: true }).constructor,
-        ).toBe(StructuredQuery);
-      });
-
       it("defaults to table display", () => {
         expect(question.display()).toEqual("table");
       });
@@ -339,33 +329,24 @@ describe("Question", () => {
   });
 
   describe("At the heart of a question is an MBQL query.", () => {
-    describe("legacyQuery()", () => {
+    describe("legacyNativeQuery()", () => {
       it("returns a correct class instance for structured query", () => {
-        // This is a bit wack, and the repetitive naming is pretty confusing.
-        const query = orders_raw_question.legacyQuery({
-          useStructuredQuery: true,
-        });
-        expect(query instanceof StructuredQuery).toBe(true);
+        expect(orders_raw_question.legacyNativeQuery()).toBeUndefined();
       });
 
       it("returns a correct class instance for native query", () => {
-        const query = native_orders_count_question.legacyQuery({
-          useStructuredQuery: true,
-        });
+        const query = native_orders_count_question.legacyNativeQuery();
         expect(query instanceof NativeQuery).toBe(true);
       });
     });
 
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = native_orders_count_question.legacyQuery({
-          useStructuredQuery: true,
-        });
+        const rawQuery = native_orders_count_question.legacyNativeQuery();
         const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
-        expect(
-          newRawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
-            NativeQuery,
-        ).toBe(true);
+        expect(newRawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
+          true,
+        );
       });
     });
 
@@ -375,10 +356,9 @@ describe("Question", () => {
           native_orders_count_question.datasetQuery(),
         );
 
-        expect(
-          rawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
-            NativeQuery,
-        ).toBe(true);
+        expect(rawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
+          true,
+        );
       });
     });
   });
@@ -578,6 +558,30 @@ describe("Question", () => {
         expect(
           underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
         ).toBe(true);
+      });
+
+      it("questions that differ only by randomized idents are considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(false);
+      });
+
+      it("questions that differ by query only are not considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: PRODUCTS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(true);
       });
     });
   });

@@ -10,7 +10,10 @@ import { t } from "ttag";
 import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseCore from "metabase/lib/core";
+import {
+  FIELD_SEMANTIC_TYPES,
+  FIELD_SEMANTIC_TYPES_MAP,
+} from "metabase/lib/core";
 import { Icon } from "metabase/ui";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
@@ -54,7 +57,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                   : field.semantic_type
               }
               onChange={formField.semantic_type.onChange}
-              options={MetabaseCore.field_semantic_types.concat({
+              options={FIELD_SEMANTIC_TYPES.concat({
                 id: null,
                 name: t`No field type`,
                 section: t`Other`,
@@ -69,15 +72,12 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               </div>
               <span
                 className={
-                  getIn(MetabaseCore.field_semantic_types_map, [
-                    field.semantic_type,
-                    "name",
-                  ])
+                  getIn(FIELD_SEMANTIC_TYPES_MAP, [field.semantic_type, "name"])
                     ? CS.textMedium
                     : CS.textLight
                 }
               >
-                {getIn(MetabaseCore.field_semantic_types_map, [
+                {getIn(FIELD_SEMANTIC_TYPES_MAP, [
                   field.semantic_type,
                   "name",
                 ]) || t`No field type`}

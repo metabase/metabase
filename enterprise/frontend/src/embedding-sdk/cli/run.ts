@@ -55,7 +55,7 @@ export const CLI_STEPS: CliStepConfig[] = [
   {
     id: "askForTenancyColumns",
     executeStep: askForTenancyColumns,
-    runIf: hasValidLicense,
+    runIf: state => !state.useSampleDatabase && hasValidLicense(state),
   },
   {
     id: "setupPermissions",
@@ -63,6 +63,7 @@ export const CLI_STEPS: CliStepConfig[] = [
 
     // We need at least one table with a tenancy column to set up sandboxing.
     runIf: state =>
+      !state.useSampleDatabase &&
       hasValidLicense(state) &&
       Object.keys(state.tenancyColumnNames ?? {}).length > 0,
   },

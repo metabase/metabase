@@ -33,9 +33,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   });
 });
@@ -228,7 +226,6 @@ describe("issue 53194", () => {
 
   it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
     H.startNewNativeQuestion();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
