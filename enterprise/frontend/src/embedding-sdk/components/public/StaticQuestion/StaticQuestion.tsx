@@ -1,11 +1,10 @@
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
-
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 
+import type { FlexibleSizeProps } from "../FlexibleSizeComponent";
 import { InteractiveQuestion } from "../InteractiveQuestion";
 
 export type StaticQuestionProps = {
