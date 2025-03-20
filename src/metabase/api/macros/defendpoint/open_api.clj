@@ -142,7 +142,10 @@
           params                    (concat
                                      (for [param route-params]
                                        (assoc param :in :path))
-                                     query-params)
+                                     query-params
+                                     [{:name "X-Metabase-Session"
+                                       :in   :header
+                                       :$ref "#/components/headers/X-Metabase-Session"}])
           ctype                     (if (get-in form [:metadata :multipart])
                                       "multipart/form-data"
                                       "application/json")
