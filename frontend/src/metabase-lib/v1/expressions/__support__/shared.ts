@@ -95,6 +95,16 @@ export const query = createQueryWithClauses({
       operator: "=",
       args: [1, 1],
     },
+    {
+      name: "name with [brackets]",
+      operator: "+",
+      args: [1, 2],
+    },
+    {
+      name: "name with \\ slash",
+      operator: "+",
+      args: [1, 2],
+    },
   ],
 });
 const stageIndex = -1;

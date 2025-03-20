@@ -61,10 +61,17 @@ describe("old recursive-parser tests", () => {
     expect(expr("Subtotal")).toEqual(subtotal);
   });
 
-  // TODO: add tests column to table
-  it.skip("should parse bracketed field references (with escaping)", () => {
-    expect(expr("[Sale \\[2022\\]]")).toEqual(["dimension", "Sale [2022]"]);
-    expect(expr("[Crazy\\test]")).toEqual(["dimension", "Crazy\\test"]);
+  it("should parse bracketed field references (with escaping)", () => {
+    expect(expr("[name with \\[brackets\\]]")).toEqual([
+      "expression",
+      "name with [brackets]",
+      { "base-type": "type/Integer" },
+    ]);
+    expect(expr("[name with \\ slash]")).toEqual([
+      "expression",
+      "name with \\ slash",
+      { "base-type": "type/Integer" },
+    ]);
   });
 
   it("should parse unary expressions", () => {
