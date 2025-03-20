@@ -407,6 +407,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   },
   {
     name: "path",
+    category: "string",
     structure: "path",
     description: () =>
       t`Extracts the pathname from a URL. E.g., ${'path("https://www.example.com/path/to/page.html?key1=value)'} would return ${"/path/to/page.html"}.`,
