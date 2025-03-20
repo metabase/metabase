@@ -221,5 +221,10 @@
   (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
     [:value true nil]
     [:value false nil]
+    [:expression "boolexpr"]
     [:field 1 nil]
-    [:segment 1]))
+    [:segment 1]
+    [:and [:value true nil] [:value false nil]]
+    [:or  [:value true nil] [:value false nil]]
+    [:and [:expression "bool1"] [:expression "bool2"]]
+    [:or  [:expression "bool1"] [:expression "bool2"]]))
