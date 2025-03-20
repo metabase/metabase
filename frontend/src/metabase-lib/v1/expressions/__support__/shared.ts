@@ -3,8 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type {
   Expression,
-  FieldReference,
   LocalFieldReference,
+  ReferenceOptions,
 } from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
@@ -48,16 +48,31 @@ const metadata = createMockMetadata({
   ],
 });
 
-const created: LocalFieldReference = ["field", ORDERS.CREATED_AT, null];
-const total: LocalFieldReference = ["field", ORDERS.TOTAL, null];
-const subtotal: LocalFieldReference = ["field", ORDERS.SUBTOTAL, null];
-const tax: LocalFieldReference = ["field", ORDERS.TAX, null];
-const userId: LocalFieldReference = ["field", ORDERS.USER_ID, null];
-const userName: FieldReference = [
-  "field",
-  PEOPLE.NAME,
-  { "source-field": ORDERS.USER_ID },
-];
+function ref(id: number, options?: ReferenceOptions): LocalFieldReference {
+  const field = metadata.field(id);
+  if (!field) {
+    return ["field", id, null];
+  }
+
+  const opts = { ...options };
+  if (field.base_type) {
+    opts["base-type"] = field.base_type;
+  }
+  return ["field", id, opts];
+}
+
+export const id = ref(ORDERS.ID);
+export const created = ref(ORDERS.CREATED_AT);
+export const total = ref(ORDERS.TOTAL);
+export const subtotal = ref(ORDERS.SUBTOTAL);
+export const tax = ref(ORDERS.TAX);
+export const userId = ref(ORDERS.USER_ID);
+export const userName = ref(PEOPLE.NAME);
+export const price = ref(PRODUCTS.PRICE);
+export const ean = ref(PRODUCTS.EAN);
+export const name = ref(PEOPLE.NAME);
+export const category = ref(PRODUCTS.CATEGORY);
+export const email = ref(PEOPLE.EMAIL);
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
