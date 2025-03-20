@@ -2,6 +2,7 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
+import { Tooltip } from "metabase/ui";
 
 import { DraggableSidebarLink } from "../../SidebarItems";
 
@@ -33,4 +34,8 @@ export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
       outline: none;
     }
   }
+`;
+
+export const BookmarkTooltip = styled(Tooltip)`
+  margin-top: -8.5px;
 `;

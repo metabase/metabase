@@ -19,13 +19,13 @@ import Bookmarks from "metabase/entities/bookmarks";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";
 import type { SelectedItem } from "../../types";
 
-import { SidebarBookmarkItem } from "./BookmarkList.styled";
+import { BookmarkTooltip, SidebarBookmarkItem } from "./BookmarkList.styled";
 
 const mapDispatchToProps = {
   onDeleteBookmark: ({ item_id, type }: Bookmark) =>
@@ -95,11 +95,11 @@ const BookmarkItem = ({
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
         right={
-          <button onClick={onRemove}>
-            <Tooltip label={t`Remove bookmark`} position="bottom">
+          <BookmarkTooltip label={t`Remove bookmark`} position="top">
+            <button onClick={onRemove} className="bookmark-remove-button">
               <Icon name={iconName} />
-            </Tooltip>
-          </button>
+            </button>
+          </BookmarkTooltip>
         }
       >
         {bookmark.name}
