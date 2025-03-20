@@ -12,11 +12,13 @@ import S from "./RowIdCell.module.css";
 export interface RowIdCellProps {
   value?: React.ReactNode;
   backgroundColor?: string;
+  onRowExpandClick?: () => void;
 }
 
 export const RowIdCell = memo(function RowIdCell({
   value,
   backgroundColor,
+  onRowExpandClick,
 }: RowIdCellProps) {
   const hasValue = value != null;
 
@@ -47,6 +49,7 @@ export const RowIdCell = memo(function RowIdCell({
             className={cx(DataGridS.rowHoverVisible, S.expandButton)}
             size="compact-md"
             leftSection={<Icon name="expand" size={14} />}
+            onClick={onRowExpandClick}
           />
         </BaseCell>
       </span>

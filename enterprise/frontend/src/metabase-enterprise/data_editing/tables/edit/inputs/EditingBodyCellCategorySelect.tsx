@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import { skipToken, useGetFieldValuesQuery } from "metabase/api";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
@@ -13,7 +14,6 @@ import {
   useCombobox,
 } from "metabase/ui";
 
-import S from "./EditingBodyCellInput.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
@@ -24,6 +24,8 @@ type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
 const DefaultItemLabelTextGetter = (item: SelectOption) => item.label;
 
 export const EditingBodyCellCategorySelect = ({
+  autoFocus,
+  inputProps,
   initialValue,
   datasetColumn,
   withCreateNew = true,
@@ -35,9 +37,10 @@ export const EditingBodyCellCategorySelect = ({
     datasetColumn.id ?? skipToken,
   );
 
+  const [value, setValue] = useState(initialValue?.toString());
   const [search, setSearch] = useState("");
   const combobox = useCombobox({
-    defaultOpened: true,
+    defaultOpened: autoFocus,
     onDropdownClose: onCancel,
   });
 
@@ -53,21 +56,32 @@ export const EditingBodyCellCategorySelect = ({
     [fieldData, getDropdownLabelText, search],
   );
 
+  const handleOptionSubmit = useCallback(
+    (value: string) => {
+      setValue(value);
+      onSubmit(value);
+      combobox.toggleDropdown();
+    },
+    [onSubmit, setValue, combobox],
+  );
+
   return (
     <Combobox
       store={combobox}
       position="bottom-start"
-      onOptionSubmit={onSubmit}
+      onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.Target>
         <Input
-          value={(initialValue ?? "").toString()}
-          variant="unstyled"
+          value={value}
           pointer
           onClick={() => combobox.toggleDropdown()}
-          onMouseDown={onCancel}
-          className={S.input}
-          size="sm"
+          // makes input to act like a button, however appear like a regular input field
+          onMouseDown={event => {
+            event.preventDefault();
+          }}
+          onChange={noop}
+          {...inputProps}
         />
       </Combobox.Target>
 

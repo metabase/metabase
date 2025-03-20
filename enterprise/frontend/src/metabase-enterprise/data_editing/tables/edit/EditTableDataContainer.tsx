@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -21,6 +22,7 @@ import type { UpdatedRowCellsHandlerParams } from "../types";
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
+import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 
 type EditTableDataContainerProps = {
   params: {
@@ -56,7 +58,6 @@ export const EditTableDataContainer = ({
     dispatch(closeNavbar());
   });
 
-  const handleNewRowCreate = () => {};
   const handleRowsDelete = () => {};
 
   const handleCellValueUpdate = useCallback(
@@ -92,6 +93,24 @@ export const EditTableDataContainer = ({
     [datasetData, refetchTableDataQuery, tableId, updateTableRows],
   );
 
+  const [
+    isCreateRowModalOpen,
+    { open: openCreateRowModal, close: closeCreateRowModal },
+  ] = useDisclosure(false);
+
+  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(null);
+  const handleRowExpectClick = useCallback(
+    (rowIndex: number) => {
+      setExpandedRowIndex(rowIndex);
+    },
+    [setExpandedRowIndex],
+  );
+
+  const handleCreationOrEditingModalClose = useCallback(() => {
+    closeCreateRowModal();
+    setExpandedRowIndex(null);
+  }, [closeCreateRowModal, setExpandedRowIndex]);
+
   if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
     return null;
@@ -103,42 +122,55 @@ export const EditTableDataContainer = ({
   }
 
   return (
-    <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
-      {table && (
-        <EditTableDataHeader
-          table={table}
-          onCreate={handleNewRowCreate}
-          onDelete={handleRowsDelete}
-        />
-      )}
-      {isDatabaseTableEditingEnabled(database) ? (
-        <>
-          <Box pos="relative" className={S.gridWrapper}>
-            <EditTableDataGrid
-              data={datasetData}
-              onCellValueUpdate={handleCellValueUpdate}
-            />
-          </Box>
-          <Flex
-            py="0.5rem"
-            px="1.5rem"
-            h="2.5rem"
-            justify="flex-end"
-            align="center"
-            className={S.gridFooter}
-          >
-            <Text fw="bold" size="md" c="inherit" component="span">
-              {getRowCountMessage(datasetData)}
-            </Text>
-          </Flex>
-        </>
-      ) : (
-        <GenericError
-          title={t`Table editing is not enabled for this database`}
-          message={t`Please ask your admin to enable table editing`}
-          details={undefined}
-        />
-      )}
-    </Stack>
+    <>
+      <Stack className={S.container} gap={0} data-testid="edit-table-data-root">
+        {table && (
+          <EditTableDataHeader
+            table={table}
+            onCreate={openCreateRowModal}
+            onDelete={handleRowsDelete}
+          />
+        )}
+        {isDatabaseTableEditingEnabled(database) ? (
+          <>
+            <Box pos="relative" className={S.gridWrapper}>
+              <EditTableDataGrid
+                data={datasetData}
+                onCellValueUpdate={handleCellValueUpdate}
+                onRowExpandClick={handleRowExpectClick}
+              />
+            </Box>
+            <Flex
+              py="0.5rem"
+              px="1.5rem"
+              h="2.5rem"
+              justify="flex-end"
+              align="center"
+              className={S.gridFooter}
+            >
+              <Text fw="bold" size="md" c="inherit" component="span">
+                {getRowCountMessage(datasetData)}
+              </Text>
+            </Flex>
+          </>
+        ) : (
+          <GenericError
+            title={t`Table editing is not enabled for this database`}
+            message={t`Please ask your admin to enable table editing`}
+            details={undefined}
+          />
+        )}
+      </Stack>
+      <EditingBaseRowModal
+        opened={isCreateRowModalOpen || expandedRowIndex !== null}
+        onClose={handleCreationOrEditingModalClose}
+        datasetColumns={datasetData.data.cols}
+        currentRowData={
+          expandedRowIndex !== null
+            ? datasetData.data.rows[expandedRowIndex]
+            : undefined
+        }
+      />
+    </>
   );
 };

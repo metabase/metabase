@@ -16,17 +16,19 @@ import type { Dataset, RowValue, RowValues } from "metabase-types/api";
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
-import { EditingBodyCellConditional } from "./EditingBodyCell";
+import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import { useTableEditing } from "./use-table-editing";
 
 type EditTableDataGridProps = {
   data: Dataset;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
+  onRowExpandClick: (rowIndex: number) => void;
 };
 
 export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
+  onRowExpandClick,
 }: EditTableDataGridProps) => {
   const { cols, rows } = useMemo(
     () => extractRemappedColumns(data.data),
@@ -56,7 +58,7 @@ export const EditTableDataGrid = ({
           );
         },
         editingCell: cellContext => (
-          <EditingBodyCellConditional
+          <EditingBodyCellWrapper
             cellContext={cellContext}
             column={column}
             onCellValueUpdate={onCellValueUpdate}
@@ -73,8 +75,9 @@ export const EditTableDataGrid = ({
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
       variant: "expandButton",
+      onRowExpandClick,
     }),
-    [],
+    [onRowExpandClick],
   );
 
   const tableProps = useDataGridInstance({
