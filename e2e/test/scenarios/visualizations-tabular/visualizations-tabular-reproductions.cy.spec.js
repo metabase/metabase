@@ -458,7 +458,7 @@ describe("issue 23076", () => {
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/, { timeout: 10000 })
+    cy.findAllByText(/^Summen für/)
       .should("be.visible")
       .eq(1)
       .invoke("text")

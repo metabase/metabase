@@ -378,10 +378,6 @@
            metabase.permissions.util}
    :uses #{api audit config db integrations models plugins premium-features request server util}}
 
-  pivot
-  {:api #{metabase.pivot.core}
-   :uses #{util models}}
-
   plugins
   {:api  #{metabase.plugins metabase.plugins.classloader}
    :uses #{config driver util}}
@@ -462,7 +458,6 @@
            lib
            models
            permissions
-           pivot
            premium-features
            public-settings
            request
