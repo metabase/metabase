@@ -94,6 +94,11 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
         return false;
       }
 
+      if (effectiveType === TYPE.Boolean && option.id === TYPE.Category) {
+        // "Category" is the semantic type for Booleans
+        return true;
+      }
+
       if (option.id === TYPE.Name) {
         const isText = isa(effectiveType, TYPE.Text);
         const isTextLike = isa(effectiveType, TYPE.TextLike);
