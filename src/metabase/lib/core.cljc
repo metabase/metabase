@@ -189,7 +189,9 @@
   rtrim
   upper
   lower
-  offset]
+  offset
+  text
+  integer]
  [lib.extraction
   column-extractions
   extract
