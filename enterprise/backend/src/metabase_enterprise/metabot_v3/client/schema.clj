@@ -34,11 +34,6 @@
    [:name :string]
    [:description [:maybe :string]]])
 
-(mr/def ::ai-proxy.response
-  "Shape of the response we get back from the AI Proxy."
-  [:map
-   [:message ::message]])
-
 (mr/def ::ai-proxy.response-v2
   "Schema of the V2 AI agent response."
   [:map
