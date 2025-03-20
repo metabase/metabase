@@ -1,22 +1,6 @@
-import type { ClickObjectDataRow, ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
 
-type PivotTableClickDimension = ClickObjectDimension & {
-  colIdx?: number;
-};
-
-type PivotTableClickDataRow = ClickObjectDataRow & {
-  colIdx?: number;
-};
-
-export type PivotTableClicked = {
-  value: string;
-  colIdx?: number;
-  column?: DatasetColumn;
-  data?: PivotTableClickDataRow[];
-  dimensions?: PivotTableClickDimension[];
-};
-
+export type PivotTableClicked = { value: string; column: DatasetColumn };
 export interface HeaderItem {
   clicked: PivotTableClicked;
 

@@ -380,28 +380,25 @@
   (set/map-invert db->norm-click-behavior-keys))
 
 (def ^:private db->norm-column-settings-keys
-  {:column_title                  ::column-title
-   :date_style                    ::date-style
-   :date_separator                ::date-separator
-   :date_abbreviate               ::date-abbreviate
-   :time_enabled                  ::time-enabled
-   :time_style                    ::time-style
-   :number_style                  ::number-style
-   :currency                      ::currency
-   :currency_style                ::currency-style
-   :currency_in_header            ::currency-in-header
-   :number_separators             ::number-separators
-   :decimals                      ::decimals
-   :scale                         ::scale
-   :prefix                        ::prefix
-   :suffix                        ::suffix
-   :view_as                       ::view-as
-   :link_text                     ::link-text
-   :link_url                      ::link-url
-   :show_mini_bar                 ::show-mini-bar
-   ;; TODO: keeping these the same for FE/BE consistency
-   :pivot_table.column_sort_order  :pivot_table.column_sort_order
-   :pivot_table.column_show_totals :pivot_table.column_show_totals})
+  {:column_title       ::column-title
+   :date_style         ::date-style
+   :date_separator     ::date-separator
+   :date_abbreviate    ::date-abbreviate
+   :time_enabled       ::time-enabled
+   :time_style         ::time-style
+   :number_style       ::number-style
+   :currency           ::currency
+   :currency_style     ::currency-style
+   :currency_in_header ::currency-in-header
+   :number_separators  ::number-separators
+   :decimals           ::decimals
+   :scale              ::scale
+   :prefix             ::prefix
+   :suffix             ::suffix
+   :view_as            ::view-as
+   :link_text          ::link-text
+   :link_url           ::link-url
+   :show_mini_bar      ::show-mini-bar})
 
 (def ^:private norm->db-column-settings-keys
   (set/map-invert db->norm-column-settings-keys))
