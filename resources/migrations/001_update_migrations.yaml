@@ -10925,7 +10925,6 @@ databaseChangeLog:
             - indexExists:
                 tableName: metabase_database
                 indexName: idx_unique_metabase_database_router_database_id_name
-      rollback: # will be deleted when column is deleted
       changes:
         - addUniqueConstraint:
             tableName: metabase_database
