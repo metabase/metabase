@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -530,8 +529,8 @@
 (deftest ^:parallel nested-literal-expression-test
   (testing "nested literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
-                                     #{:h2})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
+                           :h2)
       (is (= [(into [1] standard-literal-expression-values)]
              (mt/formatted-rows
               standard-literal-expression-row-formats-with-id
@@ -561,8 +560,8 @@
 (deftest ^:parallel order-by-literal-expression-test
   ;; TODO Fix this test for H2 (QUE-726)
   (testing "order-by all literal expression types"
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals)
-                                     #{:h2})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals)
+                           :h2)
       (is (= [[1 "" "foo" 0 12345 1.234 true false]
               [2 "" "foo" 0 12345 1.234 true false]]
              (mt/formatted-rows
@@ -610,8 +609,8 @@
 (deftest ^:parallel nested-and-filtered-literal-expression-test
   (testing "nested and filtered literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
-                                     #{:h2})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :nested-queries)
+                           :h2)
       (is (= [[2 "Stout Burgers & Beers" true "Red Medicine" 1 2 "Bob's Burgers"]
               [3 "The Apple Pan" true "Red Medicine" 1 2 "Bob's Burgers"]
               [4 "Wurstküche" true "Red Medicine" 1 2 "Bob's Burgers"]]
@@ -650,8 +649,8 @@
 (deftest ^:parallel joined-literal-expression-test
   (testing "joined literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature ::expression-literals :left-join :nested-queries)
-                                     #{:h2})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-literals :left-join :nested-queries)
+                           :h2)
       (is (= [[2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "25°"]
               [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "In-N-Out Burger"]
               [2 "Stout Burgers & Beers" 2 0.5 true 1 "Stout Burgers & Beers" "The Apple Pan"]]

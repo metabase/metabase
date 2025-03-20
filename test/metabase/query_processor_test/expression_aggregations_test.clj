@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -393,10 +392,8 @@
 (deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
   (testing "nested aggregated and filtered literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature
-                                      ::expression-aggregation-literals
-                                      :nested-queries)
-                                     #{:h2})
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-aggregation-literals :nested-queries)
+                           :h2)
       (is (= [[2 true "Red Medicine" 1 8 16]
               [3 true "Red Medicine" 1 2 4]
               [4 true "Red Medicine" 1 2 4]]
