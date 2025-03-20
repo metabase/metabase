@@ -146,6 +146,8 @@ function print(
       return formatCaseOrIf(path, print);
     } else if (isExpression(path.node.operator)) {
       return formatExpression(path);
+    } else if (isValueOperator(path.node.operator)) {
+      return formatValueExpression(path, print);
     } else {
       return formatFunctionCall(path, print);
     }
@@ -375,6 +377,21 @@ function formatCaseOrIf(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
   }
 
   return formatCallExpression(node.operator, args);
+}
+
+function isValueOperator(op: string): op is "value" {
+  return op === "value";
+}
+
+function formatValueExpression(
+  path: AstPath<Lib.ExpressionParts>,
+  print: Print,
+): Doc {
+  const { node } = path;
+  if (!isValueOperator(node.operator)) {
+    throw new Error("Expected value");
+  }
+  return recurse(path, print, node.args[0]);
 }
 
 function formatCallExpression(callee: string, args: Doc[]): Doc {
