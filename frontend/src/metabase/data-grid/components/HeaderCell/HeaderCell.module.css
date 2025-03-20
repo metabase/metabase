@@ -7,7 +7,7 @@
   cursor: default;
   font-weight: 700;
   padding: 0 12px;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: unset;
 }
 
 .content {
@@ -29,12 +29,12 @@
 
 .light .content {
   transition: background-color 200ms ease-in-out;
-  background-color: var(--mb-base-color-brand-10);
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
   cursor: pointer;
 }
 
 .light .content:hover {
-  background-color: var(--mb-base-color-brand-20);
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
 }
 
 .outline .content {
