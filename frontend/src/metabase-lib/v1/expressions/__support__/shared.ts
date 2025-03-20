@@ -164,171 +164,73 @@ const expression: TestCase[] = [
 
   [
     "Sum([Total]) / Sum([Product → Price]) * Average([Tax])",
-    [
-      "*",
-      [
-        "/",
-        ["sum", ["field", ORDERS.TOTAL, null]],
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-      ],
-      ["avg", ["field", ORDERS.TAX, null]],
-    ],
+    ["*", ["/", ["sum", total], ["sum", price]], ["avg", tax]],
     "should handle priority for multiply and division without parenthesis",
   ],
 
   [
     "Sum([Total]) / (Sum([Product → Price]) * Average([Tax]))",
-    [
-      "/",
-      ["sum", ["field", ORDERS.TOTAL, null]],
-      [
-        "*",
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-        ["avg", ["field", ORDERS.TAX, null]],
-      ],
-    ],
+    ["/", ["sum", total], ["*", ["sum", price], ["avg", tax]]],
     "should handle priority for multiply and division with parenthesis",
   ],
 
   [
     "Sum([Total]) - Sum([Product → Price]) + Average([Tax])",
-    [
-      "+",
-      [
-        "-",
-        ["sum", ["field", ORDERS.TOTAL, null]],
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-      ],
-      ["avg", ["field", ORDERS.TAX, null]],
-    ],
+    ["+", ["-", ["sum", total], ["sum", price]], ["avg", tax]],
     "should handle priority for addition and subtraction without parenthesis",
   ],
 
   [
     "Sum([Total]) - (Sum([Product → Price]) + Average([Tax]))",
-    [
-      "-",
-      ["sum", ["field", ORDERS.TOTAL, null]],
-      [
-        "+",
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-        ["avg", ["field", ORDERS.TAX, null]],
-      ],
-    ],
+    ["-", ["sum", total], ["+", ["sum", price], ["avg", tax]]],
     "should handle priority for addition and subtraction with parenthesis",
   ],
 
   [
     'contains([Product → Ean], "A", "B")',
-    [
-      "contains",
-      {},
-      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["contains", {}, ean, "A", "B"],
     "should handle contains with multiple arguments and empty options",
   ],
 
   [
     'contains([Product → Ean], "A", "B", "case-insensitive")',
-    [
-      "contains",
-      { "case-sensitive": false },
-      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["contains", { "case-sensitive": false }, ean, "A", "B"],
     "should handle contains with multiple arguments and non-empty options",
   ],
 
   [
     'doesNotContain([User → Name], "A", "B", "C")',
-    [
-      "does-not-contain",
-      {},
-      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-    ],
+    ["does-not-contain", {}, name, "A", "B", "C"],
     "should handle doesNotContain with multiple arguments and empty options",
   ],
 
   [
     'doesNotContain([User → Name], "A", "B", "C", "case-insensitive")',
-    [
-      "does-not-contain",
-      { "case-sensitive": false },
-      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-    ],
+    ["does-not-contain", { "case-sensitive": false }, name, "A", "B", "C"],
     "should handle doesNotContain with multiple arguments and empty options",
   ],
 
   [
     'startsWith([Product → Category], "A", "B")',
-    [
-      "starts-with",
-      {},
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["starts-with", {}, category, "A", "B"],
     "should handle startsWith with multiple arguments and empty options",
   ],
 
   [
     'startsWith([Product → Category], "A", "B", "case-insensitive")',
-    [
-      "starts-with",
-      { "case-sensitive": false },
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["starts-with", { "case-sensitive": false }, category, "A", "B"],
     "should handle startsWith with multiple arguments and non-empty options",
   ],
 
   [
     'endsWith([User → Email], "A", "B", "C", "D")',
-    [
-      "ends-with",
-      {},
-      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-      "D",
-    ],
+    ["ends-with", {}, email, "A", "B", "C", "D"],
     "should handle endsWith with multiple arguments and empty options",
   ],
 
   [
     'endsWith([User → Email], "A", "B", "C", "D", "case-insensitive")',
-    [
-      "ends-with",
-      { "case-sensitive": false },
-      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-      "D",
-    ],
+    ["ends-with", { "case-sensitive": false }, email, "A", "B", "C", "D"],
     "should handle endsWith with multiple arguments and non-empty options",
   ],
   [`10`, ["value", 10], "should handle number literals"],
