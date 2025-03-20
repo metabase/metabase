@@ -84,15 +84,17 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
         return false;
       }
 
-      if (field.base_type === TYPE.Text) {
+      const effectiveType = field.effective_type ?? field.base_type;
+
+      if (effectiveType === TYPE.Text) {
         /**
          * Hack: allow "casting" text types to numerical types
          * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
          */
-        return isa(option.id, field.base_type) || isa(option.id, TYPE.Number);
+        return isa(option.id, effectiveType) || isa(option.id, TYPE.Number);
       }
 
-      return isa(option.id, field.base_type);
+      return isa(option.id, effectiveType);
     })
     .map(option => ({
       label: option.name,
