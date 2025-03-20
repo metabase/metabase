@@ -10,11 +10,9 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import {
-  type SDKCollectionReference,
-  getCollectionIdSlugFromReference,
-} from "embedding-sdk/store/collections";
+import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
+import type { SDKCollectionId } from "embedding-sdk/types/collection";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -60,7 +58,7 @@ const ENTITY_NAME_MAP: Partial<
 };
 
 export type CollectionBrowserProps = {
-  collectionId?: SDKCollectionReference;
+  collectionId?: SDKCollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
@@ -79,7 +77,9 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: CollectionBrowserProps) => {
+}: Omit<CollectionBrowserProps, "collectionId"> & {
+  collectionId: CollectionId;
+}) => {
   const baseCollectionId = useSdkSelector(state =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
@@ -128,14 +128,20 @@ export const CollectionBrowserInner = ({
   );
 };
 
+const isValidId = (collectionId: unknown): collectionId is CollectionId => {
+  return (
+    !!collectionId &&
+    (typeof collectionId === "number" ||
+      collectionId === "personal" ||
+      collectionId === "root")
+  );
+};
+
 const CollectionBrowserWrapper = ({
   collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
-  const { id, isLoading } = useValidatedEntityId<
-    "collection",
-    SDKCollectionReference
-  >({
+  const { id, isLoading } = useValidatedEntityId({
     type: "collection",
     id: collectionId,
   });
@@ -144,19 +150,13 @@ const CollectionBrowserWrapper = ({
     return <SdkLoader />;
   }
 
-  const isValidId =
-    id ||
-    typeof collectionId === "number" ||
-    collectionId === "personal" ||
-    collectionId === "root";
+  const finalId = id ?? collectionId;
 
-  if (!isValidId) {
+  if (!isValidId(finalId)) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return (
-    <CollectionBrowserInner collectionId={id ?? collectionId} {...restProps} />
-  );
+  return <CollectionBrowserInner collectionId={finalId} {...restProps} />;
 };
 
 export const CollectionBrowser = withPublicComponentWrapper(
