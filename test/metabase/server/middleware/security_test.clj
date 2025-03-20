@@ -361,7 +361,7 @@
     (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk
                                        enable-embedding-sdk enable-embedding-sdk]
       (let [wrapped-handler (mw.security/add-security-headers
-                             (fn [request respond _raise] request
+                             (fn [_request respond _raise]
                                (respond {:status 200 :headers {"Response-Header" "ok"} :body "ok"})))
             response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
         [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))]))))
