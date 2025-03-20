@@ -1,7 +1,7 @@
 import expression from "ts-dedent";
 
-import type { Expression } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
 import { compileExpression } from "../compiler";
@@ -190,13 +190,11 @@ describe("format", () => {
               33333333333333
         `,
         expression`
-          NOT (
-            contains(
-              [User → Name],
-              "John"
-            )
-            OR [User ID] = 1
+          NOT concat(
+            [User → Name],
+            "John"
           )
+          OR [User ID] = 1
         `,
       ]);
     });
