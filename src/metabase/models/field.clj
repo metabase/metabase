@@ -180,6 +180,10 @@
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
+(defmethod serdes/hash-required-fields :model/Field
+  [_field]
+  [:name :table_id :parent_id])
+
 (defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
