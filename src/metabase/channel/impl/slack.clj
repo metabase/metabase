@@ -4,7 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   ;; TODO: integrations.slack should be migrated to channel.slack
+   [metabase.channel.template.core :as channel.template]
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
@@ -193,3 +193,37 @@
 ;;                                           System Event                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(def ^:private event-name->template
+  {:event/data-editing-row-create {:channel_type :channel/slack
+                                   :details      {:type :slack/handlebars-text
+                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has created a row for {{payload.event_info.table.name}}"
+                                                             "\n\n\n"
+                                                             "{{#each payload.event_info.created_row}}\n"
+                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                                             "{{/each}}")}}
+   :event/data-editing-row-update {:channel_type :channel/slack
+                                   :details      {:type :slack/handlebars-text
+                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
+                                                             "## Changes:"
+                                                             "\n\n"
+                                                             "{{#each payload.event_info.updated_row}}\n"
+                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                                             "{{/each}}")}}
+   :event/data-editing-row-delete {:channel_type :channel/slack
+                                   :details      {:type :slack/handlebars-text
+                                                  :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has deleted a from {{payload.event_info.table.name}}"
+                                                             "\n\n"
+                                                             "{{#each payload.event_info.deleted_row}}\n"
+                                                             "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
+                                                             "{{/each}}")}}})
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload] :as notification-payload} template recipients]
+  (let [event-topic (:event_topic payload)
+        template    (or
+                     template
+                     (get event-name->template event-topic))]
+    (assert template (str "No template found for event " event-topic))
+    (for [channel-id (map notification-recipient->channel-id recipients)]
+      {:channel-id  channel-id
+       :attachments [(text->markdown-block (channel.template/render-template template notification-payload))]})))

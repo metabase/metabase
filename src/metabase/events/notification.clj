@@ -15,9 +15,9 @@
 (def ^:private supported-topics #{:event/user-invited
                                   :event/notification-create
                                   :event/slack-token-invalid
-                                  :event/data-editing-bulk-create
-                                  :event/data-editing-bulk-update
-                                  :event/data-editing-bulk-delete})
+                                  :event/data-editing-row-create
+                                  :event/data-editing-row-update
+                                  :event/data-editing-row-delete})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
