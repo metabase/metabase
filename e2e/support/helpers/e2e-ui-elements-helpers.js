@@ -398,16 +398,16 @@ export function segmentEditorPopover() {
   return popover("segment-popover");
 }
 
-export function assertTableData({ columns, firstRows = [] }) {
+export function assertTableData({ columns, firstRows = [], startFrom = 0 }) {
   tableInteractive()
     .findAllByTestId("header-cell")
-    .should("have.length", columns.length);
+    .should("have.length", columns.length + startFrom);
 
   columns.forEach((column, index) => {
     // eslint-disable-next-line no-unsafe-element-filtering
     tableInteractive()
       .findAllByTestId("header-cell")
-      .eq(index)
+      .eq(index + startFrom)
       .should("have.text", column);
   });
 
@@ -416,7 +416,7 @@ export function assertTableData({ columns, firstRows = [] }) {
       // eslint-disable-next-line no-unsafe-element-filtering
       tableInteractiveBody()
         .findAllByTestId("cell-data")
-        .eq(columns.length * rowIndex + cellIndex)
+        .eq(columns.length * rowIndex + cellIndex + startFrom)
         .should("have.text", cell);
     });
   });

@@ -1429,12 +1429,13 @@ describe("scenarios > question > custom column > path", () => {
     H.popover().button("Done").click();
     H.visualize();
     cy.findByTestId("table-scroll-container").scrollTo("right");
-    cy.findAllByRole("gridcell")
-      .filter(":contains('/my/path')")
-      .should("have.length", "4");
-    cy.findAllByRole("gridcell")
-      .filter(":contains('/my/path')")
-      .eq(3)
-      .should("have.text", "/my/path");
+
+    const extractedValue = "/my/path";
+    H.assertTableData({
+      columns: ["extracted path"],
+      firstRows: [[extractedValue]],
+      // passing start option allows to skip unnecessary cells
+      startFrom: 13,
+    });
   });
 });

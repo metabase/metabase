@@ -314,6 +314,7 @@ H.describeWithSnowplow("extract action", () => {
       };
 
       H.createQuestion(questionDetails).then(({ body: { id: modelId } }) => {
+        // set semantic type to URL
         H.setModelMetadata(modelId, field => {
           if (field.name === CC_NAME) {
             return { ...field, semantic_type: "type/URL" };
@@ -322,6 +323,7 @@ H.describeWithSnowplow("extract action", () => {
           return field;
         });
 
+        // this is the way to open model definition with columns
         cy.visit(`/model/${modelId}/query`);
         cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
       });
@@ -337,10 +339,12 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       const extractedValue = "/my/path";
-      cy.findAllByRole("gridcell")
-        .filter(`:contains('${extractedValue}')`)
-        // two from original URL and two from extracted path
-        .should("have.length", 4);
+      H.assertTableData({
+        columns: ["Path"],
+        firstRows: [[extractedValue]],
+        // passing start option allows to skip unnecessary cells
+        startFrom: 13,
+      });
     });
   });
 });
