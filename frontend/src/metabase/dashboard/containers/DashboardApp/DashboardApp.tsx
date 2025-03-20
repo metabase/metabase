@@ -6,7 +6,11 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
-import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import {
+  useDashboardUrlParams,
+  useDashboardUrlQuery,
+  useRefreshDashboard,
+} from "metabase/dashboard/hooks";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -42,6 +46,25 @@ const DashboardApp = (props: DashboardAppProps) => {
   const dashboardId = getDashboardId(props);
   const isEditing = useSelector(getIsEditing);
   const isDirty = useSelector(getIsDirty);
+
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId: dashboardId,
+    parameterQueryParams,
+  });
+
+  const {
+    hasNightModeToggle,
+    isFullscreen,
+    isNightMode,
+    onNightModeChange,
+    refreshPeriod,
+    onFullscreenChange,
+    setRefreshElapsedHook,
+    onRefreshPeriodChange,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
+  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <DashboardLeaveConfirmationModal
@@ -51,8 +74,17 @@ const DashboardApp = (props: DashboardAppProps) => {
       />
       <DashboardContextProvider
         dashboardId={dashboardId}
-        location={location}
         parameterQueryParams={parameterQueryParams}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        isNightMode={isNightMode}
+        isFullscreen={isFullscreen}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        hasNightModeToggle={hasNightModeToggle}
+        refreshPeriod={refreshPeriod}
+        onNightModeChange={onNightModeChange}
+        onFullscreenChange={onFullscreenChange}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       >
         <DashboardTitle>
           <Dashboard />

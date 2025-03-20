@@ -1,4 +1,4 @@
-import type { Location, Query } from "history";
+import type { Query } from "history";
 import {
   createContext,
   useCallback,
@@ -55,10 +55,7 @@ import {
   toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
-import {
-  useDashboardUrlParams,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
+import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type {
   CancelledFetchDashboardResult,
   FetchDashboardResult,
@@ -205,6 +202,22 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type DashboardSharedProps = Omit<ReduxProps, "onChangeLocation"> & {
   parameterQueryParams: Query;
+
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  hasNightModeToggle: boolean;
+  refreshPeriod: number | null;
+
+  onNightModeChange: (isNightMode: boolean) => void;
+  onFullscreenChange: (isFullscreen: boolean, setUrl?: boolean) => void;
+  setRefreshElapsedHook: (hook: (newPeriod: RefreshPeriod) => void) => void;
+  onRefreshPeriodChange: (period: number | null) => void;
+
+  autoScrollToDashcardId: number | undefined;
+  reportAutoScrolledToDashcard: () => void;
+
+  downloadsEnabled: boolean;
+  noLoaderWrapper: boolean;
 };
 
 type DashboardContextType = DashboardSharedProps & {
@@ -219,26 +232,13 @@ type DashboardContextType = DashboardSharedProps & {
   shouldRenderAsNightMode: boolean;
   addCardOnLoad?: number;
   editingOnLoad?: string | string[] | boolean;
-  autoScrollToDashcardId: number | undefined;
-
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  hasNightModeToggle: boolean;
-  refreshPeriod: number | null;
   elapsed: number | null;
-  downloadsEnabled: boolean;
-  noLoaderWrapper: boolean;
 
-  onNightModeChange: (isNightMode: boolean) => void;
-  onFullscreenChange: (isFullscreen: boolean, setUrl?: boolean) => void;
-  setRefreshElapsedHook: (hook: (newPeriod: RefreshPeriod) => void) => void;
   setElapsed: (elapsed: number | null) => void;
-  onRefreshPeriodChange: (period: number | null) => void;
 
   handleSetEditing: (dashboard: IDashboard | null) => void;
   handleAddQuestion: () => void;
   refreshDashboard: () => void;
-  reportAutoScrolledToDashcard: () => void;
   dismissAllUndo: () => void;
   canResetFilters?: boolean;
   onResetFilters?: () => void;
@@ -249,11 +249,23 @@ type DashboardContextType = DashboardSharedProps & {
 
 type OwnProps = {
   children: React.ReactNode;
-  location: Location;
   dashboardId: DashboardId;
 
   downloadsEnabled?: boolean;
   noLoaderWrapper?: boolean;
+
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  hasNightModeToggle: boolean;
+  refreshPeriod: number | null;
+
+  onNightModeChange: (isNightMode: boolean) => void;
+  onFullscreenChange: (isFullscreen: boolean, setUrl?: boolean) => void;
+  setRefreshElapsedHook: (hook: (newPeriod: RefreshPeriod) => void) => void;
+  onRefreshPeriodChange: (period: number | null) => void;
+
+  autoScrollToDashcardId: number | undefined;
+  reportAutoScrolledToDashcard: () => void;
 };
 
 type ContextProviderProps = DashboardSharedProps & OwnProps;
@@ -264,11 +276,20 @@ const DashboardContext = createContext<DashboardContextType | undefined>(
 
 function BaseDashboardContextProvider({
   children,
-  location,
   dashboardId,
   downloadsEnabled = true,
   noLoaderWrapper = false,
 
+  hasNightModeToggle,
+  isFullscreen,
+  isNightMode,
+  onNightModeChange,
+  refreshPeriod,
+  onFullscreenChange,
+  setRefreshElapsedHook,
+  onRefreshPeriodChange,
+  autoScrollToDashcardId,
+  reportAutoScrolledToDashcard,
   dashboard,
   isEditing,
   isSharing,
@@ -380,19 +401,6 @@ function BaseDashboardContextProvider({
   const openSettingsSidebar = useCallback(() => {
     setSidebar({ name: SIDEBAR_NAME.settings });
   }, [setSidebar]);
-
-  const {
-    hasNightModeToggle,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
