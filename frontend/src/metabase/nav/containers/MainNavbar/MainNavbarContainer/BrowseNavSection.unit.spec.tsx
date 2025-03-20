@@ -43,7 +43,7 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show models and tables when no `entity_types` is `["model", "table"]`', () => {
+    it('should show models and tables when `entity_types` is `["model", "table"]`', () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["model", "table"] });
 
       expect(
@@ -57,7 +57,7 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show only models when no `entity_types` is `["model"]`', () => {
+    it('should show only models when `entity_types` is `["model"]`', () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["model"] });
 
       expect(
@@ -71,7 +71,7 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show only tables when no `entity_types` is `["table"]`', () => {
+    it('should show only tables when `entity_types` is `["table"]`', () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["table"] });
 
       expect(
