@@ -319,7 +319,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     args: [
       {
         name: t`value`,
-        description: t`The string column to convert to dates.`,
+        description: t`The string to convert to a date.`,
         example: "2025-03-20",
       },
     ],
