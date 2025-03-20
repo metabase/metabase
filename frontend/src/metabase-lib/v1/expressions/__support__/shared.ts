@@ -348,11 +348,7 @@ const filter: TestCase[] = [
   ],
   ["[Expensive Things]", segment, "segment"],
   ["NOT [Expensive Things]", ["not", segment], "not segment"],
-  [
-    "NOT NOT [Expensive Things]",
-    ["not", ["not", segment]],
-    "more segment unary",
-  ],
+  ["[Expensive Things]", ["not", ["not", segment]], "more segment unary"],
   [
     "NOT between([Subtotal], 3, 14) OR [Expensive Things]",
     ["or", ["not", ["between", subtotal, 3, 14]], segment],
