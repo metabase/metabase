@@ -87,7 +87,7 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
   {
     name: "StringExpression",
-    expression: 'date(concat("2025-03-0", floor([ID] / 10)))',
+    expression: 'date(concat("2025-03-0", floor([ID] / 5) + 1))',
     filterOperator: "Before",
     filterValue: "2025-03-10",
     expectedRowCount: 80,
