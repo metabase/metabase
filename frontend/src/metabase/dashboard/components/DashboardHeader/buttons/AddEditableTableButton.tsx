@@ -1,33 +1,23 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { addEditableTableDashCardToDashboard } from "metabase/dashboard/actions";
-import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
+import { toggleSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { getSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 export const AddEditableTableButton = () => {
   const dispatch = useDispatch();
-  const dashboard = useSelector(getDashboard);
-  const selectedTabId = useSelector(getSelectedTabId);
+  const sidebar = useSelector(getSidebar);
 
   const title = t`Add editable table`;
-
-  const handleAddTable = () => {
-    if (dashboard) {
-      dispatch(
-        addEditableTableDashCardToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-        }),
-      );
-    }
-  };
 
   return (
     <ToolbarButton
       tooltipLabel={title}
       icon="table"
-      onClick={() => handleAddTable()}
+      isActive={sidebar.name === SIDEBAR_NAME.addEditableTable}
+      onClick={() => dispatch(toggleSidebar(SIDEBAR_NAME.addEditableTable))}
       aria-label={title}
     />
   );

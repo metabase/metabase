@@ -21,6 +21,8 @@ export class TableEditable extends Component<
   static identifier = "table-editable";
   static iconName = "add_data";
 
+  static disableClickBehavior = true;
+
   static isSensible() {
     return false;
   }

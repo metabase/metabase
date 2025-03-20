@@ -12,11 +12,11 @@ import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
   CardId,
-  ConcreteTableId,
   DashCardId,
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  TableId,
   VirtualCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -192,7 +192,7 @@ export const addMarkdownDashCardToDashboard =
   };
 
 export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
-  tableId: ConcreteTableId;
+  tableId: TableId;
 };
 
 export const addEditableTableDashCardToDashboard =

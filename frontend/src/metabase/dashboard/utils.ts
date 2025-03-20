@@ -93,7 +93,8 @@ export function isQuestionDashCard(
     "card_id" in dashcard &&
     "card" in dashcard &&
     !isVirtualDashCard(dashcard) &&
-    !isActionDashCard(dashcard)
+    !isActionDashCard(dashcard) &&
+    !isEditableTableDashCard(dashcard)
   );
 }
 
@@ -107,6 +108,10 @@ export function isVirtualDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
+}
+
+export function isEditableTableDashCard(dashcard: BaseDashboardCard): boolean {
+  return "table_id" in dashcard.card;
 }
 
 export function getVirtualCardType(dashcard: BaseDashboardCard) {

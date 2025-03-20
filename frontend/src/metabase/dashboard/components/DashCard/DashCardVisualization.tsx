@@ -163,6 +163,7 @@ export function DashCardVisualization({
           </Flex>
         );
       }
+
       return (
         <ClickBehaviorSidebarOverlay
           dashcard={dashcard}
