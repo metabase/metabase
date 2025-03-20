@@ -424,23 +424,32 @@ describe("admin > database > database routing", () => {
         cy.visit("/admin/databases/2");
         dbRoutingSection().should("exist");
         expandDbRouting();
+        dbRoutingSection().within(() => {
+          cy.log("should not be able to manage db routing settings");
+          cy.findByLabelText("Enable database routing").should("be.disabled");
+          cy.findByTestId("db-routing-user-attribute").should("be.disabled");
+          cy.findByRole("button", { name: /Add/ }).should("not.exist");
+        });
+
+        cy.log("should be able to edit databases");
         dbRoutingSection()
           .findByTestId("destination-db-list-item")
           .icon("ellipsis")
           .click();
         H.popover().within(() => {
-          cy.findByText("Edit").should("exist");
           cy.findByText("Remove").should("not.exist");
+          cy.findByText("Edit").should("exist").click();
+        });
+        H.modal().within(() => {
+          H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+          cy.button("Save changes").click();
+          cy.wait("@databaseUpdate");
         });
       });
     });
   });
 
   describe("OSS", { tags: ["@OSS"] }, () => {
-    beforeEach(() => {
-      H.setTokenFeatures("none");
-    });
-
     it("should not show the feature if not enabled in token features", () => {
       cy.visit("/admin/databases/2");
       dbConnectionInfoSection().should("exist");
