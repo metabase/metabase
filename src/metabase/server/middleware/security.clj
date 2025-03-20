@@ -47,7 +47,7 @@
 
 (def cache-far-future-headers
   "Headers that tell browsers to cache a static resource for a long time."
-  {"Cache-Control" "public, max-age=31536000"})
+  {"Cache-Control" "public, max-age=31536000, stale-while-revalidate=30240000"});; 31536000=356 days, 30240000=350 days
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if

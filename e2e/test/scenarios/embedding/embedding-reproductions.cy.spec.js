@@ -1295,6 +1295,9 @@ describe("issue 50373", () => {
       {
         method: "GET",
         url: /^\/app\/dist\/(.*)\.js$/,
+        // it would be good to also match the fonts so they can be cacheable
+        // url: /^\/app\/fonts\(.*)$"
+        // /app/fonts/Lato/lato-v16-latin-regular.woff2
       },
       req => {
         // When running in development (e.g. with `yarn dev`),
@@ -1307,7 +1310,8 @@ describe("issue 50373", () => {
           expect(
             res.headers["cache-control"],
             `Invalid Cache-Control header for ${req.url}`,
-          ).to.equal("public, max-age=31536000");
+          ).to.equal("public, max-age=31536000, stale-while-revalidate=30240000");
+        // 31536000 secs = 356 days, 30240000 = 350 days
         });
       },
     );
