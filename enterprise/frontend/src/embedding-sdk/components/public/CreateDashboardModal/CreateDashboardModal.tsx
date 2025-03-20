@@ -1,13 +1,13 @@
-import type React from "react";
 import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
-import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
+import {
+  CreateDashboardModal as CreateDashboardModalCore,
+  type CreateDashboardModalProps as CreateDashboardModalCoreProps,
+} from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import { useSelector } from "metabase/lib/redux";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -24,33 +24,28 @@ const CreateDashboardModalInner = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps) => {
-  const { id, isLoading } = useValidatedEntityId({
-    type: "collection",
+  const { id, isLoading } = useTranslatedCollectionId({
     id: initialCollectionId,
   });
 
-  const initId = !isLoading && (id ?? initialCollectionId);
-
-  const translatedCollectionId = useSelector((state: State) =>
-    initId ? getCollectionIdSlugFromReference(state, initId) : undefined,
-  );
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <CreateDashboardModalCoreWithLoading
       opened={!isLoading && isOpen}
       onCreate={onCreate}
       onClose={onClose}
-      collectionId={translatedCollectionId}
+      collectionId={id}
     />
   );
 };
 
 const CreateDashboardModalCoreWithLoading = _.compose(
   Collections.load({
-    id: (
-      _state: State,
-      props: React.ComponentProps<typeof CreateDashboardModalCore>,
-    ) => props.collectionId,
+    id: (_state: State, props: CreateDashboardModalCoreProps) =>
+      props.collectionId,
     loadingAndErrorWrapper: false,
   }),
 )(CreateDashboardModalCore);

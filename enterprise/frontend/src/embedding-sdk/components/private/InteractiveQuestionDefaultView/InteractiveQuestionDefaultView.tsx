@@ -11,7 +11,6 @@ import {
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import {
   Box,
   Button,
@@ -20,7 +19,6 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
@@ -196,40 +194,27 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useInteractiveQuestionContext();
 
-  const { id, isLoading } = useValidatedEntityId({
-    type: "collection",
+  const { id, isLoading } = useTranslatedCollectionId({
     id: targetCollection,
   });
 
-  const finalId = id ?? targetCollection;
+  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+    return null;
+  }
 
   return (
-    isSaveEnabled &&
-    isOpen &&
-    question &&
-    !isLoading && (
-      <SaveQuestionModal
-        question={question}
-        originalQuestion={originalQuestion ?? null}
-        opened
-        closeOnSuccess
-        onClose={close}
-        onCreate={onCreate}
-        onSave={async question => {
-          await onSave(question);
-          close();
-        }}
-        targetCollection={isValidId(finalId) ? finalId : undefined}
-      />
-    )
-  );
-};
-
-const isValidId = (collectionId: unknown): collectionId is CollectionId => {
-  return (
-    !!collectionId &&
-    (typeof collectionId === "number" ||
-      collectionId === "personal" ||
-      collectionId === "root")
+    <SaveQuestionModal
+      question={question}
+      originalQuestion={originalQuestion ?? null}
+      opened
+      closeOnSuccess
+      onClose={close}
+      onCreate={onCreate}
+      onSave={async question => {
+        await onSave(question);
+        close();
+      }}
+      targetCollection={id}
+    />
   );
 };

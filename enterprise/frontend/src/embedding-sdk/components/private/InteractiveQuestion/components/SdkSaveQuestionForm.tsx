@@ -1,11 +1,10 @@
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { Stack, Title } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -17,16 +16,13 @@ export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
   const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 
-  const { id, isLoading } = useValidatedEntityId({
-    type: "collection",
+  const { id, isLoading } = useTranslatedCollectionId({
     id: targetCollection,
   });
 
   if (!question || isLoading) {
     return null;
   }
-
-  const finalId = id ?? targetCollection;
 
   return (
     <SaveQuestionProvider
@@ -35,7 +31,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      targetCollection={isValidId(finalId) ? finalId : undefined}
+      targetCollection={id}
     >
       <Stack p="md">
         <Title>
@@ -44,14 +40,5 @@ export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
         <SaveQuestionForm onCancel={() => onCancel?.()} />
       </Stack>
     </SaveQuestionProvider>
-  );
-};
-
-const isValidId = (collectionId: unknown): collectionId is CollectionId => {
-  return (
-    !!collectionId &&
-    (typeof collectionId === "number" ||
-      collectionId === "personal" ||
-      collectionId === "root")
   );
 };

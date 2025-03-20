@@ -19,7 +19,7 @@ export const getCollectionNumericIdFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => null)
-      .with(P.number, () => collectionReference as CollectionId)
+      .with(P.number, () => collectionReference as RegularCollectionId)
       .otherwise(() => {
         throw new Error(
           "Invalid collection id, expected `number | 'root' | 'personal'`",
@@ -43,7 +43,7 @@ export const getCollectionIdSlugFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => "root" as const)
-      .with(P.number, () => collectionReference as CollectionId)
+      .with(P.number, () => collectionReference as RegularCollectionId)
       .otherwise(() => {
         throw new Error(
           "Invalid collection id, expected `number | 'root' | 'personal'`",

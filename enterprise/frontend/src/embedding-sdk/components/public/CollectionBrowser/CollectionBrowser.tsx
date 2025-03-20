@@ -10,12 +10,12 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
@@ -128,21 +128,11 @@ export const CollectionBrowserInner = ({
   );
 };
 
-const isValidId = (collectionId: unknown): collectionId is CollectionId => {
-  return (
-    !!collectionId &&
-    (typeof collectionId === "number" ||
-      collectionId === "personal" ||
-      collectionId === "root")
-  );
-};
-
 const CollectionBrowserWrapper = ({
   collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
-  const { id, isLoading } = useValidatedEntityId({
-    type: "collection",
+  const { id, isLoading } = useTranslatedCollectionId({
     id: collectionId,
   });
 
@@ -150,13 +140,11 @@ const CollectionBrowserWrapper = ({
     return <SdkLoader />;
   }
 
-  const finalId = id ?? collectionId;
-
-  if (!isValidId(finalId)) {
+  if (!id) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return <CollectionBrowserInner collectionId={finalId} {...restProps} />;
+  return <CollectionBrowserInner collectionId={id} {...restProps} />;
 };
 
 export const CollectionBrowser = withPublicComponentWrapper(
