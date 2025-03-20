@@ -112,6 +112,7 @@ export interface Dataset {
   cached?: string;
   /** A date in ISO 8601 format */
   started_at?: string;
+  archived?: boolean;
 }
 
 export interface EmbedDatasetData {
