@@ -17,6 +17,8 @@ import {
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
+  addParameter,
+  cancelEditingDashboard,
   cancelFetchDashboardCardData,
   closeDashboard,
   closeSidebar,
@@ -66,11 +68,13 @@ import {
   getIsNavigatingBackToDashboard,
   getIsSharing,
   getLoadingStartTime,
+  getMissingRequiredParameters,
   getParameterValues,
   getSelectedTabId,
   getSidebar,
   getSlowCards,
 } from "../selectors";
+import { addDashboardQuestion } from "../components/QuestionPicker/actions";
 
 const mapStateToProps = (state: State) => ({
   canManageSubscriptions: canManageSubscriptions(state),
@@ -96,6 +100,7 @@ const mapStateToProps = (state: State) => ({
   isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   selectedTabId: getSelectedTabId(state),
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+  missingRequiredParameters: getMissingRequiredParameters(state)
 });
 
 const mapDispatchToProps = {
@@ -129,7 +134,10 @@ const mapDispatchToProps = {
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
   setSidebar,
+  addParameter,
+  addDashboardQuestion,
   hideAddParameterPopover,
+  cancelEditingDashboard,
   fetchDashboard,
   fetchDashboardCardData,
   onChangeLocation: push,

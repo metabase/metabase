@@ -1,38 +1,32 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import {
-  addIFrameDashCardToDashboard,
-  addLinkDashCardToDashboard,
-} from "metabase/dashboard/actions";
-import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { Group, Icon, Menu } from "metabase/ui";
 
 export const AddLinkOrEmbedButton = () => {
-  const dispatch = useDispatch();
-  const dashboard = useSelector(getDashboard);
-  const selectedTabId = useSelector(getSelectedTabId);
+  const {
+    dashboard,
+    selectedTabId,
+    addLinkDashCardToDashboard,
+    addIFrameDashCardToDashboard,
+  } = useDashboardContext();
 
   const onAddLinkCard = () => {
     if (dashboard) {
-      dispatch(
-        addLinkDashCardToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-        }),
-      );
+      addLinkDashCardToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+      });
     }
   };
 
   const onAddIFrameCard = () => {
     if (dashboard) {
-      dispatch(
-        addIFrameDashCardToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-        }),
-      );
+      addIFrameDashCardToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+      });
     }
   };
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useGetCollectionQuery } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import {
@@ -76,7 +76,7 @@ export const DashboardHeaderInner = () => {
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery(dashboard ? { id: dashboard.collection_id || "root" } : skipToken);
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -87,14 +87,14 @@ export const DashboardHeaderInner = () => {
   };
 
   const onCancel = () => {
-    dispatch(
+    if (dashboard) {
       fetchDashboard({
         dashId: dashboard.id,
-        queryParams: parameterQueryParams,
+        queryParams: parameterQueryParams ?? {},
         options: { preserveParameters: true },
-      }),
-    );
-    dispatch(cancelEditingDashboard());
+      })
+      cancelEditingDashboard();
+    }
   };
 
   const getEditWarning = (dashboard: Dashboard) => {
@@ -137,13 +137,13 @@ export const DashboardHeaderInner = () => {
     );
   }
 
-  const hasLastEditInfo = dashboard["last-edit-info"] != null;
+  const hasLastEditInfo = dashboard?.["last-edit-info"] != null;
 
   const editingButtons = getEditingButtons();
 
   return (
     <>
-      <DashboardHeaderView
+      {dashboard && <DashboardHeaderView
         dashboard={dashboard}
         collection={collection}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
@@ -159,8 +159,8 @@ export const DashboardHeaderInner = () => {
           isEmbeddingSdk
             ? undefined
             : () => {
-                dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
-              }
+              dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+            }
         }
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}
@@ -171,7 +171,7 @@ export const DashboardHeaderInner = () => {
         onNightModeChange={onNightModeChange}
         isNightMode={isNightMode}
       />
-
+      }
       <Modal isOpen={showCancelWarning}>
         <LeaveConfirmationModalContent
           onAction={onCancel}

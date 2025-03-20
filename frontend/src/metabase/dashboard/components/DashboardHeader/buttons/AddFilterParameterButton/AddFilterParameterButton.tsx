@@ -2,14 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import {
-  addParameter,
-  hideAddParameterPopover,
-  showAddParameterPopover,
-} from "metabase/dashboard/actions";
-import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   type ParameterSection,
   getDashboardParameterSections,
@@ -20,15 +14,20 @@ import { Icon, Menu, Text } from "metabase/ui";
 
 export const AddFilterParameterButton = () => {
   const sections = getDashboardParameterSections();
-  const dispatch = useDispatch();
-  const isOpened = useSelector(getIsAddParameterPopoverOpen);
+  const {
+    isAddParameterPopoverOpen,
+    hideAddParameterPopover,
+    showAddParameterPopover,
+    addParameter,
+  } = useDashboardContext();
+
   const [rightSectionWidth, setRightSectionWidth] = useState(0);
   const rightSectionWidthRef = useRef(0);
 
   const handleItemClick = (section: ParameterSection) => {
     const defaultOption = getDefaultOptionForParameterSectionMap()[section.id];
     if (defaultOption) {
-      dispatch(addParameter(defaultOption));
+      addParameter(defaultOption);
     }
   };
 
@@ -46,24 +45,24 @@ export const AddFilterParameterButton = () => {
       {
         id: "dashboard-add-filter",
         perform: () =>
-          isOpened
-            ? dispatch(hideAddParameterPopover())
-            : dispatch(showAddParameterPopover()),
+          isAddParameterPopoverOpen
+            ? (hideAddParameterPopover())
+            : (showAddParameterPopover()),
       },
     ],
-    [isOpened],
+    [isAddParameterPopoverOpen],
   );
 
   useLayoutEffect(() => {
-    if (isOpened) {
+    if (isAddParameterPopoverOpen) {
       setRightSectionWidth(rightSectionWidthRef.current);
     }
-  }, [isOpened]);
+  }, [isAddParameterPopoverOpen]);
 
   return (
     <Menu
-      opened={isOpened}
-      onClose={() => dispatch(hideAddParameterPopover())}
+      opened={isAddParameterPopoverOpen}
+      onClose={() => hideAddParameterPopover()}
       position="bottom-end"
       trapFocus
     >
@@ -71,9 +70,9 @@ export const AddFilterParameterButton = () => {
         <ToolbarButton
           icon="filter"
           onClick={() =>
-            isOpened
-              ? dispatch(hideAddParameterPopover())
-              : dispatch(showAddParameterPopover())
+            isAddParameterPopoverOpen
+              ? hideAddParameterPopover()
+              : showAddParameterPopover()
           }
           aria-label={t`Add a filter or parameter`}
           tooltipLabel={t`Add a filter or parameter`}
