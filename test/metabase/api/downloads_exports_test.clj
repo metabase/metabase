@@ -459,10 +459,11 @@
                                         {:template-tags {}
                                          :query         pivot-rows-query}}
                         :result_metadata
-                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                        (into [] (for [[_ field-name {:keys [base-type]} :as field-ref] pivot-fields
+                                       :when (#{"A" "B" "C" "MEASURE"} field-name)]
                                    {:name         field-name
                                     :display_name field-name
-                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :field_ref    field-ref
                                     :base_type    base-type}))}
                        :model/Card pivot-card
                        {:display                :pivot
@@ -531,10 +532,10 @@
                                     {:template-tags {}
                                      :query         pivot-rows-query}}
                     :result_metadata
-                    (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                    (into [] (for [[_ field-name {:keys [base-type]} :as field-ref] pivot-fields]
                                {:name         field-name
                                 :display_name field-name
-                                :field_ref    [:field field-name {:base-type base-type}]
+                                :field_ref    field-ref
                                 :base_type    base-type}))}
                    :model/Card pivot-card
                    {:display                :pivot
@@ -669,10 +670,11 @@
                                           {:template-tags {}
                                            :query         pivot-rows-query}}
                           :result_metadata
-                          (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                          (into [] (for [[_ field-name {:keys [base-type]} :as field-ref] pivot-fields
+                                         :when (#{"A" "B" "C" "MEASURE"} field-name)]
                                      {:name         field-name
                                       :display_name field-name
-                                      :field_ref    [:field field-name {:base-type base-type}]
+                                      :field_ref    field-ref
                                       :base_type    base-type}))}
                          :model/Card pivot-card
                          {:display                :pivot
@@ -1401,10 +1403,11 @@
                                         {:template-tags {}
                                          :query         q}}
                         :result_metadata
-                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                        (into [] (for [[_ field-name {:keys [base-type]} :as field-ref] pivot-fields
+                                       :when (#{"A" "MEASURE"} field-name)]
                                    {:name         field-name
                                     :display_name field-name
-                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :field_ref    field-ref
                                     :base_type    base-type}))}
                        :model/Card pivot-card
                        {:display                :pivot
@@ -1445,10 +1448,11 @@
                                         {:template-tags {}
                                          :query         q}}
                         :result_metadata
-                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                        (into [] (for [[_ field-name {:keys [base-type]} :as field-ref] pivot-fields
+                                       :when (#{"A", "B", "MEASURE"} field-name)]
                                    {:name         field-name
                                     :display_name field-name
-                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :field_ref    field-ref
                                     :base_type    base-type}))}
                        :model/Card pivot-card
                        {:display                :pivot
@@ -1537,10 +1541,11 @@
                                         {:template-tags {}
                                          :query         q}}
                         :result_metadata
-                        (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
+                        (into [] (for [[_ field-name {:keys [base-type]} field-ref] pivot-fields
+                                       :when (#{"A" "B"} field-name)]
                                    {:name         field-name
                                     :display_name field-name
-                                    :field_ref    [:field field-name {:base-type base-type}]
+                                    :field_ref    field-ref
                                     :base_type    base-type}))}
                        :model/Card pivot-card
                        {:display                :pivot
