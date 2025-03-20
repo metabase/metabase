@@ -104,12 +104,12 @@
     a-ref)))
 
 (defn- segment-metadata-from-ref
-  [query a-ref]
-  (lib.metadata/segment query (get 1 a-ref)))
+  [query [_segment id]]
+  (lib.metadata/segment query id))
 
 (defn- metric-metadata-from-ref
-  [query a-ref]
-  (lib.metadata/metric query (get 1 a-ref)))
+  [query [_metric id]]
+  (lib.metadata/metric query id))
 
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
