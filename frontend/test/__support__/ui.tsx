@@ -1,12 +1,13 @@
 import { Global } from "@emotion/react";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
-import type { ByRoleMatcher } from "@testing-library/react";
+import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
+import { renderHook } from "@testing-library/react-hooks";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -71,6 +72,53 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
+  const { wrapper, store, history } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+    ...options,
+  });
+
+  const utils = testingLibraryRender(ui, {
+    wrapper,
+    ...options,
+  });
+
+  return {
+    ...utils,
+    store,
+    history,
+  };
+}
+
+export function renderHookWithProviders<TProps, TResult>(
+  hook: (props: TProps) => TResult,
+  options?: Omit<RenderHookOptions<TProps>, "wrapper"> &
+    RenderWithProvidersOptions,
+) {
+  const { wrapper, store } = getTestStoreAndWrapper(options);
+  const renderHookReturn = renderHook(hook, { wrapper, ...options });
+
+  return { ...renderHookReturn, store };
+}
+
+export function getTestStoreAndWrapper({
+  mode = "default",
+  initialRoute = "/",
+  storeInitialState = {},
+  withRouter = false,
+  withKBar = false,
+  withDND = false,
+  withUndos = false,
+  customReducers,
+  theme,
+}: RenderWithProvidersOptions = {}) {
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -129,16 +177,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = testingLibraryRender(ui, {
-    wrapper,
-    ...options,
-  });
-
-  return {
-    ...utils,
-    store,
-    history,
-  };
+  return { wrapper, store, history };
 }
 
 /**
