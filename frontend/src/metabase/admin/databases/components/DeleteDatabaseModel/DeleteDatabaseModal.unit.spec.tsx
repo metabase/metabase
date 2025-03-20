@@ -5,7 +5,7 @@ import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
-import DeleteDatabaseModal from "./DeleteDatabaseModal";
+import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 
 const getUsageInfo = (hasContent: boolean) => ({
   question: hasContent ? 10 : 0,
@@ -64,7 +64,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("should allow deleting database with content after confirming its name and its content removal", async () => {
@@ -92,7 +92,7 @@ describe("DeleteDatabaseModal", () => {
 
     await userEvent.click(deleteButton);
 
-    expect(onDelete).toHaveBeenCalledWith(database);
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("shows an error if removal failed", async () => {

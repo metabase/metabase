@@ -205,3 +205,7 @@
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
   :database-auth-providers)
+
+(define-premium-feature ^{:added "0.54.0"} enable-database-routing?
+  "Should we enable database routing?"
+  :database-routing)

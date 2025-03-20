@@ -43,6 +43,8 @@ export const DatabaseModelFeaturesSection = ({
     return null;
   }
 
+  const isDbRoutingEnabled = database.hasDatabaseRoutingEnabled();
+
   return (
     <DatabaseInfoSection
       name={t`Model features`}
@@ -54,11 +56,15 @@ export const DatabaseModelFeaturesSection = ({
           <ModelActionsSection
             hasModelActionsEnabled={database.hasActionsEnabled()}
             onToggleModelActionsEnabled={handleToggleModelActionsEnabled}
+            disabled={isDbRoutingEnabled}
           />
         )}
 
         {contentVisibility.showModelCachingSection && (
-          <ModelCachingControl database={database} />
+          <ModelCachingControl
+            database={database}
+            disabled={isDbRoutingEnabled}
+          />
         )}
       </Flex>
     </DatabaseInfoSection>

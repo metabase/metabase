@@ -597,3 +597,15 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
     downloads?: boolean | null;
   }) => true,
 };
+
+export const PLUGIN_DB_ROUTING = {
+  DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
+    database: Database;
+    refetchDatabase: () => void;
+  }>,
+  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    null as React.ReactElement | null,
+  useRedirectDestinationDatabase: (
+    _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
+  ): void => {},
+};

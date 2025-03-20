@@ -12,30 +12,42 @@ import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
 
+const makeDefaultSaveDbFn =
+  (dispatch: Dispatch) =>
+  async (database: DatabaseData): Promise<any> =>
+    await dispatch(saveDatabase(database));
+
 export const DatabaseEditConnectionForm = ({
   database,
   initializeError,
+  isMirrorDatabase,
+  handleSaveDb,
   onSubmitted,
   onCancel,
   route,
+  ...props
 }: {
-  database?: Database;
+  database?: Partial<DatabaseData>;
   initializeError?: DatabaseEditErrorType;
+  isMirrorDatabase?: boolean;
+  handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
   onSubmitted: (savedDB: { id: DatabaseId }) => void;
   onCancel: () => void;
   route: Route;
+  autofocusFieldName?: string;
 }) => {
   const dispatch = useDispatch();
 
   const [isDirty, setIsDirty] = useState(false);
 
-  const autofocusFieldName = window.location.hash.slice(1);
+  const autofocusFieldName =
+    window.location.hash.slice(1) || props.autofocusFieldName;
 
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -45,7 +57,8 @@ export const DatabaseEditConnectionForm = ({
 
   const handleSubmit = async (database: DatabaseData) => {
     try {
-      const savedDB = await dispatch(saveDatabase(database));
+      const saveFn = handleSaveDb ?? makeDefaultSaveDbFn(dispatch);
+      const savedDB = await saveFn(database);
       scheduleCallback(() => {
         onSubmitted(savedDB);
       });
@@ -61,6 +74,7 @@ export const DatabaseEditConnectionForm = ({
           <DatabaseForm
             initialValues={database}
             isAdvanced
+            isMirrorDatabase={isMirrorDatabase}
             onCancel={onCancel}
             onSubmit={handleSubmit}
             setIsDirty={setIsDirty}

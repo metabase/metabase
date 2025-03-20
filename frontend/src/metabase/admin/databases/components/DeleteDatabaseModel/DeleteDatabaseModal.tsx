@@ -9,8 +9,7 @@ import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseUsageInfo } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
 
@@ -47,11 +46,11 @@ const getErrorMessage = (error: any) => {
 
 export interface DeleteDatabaseModalProps {
   onClose: () => void;
-  onDelete: (database: Database) => void;
-  database: Database;
+  onDelete: () => Promise<void>;
+  database: Pick<Database, "id" | "name">;
 }
 
-const DeleteDatabaseModal = ({
+export const DeleteDatabaseModal = ({
   database,
   onClose,
   onDelete,
@@ -70,7 +69,7 @@ const DeleteDatabaseModal = ({
     e.preventDefault();
 
     try {
-      await onDelete(database);
+      await onDelete();
       onClose();
     } catch (error) {
       setError(error);
@@ -173,6 +172,3 @@ const DeleteDatabaseModal = ({
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteDatabaseModal;
