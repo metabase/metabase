@@ -170,12 +170,6 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Download Embedding SDK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: embedding-sdk-build
-          path: resources/embedding-sdk
-
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
@@ -193,6 +187,12 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
+
+      - name: Download Embedding SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-build
+          path: resources/embedding-sdk
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
