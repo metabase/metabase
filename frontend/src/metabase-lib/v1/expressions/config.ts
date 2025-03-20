@@ -104,6 +104,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression"],
     requiresFeature: "cast",
   },
+  integer: {
+    displayName: "integer",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
@@ -535,6 +541,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
 export const EXPRESSION_FUNCTIONS = new Set([
   // cast
   "text",
+  "integer",
   // string
   "lower",
   "upper",

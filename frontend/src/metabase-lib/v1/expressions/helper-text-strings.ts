@@ -299,6 +299,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "integer",
+    structure: "integer",
+    category: "conversion",
+    description: () => t`Converts a string to an integer.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string column to convert to integers.`,
+        example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     category: "string",

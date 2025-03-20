@@ -119,6 +119,7 @@ const expression: TestCase[] = [
     "function with 3 arguments",
   ],
   ["text([User ID])", ["text", userId], "text function"],
+  ['integer("10")', ["integer", "10"], "integer function"],
   [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [

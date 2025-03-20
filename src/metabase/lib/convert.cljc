@@ -464,7 +464,7 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
              :concat :substring :replace :regex-match-first
-             :length :trim :ltrim :rtrim :upper :lower :text]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression

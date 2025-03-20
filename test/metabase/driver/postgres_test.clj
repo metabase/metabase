@@ -1899,3 +1899,222 @@
             (is (= :type/Text (-> cols first :base_type)))
             (doseq [[casted-value _equals? _uncasted-value] rows]
               (is (string? casted-value)))))))))
+
+;; integer()
+
+(defn- check-integer-query
+  ([query db-type uncasted-field]
+   (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
+  ([query db-type uncasted-field casted-field]
+   (mt/native-query {:query (str "SELECT " casted-field ", "
+                                 (case db-type
+                                   ;; need to do regex because some strings have 0 in front
+                                   "TEXT"    (str (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'")
+                                   "INTEGER" (str "CAST(" casted-field " AS " db-type ") = " (name uncasted-field))
+                                   "FLOAT"   (str "ABS(CAST(" casted-field " AS " db-type ") - " (name uncasted-field) ") < 1"))
+                                 ", "
+                                 (name uncasted-field) " "
+                                 "FROM ( "
+                                 (-> query qp.compile/compile :query)
+                                 " ) AS subquery "
+                                 "LIMIT 100")})))
+
+(deftest ^:parallel integer-cast-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
+                                        {:field :id :db-type "INTEGER"}
+                                        {:field :zip :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}]]]
+              {:keys [field db-type]} fields]
+        (testing (str "casting " table "." field "(" db-type ") to integer")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "INTCAST" (lib/expression-clause :integer [field-md] nil))
+                          (lib/limit 100))
+                result (-> query (check-integer-query db-type field) qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/BigInteger (-> cols first :base_type)))
+            (doseq [[casted-value equals? uncasted-value] rows]
+              (is (int? casted-value))
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel integer-cast-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
+                                                                                 [(lib.metadata/field mp (mt/id :people :id))
+                                                                                  (lib.metadata/field mp (mt/id :people :zip))] nil)
+                                              :db-type "TEXT"}
+                                             {:expression (lib/expression-clause :get-day-of-week
+                                                                                 [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
+                                              :db-type "INTEGER"}]]
+                                   [:orders [{:expression (lib/+ (lib.metadata/field mp (mt/id :orders :total))
+                                                                 (lib.metadata/field mp (mt/id :orders :quantity)))
+                                              :db-type "FLOAT"}]]]
+              {:keys [expression db-type]} expressions]
+        (testing (str "Casting " db-type " to integer")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [])
+                          (lib/expression "UNCASTED" expression)
+                          (as-> q
+                                (lib/expression q "INTCAST" (lib/expression-clause :integer [(lib/expression-ref q "UNCASTED")] nil)))
+                          (lib/limit 10))
+                result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/BigInteger (-> cols first :base_type)))
+            (doseq [[casted-value equals? uncasted-value] rows]
+              (is (int? casted-value))
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel integer-cast-nested-native-query
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
+                                              {:expression "'123'" :db-type "TEXT"}
+                                              {:expression "'-123'" :db-type "TEXT"}
+                                              {:expression 4.5 :db-type "FLOAT"}]]]
+              {:keys [expression db-type]} expressions]
+        (testing (str "Casting " db-type " to integer from native query")
+          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               {:dataset_query native-query
+                :result_metadata (-> (qp/process-query native-query) :data :results_metadata :columns)
+                :type :question}]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (as-> q
+                                    (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)] nil))))
+                    result (-> query (check-integer-query db-type "\"uncasted\"") qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/BigInteger (-> cols first :base_type)))
+                (doseq [[casted-value equals? uncasted-value] rows]
+                  (is (int? casted-value))
+                  (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))))
+
+(deftest ^:parallel integer-cast-nested-query
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
+                                        {:field :id :db-type "INTEGER"}
+                                        {:field :zip :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}]]]
+              {:keys [field db-type]} fields]
+        (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
+          (testing (str "Casting " db-type " to integer")
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               {:dataset_query nested-query
+                :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
+                :type :question}]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (lib/with-fields [])
+                              (as-> q
+                                    (lib/expression q "INTCAST" (lib/expression-clause :integer [(lib.metadata/field mp (mt/id table field))] nil)))
+                              (lib/limit 10))
+                    result (-> query (check-integer-query db-type field) qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/BigInteger (-> cols first :base_type)))
+                (doseq [[casted-value equals? uncasted-value] rows]
+                  (is (int? casted-value))
+                  (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))))
+
+(deftest ^:parallel integer-cast-nested-query-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
+                                                                                 [(lib.metadata/field mp (mt/id :people :id))
+                                                                                  (lib.metadata/field mp (mt/id :people :zip))] nil)
+                                              :db-type "TEXT"}
+                                             {:expression (lib/expression-clause :get-day-of-week
+                                                                                 [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
+                                              :db-type "INTEGER"}]]
+                                   [:orders [{:expression (lib/+ (lib.metadata/field mp (mt/id :orders :total))
+                                                                 (lib.metadata/field mp (mt/id :orders :quantity)))
+                                              :db-type "FLOAT"}]]]
+              {:keys [expression db-type]} expressions]
+        (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                               (lib/with-fields [])
+                               (lib/expression "UNCASTED" expression)
+                               (lib/limit 10))]
+          (testing (str "Casting " db-type " to integer")
+            (mt/with-temp
+              [:model/Card
+               {card-id :id}
+               {:dataset_query nested-query
+                :result_metadata (-> (qp/process-query nested-query) :data :results_metadata :columns)
+                :type :question}]
+              (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
+                              (as-> q
+                                    (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil)))
+                              (lib/limit 10))
+                    result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                    cols (mt/cols result)
+                    rows (mt/rows result)]
+                (is (= :type/BigInteger (-> cols first :base_type)))
+                (doseq [[casted-value equals? uncasted-value] rows]
+                  (is (int? casted-value))
+                  (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))))
+
+(deftest ^:parallel integer-cast-nested-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression [(lib/expression-clause :concat
+                                                                                  [(lib.metadata/field mp (mt/id :people :id))
+                                                                                   (lib.metadata/field mp (mt/id :people :zip))] nil)
+                                                           (lib/expression-clause :concat
+                                                                                  [(lib.metadata/field mp (mt/id :people :id))
+                                                                                   (lib.metadata/field mp (mt/id :people :zip))] nil)]
+                                              :db-type "TEXT"}
+                                             {:expression [(lib/expression-clause :get-day-of-week
+                                                                                  [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
+                                                           (lib/expression-clause :get-day-of-week
+                                                                                  [(lib.metadata/field mp (mt/id :people :birth_date))] nil)]
+                                              :db-type "INTEGER"}]]
+                                   [:orders [{:expression [(lib/+ (lib.metadata/field mp (mt/id :orders :total))
+                                                                  (lib.metadata/field mp (mt/id :orders :quantity)))
+                                                           (lib/+ (lib.metadata/field mp (mt/id :orders :total))
+                                                                  (lib.metadata/field mp (mt/id :orders :quantity)))]
+                                              :db-type "FLOAT"}]]]
+              {db-type :db-type [e1 e2] :expression} expressions]
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                        (lib/expression "UNCASTED" e1)
+                        (lib/expression "INTCAST" (lib/expression-clause :integer [e2] nil))
+                        (lib/limit 10))
+              result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+              cols (mt/cols result)
+              rows (mt/rows result)]
+          (is (= :type/BigInteger (-> cols first :base_type)))
+          (doseq [[casted-value equals? uncasted-value] rows]
+            (is (int? casted-value))
+            (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))
+
+(deftest ^:parallel integer-cast-aggregations
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
+                                        {:field :id :db-type "INTEGER"}
+                                        {:field :zip :db-type "TEXT"}]]
+                              [:orders [{:field :user_id :db-type "INTEGER"}
+                                        {:field :subtotal :db-type "FLOAT"}]]]
+              {:keys [field db-type]} fields]
+        (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/aggregate (lib/max field-md))
+                          (lib/aggregate (lib/max (lib/integer field-md))))
+                result (-> query (check-integer-query db-type "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/BigInteger (-> cols first :base_type)))
+            (doseq [[casted-value _equals? _uncasted-value] rows]
+              (is (int? casted-value)))))))))
