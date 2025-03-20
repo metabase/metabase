@@ -1,34 +1,17 @@
-import { type RenderHookOptions, waitFor } from "@testing-library/react";
-import { renderHook } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
 
 import {
   callsToTranslateEntityIdEndpoint,
   setupTranslateEntityIdEndpoint,
 } from "__support__/server-mocks/entity-ids";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { getStore } from "metabase/store";
+import { renderHookWithProviders } from "__support__/ui";
 import type { BaseEntityId } from "metabase-types/api";
 
 import { useValidatedEntityId } from "./use-validated-entity-id";
 
-function renderHookWithReduxProvider<TProps, TResult>(
-  hook: (props: TProps) => TResult,
-  options?: Omit<RenderHookOptions<TProps>, "wrapper">,
-) {
-  const store = getStore();
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
-  );
-
-  return renderHook(hook, {
-    wrapper,
-    ...options,
-  });
-}
-
 describe("useValidatedEntityId", () => {
   it("should pass through numeric IDs without calling the translation endpoint", () => {
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: 123 }),
     );
 
@@ -42,7 +25,7 @@ describe("useValidatedEntityId", () => {
   });
 
   it("should handle undefined ID", () => {
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: undefined }),
     );
 
@@ -54,7 +37,7 @@ describe("useValidatedEntityId", () => {
   });
 
   it("should handle null ID", () => {
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: null }),
     );
 
@@ -66,7 +49,7 @@ describe("useValidatedEntityId", () => {
   });
 
   it("should handle invalid entity ID strings", () => {
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: "not-an-entity-id" }),
     );
 
@@ -88,7 +71,7 @@ describe("useValidatedEntityId", () => {
       },
     });
 
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: validEntityId }),
     );
 
@@ -112,7 +95,7 @@ describe("useValidatedEntityId", () => {
       },
     });
 
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "dashboard", id: validEntityId }),
     );
 
@@ -136,7 +119,7 @@ describe("useValidatedEntityId", () => {
       },
     });
 
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "collection", id: validEntityId }),
     );
 
@@ -160,7 +143,7 @@ describe("useValidatedEntityId", () => {
       },
     });
 
-    const { result } = renderHookWithReduxProvider(() =>
+    const { result } = renderHookWithProviders(() =>
       useValidatedEntityId({ type: "card", id: invalidEntityId }),
     );
 
