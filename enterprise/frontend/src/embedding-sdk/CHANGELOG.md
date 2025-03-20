@@ -1,3 +1,25 @@
+## [0.52.17](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.16...embedding-sdk-0.52.17) (2025-03-20)
+
+
+### Bug Fixes
+
+* **sdk:** Consolidate StaticQuestion code using InteractiveQuestion code ([#55170](https://github.com/metabase/metabase/issues/55170)) ([f7d56bb](https://github.com/metabase/metabase/commit/f7d56bbb04403061ef1d81b9621e52659c6cf2ab))
+* **sdk:** Entity ID support for CreateDashboardModal ([#55358](https://github.com/metabase/metabase/issues/55358)) ([#55397](https://github.com/metabase/metabase/issues/55397)) ([d3ddb71](https://github.com/metabase/metabase/commit/d3ddb71c90668622ae2e2ab0ec9534f6f944930a))
+* **sdk:** Fix ad-hoc question view when clicking into SDK dashboard ([#55254](https://github.com/metabase/metabase/issues/55254)) ([#55420](https://github.com/metabase/metabase/issues/55420)) ([4dd789e](https://github.com/metabase/metabase/commit/4dd789ebb8c528fb8afe6efff0c2e0809e19167d))
+* **sdk:** mark all react-dom dependency requests as external for React 19 compatibility ([#55071](https://github.com/metabase/metabase/issues/55071)) ([#55326](https://github.com/metabase/metabase/issues/55326)) ([8179255](https://github.com/metabase/metabase/commit/817925500644915620e36e0a650ee2c542680c3d))
+* **sdk:** Popovers not working on Safari ([#55012](https://github.com/metabase/metabase/issues/55012)) ([#55022](https://github.com/metabase/metabase/issues/55022)) ([459694e](https://github.com/metabase/metabase/commit/459694ee68dd19e4ebab195668d7b56140db3ef4))
+
+
+### Features
+
+* **sdk:** Add DownloadWidget and DownloadWidgetDropdown ([#55149](https://github.com/metabase/metabase/issues/55149)) ([b6fe817](https://github.com/metabase/metabase/commit/b6fe817fe7cc7e97095b70fcef77d46c72d6793e))
+* **sdk:** Add entity IDs to CollectionBrowser ([#54985](https://github.com/metabase/metabase/issues/54985)) ([#55086](https://github.com/metabase/metabase/issues/55086)) ([7ffef05](https://github.com/metabase/metabase/commit/7ffef051ddf780f25698cfb254544d49e9b84de4))
+* **sdk:** Add stable ID support where missing ([#54975](https://github.com/metabase/metabase/issues/54975)) ([#55080](https://github.com/metabase/metabase/issues/55080)) ([949c1e4](https://github.com/metabase/metabase/commit/949c1e44c507c3b613267a865864c07442b1c6bf))
+* **sdk:** do not setup sandboxing and show user switcher if using a sample database ([#55105](https://github.com/metabase/metabase/issues/55105)) ([#55356](https://github.com/metabase/metabase/issues/55356)) ([775d72c](https://github.com/metabase/metabase/commit/775d72c4c7f4ea3ec48fba68814ce978cc051c6e))
+* **sdk:** Ensure that all dashboards use entity ID the same way ([#55010](https://github.com/metabase/metabase/issues/55010)) ([#55092](https://github.com/metabase/metabase/issues/55092)) ([5165ee5](https://github.com/metabase/metabase/commit/5165ee59c77d9515912b0f553dd0dc91c1797ac0))
+
+
+
 ## [0.52.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.15...embedding-sdk-0.52.16) (2025-03-12)
 
 
