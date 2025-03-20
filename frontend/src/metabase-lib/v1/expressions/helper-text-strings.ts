@@ -8,6 +8,7 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
+import { formatIdentifier } from "./identifier";
 import { adjustCaseOrIf } from "./recursive-parser";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
@@ -333,6 +334,31 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
     ],
     docsPage: "substring",
+  },
+  {
+    name: "split",
+    category: "string",
+    structure: "split",
+    description: () =>
+      t`One should not expect a valid copy in a hackathon project.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: formatIdentifier(t`Title`),
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: `","`,
+      },
+      {
+        name: t`position`,
+        description: t`Which array element to return after the split. Index starts at position 1.`,
+        example: "1",
+      },
+    ],
+    docsPage: "split",
   },
   {
     name: "regex-match-first",
