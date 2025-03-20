@@ -232,10 +232,12 @@ export const configureSandboxPolicy = (policy: SandboxPolicy) => {
   );
   cy.findByRole("menuitem", { name: /Products/ }).click();
   cy.log("Modify the sandboxing policy for the 'data' group");
-  H.modifyPermission("data", 0, "Sandboxed");
+  H.modifyPermission("data", 0, "Row and column security");
 
   H.modal().within(() => {
-    cy.findByText(/Change access to this database to .*Sandboxed.*?/);
+    cy.findByText(
+      /Change access to this database to .*Row and column security.*?/,
+    );
     cy.button("Change").click();
   });
 
