@@ -7,27 +7,27 @@ import {
   FIELD_SEMANTIC_TYPES,
 } from "metabase/lib/core";
 import { Select } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa } from "metabase-lib/v1/types/utils/isa";
-import type { Field } from "metabase-types/api";
 
 const NO_SEMANTIC_TYPE = null;
 const NO_SEMANTIC_TYPE_STRING = "null";
 
 interface Props {
-  baseType: Field["base_type"];
   className?: string;
+  field: Field;
   value: string | null;
   onChange: (value: string | null) => void;
 }
 
 export const SemanticTypePicker = ({
-  baseType,
   className,
+  field,
   value,
   onChange,
 }: Props) => {
-  const data = useMemo(() => getData({ baseType, value }), [baseType, value]);
+  const data = useMemo(() => getData({ field, value }), [field, value]);
 
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
@@ -60,7 +60,7 @@ function stringifyValue(value: string | null): string {
   return value === NO_SEMANTIC_TYPE ? NO_SEMANTIC_TYPE_STRING : value;
 }
 
-function getData({ baseType, value }: Pick<Props, "baseType" | "value">) {
+function getData({ field, value }: Pick<Props, "field" | "value">) {
   const options = [
     ...FIELD_SEMANTIC_TYPES,
     {
@@ -84,15 +84,15 @@ function getData({ baseType, value }: Pick<Props, "baseType" | "value">) {
         return false;
       }
 
-      if (baseType === TYPE.Text) {
+      if (field.base_type === TYPE.Text) {
         /**
          * Hack: allow "casting" text types to numerical types
          * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
          */
-        return isa(option.id, baseType) || isa(option.id, TYPE.Number);
+        return isa(option.id, field.base_type) || isa(option.id, TYPE.Number);
       }
 
-      return isa(option.id, baseType);
+      return isa(option.id, field.base_type);
     })
     .map(option => ({
       label: option.name,
