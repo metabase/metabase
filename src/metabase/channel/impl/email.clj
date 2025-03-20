@@ -321,10 +321,10 @@
                  emails)))
 
 (def ^:private event-name->template
-  {:event/data-editing-bulk-create {:channel_type :channel/email
-                                    :details      {:type    :email/handlebars-resource
-                                                   :subject "New inserts on table {{payload.event_info.table.name}}"
-                                                   :path    "metabase/channel/email/data_editing_bulk_create.hbs"}}})
+  {:event/data-editing-row-create {:channel_type :channel/email
+                                   :details      {:type    :email/handlebars-resource
+                                                  :subject "Table {{payload.event_info.table.name}} has a new row"
+                                                  :path    "metabase/channel/email/data_editing_row_create.hbs"}}})
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
@@ -343,20 +343,20 @@
                       (-> template :details :recipient-type keyword))]))
 
 (comment
-  #_(ngoc/with-tc
-      (metabase.notification.models/create-notification!
-       {:payload_type :notification/system-event}
-       [{:type        :notification-subscription/system-event
-         :event_name :event/data-editing-bulk-create
-         #_:condition  #_(metabase.util.json/encode [:=])}]
-       [{:channel_type :channel/email
-         :recipients [{:type :notification-recipient/user
-                       :user_id (metabase.test/user->id :crowberto)}]}]))
+  (def table-id (toucan2.core/select-one-pk :model/Table :name "REVIEWS" :db_id 1))
+  (metabase.notification.models/create-notification!
+   {:payload_type :notification/system-event}
+   [{:type        :notification-subscription/system-event
+     :event_name :event/data-editing-row-create
+     :condition  (metabase.util.json/encode [:= [:context "payload" "event_info" "table_id"] table-id])}]
+   [{:channel_type :channel/email
+     :recipients [{:type :notification-recipient/user
+                   :user_id (metabase.test/user->id :crowberto)}]}])
   (metabase.test/user-http-request
    :crowberto
    :post
    ;; reviews table
-   (format "ee/data-editing/table/%d" (toucan2.core/select-one-pk :model/Table :name "REVIEWS" :db_id 1))
+   (format "ee/data-editing/table/%d" table-id)
    {:rows [{:PRODUCT_ID 1
             :REVIEWER   "ngoc"
             :RATING     5

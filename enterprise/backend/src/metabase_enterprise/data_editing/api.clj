@@ -24,9 +24,9 @@
   (let [created-rows (:created-rows (perform-bulk-action! :bulk/create table-id rows))]
     (doseq [row created-rows]
       (events/publish-event! :event/data-editing-row-create
-                             {:table_id table-id
-                              :row      row
-                              :actor_id api/*current-user-id*}))))
+                             {:table_id    table-id
+                              :created_row row
+                              :actor_id    api/*current-user-id*}))))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -39,10 +39,10 @@
           result (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))]
       (when (pos-int? result)
         (events/publish-event! :event/data-editing-row-update
-                               {:table-id table-id
-                                :row      row
-                                :actor_id api/*current-user-id*
-                                :before   before})))))
+                               {:table_id    table-id
+                                :updated_row row
+                                :before_row  before
+                                :actor_id    api/*current-user-id*})))))
 
 (api.macros/defendpoint :delete "/table/:table-id"
   "Delete row(s) from the given table"
@@ -52,9 +52,9 @@
   (perform-bulk-action! :bulk/delete table-id rows)
   (doseq [row rows]
     (events/publish-event! :event/data-editing-row-delete
-                           {:table_id table-id
-                            :row      row ;; TODO, enrich these rows with data before deletion
-                            :actor_id api/*current-user-id*})))
+                           {:table_id    table-id
+                            :deleted_row row ;; TODO, enrich these rows with data before deletion
+                            :actor_id    api/*current-user-id*})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

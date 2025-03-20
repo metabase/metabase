@@ -209,10 +209,18 @@
 (mr/def ::data-editing-events
   [:map #_{:closed true}
    (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
-   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))
-   [:row [:sequential :any]]
-   [:result :any]])
+   (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))])
 
-(mr/def :event/data-editing-row-create ::data-editing-events)
-(mr/def :event/data-editing-row-update ::data-editing-events)
-(mr/def :event/data-editing-row-delete ::data-editing-events)
+(mr/def :event/data-editing-row-create [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         [:created_row :map]]])
+(mr/def :event/data-editing-row-update [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         [:updated_row :map]
+                                         [:before_row :map]]])
+(mr/def :event/data-editing-row-delete [:merge
+                                        ::data-editing-events
+                                        [:map
+                                         [:deleted_row :map]]])

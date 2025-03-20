@@ -188,3 +188,8 @@
        :attachments (doall (remove nil?
                                    (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
                                              (create-slack-attachment-data (:dashboard_parts payload))])))})))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           System Event                                          ;;
+;; ------------------------------------------------------------------------------------------------;;
+
