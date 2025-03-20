@@ -82,7 +82,6 @@ export function renderWithProviders(
     withUndos,
     customReducers,
     theme,
-    ...options,
   });
 
   const utils = testingLibraryRender(ui, {
@@ -99,26 +98,50 @@ export function renderWithProviders(
 
 export function renderHookWithProviders<TProps, TResult>(
   hook: (props: TProps) => TResult,
-  options?: Omit<RenderHookOptions<TProps>, "wrapper"> &
-    RenderWithProvidersOptions,
+  {
+    mode = "default",
+    initialRoute = "/",
+    storeInitialState = {},
+    withRouter = false,
+    withKBar = false,
+    withDND = false,
+    withUndos = false,
+    customReducers,
+    theme,
+    ...renderHookOptions
+  }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
 ) {
-  const { wrapper, store } = getTestStoreAndWrapper(options);
-  const renderHookReturn = renderHook(hook, { wrapper, ...options });
+  const { wrapper, store } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+  });
+
+  const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
   return { ...renderHookReturn, store };
 }
 
+type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
+  Pick<Required<RenderWithProvidersOptions>, "initialRoute">;
+
 export function getTestStoreAndWrapper({
-  mode = "default",
-  initialRoute = "/",
-  storeInitialState = {},
-  withRouter = false,
-  withKBar = false,
-  withDND = false,
-  withUndos = false,
+  mode,
+  initialRoute,
+  storeInitialState,
+  withRouter,
+  withKBar,
+  withDND,
+  withUndos,
   customReducers,
   theme,
-}: RenderWithProvidersOptions = {}) {
+}: GetTestStoreAndWrapperOptions) {
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
