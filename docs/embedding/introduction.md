@@ -52,7 +52,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Embed individual Metabase components                                                                                            | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 | Manage access and interactivity per component                                                                                   | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 
-\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
+\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
 ## Switching from static to interactive embedding
 

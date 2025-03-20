@@ -43,6 +43,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
@@ -315,7 +316,7 @@ export const PLUGIN_COLLECTIONS = {
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
@@ -328,9 +329,8 @@ export const PLUGIN_COLLECTIONS = {
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (
     _collection: Collection,
-  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+  ): { menuItems: JSX.Element[] } => ({
     menuItems: [],
-    showIndicator: false,
   }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {

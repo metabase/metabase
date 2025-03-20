@@ -18,7 +18,10 @@
   50)
 (def ^:dynamic *max-retries*
   "The number of times we will retry hashing in an attempt to find a unique hash"
-  20)
+  1000)
+(def ^:dynamic *retry-batch-size*
+  "The number of entity ids we will try per iteration of retries"
+  50)
 (def ^:private min-repeat-ms
   "The minimum acceptable repeat rate for the backfill entity ids job"
   1000)
@@ -43,6 +46,33 @@
   []
   (reset! failed-rows #{}))
 
+(defn- retry-insert-entity-ids!
+  "Searches for a unique entity-id for row and updates row once found.  Returns an exception if the update fails,
+  returns :not-found if it fails to find a unique entity-id, and returns nil on success.
+
+  This searches for entity-ids in batches to cut down on db calls."
+  [model {:keys [id] :as row} ^java.sql.Connection conn savepoint retry]
+  (if (> retry *max-retries*)
+    (do (log/info "Failed to find unique entity-id for " model " with id " id " after " retry " retries")
+        :not-found)
+    (let [end-retry-count (+ retry *retry-batch-size*)
+          entity-ids (for [i (range retry end-retry-count)]
+                       (serdes/backfill-entity-id row i))
+          used-entity-ids (t2/select-fn-set :entity_id model :entity_id [:in entity-ids])
+          next-entity-id (some #(and (not (contains? used-entity-ids %))
+                                     %)
+                               entity-ids)]
+      (if next-entity-id
+        (try
+          (log/info (str "Found unique entity-id for " model " with id " id " in retry batch starting at " retry))
+          (t2/update! model id {:entity_id next-entity-id})
+          nil
+          (catch Exception e
+            (.rollback conn savepoint)
+            e))
+        (do (log/info (str "No unique entity-ids found for " model " with id " id " from increment " retry " to increment " end-retry-count))
+            (recur model row conn savepoint end-retry-count))))))
+
 (defn- backfill-entity-ids!-inner
   "Given a model, gets a batch of objects from the db and adds entity-ids"
   [model]
@@ -55,32 +85,27 @@
             rows (t2/select model :entity_id nil :id id-condition {:limit *batch-size*})]
         (when (seq rows)
           (log/info (str "Adding entity-ids to " (count rows) " rows of " model))
-          (loop [[{:keys [id] :as row} & rest :as all] rows
-                 retry 0
-                 savepoint (.setSavepoint conn)]
-            (when row
-              (let [new-entity-id (serdes/backfill-entity-id row retry)
-                    needs-retry
-                    (try
-                      (t2/update! model id {:entity_id new-entity-id})
-                      false
-                      (catch Exception e
-                        (.rollback conn savepoint)
-                        (if (and (t2/select-one model :entity_id new-entity-id)
-                                 (< retry *max-retries*))
-                          (do
-                            (log/info (str "Duplicate entity-id found for " model " with id " id ", retried " retry " times"))
-                            true)
-                          (do
-                            ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
-                            ;; retry them on next sync.
-                            (add-failed-row! id)
-                            (log/error (str "Exception updating entity-id for " model " with id " id))
-                            (log/error e)
-                            false))))]
-                (if needs-retry
-                  (recur all (inc retry) savepoint)
-                  (recur rest 0 (.setSavepoint conn))))))
+          (doseq [{:keys [id] :as row} rows]
+            (let [savepoint (.setSavepoint conn)
+                  new-entity-id (serdes/backfill-entity-id row)
+                  failure
+                  (try
+                    (t2/update! model id {:entity_id new-entity-id})
+                    nil
+                    (catch Exception e
+                      (.rollback conn savepoint)
+                      (if (t2/select-one model :entity_id new-entity-id)
+                        (do
+                          (log/info (str "Duplicate entity-id found for " model " with id " id))
+                          (retry-insert-entity-ids! model row conn savepoint 1))
+                        e)))]
+              (when failure
+                ;; If we fail to update an individual entity id, add it to the ignore list and continue.  We'll
+                ;; retry them on next sync.
+                (add-failed-row! id)
+                (when (instance? Exception failure)
+                  (log/error (str "Exception updating entity-id for " model " with id " id))
+                  (log/error failure)))))
           true)))
     (catch Exception e
       ;; If we error outside of updating a single entity id, stop.  We'll retry on next sync.

@@ -2903,7 +2903,7 @@ const testChangingBackToDefaultBehavior = () => {
 const getTableCell = index => {
   // eslint-disable-next-line no-unsafe-element-filtering
   return cy
-    .findAllByTestId("table-row")
+    .findAllByRole("row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")
     .eq(index);

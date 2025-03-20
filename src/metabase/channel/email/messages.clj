@@ -12,7 +12,6 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.template.core :as channel.template]
    [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.permissions.core :as perms]
@@ -20,7 +19,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
@@ -28,10 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalTime)
-   (java.time.format DateTimeFormatter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -296,69 +291,6 @@
       :meets
       :below)
     :rows))
-
-(defn- first-card
-  "Alerts only have a single card, so the alerts API accepts a `:card` key, while pulses have `:cards`. Depending on
-  whether the data comes from the alert API or pulse tasks, the card could be under `:card` or `:cards`"
-  [alert]
-  (or (:card alert)
-      (first (:cards alert))))
-
-(defn common-alert-context
-  "Template context that is applicable to all alert templates, including alert management templates
-  (e.g. the subscribed/unsubscribed emails)"
-  ([alert]
-   (common-alert-context alert nil))
-  ([alert alert-condition-map]
-   (let [{card-id :id, card-name :name} (first-card alert)]
-     (merge (common-context)
-            {:emailType                 "alert"
-             :questionName              card-name
-             :questionURL               (urls/card-url card-id)
-             :sectionStyle              (channel.render/section-style)}
-            (when alert-condition-map
-              {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
-
-(defn- schedule-hour-text
-  [{hour :schedule_hour}]
-  (.format (LocalTime/of hour 0)
-           (DateTimeFormatter/ofPattern "h a")))
-
-(defn- schedule-day-text
-  [{day :schedule_day}]
-  (get {"sun" "Sunday"
-        "mon" "Monday"
-        "tue" "Tuesday"
-        "wed" "Wednesday"
-        "thu" "Thursday"
-        "fri" "Friday"
-        "sat" "Saturday"}
-       day))
-
-(defn- schedule-timezone
-  []
-  (or (driver/report-timezone) "UTC"))
-
-(defn notification-card-schedule-text
-  "Given cron notification subscription return a human-readable description of the schedule."
-  [{:keys [cron_schedule type] :as _subscription}]
-  (when (= :notification-subscription/cron type)
-    ;; TODO consider using https://github.com/grahamar/cron-parser
-    (let [schedule (u.cron/cron-string->schedule-map cron_schedule)]
-      (case (keyword (:schedule_type schedule))
-        :hourly
-        "Run hourly"
-
-        :daily
-        (format "Run daily at %s %s"
-                (schedule-hour-text schedule)
-                (schedule-timezone))
-
-        :weekly
-        (format "Run weekly on %s at %s %s"
-                (schedule-day-text schedule)
-                (schedule-hour-text schedule)
-                (schedule-timezone))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
