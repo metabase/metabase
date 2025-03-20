@@ -632,8 +632,8 @@
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)
-             nested-query             (nest-query query)
-             query             (lib/query (qp.store/metadata-provider) nested-query)
+             nested-query      (nest-query query)
+             query             (lib/query (qp.store/metadata-provider) #_query nested-query)
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
