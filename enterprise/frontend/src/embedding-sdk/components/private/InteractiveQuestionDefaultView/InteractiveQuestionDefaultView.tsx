@@ -11,6 +11,7 @@ import {
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import {
   Box,
   Button,
@@ -19,6 +20,7 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
+import type { CollectionId } from "metabase-types/api";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import {
@@ -52,10 +54,7 @@ export const InteractiveQuestionDefaultView = ({
     queryResults,
     isQuestionLoading,
     originalQuestion,
-    onCreate,
-    onSave,
     isSaveEnabled,
-    targetCollection,
     withDownloads,
     isCardIdError,
   } = useInteractiveQuestionContext();
@@ -176,21 +175,61 @@ export const InteractiveQuestionDefaultView = ({
         </Box>
       </Box>
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveEnabled && isSaveModalOpen && question && (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion ?? null}
-          opened
-          closeOnSuccess
-          onClose={closeSaveModal}
-          onCreate={onCreate}
-          onSave={async question => {
-            await onSave(question);
-            closeSaveModal();
-          }}
-          targetCollection={targetCollection}
-        />
-      )}
+      <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
     </FlexibleSizeComponent>
+  );
+};
+
+const DefaultViewSaveModal = ({
+  isOpen,
+  close,
+}: {
+  isOpen: boolean;
+  close: () => void;
+}) => {
+  const {
+    question,
+    originalQuestion,
+    onCreate,
+    onSave,
+    isSaveEnabled,
+    targetCollection,
+  } = useInteractiveQuestionContext();
+
+  const { id, isLoading } = useValidatedEntityId({
+    type: "collection",
+    id: targetCollection,
+  });
+
+  const finalId = id ?? targetCollection;
+
+  return (
+    isSaveEnabled &&
+    isOpen &&
+    question &&
+    !isLoading && (
+      <SaveQuestionModal
+        question={question}
+        originalQuestion={originalQuestion ?? null}
+        opened
+        closeOnSuccess
+        onClose={close}
+        onCreate={onCreate}
+        onSave={async question => {
+          await onSave(question);
+          close();
+        }}
+        targetCollection={isValidId(finalId) ? finalId : undefined}
+      />
+    )
+  );
+};
+
+const isValidId = (collectionId: unknown): collectionId is CollectionId => {
+  return (
+    !!collectionId &&
+    (typeof collectionId === "number" ||
+      collectionId === "personal" ||
+      collectionId === "root")
   );
 };
