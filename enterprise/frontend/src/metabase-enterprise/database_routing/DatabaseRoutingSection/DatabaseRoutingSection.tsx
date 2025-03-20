@@ -28,7 +28,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
-import { getDisabledFeatureMessage } from "./utils";
+import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -55,15 +55,14 @@ export const DatabaseRoutingSection = ({
   );
   const userAttributeOptions = userAttrsReq.data ?? [];
 
-  const disabledMsg = getDisabledFeatureMessage(database);
-  const isDbRoutingDisabled = !!disabledMsg;
-  const hasNoUserAttributeOptions =
-    !userAttrsReq.isLoading && userAttributeOptions.length === 0;
-  const selectDisabledMsg =
-    disabledMsg ??
-    (hasNoUserAttributeOptions
-      ? t`You must set user attributes on users for this feature to be available`
-      : "");
+  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const isDbRoutingDisabled = !!disabledFeatMsg;
+  const errMsg = getSelectErrorMessage({
+    userAttribute,
+    disabledFeatureMessage: disabledFeatMsg,
+    hasNoUserAttributeOptions:
+      !userAttrsReq.isLoading && userAttributeOptions.length === 0,
+  });
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
@@ -111,7 +110,7 @@ export const DatabaseRoutingSection = ({
           ) : null}
         </Stack>
         <Flex gap="md">
-          <Tooltip label={disabledMsg} disabled={!disabledMsg}>
+          <Tooltip label={disabledFeatMsg} disabled={!disabledFeatMsg}>
             <Box>
               <Switch
                 id="database-routing-toggle"
@@ -119,6 +118,7 @@ export const DatabaseRoutingSection = ({
                 checked={isToggleEnabled}
                 disabled={isDbRoutingDisabled}
                 onChange={e => handleToggle(e.currentTarget.checked)}
+                styles={{ labelWrapper: { display: "none" } }}
               />
             </Box>
           </Tooltip>
@@ -134,18 +134,22 @@ export const DatabaseRoutingSection = ({
 
           <Box mb="xl">
             <Flex justify="space-between" align="center">
-              <Text>{t`User attribute to use for connection slug`}</Text>
-              <Tooltip label={selectDisabledMsg} disabled={!selectDisabledMsg}>
-                <Select
-                  data-testid="db-routing-user-attribute"
-                  placeholder={t`Choose an attribute`}
-                  data={userAttributeOptions}
-                  disabled={!!selectDisabledMsg}
-                  value={userAttribute}
-                  onChange={handleUserAttributeChange}
-                />
-              </Tooltip>
+              <Text>
+                {t`User attribute to use for connection slug`}{" "}
+                <Text component="span" c="error">
+                  *
+                </Text>
+              </Text>
+              <Select
+                data-testid="db-routing-user-attribute"
+                placeholder={t`Choose an attribute`}
+                data={userAttributeOptions}
+                disabled={!!disabledFeatMsg}
+                value={userAttribute}
+                onChange={handleUserAttributeChange}
+              />
             </Flex>
+            {errMsg && <Text c="error">{errMsg}</Text>}
           </Box>
 
           <Flex justify="space-between" align="center" mih="2.5rem">

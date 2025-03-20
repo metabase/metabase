@@ -314,10 +314,16 @@ describe("admin > database > database routing", () => {
     cy.reload();
 
     cy.log("should not allow enabling model features");
+    cy.findAllByTestId("database-model-features-section")
+      .findByLabelText("Model actions")
+      .trigger("mouseenter", { force: true });
+    H.tooltip()
+      .findByText(
+        "Model actions can not be enabled if database routing is enabled.",
+      )
+      .should("exist");
+
     cy.findAllByTestId("database-model-features-section").within(() => {
-      cy.findByText(
-        "Model features can not be enabled if database routing is enabled.",
-      ).should("exist");
       cy.findByLabelText("Model actions")
         .should("be.disabled")
         .should("not.be.checked");
@@ -427,17 +433,24 @@ function dbRoutingSection() {
 
 function assertDbRoutingNotDisabled() {
   dbRoutingSection().within(() => {
-    cy.findByText(/Database routing can't be enabled if/).should("not.exist");
-    cy.findByLabelText("Enable database routing").should("not.be.disabled");
+    cy.findByLabelText("Enable database routing")
+      .should("not.be.disabled")
+      .realHover();
   });
+  H.tooltip()
+    .findByText(/Database routing can't be enabled if/)
+    .should("not.exist");
 }
 function assertDbRoutingDisabled() {
   dbRoutingSection().within(() => {
-    cy.findByText(/Database routing can't be enabled if/).should("exist");
     cy.findByLabelText("Enable database routing")
       .should("not.be.checked")
-      .should("be.disabled");
+      .should("be.disabled")
+      .realHover();
   });
+  H.tooltip()
+    .findByText(/Database routing can't be enabled if/)
+    .should("exist");
 }
 
 const BASE_POSTGRES_MIRROR_DB_INFO = {

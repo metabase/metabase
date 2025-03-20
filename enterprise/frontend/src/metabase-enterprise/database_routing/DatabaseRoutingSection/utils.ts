@@ -30,3 +30,23 @@ export const getDisabledFeatureMessage = (database: Database) => {
     )
     .otherwise(() => undefined);
 };
+
+export const getSelectErrorMessage = ({
+  disabledFeatureMessage,
+  userAttribute,
+  hasNoUserAttributeOptions,
+}: {
+  disabledFeatureMessage: string | undefined;
+  userAttribute: string | undefined;
+  hasNoUserAttributeOptions: boolean;
+}) => {
+  if (disabledFeatureMessage) {
+    return disabledFeatureMessage;
+  } else if (hasNoUserAttributeOptions) {
+    return t`You must set user attributes on users for this feature to be available`;
+  } else if (!userAttribute) {
+    return t`You must choose a user attribute to enable DB routing`;
+  } else {
+    return undefined;
+  }
+};
