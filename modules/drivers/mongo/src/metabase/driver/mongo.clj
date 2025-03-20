@@ -390,7 +390,7 @@
                                  name (last path)]
                              (cond-> {:name              name
                                       :database-type     (:type field)
-                                      :base-type         (type-alias->base-type (:type-alias field))
+                                      :base-type         (type-alias->base-type (:type field))
                                       ; index is used by `set-database-position`, and not present in final result
                                       :index             (:index field)
                                       ; path is used to nest fields, and not present in final result
