@@ -741,16 +741,18 @@
 (defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
-    (let [base-type (get-in field [2 :base-type])]
+    (let [base-type (get-in field [2 :base-type])
+          supports-toString? (-> (get-mongo-version) :semantic-version (driver.u/semantic-version-gte [8]))]
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (if (= :type/UUID base-type)
-                              ;; TODO: Update this to use $toString once all supported
-                              ;; Mongo versions have $toString available (>= 8.0)
-                              {"$function" {"body" "function(uuid) { return uuid.toString().substring(6, 42) }",
-                                            "args" [(->rvalue field)],
-                                            "lang" "js"}}
-                              (->rvalue field))
+      {$regexMatch {"input" (cond (and (= :type/UUID base-type) supports-toString?)
+                                  {"$toString" (->rvalue field)}
+
+                                  (= :type/UUID base-type)
+                                  (throw (Exception. "String searching on UUIDs is only supported in Mongo v8.0+"))
+
+                                  :else
+                                  (->rvalue field))
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})

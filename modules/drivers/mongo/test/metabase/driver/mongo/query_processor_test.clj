@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -637,19 +638,26 @@
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             dogs (lib.metadata/table mp (mt/id :dogs))
             person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
-        (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
-                [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/starts-with person-id "d6"))
-                   qp/process-query
-                   mt/rows)))
-        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/ends-with person-id "9b"))
-                   qp/process-query
-                   mt/rows)))
-        (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
-               (-> (lib/query mp dogs)
-                   (lib/filter (lib/contains person-id "e"))
-                   qp/process-query
-                   mt/rows)))))))
+        (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))
+          (do
+            (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+                    [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]
+                   (-> (lib/query mp dogs)
+                       (lib/filter (lib/starts-with person-id "d6"))
+                       qp/process-query
+                       mt/rows)))
+            (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                   (-> (lib/query mp dogs)
+                       (lib/filter (lib/ends-with person-id "9b"))
+                       qp/process-query
+                       mt/rows)))
+            (is (= [[3 #uuid "d6a82cf5-7dc9-48a3-a15d-61df91a6edeb" "Boss" #uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b"]]
+                   (-> (lib/query mp dogs)
+                       (lib/filter (lib/contains person-id "e"))
+                       qp/process-query
+                       mt/rows))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"String searching on UUIDs is only supported in Mongo v8.0+"
+                                (-> (lib/query mp dogs)
+                                    (lib/filter (lib/contains person-id "e"))
+                                    qp/process-query))))))))
