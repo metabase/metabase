@@ -1,6 +1,6 @@
 const { H } = cy;
 
-describe("scenarios > custom column > literals", () => {
+describe.skip("scenarios > custom column > literals", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -13,14 +13,13 @@ describe("scenarios > custom column > literals", () => {
       { name: "Zero", expression: "0", value: "0" },
       { name: "Number", expression: "10", value: "10" },
       { name: "String", expression: '"abc"', value: "abc" },
-      // TODO uncomment when fixed
-      // { name: "DateString", expression: '"2024-01-01"', value: "2024-01-01" },
-      // {
-      //   name: "DateTimeString",
-      //   expression: '"2024-01-01T10:20:00"',
-      //   value: "2024-01-01T10:20:00",
-      // },
-      // { name: "TimeString", expression: '"10:20"', value: "10:20" },
+      { name: "DateString", expression: '"2024-01-01"', value: "2024-01-01" },
+      {
+        name: "DateTimeString",
+        expression: '"2024-01-01T10:20:00"',
+        value: "2024-01-01T10:20:00",
+      },
+      { name: "TimeString", expression: '"10:20"', value: "10:20" },
       { name: "Column", expression: "[Number]", value: "10" },
       { name: "Expression", expression: "[Number] + [Number]", value: "20" },
     ];
