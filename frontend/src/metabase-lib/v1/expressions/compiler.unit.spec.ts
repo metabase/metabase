@@ -1,15 +1,15 @@
-import { compileExpression } from "./compiler";
-import { type StartRule } from "./types";
 import {
+  bool,
+  created,
+  id,
   query,
-  total,
+  segment,
   subtotal,
   tax,
-  id,
-  created,
-  segment,
-  bool,
+  total,
 } from "./__support__/shared";
+import { compileExpression } from "./compiler";
+import type { StartRule } from "./types";
 
 function expr(
   source: string,
@@ -127,7 +127,7 @@ describe("old recursive-parser tests", () => {
   });
 
   // TODO: text and integer don't work
-  it.skip("should parse cast calls", () => {
+  it("should parse cast calls", () => {
     expect(expr("text(ID)")).toEqual(["text", id]);
     expect(expr("integer(ID)")).toEqual(["integer", id]);
   });
