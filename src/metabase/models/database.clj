@@ -499,7 +499,8 @@
   "OSS implementation. Hydrates router user attribute on the databases."
   metabase-enterprise.database-routing.model
   [_k databases]
-  databases)
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
   "Batch hydrate `Tables` for the given `Database`."
