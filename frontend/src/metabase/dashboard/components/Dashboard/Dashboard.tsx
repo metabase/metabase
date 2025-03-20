@@ -17,6 +17,8 @@ import { Box, Flex } from "metabase/ui";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import { DashboardGridConnected } from "../DashboardGrid";
+import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import S from "./Dashboard.module.css";
@@ -25,8 +27,6 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
-import { Grid } from "./components/Grid";
-import { ParameterList } from "./components/ParameterList";
 
 export type DashboardProps = {
   parameterQueryParams: Query;
@@ -80,6 +80,13 @@ function Dashboard(props: DashboardProps) {
     closeSidebar,
     setSharing,
     noLoaderWrapper,
+    isEditingParameter,
+    slowCards,
+    navigateToNewCardFromDashboard,
+    handleSetEditing,
+    downloadsEnabled,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
   } = useDashboardContext();
 
   const renderEmptyStates = () => {
@@ -203,7 +210,7 @@ function Dashboard(props: DashboardProps) {
                 data-element-id="dashboard-parameters-and-cards"
                 data-testid="dashboard-parameters-and-cards"
               >
-                <ParameterList></ParameterList>
+                <DashboardParameterPanel isFullscreen={isFullscreen} />
                 {isEmpty ? (
                   renderEmptyStates()
                 ) : (
@@ -211,7 +218,27 @@ function Dashboard(props: DashboardProps) {
                     className={S.CardsContainer}
                     data-element-id="dashboard-cards-container"
                   >
-                    <Grid />
+                    <DashboardGridConnected
+                      clickBehaviorSidebarDashcard={
+                        clickBehaviorSidebarDashcard
+                      }
+                      isNightMode={shouldRenderAsNightMode}
+                      isFullscreen={isFullscreen}
+                      isEditingParameter={isEditingParameter}
+                      isEditing={isEditing}
+                      dashboard={dashboard}
+                      slowCards={slowCards}
+                      navigateToNewCardFromDashboard={
+                        navigateToNewCardFromDashboard
+                      }
+                      selectedTabId={selectedTabId}
+                      onEditingChange={handleSetEditing}
+                      downloadsEnabled={downloadsEnabled}
+                      autoScrollToDashcardId={autoScrollToDashcardId}
+                      reportAutoScrolledToDashcard={
+                        reportAutoScrolledToDashcard
+                      }
+                    />
                   </FullWidthContainer>
                 )}
               </Box>
