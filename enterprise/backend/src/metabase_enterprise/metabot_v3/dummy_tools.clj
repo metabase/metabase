@@ -121,7 +121,7 @@
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))
                         :queryable-foreign-key-tables (when include-foreign-key-tables?
-                                                        (not-empty (foreign-key-tables mp cols))))))))
+                                                        (foreign-key-tables mp cols)))))))
 
 (defn- card-details
   "Get details for a card."
@@ -145,10 +145,10 @@
      (-> {:id id
           :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
-          :name (lib/display-name card-query)}
+          :name (lib/display-name card-query)
+          :queryable-foreign-key-tables (vec (foreign-key-tables metadata-provider cols))}
          (m/assoc-some :description (:description base)
-                       :metrics (not-empty (mapv #(convert-metric % metadata-provider) (lib/available-metrics card-query)))
-                       :queryable-foreign-key-tables (not-empty (foreign-key-tables metadata-provider cols)))))))
+                       :metrics (not-empty (mapv #(convert-metric % metadata-provider) (lib/available-metrics card-query))))))))
 
 (defn- cards-details
   [card-type database-id cards]
