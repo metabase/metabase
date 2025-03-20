@@ -44,8 +44,8 @@ export const setup = ({
   setupDashboardQuestionCandidatesEndpoint([]);
   setupUserKeyValueEndpoints({
     key: "collection-menu",
-    namespace: "user_acknowledgement",
-    value: true,
+    namespace: "indicator-menu",
+    value: [],
   });
   setupUserKeyValueEndpoints({
     key: "move-to-dashboard",
