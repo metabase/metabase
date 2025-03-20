@@ -56,6 +56,7 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  selection,
   emptyState,
   theme,
   classNames,
@@ -245,7 +246,11 @@ export const DataGrid = function DataGrid<TData>({
 
             <div
               data-testid="table-body"
-              className={cx(S.bodyContainer, classNames?.bodyContainer)}
+              className={cx(S.bodyContainer, classNames?.bodyContainer, {
+                [S.selectableBody]: selection.isEnabled,
+              })}
+              tabIndex={0}
+              onKeyDown={selection.handlers.handleCellsKeyDown}
               style={{
                 display: "grid",
                 position: "relative",
@@ -310,12 +315,21 @@ export const DataGrid = function DataGrid<TData>({
                           onClick={e =>
                             onBodyCellClick?.(e, cell.row.index, cell.column.id)
                           }
+                          onMouseDown={e =>
+                            selection.handlers.handleCellMouseDown(e, cell)
+                          }
+                          onMouseUp={e =>
+                            selection.handlers.handleCellMouseUp(e, cell)
+                          }
+                          onMouseOver={e =>
+                            selection.handlers.handleCellMouseOver(e, cell)
+                          }
                           style={style}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                          {flexRender(cell.column.columnDef.cell, {
+                            ...cell.getContext(),
+                            isSelected: selection.isCellSelected(cell),
+                          })}
                         </div>
                       );
                     })}
