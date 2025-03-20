@@ -391,128 +391,14 @@
 
 (defn- get-col-by-name
   [cols col-name]
-  (->> (map-indexed (fn [idx m] [idx m]) cols)
+  (->> (map-indexed vector cols)
        (some (fn [[idx col]]
                (when (= col-name (:name col))
                  [idx col])))))
 
-(defn- extract-value-sources
-  "Extracts column references from mappings that aren't strings"
-  [mappings]
-  (->> mappings
-       vals
-       (apply concat)
-       (filter (complement string?))))
-
-(defn- source-is-name-ref?
-  "Checks if value is a data source name reference"
-  [value]
-  (and (string? value)
-       (str/starts-with? value "$_")
-       (str/ends-with? value "_name")))
-
-(defn- value-source->card-id
-  "Parses the card id as an int out of a visualizer value source map
-   e.g. {:sourceId 'card:191', ...} -> 191"
-  [{:keys [sourceId]}]
-  (Integer/parseInt (second (str/split sourceId #":"))))
-
-(defn- name-source->card-id
-  "Extracts card id from name source string"
-  [value]
-  (try
-    (when-let [matches (re-find #":(\d+)_" value)]
-      (Integer/parseInt (second matches)))
-    (catch Exception _
-      nil)))
-
-(defn- merge-visualizer-data
-  "Takes visualizer dashcard series/column data and returns a row-major matrix of data
-   with respect to the visualizer specific column settings. The point of this function is to support visualizer display
-   types in static viz that still hit the `LegacyRenderChart` entry point, though currently this has only been tested
-   for funnel charts. EChart display types use the shared version of this function thru the static viz bundle.
-   See frontend/src/metabase/visualizer/utils/merge-data.ts or SHA 18259ef
-
-   Visualizer specific settings have four distinct parts:
-     1. [:display]  - The display type of the visualization
-     2. [:settings] - The visualizer dashcard's actual viz settings
-     3. [:columns]  - The 'virtual' column definitions of a visualizer dashcard. These are
-                      compositions of actual columns, and have 'remapped' :name's e.g. 'COLUMN_1'
-     4. [:columnValuesMapping]
-                    - One entry per virtual column, keyed by the remapped names e.g. 'COLUMN_1', which
-                      point to a vector of 'data sources' which are references to the cards actually supplying
-                      the data. These come in two types, value sources and name references. Value sources are maps
-                      containing metadata to identify the relevant values used from a particular card's column.
-                      Name references are strings which are used to resolve a particular card's name.
-
-   Example visualizer settings (trimmed):
-
-   {:visualization
-     {:display 'funnel',
-      :columns
-        [{:name 'COLUMN_2',
-          :base_type 'type/BigInteger', ...}
-         {:name 'DIMENSION',
-          :base_type 'type/Text', ...}],
-      :columnValuesMapping
-        {:COLUMN_2
-          [{:sourceId 'card:191', :originalName 'count', :name 'COLUMN_2'}  ;; Value comes from column 'count' on card with :id 191
-           {:sourceId 'card:192', :originalName 'count', :name 'COLUMN_3'}
-           {:sourceId 'card:190', :originalName 'count', :name 'COLUMN_4'}],
-         :DIMENSION
-          ['$_card:191_name'  ;; Value is the :name of the card with :id 191
-           '$_card:192_name'
-           '$_card:190_name']},
-      :settings
-        {:funnel.metric 'COLUMN_2',
-         :funnel.dimension 'DIMENSION',
-         :funnel.order_dimension 'DIMENSION',
-         ...}}}
-
-   The input `series-data` is the dashcard data series results from QP as a vector of maps, [{:card {...} :data {...}, ...]
-  "
-  [series-data {:keys [columns columnValuesMapping] :as visualizer-settings}]
-  (let [source-mappings-with-vals   (extract-value-sources columnValuesMapping)
-        ;; Create map from virtual column name e.g. 'COLUMN_1' to a vector of values only for value sources
-        remapped-col-name->vals     (reduce
-                                     (fn [acc {:keys [name originalName] :as source-mapping}]
-                                       (let [ref-card-id      (value-source->card-id source-mapping)
-                                             card-with-data   (u/find-first-map series-data [:card :id] ref-card-id)
-                                             card-cols        (get-in card-with-data [:data :cols])
-                                             card-rows        (get-in card-with-data [:data :rows])
-                                             col-idx-in-card  (u/find-first-map card-cols :name originalName true)]
-                                         (if col-idx-in-card
-                                           (let [values (mapv #(nth % col-idx-in-card) card-rows)]
-                                             (assoc acc name values))
-                                           acc)))
-                                     {}
-                                     source-mappings-with-vals)
-        ;; Create column-major matrix for all virtual columns, value and name ref sources
-        unzipped-rows               (mapv
-                                     (fn [column]
-                                       (let [source-mappings (get columnValuesMapping (keyword (:name column)))]
-                                         (->> source-mappings
-                                              (mapcat
-                                               (fn [source-mapping]
-                                                 (if (source-is-name-ref? source-mapping)
-                                                   ;; Source is a name ref so just return the name of the card with matching :id
-                                                   (let [card-id (name-source->card-id source-mapping)
-                                                         card    (:card (u/find-first-map series-data [:card :id] card-id))]
-                                                     (if-let [name (:name card)]
-                                                       [name]
-                                                       []))
-                                                   ;; Source is actual column data
-                                                   (let [values (get remapped-col-name->vals (:name source-mapping))]
-                                                     (if values values [])))))
-                                              vec)))
-                                     columns)]
-    {:viz-settings (:settings visualizer-settings)
-     :cols columns
-     ;; Return in row-major format
-     :rows (apply mapv vector unzipped-rows)}))
-
 (defn- raise-data-one-level
-  "Raise the :data key inside the given result map up to the top level. This is the expected shape of `add-dashcard-timeline`."
+  "Raise the :data key inside the given result map up to the top level.
+   This is the expected shape of `add-dashcard-timeline`."
   [{:keys [result] :as m}]
   (-> m
       (assoc :data (:data result))
@@ -712,28 +598,33 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(defn- get-funnel-data
-  "Return data for funnel, repackaging if for a visualizer built dashcard"
-  [card dashcard data funnel-type]
-  (if (and (render.util/is-visualizer-dashcard? dashcard)
-           (= "funnel" funnel-type))
-    ;; Funnel charts with funnel type funnel should use the backend visualizer data merge
-    ;; Funnel charts with funnel type bar should use the static viz shared visualizer data merge
-    (let [cards-with-data (series-cards-with-data dashcard card data)
-          visualizer-settings (get-in dashcard [:visualization_settings :visualization])]
-      (merge-visualizer-data cards-with-data visualizer-settings))
-    data))
-
 (mu/defmethod render :funnel :- ::RenderedPartCard
+  "Fork the rendering implementation as such:
+   +----------------------+--------------+---------------------------+
+   | (visualizer?, type)  | Merge Data   | Viz Method                |
+   +----------------------+--------------+---------------------------+
+   | (true,  'bar')       |              | :javascript_visualization |
+   +----------------------+--------------+---------------------------+
+   | (true,  'funnel')    | true         | :funnel_normal            |
+   +----------------------+--------------+---------------------------+
+   | (false, 'bar')       |              | :javascript_visualization |
+   +----------------------+--------------+---------------------------+
+   | (false, 'funnel')    |              | :funnel_normal            |
+   +----------------------+--------------+---------------------------+"
   [_chart-type render-type timezone-id card dashcard data]
-  (let [viz-settings   (if (render.util/is-visualizer-dashcard? dashcard)
-                         (get-in dashcard [:visualization_settings :visualization :settings])
+  (let [visualizer?    (render.util/is-visualizer-dashcard? dashcard)
+        viz-settings   (if visualizer?
+                         (get-in dashcard [:visualization_settings :visualization])
                          (get card :visualization_settings))
-        funnel-type  (get viz-settings :funnel.type)
-        data       (get-funnel-data card dashcard data funnel-type)]
-    (if (= (get viz-settings :funnel.type) "bar")
-      (render :javascript_visualization render-type timezone-id card dashcard data)
-      (render :funnel_normal render-type timezone-id card dashcard data))))
+        funnel-type    (if visualizer?
+                         (get-in viz-settings [:settings :funnel.type])
+                         (get viz-settings :funnel.type))
+        processed-data (if (and visualizer? (= "funnel" funnel-type))
+                         (render.util/merge-visualizer-data (series-cards-with-data dashcard card data) viz-settings)
+                         data)]
+    (if (= "bar" funnel-type)
+      (render :javascript_visualization render-type timezone-id card dashcard processed-data)
+      (render :funnel_normal render-type timezone-id card dashcard processed-data))))
 
 (mu/defmethod render :empty :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
