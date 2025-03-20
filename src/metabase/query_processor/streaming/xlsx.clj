@@ -576,38 +576,26 @@
         (assoc :aggregation-functions agg-fns)
         (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
 
-(defmulti ^:private get-data-format-str
-  "Get data-format form cell-styles, base-type is in col-settings"
-  {:arglists '([base-type cell-styles typed-cell-styles])}
-  (fn [base-type _cell-styles _typed-cell-styles]
-    (keyword base-type)))
-
 (defn- get-fmt
-  [cell-styles typed-cell-styles base-type]
+  [cell-styles typed-cell-styles default-format-type]
   (or (not-empty (when (and cell-styles (seq cell-styles))
                    (.getDataFormatString (first cell-styles))))
-      (when-let [typed-cell-style (typed-cell-styles base-type)]
+      (when-let [typed-cell-style (typed-cell-styles default-format-type)]
         (.getDataFormatString typed-cell-style))))
 
-(defmethod get-data-format-str :type/Date
-  [_ cell-styles typed-cell-styles]
-  (get-fmt cell-styles typed-cell-styles :date))
-
-(defmethod get-data-format-str :type/Integer
-  [_ cell-styles typed-cell-styles]
-  (get-fmt cell-styles typed-cell-styles :integer))
-
-(defmethod get-data-format-str :type/Float
-  [_ cell-styles typed-cell-styles]
-  (get-fmt cell-styles typed-cell-styles :float))
-
-(defmethod get-data-format-str :type/DateTime
-  [_ cell-styles typed-cell-styles]
-  (get-fmt cell-styles typed-cell-styles :date))
-
-(defmethod get-data-format-str :default
-  [_base-type _cell-styles _typed-cell-styles]
-  nil)
+(defn get-data-format-str
+  "Get data-format-str form cell-styles, base-type is in ordered-cols"
+  [base-type cell-styles typed-cell-styles]
+  (when base-type
+    (let [type-str (name (keyword base-type))
+          default-format-type (cond
+                                (str/includes? type-str "datetime") :datetime
+                                (str/includes? type-str "date") :date
+                                (str/includes? type-str "time") :time
+                                (= base-type :type/Integer) :integer
+                                (= base-type :type/Float) :float
+                                :else nil)]
+      (get-fmt cell-styles typed-cell-styles default-format-type))))
 
 ;; Below, we need to provide an AreaReference to create a pivot table.
 ;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
@@ -654,8 +642,8 @@
     (doseq [idx pivot-rows]
       (.addRowLabel pivot-table idx)
       ;; Method addRowLabel has no fmt argument
-      (let [orderd-col (nth ordered-cols idx)
-            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)
+      (let [ordered-col (nth ordered-cols idx)
+            fmt        (get-data-format-str (ordered-col :base_type) (nth cell-styles idx) typed-cell-styles)
             numFmtId   (when fmt (.getFormat data-format fmt))]
         (when numFmtId
           (-> pivot-table
@@ -664,16 +652,16 @@
               (.getPivotFieldArray idx)
               (.setNumFmtId numFmtId)))))
     (doseq [idx pivot-cols]
-      (let [orderd-col (nth ordered-cols idx)
-            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)]
+      (let [ordered-col (nth ordered-cols idx)
+            fmt        (get-data-format-str (ordered-col :base_type) (nth cell-styles idx) typed-cell-styles)]
         (.addColLabel pivot-table idx fmt)))
     (doseq [idx pivot-measures]
       ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
       ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
-      (let [orderd-col (nth ordered-cols idx)
+      (let [ordered-col (nth ordered-cols idx)
             col-name   (or (not-empty (nth col-names idx))
-                           (orderd-col :display_name))
-            fmt        (get-data-format-str (orderd-col :base_type) (nth cell-styles idx) typed-cell-styles)]
+                           (ordered-col :display_name))
+            fmt        (get-data-format-str (ordered-col :base_type) (nth cell-styles idx) typed-cell-styles)]
         (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name fmt)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
