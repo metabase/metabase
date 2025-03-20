@@ -28,6 +28,8 @@ import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { isNotNull } from "metabase/lib/types";
 
+import { useCellSelection } from "./use-cell-selection";
+
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
     hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
@@ -43,6 +45,7 @@ export const useDataGridInstance = <TData, TValue>({
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
   theme,
+  enableSelection,
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
@@ -226,7 +229,7 @@ export const useDataGridInstance = <TData, TValue>({
     measurementRenderWrapper,
   );
 
-  const { measureGrid } = virtualGrid;
+  const { measureGrid, rowVirtualizer, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
   useEffect(() => {
@@ -277,6 +280,31 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnReorder,
   );
 
+  const scrollTo = useCallback(
+    ({
+      rowIndex,
+      columnIndex,
+    }: {
+      rowIndex?: number;
+      columnIndex?: number;
+    }) => {
+      if (rowIndex != null) {
+        rowVirtualizer.scrollToIndex(rowIndex);
+      }
+      if (columnIndex != null) {
+        columnVirtualizer.scrollToIndex(columnIndex);
+      }
+    },
+    [rowVirtualizer, columnVirtualizer],
+  );
+
+  const selection = useCellSelection({
+    gridRef,
+    table,
+    isEnabled: enableSelection,
+    scrollTo,
+  });
+
   return {
     table,
     theme,
@@ -284,6 +312,7 @@ export const useDataGridInstance = <TData, TValue>({
     virtualGrid,
     measureRoot,
     columnsReordering,
+    selection,
     measureColumnWidths,
   };
 };
