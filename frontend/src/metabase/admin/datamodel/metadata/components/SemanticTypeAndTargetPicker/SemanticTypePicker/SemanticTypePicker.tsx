@@ -62,7 +62,7 @@ function stringifyValue(value: string | null): string {
 
 function getData({ field, value }: Pick<Props, "field" | "value">) {
   const effectiveType = field.effective_type ?? field.base_type;
-  const levelOneTypes = getLevelOneTypes().filter(levelOneType => {
+  const levelOneType = getLevelOneTypes().find(levelOneType => {
     return isa(effectiveType, levelOneType);
   });
 
@@ -105,9 +105,10 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
         return isText && !isTextLike;
       }
 
-      const isDerivedFromLevelOneType = levelOneTypes.some(type => {
-        return isa(option.id, type);
-      });
+      if (!levelOneType) {
+        // sanity check, this should never happen
+        return true;
+      }
 
       /**
        * Hack: allow "casting" text types to numerical types
@@ -118,10 +119,10 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
        * additionally show semantic types derived from "type/Number".
        */
       if (isa(effectiveType, TYPE.Text) || isa(effectiveType, TYPE.TextLike)) {
-        return isDerivedFromLevelOneType || isa(option.id, TYPE.Number);
+        return isa(option.id, levelOneType) || isa(option.id, TYPE.Number);
       }
 
-      return isDerivedFromLevelOneType;
+      return isa(option.id, levelOneType);
     })
     .map(option => ({
       label: option.name,
