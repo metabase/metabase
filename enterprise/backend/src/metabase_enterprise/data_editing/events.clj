@@ -2,6 +2,6 @@
 
 (derive ::event :metabase/event)
 
-(derive :event/data-editing-bulk-create ::event)
-(derive :event/data-editing-bulk-update ::event)
-(derive :event/data-editing-bulk-delete ::event)
+(derive :event/data-editing-row-create ::event)
+(derive :event/data-editing-row-update ::event)
+(derive :event/data-editing-row-delete ::event)

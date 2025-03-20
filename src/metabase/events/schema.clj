@@ -207,12 +207,12 @@
    [:model [:or :keyword :string]]])
 
 (mr/def ::data-editing-events
-  [:map {:closed true}
+  [:map #_{:closed true}
    (-> [:table_id pos-int?] (with-hydrate :table table-hydrate))
    (-> [:actor_id pos-int?] (with-hydrate :actor user-hydrate))
-   [:rows [:sequential :any]]
+   [:row [:sequential :any]]
    [:result :any]])
 
-(mr/def :event/data-editing-bulk-create ::data-editing-events)
-(mr/def :event/data-editing-bulk-update ::data-editing-events)
-(mr/def :event/data-editing-bulk-delete ::data-editing-events)
+(mr/def :event/data-editing-row-create ::data-editing-events)
+(mr/def :event/data-editing-row-update ::data-editing-events)
+(mr/def :event/data-editing-row-delete ::data-editing-events)
