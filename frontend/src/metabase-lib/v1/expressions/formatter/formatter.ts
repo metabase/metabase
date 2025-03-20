@@ -144,8 +144,6 @@ function print(
   } else if (check.isExpressionParts(path)) {
     if (isOperator(path.node.operator)) {
       return formatOperator(path, print);
-    } else if (isCaseOrIf(path.node.operator)) {
-      return formatCaseOrIf(path, print);
     } else if (isExpression(path.node.operator)) {
       return formatExpression(path);
     } else if (isValueOperator(path.node.operator)) {
@@ -354,31 +352,6 @@ function isLogicOperator(op: string) {
 function isUnaryOperator(op: string) {
   const clause = MBQL_CLAUSES[op];
   return clause && clause?.args.length === 1;
-}
-
-function isCaseOrIf(op: string): boolean {
-  return op === "case" || op === "if";
-}
-
-function formatCaseOrIf(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
-  const { node } = path;
-  if (!isCaseOrIf(node.operator)) {
-    throw new Error("Expected case or if");
-  }
-
-  const args = [];
-  // TODO: how to destructure the clause?
-  // const clauses = node.args[0] ?? [];
-  // const args = clauses.map(clause => {
-  //   return null;
-  // });
-
-  const defaultValue = node.args[1];
-  if (defaultValue) {
-    args.push(recurse(path, print, defaultValue));
-  }
-
-  return formatCallExpression(node.operator, args);
 }
 
 function isValueOperator(op: string): op is "value" {
