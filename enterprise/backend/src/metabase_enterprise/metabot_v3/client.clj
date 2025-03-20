@@ -85,7 +85,7 @@
   [{:keys [context messages conversation-id session-id state]}
    :- [:map
        [:context :map]
-       [:messages [:maybe ::metabot-v3.client.schema/messages]]
+       [:messages ::metabot-v3.client.schema/messages]
        [:conversation-id :string]
        [:session-id :string]
        [:state :map]]]

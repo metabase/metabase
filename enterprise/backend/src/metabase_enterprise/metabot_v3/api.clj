@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
@@ -44,7 +45,7 @@
        [:message ms/NonBlankString]
        [:context ::metabot-v3.context/context]
        [:conversation_id ms/UUIDString]
-       [:history [:maybe [:sequential :map]]]
+       [:history [:maybe ::metabot-v3.client.schema/messages]]
        [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (doto (assoc

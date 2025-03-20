@@ -12,7 +12,7 @@
         conversation-id (str (random-uuid))
         question "what can you do?"
         navigation-target "url"
-        initial-history [{:role "user", :content "hello?"}]
+        historical-message {:role "user", :content "hello?"}
         agent-message {:role :assistant, :navigate-to navigation-target}
         agent-state {:key "value"}]
     (mt/with-premium-features #{:metabot-v3}
@@ -25,18 +25,18 @@
                                                {:message question
                                                 :context {}
                                                 :conversation_id conversation-id
-                                                :history initial-history
+                                                :history [historical-message]
                                                 :state {}})]
             (is (=? [{:context {:current_user_time (every-pred string? java.time.Instant/parse)}
-                      :messages (conj initial-history {:role :user, :content question})
+                      :messages [(update historical-message :role keyword) {:role :user, :content question}]
                       :state {}
                       :conversation-id conversation-id
                       :session-id #(#'metabot-v3.tools.api/decode-ai-service-token %)}]
                     @ai-requests))
             (is (=? {:reactions [{:type "metabot.reaction/redirect", :url navigation-target}]
-                     :history (conj initial-history
-                                    {:role "user", :content question}
-                                    (update agent-message :role name))
+                     :history [historical-message
+                               {:role "user", :content question}
+                               (update agent-message :role name)]
                      :state agent-state
                      :conversation_id conversation-id}
                     response))))))))
