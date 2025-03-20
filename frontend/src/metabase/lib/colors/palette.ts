@@ -6,6 +6,7 @@ import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
+/* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css

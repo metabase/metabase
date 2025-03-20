@@ -16,7 +16,7 @@ export interface SdkQuestionState {
 export interface LoadSdkQuestionParams {
   options?: QueryParams;
   deserializedCard?: Card;
-  cardId?: CardId | null;
+  questionId?: CardId | null;
   initialSqlParameters?: ParameterValues;
 }
 

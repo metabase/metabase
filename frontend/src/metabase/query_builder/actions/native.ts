@@ -9,7 +9,7 @@ import type {
   CardId,
   DatabaseId,
   NativeQuerySnippet,
-  Parameter,
+  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
@@ -102,7 +102,7 @@ export const setIsShowingSnippetSidebar = (
 
 export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
   type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen },
+  payload: { isNativeEditorOpen, isShowingDataReference: isNativeEditorOpen },
 });
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
@@ -137,7 +137,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.legacyNativeQuery() as NativeQuery;
     const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
     const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
     const selectionStart =
@@ -162,7 +162,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
     };
@@ -172,13 +172,13 @@ export const setTemplateTag = createThunkAction(
 export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
 export const setTemplateTagConfig = createThunkAction(
   SET_TEMPLATE_TAG_CONFIG,
-  (tag: TemplateTag, parameter: Parameter) => {
+  (tag: TemplateTag, parameter: ParameterValuesConfig) => {
     return (dispatch: Dispatch, getState: GetState) => {
       const question = getQuestion(getState());
       if (!question) {
         return;
       }
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTagConfig(tag, parameter).question();
       dispatch(updateQuestion(newQuestion));
     };

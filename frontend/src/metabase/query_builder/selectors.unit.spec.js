@@ -3,13 +3,23 @@ import { assoc, assocIn } from "icepick";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIsResultDirty,
+  getIsVisualized,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
+import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
-import { createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockTable,
+  createMockTableColumnOrderSetting,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -23,6 +33,8 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
+registerVisualizations();
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({
@@ -395,5 +407,54 @@ describe("getQuestionDetailsTimelineDrawerState", () => {
       },
     };
     expect(getQuestionDetailsTimelineDrawerState(state)).toBe("foo");
+  });
+});
+
+describe("getIsVisualized", () => {
+  it("should be false when there is a `table.columns` setting only", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        display: "table",
+        visualization_settings: createMockVisualizationSettings({
+          "table.columns": [createMockTableColumnOrderSetting()],
+        }),
+      }),
+    });
+    expect(getIsVisualized(state)).toBe(false);
+  });
+
+  it("should be true when the table is implicitly visualized as a pivot table", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        display: "table",
+      }),
+      queryResults: [
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: "count",
+                base_type: "type/Integer",
+                effective_type: "type/Integer",
+                source: "aggregation",
+              }),
+              createMockColumn({
+                name: "CATEGORY",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+              createMockColumn({
+                name: "VENDOR",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+            ],
+          }),
+        }),
+      ],
+    });
+    expect(getIsVisualized(state)).toBe(true);
   });
 });

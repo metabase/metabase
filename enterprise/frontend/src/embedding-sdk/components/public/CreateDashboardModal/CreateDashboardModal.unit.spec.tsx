@@ -114,7 +114,7 @@ describe("CreateDashboardModal", () => {
 
     expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
 
-    rerender(<CreateDashboardModal isOpen />);
+    rerender(<CreateDashboardModal isOpen onCreate={jest.fn()} />);
 
     expect(screen.getByText("New dashboard")).toBeInTheDocument();
   });
@@ -123,12 +123,15 @@ describe("CreateDashboardModal", () => {
 function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
-  return renderWithSDKProviders(<CreateDashboardModal {...props} />, {
-    sdkProviderProps: {
-      authConfig: createMockAuthProviderUriConfig(),
+  return renderWithSDKProviders(
+    <CreateDashboardModal onCreate={jest.fn()} {...props} />,
+    {
+      sdkProviderProps: {
+        authConfig: createMockAuthProviderUriConfig(),
+      },
+      storeInitialState: {
+        currentUser: CURRENT_USER,
+      },
     },
-    storeInitialState: {
-      currentUser: CURRENT_USER,
-    },
-  });
+  );
 }

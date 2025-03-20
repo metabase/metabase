@@ -7,12 +7,10 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
-import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -27,6 +25,7 @@ import { Flex, Icon } from "metabase/ui";
 import { SnippetRow } from "../SnippetRow";
 
 import S from "./SnippetSidebar.module.css";
+import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
@@ -71,6 +70,7 @@ class SnippetSidebarInner extends React.Component {
       snippetCollection,
       search,
     } = this.props;
+
     const { showSearch, searchString, showArchived } = this.state;
 
     if (showArchived) {
@@ -92,26 +92,9 @@ class SnippetSidebarInner extends React.Component {
         {!showSearch &&
         displayedItems.length === 0 &&
         snippetCollection.id === "root" ? (
-          <div className={cx(CS.px3, CS.flex, CS.flexColumn, CS.alignCenter)}>
-            <svg
-              viewBox="0 0 10 10"
-              className={CS.mb2}
-              style={{ width: "25%", marginTop: 120 }}
-            >
-              <path
-                style={{ stroke: color("bg-medium"), strokeWidth: 1 }}
-                d="M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3"
-              />
-            </svg>
-            <h4
-              className={CS.textMedium}
-            >{t`Snippets are reusable bits of SQL`}</h4>
-            <button
-              onClick={openSnippetModalWithSelectedText}
-              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
-              style={{ marginTop: 80 }}
-            >{t`Create a snippet`}</button>
-          </div>
+          <SnippetSidebarEmptyState
+            onClick={openSnippetModalWithSelectedText}
+          />
         ) : (
           <div>
             <div

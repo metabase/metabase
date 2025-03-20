@@ -70,7 +70,7 @@
         (qp query qp.reducible/default-rff)))))
 
 (deftest success-test
-  (let [query {:database 2, :type :query, :query {:source-table 26}}]
+  (let [query (mt/mbql-query venues)]
     (with-query-execution! [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
@@ -78,7 +78,7 @@
       (is (=? {:status                 :completed
                :data                   {}
                :row_count              0
-               :database_id            2
+               :database_id            (mt/id)
                :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :json_query             (dissoc (mt/userland-query query) :info)
                :average_execution_time nil
@@ -87,8 +87,8 @@
                :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
-               :database_id  2
+      (is (=? {:hash         (codecs/bytes->hex (qp.util/query-hash query))
+               :database_id  (mt/id)
                :result_rows  0
                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
                :executor_id  nil
@@ -108,7 +108,7 @@
           "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query {:database 2, :type :query, :query {:source-table 26}}]
+  (let [query (mt/mbql-query venues)]
     (with-query-execution! [qe query]
       (binding [qp.pipeline/*run* (fn [_query _rff]
                                     (throw (ex-info "Oops!" {:type qp.error-type/qp})))]
@@ -116,8 +116,8 @@
              clojure.lang.ExceptionInfo
              #"Oops!"
              (process-userland-query query))))
-      (is (=? {:hash          "58af781ea2ba252ce3131462bdc7c54bc57538ed965d55beec62928ce8b32635"
-               :database_id   2
+      (is (=? {:hash          (codecs/bytes->hex (qp.util/query-hash query))
+               :database_id   (mt/id)
                :error         "Oops!"
                :result_rows   0
                :started_at    #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"

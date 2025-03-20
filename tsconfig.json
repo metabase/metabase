@@ -10,7 +10,15 @@
         "./enterprise/frontend/test/*"
       ],
       "cljs/*": ["./target/cljs_dev/*"]
-    }
+    },
+    "plugins": [
+      {
+        "name": "typescript-plugin-css-modules",
+        "options": {
+          "goToDefinition": true
+        }
+      }
+    ]
   },
   "include": [
     "frontend/src/**/*",

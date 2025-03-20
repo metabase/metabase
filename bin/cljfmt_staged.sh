@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+echo "This script is deprecated. Please use mage instead."
+echo "see:"
+echo "./bin/mage"
+
 STAGED_FILES=$(git diff --name-status --cached -- "*.clj" "*.cljc" "*.cljs" | grep -E '[AM]' | cut -f2 || true)
 
 if [ "${#STAGED_FILES}" -gt 0 ]; then

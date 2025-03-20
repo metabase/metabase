@@ -28,7 +28,9 @@ const getItemPadding = (variant?: string) => {
   }
 };
 
-export const EntityIconWrapper = styled(IconButtonWrapper)<{
+export const EntityIconWrapper = styled(IconButtonWrapper, {
+  shouldForwardProp: prop => prop !== "isPinned",
+})<{
   isPinned?: boolean;
   disabled?: boolean;
 }>`

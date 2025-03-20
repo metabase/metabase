@@ -77,6 +77,7 @@ export interface DatasetData {
   native_form: {
     query: string;
   };
+  is_sandboxed?: boolean;
 }
 
 export type JsonQuery = DatasetQuery & {

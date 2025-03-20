@@ -1,0 +1,9 @@
+.root {
+  flex-grow: 1;
+
+  .input {
+    border: none;
+    font-weight: bold;
+    padding-left: var(--mantine-spacing-md);
+  }
+}

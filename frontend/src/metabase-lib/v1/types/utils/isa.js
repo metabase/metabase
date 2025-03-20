@@ -9,7 +9,6 @@ import {
   LOCATION,
   NUMBER,
   PRIMARY_KEY,
-  SCOPE,
   STRING,
   STRING_LIKE,
   SUMMABLE,
@@ -108,7 +107,6 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
-export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
@@ -169,12 +167,7 @@ export const isTime = field => {
   }
 };
 
-export const isAddress = field =>
-  field && isa(field.semantic_type, TYPE.Address);
-export const isCity = field => field && isa(field.semantic_type, TYPE.City);
 export const isState = field => field && isa(field.semantic_type, TYPE.State);
-export const isZipCode = field =>
-  field && isa(field.semantic_type, TYPE.ZipCode);
 export const isCountry = field =>
   field && isa(field.semantic_type, TYPE.Country);
 export const isCoordinate = field =>
@@ -189,12 +182,6 @@ export const isCurrency = field =>
 
 export const isPercentage = field =>
   field && isa(field.semantic_type, TYPE.Percentage);
-
-export const isDescription = field =>
-  field && isa(field.semantic_type, TYPE.Description);
-
-export const isComment = field =>
-  field && isa(field.semantic_type, TYPE.Comment);
 
 export const isID = field => isFK(field) || isPK(field);
 

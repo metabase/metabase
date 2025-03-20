@@ -15,6 +15,6 @@ export type ChartSettingsVisualizationProps = Omit<StackProps, "onReset"> & {
   dashcard?: DashboardCard;
   onUpdateVisualizationSettings: (
     changedSettings: VisualizationSettings,
-    question: Question,
+    question?: Question,
   ) => void;
 } & ChartSettingsFooterProps;

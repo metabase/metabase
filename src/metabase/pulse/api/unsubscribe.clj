@@ -41,7 +41,7 @@
       (let [emails (get-in pulse-channel [:details :emails])]
         (if (some #{email} emails)
           (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
-          (throw (ex-info (tru "Email for pulse-id doesn't exist.")
+          (throw (ex-info (tru "Email for pulse-id doesn''t exist.")
                           {:type        type
                            :status-code 400}))))
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})

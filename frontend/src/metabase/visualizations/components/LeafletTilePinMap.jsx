@@ -1,5 +1,7 @@
 import L from "leaflet";
 
+import { getTileUrl } from "../lib/map";
+
 import LeafletMap from "./LeafletMap";
 
 export default class LeafletTilePinMap extends LeafletMap {
@@ -28,32 +30,38 @@ export default class LeafletTilePinMap extends LeafletMap {
   _getTileUrl = (coord, zoom) => {
     const [
       {
-        card: { dataset_query },
-        data: { cols },
+        card: { dataset_query, id },
+        data,
       },
     ] = this.props.series;
 
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
-    const latitudeField = cols[latitudeIndex];
-    const longitudeField = cols[longitudeIndex];
+    const latitudeField = data.cols[latitudeIndex];
+    const longitudeField = data.cols[longitudeIndex];
 
     if (!latitudeField || !longitudeField) {
       return;
     }
 
-    return (
-      "api/tiles/" +
-      zoom +
-      "/" +
-      coord.x +
-      "/" +
-      coord.y +
-      "/" +
-      (latitudeField.id || encodeURIComponent(latitudeField.name)) +
-      "/" +
-      (longitudeField.id || encodeURIComponent(longitudeField.name)) +
-      "?query=" +
-      encodeURIComponent(JSON.stringify(dataset_query))
-    );
+    const latFieldParam =
+      latitudeField.id || encodeURIComponent(latitudeField.name);
+    const lonFieldParam =
+      longitudeField.id || encodeURIComponent(longitudeField.name);
+
+    const { dashboard, dashcard, uuid, token } = this.props;
+
+    return getTileUrl({
+      cardId: id,
+      dashboardId: dashboard?.id,
+      dashcardId: dashcard?.id,
+      zoom,
+      coord,
+      latField: latFieldParam,
+      lonField: lonFieldParam,
+      datasetQuery: dataset_query,
+      uuid,
+      token,
+      datasetResult: this.props.series[0],
+    });
   };
 }

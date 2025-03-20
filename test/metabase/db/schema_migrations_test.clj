@@ -2742,3 +2742,19 @@
 ;;;
 ;;; 53+ tests should go below this line please <3
 ;;;
+
+(deftest chinese-site-locale-migration-test
+  (testing "Site locale is migrated from zh to zh_CN"
+    (impl/test-migrations "v54.2025-03-17T18:52:44" [migrate!]
+      (t2/delete! (t2/table-name :model/Setting) :key "site-locale")
+      (t2/insert! (t2/table-name :model/Setting) {:key "site-locale" :value "zh"})
+      (migrate!)
+      (is (= "zh_CN" (t2/select-one-fn :value (t2/table-name :model/Setting) :key "site-locale"))))))
+
+(deftest chinese-user-locale-migration-test
+  (testing "Site locale is migrated from zh to zh_CN"
+    (impl/test-migrations "v54.2025-03-17T18:52:59" [migrate!]
+      (let [user-id (:id (create-raw-user! (mt/random-email)))]
+        (t2/update! (t2/table-name :model/User) user-id {:locale "zh"})
+        (migrate!)
+        (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))

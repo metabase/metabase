@@ -10,10 +10,12 @@ driver:
     lazy-load: true
     parent: hive-like
     connection-properties:
-      - host
+      - merge:
+        - host
+        - required: true
       - merge:
           - port
-          - default: 10000
+          - placeholder: 10000
       - merge:
           - dbname
           - placeholder: default

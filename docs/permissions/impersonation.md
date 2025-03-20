@@ -8,6 +8,8 @@ title: Impersonation access
 
 > For now, impersonation access is only available for PostgreSQL, Redshift, and Snowflake.
 
+> If you're using views in PostgresSQL, the row-level security policies on views will only work on Postgres versions 15 and higher.
+
 This page covers the [View data](./data.md#view-data-permissions) permission level called Impersonation.
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.

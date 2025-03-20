@@ -32,8 +32,6 @@ const config = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "ace/ext-searchbox":
-      "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown":
@@ -44,6 +42,12 @@ const config = {
       "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
     "csv-stringify/browser/esm/sync":
       "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
+    /**
+     * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
+     * This isn't a problem in the core app because we seem to not import to entry file directly
+     * for any component under tests.
+     */
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -73,7 +77,6 @@ const config = {
   ],
   setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
   globals: {
-    ace: {},
     ga: {},
   },
   reporters: ["default", "jest-junit"],

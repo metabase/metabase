@@ -10,5 +10,5 @@ const SIZES: Record<string, string> = {
 };
 
 export const Loader = ({ size = "md", ...props }: LoaderProps) => (
-  <MantineLoader {...props} size={getSize({ size, sizes: SIZES })} />
+  <MantineLoader {...props} size={getSize(SIZES[size])} />
 );

@@ -2,11 +2,6 @@ import { t } from "ttag";
 
 import type { MBQLClauseMap } from "./types";
 
-export const DISPLAY_QUOTES = {
-  identifierQuoteDefault: "",
-  literalQuoteDefault: "",
-};
-
 export const EDITOR_QUOTES = {
   // specifies where different quoting is used:
   characters: {
@@ -79,6 +74,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["boolean"],
   },
+  "distinct-where": {
+    displayName: `DistinctIf`,
+    type: "aggregation",
+    args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
+  },
   "sum-where": {
     displayName: `SumIf`,
     type: "aggregation",
@@ -95,6 +96,19 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
+  },
+  // cast functions
+  text: {
+    displayName: "text",
+    type: "string",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
+  integer: {
+    displayName: "integer",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "cast",
   },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
@@ -256,6 +270,11 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "boolean",
     args: ["expression", "number", "string"],
     hasOptions: true,
+  },
+  "relative-time-interval": {
+    displayName: "intervalStartingFrom",
+    type: "boolean",
+    args: ["expression", "number", "string", "number", "string"],
   },
   "relative-datetime": {
     displayName: "relativeDateTime",
@@ -507,6 +526,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",
@@ -519,6 +539,9 @@ export const AGGREGATION_FUNCTIONS = new Set([
 ]);
 
 export const EXPRESSION_FUNCTIONS = new Set([
+  // cast
+  "text",
+  "integer",
   // string
   "lower",
   "upper",
@@ -568,6 +591,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "relative-time-interval",
   "relative-datetime",
   "interval",
   "is-null",
@@ -577,6 +601,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "if",
+  "case",
   "coalesce",
 ]);
 
@@ -602,41 +627,6 @@ export const OPERATORS = new Set([
   ...BOOLEAN_UNARY_OPERATORS,
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
-]);
-
-// "standard" filters, can be edited using UI
-export const STANDARD_FILTERS = new Set([
-  "!=",
-  "<=",
-  ">=",
-  "<",
-  ">",
-  "=",
-  "contains",
-  "does-not-contain",
-  "ends-with",
-  "starts-with",
-  "between",
-  "time-interval",
-  "is-null",
-  "not-null",
-  "is-empty",
-  "not-empty",
-  "inside",
-]);
-
-// "standard" aggregations, can be edited using UI
-export const STANDARD_AGGREGATIONS = new Set([
-  "count",
-  "cum-count",
-  "sum",
-  "cum-sum",
-  "distinct",
-  "stddev",
-  "avg",
-  "min",
-  "max",
-  "median",
 ]);
 
 export const POPULAR_FUNCTIONS = [

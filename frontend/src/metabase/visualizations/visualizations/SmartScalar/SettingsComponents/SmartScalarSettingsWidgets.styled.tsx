@@ -1,7 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
+import CS from "metabase/css/core/index.css";
 import type { ButtonProps as BaseButtonProps, TextProps } from "metabase/ui";
 import { Button, Icon, Text } from "metabase/ui";
 
@@ -13,14 +15,12 @@ export const ComparisonList = styled.ul`
   }
 `;
 
-export const AddComparisonButton = styled(Button)<ButtonProps>`
+export const AddComparisonButton = styled((props: ButtonProps) => (
+  <Button {...props} variant={props.variant ?? "subtle"} />
+))`
   align-self: flex-start;
   padding: 0;
 `;
-
-AddComparisonButton.defaultProps = {
-  variant: "subtle",
-};
 
 type ComparisonPickerSecondaryTextProps = TextProps &
   HTMLAttributes<HTMLSpanElement> & {
@@ -28,13 +28,10 @@ type ComparisonPickerSecondaryTextProps = TextProps &
   };
 
 export const ComparisonPickerSecondaryText = styled(
-  Text,
+  (props: ComparisonPickerSecondaryTextProps) => (
+    <Text {...props} component={props.component ?? "span"} />
+  ),
 )<ComparisonPickerSecondaryTextProps>``;
-
-ComparisonPickerSecondaryText.defaultProps = {
-  component: "span",
-  color: "text.0",
-};
 
 export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   height: 40px;
@@ -46,13 +43,13 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
   }
 ` as unknown as typeof Button;
 
-export const DoneButton = styled(Button)<ButtonProps>`
-  align-self: flex-end;
-` as unknown as typeof Button;
-
-DoneButton.defaultProps = {
-  variant: "filled",
-};
+export const DoneButton = (props: ButtonProps) => (
+  <Button
+    {...props}
+    variant={props.variant ?? "filled"}
+    className={cx(CS.alignSelfEnd, props.className)}
+  />
+);
 
 export const DragHandleIcon = styled(Icon)`
   cursor: grab;

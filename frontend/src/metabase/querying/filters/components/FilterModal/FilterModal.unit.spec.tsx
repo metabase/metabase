@@ -191,6 +191,15 @@ describe("FilterModal", () => {
     expect(Lib.filters(nextQuery, 0)).toHaveLength(3);
   });
 
+  it("should allow to focus the search input via keyboard", async () => {
+    setup({ query });
+    await userEvent.tab();
+    await userEvent.keyboard("created");
+    await waitFor(() => {
+      expect(screen.getAllByTestId("filter-column-Created At")).toHaveLength(3);
+    });
+  });
+
   it("should update existing filters", async () => {
     const { getNextQuery } = setup({
       query: Lib.filter(

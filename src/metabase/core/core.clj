@@ -57,6 +57,17 @@
              "See https://www.metabase.com/license/commercial/ for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
+;;; --------------------------------------------------- Info Metric---------------------------------------------------
+
+(defmethod analytics/known-labels :metabase-info/build
+  [_]
+  ;; We need to update the labels configured for this metric before we expose anything new added to `mb-version-info`
+  [(merge (select-keys config/mb-version-info [:tag :hash :date])
+          {:version       config/mb-version-string
+           :major-version (config/current-major-version)})])
+
+(defmethod analytics/initial-value :metabase-info/build [_ _] 1)
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
@@ -107,6 +118,8 @@
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (init-status/set-progress! 0.2)
+  ;; Ensure the classloader is installed as soon as possible.
+  (classloader/the-classloader)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
@@ -133,6 +146,7 @@
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
+    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?
@@ -152,14 +166,13 @@
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
+
   (init-status/set-progress! 0.9)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
-   ;; start scheduler at end of init!
+  (database/check-health!)
   (task/start-scheduler!)
-   ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
-  (database/check-health-and-schedule-tasks!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]

@@ -76,7 +76,7 @@ export function canUseCardEndpoints(question?: Question) {
   return question?.isSaved();
 }
 
-export function canUseDashboardEndpoints(dashboard?: Dashboard) {
+export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
   return dashboard?.id;
 }
 

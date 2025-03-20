@@ -1,4 +1,4 @@
-import xlsx from "xlsx";
+import xlsx, { type Sheet } from "xlsx";
 
 import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
@@ -53,7 +53,7 @@ export function downloadAndAssert(
     enableFormatting = true,
     pivoting,
   }: DownloadAndAssertParams,
-  callback: (data: unknown) => void,
+  callback: (data: Sheet) => void,
 ) {
   const { method, endpoint } = downloadUrl
     ? { method: downloadMethod, endpoint: downloadUrl }

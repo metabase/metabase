@@ -1,20 +1,21 @@
 import cx from "classnames";
-import type { ChangeEvent } from "react";
+import { type ChangeEvent, useMemo } from "react";
 
+import { CodeBlock, type CodeLanguage } from "metabase/components/CodeBlock";
 import { CopyButton } from "metabase/components/CopyButton";
-import AceEditor from "metabase/components/TextEditor";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
+import { getHighlightedRanges } from "./utils";
 
 interface CodeSampleProps {
   selectedOptionId: CodeSampleOption["id"];
   source: string;
   languageOptions: CodeSampleOption[];
   title?: string;
-  textHighlightMode: string;
+  language: CodeLanguage;
   highlightedTexts?: string[];
 
   dataTestId?: string;
@@ -29,13 +30,18 @@ export const CodeSample = ({
   source,
   title,
   languageOptions,
-  dataTestId,
-  textHighlightMode,
   highlightedTexts,
+  dataTestId,
+  language,
   className,
   onChangeOption,
   onCopy,
 }: CodeSampleProps): JSX.Element => {
+  const highlightRanges = useMemo(
+    () => getHighlightedRanges(source, highlightedTexts),
+    [source, highlightedTexts],
+  );
+
   return (
     <div className={className} data-testid={dataTestId}>
       {(title || languageOptions.length > 1) && (
@@ -71,14 +77,11 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <AceEditor
+        <CodeBlock
           className={CS.z1}
-          value={source}
-          mode={textHighlightMode}
-          theme="ace/theme/metabase"
-          sizeToFit
-          readOnly
-          highlightedTexts={highlightedTexts}
+          language={language}
+          code={source}
+          highlightRanges={highlightRanges}
         />
         {source && (
           <CopyButtonContainer>

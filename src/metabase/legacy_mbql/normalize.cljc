@@ -242,7 +242,7 @@
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
+        (#{:avg :count :cum-count :distinct :distinct-where :stddev :sum :min :max :+ :- :/ :*
            :sum-where :count-where :share :var :median :percentile}
          (maybe-normalize-token x)))
       (when (mbql-clause? x)

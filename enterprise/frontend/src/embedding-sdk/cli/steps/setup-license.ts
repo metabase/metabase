@@ -6,7 +6,10 @@ import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
-import { SETUP_PRO_LICENSE_MESSAGE } from "../constants/messages";
+import {
+  SETUP_PRO_LICENSE_MESSAGE,
+  SETUP_PRO_LICENSE_MESSAGE_WITH_SAMPLE_DATABASE,
+} from "../constants/messages";
 import { printEmptyLines, printWithPadding } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
@@ -18,7 +21,11 @@ const VISIT_STORE_MESSAGE = `Please visit ${chalk.blue(
 )} to get a license key.`;
 
 export const setupLicense: CliStepMethod = async state => {
-  printWithPadding(SETUP_PRO_LICENSE_MESSAGE);
+  const setupMessage = state.useSampleDatabase
+    ? SETUP_PRO_LICENSE_MESSAGE_WITH_SAMPLE_DATABASE
+    : SETUP_PRO_LICENSE_MESSAGE;
+
+  printWithPadding(setupMessage);
 
   const shouldSetupLicense = await toggle({
     message: "Do you want to set up a Pro license?",

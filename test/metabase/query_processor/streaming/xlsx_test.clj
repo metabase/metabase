@@ -5,7 +5,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt]
@@ -27,7 +27,7 @@
    (format-string format-settings nil))
 
   ([format-settings col]
-   (let [viz-settings (common/viz-settings-for-col
+   (let [viz-settings (streaming.common/viz-settings-for-col
                        (assoc col :field_ref [:field 1])
                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
          format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col true)]

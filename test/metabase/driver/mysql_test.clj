@@ -187,7 +187,7 @@
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
-                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-table! table fields)))))))))
+                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-fields! table fields)))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :mysql

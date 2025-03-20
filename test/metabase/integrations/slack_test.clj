@@ -175,28 +175,10 @@
               (is (= expected-result
                      (slack/users-list))))))))))
 
-(deftest files-channel-test
-  (testing "files-channel"
-    (testing "Should be able to get the files-channel from the cache (if it exists)"
-      (tu/with-temporary-setting-values [slack-files-channel "general"
-                                         slack-cached-channels-and-usernames
-                                         {:channels (mapv (fn [c] {:name c :id c})
-                                                          ["general" "random" "off-topic"
-                                                           "cooking" "john" "james" "jordan"])}]
-        (is (= "general" (slack/files-channel))))
-      (tu/with-temporary-setting-values [slack-files-channel "not_in_the_cache"
-                                         slack-cached-channels-and-usernames
-                                         {:channels [{:name "general" :id "C0G9QKBBL"}]}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Slack channel named.*is missing.*"
-             (slack/files-channel)))))))
-
 (deftest upload-file!-test
   (testing "upload-file!"
     (let [image-bytes (.getBytes "fake-picture")
           filename    "wow.gif"
-          channel-id  "C13372B6X"
           upload-url  "https://files.slack.com/upload/v1/CwABAAAAWgoAAZnBg"
           fake-upload-routes {#"^https://slack.com/api/files\.getUploadURLExternal.*"
                               (fn [_] (mock-200-response {:ok         true
@@ -213,7 +195,7 @@
                                            slack-app-token nil]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
-                 (slack/upload-file! image-bytes filename channel-id)))))
+                 (slack/upload-file! image-bytes filename)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
       (http-fake/with-fake-routes
         (assoc fake-upload-routes
@@ -223,67 +205,7 @@
                                            slack-app-token "test-token"]
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
-                 (slack/upload-file! image-bytes filename channel-id))))
-        (testing (str "upload-file! will attempt to join channels by internal slack id"
-                      " but we can continue to use the channel name for posting")
-          (let [filename    "wow.gif"
-                channel-id  "metabase_files"
-                slack-id    "CQXPZKNQ3RK"
-                joined?     (atom false)
-                channel-info [{:display-name "#random",
-                               :name "random",
-                               :id "CT2FNGZSRPL",
-                               :type "channel"}
-                              {:display-name "#general",
-                               :name "general",
-                               :id "C4Q6LXLRA46",
-                               :type "channel"}
-                              {:display-name "#metabase_files",
-                               :name channel-id,
-                               ;; must look up "metabase_files" and find the id below
-                               :id slack-id,
-                               :type "channel"}]
-                post          (var-get #'slack/POST)]
-            (with-redefs [slack/POST (fn [endpoint payload]
-                                       (case endpoint
-                                         "files.completeUploadExternal"
-                                         (if @joined?
-                                           (json/decode+kw (slurp "./test_resources/slack_upload_file_response.json"))
-                                           (throw (ex-info "Not in that channel"
-                                                           {:error-code "not_in_channel"})))
-                                         "conversations.join"
-                                         (reset! joined? (= (-> payload :form-params :channel)
-                                                            slack-id))
-                                         (post endpoint payload)))]
-              (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
-                                                 slack/slack-cached-channels-and-usernames
-                                                 {:channels channel-info}]
-                (slack/upload-file! (.getBytes "fake-picture") filename channel-id)
-                (is @joined? (str "Did not attempt to join with slack-id " slack-id))))))))))
-
-(deftest maybe-lookup-id-test
-  (let [f (var-get #'slack/maybe-lookup-id)]
-    (testing "On new v2 shape"
-      (testing "Returns original if not found"
-        (is (= "needle"
-               (f "needle" {:channels [{:display-name "#other1"
-                                        :name         "other1"
-                                        :type         "channel"
-                                        :id           "CR65C4ZJVIW"}
-                                       {:display-name "#other2"
-                                        :name         "other2"
-                                        :type         "channel"
-                                        :id           "C87LQNL0Y23"}]}))))
-      (testing "Returns the slack internal id if found"
-        (is (= "slack-id"
-               (f "needle" {:channels [{:display-name "#other1"
-                                        :name         "other1"
-                                        :type         "channel"
-                                        :id           "CR65C4ZJVIW"}
-                                       {:display-name "#needle"
-                                        :name         "needle"
-                                        :type         "channel"
-                                        :id           "slack-id"}]})))))))
+                 (slack/upload-file! image-bytes filename))))))))
 
 (deftest post-chat-message!-test
   (testing "post-chat-message!"

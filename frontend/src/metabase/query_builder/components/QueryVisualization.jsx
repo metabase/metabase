@@ -2,13 +2,16 @@
 import cx from "classnames";
 import { useState } from "react";
 import { useTimeout } from "react-use";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -86,26 +89,42 @@ export default function QueryVisualization(props) {
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning ? (
-          <VisualizationEmptyState className={CS.spread} />
+          <VisualizationEmptyState
+            className={CS.spread}
+            isCompact={isNativeEditorOpen}
+          />
         ) : null}
       </div>
     </div>
   );
 }
 
-export const VisualizationEmptyState = ({ className }) => (
-  <div
-    className={cx(
-      className,
-      CS.flex,
-      CS.flexColumn,
-      CS.layoutCentered,
-      CS.textLight,
-    )}
-  >
-    <h3>{t`Here's where your results will appear`}</h3>
-  </div>
-);
+const VisualizationEmptyState = ({ isCompact }) => {
+  const keyboardShortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+
+  return (
+    <Flex
+      w="100%"
+      h="100%"
+      align={isCompact ? "flex-start" : "center"}
+      justify="center"
+      mt={isCompact ? "3rem" : "auto"}
+    >
+      <Stack maw="25rem" gap={0} ta="center" align="center">
+        <Box maw="3rem" mb="0.75rem">
+          <img src={EmptyCodeResult} alt="Code prompt icon" />
+        </Box>
+        <Text c="text-medium">
+          {c("{0} refers to the keyboard shortcut")
+            .jt`To run your code, click on the Run button or type ${(
+            <b key="shortcut">{keyboardShortcut}</b>
+          )}`}
+        </Text>
+        <Text c="text-medium">{t`Query results will appear here.`}</Text>
+      </Stack>
+    </Flex>
+  );
+};
 
 export function VisualizationRunningState({ className = "" }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);

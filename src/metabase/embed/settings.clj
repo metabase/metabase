@@ -216,7 +216,7 @@
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
-  (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
+  (deferred-tru "Embedding homepage status, indicating if it''s visible, hidden or has been dismissed")
   :type       :keyword
   :default    :hidden
   :export?    true

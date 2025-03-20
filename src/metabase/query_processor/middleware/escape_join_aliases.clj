@@ -10,9 +10,10 @@
    [metabase.driver :as driver]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;;; this is done in a series of discrete steps
 
@@ -20,7 +21,7 @@
   (driver/escape-alias driver join-alias))
 
 (defn- driver->escape-fn [driver]
-  (comp (lib.util/unique-name-generator (qp.store/metadata-provider))
+  (comp (lib.util/unique-name-generator)
         (partial escape-alias driver)))
 
 (defn- add-escaped-aliases

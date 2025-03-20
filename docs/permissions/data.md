@@ -189,4 +189,4 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 [permissions-overview]: ./introduction.md
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
-[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
+[sql-snippet-folders]: ../questions/native-editor/snippets.md

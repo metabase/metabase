@@ -14,7 +14,7 @@ import StackedDataTooltip from "./StackedDataTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 
 export interface ChartTooltipProps {
-  hovered?: HoveredObject;
+  hovered?: HoveredObject | null;
   settings: VisualizationSettings;
 }
 

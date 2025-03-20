@@ -1,8 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import CS from "metabase/css/core/index.css";
+import { Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
 
 import {
   SortableRuleList,
@@ -19,21 +18,33 @@ export const RuleListing = ({
 }: SortableRuleListProps & {
   onAdd: MouseEventHandler<HTMLButtonElement>;
 }) => (
-  <div>
-    <h3>{t`Conditional formatting`}</h3>
-    <div className={CS.mt2}>
-      {t`You can add rules to make the cells in this table change color if
+  <Stack gap="md">
+    <Stack gap="sm">
+      <Text fw="bold" fz="lg">{t`Conditional formatting`}</Text>
+      <Text lh="normal">
+        {t`You can add rules to make the cells in this table change color if
     they meet certain conditions.`}
-    </div>
-    <div className={CS.mt2}>
-      <Button borderless icon="add" onClick={onAdd}>
+      </Text>
+    </Stack>
+    <Box>
+      <Button
+        variant="subtle"
+        color="text-dark"
+        onClick={onAdd}
+        leftSection={<Icon name="add" />}
+      >
         {t`Add a rule`}
       </Button>
-    </div>
-    {rules.length > 0 ? (
-      <div className={CS.mt2}>
-        <h3>{t`Rules will be applied in this order`}</h3>
-        <div className={CS.mt2}>{t`Click and drag to reorder.`}</div>
+    </Box>
+    {rules.length > 0 && (
+      <>
+        <Stack gap="sm">
+          <Title
+            fw="bold"
+            fz="lg"
+          >{t`Rules will be applied in this order`}</Title>
+          <Text lh="normal">{t`Click and drag to reorder.`}</Text>
+        </Stack>
         <SortableRuleList
           rules={rules}
           cols={cols}
@@ -41,7 +52,7 @@ export const RuleListing = ({
           onRemove={onRemove}
           onMove={onMove}
         />
-      </div>
-    ) : null}
-  </div>
+      </>
+    )}
+  </Stack>
 );

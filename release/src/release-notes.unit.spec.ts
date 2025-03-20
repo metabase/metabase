@@ -2,7 +2,13 @@ import {
   categorizeIssues,
   generateReleaseNotes,
   getReleaseTitle,
+  getWebsiteChangelog,
+  markdownIssueLinks,
 } from "./release-notes";
+import {
+  githubReleaseTemplate,
+  websiteChangelogTemplate,
+} from "./release-notes-templates";
 import type { Issue } from "./types";
 
 describe("Release Notes", () => {
@@ -66,12 +72,43 @@ describe("Release Notes", () => {
     it("should generate release notes", () => {
       const notes = generateReleaseNotes({
         version: "v1.2.3",
+        template: githubReleaseTemplate,
         issues,
       });
 
       expect(notes).toContain(
         "Get the most out of Metabase"
       );
+
+      expect(notes).toContain(
+        "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
+      );
+      expect(notes).toContain(
+        "### Bug fixes\n\n**Embedding**\n\n- Bug Issue (#1)",
+      );
+      expect(notes).toContain(
+        "### Already Fixed\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
+      );
+      expect(notes).toContain(
+        "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
+      );
+
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
+      expect(notes).toContain(
+        "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
+      );
+      expect(notes).toContain(
+        "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
+      );
+    });
+
+    it("should generate release notes from alternative templates", () => {
+      const notes = generateReleaseNotes({
+        version: "v1.2.3",
+        template: websiteChangelogTemplate,
+        issues,
+      });
 
       expect(notes).toContain(
         "### Enhancements\n\n**Querying**\n\n- Feature Issue (#2)",
@@ -376,5 +413,89 @@ describe("Release Notes", () => {
         sortedIssues.underTheHoodIssues,
       );
     });
+  });
+
+  describe("markdownIssuelinks",  () => {
+    it("should generate markdown links for a single issue", () => {
+      expect(markdownIssueLinks("(#12345) is done"))
+        .toEqual("([#12345](https://github.com/metabase/metabase/issues/12345)) is done");
+    });
+
+    it("should generate markdown links for a multiple issues", () => {
+      expect(markdownIssueLinks(`
+        (#12345) is done
+        (#12346) is not done
+        12348 is not an issue
+      `)).toEqual(`
+        ([#12345](https://github.com/metabase/metabase/issues/12345)) is done
+        ([#12346](https://github.com/metabase/metabase/issues/12346)) is not done
+        12348 is not an issue
+      `);
+    });
+
+    it("should preserve text without issue numbers", () => {
+      expect(markdownIssueLinks("my text")).toEqual("my text");
+    });
+  });
+
+  describe("getWebsiteChangelog", () => {
+    const issues = [
+      {
+        number: 1,
+        title: "Bug Issue",
+        labels: [{ name: "Type:Bug" }, { name: "Embedding/Interactive" }],
+      },
+      {
+        number: 2,
+        title: "Feature Issue",
+        labels: [{ name: "Querying/MBQL" }],
+      },
+      {
+        number: 3,
+        title: "Issue Already Fixed",
+        labels: [{ name: ".Already Fixed" }, { name: "Embedding/Static" }],
+      },
+      {
+        number: 4,
+        title: "Issue That Users Don't Care About",
+        labels: [
+          { name: ".CI & Tests" },
+          { name: "Administration/Permissions" },
+          { name: "Embedding/Interactive" },
+        ],
+      },
+      {
+        number: 5,
+        title: "Another feature issue",
+        labels: [{ name: "Reporting/Dashboards" }],
+      },
+      {
+        number: 6,
+        title: "A bug fix that lacks a category label",
+        labels: [{ name: "Type:Bug" }],
+      },
+    ] as Issue[];
+
+    it("should generate a website changelog", () => {
+      const notes = getWebsiteChangelog({
+        version: "v1.2.3",
+        issues,
+      });
+
+      expect(notes).toContain("### Enhancements");
+      expect(notes).toContain("Metabase 2.3");
+      expect(notes).toContain("- Issue That Users Don't Care About");
+    });
+
+    it("should linkify issue numbers", () => {
+      const notes = getWebsiteChangelog({
+        version: "v1.2.3",
+        issues,
+      });
+
+      expect(notes).toContain("### Enhancements");
+      expect(notes).toContain("- Issue That Users Don't Care About ([#4](https://github.com/metabase/metabase/issues/4))");
+    });
+
   });
 });

@@ -33,6 +33,14 @@
   and https://www.mongodb.com/docs/manual/reference/bson-types/#binary-data"
   4)
 
+(defn bsonuuid->uuid
+  "Converts a BSON UUID to a Java UUID"
+  [^Binary bin]
+  (let [buffer (ByteBuffer/wrap (.getData bin))
+        most-sig-bits (.getLong buffer)
+        least-sig-bits (.getLong buffer)]
+    (UUID. most-sig-bits least-sig-bits)))
+
 ;;;; Protocols defined originally in monger, adjusted for `Document` follow.
 
 (defprotocol ConvertFromDocument
@@ -44,14 +52,9 @@
 
   Binary
   (from-document [input _opts]
-    (cond (= (.getType input) bson-uuid-type)
-          (let [buffer (-> input .getData ByteBuffer/wrap)
-                most-sig-bits (.getLong buffer)
-                least-sig-bits (.getLong buffer)]
-            (UUID. most-sig-bits least-sig-bits))
-
-          :else
-          input))
+    (if (= (.getType input) bson-uuid-type)
+      (bsonuuid->uuid input)
+      input))
 
   Object
   (from-document [input _opts] input)

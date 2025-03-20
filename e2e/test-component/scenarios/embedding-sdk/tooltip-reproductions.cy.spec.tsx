@@ -54,10 +54,10 @@ describe("scenarios > embedding-sdk > tooltip-reproductions", () => {
   it("should have the correct tooltip position and z-index (metabase#51904, metabase#52732)", () => {
     const testCases = [
       // should use the user-supplied z-index
-      { input: 1337, expected: 1337 },
+      { input: 1337, expected: 1338 },
 
       // should use the default z-index of 200
-      { input: undefined, expected: 200 },
+      { input: undefined, expected: 201 },
     ];
 
     testCases.forEach(zIndexTestCase => {

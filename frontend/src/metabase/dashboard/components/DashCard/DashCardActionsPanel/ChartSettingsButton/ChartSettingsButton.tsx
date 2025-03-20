@@ -37,20 +37,30 @@ export function ChartSettingsButton({
         <DashCardActionButton.Icon name="palette" />
       </DashCardActionButton>
 
-      <Modal.Root opened={isOpened} onClose={close} size="85%">
-        <Modal.Overlay />
-        <Modal.Content mih="85%">
-          <Modal.Body>
-            <DashboardChartSettings
-              series={series}
-              onChange={onReplaceAllVisualizationSettings}
-              dashboard={dashboard}
-              dashcard={dashcard}
-              onClose={close}
-            />
-          </Modal.Body>
-        </Modal.Content>
-      </Modal.Root>
+      <Modal
+        opened={isOpened}
+        onClose={close}
+        size="85%"
+        padding={0}
+        withCloseButton={false}
+        styles={{
+          body: {
+            height: "100%",
+          },
+          content: {
+            height: "85%",
+            overflowY: "hidden",
+          },
+        }}
+      >
+        <DashboardChartSettings
+          series={series}
+          onChange={onReplaceAllVisualizationSettings}
+          dashboard={dashboard}
+          dashcard={dashcard}
+          onClose={close}
+        />
+      </Modal>
     </>
   );
 }

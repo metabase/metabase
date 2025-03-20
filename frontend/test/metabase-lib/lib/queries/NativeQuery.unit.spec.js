@@ -1,6 +1,7 @@
 import { assocIn } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/v1/queries/NativeQuery";
@@ -29,8 +30,6 @@ const metadata = createMockMetadata({
   ],
 });
 
-const sampleDatabase = metadata.database(SAMPLE_DB_ID);
-
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
     type: "native",
@@ -44,14 +43,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
 function makeMongoQuery(query, templateTags) {
   return new NativeQuery(
-    sampleDatabase.question(),
+    Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }

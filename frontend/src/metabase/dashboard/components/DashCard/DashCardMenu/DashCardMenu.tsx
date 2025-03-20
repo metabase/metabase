@@ -26,7 +26,7 @@ import {
 } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   DashCardId,
   DashboardId,

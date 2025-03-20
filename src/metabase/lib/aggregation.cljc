@@ -225,8 +225,11 @@
    ;; flow the `:options` from the field we're aggregating. This is important, for some reason.
    ;; See [[metabase.query-processor-test.aggregation-test/field-settings-for-aggregate-fields-test]]
    (when first-arg
+     ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
+     ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
+   {:ident (lib.options/ident clause)}))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
@@ -289,8 +292,9 @@
                             (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
-                                  (assoc :lib/source :source/aggregations
-                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
+                                  (assoc :lib/source      :source/aggregations
+                                         :lib/source-uuid (lib.options/uuid  aggregation)
+                                         :ident           (lib.options/ident aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge

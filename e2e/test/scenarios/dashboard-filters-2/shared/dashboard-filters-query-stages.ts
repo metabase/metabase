@@ -404,8 +404,7 @@ export function setup1stStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 0).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply1stStageExplicitJoinFilter() {
@@ -433,8 +432,7 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
     getPopoverItem("Price", 0).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -460,8 +458,7 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -488,8 +485,7 @@ export function setup1stStageCustomColumnFilter() {
     getPopoverItem("Net").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -519,8 +515,7 @@ export function setup1stStageAggregationFilter() {
     getPopoverItem("Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -548,8 +543,7 @@ export function setup1stStageBreakoutFilter() {
     getPopoverItem("Category", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -574,8 +568,7 @@ export function setup2ndStageExplicitJoinFilter() {
     getPopoverItem("Reviewer", 1).click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 
   H.filterWidget().eq(0).click();
   H.popover().within(() => {
@@ -604,8 +597,7 @@ export function setup2ndStageCustomColumnFilter() {
     getPopoverItem("5 * Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageCustomColumnFilter() {
@@ -649,8 +641,7 @@ export function setup2ndStageAggregationFilter() {
     getPopoverItem("Count").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageAggregationFilter() {
@@ -692,8 +683,7 @@ export function setup2ndStageBreakoutFilter() {
     getPopoverItem("Products Via Product ID Category").click();
   });
 
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
+  H.saveDashboard({ waitMs: 250 });
 }
 
 export function apply2ndStageBreakoutFilter() {
@@ -793,12 +783,12 @@ export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
 
 type SectionName = string;
 type ColumnName = string;
-type MappingSection = [SectionName, ColumnName[]];
+type MappingSection = [SectionName | null, ColumnName[]];
 
 export function verifyPopoverMappingOptions(sections: MappingSection[]) {
   const expectedItemsCount = sections.reduce(
     (sum, [sectionName, columnNames]) =>
-      sum + [sectionName, ...columnNames].length,
+      sum + (sectionName ? 1 : 0) + columnNames.length,
     0,
   );
 
@@ -807,10 +797,12 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {
-        const item = cy.wrap($items[index]);
-        item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
-        item.should("have.text", sectionName);
-        ++index;
+        if (sectionName) {
+          const item = cy.wrap($items[index]);
+          item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
+          item.should("have.text", sectionName);
+          ++index;
+        }
 
         for (const columnName of columnNames) {
           const item = cy.wrap($items[index]);
@@ -831,12 +823,12 @@ export function verifyDashcardRowsCount({
   queryBuilderCount,
 }: {
   dashcardIndex: number;
-  dashboardCount: string;
+  dashboardCount: number;
   queryBuilderCount: string;
 }) {
-  H.getDashboardCard(dashcardIndex)
-    .findByText(dashboardCount)
-    .should("be.visible");
+  H.getDashboardCard(dashcardIndex).within(() => {
+    H.assertTableRowsCount(dashboardCount);
+  });
   H.getDashboardCard(dashcardIndex)
     .findByTestId("legend-caption-title")
     .click();
@@ -856,8 +848,8 @@ export function verifyDashcardCellValues({
 
     // eslint-disable-next-line no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findByTestId("table-row")
-      .findAllByTestId("cell-data")
+      .findByRole("row")
+      .findAllByRole("gridcell")
       .eq(valueIndex)
       .should("have.text", value);
   }
@@ -869,9 +861,8 @@ export function verifyDashcardCellValues({
 
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
-    const cellIndex = valueIndex + values.length; // values.length to skip header row
 
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
+    cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
   }
 }

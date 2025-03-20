@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Interactive embedding" %}
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 **Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 

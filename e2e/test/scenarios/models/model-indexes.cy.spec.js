@@ -216,7 +216,7 @@ function editTitleMetadata() {
   H.openQuestionActions();
   H.popover().findByText("Edit metadata").click();
   cy.url().should("include", "/metadata");
-  cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
+  H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");
 }

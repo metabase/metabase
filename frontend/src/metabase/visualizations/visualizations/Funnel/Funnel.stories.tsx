@@ -5,6 +5,7 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockStructuredDatasetQuery,
@@ -42,7 +43,7 @@ const MOCK_SERIES = [
       ],
     },
   },
-];
+] as Series;
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>

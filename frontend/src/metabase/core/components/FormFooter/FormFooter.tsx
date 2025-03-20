@@ -1,14 +1,16 @@
 import type { PropsWithChildren } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Group } from "metabase/ui";
+import { Group, type GroupProps } from "metabase/ui";
 interface FormFooterProps {
   hasTopBorder?: boolean;
+  justify?: GroupProps["justify"];
 }
 
 export const FormFooter = ({
   hasTopBorder,
   children,
+  justify = "right",
 }: PropsWithChildren<FormFooterProps>) => {
   const borderProps = hasTopBorder
     ? {
@@ -18,7 +20,7 @@ export const FormFooter = ({
       }
     : {};
   return (
-    <Group align="center" justify="right" gap="sm" {...borderProps}>
+    <Group align="center" justify={justify} gap="sm" {...borderProps}>
       {children}
     </Group>
   );

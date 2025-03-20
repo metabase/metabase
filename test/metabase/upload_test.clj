@@ -509,6 +509,11 @@
        mt/cols
        (map :display_name)))
 
+(defn- column-display-names-for-model [db-id model-id]
+  (->> (query db-id  (str "card__" model-id))
+       mt/cols
+       (map :display_name)))
+
 (defn- column-names-for-table [table]
   (->> (query-table table)
        mt/cols
@@ -1900,7 +1905,7 @@
       (testing (action-testing-str action)
         (with-upload-table! [table (create-upload-table!)]
           (let [table-id    (:id table)
-                csv-rows    ["name" "Luke Skywalker"]
+                csv-rows    ["name, age" "Luke Skywalker, 57"]
                 file        (csv-file-with csv-rows)
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
@@ -1930,8 +1935,13 @@
                     (is (not (contains? cached-after model-id))))
                   (testing "No unwanted caches were invalidated"
                     (is (= #{model-id} (set/difference cached-before cached-after))))
+                  (testing "We can see the new column when querying the model"
+                    (is (= (header-with-auto-pk ["Name" "Age"])
+                           (column-display-names-for-model (:db_id table) model-id))))
                   (testing "We can see the new row when querying the model"
-                    (is (some (fn [[_ row-name]] (= "Luke Skywalker" row-name))
+                    (is (some (fn [[_ row-name age]]
+                                (and (= "Luke Skywalker" row-name)
+                                     (= 57 age)))
                               (rows-for-model (:db_id table) model-id)))))))
 
             (io/delete-file file)))))))

@@ -1,3 +1,4 @@
+import { memoize } from "metabase/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -44,7 +45,6 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
-import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
 import { getFormattingOptionsWithoutScaling } from "./util";
@@ -634,7 +634,7 @@ const createSeriesLabelsFormatter = (
   formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
 ) =>
-  cachedFormatter((value: RowValue) => {
+  memoize(value => {
     if (typeof value !== "number") {
       return "";
     }

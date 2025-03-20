@@ -14,7 +14,7 @@
   those Fields potentially dozens of times in a single query execution."
   (:require
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -200,4 +200,6 @@
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)
         (vary-meta assoc :type model)
-        (m/update-existing :field_ref lib.convert/->legacy-MBQL))))
+        ;; TODO: This is converting a freestanding field ref into legacy form. Then again, the `:field_ref` on MLv2
+        ;; metadata is already in legacy form.
+        (m/update-existing :field_ref lib/->legacy-MBQL))))

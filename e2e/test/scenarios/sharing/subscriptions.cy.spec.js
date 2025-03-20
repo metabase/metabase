@@ -702,6 +702,27 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
       });
     });
+
+    describe("with unconnected parameters", () => {
+      it("should show only connected parameters in subscription sidebar", () => {
+        addConnectedAndUnconnectedParameterToDashboard();
+        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
+
+        H.sidebar().findByText("Email it").click();
+        H.sidebar().findByText("Text 1").should("not.exist");
+      });
+
+      it("should not show filters section in subscription sidebar with no connected parameters", () => {
+        H.editDashboard();
+        setTextFilter();
+        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
+
+        H.sidebar().findByText("Email it").click();
+        H.sidebar()
+          .findByText("Set filter values for when this gets sent")
+          .should("not.exist");
+      });
+    });
   });
 });
 
@@ -769,7 +790,7 @@ function openRecipientsWithUserVisibilitySetting(setting) {
 function addParametersToDashboard() {
   H.editDashboard();
 
-  H.setFilter("Text or Category", "Is");
+  setTextFilter();
 
   cy.findByText("Select…").click();
   H.popover().within(() => {
@@ -786,7 +807,7 @@ function addParametersToDashboard() {
 
   H.popover().contains("Add filter").click({ force: true });
 
-  H.setFilter("Text or Category", "Is");
+  setTextFilter();
 
   cy.findByText("Select…").click();
   H.popover().within(() => {
@@ -794,6 +815,24 @@ function addParametersToDashboard() {
   });
 
   cy.findByText("Save").click();
-  // wait for dashboard to save
   cy.contains("You're editing this dashboard.").should("not.exist");
+}
+
+function addConnectedAndUnconnectedParameterToDashboard() {
+  H.editDashboard();
+
+  setTextFilter();
+  cy.findByText("Select…").click();
+  H.popover().within(() => {
+    cy.findByText("Name").click();
+  });
+
+  setTextFilter();
+
+  cy.findByText("Save").click();
+  cy.contains("You're editing this dashboard.").should("not.exist");
+}
+
+function setTextFilter() {
+  H.setFilter("Text or Category", "Is");
 }

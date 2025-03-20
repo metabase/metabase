@@ -275,7 +275,7 @@ describe("LinkViz", () => {
       const infoIcon = screen.getByLabelText("info icon");
       await userEvent.hover(infoIcon);
 
-      const tooltip = await screen.findByTestId("wrapped-tooltip");
+      const tooltip = await screen.findByTestId("icon-tooltip");
       expect(tooltip).not.toContainHTML("<h1>");
       expect(tooltip).toHaveTextContent("Heading");
     });

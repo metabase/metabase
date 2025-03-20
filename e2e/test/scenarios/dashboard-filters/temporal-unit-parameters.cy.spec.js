@@ -518,7 +518,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText(parameterDetails.name).click();
       });
       H.popover().findByText("UNIT").click();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: 250 });
 
       cy.log("verify click behavior with a valid temporal unit");
 
@@ -528,9 +528,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.getDashboardCard(1).findByText("year").click();
 
-      H.getDashboardCard(0)
-        .findByText("Created At: Year", { timeout: 10000 })
-        .should("be.visible");
+      H.getDashboardCard(0).within(() => {
+        H.tableHeaderColumn("Created At: Year");
+      });
 
       H.filterWidget().findByText("Year").should("be.visible");
 
@@ -539,14 +539,16 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget()
         .findByText(/invalid/i)
         .should("not.exist");
-      H.getDashboardCard(0)
-        .findByText("Created At: Month")
-        .should("be.visible");
+      H.getDashboardCard().within(() => {
+        H.tableHeaderColumn("Created At: Month");
+      });
 
       cy.log("verify that recovering from an invalid temporal unit works");
       H.getDashboardCard(1).findByText("year").click();
       H.filterWidget().findByText("Year").should("be.visible");
-      H.getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+      H.getDashboardCard(0).within(() => {
+        H.tableHeaderColumn("Created At: Year");
+      });
     });
 
     it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
@@ -806,7 +808,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       editParameter(parameterDetails.name);
       H.dashboardParameterSidebar().findByText("All").click();
       H.popover().within(() => {
-        cy.findByLabelText("Select none").click();
+        cy.findByLabelText("Select all").click();
         cy.findByLabelText("Month").click();
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
@@ -971,9 +973,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("Created At: Year").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
-      cy.findByTestId("TableInteractive-root")
-        .findByText("Created At: Year")
-        .should("be.visible");
+      H.tableInteractive().findByText("Created At: Year").should("be.visible");
     });
   });
 

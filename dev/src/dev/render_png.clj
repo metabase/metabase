@@ -6,13 +6,12 @@
    [clojure.java.io :as io]
    [dev.util :as dev.u]
    [hiccup.core :as hiccup]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.channel.email.result-attachment :as email.result-attachment]
-   [metabase.models.card :as card]
-   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.markdown :as markdown]
@@ -76,7 +75,7 @@
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)]
+        dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)]
     (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
       (let [render    (if card
                         (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
@@ -159,7 +158,7 @@
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)
+        dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]

@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component, memo } from "react";
+import { Component, memo, useState } from "react";
 import { t } from "ttag";
 
-import Confirm from "metabase/components/Confirm";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -14,10 +14,11 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
 import { GeoJSONApi, SettingsApi } from "metabase/services";
+import { Button } from "metabase/ui";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
-import SettingHeader from "../SettingHeader";
+import { SettingHeader } from "../SettingHeader";
 
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {
@@ -161,7 +162,11 @@ export default class CustomGeoJSONWidget extends Component {
     return (
       <div className={CS.flexFull}>
         <div className={cx(CS.flex, CS.justifyBetween)}>
-          <SettingHeader setting={setting} />
+          <SettingHeader
+            id={setting.key}
+            title={setting.display_name}
+            description={setting.description}
+          />
           {!this.state.map && (
             <button
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
@@ -228,42 +233,51 @@ export default class CustomGeoJSONWidget extends Component {
   }
 }
 
-const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
-  <section>
-    <table className={AdminS.ContentTable}>
-      <thead>
-        <tr>
-          <th>{t`Name`}</th>
-          <th>{t`URL`}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {maps
-          .filter(map => !map.builtin)
-          .map(map => (
-            <tr key={map.id}>
-              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
-                {map.name}
-              </td>
-              <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
-                <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
-              </td>
-              <td className={AdminS.TableActions}>
-                <Confirm
-                  action={() => onDeleteMap(map)}
-                  title={t`Delete custom map`}
-                >
-                  <button
-                    className={cx(ButtonsS.Button, ButtonsS.ButtonDanger)}
-                  >{t`Remove`}</button>
-                </Confirm>
-              </td>
-            </tr>
-          ))}
-      </tbody>
-    </table>
-  </section>
-);
+const ListMaps = ({ maps, onEditMap, onDeleteMap }) => {
+  const [mapToDelete, setMapToDelete] = useState(undefined);
+  return (
+    <section>
+      <table className={AdminS.ContentTable}>
+        <thead>
+          <tr>
+            <th>{t`Name`}</th>
+            <th>{t`URL`}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {maps
+            .filter(map => !map.builtin)
+            .map(map => (
+              <tr key={map.id}>
+                <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
+                  {map.name}
+                </td>
+                <td className={CS.cursorPointer} onClick={() => onEditMap(map)}>
+                  <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+                </td>
+                <td className={AdminS.TableActions}>
+                  <Button
+                    variant="filled"
+                    color="danger"
+                    onClick={() => setMapToDelete(map)}
+                  >{t`Remove`}</Button>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+      <ConfirmModal
+        opened={Boolean(mapToDelete)}
+        title={t`Delete custom map`}
+        onConfirm={() => {
+          onDeleteMap(mapToDelete);
+          setMapToDelete(undefined);
+        }}
+        onClose={() => setMapToDelete(undefined)}
+      />
+    </section>
+  );
+};
 
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
   const options = {};

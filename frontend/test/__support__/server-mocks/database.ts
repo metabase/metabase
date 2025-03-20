@@ -13,6 +13,9 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
   fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
+  fetchMock.get(`path:/api/database/${db.id}/healthcheck`, {
+    body: { status: "ok" },
+  });
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints({ ...table, db }));

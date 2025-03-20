@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import SettingHeader from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
@@ -103,7 +103,10 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <Stack gap="0.75rem" m="2.5rem 0">
             <SettingHeader
               id="saml-user-provisioning-enabled?"
-              setting={settings["saml-user-provisioning-enabled?"]}
+              title={settings["saml-user-provisioning-enabled?"].display_name}
+              description={
+                settings["saml-user-provisioning-enabled?"].description
+              }
             />
             <FormSwitch
               id="saml-user-provisioning-enabled?"

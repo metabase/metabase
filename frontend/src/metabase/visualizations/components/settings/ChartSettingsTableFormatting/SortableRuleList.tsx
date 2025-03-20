@@ -63,6 +63,7 @@ export const SortableRuleList = ({
         cols={cols}
         onClick={() => handleEdit(id)}
         onRemove={() => handleRemove(id)}
+        my="md"
       />
     </Sortable>
   );

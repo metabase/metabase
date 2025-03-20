@@ -8,7 +8,7 @@ const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
-// for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
+// for simplicity when typing assume all values are numbers, since you can only pick numeric columns
 
 export function makeCellBackgroundGetter(
   rows,
@@ -35,7 +35,6 @@ export function makeCellBackgroundGetter(
   } else {
     return function (value, rowIndex, colName) {
       if (formatters[colName]) {
-        // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
           const formatter = formatters[colName][i];
           const color = formatter(value);

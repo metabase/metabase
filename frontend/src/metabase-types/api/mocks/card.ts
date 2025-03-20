@@ -1,6 +1,8 @@
 import type {
   Card,
   CardQueryMetadata,
+  ColumnRangeFormattingSetting,
+  ColumnSingleFormattingSetting,
   ModerationReview,
   NativeDatasetQuery,
   PublicCard,
@@ -131,5 +133,30 @@ export const createMockTableColumnOrderSetting = (
 ): TableColumnOrderSetting => ({
   name: "Column",
   enabled: true,
+  ...opts,
+});
+
+export const createMockColumnSingleFormattingSetting = (
+  opts?: Partial<ColumnSingleFormattingSetting>,
+): ColumnSingleFormattingSetting => ({
+  type: "single",
+  columns: [],
+  operator: "=",
+  color: "red",
+  highlight_row: false,
+  value: 0,
+  ...opts,
+});
+
+export const createMockColumnRangeFormattingSetting = (
+  opts?: Partial<ColumnRangeFormattingSetting>,
+): ColumnRangeFormattingSetting => ({
+  type: "range",
+  columns: [],
+  colors: ["red", "green"],
+  min_type: "all",
+  max_type: "all",
+  min_value: 0,
+  max_value: 1,
   ...opts,
 });

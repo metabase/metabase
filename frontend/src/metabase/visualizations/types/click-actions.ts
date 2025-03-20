@@ -157,7 +157,7 @@ type OnChangeCardAndRunOpts = {
 type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ClickActionPopoverProps = {
-  series: Series;
+  series: Series | null;
   onClick: (action: RegularClickAction) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;

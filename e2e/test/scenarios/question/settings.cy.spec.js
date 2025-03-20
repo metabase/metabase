@@ -52,9 +52,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("visualization-root").contains("8833419218504");
 
       // confirm that the table contains the right columns
-      cy.findByTestId("query-visualization-root")
-        .get(".test-TableInteractive")
-        .as("table");
+      H.tableInteractive().as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
@@ -254,7 +252,6 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
-      // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
       H.popover().icon("gear").click(); // open subtotal column settings
@@ -485,7 +482,7 @@ describe("scenarios > question > settings", () => {
         "two",
       ];
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
       });
 
@@ -508,7 +505,7 @@ describe("scenarios > question > settings", () => {
           .should("not.exist");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("not.exist");
@@ -523,7 +520,7 @@ describe("scenarios > question > settings", () => {
           .should("be.visible");
       });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
+      H.tableInteractive().within(() => {
         // the query should not have changed
         cy.icon("play").should("not.exist");
         cy.findByText("Products → Category").should("be.visible");

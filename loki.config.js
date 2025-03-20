@@ -1,6 +1,7 @@
 module.exports = {
   diffingEngine: "looks-same",
   storiesFilter: [
+    "DataGrid",
     "static-viz",
     "viz",
     "^visualizations/shared",
@@ -10,6 +11,7 @@ module.exports = {
     "^Components/Inputs/DatePicker Dates range",
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
+    "^Components/overlays/Tooltip",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

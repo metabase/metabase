@@ -2,7 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import {
-  SAMPLE_DB_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
@@ -18,7 +18,7 @@ registerVisualizations();
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-const db = metadata.database(SAMPLE_DB_ID);
+const table = metadata.table(PRODUCTS_ID);
 
 describe("ChartSettingsSidebar", () => {
   const data = {
@@ -29,7 +29,7 @@ describe("ChartSettingsSidebar", () => {
   it("should hide the title when showSidebarTitle is false", () => {
     renderWithProviders(
       <ChartSettingsSidebar
-        question={db.question().setDisplay("gauge")}
+        question={table.question().setDisplay("gauge")}
         result={{ data }}
         showSidebarTitle={false}
       />,
@@ -55,7 +55,7 @@ describe("ChartSettingsSidebar", () => {
   it("should not hide the title when showSidebarTitle is false", () => {
     renderWithProviders(
       <ChartSettingsSidebar
-        question={db.question().setDisplay("scalar")}
+        question={table.question().setDisplay("scalar")}
         result={{ data }}
       />,
       {

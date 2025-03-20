@@ -881,8 +881,6 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
 
-**Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
-
 **SparkSQL**: `convertTimezone`.
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`.

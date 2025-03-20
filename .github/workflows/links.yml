@@ -19,7 +19,7 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           fail: false
-          args: docs --config ./.lychee/config.toml --verbose --no-progress
+          args: docs --include-fragments --config ./.lychee/config.toml --verbose --no-progress
           format: markdown
 
       - name: Create Issue From File

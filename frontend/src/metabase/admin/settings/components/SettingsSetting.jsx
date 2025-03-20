@@ -9,7 +9,7 @@ import { Box } from "metabase/ui";
 
 import { settingToFormFieldId, useGetEnvVarDocsUrl } from "../utils";
 
-import SettingHeader from "./SettingHeader";
+import { SettingHeader } from "./SettingHeader";
 import {
   SettingContent,
   SettingEnvVarMessage,
@@ -92,7 +92,13 @@ export const SettingsSetting = props => {
         ...fancyStyle,
       }}
     >
-      {!setting.noHeader && <SettingHeader id={settingId} setting={setting} />}
+      {!setting.noHeader && (
+        <SettingHeader
+          id={settingId}
+          title={setting.display_name}
+          description={setting.description}
+        />
+      )}
       <SettingContent>
         {setting.is_env_setting && !setting.forceRenderWidget ? (
           <SetByEnvVar setting={setting} />
@@ -128,7 +134,11 @@ export const SetByEnvVarWrapper = ({ setting, children }) => {
   if (setting.is_env_setting) {
     return (
       <Box mb="lg">
-        <SettingHeader id={setting.key} setting={setting} />
+        <SettingHeader
+          id={setting.key}
+          title={setting.display_name}
+          description={setting.description}
+        />
         <SetByEnvVar setting={setting} />
       </Box>
     );

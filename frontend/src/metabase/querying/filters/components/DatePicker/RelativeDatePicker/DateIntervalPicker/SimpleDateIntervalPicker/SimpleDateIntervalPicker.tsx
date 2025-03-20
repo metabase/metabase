@@ -1,17 +1,19 @@
 import { t } from "ttag";
 
-import type { DatePickerUnit } from "metabase/querying/filters/types";
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import { Group, NumberInput, Select } from "metabase/ui";
 
 import { IncludeCurrentSwitch } from "../../IncludeCurrentSwitch";
-import type { DateIntervalValue } from "../../types";
 import { getInterval, getUnitOptions, setInterval } from "../../utils";
 import { setUnit } from "../utils";
 
 interface SimpleDateIntervalPickerProps {
-  value: DateIntervalValue;
+  value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  onChange: (value: DateIntervalValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
 }
 
 export function SimpleDateIntervalPicker({

@@ -10,7 +10,7 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 Here are the different ways you can embed Metabase.
 
-{% include shared/in-page-promo.html %}
+{% include shared/in-page-promo-embedding-workshop.html %}
 
 ## Embedded analytics SDK with React
 
@@ -52,7 +52,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Embed individual Metabase components                                                                                            | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 | Manage access and interactivity per component                                                                                   | ✅                                              | ❌                                        | ❌                              | ❌                                     |
 
-\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
+\* Each embedding type allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
 
 ## Switching from static to interactive embedding
 

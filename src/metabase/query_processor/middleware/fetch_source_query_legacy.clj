@@ -6,7 +6,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.public-settings :as public-settings]
@@ -33,7 +33,7 @@
   "Get the query to be run from the card"
   [{dataset-query :dataset-query, card-id :id, :as card}]
   (let [dataset-query (cond-> dataset-query
-                        (:lib/type dataset-query) lib.convert/->legacy-MBQL)
+                        (:lib/type dataset-query) lib/->legacy-MBQL)
         {db-id                                           :database
          mbql-query                                      :query
          {template-tags :template-tags :as native-query} :native} dataset-query]

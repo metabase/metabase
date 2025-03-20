@@ -123,9 +123,9 @@ describe("PaletteResults", () => {
   });
 
   it("should provide links to settings pages for admins", async () => {
-    setup({ query: "setu", isAdmin: true });
+    setup({ query: "emai", isAdmin: true });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
-    expect(await screen.findByText("Settings - Setup")).toBeInTheDocument();
+    expect(await screen.findByText("Settings - Email")).toBeInTheDocument();
   });
 
   it("should not provide links to settings pages for non-admins", async () => {

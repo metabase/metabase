@@ -59,31 +59,33 @@ export const EChartsTooltip = ({
           {header}
         </div>
       )}
-      <table
-        className={cx(TooltipStyles.Table, {
-          [TooltipStyles.TableNoHeader]: header == null,
-        })}
-      >
-        <tbody>
-          {paddedRows.map((row, i) => {
-            const key = row.key ?? String(i);
-            return !row.isSecondary ? (
-              <TooltipRow {...row} key={key} />
-            ) : (
-              <SecondaryRow {...row} key={key} />
-            );
+      <div className={TooltipStyles.TableWrapper}>
+        <table
+          className={cx(TooltipStyles.Table, {
+            [TooltipStyles.TableNoHeader]: header == null,
           })}
-        </tbody>
-        {footer != null && (
-          <tfoot data-testid="echarts-tooltip-footer">
-            <FooterRow
-              {...footer}
-              values={getPaddedValuesArray(footer.values, maxValuesColumns)}
-              markerContent={hasMarkers ? <span /> : null}
-            />
-          </tfoot>
-        )}
-      </table>
+        >
+          <tbody className={TooltipStyles.TableBody}>
+            {paddedRows.map((row, i) => {
+              const key = row.key ?? String(i);
+              return !row.isSecondary ? (
+                <TooltipRow {...row} key={key} />
+              ) : (
+                <SecondaryRow {...row} key={key} />
+              );
+            })}
+          </tbody>
+          {footer != null && (
+            <tfoot data-testid="echarts-tooltip-footer">
+              <FooterRow
+                {...footer}
+                values={getPaddedValuesArray(footer.values, maxValuesColumns)}
+                markerContent={hasMarkers ? <span /> : null}
+              />
+            </tfoot>
+          )}
+        </table>
+      </div>
     </div>
   );
 };

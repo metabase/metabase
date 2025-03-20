@@ -1,24 +1,69 @@
-import cx from "classnames";
-import type * as React from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import FormS from "metabase/css/components/form.module.css";
-import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
+import { Icon, Text, TextInput, Tooltip } from "metabase/ui";
 
-import {
-  CustomScheduleLabel,
-  ErrorMessage,
-  InfoIcon,
-  InputContainer,
-  PopoverContent,
-  PopoverText,
-  PopoverTitle,
-  StyledInput,
-} from "./CronExpressionInput.styled";
+import S from "./CronExpressionInput.module.css";
+import { CustomScheduleExplainer } from "./CustomScheduleExplainer";
+
+type CronExpressionInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onBlurChange: (value: string) => void;
+};
+
+export function CronExpressionInput({
+  onChange,
+  onBlurChange,
+  value,
+}: CronExpressionInputProps) {
+  const [error, setError] = useState<string | null>(null);
+  const handleChange = (cronExpression: string) => {
+    // We don't allow to specify "seconds" and "year" components,
+    // "seconds" are mandatory for validation, so we're appending it at the beginning
+    let error = validateCronExpression(`0 ${cronExpression}`);
+    if (!error) {
+      error = validateExpressionComponents(cronExpression);
+    }
+    if (error) {
+      setError(error);
+    } else {
+      setError(null);
+    }
+    onChange(cronExpression);
+  };
+
+  const handleBlur = (cronExpression: string) => {
+    if (!error) {
+      // We don't allow to specify "seconds" and "year" components, but they're present in the value
+      // and we need to append them before sending a new value to the backend
+      onBlurChange(`0 ${cronExpression} *`);
+    }
+  };
+
+  return (
+    <>
+      <CustomScheduleInputHint />
+      <TextInput
+        placeholder="For example 5   0   *   Aug   ?"
+        size="lg"
+        fw={600}
+        error={error}
+        errorProps={{ fz: ".875rem", lh: "1.3rem" }}
+        type="text"
+        labelProps={{ fw: 600 }}
+        value={value}
+        onChange={event => handleChange(event.target.value)}
+        onBlur={event => handleBlur(event.target.value)}
+        rightSection={<CronFormatTooltip />}
+      />
+
+      {value && !error && <CustomScheduleExplainer cronExpression={value} />}
+    </>
+  );
+}
 
 function validateExpressionComponents(cronExpression: string) {
   const parts = cronExpression.split(" ");
@@ -38,137 +83,36 @@ function CustomScheduleInputHint() {
     >{t`cron syntax`}</ExternalLink>
   );
   return (
-    <CustomScheduleLabel>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</CustomScheduleLabel>
+    <Text>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</Text>
   );
 }
 
-type InputProps = {
-  value: string;
-  placeholder?: string;
-  disabled?: boolean;
-  hasError?: boolean;
-  className?: string;
-  onChange: (value: string) => void;
-  onBlurChange: (value: string) => void;
-};
-
-function Input({
-  value = "",
-  hasError,
-  className,
-  onChange,
-  onBlurChange,
-  ...props
-}: InputProps) {
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) =>
-      onChange(event.target.value),
-    [onChange],
-  );
-
-  const handleBlur = useCallback(
-    (event: React.FocusEvent<HTMLInputElement>) =>
-      onBlurChange(event.target.value),
-    [onBlurChange],
-  );
-
-  return (
-    <StyledInput
-      {...props}
-      className={cx(
-        FormS.FormInput,
-        {
-          [cx(CS.borderError, CS.bgErrorInput)]: hasError,
-        },
-        className,
-      )}
-      type="text"
-      value={value}
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
-  );
-}
-
-function CronFormatPopover({ children }: { children: React.ReactElement }) {
+function CronFormatTooltip() {
   // some of these have to be plural because they're plural elsewhere and the same strings cannot be used as both
   // singular message IDs and plural message IDs
   const descriptions = [
     t`Minutes` + ": 0-59 , - * /",
     t`Hours` + ": 0-23 , - * /",
     ngettext(msgid`Day of month`, `Days of month`, 1) + ": 1-31 , - * ? / L W",
-    ngettext(msgid`Month`, `Months`, 1) + ": 1-12 or JAN-DEC , - * /",
+    ngettext(msgid`Month`, `Months`, 1) + `: 1-12 ${t`or`} JAN-DEC , - * /`,
     ngettext(msgid`Day of week`, `Days of week`, 1) +
-      ": 1-7 or SUN-SAT , - * ? / L #",
+      `: 1-7 ${t`or`} SUN-SAT , - * ? / L #`,
   ];
 
   return (
-    <TippyPopover
-      placement="top"
-      content={
-        <PopoverContent>
-          <PopoverTitle>{t`Allowed values`}</PopoverTitle>
+    <Tooltip
+      label={
+        <div>
+          <Text fw="bold" c="inherit">{t`Allowed values`}</Text>
           {descriptions.map((text, i) => (
-            <PopoverText key={i}>{text}</PopoverText>
+            <Text key={i} fw="normal" c="inherit">
+              {text}
+            </Text>
           ))}
-        </PopoverContent>
+        </div>
       }
     >
-      {children}
-    </TippyPopover>
+      <Icon name="info" className={S.infoIcon} />
+    </Tooltip>
   );
 }
-
-function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
-  const [error, setError] = useState<string | null>(null);
-
-  const handleChange = useCallback(
-    (cronExpression: string) => {
-      // We don't allow to specify "seconds" and "year" components,
-      // "seconds" are mandatory for validation, so we're appending it at the beginning
-      let error = validateCronExpression(`0 ${cronExpression}`);
-      if (!error) {
-        error = validateExpressionComponents(cronExpression);
-      }
-      if (error) {
-        setError(error);
-      } else {
-        setError(null);
-      }
-      onChange(cronExpression);
-    },
-    [onChange],
-  );
-
-  const handleBlur = useCallback(
-    (cronExpression: string) => {
-      if (!error) {
-        // We don't allow to specify "seconds" and "year" components, but they're present in the value
-        // and we need to append them before sending a new value to the backend
-        onBlurChange(`0 ${cronExpression} *`);
-      }
-    },
-    [error, onBlurChange],
-  );
-
-  return (
-    <>
-      <CustomScheduleInputHint />
-      <InputContainer>
-        <Input
-          {...props}
-          hasError={!!error}
-          onChange={handleChange}
-          onBlurChange={handleBlur}
-        />
-        <CronFormatPopover>
-          <InfoIcon name="info" />
-        </CronFormatPopover>
-      </InputContainer>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-    </>
-  );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CronExpressionInput;

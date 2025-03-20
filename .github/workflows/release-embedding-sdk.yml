@@ -37,12 +37,143 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
-  determine-version:
-    name: Determine SDK version
+  send-slack-notification-start:
+    name: "Send Slack notification: SDK release started"
+    needs: determine-sdk-version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+
+      - name: Cache build scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-scripts
+          path: release/dist/index.cjs
+
+      - name: Send build start message
+        id: send-slack-message-start
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          result-encoding: string
+          script: | # js
+            const { mentionUserByGithubLogin, sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+
+            const title = `:rocket: *SDK release: ${sdkVersion}* :rocket:`
+            const runLink = githubRunLink(
+              `:building_construction: _CI Run_ :building_construction:`,
+              context.runId,
+              context.repo.owner,
+              context.repo.repo,
+            );
+            const body = `${runLink} - run by ${mentionUserByGithubLogin("${{ github.event.sender.login }}")}`
+            const sendSlackMessageResponse = await sendSlackMessage({
+              channelName: 'proj-embedding-sdk',
+              message: `${title}\n${body}`,
+            });
+
+            return sendSlackMessageResponse.message.ts
+
+  # Technically this should be placed last, since it runs after other jobs, but I want to co-locate all Slack jobs
+  send-slack-notification-failure:
+    name: "Send Slack notification: SDK release failed"
+    needs:
+      [
+        "determine-sdk-version",
+        "send-slack-notification-start",
+        "check-git-tag",
+        "test",
+        "build-sdk",
+        "publish-npm",
+        "git-tag",
+      ]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - name: Retrieve build scripts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-scripts
+          path: release/dist/
+
+      - name: Send build failure message
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { githubRunLink, sendSlackReply } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+
+            const runLink = githubRunLink(
+              `:x: ${sdkVersion} Release has failed`,
+              context.runId,
+              context.repo.owner,
+              context.repo.repo,
+            );
+            sendSlackReply({
+              channelName: 'proj-embedding-sdk',
+              message: runLink,
+              messageId: ${{ env.slackMessageId}},
+              broadcast: true
+            });
+
+  send-slack-notification-successful:
+    name: "Send Slack notification: SDK release successful"
+    needs:
+      ["determine-sdk-version", "send-slack-notification-start", "publish-npm"]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
+    steps:
+      - name: Retrieve build scripts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-scripts
+          path: release/dist/
+
+      - name: Send build successful message
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { githubRunLink, sendSlackReply } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const sdkVersion = "${{ needs.determine-sdk-version.outputs.sdk_version }}";
+
+            const runLink = githubRunLink(
+              `:partydeploy: ${sdkVersion} Release is complete :partydeploy:`,
+              context.runId,
+              context.repo.owner,
+              context.repo.repo,
+            );
+            sendSlackReply({
+              channelName: 'proj-embedding-sdk',
+              message: runLink,
+              messageId: ${{ env.slackMessageId}},
+              broadcast: true
+            });
+
+  determine-sdk-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
-      sdk_version: ${{ steps.new-sdk-version.outputs.result }}
+      sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
+      major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -59,19 +190,25 @@ jobs:
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
-          result-encoding: string
           script: |
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
             const versionParts = currentVersionWithoutSuffix.split(".");
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
+            const [_, majorVersion] = versionParts
 
             if (!suffix) {
-              return newVersion;
+              return {
+                version: newVersion,
+                majorVersion
+              };
             }
 
-            return `${newVersion}-${suffix}`
+            return {
+              version: `${newVersion}-${suffix}`,
+              majorVersion
+            }
 
       - name: Append workflow summary
         run: |
@@ -79,15 +216,16 @@ jobs:
           **Derived inputs:**
 
           - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
-          - \`next_version\`: "${{ steps.new-sdk-version.outputs.result }}"
+          - \`next_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).version }}"
+          - \`major_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}"
           EOF
 
   check-git-tag:
-    needs: determine-version
+    needs: determine-sdk-version
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -128,7 +266,7 @@ jobs:
         run: yarn embedding-sdk:test-unit
 
   build-sdk:
-    needs: [test, determine-version]
+    needs: [test, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -150,7 +288,7 @@ jobs:
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
-          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-version.outputs.sdk_version }}
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
       - name: Update changelog
         run: |
@@ -175,15 +313,16 @@ jobs:
           path: ./changelog-diff
 
   publish-npm:
-    needs: [build-sdk, determine-version]
+    needs: [build-sdk, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      sdk_version: ${{ needs.determine-version.outputs.sdk_version }}
+      sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out branch to prepare for a SDK version bump PR
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
           ref: ${{ inputs.branch}}
 
@@ -212,10 +351,6 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
-          # TODO: Remove this step once github includes the new gh CLI version 2.65.0
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install gh
-
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
@@ -226,17 +361,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
       - name: Edit PR adding useful information (using Metabase bot app)
         run: |
           gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
         run: |
@@ -270,23 +399,31 @@ jobs:
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
-    needs: [publish-npm, determine-version]
+    needs: [publish-npm, determine-sdk-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
+      tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
+      stable_tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ inputs.branch }}
 
-      # Lightweight tags don't need committer name and email
-      - name: Create a new git tag
+      - name: Setup git user
         run: |
-          git tag ${{ env.tag }}
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
 
-      - name: Push the new tag
-        id: push-tag
+      - name: Create and push SDK version tag
         run: |
+          git tag -a ${{ env.tag }} -m "Tagging SDK version ${{ env.tag }}"
           git push origin ${{ env.tag }}
+
+      - name: Create and push SDK stable version tag
+        if: ${{ startsWith(inputs.branch, 'release-x.') }}
+        run: |
+          git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
+          git push origin -f ${{ env.stable_tag }}

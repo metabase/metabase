@@ -3,256 +3,259 @@
 
 enterprise/frontend/src/embedding-sdk @metabase/embedding
 frontend/src/metabase/embedding-sdk @metabase/embedding
+frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embedding
+frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
 frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
-snowplow/* @metabase/data
-e2e @filiphric
+# snowplow/* @metabase/data
 
 .github @metabase/devexp
 .clj-kondo @metabase/devexp
 deps.edn @metabase/backend-developers
 
+docs @metabase/tech-writers
+
 #
 # Backend modules <=> teams that own them
 #
 
-modules/drivers @metabase/drivers
+# modules/drivers @metabase/drivers
 
-enterprise/backend/src/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/advanced_permissions @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/advanced_permissions @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/advanced_permissions @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/advanced_permissions @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/airgap @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/airgap @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/airgap @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/airgap @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/api @metabase/devexp
-enterprise/backend/test/metabase_enterprise/api @metabase/devexp
+# enterprise/backend/src/metabase_enterprise/api @metabase/devexp
+# enterprise/backend/test/metabase_enterprise/api @metabase/devexp
 
-enterprise/backend/src/metabase_enterprise/audit_app @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/audit_app @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/audit_app @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/audit_app @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/auth_provider @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/auth_provider @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/auth_provider @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/auth_provider @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/billing @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/billing @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/billing @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/billing @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/cache @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/cache @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/cache @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/cache @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/content_verification @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/content_verification @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/content_verification @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/content_verification @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/core @metabase/devexp
-enterprise/backend/test/metabase_enterprise/core @metabase/devexp
+# enterprise/backend/src/metabase_enterprise/core @metabase/devexp
+# enterprise/backend/test/metabase_enterprise/core @metabase/devexp
 
-enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
-enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
+# enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
+# enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/core-workflows
 
-enterprise/backend/src/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/enhancements @metabase/core-backend-admin-webapp
 
-# enterprise/backend/src/metabase_enterprise/llm
-# enterprise/backend/test/metabase_enterprise/llm
+# # enterprise/backend/src/metabase_enterprise/llm
+# # enterprise/backend/test/metabase_enterprise/llm
 
-enterprise/backend/src/metabase_enterprise/query_reference_validation @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/query_reference_validation @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/query_reference_validation @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/query_reference_validation @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/sandbox @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/sandbox @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/sandbox @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/sandbox @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/scim @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/scim @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/scim @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/scim @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/search @metabase/core-workflows
-enterprise/backend/test/metabase_enterprise/search @metabase/core-workflows
+# enterprise/backend/src/metabase_enterprise/search @metabase/core-workflows
+# enterprise/backend/test/metabase_enterprise/search @metabase/core-workflows
 
-enterprise/backend/src/metabase_enterprise/serialization @metabase/core-workflows
-enterprise/backend/test/metabase_enterprise/serialization @metabase/core-workflows
+# enterprise/backend/src/metabase_enterprise/serialization @metabase/core-workflows
+# enterprise/backend/test/metabase_enterprise/serialization @metabase/core-workflows
 
-enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/sso @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/sso @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/sso @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/sso @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/stale @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/stale @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/stale @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/stale @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/stats @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/stats @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/stats @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/stats @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/task @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/task @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/task @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/task @metabase/core-backend-admin-webapp
 
-enterprise/backend/src/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
-enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
+# enterprise/backend/src/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
+# enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
 
-src/metabase/actions @metabase/core-backend-admin-webapp
-test/metabase/actions @metabase/core-backend-admin-webapp
+# src/metabase/actions @metabase/core-backend-admin-webapp
+# test/metabase/actions @metabase/core-backend-admin-webapp
 
-src/metabase/activity_feed @metabase/core-backend-admin-webapp
-test/metabase/activity_feed @metabase/core-backend-admin-webapp
+# src/metabase/activity_feed @metabase/core-backend-admin-webapp
+# test/metabase/activity_feed @metabase/core-backend-admin-webapp
 
-src/metabase/analytics @metabase/core-backend-admin-webapp
-test/metabase/analytics @metabase/core-backend-admin-webapp
+# src/metabase/analytics @metabase/core-backend-admin-webapp
+# test/metabase/analytics @metabase/core-backend-admin-webapp
 
-src/metabase/analyze @metabase/drivers
-test/metabase/analyze @metabase/drivers
+# src/metabase/analyze @metabase/drivers
+# test/metabase/analyze @metabase/drivers
 
-src/metabase/api @metabase/devexp
-test/metabase/api @metabase/devexp
+# src/metabase/api @metabase/devexp
+# test/metabase/api @metabase/devexp
 
-src/metabase/audit @metabase/core-backend-admin-webapp
-test/metabase/audit @metabase/core-backend-admin-webapp
+# src/metabase/audit @metabase/core-backend-admin-webapp
+# test/metabase/audit @metabase/core-backend-admin-webapp
 
-src/metabase/auth_provider @metabase/core-backend-admin-webapp
-test/metabase/auth_provider @metabase/core-backend-admin-webapp
+# src/metabase/auth_provider @metabase/core-backend-admin-webapp
+# test/metabase/auth_provider @metabase/core-backend-admin-webapp
 
-src/metabase/bookmarks @metabase/core-backend-admin-webapp
-test/metabase/bookmarks @metabase/core-backend-admin-webapp
+# src/metabase/bookmarks @metabase/core-backend-admin-webapp
+# test/metabase/bookmarks @metabase/core-backend-admin-webapp
 
-src/metabase/cmd @metabase/devexp
-test/metabase/cmd @metabase/devexp
+# src/metabase/cmd @metabase/devexp
+# test/metabase/cmd @metabase/devexp
 
-src/metabase/channel @metabase/core-workflows
-test/metabase/channel @metabase/core-workflows
+# src/metabase/channel @metabase/core-workflows
+# test/metabase/channel @metabase/core-workflows
 
-src/metabase/cloud_migration @metabase/core-workflows
-test/metabase/cloud_migration @metabase/core-workflows
+# src/metabase/cloud_migration @metabase/core-workflows
+# test/metabase/cloud_migration @metabase/core-workflows
 
-src/metabase/cmd @metabase/devexp
-test/metabase/cmd @metabase/devexp
+# src/metabase/cmd @metabase/devexp
+# test/metabase/cmd @metabase/devexp
 
-src/metabase/config @metabase/devexp
-test/metabase/config @metabase/devexp
+# src/metabase/config @metabase/devexp
+# test/metabase/config @metabase/devexp
 
-src/metabase/core @metabase/devexp
-test/metabase/core @metabase/devexp
+# src/metabase/core @metabase/devexp
+# test/metabase/core @metabase/devexp
 
-src/metabase/db @metabase/core-backend-admin-webapp
-test/metabase/db @metabase/core-backend-admin-webapp
+# src/metabase/db @metabase/core-backend-admin-webapp
+# test/metabase/db @metabase/core-backend-admin-webapp
 
-src/metabase/driver @metabase/drivers
-test/metabase/driver @metabase/drivers
+# src/metabase/driver @metabase/drivers
+# test/metabase/driver @metabase/drivers
 
-src/metabase/eid_translation @metabase/core-backend-admin-webapp
-test/metabase/eid_translation @metabase/core-backend-admin-webapp
+# src/metabase/eid_translation @metabase/core-backend-admin-webapp
+# test/metabase/eid_translation @metabase/core-backend-admin-webapp
 
-src/metabase/embed @metabase/embedding
-test/metabase/embed @metabase/embedding
+# src/metabase/embed @metabase/embedding
+# test/metabase/embed @metabase/embedding
 
-src/metabase/events @metabase/devexp
-test/metabase/events @metabase/devexp
+# src/metabase/events @metabase/devexp
+# test/metabase/events @metabase/devexp
 
-src/metabase/formatter @metabase/core-backend-querying
-test/metabase/formatter @metabase/core-backend-querying
+# src/metabase/formatter @metabase/core-backend-querying
+# test/metabase/formatter @metabase/core-backend-querying
 
-src/metabase/indexed_entities @metabase/core-backend-querying
-test/metabase/indexed_entities @metabase/core-backend-querying
+# src/metabase/indexed_entities @metabase/core-backend-querying
+# test/metabase/indexed_entities @metabase/core-backend-querying
 
-src/metabase/integrations @metabase/core-workflows
-test/metabase/integrations @metabase/core-workflows
+# src/metabase/integrations @metabase/core-workflows
+# test/metabase/integrations @metabase/core-workflows
 
-src/metabase/legacy_mbql @metabase/core-backend-querying
-test/metabase/legacy_mbql @metabase/core-backend-querying
+# src/metabase/legacy_mbql @metabase/core-backend-querying
+# test/metabase/legacy_mbql @metabase/core-backend-querying
 
-src/metabase/lib @metabase/core-backend-querying
-test/metabase/lib @metabase/core-backend-querying
+# src/metabase/lib @metabase/core-backend-querying
+# test/metabase/lib @metabase/core-backend-querying
 
-src/metabase/logger @metabase/devexp
-test/metabase/logger @metabase/devexp
+# src/metabase/logger @metabase/devexp
+# test/metabase/logger @metabase/devexp
 
-src/metabase/login_history @metabase/core-backend-admin-webapp
-test/metabase/login_history @metabase/core-backend-admin-webapp
+# src/metabase/login_history @metabase/core-backend-admin-webapp
+# test/metabase/login_history @metabase/core-backend-admin-webapp
 
-src/metabase/model_persistence @metabase/core-backend-querying
-test/metabase/model_persistence @metabase/core-backend-querying
+# src/metabase/model_persistence @metabase/core-backend-querying
+# test/metabase/model_persistence @metabase/core-backend-querying
 
-src/metabase/models @metabase/devexp
-test/metabase/models @metabase/devexp
+# src/metabase/models @metabase/devexp
+# test/metabase/models @metabase/devexp
 
-src/metabase/moderation @metabase/core-backend-admin-webapp
-test/metabase/moderation @metabase/core-backend-admin-webapp
+# src/metabase/moderation @metabase/core-backend-admin-webapp
+# test/metabase/moderation @metabase/core-backend-admin-webapp
 
-src/metabase/notification @metabase/core-workflows
-test/metabase/notification @metabase/core-workflows
+# src/metabase/notification @metabase/core-workflows
+# test/metabase/notification @metabase/core-workflows
 
-src/metabase/permissions @metabase/core-backend-admin-webapp
-test/metabase/permissions @metabase/core-backend-admin-webapp
+# src/metabase/permissions @metabase/core-backend-admin-webapp
+# test/metabase/permissions @metabase/core-backend-admin-webapp
 
-src/metabase/plugins @metabase/devexp
-test/metabase/plugins @metabase/devexp
+# src/metabase/plugins @metabase/devexp
+# test/metabase/plugins @metabase/devexp
 
-src/metabase/premium_features @metabase/core-backend-admin-webapp
-test/metabase/premium_features @metabase/core-backend-admin-webapp
+# src/metabase/premium_features @metabase/core-backend-admin-webapp
+# test/metabase/premium_features @metabase/core-backend-admin-webapp
 
-src/metabase/public_settings @metabase/core-backend-admin-webapp
-test/metabase/public_settings @metabase/core-backend-admin-webapp
+# src/metabase/public_settings @metabase/core-backend-admin-webapp
+# test/metabase/public_settings @metabase/core-backend-admin-webapp
 
-src/metabase/public_sharing @metabase/core-backend-admin-webapp
-test/metabase/public_sharing @metabase/core-backend-admin-webapp
+# src/metabase/public_sharing @metabase/core-backend-admin-webapp
+# test/metabase/public_sharing @metabase/core-backend-admin-webapp
 
-src/metabase/pulse @metabase/core-workflows
-test/metabase/pulse @metabase/core-workflows
+# src/metabase/pulse @metabase/core-workflows
+# test/metabase/pulse @metabase/core-workflows
 
-src/metabase/query_analysis @metabase/core-backend-querying
-test/metabase/query_analysis @metabase/core-backend-querying
+# src/metabase/query_analysis @metabase/core-backend-querying
+# test/metabase/query_analysis @metabase/core-backend-querying
 
-src/metabase/query_processor @metabase/core-backend-querying
-test/metabase/query_processor @metabase/core-backend-querying
+# src/metabase/query_processor @metabase/core-backend-querying
+# test/metabase/query_processor @metabase/core-backend-querying
 
-src/metabase/request @metabase/devexp
-test/metabase/request @metabase/devexp
+# src/metabase/request @metabase/devexp
+# test/metabase/request @metabase/devexp
 
-src/metabase/revisions @metabase/core-backend-admin-webapp
-test/metabase/revisions @metabase/core-backend-admin-webapp
+# src/metabase/revisions @metabase/core-backend-admin-webapp
+# test/metabase/revisions @metabase/core-backend-admin-webapp
 
-src/metabase/sample_data @metabase/core-backend-admin-webapp
-test/metabase/sample_data @metabase/core-backend-admin-webapp
+# src/metabase/sample_data @metabase/core-backend-admin-webapp
+# test/metabase/sample_data @metabase/core-backend-admin-webapp
 
-src/metabase/search @metabase/core-workflows
-test/metabase/search @metabase/core-workflows
+# src/metabase/search @metabase/core-workflows
+# test/metabase/search @metabase/core-workflows
 
-src/metabase/segments @metabase/core-backend-querying
-test/metabase/segments @metabase/core-backend-querying
+# src/metabase/segments @metabase/core-backend-querying
+# test/metabase/segments @metabase/core-backend-querying
 
-src/metabase/server @metabase/devexp
-test/metabase/server @metabase/devexp
+# src/metabase/server @metabase/devexp
+# test/metabase/server @metabase/devexp
 
-src/metabase/session @metabase/core-backend-admin-webapp
-test/metabase/session @metabase/core-backend-admin-webapp
+# src/metabase/session @metabase/core-backend-admin-webapp
+# test/metabase/session @metabase/core-backend-admin-webapp
 
-src/metabase/setup @metabase/core-backend-admin-webapp
-test/metabase/setup @metabase/core-backend-admin-webapp
+# src/metabase/setup @metabase/core-backend-admin-webapp
+# test/metabase/setup @metabase/core-backend-admin-webapp
 
-src/metabase/sso @metabase/core-backend-admin-webapp
-test/metabase/sso @metabase/core-backend-admin-webapp
+# src/metabase/sso @metabase/core-backend-admin-webapp
+# test/metabase/sso @metabase/core-backend-admin-webapp
 
-src/metabase/sync @metabase/drivers
-test/metabase/sync @metabase/drivers
+# src/metabase/sync @metabase/drivers
+# test/metabase/sync @metabase/drivers
 
-src/metabase/task @metabase/devexp
-test/metabase/task @metabase/devexp
+# src/metabase/task @metabase/devexp
+# test/metabase/task @metabase/devexp
 
-src/metabase/tiles @metabase/core-backend-dashviz
-test/metabase/tiles @metabase/core-backend-dashviz
+# src/metabase/tiles @metabase/core-backend-dashviz
+# test/metabase/tiles @metabase/core-backend-dashviz
 
-src/metabase/timeline @metabase/core-backend-dashviz
-test/metabase/timeline @metabase/core-backend-dashviz
+# src/metabase/timeline @metabase/core-backend-dashviz
+# test/metabase/timeline @metabase/core-backend-dashviz
 
-src/metabase/types @metabase/core-backend-querying
-test/metabase/types @metabase/core-backend-querying
+# src/metabase/types @metabase/core-backend-querying
+# test/metabase/types @metabase/core-backend-querying
 
-src/metabase/upload @metabase/core-backend-admin-webapp
-test/metabase/upload @metabase/core-backend-admin-webapp
+# src/metabase/upload @metabase/core-backend-admin-webapp
+# test/metabase/upload @metabase/core-backend-admin-webapp
 
-src/metabase/user_key_value @metabase/core-backend-admin-webapp
-test/metabase/user_key_value @metabase/core-backend-admin-webapp
+# src/metabase/user_key_value @metabase/core-backend-admin-webapp
+# test/metabase/user_key_value @metabase/core-backend-admin-webapp
 
-src/metabase/util @metabase/devexp
-test/metabase/util @metabase/devexp
+# src/metabase/util @metabase/devexp
+# test/metabase/util @metabase/devexp
 
-src/metabase/xrays @metabase/core-backend-querying
-test/metabase/xrays @metabase/core-backend-querying
+# src/metabase/xrays @metabase/core-backend-querying
+# test/metabase/xrays @metabase/core-backend-querying

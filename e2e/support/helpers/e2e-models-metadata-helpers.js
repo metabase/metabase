@@ -1,4 +1,8 @@
-import { interceptIfNotPreviouslyDefined, popover } from "e2e/support/helpers";
+import {
+  interceptIfNotPreviouslyDefined,
+  popover,
+  tableInteractive,
+} from "e2e/support/helpers";
 
 export function saveMetadataChanges() {
   interceptIfNotPreviouslyDefined({
@@ -18,9 +22,16 @@ export function saveMetadataChanges() {
 export function openColumnOptions(column) {
   const columnNameRegex = new RegExp(`^${column}$`);
 
-  cy.findAllByTestId("header-cell")
+  tableInteractive()
+    .findAllByTestId("header-cell")
     .contains(columnNameRegex)
-    .should("be.visible")
+    .scrollIntoView()
+    .should("be.visible");
+
+  // Query element again to ensure it's not unmounted
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .contains(columnNameRegex)
     .click();
 }
 

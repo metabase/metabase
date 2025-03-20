@@ -415,7 +415,7 @@ export type SpecificDateFilterParts = {
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
   unit: RelativeDateFilterUnit;
-  value: number | "current";
+  value: number;
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
   options: RelativeDateFilterOptions;
@@ -626,7 +626,7 @@ export interface ClickObject {
   settings?: Record<string, unknown>;
   columnShortcuts?: boolean;
   origin?: {
-    row: RowValue;
+    row: RowValue[];
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;

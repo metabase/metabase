@@ -1,24 +1,29 @@
-import * as d3 from "d3";
 import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
 import Humanize from "humanize-plus";
-dayjs.extend(duration);
+import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
-const FIXED_NUMBER_FORMATTER = d3.format(",.0f");
-const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
+const FIXED_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
+  useGrouping: true,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
-interface FormatNumberOptionsType {
-  _numberFormatter?: any;
+const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+type FormatNumberOptions = {
+  _numberFormatter?: Intl.NumberFormat;
   compact?: boolean;
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
-  jsx?: any;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -29,15 +34,19 @@ interface FormatNumberOptionsType {
   number_style?: string;
   scale?: number;
   type?: string;
-}
+};
 
-interface DEFAULT_NUMBER_OPTIONS_TYPE {
+type FormatNumberJsxOptions = FormatNumberOptions & {
+  jsx?: boolean;
+};
+
+type DefaultFormatNumberOptions = {
   compact: boolean;
   maximumFractionDigits: number;
   minimumFractionDigits?: number;
-}
+};
 
-const DEFAULT_NUMBER_OPTIONS: DEFAULT_NUMBER_OPTIONS_TYPE = {
+const DEFAULT_NUMBER_OPTIONS: DefaultFormatNumberOptions = {
   compact: false,
   maximumFractionDigits: 2,
 };
@@ -45,7 +54,7 @@ const DEFAULT_NUMBER_OPTIONS: DEFAULT_NUMBER_OPTIONS_TYPE = {
 // for extracting number portion from a formatted currency string
 //
 // NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
-const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
+const NUMBER_REGEX = /([+\-])?[^0-9]*([0-9., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
@@ -62,13 +71,17 @@ function getDefaultNumberOptions(options: { decimals?: string | number }) {
 }
 
 export function formatNumber(
-  number: number,
-  options: FormatNumberOptionsType = {},
-): any {
+  number: number | bigint,
+  options?: FormatNumberOptions,
+): string;
+export function formatNumber(
+  number: number | bigint,
+  options: FormatNumberJsxOptions = {},
+): string | ReactNode {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
-    number = options.scale * number;
+    number = multiply(number, options.scale);
   }
 
   if (number < 0 && options.negativeInParentheses) {
@@ -134,7 +147,7 @@ export function formatNumber(
 
       // fixes issue where certain symbols, such as
       // czech Kč, and Bitcoin ₿, are not displayed
-      if (options["currency_style"] === "symbol") {
+      if (options["currency"] && options["currency_style"] === "symbol") {
         formatted = formatted.replace(
           options["currency"],
           getCurrencySymbol(options["currency"] as string),
@@ -146,9 +159,7 @@ export function formatNumber(
       console.warn("Error formatting number", e);
       // fall back to old, less capable formatter
       // NOTE: does not handle things like currency, percent
-      return FIXED_NUMBER_FORMATTER(
-        roundFloat(number, options.maximumFractionDigits),
-      );
+      return FIXED_NUMBER_FORMATTER.format(number);
     }
   }
 }
@@ -169,7 +180,7 @@ export function formatChangeWithSign(
   return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
-export function numberFormatterForOptions(options: FormatNumberOptionsType) {
+export function numberFormatterForOptions(options: FormatNumberOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
@@ -184,14 +195,15 @@ export function numberFormatterForOptions(options: FormatNumberOptionsType) {
     maximumFractionDigits: options.maximumFractionDigits,
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
-  }) as any;
+  });
 }
 
-function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
-  const separators = options["number_separators"];
-
+function formatNumberCompact(
+  value: number | bigint,
+  options: FormatNumberJsxOptions,
+): string | ReactNode {
   if (options.number_style === "percent") {
-    return formatNumberCompactWithoutOptions(value * 100, separators) + "%";
+    return _formatNumberCompact(multiply(value, 100), options) + "%";
   }
   if (options.number_style === "currency") {
     try {
@@ -200,23 +212,19 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
         ...COMPACT_CURRENCY_OPTIONS,
       });
 
-      if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+      if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return nf.format(value);
       }
       const { value: currency } = nf
         .formatToParts(value)
-        .find((p: any) => p.type === "currency");
+        .find((p: any) => p.type === "currency") ?? { value: "" };
 
       const valueSign = value < 0 ? "-" : "";
 
-      return (
-        valueSign +
-        currency +
-        formatNumberCompactWithoutOptions(Math.abs(value), separators)
-      );
+      return valueSign + currency + _formatNumberCompact(abs(value), options);
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
-      return formatNumberCompactWithoutOptions(value, separators);
+      return _formatNumberCompact(value, options);
     }
   }
   if (options.number_style === "scientific") {
@@ -227,27 +235,38 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       minimumFractionDigits: 1,
     });
   }
-  return formatNumberCompactWithoutOptions(value, separators);
+  return _formatNumberCompact(value, options);
 }
 
-function formatNumberCompactWithoutOptions(value: number, separators?: string) {
-  if (value === 0) {
+function _formatNumberCompact(
+  value: number | bigint,
+  options: FormatNumberOptions = {},
+): string {
+  if (value === 0 || value === 0n) {
     // 0 => 0
     return "0";
   }
 
   let formatted;
-  if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+  if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
-    formatted = PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
-  } else {
+    formatted = PRECISION_NUMBER_FORMATTER.format(value);
+  } else if (typeof value === "number") {
     // 1 => 1
     // 1000 => 1K
-    formatted = Humanize.compactInteger(Math.round(value), 1);
+    const isDefaultDecimalCount =
+      options.maximumFractionDigits ===
+      DEFAULT_NUMBER_OPTIONS.maximumFractionDigits;
+    formatted = Humanize.compactInteger(
+      Math.round(value),
+      isDefaultDecimalCount ? 1 : options.maximumFractionDigits,
+    );
+  } else {
+    formatted = PRECISION_NUMBER_FORMATTER.format(value);
   }
 
-  return separators !== DEFAULT_NUMBER_SEPARATORS
-    ? replaceNumberSeparators(formatted, separators)
+  return options?.number_separators !== DEFAULT_NUMBER_SEPARATORS
+    ? replaceNumberSeparators(formatted, options?.number_separators)
     : formatted;
 }
 
@@ -261,16 +280,18 @@ function replaceNumberSeparators(formatted: any, separators: any) {
   };
 
   return formatted.replace(
-    /,|\./g,
+    /[,.]/g,
     (separator: "." | ",") => separatorMap[separator],
   );
 }
 
 function formatNumberScientific(
-  value: number,
-  options: FormatNumberOptionsType,
-) {
-  if (options.maximumFractionDigits) {
+  value: number | bigint,
+  options: FormatNumberJsxOptions,
+): string | ReactNode {
+  if (typeof value === "bigint") {
+    value = Number(value);
+  } else if (options.maximumFractionDigits) {
     value = roundFloat(value, options.maximumFractionDigits);
   }
   const exp = replaceNumberSeparators(
@@ -289,8 +310,11 @@ function formatNumberScientific(
   }
 }
 
-function formatDuration(value: number, _options: FormatNumberOptionsType) {
-  const duration = dayjs.duration(value);
+function formatDuration(
+  value: number | bigint,
+  _options: FormatNumberOptions,
+): string {
+  const duration = dayjs.duration(Number(value));
   let str = "";
 
   if (duration.days() > 0) {
@@ -318,8 +342,16 @@ function formatDuration(value: number, _options: FormatNumberOptionsType) {
 export function roundFloat(
   value: number,
   decimalPlaces: number = DEFAULT_NUMBER_OPTIONS.maximumFractionDigits,
-) {
+): number {
   const factor = Math.pow(10, decimalPlaces);
 
   return Math.round(value * factor) / factor;
+}
+
+function abs(a: number | bigint) {
+  return a < 0 ? -a : a;
+}
+
+function multiply(a: number | bigint, b: number) {
+  return typeof a === "bigint" ? a * BigInt(b) : a * b;
 }

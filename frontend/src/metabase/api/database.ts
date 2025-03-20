@@ -7,6 +7,7 @@ import type {
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
   ListDatabaseIdFieldsRequest,
@@ -52,6 +53,14 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
+    }),
+    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
+      query: id => ({
+        method: "GET",
+        url: `/api/database/${id}/healthcheck`,
+      }),
+      // invalidate health check in the case db connection info changes
+      providesTags: (_, __, id) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -227,6 +236,7 @@ export const databaseApi = Api.injectEndpoints({
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,

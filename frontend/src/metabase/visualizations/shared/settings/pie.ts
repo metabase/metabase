@@ -68,6 +68,10 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   return String(dimensionValue);
 }
 
+export function getValueFromDimensionKey(key: string) {
+  return key === NULL_DISPLAY_VALUE ? null : key;
+}
+
 export function getAggregatedRows(
   rows: RowValues[],
   dimensionIndex: number,

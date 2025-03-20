@@ -1,7 +1,6 @@
 (ns metabase.notification.payload.core
   (:require
-   [metabase.channel.render.core :as channel.render]
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]
@@ -12,6 +11,7 @@
 
 (p/import-vars
  [notification.payload.execute
+  execute-dashboard
   process-virtual-dashcard])
 
 (mr/def ::Notification
@@ -21,11 +21,13 @@
    [:map
     [:payload_type                   (into [:enum] models.notification/notification-types)]
     ;; allow unsaved notification to be sent
-    [:id            {:optional true} [:maybe ms/PositiveInt]]
-    [:active        {:optional true} :boolean]
-    [:created_at    {:optional true} :any]
-    [:updated_at    {:optional true} :any]
-    [:subscriptions {:optional true} [:sequential ::models.notification/NotificationSubscription]]]
+    [:id                      {:optional true} [:maybe ms/PositiveInt]]
+    [:active                  {:optional true} :boolean]
+    [:created_at              {:optional true} :any]
+    [:updated_at              {:optional true} :any]
+    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
+    ;;  the subscription that triggered this notification
+    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
     [:notification/system-event
@@ -127,7 +129,7 @@
    :site_name            (public-settings/site-name)
    :site_url             (public-settings/site-url)
    :admin_email          (public-settings/admin-email)
-   :style                {:button (button-style (channel.render/primary-color))}})
+   :style                {:button (button-style (public-settings/application-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."

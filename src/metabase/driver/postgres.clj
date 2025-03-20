@@ -77,7 +77,8 @@
                               :schemas                  true
                               :identifiers-with-spaces  true
                               :uuid-type                true
-                              :uploads                  true}]
+                              :uploads                  true
+                              :cast                     true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -623,8 +624,7 @@
 
 (defmethod sql.qp/datetime-diff [:postgres :day]
   [_driver _unit x y]
-  (let [interval (h2x/- (date-trunc :day y) (date-trunc :day x))]
-    (h2x/->integer (extract :day interval))))
+  (h2x/- (h2x/cast :DATE y) (h2x/cast :DATE x)))
 
 (defmethod sql.qp/datetime-diff [:postgres :hour]
   [driver _unit x y]
@@ -638,6 +638,10 @@
   [_driver _unit x y]
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
+
+(defmethod sql.qp/->honeysql [:postgres :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
@@ -653,6 +657,10 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
+
+(defmethod sql.qp/->honeysql [:postgres :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]

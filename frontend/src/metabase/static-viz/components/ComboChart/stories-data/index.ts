@@ -91,6 +91,7 @@ import logYScaleCustomYAxisRange from "./log-y-scale-custom-y-axis-range.json";
 import longDimensionNameCutOff37420 from "./long-dimension-name-cut-off-37420.json";
 import messedUpAxis from "./messed-up-axis.json";
 import nativeAutoYSplit from "./native-auto-y-split.json";
+import noDimensionColumn54755 from "./no-dimension-column-54755.json";
 import noGoodAxisSplit from "./no-good-axis-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
@@ -246,4 +247,5 @@ export const data = {
   trendGoalLinesWithScalingPowScaleCustomRange,
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,
+  noDimensionColumn54755,
 };

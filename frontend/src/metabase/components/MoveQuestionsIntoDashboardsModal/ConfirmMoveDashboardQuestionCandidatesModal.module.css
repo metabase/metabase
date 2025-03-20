@@ -5,6 +5,8 @@
 }
 
 .modalHeader {
+  padding: 2rem 2.5rem;
+  padding-right: 2.5rem;
   flex-shrink: 0;
 }
 

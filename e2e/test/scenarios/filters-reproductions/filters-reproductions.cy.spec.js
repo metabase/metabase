@@ -179,7 +179,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe("issue 18770", () => {
+describe("issue 18770", { tags: "@flaky" }, () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -216,8 +216,10 @@ describe("issue 18770", () => {
 
     cy.findAllByTestId("cell-data")
       .filter(":contains(4,784)")
-      .should("have.length", 1)
-      .click();
+      .should("have.length", 1);
+
+    // Querying the cell again to ensure the dom node stability
+    H.tableInteractiveBody().findByText("4,784").click();
     H.popover().within(() => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
@@ -947,7 +949,7 @@ describe("issue 34794", () => {
       cy.findByText("Created At").click();
       cy.icon("chevronleft").click(); // go back to the main filter popover
       cy.findByText("Custom Expression").click();
-      cy.findByLabelText("Expression").type("[Total] > 10").blur();
+      H.CustomExpressionEditor.type("[Total] > 10").format();
       cy.button("Done").click();
     });
 
@@ -1311,7 +1313,7 @@ describe("45252", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 44435", () => {
+describe("issue 44435", () => {
   // It is crucial that the string is without spaces!
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const longString = alphabet.repeat(10);

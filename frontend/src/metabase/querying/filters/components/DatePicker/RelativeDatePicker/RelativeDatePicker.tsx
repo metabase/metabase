@@ -66,7 +66,7 @@ export function RelativeDatePicker({
       <Divider />
       {TABS.map(tab => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
-          {isOffsetIntervalValue(value) ? (
+          {value != null && isOffsetIntervalValue(value) ? (
             <DateOffsetIntervalPicker
               value={value}
               availableUnits={availableUnits}
@@ -74,7 +74,7 @@ export function RelativeDatePicker({
               onChange={setValue}
               onSubmit={handleSubmit}
             />
-          ) : isIntervalValue(value) ? (
+          ) : value != null && isIntervalValue(value) ? (
             <DateIntervalPicker
               value={value}
               availableUnits={availableUnits}

@@ -2235,7 +2235,7 @@ msgid "Send password reset email"
 msgstr "비밀번호 초기화 메일 발송"
 
 #: frontend/src/metabase/auth/components/ForgotPassword/ForgotPassword.tsx:73
-msgid "Check your email for instructions on how to reset your password."
+msgid "If the email exists, we'll send instructions on how to reset your password."
 msgstr "이메일을 확인하여 전달 된 암호 초기화 방법을 따르세요."
 
 #: frontend/src/metabase/auth/components/Login/Login.tsx:30

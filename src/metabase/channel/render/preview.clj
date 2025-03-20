@@ -13,7 +13,7 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.notification.payload.execute :refer [execute-dashboard]]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
@@ -81,7 +81,7 @@
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard (:id dashboard) (:id user) nil)
+        dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]

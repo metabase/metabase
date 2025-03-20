@@ -87,7 +87,7 @@ describe("TimeseriesFilterPicker", () => {
     await userEvent.click(screen.getByText("Apply"));
 
     expect(getNextFilterParts()).toMatchObject({
-      value: "current",
+      value: 0,
     });
   });
 

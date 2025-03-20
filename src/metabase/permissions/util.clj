@@ -310,7 +310,7 @@
 (defenterprise impersonated-user?
   "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
   Will throw an error if [[api/*current-user-id*]] is not bound."
-  metabase-enterprise.advanced-permissions.api.util
+  metabase-enterprise.impersonation.util
   []
   (when-not api/*current-user-id*
     ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
@@ -324,7 +324,7 @@
 (defenterprise impersonation-enforced-for-db?
   "Returns a boolean if the current user has an enforced connection impersonation policy for a provided database. In OSS
   this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
-  metabase-enterprise.advanced-permissions.api.util
+  metabase-enterprise.impersonation.util
   [_db-or-id]
   (when-not api/*current-user-id*
     ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid

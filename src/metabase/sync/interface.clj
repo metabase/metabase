@@ -15,7 +15,8 @@
    ;; for databases that support forcing query to include a filter (e.g: partitioned table on bigquery)
    [:database_require_filter {:optional true} [:maybe :boolean]]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description             {:optional true} [:maybe :string]]])
+   [:description             {:optional true} [:maybe :string]]
+   [:visibility_type         {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -49,7 +50,8 @@
    [:database-is-auto-increment {:optional true} :boolean]
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
-   [:database-required          {:optional true} :boolean]])
+   [:database-required          {:optional true} :boolean]
+   [:visibility-type            {:optional true} [:maybe :keyword]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."

@@ -2,7 +2,12 @@ import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
-import type { DashCardId, Dashboard, DashboardId } from "./dashboard";
+import type {
+  DashCardId,
+  Dashboard,
+  DashboardId,
+  DashboardTabId,
+} from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -365,6 +370,8 @@ export interface CreateCardRequest {
   parameter_mappings?: unknown;
   description?: string;
   collection_id?: CollectionId;
+  dashboard_id?: DashboardId;
+  dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;

@@ -6,7 +6,7 @@ redirect_from:
 
 # Running Metabase on Docker
 
-> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud).
+> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud/).
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
@@ -46,7 +46,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -117,8 +117,9 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -281,7 +282,6 @@ These files should be in the same directory as the `docker-compose.yml`. Put the
 Notice the "\_FILE" on the environment variables that have a secret:
 
 ```yml
-version: "3.9"
 services:
   metabase:
     image: metabase/metabase:latest
@@ -342,6 +342,8 @@ We currently support the following [environment variables](../configuring-metaba
 - `MB_LDAP_BIND_DN`
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
+
+> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ## Troubleshooting
 

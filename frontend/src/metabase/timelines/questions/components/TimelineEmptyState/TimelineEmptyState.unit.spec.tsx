@@ -21,7 +21,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    const button = screen.getByRole("button", { name: "Add an event" });
+    const button = screen.getByRole("button", { name: "Create event" });
     expect(button).toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    const button = screen.getByRole("button", { name: "Add an event" });
+    const button = screen.getByRole("button", { name: "Create event" });
     expect(button).toBeInTheDocument();
   });
 
@@ -52,7 +52,7 @@ describe("TimelineEmptyState", () => {
 
     setup(props);
 
-    const button = screen.queryByRole("button", { name: "Add an event" });
+    const button = screen.queryByRole("button", { name: "Create event" });
     expect(button).not.toBeInTheDocument();
   });
 });

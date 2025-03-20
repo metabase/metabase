@@ -43,7 +43,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  metabase-enterprise.impersonation.model
   [graph & [_opts]]
   graph)
 
@@ -188,7 +188,7 @@
 (defenterprise delete-impersonations-if-needed-after-permissions-change!
   "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
   EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
-  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  metabase-enterprise.impersonation.model
   [_])
 
 (defn ee-permissions-exception

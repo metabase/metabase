@@ -1,4 +1,6 @@
-// Note: this functions need to return an array of two elements, when styling
+/* eslint-disable no-color-literals */
+
+// Note: these functions need to return an array of two elements, when styling
 // console.logs, the style needs to passed as second argument
 // To use them, do `console.log(...bigWarningHeader("message"), "rest of the message")`
 

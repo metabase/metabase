@@ -199,6 +199,7 @@ export const dashboardApi = Api.injectEndpoints({
 
 export const {
   useGetDashboardQuery,
+  useLazyGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,

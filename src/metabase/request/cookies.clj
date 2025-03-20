@@ -57,7 +57,7 @@
   (contains? possible-session-cookie-samesite-values normalized-value))
 
 (defsetting session-cookie-samesite
-  (deferred-tru "Value for the session cookie's `SameSite` directive.")
+  (deferred-tru "Value for the session cookie''s `SameSite` directive.")
   :type :keyword
   :visibility :settings-manager
   :default :lax
@@ -212,12 +212,12 @@
   "Add the appropriate cookies to the `response` for the Session."
   [request
    response
-   {session-uuid :id
+   {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token
-    :as _session-instance} :- [:map [:id [:or
-                                          uuid?
-                                          [:re u/uuid-regex]]]]
+    :as _session-instance} :- [:map [:key [:or
+                                           uuid?
+                                           [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
@@ -239,4 +239,4 @@
         (cond-> (= session-type :full-app-embed)
           (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))
         (set-session-timeout-cookie request session-type request-time)
-        (response/set-cookie (session-cookie-name session-type) (str session-uuid) cookie-options))))
+        (response/set-cookie (session-cookie-name session-type) (str session-key) cookie-options))))

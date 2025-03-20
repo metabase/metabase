@@ -38,6 +38,7 @@
 /deploy/artifacts/*
 /frontend/test/snapshots/*
 /e2e/snapshots/*
+/e2e/tmp/*
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -66,6 +67,7 @@
 /storybook-static
 /target
 /test-report-*
+**/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
@@ -120,3 +122,8 @@ modules/drivers/*/.lsp/*
 .swc/
 
 *storybook.log
+
+# jar downloader
+/jars/
+/bin/bb
+

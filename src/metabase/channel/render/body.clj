@@ -12,7 +12,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -247,7 +247,7 @@
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments

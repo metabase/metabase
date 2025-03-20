@@ -1,4 +1,4 @@
-import { Flex, Modal } from "metabase/ui";
+import { Flex, FocusTrap, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -46,6 +46,7 @@ export function FilterModal({
         <Modal.Content>
           <Modal.Header className={S.ModalHeader} p="lg">
             <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+            <FocusTrap.InitialFocus />
             <Flex mx="md" justify="end" style={{ flex: 1 }}>
               <FilterSearchInput
                 value={searchText}

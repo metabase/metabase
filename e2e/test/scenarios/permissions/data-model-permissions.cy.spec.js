@@ -120,7 +120,7 @@ describe("scenarios > admin > permissions", () => {
 
     // Find foreign key from table the user does not have access to
     cy.findByTestId("column-USER_ID").within(() => {
-      cy.findByText("Field access denied");
+      cy.findByPlaceholderText("Field access denied").should("be.visible");
     });
   });
 });

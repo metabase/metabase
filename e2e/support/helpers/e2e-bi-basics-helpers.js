@@ -1,4 +1,9 @@
-import { popover, queryBuilderMain, selectDropdown } from "e2e/support/helpers";
+import {
+  popover,
+  queryBuilderMain,
+  selectDropdown,
+  tableHeaderColumn,
+} from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -160,7 +165,7 @@ export function assertJoinValid({
 
   // Ensure the results have columns from both tables
   queryBuilderMain().within(() => {
-    cy.findByText(lhsSampleColumn).should("be.visible");
-    cy.findByText(rhsSampleColumn).should("be.visible");
+    tableHeaderColumn(lhsSampleColumn).should("be.visible");
+    tableHeaderColumn(rhsSampleColumn).should("be.visible");
   });
 }

@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
-import {
-  EmptyStateIcon,
-  EmptyStateRoot,
-  EmptyStateText,
-} from "./SearchEmptyState.styled";
+import EmptyFolder from "assets/img/empty-states/collection.svg";
+import { Box, Stack, Text } from "metabase/ui";
 
 export interface SearchEmptyStateProps {
   isTimeline?: boolean;
@@ -14,12 +11,14 @@ const SearchEmptyState = ({
   isTimeline,
 }: SearchEmptyStateProps): JSX.Element => {
   return (
-    <EmptyStateRoot>
-      <EmptyStateIcon name="star" />
-      <EmptyStateText>
+    <Stack align="center" gap="md">
+      <Box maw="6rem">
+        <img src={EmptyFolder} alt={t`Empty folder illustration`} />
+      </Box>
+      <Text fz="md" maw="25rem" c="text-medium">
         {isTimeline ? t`No timelines found` : t`No events found`}
-      </EmptyStateText>
-    </EmptyStateRoot>
+      </Text>
+    </Stack>
   );
 };
 

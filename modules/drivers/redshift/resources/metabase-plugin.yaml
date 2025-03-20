@@ -11,9 +11,10 @@ driver:
     - merge:
         - host
         - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
+          required: true
     - merge:
         - port
-        - default: 5439
+        - placeholder: 5439
     - merge:
         - dbname
         - name: db

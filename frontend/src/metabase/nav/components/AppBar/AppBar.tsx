@@ -15,7 +15,7 @@ export interface AppBarProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
-  isEmbedded?: boolean;
+  isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;

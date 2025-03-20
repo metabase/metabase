@@ -102,11 +102,11 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "past7days"}}
-      "Previous 7 Days"
+      "Previous 7 days"
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
-      "This Month"))
+      "This month"))
 
   (t/testing "Special characters (with semantic meaning in Markdown) are escaped in formatted values"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
@@ -205,7 +205,7 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "thisweek"}}
-      "This Week"
+      "This week"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past1days"}}
@@ -217,19 +217,19 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past1weeks"}}
-      "Previous Week"
+      "Previous week"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "next1quarters"}}
-      "Next Quarter"
+      "Next quarter"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "past60minutes"}}
-      "Previous 60 Minutes"
+      "Previous 60 minutes"
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "next5years"}}
-      "Next 5 Years"))
+      "Next 5 years"))
 
   (t/testing "Date values are formatted using the locale passed in as an argument"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "es" true))

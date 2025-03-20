@@ -12,9 +12,9 @@ import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
-import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import Table from "metabase/visualizations/visualizations/Table";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,

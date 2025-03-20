@@ -5,6 +5,7 @@
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -70,6 +71,81 @@
           (is (= 1 (t2/count :model/Database :name test-db-name))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
+
+(defn- test-cruft-tables! [crufted-table-setting freq message]
+  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+    (try
+      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
+                         {:name    test-db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))
+                          :settings {:auto-cruft-tables crufted-table-setting}})]
+        (is (future? sync-future))
+        ;; wait for the sync to finish or crash out after 5 seconds
+        (deref sync-future 5000 :timeout)
+        (is (= 1 (t2/count :model/Database :name test-db-name)))
+        (let [db (t2/select-one :model/Database :name test-db-name)
+              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+          (is (= freq (frequencies vis-types))
+              message)))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
+(deftest sync-cruft-tables-test
+  (testing "tables marked crufty should be marked as such in the database"
+    (test-cruft-tables! []           {nil 8}          "No tables marked crufty")
+    (test-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
+    (test-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
+
+(deftest cruft-hidden-tables-test
+  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+    (try
+      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
+                         {:name    test-db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))})]
+        (is (future? sync-future))
+        ;; wait for the sync to finish or crash out after 5 seconds
+        (deref sync-future 5000 :timeout)
+        (is (= 1 (t2/count :model/Database :name test-db-name)))
+        (let [db (t2/select-one :model/Database :name test-db-name)
+              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
+              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+          ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
+          ;; and make sure they are still hidden:
+          (is (= {:hidden 8} (frequencies vis-types)))
+          (sync-metadata/sync-db-metadata! db)
+          (testing "Hidden tables stay hidden"
+            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+              (is (= {:hidden 8} (frequencies vis-types)))))))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
+(defn- test-cruft-columns! [crufted-field-setting freq message]
+  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+    (try
+      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
+                         {:name    test-db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))
+                          :settings {:auto-cruft-columns crufted-field-setting}})]
+        (is (future? sync-future))
+         ;; wait for the sync to finish or crash out after 5 seconds
+        (deref sync-future 5000 :timeout)
+        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
+        (is (= 1 (t2/count :model/Database :name test-db-name)))
+        (let [db (t2/select-one :model/Database :name test-db-name)
+              tables (t2/select :model/Table :db_id (u/the-id db))
+              fields (t2/select :model/Field :table_id [:in (map :id tables)])]
+          (is (= freq (frequencies (map :visibility_type fields)))
+              message)))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
+(deftest sync-cruft-columns-test
+  (testing "columns (aka fields) marked crufty should be marked as such in the database"
+    (test-cruft-columns! [] {:normal 52} "No fields marked crufty")
+    (test-cruft-columns! ["id"] {:normal 38, :details-only 14}  "All id fields marked crufty")))
 
 (deftest disable-sync-test
   (testing "We should be able to disable sync for new Databases by specifying a Setting in the config file"

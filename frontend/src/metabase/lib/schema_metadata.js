@@ -1,4 +1,4 @@
-import { field_semantic_types_map } from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 
 export function foreignKeyCountsByOriginTable(fks) {
   if (fks === null || !Array.isArray(fks)) {
@@ -21,11 +21,11 @@ export function foreignKeyCountsByOriginTable(fks) {
 }
 
 export function getSemanticTypeIcon(semanticType, fallback) {
-  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  const semanticTypeMetadata = FIELD_SEMANTIC_TYPES_MAP[semanticType];
   return semanticTypeMetadata?.icon ?? fallback;
 }
 
 export function getSemanticTypeName(semanticType) {
-  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  const semanticTypeMetadata = FIELD_SEMANTIC_TYPES_MAP[semanticType];
   return semanticTypeMetadata?.name;
 }

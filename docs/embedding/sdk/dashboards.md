@@ -49,7 +49,7 @@ By default, dashboard components take full page height (100vh). You can override
   }}
   dashboardId={dashboardId}
 />
-{% raw %}
+{% endraw %}
 ```
 
 ## Example embedded dashboard with `InteractiveDashboard` component

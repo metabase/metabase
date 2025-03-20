@@ -35,7 +35,7 @@ interface LegendCaptionProps {
   title: string;
   description?: string;
   getHref?: () => string | undefined;
-  icon?: IconProps;
+  icon?: IconProps | null;
   actionButtons?: React.ReactNode;
   onSelectTitle?: () => void;
   width?: number;

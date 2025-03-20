@@ -1,14 +1,13 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
-   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,7 +75,7 @@
      :content-type content-type
      :file-name    (format "%s_%s.%s"
                            (or card-name "query_result")
-                           (u.date/format (t/zoned-date-time))
+                           (streaming.common/export-filename-timestamp)
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))

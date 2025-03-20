@@ -1,0 +1,274 @@
+name: E2E Sample Apps tests
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - "master"
+      - "release-**"
+
+env:
+  # we must support last two stable releases
+  SUPPORTED_RELEASES_COUNT: 2
+  TEST_SUITES: |
+    [
+      "metabase-nodejs-react-sdk-embedding-sample-e2e",
+      "metabase-nextjs-sdk-embedding-sample-e2e"
+    ]
+  TEST_SUITES_TO_RUN_IN_MASTER_ONLY: |
+    [
+      "shoppy-e2e"
+    ]
+  SAMPLE_APP_MAIN_BRANCH_NAME: 'main'
+  SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX: 'stable'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  # if this is a test on a release branch, we need to check the build requirements
+  get-build-requirements:
+    if: |
+      !cancelled() &&
+      contains(github.base_ref || github.ref, 'release-x')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const {
+              getBuildRequirements,
+              getVersionFromReleaseBranch,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const targetBranchName = '${{ github.base_ref || github.ref }}';
+
+            const version = getVersionFromReleaseBranch(targetBranchName);
+            const requirements = getBuildRequirements(version);
+
+            return {
+              java_version: requirements.java,
+              node_version: requirements.node,
+            };
+
+  get-sample-apps-data:
+    if: |
+      !cancelled()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      branch_name: ${{ fromJson(steps.build-sample-apps-data.outputs.result).branch_name }}
+      matrix: ${{ toJSON(fromJson(steps.build-sample-apps-data.outputs.result).matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+
+      - name: Build sample app compatibility data
+        uses: actions/github-script@v7
+        id: build-sample-apps-data
+        with:
+          script: | # js
+            const {
+              isReleaseBranch,
+              getMajorVersionNumberFromReleaseBranch,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const testSuites = JSON.parse(process.env.TEST_SUITES);
+            const testSuitesToRunInMasterOnly = JSON.parse(process.env.TEST_SUITES_TO_RUN_IN_MASTER_ONLY);
+
+            const ref = '${{ github.base_ref || github.ref }}';
+            const branchName = ref.replace(/^refs\/heads\//, '');
+
+            const isMainBranchRef = branchName === 'master';
+            const isReleaseBranchRef = isReleaseBranch(branchName);
+
+            if (isMainBranchRef) {
+              return {
+                branch_name: '${{ env.SAMPLE_APP_MAIN_BRANCH_NAME }}',
+                matrix: testSuites,
+              };
+            }
+
+            if (isReleaseBranchRef) {
+              const supportedReleasesCount = Number(${{ env.SUPPORTED_RELEASES_COUNT }});
+
+              const currentReleaseVersion = Number(${{ vars.CURRENT_VERSION }});
+              const currentBranchVersion = Number(getMajorVersionNumberFromReleaseBranch(branchName));
+
+              const sampleAppBranchName = `${currentBranchVersion}-${{ env.SAMPLE_APP_STABLE_RELEASE_BRANCH_NAME_SUFFIX }}`
+
+              const shouldRunTestsForVersion = (currentReleaseVersion - currentBranchVersion) <= (supportedReleasesCount - 1);
+              const releaseBranchTestSuites = testSuites.filter(testSuite => !testSuitesToRunInMasterOnly.includes(testSuite));
+
+              return {
+                branch_name: sampleAppBranchName,
+                matrix: shouldRunTestsForVersion
+                  ? releaseBranchTestSuites
+                  : []
+              };
+            }
+
+            return {
+              branch_name: '',
+              matrix: []
+            };
+
+  build:
+    needs: [files-changed, get-build-requirements, get-sample-apps-data]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.files-changed.outputs.e2e_all == 'true' &&
+      fromJSON(needs.get-sample-apps-data.outputs.matrix)[0] != null
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      MB_EDITION: ee
+      INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
+  e2e-tests:
+    needs: [get-build-requirements, get-sample-apps-data, build]
+    strategy:
+      matrix:
+        test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
+    if: |
+      !cancelled() && needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    name: e2e-sample-app-${{ matrix.test_suite }}-tests
+    env:
+      MB_EDITION: ee
+      DISPLAY: ""
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      CYPRESS_IS_EMBEDDING_SDK: true
+      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
+      TZ: US/Pacific # to make node match the instance tz
+      # Sample Apps testing variables
+      CYPRESS_CI: true
+      TEST_SUITE: ${{ matrix.test_suite }}
+      SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Retrieve uberjar artifact for ee
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Check if sample app branch exists
+        id: check-sample-app-branch
+        run: |
+          REPO_NAME="${TEST_SUITE%-e2e}"
+          REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
+          echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
+          if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
+            echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare and launch Sample Apps
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
+        run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts
+
+      - name: Run e2e tests for Sample App
+        id: run-e2e-tests
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
+        run: node e2e/runner/run_cypress_ci.js ${{ matrix.test_suite }} --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.check-sample-app-branch.outputs.branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
+        with:
+          name: cypress-recording-sample-app-${{ matrix.test_suite }}-latest
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore

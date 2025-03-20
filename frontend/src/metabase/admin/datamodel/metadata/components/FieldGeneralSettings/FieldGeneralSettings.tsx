@@ -14,14 +14,14 @@ import Select from "metabase/core/components/Select/Select";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import * as MetabaseCore from "metabase/lib/core";
+import { HAS_FIELD_VALUES_OPTIONS } from "metabase/lib/core";
 import { connect } from "metabase/lib/redux";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldValuesType } from "metabase-types/api";
 
 import FieldRemappingSettings from "../FieldRemappingSettings";
-import FieldVisibilityPicker from "../FieldVisibilityPicker";
+import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
@@ -280,7 +280,7 @@ const FieldValuesTypeSection = ({
       <Select
         className={CS.inlineBlock}
         value={field.has_field_values}
-        options={MetabaseCore.has_field_values_options}
+        options={HAS_FIELD_VALUES_OPTIONS}
         onChange={handleChangeFieldValuesType}
       />
     </MetadataSection>

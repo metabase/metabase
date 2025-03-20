@@ -1,25 +1,22 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button/Button";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Button, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-import FieldVisibilityPicker from "../FieldVisibilityPicker";
+import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
 
-import {
-  ColumnContainer,
-  ColumnInput,
-  FieldSettingsLink,
-} from "./MetadataTableColumn.styled";
+import { ColumnContainer, ColumnInput } from "./MetadataTableColumn.styled";
 
 interface OwnProps {
   field: Field;
@@ -109,17 +106,22 @@ const MetadataTableColumn = ({
                     onUpdateField={onUpdateField}
                   />
                 </div>
-                <FieldSettingsLink
+                <Button
+                  aria-label={t`Field settings`}
+                  component={Link}
+                  justify="center"
+                  mr="sm"
+                  p="10"
                   to={Urls.dataModelField(
                     selectedDatabaseId,
                     selectedSchemaId,
                     selectedTableId,
                     Number(field.id),
                   )}
-                  aria-label={t`Field settings`}
+                  w="40"
                 >
-                  <Button icon="gear" style={{ padding: 10 }} />
-                </FieldSettingsLink>
+                  <Icon name="gear" />
+                </Button>
               </div>
             </div>
           </div>

@@ -9,7 +9,7 @@
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
@@ -68,17 +68,33 @@
          0)))))
 
 (defn- sig-figs-after-decimal
-  [value decimal]
+  "Count the number of significant figures after the decimal point in a number.
+   Examples:
+     - 0.00123 -> 3 (counting 123)
+     - 0.100 -> 1 (counting 1, ignoring trailing zeros)
+     - 1.23 -> 2 (counting 23)
+     - 1.0 -> 0 (no significant figures after decimal)"
+  [value]
   (if (zero? value)
     0
-    (let [val-string (-> (condp = (type value)
-                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                           java.lang.Double (format "%.20f" value)
-                           java.lang.Float (format "%.20f" value)
-                           (str value))
-                         (strip-trailing-zeroes (str decimal)))
-          figs (last (str/split val-string #"[\.0]+"))]
-      (count figs))))
+    (let [;; Convert number to string with appropriate precision
+          val-string (condp = (type value)
+                       java.math.BigDecimal (.toPlainString ^BigDecimal value)
+                       java.lang.Double (format "%.20f" value)
+                       java.lang.Float (format "%.20f" value)
+                       (str value))
+          decimal-idx (str/index-of val-string ".")]
+      (if decimal-idx
+        (let [;; Get everything after the decimal point
+              after-decimal (subs val-string (inc decimal-idx))
+              ;; Find the first non-zero digit (1-9) in the decimal portion
+              first-non-zero (when-let [match (re-find #"[1-9]" after-decimal)]
+                               (str/index-of after-decimal match))]
+          (if first-non-zero
+            ;; Count all digits from first non-zero onwards, excluding trailing zeros
+            (count (str/replace (subs after-decimal first-non-zero) #"0+$" ""))
+            0))
+        0))))
 
 (defn- qualify-keys
   [m]
@@ -96,9 +112,9 @@
     col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
   (let [global-type-settings (try
-                               (common/global-type-settings col viz-settings)
+                               (streaming.common/global-type-settings col viz-settings)
                                (catch Exception _e
-                                 (common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
+                                 (streaming.common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
         col-id               (or col-id (second field-ref))
         column-settings      (-> (get viz-settings ::mb.viz/column-settings)
                                  (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
@@ -159,7 +175,7 @@
                                   percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                   :else       (if (>= (abs scaled-value) 1)
                                                 (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                                (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
+                                                (let [n-figs (sig-figs-after-decimal scaled-value)]
                                                   (if (> n-figs 2)
                                                     (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
                                                     decimals-in-value))))

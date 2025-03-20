@@ -13,10 +13,11 @@ import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -31,7 +32,8 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollection?: CollectionId;
+  targetCollection?: CollectionId;
+  saveToDashboard?: DashboardId;
 };
 
 export const SaveQuestionContext =
@@ -60,9 +62,8 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollection,
+  targetCollection: userTargetCollection,
   children,
-  initialDashboardTabId,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
@@ -71,10 +72,16 @@ export const SaveQuestionProvider = ({
   );
 
   const currentUser = useSelector(getCurrentUser);
+  const { id: collectionId } = useValidatedEntityId({
+    type: "collection",
+    id: userTargetCollection,
+  });
+
   const targetCollection =
-    currentUser && saveToCollection === "personal"
+    collectionId ||
+    (currentUser && userTargetCollection === "personal"
       ? currentUser.personal_collection_id
-      : saveToCollection;
+      : userTargetCollection);
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
@@ -90,23 +97,22 @@ export const SaveQuestionProvider = ({
     }
   }, [isLoading]);
 
-  const defaultDashboard = useMemo(() => {
-    if (!recentItems || recentItems.length === 0) {
-      return undefined;
-    }
-    const lastUsedDashboardIndex = recentItems?.findIndex(
-      item => item.model === "dashboard",
-    );
-    const lastUsedEntityModelIndex = recentItems?.findIndex(
+  const lastSelectedEntityModel = useMemo(() => {
+    return recentItems?.find(
       item => item.model === "collection" || item.model === "dashboard",
     );
-
-    if (lastUsedDashboardIndex === lastUsedEntityModelIndex) {
-      return recentItems[lastUsedDashboardIndex] as RecentCollectionItem;
-    } else {
-      return undefined;
-    }
   }, [recentItems]);
+
+  // we only care about the most recently select dashboard or collection
+  const lastSelectedCollection =
+    lastSelectedEntityModel?.model === "collection"
+      ? lastSelectedEntityModel
+      : undefined;
+
+  const lastSelectedDashboard =
+    lastSelectedEntityModel?.model === "dashboard"
+      ? lastSelectedEntityModel
+      : undefined;
 
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
@@ -114,13 +120,16 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    defaultDashboard?.can_write
-      ? defaultDashboard?.id
+    lastSelectedDashboard?.can_write
+      ? lastSelectedDashboard?.id
       : undefined;
 
-  const initialCollectionId = isAnalytics
-    ? defaultCollectionId
-    : (defaultDashboard?.parent_collection.id ?? defaultCollectionId);
+  const initialCollectionId =
+    (!isAnalytics
+      ? lastSelectedDashboard?.parent_collection.id
+      : defaultCollectionId) ??
+    lastSelectedCollection?.id ??
+    defaultCollectionId;
 
   const initialValues: FormValues = useMemo(
     () =>
@@ -129,15 +138,8 @@ export const SaveQuestionProvider = ({
         question,
         initialCollectionId,
         initialDashboardId,
-        initialDashboardTabId,
       ),
-    [
-      originalQuestion,
-      initialCollectionId,
-      initialDashboardId,
-      question,
-      initialDashboardTabId,
-    ],
+    [originalQuestion, initialCollectionId, initialDashboardId, question],
   );
 
   const handleSubmit = useCallback(
@@ -148,7 +150,7 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollection: targetCollection,
+        targetCollection,
       }),
     [originalQuestion, question, onSave, onCreate, targetCollection],
   );
@@ -165,6 +167,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "model" &&
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
+
+  const saveToDashboard = originalQuestion
+    ? undefined
+    : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider
@@ -184,7 +190,8 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollection,
+            targetCollection,
+            saveToDashboard,
           }}
         >
           {children}

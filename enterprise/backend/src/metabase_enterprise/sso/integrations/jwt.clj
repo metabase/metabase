@@ -25,7 +25,7 @@
   (when-not (sso-settings/jwt-enabled)
     (throw
      (IllegalArgumentException.
-      (str (tru "Can't create new JWT user when JWT is not configured")))))
+      (str (tru "Can''t create new JWT user when JWT is not configured")))))
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
@@ -131,7 +131,7 @@
                :status-code 402}))
     (response/response
      {:status :ok
-      :id     (:id session)
+      :id     (:key session)
       :exp    (:exp jwt-data)
       :iat    (:iat jwt-data)})))
 

@@ -63,20 +63,31 @@
                        :field-id    (second field)
                        :type        qp.error-type/invalid-parameter})))))
 
+(defn- normalize-param
+  [param]
+  (case (:type param)
+    :number/between
+    (let [[l u] (:value param)]
+      (cond-> param
+        (nil? u) (assoc :type :number/>=, :value [l])
+        (nil? l) (assoc :type :number/<=, :value [u])))
+    param))
+
 (mu/defn to-clause :- mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
-  (verify-type-and-arity field param-type param-value)
-  (let [field'  (mbql.u/wrap-field-id-if-needed field)
-        opts-fn (operator-options-fn param-type)]
-    (case (operator-arity param-type)
-      :binary   (opts-fn [(keyword (name param-type)) field' a b] options)
-      :unary    (opts-fn [(keyword (name param-type)) field' a] options)
-      :variadic (opts-fn (into [(keyword (name param-type)) field'] param-value) options)
+  [param]
+  (let [{param-type :type, [a b :as param-value] :value, [_ field] :target, options :options} (normalize-param param)]
+    (verify-type-and-arity field param-type param-value)
+    (let [field'  (mbql.u/wrap-field-id-if-needed field)
+          opts-fn (operator-options-fn param-type)]
+      (case (operator-arity param-type)
+        :binary   (opts-fn [(keyword (name param-type)) field' a b] options)
+        :unary    (opts-fn [(keyword (name param-type)) field' a] options)
+        :variadic (opts-fn (into [(keyword (name param-type)) field'] param-value) options)
 
-      (throw (ex-info (format "Unrecognized operator: %s" param-type)
-                      {:param-type param-type
-                       :param-value param-value
-                       :field-id    (second field)
-                       :type        qp.error-type/invalid-parameter})))))
+        (throw (ex-info (format "Unrecognized operator: %s" param-type)
+                        {:param-type param-type
+                         :param-value param-value
+                         :field-id    (second field)
+                         :type        qp.error-type/invalid-parameter}))))))

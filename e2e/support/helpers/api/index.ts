@@ -1,4 +1,5 @@
 export { addOrUpdateDashboardCard } from "./addOrUpdateDashboardCard";
+export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveQuestion } from "./archiveQuestion";

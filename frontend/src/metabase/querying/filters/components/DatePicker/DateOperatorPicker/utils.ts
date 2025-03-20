@@ -31,7 +31,7 @@ export function getOptionType(value: DatePickerValue | undefined): OptionType {
     case "specific":
       return value.operator;
     case "relative":
-      if (value.value === "current") {
+      if (value.value === 0) {
         return "current";
       } else {
         return value.value < 0 ? "last" : "next";

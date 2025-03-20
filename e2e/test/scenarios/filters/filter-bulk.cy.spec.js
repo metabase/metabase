@@ -459,7 +459,7 @@ describe("scenarios > filters > bulk filtering", () => {
         .contains("Previous 3 months")
         .findByText("Previous 3 months")
         .click();
-      H.modal().findByText("Previous 3 Months").should("be.visible");
+      H.modal().findByText("Previous 3 months").should("be.visible");
 
       applyFilters();
 

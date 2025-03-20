@@ -5,6 +5,7 @@ import { createMockEntitiesState } from "__support__/store";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
+import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
@@ -629,7 +630,7 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          const query = formattedQuestion.legacyQuery() as NativeQuery;
+          const query = formattedQuestion.legacyNativeQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
             "select * from orders {{snippet: bar}}",
@@ -702,16 +703,28 @@ describe("QB Actions > initializeQB", () => {
       const question = new Question(result.card, metadata);
       const query = question.query();
 
-      expect(result.card).toEqual(expectedCard);
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
       expect(Lib.sourceTableOrCardId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = metadata.table(ORDERS_ID)?.question().card();
+      const expectedCard = checkNotNull(
+        metadata.table(ORDERS_ID)?.question().card(),
+      );
 
-      expect(result.card).toEqual(expectedCard);
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
       expect(result.originalCard).toBeUndefined();
     });
 

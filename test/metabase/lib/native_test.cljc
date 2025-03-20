@@ -316,6 +316,7 @@
                             {"foo" {:type :dimension
                                     :id "1"
                                     :name "foo"
+                                    ;; missing :dimension
                                     :widget-type :text
                                     :display-name "foo"}})
                           :question)))
@@ -398,3 +399,52 @@
                                   :name "mytag"
                                   :type :dimension
                                   :widget-type :date/range}}))))
+
+(deftest ^:parallel remove-template-tags-when-changing-database
+  (let [query (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+                  (lib/with-template-tags {"mytag"
+                                           {:default nil
+                                            :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                            :display-name "My Tag"
+                                            :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                            :name "mytag"
+                                            :type :dimension
+                                            :widget-type :date/range}}))]
+    (testing "remove dimensions from template tags"
+      (is (empty? (-> query
+                      (lib/with-different-database
+                        (meta.graph-provider/->SimpleGraphMetadataProvider
+                         (assoc meta/metadata :id 9999)))
+                      lib/template-tags
+                      vals
+                      (->> (filter :dimension))))))))
+
+(deftest ^:parallel native-query-idents-test
+  (let [card  (:venues/native (lib.tu/mock-cards))
+        mp    (lib.tu/metadata-provider-with-mock-card card)
+        query (lib/query mp (lib.metadata/card mp (:id card)))]
+    (is (=? [{:name         "ID"
+              :display-name "ID"
+              :ident        (lib/native-ident "ID" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "NAME"
+              :display-name "Name"
+              :ident        (lib/native-ident "NAME" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "CATEGORY_ID"
+              :display-name "Category ID"
+              :ident        (lib/native-ident "CATEGORY_ID" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "LATITUDE"
+              :display-name "Latitude"
+              :ident        (lib/native-ident "LATITUDE" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "LONGITUDE"
+              :display-name "Longitude"
+              :ident        (lib/native-ident "LONGITUDE" (:entity_id card))
+              :lib/source   :source/card}
+             {:name         "PRICE"
+              :display-name "Price"
+              :ident        (lib/native-ident "PRICE" (:entity_id card))
+              :lib/source   :source/card}]
+            (lib/returned-columns query)))))

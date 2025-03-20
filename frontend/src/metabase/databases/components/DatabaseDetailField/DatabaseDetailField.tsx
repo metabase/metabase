@@ -23,7 +23,7 @@ const DatabaseDetailField = ({
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
   const props = {
-    autoFocus,
+    ...(autoFocus ? { autoFocus, "data-autofocus": autoFocus } : {}),
     ...getFieldProps(field, override),
   };
 

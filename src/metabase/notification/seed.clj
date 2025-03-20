@@ -3,7 +3,7 @@
   No-op if none of the notifications are changed.
   If a notification is changed, it will be replaced with a new one."
   (:require
-   [metabase.models.notification :as models.notification]
+   [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]

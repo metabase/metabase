@@ -20,7 +20,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hasMetadataPopovers",
   "tableHeaderHeight",
   "scrollToColumn",
-  "renderTableHeaderWrapper",
+  "renderTableHeader",
   "mode",
   "renderEmptyMessage",
 ];
@@ -103,7 +103,6 @@ export default class VisualizationResult extends Component {
           />
           {showCreateAlertModal && (
             <CreateOrEditQuestionAlertModal
-              opened
               onClose={this.onCloseCreateAlertModal}
               onAlertCreated={this.onCloseCreateAlertModal}
             />
@@ -141,6 +140,7 @@ export default class VisualizationResult extends Component {
             onOpenChartSettings={this.props.onOpenChartSettings}
             onUpdateQuestion={this.props.onUpdateQuestion}
             onUpdateWarnings={this.props.onUpdateWarnings}
+            onHeaderColumnReorder={this.props.onHeaderColumnReorder}
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }

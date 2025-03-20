@@ -32,9 +32,11 @@ export const ColorSelector = ({
   return (
     <Popover
       withinPortal={withinPortal}
+      floatingStrategy="fixed"
       opened={opened}
-      onClose={close}
+      onDismiss={close}
       position="bottom-start"
+      trapFocus
     >
       <Popover.Target>
         <Center data-testid="color-selector-button">

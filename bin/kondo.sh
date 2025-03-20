@@ -10,6 +10,12 @@
 
 set -euo pipefail
 
+echo "This script is deprecated. Please use mage instead."
+echo "see:"
+echo "./bin/mage"
+echo "and"
+echo "./bin/mage kondo -h"
+
 # make sure we're in the root dir of the metabase repo i.e. the parent dir of the dir this script lives in
 script_dir=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_dir/.."

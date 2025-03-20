@@ -479,9 +479,11 @@
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
   that all relevant fields are the same."
   [original-result cached-result]
-  (let [clean-result (fn [result]
+  (let [clean-col    #(dissoc % :ident :lib/source-uuid :lib/source_uuid)
+        clean-result (fn [result]
                        (-> result
                            (dissoc :running_time :average_execution_time :started_at :cached)
+                           (update-in [:data :cols] #(mapv clean-col %))
                            (m/dissoc-in [:json_query :cache-strategy])))]
     (is (= (clean-result original-result)
            (clean-result cached-result)))))

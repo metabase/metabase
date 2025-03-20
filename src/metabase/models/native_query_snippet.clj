@@ -67,7 +67,7 @@
             (complement #(boolean (re-find #"^\s+" %)))
             (complement #(boolean (re-find #"}" %))))
            x))]
-   (deferred-tru "snippet names cannot include '}' or start with spaces")))
+   (deferred-tru "snippet names cannot include ''}'' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

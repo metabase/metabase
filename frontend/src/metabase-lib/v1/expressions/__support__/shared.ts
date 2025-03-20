@@ -1,6 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import type {
+  Expression,
+  FieldReference,
+  LocalFieldReference,
+} from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -13,6 +18,8 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import type { FormatOptions } from "../formatter";
 
 const SEGMENT_ID = 1;
 
@@ -41,22 +48,20 @@ const metadata = createMockMetadata({
   ],
 });
 
-const created = checkNotNull(metadata.field(ORDERS.CREATED_AT))
-  .dimension()
-  .mbql();
-const total = checkNotNull(metadata.field(ORDERS.TOTAL)).dimension().mbql();
-const subtotal = checkNotNull(metadata.field(ORDERS.SUBTOTAL))
-  .dimension()
-  .mbql();
-const tax = checkNotNull(metadata.field(ORDERS.TAX)).dimension().mbql();
-const userId = checkNotNull(metadata.field(ORDERS.USER_ID)).dimension().mbql();
-const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
-  .foreign(metadata.field(PEOPLE.NAME))
-  .mbql();
+const created: LocalFieldReference = ["field", ORDERS.CREATED_AT, null];
+const total: LocalFieldReference = ["field", ORDERS.TOTAL, null];
+const subtotal: LocalFieldReference = ["field", ORDERS.SUBTOTAL, null];
+const tax: LocalFieldReference = ["field", ORDERS.TAX, null];
+const userId: LocalFieldReference = ["field", ORDERS.USER_ID, null];
+const userName: FieldReference = [
+  "field",
+  PEOPLE.NAME,
+  { "source-field": ORDERS.USER_ID },
+];
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 
-const query = createQueryWithClauses({
+export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
   expressions: [
     {
@@ -74,7 +79,7 @@ const stageIndex = -1;
 //
 // (if mbql is `null` then expression should NOT compile)
 //
-const expression = [
+const expression: TestCase[] = [
   ["1", 1, "number literal"],
   ["1 + -1", ["+", 1, -1], "negative number literal"],
   ["1 * 2 + 3", ["+", ["*", 1, 2], 3], "operators ordered by precedence"],
@@ -113,6 +118,8 @@ const expression = [
     ["concat", "http://mysite.com/user/", userId, "/"],
     "function with 3 arguments",
   ],
+  ["text([User ID])", ["text", userId], "text function"],
+  ['integer("10")', ["integer", "10"], "integer function"],
   [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [
@@ -311,7 +318,7 @@ const expression = [
   ],
 ];
 
-const aggregation = [
+const aggregation: TestCase[] = [
   ["Count", ["count"], "aggregation with no arguments"],
   ["Sum([Total])", ["sum", total], "aggregation with one argument"],
   ["1 - Count", ["-", 1, ["count"]], "aggregation with math outside"],
@@ -355,9 +362,14 @@ const aggregation = [
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
+  [
+    "DistinctIf([User ID], [Total] > 50)",
+    ["distinct-where", userId, [">", total, 50]],
+    "distinct-where aggregation",
+  ],
 ];
 
-const filter = [
+const filter: TestCase[] = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
   [
     "floor([Total]) < 10",
@@ -381,6 +393,11 @@ const filter = [
     ["time-interval", created, -1, "month"],
     "time interval filter",
   ],
+  [
+    'intervalStartingFrom([Created At], -1, "month", -2, "years")',
+    ["relative-time-interval", created, -1, "month", -2, "years"],
+    "relative time interval filter",
+  ],
   ["[Expensive Things]", segment, "segment"],
   ["NOT [Expensive Things]", ["not", segment], "not segment"],
   [
@@ -400,22 +417,21 @@ const filter = [
   ],
   ["notnull([Tax])", ["not-null", tax], "not null"],
   ["notempty([Total])", ["not-empty", total], "not empty"],
+  ["NOT isnull([Tax])", ["not", ["is-null", tax]], "not is null"],
+  ["NOT isempty([Tax])", ["not", ["is-empty", tax]], "not is empty"],
+  [
+    'NOT doesNotContain([Tax], "John")',
+    ["not", ["does-not-contain", tax, "John"]],
+    "not does not contain",
+  ],
 ];
 
-export const dataForFormatting = [
-  ["expression", expression, { startRule: "expression", query, stageIndex }],
-  ["aggregation", aggregation, { startRule: "aggregation", query, stageIndex }],
-  ["filter", filter, { startRule: "boolean", query, stageIndex }],
-];
+type TestCase = [string, Expression | undefined, string];
 
-/**
- * @type {import("metabase-lib/v1/metadata/Table").default}
- */
-export const ordersTable = metadata.table(ORDERS_ID);
-
-/**
- * @type {import("metabase-lib/v1/metadata/Field").default}
- */
-export const ordersTotalField = metadata.field(ORDERS.TOTAL);
+export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
+  ["expression", expression, { query, stageIndex }],
+  ["aggregation", aggregation, { query, stageIndex }],
+  ["filter", filter, { query, stageIndex }],
+] as const;
 
 export const sharedMetadata = metadata;

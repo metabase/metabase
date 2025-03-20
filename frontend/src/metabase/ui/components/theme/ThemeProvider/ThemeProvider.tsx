@@ -12,9 +12,6 @@ import { type ReactNode, useMemo } from "react";
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
 
-import "@mantine/core/styles.css"; // TODO: how to use in embedding?
-import "@mantine/dates/styles.css";
-
 interface ThemeProviderProps {
   children: ReactNode;
 

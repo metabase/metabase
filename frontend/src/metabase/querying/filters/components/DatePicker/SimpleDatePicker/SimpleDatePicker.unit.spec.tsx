@@ -56,7 +56,7 @@ describe("SimpleDatePicker", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       type: "relative",
-      value: "current",
+      value: 0,
       unit: "month",
     });
   });

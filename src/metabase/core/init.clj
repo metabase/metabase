@@ -1,5 +1,5 @@
 (ns metabase.core.init
-  "Loads all OSS namespaces that need to be loaded for side effects on system launch. By convention, these
+  "Loads all namespaces that need to be loaded for side effects on system launch. By convention, these
   namespaces should follow the pattern
 
     metabase.<module-name>.init
@@ -13,6 +13,7 @@
    [metabase.driver.init]
    [metabase.events.init]
    [metabase.indexed-entities.init]
+   [metabase.lib-be.init]
    [metabase.logger.init]
    [metabase.login-history.init]
    [metabase.model-persistence.init]

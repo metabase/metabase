@@ -269,3 +269,13 @@
                         :fk-target-field-id nil}]
       (is (=? expected-col
               (#'lib.card/->card-metadata-column col card-id card field))))))
+
+(deftest ^:parallel source-card-type-test
+  (is (= :model (lib.card/source-card-type (lib.tu/query-with-source-model))))
+  (is (= :question (lib.card/source-card-type (lib.tu/query-with-source-card))))
+  (is (nil? (lib.card/source-card-type (lib/query meta/metadata-provider (meta/table-metadata :orders))))))
+
+(deftest ^:parallel source-card-is-model?-test
+  (is (lib.card/source-card-is-model? (lib.tu/query-with-source-model)))
+  (is (not (lib.card/source-card-is-model? (lib.tu/query-with-source-card))))
+  (is (not (lib.card/source-card-is-model? (lib/query meta/metadata-provider (meta/table-metadata :orders))))))

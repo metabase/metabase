@@ -3,7 +3,8 @@ import { IndexRedirect, IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
+import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
+import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
@@ -34,10 +35,7 @@ import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
 import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
-import {
-  createAdminRedirect,
-  createAdminRouteGuard,
-} from "metabase/admin/utils";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -67,10 +65,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
-        <Route path="create" component={IsAdmin}>
-          <IndexRoute component={DatabaseEditApp} />
+        <Route component={DatabaseListApp}>
+          <Route component={IsAdmin}>
+            <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
+          </Route>
         </Route>
-        <Route path=":databaseId" component={DatabaseEditApp} />
+        <Route path=":databaseId" component={DatabaseEditApp}>
+          <ModalRoute path="edit" modal={DatabaseConnectionModal} />
+        </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`} component={DataModelApp}>
@@ -133,7 +135,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
-        <IndexRoute component={createAdminRedirect("setup", "general")} />
+        <IndexRedirect to="general" />
         <Route title={t`Settings`}>
           <Route path="*" component={SettingsEditor} />
         </Route>

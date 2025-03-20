@@ -14,7 +14,7 @@ If your database connection is successful, but the tables aren't showing up in t
 
 1. Go to **Admin** > **Databases** and select your database to confirm that your connection hasn’t been changed or deleted.
 
-   - If Metabase hasn't started syncing with your database, click **Sync database schema now**.
+   - If Metabase hasn't started syncing with your database, click **Sync database schema**.
 
    - If Metabase is taking a long time to sync, go to [Troubleshooting syncs and scans](./sync-fingerprint-scan.md).
 

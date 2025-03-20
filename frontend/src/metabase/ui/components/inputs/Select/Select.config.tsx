@@ -1,7 +1,8 @@
 import { Select } from "@mantine/core";
 
 import S from "./Select.module.css";
-import { SelectItem } from "./SelectItem";
+import { DefaultSelectItem } from "./SelectItem";
+
 export const selectOverrides = {
   Select: Select.extend({
     defaultProps: {
@@ -11,7 +12,7 @@ export const selectOverrides = {
       allowDeselect: false,
       inputWrapperOrder: ["label", "description", "input", "error"],
       renderOption: item => (
-        <SelectItem {...item.option} selected={item.checked} />
+        <DefaultSelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
         color: "text-dark",

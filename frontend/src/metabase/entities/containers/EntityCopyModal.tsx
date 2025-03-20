@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import ModalContent from "metabase/components/ModalContent";
-import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
+import {
+  CopyDashboardFormConnected,
+  type CopyDashboardFormProperties,
+} from "metabase/dashboard/containers/CopyDashboardForm";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
@@ -14,7 +17,7 @@ interface EntityCopyModalProps {
   onClose: () => void;
   onSaved: (newEntityObject?: any) => void;
   overwriteOnInitialValuesChange?: boolean;
-  onValuesChange?: (values: Record<string, unknown>) => void;
+  onValuesChange?: (values: CopyDashboardFormProperties) => void;
   form?: any;
 }
 
@@ -56,6 +59,7 @@ const EntityCopyModal = ({
           onSaved={onSaved}
           initialValues={initialValues}
           {...props}
+          originalDashboardId={resolvedObject.id}
         />
       )}
       {entityType === "questions" && (
