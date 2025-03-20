@@ -213,3 +213,10 @@
     (binding [*svg-render-width*  (float 33)
               *svg-render-height* (float 33)]
       (svg-string->bytes svg-string))))
+
+(defn minibar
+  "Clojure entrypoint to render a minibar chart."
+  [data]
+  (let [svg-str (.asString (js.engine/execute-fn-name (context) "minibar"
+                                                      (json/encode data)))]
+    (svg-string->bytes svg-str)))

@@ -6,6 +6,7 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/lib/dayjs";
 
+import { formatValue } from "metabase/lib/formatting";
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
@@ -13,6 +14,8 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { extractRemappings } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+
+import { MiniBarCell } from "../visualizations/components/TableInteractive/cells/MiniBarCell";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -64,6 +67,20 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
     <StaticVisualization
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
+    />,
+  );
+}
+
+export function RenderMinibar(data) {
+  // TSP TODO - formatter needs to respect column settings
+  return ReactDOMServer.renderToStaticMarkup(
+    <MiniBarCell
+      value={data.value}
+      extent={data.extent || [0, 100]}
+      formatter={value => formatValue(value, { jsx: true, type: "cell" })}
+      rowIndex={data.rowIndex || 0}
+      columnId={data.columnId || "test"}
+      isStatic={true}
     />,
   );
 }

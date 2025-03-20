@@ -140,6 +140,7 @@
    rows
    viz-settings
    {:keys [bar-column min-value max-value]}]
+  (def rows rows)
   (let [formatters (into []
                          (map #(formatter/create-formatter timezone-id % viz-settings))
                          cols)]
@@ -231,30 +232,40 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar's are enabled"
+  [cols viz-settings]
+  (let [column-settings (::mb.viz/column-settings viz-settings)]
+    (filter (fn [col]
+              (when-let [settings (get column-settings {::mb.viz/column-name (:name col)})]
+                (::mb.viz/show-mini-bar settings)))
+            cols)))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
    timezone-id :- [:maybe :string]
    card
-   _dashcard
+   dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
   (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
-        table-body                  [:div
-                                     (table/render-table
-                                      (js.color/make-color-selector unordered-data viz-settings)
-                                      {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
-    {:attachments
-     nil
-
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
+        table-result                (table/render-table
+                                     (js.color/make-color-selector unordered-data viz-settings)
+                                     {:cols-for-color-lookup (mapv :name filtered-cols)
+                                      :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                     (prep-for-html-rendering timezone-id card data)
+                                     viz-settings
+                                     minibar-cols)]
+    {:attachments (:attachments table-result)
      :content
-     table-body}))
+     [:div
+      (:content table-result)
+      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]}))
 
 (def ^:private default-date-styles
   {:year "YYYY"
