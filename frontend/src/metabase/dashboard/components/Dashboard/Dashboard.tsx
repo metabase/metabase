@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Query } from "history";
 
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
@@ -14,7 +13,6 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
-import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
@@ -28,13 +26,7 @@ import {
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
 
-export type DashboardProps = {
-  parameterQueryParams: Query;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-};
-
-function Dashboard(props: DashboardProps) {
-  const { parameterQueryParams } = props;
+function Dashboard() {
   const dispatch = useDispatch();
 
   const {
@@ -87,6 +79,7 @@ function Dashboard(props: DashboardProps) {
     downloadsEnabled,
     autoScrollToDashcardId,
     reportAutoScrolledToDashcard,
+    parameterQueryParams,
   } = useDashboardContext();
 
   const renderEmptyStates = () => {

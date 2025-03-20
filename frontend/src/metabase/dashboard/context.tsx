@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import {
   createContext,
   useCallback,
@@ -7,52 +7,110 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { ConnectedProps } from "react-redux";
+import { push } from "react-router-redux";
 import { usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { closeDashboard, reset } from "metabase/dashboard/actions";
+import {
+  addActionToDashboard,
+  addCardToDashboard,
+  addHeadingDashCardToDashboard,
+  addIFrameDashCardToDashboard,
+  addLinkDashCardToDashboard,
+  addMarkdownDashCardToDashboard,
+  addParameter,
+  addSectionToDashboard,
+  applyDraftParameterValues,
+  cancelFetchDashboardCardData,
+  closeDashboard,
+  closeSidebar,
+  fetchDashboard,
+  fetchDashboardCardData,
+  hideAddParameterPopover,
+  initialize,
+  navigateToNewCardFromDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  removeParameter,
+  reset,
+  resetParameters,
+  setDashboardAttributes,
+  setEditingDashboard,
+  setParameterDefaultValue,
+  setParameterFilteringParameters,
+  setParameterIsMultiSelect,
+  setParameterName,
+  setParameterQueryType,
+  setParameterRequired,
+  setParameterSourceConfig,
+  setParameterSourceType,
+  setParameterTemporalUnits,
+  setParameterType,
+  setSharing,
+  setSidebar,
+  showAddParameterPopover,
+  toggleSidebar,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import type { SectionLayout } from "metabase/dashboard/sections";
 import type {
   CancelledFetchDashboardResult,
   FetchDashboardResult,
+  RefreshPeriod,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { connect, useDispatch } from "metabase/lib/redux";
+import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissAllUndo, dismissUndo } from "metabase/redux/undo";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import {
+  canManageSubscriptions,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type {
-  CardId,
-  DashCardId,
-  DashCardVisualizationSettings,
   DashboardCard,
   DashboardId,
-  DashboardTabId,
   Dashboard as IDashboard,
-  ParameterId,
-  ParameterValueOrArray,
-  TemporalUnit,
-  ValuesQueryType,
-  ValuesSourceConfig,
-  ValuesSourceType,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
-import type {
-  DashboardSidebarName,
-  SelectedTabId,
-  State,
-} from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { DASHBOARD_SLOW_TIMEOUT, SIDEBAR_NAME } from "./constants";
+import {
+  getCanResetFilters,
+  getClickBehaviorSidebarDashcard,
+  getDashboardBeforeEditing,
+  getDashboardComplete,
+  getDocumentTitle,
+  getFavicon,
+  getIsAddParameterPopoverOpen,
+  getIsAdditionalInfoVisible,
+  getIsDashCardsLoadingComplete,
+  getIsDashCardsRunning,
+  getIsDirty,
+  getIsEditing,
+  getIsEditingParameter,
+  getIsHeaderVisible,
+  getIsNavigatingBackToDashboard,
+  getIsSharing,
+  getLoadingStartTime,
+  getMissingRequiredParameters,
+  getParameterValues,
+  getSelectedTabId,
+  getSidebar,
+  getSlowCards,
+} from "./selectors";
 
 // Utility functions
 function isSuccessfulFetchDashboardResult(
@@ -68,114 +126,93 @@ function isCancelledFetchDashboardResult(
   return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }
 
-// Define a base type with common properties for both context and props
-type DashboardSharedProps = {
-  // Dashboard props
-  dashboard: IDashboard | null;
-  dashboardId: DashboardId;
-  isEditing: boolean;
-  isSharing: boolean;
-  dashboardBeforeEditing: IDashboard | null;
-  isEditingParameter: boolean;
-  isDirty: boolean;
-  slowCards: Record<DashCardId, boolean>;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
-  isAddParameterPopoverOpen: boolean;
-  sidebar: State["dashboard"]["sidebar"];
-  isHeaderVisible: boolean;
-  isAdditionalInfoVisible: boolean;
-  selectedTabId: SelectedTabId;
-  isNavigatingBackToDashboard: boolean;
-  canManageSubscriptions: boolean;
-  isAdmin: boolean;
-  isNavbarOpen: boolean;
-  parameterQueryParams: any;
-
-  // Action functions
-  initialize: (opts?: { clearCache?: boolean }) => void;
-  cancelFetchDashboardCardData: () => void;
-  addCardToDashboard: (opts: {
-    dashId: DashboardId;
-    cardId: CardId;
-    tabId: DashboardTabId | null;
-  }) => void;
-  addHeadingDashCardToDashboard: (opts: any) => void;
-  addMarkdownDashCardToDashboard: (opts: any) => void;
-  addLinkDashCardToDashboard: (opts: any) => void;
-  setEditingDashboard: (dashboard: IDashboard | null) => void;
-  setDashboardAttributes: (opts: any) => void;
-  setSharing: (isSharing: boolean) => void;
-  toggleSidebar: (sidebarName: DashboardSidebarName) => void;
-  closeSidebar: () => void;
-  closeNavbar: () => void;
-  setErrorPage: (error: unknown) => void;
-  setParameterName: (id: ParameterId, name: string) => void;
-  setParameterType: (id: ParameterId, type: string, sectionId: string) => void;
-  navigateToNewCardFromDashboard: (opts: any) => void;
-  setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
-  setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setParameterTemporalUnits: (
-    id: ParameterId,
-    temporalUnits: TemporalUnit[],
-  ) => void;
-  setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
-  setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
-  setParameterSourceType: (
-    id: ParameterId,
-    sourceType: ValuesSourceType,
-  ) => void;
-  setParameterSourceConfig: (
-    id: ParameterId,
-    config: ValuesSourceConfig,
-  ) => void;
-  setParameterFilteringParameters: (
-    parameterId: ParameterId,
-    filteringParameters: ParameterId[],
-  ) => void;
-  showAddParameterPopover: () => void;
-  removeParameter: (id: ParameterId) => void;
-  onReplaceAllDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: DashCardVisualizationSettings | null | undefined,
-  ) => void;
-  onUpdateDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: DashCardVisualizationSettings | null | undefined,
-  ) => void;
-  onUpdateDashCardColumnSettings: (
-    id: DashCardId,
-    columnKey: string,
-    settings?: Record<string, unknown> | null,
-  ) => void;
-  updateDashboardAndCards: () => void;
-  setSidebar: (opts: { name: DashboardSidebarName }) => void;
-  hideAddParameterPopover: () => void;
-  fetchDashboard: (opts: {
-    dashId: DashboardId;
-    queryParams: any;
-    options?: {
-      clearCache?: boolean;
-      preserveParameters?: boolean;
-    };
-  }) => Promise<FetchDashboardResult>;
-  fetchDashboardCardData: (opts?: {
-    isRefreshing?: boolean;
-    reload?: boolean;
-    clearCache?: boolean;
-  }) => void;
-  addParameter: (options: ParameterMappingOption) => any;
+const mapStateToProps = (state: State) => {
+  return {
+    canManageSubscriptions: canManageSubscriptions(state),
+    isAdmin: getUserIsAdmin(state),
+    isNavbarOpen: getIsNavbarOpen(state),
+    isEditing: getIsEditing(state),
+    isSharing: getIsSharing(state),
+    dashboardBeforeEditing: getDashboardBeforeEditing(state),
+    isEditingParameter: getIsEditingParameter(state),
+    isDirty: getIsDirty(state),
+    dashboard: getDashboardComplete(state),
+    slowCards: getSlowCards(state),
+    parameterValues: getParameterValues(state),
+    loadingStartTime: getLoadingStartTime(state),
+    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
+    isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
+    sidebar: getSidebar(state),
+    pageFavicon: getFavicon(state),
+    documentTitle: getDocumentTitle(state),
+    isRunning: getIsDashCardsRunning(state),
+    isLoadingComplete: getIsDashCardsLoadingComplete(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+    selectedTabId: getSelectedTabId(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+    missingRequiredParameters: getMissingRequiredParameters(state),
+    canResetFilters: getCanResetFilters(state),
+  };
 };
 
-// Define the context type
+const mapDispatchToProps = {
+  initialize,
+  cancelFetchDashboardCardData,
+  addCardToDashboard,
+  addHeadingDashCardToDashboard,
+  addMarkdownDashCardToDashboard,
+  addLinkDashCardToDashboard,
+  setEditingDashboard,
+  setDashboardAttributes,
+  setSharing,
+  toggleSidebar,
+  closeSidebar,
+  closeNavbar,
+  setErrorPage,
+  setParameterName,
+  setParameterType,
+  navigateToNewCardFromDashboard,
+  setParameterDefaultValue,
+  setParameterRequired,
+  setParameterTemporalUnits,
+  setParameterIsMultiSelect,
+  setParameterQueryType,
+  setParameterSourceType,
+  setParameterSourceConfig,
+  setParameterFilteringParameters,
+  showAddParameterPopover,
+  removeParameter,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  updateDashboardAndCards,
+  setSidebar,
+  hideAddParameterPopover,
+  fetchDashboard,
+  fetchDashboardCardData,
+  onChangeLocation: push,
+  addParameter,
+  addIFrameDashCardToDashboard,
+  addActionToDashboard,
+  addSectionToDashboard,
+  resetParameters,
+  applyDraftParameterValues,
+};
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type DashboardSharedProps = Omit<ReduxProps, "onChangeLocation"> & {
+  parameterQueryParams: Query;
+};
+
 type DashboardContextType = DashboardSharedProps & {
-  // State
   isInitialized: boolean;
   error: unknown;
   currentTabDashcards: DashboardCard[];
   tabHasCards: boolean;
-  dashboardHasCards: boolean;
+  dashboardHasCards: boolean | null;
   canWrite: boolean;
   canRestore: boolean;
   canDelete: boolean;
@@ -183,9 +220,7 @@ type DashboardContextType = DashboardSharedProps & {
   addCardOnLoad?: number;
   editingOnLoad?: string | string[] | boolean;
   autoScrollToDashcardId: number | undefined;
-  missingRequiredParameters: UiParameter[];
 
-  // Dashboard props (already extended from DashboardSharedProps)
   isFullscreen: boolean;
   isNightMode: boolean;
   hasNightModeToggle: boolean;
@@ -194,14 +229,12 @@ type DashboardContextType = DashboardSharedProps & {
   downloadsEnabled: boolean;
   noLoaderWrapper: boolean;
 
-  // Display controls
   onNightModeChange: (isNightMode: boolean) => void;
   onFullscreenChange: (isFullscreen: boolean, setUrl?: boolean) => void;
-  setRefreshElapsedHook: (hook: (() => void) | null) => void;
+  setRefreshElapsedHook: (hook: (newPeriod: RefreshPeriod) => void) => void;
   setElapsed: (elapsed: number | null) => void;
   onRefreshPeriodChange: (period: number | null) => void;
 
-  // Functions
   handleSetEditing: (dashboard: IDashboard | null) => void;
   handleAddQuestion: () => void;
   refreshDashboard: () => void;
@@ -211,50 +244,32 @@ type DashboardContextType = DashboardSharedProps & {
   onResetFilters?: () => void;
   openSettingsSidebar?: () => void;
 
-  // Additional functions
-  addIFrameDashCardToDashboard: (opts: any) => void;
-  addActionToDashboard: (opts: any) => void;
-  addSectionToDashboard: (opts: {
-    dashId: DashboardId;
-    tabId: DashboardTabId | null;
-    sectionLayout: SectionLayout;
-  }) => void;
-
-  // PDF Export
   saveDashboardPdf?: (selector: string, filename: string) => void;
 };
 
-// Create props type extending the base type
-type ContextProviderProps = DashboardSharedProps & {
+type OwnProps = {
   children: React.ReactNode;
   location: Location;
-  isRunning: boolean;
-  isLoadingComplete: boolean;
+  dashboardId: DashboardId;
 
-  // Optional additional props
-  missingRequiredParameters?: UiParameter[];
-  addIFrameDashCardToDashboard?: (opts: any) => void;
-  addActionToDashboard?: (opts: any) => void;
-  addSectionToDashboard?: (opts: any) => void;
-  saveDashboardPdf?: (selector: string, filename: string) => void;
-  canResetFilters?: boolean;
-  onResetFilters?: () => void;
-  openSettingsSidebar?: () => void;
   downloadsEnabled?: boolean;
   noLoaderWrapper?: boolean;
 };
 
-// Create the context with a default value
+type ContextProviderProps = DashboardSharedProps & OwnProps;
+
 const DashboardContext = createContext<DashboardContextType | undefined>(
   undefined,
 );
 
-// Create a provider component
-export function DashboardContextProvider({
+function BaseDashboardContextProvider({
   children,
-  // Props from shared props
-  dashboard,
+  location,
   dashboardId,
+  downloadsEnabled = true,
+  noLoaderWrapper = false,
+
+  dashboard,
   isEditing,
   isSharing,
   dashboardBeforeEditing,
@@ -309,21 +324,17 @@ export function DashboardContextProvider({
   hideAddParameterPopover,
   fetchDashboard,
   fetchDashboardCardData,
-
-  // Additional props not in shared props
-  location,
+  documentTitle,
+  pageFavicon,
   isRunning,
   isLoadingComplete,
   missingRequiredParameters = [],
   addIFrameDashCardToDashboard,
   addActionToDashboard,
   addSectionToDashboard,
-  saveDashboardPdf,
   canResetFilters,
-  onResetFilters,
-  openSettingsSidebar,
-  downloadsEnabled = true,
-  noLoaderWrapper = false,
+  applyDraftParameterValues,
+  resetParameters,
 }: ContextProviderProps) {
   const dispatch = useDispatch();
   const [isInitialized, setIsInitialized] = useState(false);
@@ -360,6 +371,15 @@ export function DashboardContextProvider({
     dashboardId: dashboardId,
     parameterQueryParams,
   });
+
+  const onResetFilters = useCallback(async () => {
+    await resetParameters();
+    await applyDraftParameterValues();
+  }, [applyDraftParameterValues, resetParameters]);
+
+  const openSettingsSidebar = useCallback(() => {
+    setSidebar({ name: SIDEBAR_NAME.settings });
+  }, [setSidebar]);
 
   const {
     hasNightModeToggle,
@@ -560,40 +580,6 @@ export function DashboardContextProvider({
     dispatch(dismissAllUndo());
   }, [dispatch]);
 
-  // Create safe versions of optional functions
-  const safeAddIFrameDashCardToDashboard = useCallback(
-    (opts: any) => {
-      if (addIFrameDashCardToDashboard) {
-        addIFrameDashCardToDashboard(opts);
-      } else {
-        console.warn("addIFrameDashCardToDashboard not provided");
-      }
-    },
-    [addIFrameDashCardToDashboard],
-  );
-
-  const safeAddActionToDashboard = useCallback(
-    (opts: any) => {
-      if (addActionToDashboard) {
-        addActionToDashboard(opts);
-      } else {
-        console.warn("addActionToDashboard not provided");
-      }
-    },
-    [addActionToDashboard],
-  );
-
-  const safeAddSectionToDashboard = useCallback(
-    (opts: any) => {
-      if (addSectionToDashboard) {
-        addSectionToDashboard(opts);
-      } else {
-        console.warn("addSectionToDashboard not provided");
-      }
-    },
-    [addSectionToDashboard],
-  );
-
   const [elapsed, setElapsed] = useState<number | null>(null);
 
   if (setRefreshElapsedHook) {
@@ -705,13 +691,19 @@ export function DashboardContextProvider({
       elapsed,
       setElapsed,
 
-      // Additional functions with safe defaults
-      addIFrameDashCardToDashboard: safeAddIFrameDashCardToDashboard,
-      addActionToDashboard: safeAddActionToDashboard,
-      addSectionToDashboard: safeAddSectionToDashboard,
+      addIFrameDashCardToDashboard,
+      addActionToDashboard,
+      addSectionToDashboard,
+
+      isLoadingComplete,
+      isRunning,
+
+      resetParameters,
+      applyDraftParameterValues,
+      pageFavicon,
+      documentTitle,
     }),
     [
-      // Shared props dependencies
       dashboard,
       dashboardId,
       isEditing,
@@ -768,8 +760,6 @@ export function DashboardContextProvider({
       hideAddParameterPopover,
       fetchDashboard,
       fetchDashboardCardData,
-
-      // Context-specific dependencies
       isInitialized,
       error,
       currentTabDashcards,
@@ -801,12 +791,17 @@ export function DashboardContextProvider({
       canResetFilters,
       onResetFilters,
       openSettingsSidebar,
-      saveDashboardPdf,
-      safeAddIFrameDashCardToDashboard,
-      safeAddActionToDashboard,
-      safeAddSectionToDashboard,
       elapsed,
-      setElapsed,
+      addIFrameDashCardToDashboard,
+      addActionToDashboard,
+      addSectionToDashboard,
+      isLoadingComplete,
+      isRunning,
+      resetParameters,
+      applyDraftParameterValues,
+
+      pageFavicon,
+      documentTitle,
     ],
   );
 
@@ -816,6 +811,8 @@ export function DashboardContextProvider({
     </DashboardContext.Provider>
   );
 }
+
+export const DashboardContextProvider = connector(BaseDashboardContextProvider);
 
 // Create a custom hook to use the dashboard context
 export function useDashboardContext() {
