@@ -6,11 +6,13 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect } from "react";
 import { usePrevious, useUnmount } from "react-use";
+import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex } from "metabase/ui";
+import { Box, Button, Flex, Icon, Title } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
@@ -160,6 +162,8 @@ export const Visualizer = (props: VisualizerProps) => {
     .filter(Boolean)
     .join(" ");
 
+  const [dataImporterOpen, handlers] = useDisclosure(false);
+
   return (
     <DndContext
       sensors={[canvasSensor]}
@@ -177,14 +181,57 @@ export const Visualizer = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          <Flex direction="column" miw={320} p="md" h="100%">
-            <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
-              <DataImporter />
-            </Box>
-            <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
+          {dataImporterOpen ? (
+            <Flex direction="column" miw={320} h="100%">
+              <Box p="md" h="91%">
+                <Flex align="center">
+                  <Title order={4} mb="xs">{t`Add data`}</Title>
+                  <Button
+                    size="xs"
+                    variant="transparent"
+                    ml="auto"
+                    onClick={() => handlers.toggle()}
+                  >{t`Done`}</Button>
+                </Flex>
+                <DataImporter />
+              </Box>
+              <Flex
+                bg="white"
+                p="md"
+                align="center"
+                justify="center"
+                flex={1}
+                style={{
+                  borderTop: "1px solid var(--mb-color-border)",
+                  cursor: "pointer",
+                }}
+              >
+                <Button
+                  variant="transparent"
+                  onClick={() => handlers.toggle()}
+                >{t`Adjust columns`}</Button>
+                <Icon name="chevrondown" />
+              </Flex>
+            </Flex>
+          ) : (
+            <Flex direction="column" miw={320} p="md" h="100%">
+              <Flex align="center">
+                <Box px={12} py={8}>
+                  <Title order={4}>{t`Manage data`}</Title>
+                </Box>
+
+                <Button
+                  variant="transparent"
+                  leftSection={<Icon name="add" />}
+                  onClick={() => handlers.toggle()}
+                  ml="auto"
+                >
+                  {t`Add more data`}
+                </Button>
+              </Flex>
               <DataManager />
-            </Box>
-          </Flex>
+            </Flex>
+          )}
         </Box>
 
         {/* top header bar */}

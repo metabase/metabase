@@ -4,6 +4,7 @@ import _ from "underscore";
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import {
   extractRemappings,
+  getVisualization,
   getVisualizationTransformed,
   isCartesianChart,
 } from "metabase/visualizations";
@@ -245,3 +246,25 @@ function checkIfStateDirty(state: VisualizerHistoryItem) {
     Object.keys(state.columnValuesMapping).length > 0
   );
 }
+
+export const getIsRenderable = createSelector(
+  [getVisualizationType, getVisualizerRawSeries, getVisualizerComputedSettings],
+  (display, rawSeries, settings) => {
+    if (!display) {
+      return false;
+    }
+
+    const visualization = getVisualization(display);
+
+    if (!visualization) {
+      return false;
+    }
+
+    try {
+      visualization.checkRenderable(rawSeries, settings);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+);
