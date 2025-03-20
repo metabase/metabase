@@ -10,8 +10,8 @@ import {
   fetchDashboard,
   setSidebar,
 } from "metabase/dashboard/actions";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
-  getDashboardComplete,
   getIsAdditionalInfoVisible,
   getIsDirty,
   getIsEditing,
@@ -42,19 +42,21 @@ export type DashboardHeaderProps = {
   DashboardRefreshPeriodControls &
   DashboardNightModeControls;
 
-export const DashboardHeaderInner = ({
-  dashboard,
-  dashboardBeforeEditing,
-  hasNightModeToggle,
-  isFullscreen,
-  isNightMode,
-  parameterQueryParams,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-}: DashboardHeaderProps) => {
+export const DashboardHeaderInner = () => {
+  const {
+    dashboard,
+    dashboardBeforeEditing,
+    hasNightModeToggle,
+    isFullscreen,
+    isNightMode,
+    parameterQueryParams,
+    onFullscreenChange,
+    onNightModeChange,
+    onRefreshPeriodChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+  } = useDashboardContext();
+
   const [showCancelWarning, setShowCancelWarning] = useState(false);
 
   const dispatch = useDispatch();
@@ -180,12 +182,12 @@ export const DashboardHeaderInner = ({
   );
 };
 
-export const DashboardHeader = (props: DashboardHeaderProps) => {
-  const dashboard = useSelector(getDashboardComplete);
+export const DashboardHeader = () => {
+  const { dashboard } = useDashboardContext();
 
   if (!dashboard) {
     return null;
   }
 
-  return <DashboardHeaderInner {...props} />;
+  return <DashboardHeaderInner />;
 };
