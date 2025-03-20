@@ -723,6 +723,9 @@
     ;; Does this driver support the :distinct-where function?
     :distinct-where
 
+    ;; Does this driver support casting?
+    :cast
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.

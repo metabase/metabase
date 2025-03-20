@@ -332,13 +332,13 @@ describe("issue 18747", () => {
 
     addValueToParameterFilter();
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
     // check that the parameter value is parsed correctly on page load
     cy.reload();
     cy.get(".LoadingSpinner").should("not.exist");
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 });
 
@@ -1022,7 +1022,7 @@ describe("issue 49342", () => {
   });
 
   it("should not be possible to leave the expression input with the Tab key ", () => {
-    // This test used to be a repro for #49342, but the product feature change
+    // This test used to be a repro for #49342, but the product feature changed
     // so that the expression input can no longer be tabbed out of.
 
     H.openOrdersTable({ mode: "notebook" });
@@ -1034,6 +1034,7 @@ describe("issue 49342", () => {
 
     cy.log("Shift-tab from name input should stay within the popover");
     H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "role", "textbox");

@@ -33,7 +33,6 @@
    "tr"
    "uk"
    "vi"
-   "zh"
    "zh-CN"
    "zh-HK"
    "zh-TW"},

@@ -31,8 +31,8 @@ export const QuestionVisualization = ({
     onNavigateBack,
     updateQuestion,
     variant,
-    isCardIdError,
     originalId,
+    isCardIdError,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
@@ -43,12 +43,14 @@ export const QuestionVisualization = ({
     return <SdkLoader />;
   }
 
-  // `isCardError: true` when the entity ID couldn't be resolved
-  if (!question || isCardIdError) {
-    if (originalId && originalId !== "new") {
+  if (
+    !question ||
+    (isCardIdError && originalId !== "new" && originalId !== null)
+  ) {
+    if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
-      return <SdkError message={t`Question not found`}></SdkError>;
+      return <SdkError message={t`Question not found`} />;
     }
   }
 

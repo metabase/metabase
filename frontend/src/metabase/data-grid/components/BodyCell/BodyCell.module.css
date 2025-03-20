@@ -29,9 +29,6 @@
 }
 
 .pill .content {
-  color: var(--mb-color-brand);
-  border: 1px solid var(--mb-color-brand-light);
-  background-color: var(--mb-color-brand-lighter);
   border-radius: 99px;
   padding: 2px 8px;
   width: auto;

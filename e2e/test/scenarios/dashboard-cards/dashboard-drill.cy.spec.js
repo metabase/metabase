@@ -148,7 +148,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
     );
 
-    cy.findAllByText("18").first().click();
+    H.tableInteractiveBody()
+      .findAllByRole("row")
+      .eq(5)
+      .findByText("18")
+      .as("targetCell");
+    // querying the element before clicking to ensure its stability
+    cy.get("@targetCell").click({ force: true });
     cy.location("pathname").should("eq", "/test/18/CO/Organic");
   });
 
@@ -480,7 +486,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findAllByTestId("column-header").contains("ID").click().click();
+    H.tableHeaderClick("ID");
 
     cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
 
@@ -819,7 +825,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
     });
-    cy.findByTextEnsureVisible("Quantity");
+    H.tableHeaderColumn("Quantity");
     cy.get(".test-Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1

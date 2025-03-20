@@ -107,7 +107,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
       expect(idButton.prev()[0]).to.equal(userIdButton[0]);
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
-    H.modal().findAllByTestId("column-header").first().contains("User ID");
+    H.modal().findAllByRole("columnheader").first().contains("User ID");
   });
 
   it("should reflect column settings accurately when changing (metabase#30966)", () => {

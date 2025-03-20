@@ -7,6 +7,8 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import fetch from 'node-fetch';
 
 dayjs.extend(relativeTime);
+import _ from 'underscore';
+
 import _githubSlackMap from "../github-slack-map.json";
 
 const githubSlackMap: Record<string, string> = _githubSlackMap;
@@ -73,18 +75,23 @@ export async function sendBackportReminder({
       },
     ];
 
-    const attachments = [
-      {
-        "color": "#F9841A",
-        "blocks": [{
-          "type": "section",
-          "text": {
-            "type": "mrkdwn",
-            "text": text,
-          }
-        }],
-      },
-    ];
+    const MAX_CHARACTERS_PER_BLOCK = 2800;
+    const chunks = Math.ceil(text.length / MAX_CHARACTERS_PER_BLOCK);
+
+    const lines = text.split("\n");
+    const chunkSize = Math.floor(lines.length / chunks);
+    const chunkedLines = _.chunk(lines, chunkSize);
+
+    const attachments = [{
+      "color": "#F9841A",
+      "blocks": chunkedLines.map(lines => ({
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": lines.join("\n"),
+        },
+      })),
+    }];
 
     return slack.chat.postMessage({
       channel: channelName,

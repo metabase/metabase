@@ -50,7 +50,8 @@ import {
   isSavedQuestionChanged,
 } from "./utils/question";
 
-export const getUiControls = state => state.qb.uiControls;
+// This selector can be called from public questions / dashboards, which do not have state.qb
+export const getUiControls = state => state.qb?.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
 export const getLoadingControls = state => state.qb.loadingControls;
 

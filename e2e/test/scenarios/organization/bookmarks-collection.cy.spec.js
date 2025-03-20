@@ -73,8 +73,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Rows/);
+    H.tableHeaderColumn("ID");
     bookmarkPinnedItem(name);
   });
 

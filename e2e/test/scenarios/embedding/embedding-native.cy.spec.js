@@ -125,7 +125,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByPlaceholderText("Enter an ID").type("926");
       cy.button("Add filter").click();
 
-      cy.findByTestId("table-row").should("have.length", 1);
+      cy.findAllByRole("row").should("have.length", 1);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("December 29, 2024, 4:54 AM");
@@ -228,7 +228,7 @@ describe("scenarios > embedding > native questions", () => {
           },
         });
 
-        cy.findByTestId("table-row").should("have.length", 1);
+        cy.findAllByRole("row").should("have.length", 1);
         cy.findByText("92");
 
         H.filterWidget().should("not.exist");
@@ -308,7 +308,7 @@ describe("scenarios > embedding > native questions", () => {
 
         H.visitEmbeddedPage(payload);
 
-        cy.findByTestId("table-row").should("have.length", 1);
+        cy.findAllByRole("row").should("have.length", 1);
         cy.findByText("66.8");
 
         H.filterWidget().should("not.exist");
