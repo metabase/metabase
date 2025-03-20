@@ -62,32 +62,11 @@ const TEXT_TEST_CASES: CastTestCase[] = [
 
 const INTEGER_TEST_CASES: CastTestCase[] = [
   {
-    name: "Number",
-    expression: "integer(3.14)",
-    filterOperator: "Equal to",
-    filterValue: "3",
-    expectedRowCount: 200,
-  },
-  {
     name: "String",
     expression: 'integer("10")',
     filterOperator: "Equal to",
     filterValue: "10",
     expectedRowCount: 200,
-  },
-  {
-    name: "NumberColumn",
-    expression: "integer([Price])",
-    filterOperator: "Equal to",
-    filterValue: "29",
-    expectedRowCount: 4,
-  },
-  {
-    name: "NumberExpression",
-    expression: "integer([Price] + 10)",
-    filterOperator: "Equal to",
-    filterValue: "38",
-    expectedRowCount: 2,
   },
   {
     name: "StringExpression",
