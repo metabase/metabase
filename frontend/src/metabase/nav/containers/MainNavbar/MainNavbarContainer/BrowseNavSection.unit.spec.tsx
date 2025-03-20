@@ -100,6 +100,13 @@ function setup({ isEmbeddingIframe, entityTypes }: SetupOpts = {}) {
   renderWithProviders(
     <BrowseNavSection
       hasDataAccess
+      /**
+       * This prop is required, and this value is grabbed directly from React devtools.
+       * I'm not going to dive into why it has to be this value, or why it's needed.
+       *
+       * From my testing, this doesn't seem to render anything in addition to
+       * the 3 items `BrowseNavSection` already renders as a base.
+       */
       nonEntityItem={{ type: "non-entity", url: "/" }}
       onItemSelect={jest.fn()}
     />,
