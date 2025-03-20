@@ -574,19 +574,22 @@
                                     (map #(conj [:asc] %) standard-literal-expression-refs))
                  :limit       2})))))))
 
-;; This fails, but also fails for non-literal expressions.
-#_(deftest ^:parallel filter-literal-expression-with-and-or-test
-    (doseq [op [:and :or]]
-      (testing (str "filter literal expressions with " op)
-        (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
-          (is (= [standard-literal-expression-values]
-                 (mt/formatted-rows
-                  standard-literal-expression-row-formats
-                  (mt/run-mbql-query orders
-                    {:expressions standard-literal-expression-defs
-                     :fields      standard-literal-expression-refs
-                     :filter      (into [op] standard-literal-expression-refs)
-                     :limit       1}))))))))
+(deftest ^:parallel filter-literal-expression-with-and-or-test
+  (doseq [[op expected] [[:and []]
+                         [:or  [[true false]]]]]
+    (testing (str "filter literal expressions with " op)
+      (mt/test-drivers (mt/normal-drivers-with-feature ::expression-literals)
+        (is (= expected
+               (mt/formatted-rows
+                [mt/boolish->bool mt/boolish->bool]
+                (mt/run-mbql-query orders
+                  {:expressions {"true"  [:value true  nil]
+                                 "false" [:value false nil]}
+                   :fields      [[:expression "true"]
+                                 [:expression "false"]]
+                   :filter      (into [op] [[:expression "true"]
+                                            [:expression "false"]])
+                   :limit       1}))))))))
 
 (deftest ^:parallel filter-literal-boolean-expression-with-no-operator-test
   (doseq [[expression expected] [[[:value true nil]     [standard-literal-expression-values]]
