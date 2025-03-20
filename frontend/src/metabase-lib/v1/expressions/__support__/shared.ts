@@ -73,8 +73,10 @@ export const ean = ref(PRODUCTS.EAN);
 export const name = ref(PEOPLE.NAME);
 export const category = ref(PRODUCTS.CATEGORY);
 export const email = ref(PEOPLE.EMAIL);
-
-const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
+export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
+export const segment = checkNotNull(
+  metadata.segment(SEGMENT_ID),
+).filterClause();
 
 export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
@@ -83,6 +85,11 @@ export const query = createQueryWithClauses({
       name: "foo",
       operator: "+",
       args: [1, 2],
+    },
+    {
+      name: "bool",
+      operator: "=",
+      args: [1, 1],
     },
   ],
 });
