@@ -66,70 +66,70 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
     return isa(effectiveType, levelOneType);
   });
 
-  const options = [
-    ...FIELD_SEMANTIC_TYPES,
-    {
-      id: NO_SEMANTIC_TYPE,
-      name: t`No semantic type`,
-      section: t`Other`,
-      icon: "empty" as const,
-    },
-  ]
-    .filter(option => {
-      const isCurrentValue = option.id === value;
-      const isNoSemanticType = option.id === NO_SEMANTIC_TYPE;
+  const options = FIELD_SEMANTIC_TYPES.filter(option => {
+    const isCurrentValue = option.id === value;
 
-      if (
-        isNoSemanticType ||
-        isCurrentValue ||
-        isTypePK(option.id) ||
-        isTypeFK(option.id)
-      ) {
-        return true;
-      }
+    if (
+      // This accounts for cases where user set an incompatible option before
+      // we started to filter out incompatible options from the list.
+      isCurrentValue ||
+      // Allow any type to be a PK
+      isTypePK(option.id) ||
+      // Allow any type to be a FK
+      isTypeFK(option.id)
+    ) {
+      return true;
+    }
 
-      const isDeprecated = DEPRECATED_FIELD_SEMANTIC_TYPES.includes(option.id);
+    if (isDeprecated(option.id)) {
+      return false;
+    }
 
-      if (isDeprecated) {
-        return false;
-      }
+    // "Category" is the semantic type for Booleans
+    if (option.id === TYPE.Category && isa(effectiveType, TYPE.Boolean)) {
+      return true;
+    }
 
-      if (isa(effectiveType, TYPE.Boolean) && option.id === TYPE.Category) {
-        // "Category" is the semantic type for Booleans
-        return true;
-      }
+    if (option.id === TYPE.Name) {
+      const isText = isa(effectiveType, TYPE.Text);
+      const isTextLike = isa(effectiveType, TYPE.TextLike);
+      return isText && !isTextLike;
+    }
 
-      if (option.id === TYPE.Name) {
-        const isText = isa(effectiveType, TYPE.Text);
-        const isTextLike = isa(effectiveType, TYPE.TextLike);
-        return isText && !isTextLike;
-      }
+    if (!levelOneType) {
+      // Sanity check, this should never happen. But if it does, better not to hide the option.
+      return true;
+    }
 
-      if (!levelOneType) {
-        // sanity check, this should never happen
-        return true;
-      }
+    /**
+     * Hack: allow "casting" text types to numerical types
+     * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
+     * @see https://www.notion.so/metabase/Fields-f5999d551119498a8ffbc7e8887eebfc
+     *
+     * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
+     * additionally show semantic types derived from "type/Number".
+     */
+    if (isa(effectiveType, TYPE.Text) || isa(effectiveType, TYPE.TextLike)) {
+      return isa(option.id, levelOneType) || isa(option.id, TYPE.Number);
+    }
 
-      /**
-       * Hack: allow "casting" text types to numerical types
-       * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
-       * @see https://www.notion.so/metabase/Fields-f5999d551119498a8ffbc7e8887eebfc
-       *
-       * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
-       * additionally show semantic types derived from "type/Number".
-       */
-      if (isa(effectiveType, TYPE.Text) || isa(effectiveType, TYPE.TextLike)) {
-        return isa(option.id, levelOneType) || isa(option.id, TYPE.Number);
-      }
-
-      return isa(option.id, levelOneType);
-    })
+    // Limit the choice to types derived from level-one data type of Field’s effective_type
+    return isa(option.id, levelOneType);
+  })
     .map(option => ({
       label: option.name,
       value: stringifyValue(option.id),
       section: option.section,
       icon: option.icon,
-    }));
+    }))
+    .concat([
+      {
+        label: t`No semantic type`,
+        value: stringifyValue(NO_SEMANTIC_TYPE),
+        section: t`Other`,
+        icon: "empty" as const,
+      },
+    ]);
 
   const data = Object.entries(_.groupBy(options, "section")).map(
     ([group, items]) => ({ group, items }),
@@ -148,4 +148,8 @@ function getLevelOneTypes(): string[] {
     TYPE.Collection,
     TYPE.Structured,
   ];
+}
+
+function isDeprecated(semanticType: string) {
+  return DEPRECATED_FIELD_SEMANTIC_TYPES.includes(semanticType);
 }
