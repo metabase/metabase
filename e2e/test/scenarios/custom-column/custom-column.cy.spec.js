@@ -1592,3 +1592,45 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.value().should("equal", "now");
   });
 });
+
+describe("scenarios > question > custom column > split", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should be possible to split a custom column", () => {
+    H.openPeopleTable({ mode: "notebook" });
+
+    const CC_NAME = "Split Title";
+
+    cy.findByLabelText("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 1)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").click();
+
+    cy.findByLabelText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type(1);
+
+    H.visualize();
+
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+});

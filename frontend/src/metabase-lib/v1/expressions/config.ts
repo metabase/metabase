@@ -110,8 +110,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
-  split: {
-    displayName: `split`,
+  "split-part": {
+    displayName: "splitPart",
     type: "string",
     args: ["string", "string", "number"],
     validator: function (_arg: any, _delimeter: string, position: number) {
@@ -540,7 +540,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower",
   "upper",
   "substring",
-  "split",
+  "split-part",
   "regex-match-first",
   "concat",
   "replace",
