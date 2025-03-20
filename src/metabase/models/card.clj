@@ -1327,7 +1327,12 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:= :collection.namespace nil]
+   :where        [:and
+                  [:= :collection.namespace nil]
+                  [:or
+                   ;; Leaving the door open to editable models (e.g., joining read-only and editable columns)
+                   [:not= :this.display "table-editable"]
+                   [:= :this.dashboard_id nil]]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

@@ -1,8 +1,9 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Confirm from "metabase/components/Confirm";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import EditBar from "metabase/components/EditBar";
 import Button from "metabase/core/components/Button";
 
@@ -16,16 +17,15 @@ const propTypes = {
 };
 
 export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
+  const [modelOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const saveButton = (
-    <Confirm
-      title={t`Save permissions?`}
-      action={onSave}
-      content={diff ? <PermissionsConfirm diff={diff} /> : null}
-      triggerClasses={cx({ disabled: !isDirty })}
+    <Button
       key="save"
-    >
-      <Button primary small>{t`Save changes`}</Button>
-    </Confirm>
+      onClick={openModal}
+      className={cx({ disabled: !isDirty })}
+      primary
+      small
+    >{t`Save changes`}</Button>
   );
 
   const cancelButton = (
@@ -33,11 +33,23 @@ export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
   );
 
   return (
-    <EditBar
-      admin
-      title={t`You've made changes to permissions.`}
-      buttons={[cancelButton, saveButton]}
-    />
+    <>
+      <EditBar
+        admin
+        title={t`You've made changes to permissions.`}
+        buttons={[cancelButton, saveButton]}
+      />
+      <ConfirmModal
+        title={t`Save permissions?`}
+        opened={modelOpened}
+        content={diff ? <PermissionsConfirm diff={diff} /> : null}
+        onConfirm={() => {
+          onSave();
+          closeModal();
+        }}
+        onClose={closeModal}
+      />
+    </>
   );
 }
 

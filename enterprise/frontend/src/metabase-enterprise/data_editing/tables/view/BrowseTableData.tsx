@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -40,6 +41,8 @@ export const BrowseTableData = ({
 
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: table } = useGetTableQuery({ id: tableId });
 
@@ -99,11 +102,13 @@ export const BrowseTableData = ({
             component={Link}
             to={exploreUrl}
           >{t`Explore`}</Button>
-          <Button
-            leftSection={<Icon name="pencil" />}
-            component={Link}
-            to={editUrl}
-          >{t`Edit`}</Button>
+          {isAdmin && (
+            <Button
+              leftSection={<Icon name="pencil" />}
+              component={Link}
+              to={editUrl}
+            >{t`Edit`}</Button>
+          )}
           <RunButtonWithTooltip
             iconSize={16}
             onlyIcon

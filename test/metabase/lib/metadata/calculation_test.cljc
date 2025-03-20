@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -549,3 +550,87 @@
                  (lib.metadata.ident/implicitly-joined-ident
                   (:ident base-email)
                   (:ident (fk-col column-name :source-alias))))))))))
+
+(deftest ^:parallel remapped-columns-test
+  (testing "remapped columns appear after expressions but before joins"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          query (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/with-fields [(meta/field-metadata :venues :id)
+                                      (meta/field-metadata :venues :category-id)])
+                    (lib/expression "price10" (lib/* (meta/field-metadata :venues :price) 10))
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
+                                                   [(lib/= (meta/field-metadata :venues :id)
+                                                           (meta/field-metadata :orders :id))])
+                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))
+          join-ident (:ident (first (lib/joins query)))]
+      (is (=? [{:name  "ID"
+                :ident (meta/ident :venues :id)}
+               {:name  "CATEGORY_ID"
+                :ident (meta/ident :venues :category-id)}
+               {:name  "price10"
+                :ident (lib.options/ident (first (lib/expressions query)))}
+               {:name  "SUBTOTAL"
+                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+              (lib/returned-columns query)))
+      (is (=? [{:name  "ID"
+                :ident (meta/ident :venues :id)}
+               {:name  "CATEGORY_ID"
+                :ident (meta/ident :venues :category-id)}
+               {:name  "price10"
+                :ident (lib.options/ident (first (lib/expressions query)))}
+               {:name  "NAME"
+                :ident (lib.metadata.ident/remap-ident (meta/ident :categories :name) (meta/ident :venues :category-id))}
+               {:name  "SUBTOTAL"
+                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+              (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
+
+(deftest ^:parallel remapped-columns-test-2-remapping-in-joins
+  (testing "explicitly joined columns with remaps are added after their join"
+    (let [mp         (-> meta/metadata-provider
+                         (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          join1      (-> (lib/join-clause (meta/table-metadata :venues)
+                                          [(lib/= (meta/field-metadata :orders :id)
+                                                  (meta/field-metadata :venues :id))])
+                         (lib/with-join-fields [(meta/field-metadata :venues :price)
+                                                (meta/field-metadata :venues :category-id)]))
+          join2      (-> (lib/join-clause (meta/table-metadata :products)
+                                          [(lib/= (meta/field-metadata :orders :product-id)
+                                                  (meta/field-metadata :products :id))])
+                         (lib/with-join-fields [(meta/field-metadata :products :category)]))
+          base       (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/with-fields [(meta/field-metadata :orders :id)
+                                           (meta/field-metadata :orders :product-id)
+                                           (meta/field-metadata :orders :subtotal)]))
+          exp-main   [{:name  "ID"
+                       :ident (meta/ident :orders :id)}
+                      {:name  "PRODUCT_ID"
+                       :ident (meta/ident :orders :product-id)}
+                      {:name  "SUBTOTAL"
+                       :ident (meta/ident :orders :subtotal)}]
+          exp-join1  [{:name  "PRICE"
+                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
+                                                                          (:ident join1))}
+                      {:name  "CATEGORY_ID"
+                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
+                                                                          (:ident join1))}
+                      {:name  "NAME"
+                       :ident (lib.metadata.ident/remap-ident
+                               (meta/ident :categories :name)
+                               (lib.metadata.ident/explicitly-joined-ident
+                                (meta/ident :venues :category-id) (:ident join1)))}]
+          exp-join2  [{:name  "CATEGORY"
+                       :ident (lib.metadata.ident/explicitly-joined-ident
+                               (meta/ident :products :category) (:ident join2))}]
+          cols       (fn [query]
+                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+      (is (=? (concat exp-main exp-join1 exp-join2)
+              (-> base
+                  (lib/join join1)
+                  (lib/join join2)
+                  cols)))
+      (is (=? (concat exp-main exp-join2 exp-join1)
+              (-> base
+                  (lib/join join2)
+                  (lib/join join1)
+                  cols))))))

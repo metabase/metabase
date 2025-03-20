@@ -1788,6 +1788,32 @@
                                                              {:dashcards [new-dashcard-info]
                                                               :tabs      []}))}))))))
 
+(deftest e2e-create-editable-table-card
+  (testing "PUT /api/dashboard/:id with a placeholder for an editable table.\n"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Dashboard               {dashboard-id :id}  {}]
+        (let [table-id (mt/id :venues)
+              resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                                         {:tabs      [{:id   -1
+                                                       :name "New tab"}]
+                                          :dashcards [{:id               -1
+                                                       :size_x           1
+                                                       :size_y           1
+                                                       :col              3
+                                                       :row              3
+                                                       :dashboard_tab_id -1
+                                                       :visualization_settings {:table_id table-id}}]})]
+          (testing "the dashcard gets turned into something richer, that supports filtering."
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp)))))))))
+
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
     (mt/test-helpers-set-global-values!

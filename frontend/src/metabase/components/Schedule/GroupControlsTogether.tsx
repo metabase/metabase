@@ -1,5 +1,7 @@
 import { Children, type ReactNode, isValidElement } from "react";
 
+import { Text } from "metabase/ui";
+
 import S from "./Schedule.module.css";
 import { combineConsecutiveStrings } from "./utils";
 
@@ -41,11 +43,31 @@ export const GroupControlsTogether = ({
 
   const compactChildren = combineConsecutiveStrings(childNodes);
 
-  compactChildren.forEach((child, index) => {
+  for (let index = 0; index < compactChildren.length; index++) {
+    const child = compactChildren[index];
     if (isValidElement(child)) {
       currentGroup.push(child);
 
-      if (!isValidElement(compactChildren[index + 1])) {
+      const nextIndex = index + 1;
+      if (!isValidElement(compactChildren[nextIndex])) {
+        // If next child is the last string, add it to the current group
+        // to prevent it from being left hanging on the last line.
+        if (nextIndex === compactChildren.length - 1) {
+          const nextChild = compactChildren[nextIndex];
+          if (typeof nextChild === "string" && !!nextChild.trim()) {
+            currentGroup.push(
+              <Text key={`node-${nextIndex}`} ml="0.5rem">
+                {nextChild}
+              </Text>,
+            );
+          }
+          groupedNodes.push(
+            <div className={S.ControlGroup} key={`node-${index}`}>
+              {currentGroup}
+            </div>,
+          );
+          break;
+        }
         // Flush current group
         groupedNodes.push(
           <div className={S.ControlGroup} key={`node-${index}`}>
@@ -76,7 +98,7 @@ export const GroupControlsTogether = ({
         </div>,
       );
     }
-  });
+  }
 
   return <>{groupedNodes}</>;
 };

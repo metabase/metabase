@@ -1,5 +1,9 @@
 import type { EditorState } from "@codemirror/state";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useDisclosure } from "@mantine/hooks";
+import CodeMirror, {
+  EditorSelection,
+  type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
@@ -10,14 +14,17 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { format } from "metabase-lib/v1/expressions";
+import { MBQL_CLAUSES, format } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { TOKEN } from "metabase-lib/v1/expressions/tokenizer";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
+import { FunctionBrowser } from "../FunctionBrowser";
+import { LayoutMain, LayoutSidebar } from "../Layout";
 import type { ClauseType, StartRule } from "../types";
 
+import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import type { Shortcut } from "./Shortcuts";
@@ -39,6 +46,7 @@ type EditorProps<S extends StartRule> = {
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ErrorWithMessage | Error | null;
+  hasHeader?: boolean;
   onCloseEditor?: () => void;
 
   onChange: (
@@ -47,6 +55,10 @@ type EditorProps<S extends StartRule> = {
   ) => void;
   shortcuts?: Shortcut[];
 };
+
+const EDITOR_WIDGET_HEIGHT = 220;
+const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
+const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 
 export function Editor<S extends StartRule = "expression">(
   props: EditorProps<S>,
@@ -62,13 +74,18 @@ export function Editor<S extends StartRule = "expression">(
     error,
     reportTimezone,
     shortcuts,
+    hasHeader,
+    onCloseEditor,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
+  const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
+    useDisclosure();
 
   const {
     source,
+    hasSourceChanged,
     onSourceChange,
     onBlur,
     formatExpression,
@@ -78,6 +95,10 @@ export function Editor<S extends StartRule = "expression">(
     ...props,
     metadata,
     error,
+  });
+
+  const { showModal, closeModal } = useCloseModal({
+    allowPopoverExit: source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -104,50 +125,105 @@ export function Editor<S extends StartRule = "expression">(
     extensions: [customTooltip],
   });
 
+  const handleFunctionBrowserClauseClick = useCallback((name: string) => {
+    const view = ref.current?.view;
+    if (!view) {
+      return;
+    }
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    const text =
+      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
+    const len =
+      clause.args.length > 0
+        ? clause.displayName.length + 1 // + 1 for the parenthesis
+        : clause.displayName.length;
+
+    view?.focus();
+    view?.dispatch(
+      view.state.changeByRange(range => ({
+        range: EditorSelection.cursor(range.from + len),
+        changes: [{ from: range.from, to: range.to, insert: text }],
+      })),
+    );
+  }, []);
+
   return (
-    <Flex
-      className={cx(S.wrapper, { [S.formatting]: isFormatting })}
-      direction="column"
-    >
-      <CodeMirror
-        id={id}
-        ref={ref}
-        data-testid="custom-expression-query-editor"
-        className={S.editor}
-        extensions={extensions}
-        readOnly={readOnly || isFormatting}
-        value={source}
-        onChange={onSourceChange}
-        onBlur={onBlur}
-        height="100%"
-        width="100%"
-        indentWithTab={false}
-        autoFocus
-      />
-      <Errors error={error} />
+    <>
+      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+        <CodeMirror
+          id={id}
+          ref={ref}
+          data-testid="custom-expression-query-editor"
+          className={S.editor}
+          extensions={extensions}
+          readOnly={readOnly || isFormatting}
+          value={source}
+          onChange={onSourceChange}
+          onBlur={onBlur}
+          height="100%"
+          width="100%"
+          indentWithTab={false}
+          autoFocus
+        />
+        <Errors error={error} />
 
-      {source.trim() === "" && !isFormatting && error == null && (
-        <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
-      )}
+        {source.trim() === "" && !isFormatting && error == null && (
+          <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
+        )}
 
-      <Flex className={S.toolbar} pr="md" gap="sm">
-        {source.trim() !== "" && error == null && isValidated && (
-          <ButtonTooltip label={t`Auto-format`}>
+        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
+          <ButtonTooltip label={t`Function browser`}>
             <Button
-              aria-label={t`Auto-format`}
-              onClick={formatExpression}
-              variant="subtle"
+              aria-label={t`Function browser`}
+              onClick={toggleFunctionBrowser}
+              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
+              className={S.toolbarButton}
               size="xs"
-              p="xs"
-              disabled={isFormatting || error != null}
-              leftSection={<Icon name="format_code" />}
+              p="x"
+              leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
-        )}
-      </Flex>
+          {source.trim() !== "" && error == null && isValidated && (
+            <ButtonTooltip label={t`Auto-format`}>
+              <Button
+                aria-label={t`Auto-format`}
+                onClick={formatExpression}
+                className={S.toolbarButton}
+                variant="subtle"
+                size="xs"
+                p="xs"
+                disabled={isFormatting || error != null}
+                leftSection={<Icon name="format_code" />}
+              />
+            </ButtonTooltip>
+          )}
+        </Flex>
 
-      {portal}
-    </Flex>
+        {portal}
+      </LayoutMain>
+
+      {isFunctionBrowserOpen && (
+        <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+          <FunctionBrowser
+            startRule={startRule}
+            reportTimezone={reportTimezone}
+            query={query}
+            onClauseClick={handleFunctionBrowserClauseClick}
+          />
+        </LayoutSidebar>
+      )}
+
+      {showModal && (
+        <CloseModal
+          onKeepEditing={closeModal}
+          onDiscardChanges={onCloseEditor}
+        />
+      )}
+    </>
   );
 }
 

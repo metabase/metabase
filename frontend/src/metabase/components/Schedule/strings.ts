@@ -8,6 +8,8 @@ export const minutes = _.times(60, n => ({
   label: n.toString(),
   value: n.toString(),
 }));
+// 1-59 minutes
+export const minuteIntervals = minutes.slice(1);
 
 export const getHours = () => {
   const localizedHours = [
@@ -57,6 +59,7 @@ export const getScheduleStrings = () => {
     // The context is needed because 'hourly' can be an adjective ('hourly
     // rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and
     // 'monthly'.
+    every_n_minutes: c("adverbial phrase").t`by the minute`,
     hourly: c("adverb").t`hourly`,
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
@@ -151,6 +154,7 @@ export enum Cron {
   AllValues = "*",
   NoSpecificValue = "?",
   NoSpecificValue_Escaped = "\\?",
+  EveryPrefix = "0/",
 }
 
 export type ScheduleComponentType =
