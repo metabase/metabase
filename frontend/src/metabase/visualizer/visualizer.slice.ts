@@ -203,14 +203,30 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
-export const setDisplay = createAction<VisualizationDisplay>(
-  "visualizer/setDisplay",
-);
-
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
   initialState: getInitialVisualizerHistoryItem(),
   reducers: {
+    setDisplay: (state, action: PayloadAction<VisualizationDisplay>) => {
+      const display = action.payload;
+
+      const updatedSettings = getUpdatedSettingsForDisplay(
+        state.columnValuesMapping,
+        state.columns,
+        state.settings,
+        state.display,
+        display,
+      );
+
+      if (updatedSettings) {
+        const { columnValuesMapping, columns, settings } = updatedSettings;
+        state.columnValuesMapping = columnValuesMapping;
+        state.columns = columns;
+        state.settings = settings;
+      }
+
+      state.display = display;
+    },
     setTitle: (state, action: PayloadAction<string>) => {
       if (!state.settings) {
         state.settings = {};
@@ -292,26 +308,6 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
-      .addCase(setDisplay, (state, action) => {
-        const display = action.payload;
-
-        const updatedSettings = getUpdatedSettingsForDisplay(
-          state.columnValuesMapping,
-          state.columns,
-          state.settings,
-          state.display,
-          display,
-        );
-
-        if (updatedSettings) {
-          const { columnValuesMapping, columns, settings } = updatedSettings;
-          state.columnValuesMapping = columnValuesMapping;
-          state.columns = columns;
-          state.settings = settings;
-        }
-
-        state.display = display;
-      })
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
         if (initialState) {
@@ -694,7 +690,7 @@ function maybeCombineDataset(
 
 const { addColumnInner } = visualizerHistoryItemSlice.actions;
 
-export const { setTitle, updateSettings, removeColumn } =
+export const { setTitle, updateSettings, removeColumn, setDisplay } =
   visualizerHistoryItemSlice.actions;
 
 export const {
