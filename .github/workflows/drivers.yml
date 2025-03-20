@@ -653,6 +653,12 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+      - name: Upload Test Results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "junit-postgres-${{ strategy.job-index }}-${{ github.run_id }}"
+          path: ./target/junit/
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
