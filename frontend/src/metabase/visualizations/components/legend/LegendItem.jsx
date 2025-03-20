@@ -2,6 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
 
+import { EditableText } from "metabase/actions/containers/ActionCreator/ActionCreatorHeader.styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -80,7 +81,8 @@ const LegendItem = ({
           isInsidePopover={isInsidePopover}
           onClick={onSelectSeries && handleItemClick}
         >
-          <Ellipsified>{item.name}</Ellipsified>
+          <EditableText initialValue={item.name} />
+          {/* <Ellipsified>{item.name}</Ellipsified> */}
         </LegendItemTitle>
       </LegendItemLabel>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
