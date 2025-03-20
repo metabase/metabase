@@ -112,12 +112,15 @@ describe("old recursive-parser tests", () => {
     expect(expr("7 * (8 + 9) - 1")).toEqual(["-", ["*", 7, ["+", 8, 9]], 1]);
   });
 
-  // TODO: text and integer don't work
-  it.skip("should parse function calls", () => {
+  it("should parse function calls", () => {
     expect(expr("ceil(3.14)")).toEqual(["ceil", 3.14]);
     expect(expr("log(1 + sqrt(9))")).toEqual(["log", ["+", 1, ["sqrt", 9]]]);
     expect(expr("power(log(2.1), 7)")).toEqual(["power", ["log", 2.1], 7]);
     expect(expr("trim(ID)")).toEqual(["trim", id]);
+  });
+
+  // TODO: text and integer don't work
+  it.skip("should parse cast calls", () => {
     expect(expr("text(ID)")).toEqual(["text", id]);
     expect(expr("integer(ID)")).toEqual(["integer", id]);
   });
