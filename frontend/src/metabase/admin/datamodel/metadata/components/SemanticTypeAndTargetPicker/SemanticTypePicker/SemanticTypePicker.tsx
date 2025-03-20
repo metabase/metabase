@@ -94,7 +94,7 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
         return false;
       }
 
-      if (effectiveType === TYPE.Boolean && option.id === TYPE.Category) {
+      if (isa(effectiveType, TYPE.Boolean) && option.id === TYPE.Category) {
         // "Category" is the semantic type for Booleans
         return true;
       }
