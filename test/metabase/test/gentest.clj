@@ -50,27 +50,20 @@
                                           args))
        ~@body))
 
-;; Sole purpose of this is just to signal to [[initial-iteration-seed]] It should use bound tu.rng/*generator* to
-;; generate initial interation seed. This smells. TODO: Figure out better way.
-(def ^:dynamic *context-seed* nil)
-
-;; Print this on load so it is included in CI log, just in case everything passed and we would want verbatim replay.
-(when-some [seed (config/config-long :mb-gentest-context-seed)]
-  (log/infof "ENV context-seed %d" seed))
-
-(defn context-seed
-  "Context seed is either plain random or from env"
+(defonce startup-context-seed (doto (or (config/config-long :mb-gentest-context-seed)
+                                        (.nextLong ^Random (Random.)))
+                                (as-> $ (log/infof "STARTUP context-seed %d" $))))
+(defn initial-context-seed
+  "Context seed is either (1) from environment or (2) the one set during the first load of this namespace."
   []
   (or (config/config-long :mb-gentest-context-seed)
-      (.nextLong ^Random (Random.))))
+      startup-context-seed))
 
 (defn initial-iteration-seed
-  "Iteration seed is either (1) from environment or (2) dependent on context or (3) random."
+  "Iteration seed is either (1) from environment or (2) the [[initial-context-seed]]."
   []
   (or (config/config-long :mb-gentest-iteration-seed)
-      (when *context-seed*
-        (.nextLong ^Random tu.rng/*generator*))
-      (throw (Exception. "Explicit iteration seed in env or *context-seed* must be set."))))
+      (initial-context-seed)))
 
 (defn do-iterate
   [limit-spec thunk]
@@ -124,9 +117,8 @@
   [test-sym & body]
   `(clojure.test/deftest ~test-sym
     (when (config/config-bool :mb-gentest-run)
-      (let [seed# (context-seed)]
-        (binding [*context-seed* seed#
-                  tu.rng/*generator* (Random. seed#)]
+      (let [seed# (initial-context-seed)]
+        (binding [tu.rng/*generator* (Random. seed#)]
           (log/debugf "defgentest: seed: %s" (pr-str seed#))
           (testing ["context-seed" seed#]
             ~@body))))))
