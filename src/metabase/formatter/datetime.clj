@@ -237,7 +237,7 @@
           temporal-str)))))
 
 (defn make-temporal-str-formatter
-  "Return a formatter which, given a temporal literal string, reformts it by combining time zone, column, and viz
+  "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
   (Locale/setDefault (Locale. (public-settings/site-locale)))
