@@ -123,6 +123,7 @@
      (number? expression-clause) expression-clause
      (string? expression-clause) expression-clause
      (boolean? expression-clause) expression-clause
+     (keyword? expression-clause) (name expression-clause)
      (lib.util/ref-clause? expression-clause) (column-metadata-from-ref query stage-number expression-clause)
      (lib.util/segment-clause? expression-clause) (segment-metadata-from-ref query expression-clause)
      (lib.util/metric-clause? expression-clause) (metric-metadata-from-ref query expression-clause)
