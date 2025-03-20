@@ -295,12 +295,26 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should be able to extract path from URL column", () => {
+      function assertTableData({ title, value }) {
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractive()
+          .findAllByTestId("header-cell")
+          .last()
+          .should("have.text", title);
+
+        // eslint-disable-next-line no-unsafe-element-filtering
+        H.tableInteractiveBody()
+          .findAllByTestId("cell-data")
+          .last()
+          .should("have.text", value);
+      }
+
       const CC_NAME = "URL_URL";
       const questionDetails = {
         name: "path from url",
         query: {
           "source-table": PEOPLE_ID,
-          limit: 2,
+          limit: 1,
           expressions: {
             [CC_NAME]: [
               "concat",
@@ -339,11 +353,9 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       const extractedValue = "/my/path";
-      H.assertTableData({
-        columns: ["Path"],
-        firstRows: [[extractedValue]],
-        // passing start option allows to skip unnecessary cells
-        startFrom: 13,
+      assertTableData({
+        title: "Path",
+        value: extractedValue,
       });
     });
   });

@@ -1381,13 +1381,27 @@ describe("scenarios > question > custom column > path", () => {
     cy.signInAsNormalUser();
   });
 
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
   it("should allow to use a path function", () => {
     const CC_NAME = "URL_URL";
     const questionDetails = {
       name: "path from url",
       query: {
         "source-table": PEOPLE_ID,
-        limit: 2,
+        limit: 1,
         expressions: {
           [CC_NAME]: [
             "concat",
@@ -1431,11 +1445,9 @@ describe("scenarios > question > custom column > path", () => {
     cy.findByTestId("table-scroll-container").scrollTo("right");
 
     const extractedValue = "/my/path";
-    H.assertTableData({
-      columns: ["extracted path"],
-      firstRows: [[extractedValue]],
-      // passing start option allows to skip unnecessary cells
-      startFrom: 13,
+    assertTableData({
+      title: "extracted path",
+      value: extractedValue,
     });
   });
 });
