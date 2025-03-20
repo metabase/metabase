@@ -6,7 +6,10 @@ import type {
   LocalFieldReference,
   ReferenceOptions,
 } from "metabase-types/api";
-import { createMockSegment } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockSegment,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -26,6 +29,7 @@ const SEGMENT_ID = 1;
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
+      features: [...COMMON_DATABASE_FEATURES, "cast"],
       tables: [
         createPeopleTable(),
         createProductsTable(),
