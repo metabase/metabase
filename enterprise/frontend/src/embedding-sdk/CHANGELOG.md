@@ -1,3 +1,19 @@
+## [0.53.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.11...embedding-sdk-0.53.12) (2025-03-20)
+
+
+### Bug Fixes
+
+* **sdk:** Entity ID support for CreateDashboardModal ([#55358](https://github.com/metabase/metabase/issues/55358)) ([#55396](https://github.com/metabase/metabase/issues/55396)) ([7591f87](https://github.com/metabase/metabase/commit/7591f8702665c230fef0dd60f4d0fdfb1b8d3279))
+* **sdk:** fix ad-hoc question view when clicking into SDK dashboard ([#55254](https://github.com/metabase/metabase/issues/55254)) ([#55419](https://github.com/metabase/metabase/issues/55419)) ([e967468](https://github.com/metabase/metabase/commit/e967468ef75b59c3300cd6f355c5df0a4bff5274))
+* **sdk:** mark all react-dom dependency requests as external for React 19 compatibility ([#55071](https://github.com/metabase/metabase/issues/55071)) ([#55325](https://github.com/metabase/metabase/issues/55325)) ([765c7c5](https://github.com/metabase/metabase/commit/765c7c5716fe8c09d0001ea51550e7a857bfe5a4))
+
+
+### Features
+
+* **sdk:** do not setup sandboxing and show user switcher if using a sample database ([#55105](https://github.com/metabase/metabase/issues/55105)) ([#55355](https://github.com/metabase/metabase/issues/55355)) ([d1cf62b](https://github.com/metabase/metabase/commit/d1cf62b3092786ded2382d92a3444b1242fc0b9f))
+
+
+
 ## [0.53.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.10...embedding-sdk-0.53.11) (2025-03-17)
 
 
