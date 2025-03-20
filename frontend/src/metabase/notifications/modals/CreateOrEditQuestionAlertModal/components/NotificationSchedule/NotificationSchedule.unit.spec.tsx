@@ -12,6 +12,7 @@ describe("NotificationSchedule", () => {
         event_name: null,
         cron_schedule: "0 0/5 * * * ?", // every 5 minutes
         created_at: "2025-03-14T16:11:12Z",
+        ui_display_type: "cron/builder",
       },
     });
 
@@ -31,6 +32,7 @@ describe("NotificationSchedule", () => {
         event_name: null,
         cron_schedule: "0 0/10 * * * ?", // every 10 minutes
         created_at: "2025-03-14T16:11:12Z",
+        ui_display_type: "cron/builder",
       },
     });
 

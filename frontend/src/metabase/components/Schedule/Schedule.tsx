@@ -1,7 +1,7 @@
 import cx from "classnames";
-import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
-import { msgid, ngettext, c } from "ttag";
+import { c, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import {
@@ -9,9 +9,9 @@ import {
   scheduleSettingsToCron,
 } from "metabase/admin/performance/utils";
 import { CronExpressionInput } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput";
-import { formatCronExpression } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
+import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import { GroupControlsTogether } from "./GroupControlsTogether";
@@ -29,6 +29,7 @@ import type { UpdateSchedule } from "./types";
 import { getScheduleDefaults } from "./utils";
 
 export interface ScheduleProps {
+  className?: string;
   cronString: string;
   scheduleOptions: ScheduleType[];
   onScheduleChange: (
@@ -47,6 +48,7 @@ export interface ScheduleProps {
 }
 
 export const Schedule = ({
+  className,
   cronString: initialCronString,
   scheduleOptions,
   timezone,
@@ -56,10 +58,9 @@ export const Schedule = ({
   labelAlignment = "compact",
   isCustomSchedule,
   renderScheduleDescription,
-  ...boxProps
-}: ScheduleProps & BoxProps & HTMLAttributes<HTMLDivElement>) => {
+}: ScheduleProps) => {
   const [internalCronString, setInternalCronString] = useState(() =>
-    formatCronExpression(initialCronString),
+    formatCronExpressionForUI(initialCronString),
   );
   const schedule = useMemo(() => {
     return (
@@ -69,6 +70,7 @@ export const Schedule = ({
       }
     );
   }, [initialCronString, isCustomSchedule]);
+
   const updateSchedule: UpdateSchedule = useCallback(
     (
       updatedField: keyof ScheduleSettings,
@@ -87,7 +89,7 @@ export const Schedule = ({
           ...defaults,
         };
         if (newValue === "cron") {
-          setInternalCronString(formatCronExpression(initialCronString));
+          setInternalCronString(formatCronExpressionForUI(initialCronString));
         }
       } else {
         newSchedule = _.defaults(
@@ -102,9 +104,7 @@ export const Schedule = ({
       }
 
       const newCronString = scheduleSettingsToCron(newSchedule);
-      // setInternalCronString(newCronString.replace(/^0\s/, ""));
-      // TODO : consider refactoring scheduleSettingsToCron to handle  year components
-      onScheduleChange(newCronString + " *", newSchedule);
+      onScheduleChange(newCronString, newSchedule);
     },
     [initialCronString, onScheduleChange, schedule],
   );
@@ -280,20 +280,21 @@ export const Schedule = ({
   }, [renderScheduleDescription, schedule, internalCronString]);
 
   return (
-    <Box
-      {...boxProps}
-      className={cx(
-        S.Schedule,
-        {
-          [S.CompactLabels]: labelAlignment === "compact",
-        },
-        boxProps.className,
-      )}
-    >
-      <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
+    <Flex direction="column" gap="1rem">
+      <Box
+        className={cx(
+          S.Schedule,
+          {
+            [S.CompactLabels]: labelAlignment === "compact",
+          },
+          className,
+        )}
+      >
+        <GroupControlsTogether>{renderedSchedule}</GroupControlsTogether>
+      </Box>
       {scheduleDescription && (
         <Box style={{ gridColumn: "span 2" }}>{scheduleDescription}</Box>
       )}
-    </Box>
+    </Flex>
   );
 };

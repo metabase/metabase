@@ -53,6 +53,7 @@ const frameFromCron = (frameInCronFormat: string) =>
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   const second = "0";
+  const year = "*";
   let minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
   const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
   let weekday = settings.schedule_day
@@ -88,6 +89,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     dayOfMonth,
     month,
     weekday,
+    year,
   ].join(" ");
   return cronExpression;
 };
@@ -112,7 +114,7 @@ export const cronToScheduleSettings_unmemoized = (
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== Cron.AllValues) {
+  if (month !== Cron.AllValues && !isCustomSchedule) {
     return null;
   }
   let schedule_type: ScheduleType | undefined;

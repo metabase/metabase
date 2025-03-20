@@ -6,8 +6,8 @@ import {
   cronUnitToNumber,
   isRepeatingEvery,
 } from "metabase/admin/performance/utils";
-import { getScheduleExplanation } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CustomScheduleExplainer";
 import { Schedule } from "metabase/components/Schedule/Schedule";
+import { getScheduleExplanation } from "metabase/lib/cron";
 import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -118,7 +118,6 @@ export const NotificationSchedule = ({
           aria-label={t`Describe how often the alert notification should be sent`}
           labelAlignment="left"
           className={styles.schedule}
-          timezone={timezone}
         />
       </Flex>
       {showWarning(scheduleSettings, cronString) && (

@@ -40,7 +40,7 @@ import type {
 import { CacheDurationUnit } from "metabase-types/api";
 
 import { strategyValidationSchema } from "../constants/complex";
-import { rootId } from "../constants/simple";
+import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
 import {
@@ -56,7 +56,6 @@ import {
   StyledForm,
   StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
-import { DEFAULT_ALERT_CRON_SCHEDULE } from "metabase/notifications/utils";
 
 interface ButtonLabels {
   save: string;
@@ -410,7 +409,7 @@ const ScheduleStrategyFormFields = () => {
   return (
     <>
       <Schedule
-        cronString={scheduleInCronFormat || DEFAULT_ALERT_CRON_SCHEDULE}
+        cronString={scheduleInCronFormat || defaultCronSchedule}
         scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
         onScheduleChange={onScheduleChange}
         verb={c("A verb in the imperative mood").t`Invalidate`}

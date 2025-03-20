@@ -33,7 +33,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { explainCronExpressionLowercase } from "./cron";
+import { getScheduleExplanation } from "./cron";
 
 export const formatTitle = ({ item, type }: NotificationListItem) => {
   switch (type) {
@@ -294,11 +294,13 @@ export const formatNotificationCheckSchedule = (
     }
     case "cron":
       try {
-        return t`Check ${explainCronExpressionLowercase(cronSchedule)}`;
+        return t`Check ${getScheduleExplanation(cronSchedule)}`;
       } catch {
         return null;
       }
   }
+
+  return null;
 };
 
 export const formatNotificationScheduleDescription = ({
