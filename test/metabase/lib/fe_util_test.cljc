@@ -44,6 +44,18 @@
                  :args vector?}
                 (lib/expression-parts query expression-clause)))))))
 
+(deftest ^:parallel literals-expression-parts-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))]
+    (testing "string literal"
+      (is (=? (lib/expression-parts query "foo") "foo"))
+      (is (=? (lib/expression-parts query "") "")))
+    (testing "number literal"
+      (is (=? (lib/expression-parts query 42) 42))
+      (is (=? (lib/expression-parts query 0) 0)))
+    (testing "boolean literal"
+      (is (=? (lib/expression-parts query true) true))
+      (is (=? (lib/expression-parts query false) false)))))
+
 (deftest ^:parallel filter-parts-field-properties-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
