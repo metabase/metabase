@@ -1,14 +1,11 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { toggleSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getSidebar } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
 
 export const AddQuestionButton = () => {
-  const dispatch = useDispatch();
-  const sidebar = useSelector(getSidebar);
+  const { sidebar, toggleSidebar } = useDashboardContext();
 
   const addQuestionButtonHint =
     sidebar.name === SIDEBAR_NAME.addQuestion
@@ -20,7 +17,7 @@ export const AddQuestionButton = () => {
       tooltipLabel={addQuestionButtonHint}
       icon="add"
       isActive={sidebar.name === SIDEBAR_NAME.addQuestion}
-      onClick={() => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion))}
+      onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
       aria-label={addQuestionButtonHint}
     />
   );
