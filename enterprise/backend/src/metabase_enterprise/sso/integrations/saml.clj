@@ -142,13 +142,14 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             relay-state  (u/encode-base64 redirect-url)]
-        (saml/idp-redirect-response {:request-id  (str "id-" (random-uuid))
-                                     :sp-name     (sso-settings/saml-application-name)
-                                     :issuer      (sso-settings/saml-application-name)
-                                     :acs-url     (acs-url)
-                                     :idp-url     idp-url
-                                     :credential  (sp-cert-keystore-details)
-                                     :relay-state relay-state}))
+        (saml/idp-redirect-response {:request-id       (str "id-" (random-uuid))
+                                     :sp-name          (sso-settings/saml-application-name)
+                                     :issuer           (sso-settings/saml-application-name)
+                                     :acs-url          (acs-url)
+                                     :idp-url          idp-url
+                                     :credential       (sp-cert-keystore-details)
+                                     :relay-state      relay-state
+                                     :protocol-binding :post}))
       (catch Throwable e
         (let [msg (trs "Error generating SAML request")]
           (log/error e msg)

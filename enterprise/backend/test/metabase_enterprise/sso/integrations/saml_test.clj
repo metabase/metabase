@@ -215,7 +215,7 @@
                             " ID=\"id-419507d5-1d2a-43c4-bcde-3e5b9746bb47\""
                             " IsPassive=\"false\""
                             " IssueInstant=\"2020-09-30T17:53:32.000Z\""
-                            " ProtocolBinding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\""
+                            " ProtocolBinding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\""
                             " ProviderName=\"Metabase\""
                             " Version=\"2.0\""
                             " xmlns:saml2p=\"urn:oasis:names:tc:SAML:2.0:protocol\">"

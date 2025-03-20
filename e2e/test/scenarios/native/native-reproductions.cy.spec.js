@@ -415,9 +415,24 @@ describe("issue 21550", () => {
 });
 
 describe("issue 21597", { tags: "@external" }, () => {
+  /*
+   *
+   * Greetings and welcome to this weird test. It has a history! A long legacy! Allow me to explain:
+   *
+   * This test was originally using changing the DB on a native query with field filters to trigger an error that
+   * would show up in the save modal.
+   *
+   * PR#54453 fixes this error by removing the field filters that refer to the old database, which means that it won't
+   * save.
+   *
+   * So in order to trigger an error, we are intercepting the POST /api/card and manually responding with an error.
+   *
+   * We then assert that the message makes it to the save modal.
+   *
+   * The End
+   */
   const databaseName = "Sample Database";
   const databaseCopyName = `${databaseName} copy`;
-  const secondDatabaseId = SAMPLE_DB_ID + 1;
 
   beforeEach(() => {
     H.restore();
@@ -425,7 +440,17 @@ describe("issue 21597", { tags: "@external" }, () => {
   });
 
   it("display the relevant error message in save question modal (metabase#21597)", () => {
-    cy.intercept("POST", "/api/card").as("saveNativeQuestion");
+    const message =
+      'Invalid Field Filter: Field 164574 "PRODUCTS"."CATEGORY" belongs to Database 2276 "sample-dataset", but the query is against Database 2275 "test-data"';
+    cy.intercept({ method: "POST", url: "/api/card" }, request => {
+      request.reply({
+        body: {
+          message: message,
+          _status: 400,
+        },
+        statusCode: 400,
+      });
+    }).as("saveNativeQuestion");
 
     // Second DB (copy)
     H.addPostgresDatabase(databaseCopyName);
@@ -433,46 +458,19 @@ describe("issue 21597", { tags: "@external" }, () => {
     // Create a native query and run it
     H.startNewNativeQuestion().as("editor");
 
-    cy.get("@editor").type(
-      `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
-    );
-
-    cy.findByTestId("variable-type-select").click();
-    H.popover().within(() => {
-      cy.findByText("Field Filter").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Products").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Category").click();
-    });
+    cy.get("@editor").type("SELECT 1");
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("200");
-
-    // Change DB
-    // and re-run the native query
-    cy.findByTestId("native-query-editor-container")
-      .findByText("Sample Database")
-      .click();
-    H.popover().within(() => {
-      cy.findByText(databaseCopyName).click();
-    });
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`Can\'t find field with ID: ${PRODUCTS.CATEGORY}`);
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByPlaceholderText("What is the name of your question?").type("Q");
+      cy.findByPlaceholderText("What is the name of your question?").type(
+        "The question name",
+      );
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
-      cy.findByText(
-        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database ${SAMPLE_DB_ID} "${databaseName}", but the query is against Database ${secondDatabaseId} "${databaseCopyName}"`,
-      );
+      cy.findByText(message);
     });
   });
 });

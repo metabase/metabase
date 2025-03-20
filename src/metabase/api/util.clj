@@ -5,8 +5,7 @@
    [clj-http.client :as http]
    [crypto.random :as crypto-random]
    [environ.core :refer [env]]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.analytics.stats :as stats]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
@@ -46,7 +45,7 @@
   what is being phoned home."
   []
   (validation/check-has-application-permission :monitoring)
-  (stats/legacy-anonymous-usage-stats))
+  (analytics/legacy-anonymous-usage-stats))
 
 (api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
@@ -96,7 +95,7 @@
     :plan-alias           (or (premium-features/plan-alias) "")
     :version              config/mb-version-info
     :settings             {:report-timezone (driver/report-timezone)}
-    :hosting-env          (stats/environment-type)
+    :hosting-env          (analytics/environment-type)
     :application-database (mdb/db-type)}
    (when-not (premium-features/is-hosted?)
      {:application-database-details (t2/with-connection [^java.sql.Connection conn]
@@ -123,7 +122,7 @@
   "Returns database connection pool info for the current Metabase instance."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [pool-info (prometheus/connection-pool-info)
+  (let [pool-info (analytics/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
 

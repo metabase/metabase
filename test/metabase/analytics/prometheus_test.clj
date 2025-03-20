@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
+   [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -172,7 +173,7 @@
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
-                            (prometheus/inc! :metabase-email/unknown-metric)))))
+                            (analytics/inc! :metabase-email/unknown-metric)))))
   (testing "inc is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)

@@ -711,7 +711,7 @@
       (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"You do not have permissions to view Card [\d,]+."
+             #"Query does not have any :rows in results."
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-positive-retry-metrics [^io.github.resilience4j.retry.Retry retry]
@@ -968,3 +968,21 @@
     (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
+
+(deftest alert-with-invalid-card-should-fail-test
+  (testing "If the card is failed to execute, the notification should fail (#54495)"
+    (mt/with-temp
+      [:model/Card         {card-id :id}  {:dataset_query (mt/native-query {:query "select 1/0"})}
+       :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                           :alert_condition "rows"}
+       :model/PulseCard    _              {:pulse_id pulse-id
+                                           :card_id  card-id}
+       :model/PulseChannel _              {:pulse_id pulse-id
+                                           :channel_type "email"
+                                           :details      {:emails ["foo@metabase.com"]}}]
+      (t2/delete! :model/TaskHistory)
+      (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
+      (is (=? [{:status :failed
+                :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
+              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+                         {:order-by [[:started_at :asc]]}))))))

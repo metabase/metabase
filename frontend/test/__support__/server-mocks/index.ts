@@ -15,6 +15,7 @@ export * from "./dataset";
 export * from "./email";
 export * from "./field";
 export * from "./group";
+export * from "./gsheets";
 export * from "./impersonation";
 export * from "./model-indexes";
 export * from "./native-query-snippet";

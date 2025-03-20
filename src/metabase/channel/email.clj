@@ -1,6 +1,6 @@
 (ns metabase.channel.email
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -223,11 +223,11 @@
                     (when-let [reply-to (email-reply-to)]
                       {:reply-to reply-to}))))
     (catch Throwable e
-      (prometheus/inc! :metabase-email/message-errors)
+      (analytics/inc! :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
         (throw e)))
     (finally
-      (prometheus/inc! :metabase-email/messages))))
+      (analytics/inc! :metabase-email/messages))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."

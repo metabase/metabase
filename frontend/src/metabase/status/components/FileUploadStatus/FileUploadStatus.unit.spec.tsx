@@ -226,7 +226,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -260,7 +260,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -303,7 +303,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -350,7 +350,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data added to Fancy Table");
   });
@@ -398,7 +398,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data replaced in Fancy Table");
   });
@@ -485,7 +485,7 @@ describe("FileUploadStatus", () => {
       });
 
       expect(
-        await screen.findByRole("link", { name: "Start exploring" }),
+        await screen.findByRole("link", { name: /Start exploring/ }),
       ).toHaveAttribute("href", "/model/3");
     });
   });

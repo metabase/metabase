@@ -23,7 +23,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -189,7 +189,8 @@
     Since that's inefficient and we want to be able to send pulses in parallel, we changed it so that each PulseChannel
     of the same schedule will have its own SendPulse trigger.
     During this transition, we need to schedule all the SendPulse triggers for existing PulseChannels, so we have this job
-    that run once on Metabase startup to do that."}
+    that run once on Metabase startup to do that."
+    DisallowConcurrentExecution true}
   InitSendPulseTriggers
   [_context]
   (init-send-pulse-triggers!))

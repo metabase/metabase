@@ -3,7 +3,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
@@ -383,10 +383,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite
-                             {:event           :invite-sent
-                              :invited-user-id new-user-id
-                              :source          "admin"})
+      (analytics/track-event! :snowplow/invite
+                              {:event           :invite-sent
+                               :invited-user-id new-user-id
+                               :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 

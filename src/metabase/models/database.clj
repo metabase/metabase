@@ -2,7 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -173,21 +173,20 @@
            (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
              (do
                (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/healthy {:driver engine} 1))
+               (analytics/inc! :metabase-database/healthy {:driver engine} 1))
              (do
                (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))
            (catch Throwable e
              (do
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
-               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
+               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
 
-(defn check-health-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
   (doseq [database (t2/select :model/Database)]
-    (health-check-database! database)
-    (check-and-schedule-tasks-for-db! database)))
+    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here

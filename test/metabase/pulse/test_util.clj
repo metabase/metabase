@@ -11,8 +11,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]))
 
-(set! *warn-on-reflection* true)
-
 (defn send-alert-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
@@ -29,6 +27,8 @@
                                                                     (reset! pulse-result <>)))]
           (pulse.send/send-pulse! pulse)
           (qp.test-util/rows (:result @pulse-result)))))))
+
+(set! *warn-on-reflection* true)
 
 (def card-name "Test card")
 

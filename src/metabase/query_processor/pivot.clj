@@ -30,7 +30,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -227,7 +228,7 @@
   [pivot-column-mapping :- ::pivot-column-mapping]
   ;; the first query doesn't need any special mapping, it already has all the columns
   (if pivot-column-mapping
-    (apply juxt (for [mapping pivot-column-mapping]
+    (perf/juxt* (for [mapping pivot-column-mapping]
                   (if mapping
                     #(nth % mapping)
                     (constantly nil))))
@@ -605,7 +606,8 @@
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
-             query             (assoc-in query [:middleware :pivot-options] pivot-opts)
+             query             (-> query
+                                   (assoc-in [:middleware :pivot-options] pivot-opts))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))

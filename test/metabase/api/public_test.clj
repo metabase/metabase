@@ -91,6 +91,16 @@
     (fn [~binding]
       ~@body)))
 
+(defn- venues-query
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :people)
+              :fields [[:field (mt/id :people :id) nil]
+                       [:field (mt/id :people :state) nil]
+                       [:field (mt/id :people :latitude) nil]
+                       [:field (mt/id :people :longitude) nil]]}})
+
 (defn add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
   (first (t2/insert-returning-instances! :model/DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
                                                                       :card_id            (u/the-id card)
@@ -148,7 +158,7 @@
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "should increment the public link query count when fetching a public Card"
           (let [get-qe-count (fn get-qe-count [] (get-in (#'stats/->snowplow-grouped-metric-info)
-                                                         [:query-executions "public_link"]))
+                                                         [:query-executions :public_link]))
                 qe-count-before (get-qe-count)]
             (client/client :get 202 (str "public/card/" uuid "/query"))
             ;; The qe-count gets incremented asynchronously, so we need to poll until it's updated.
@@ -1938,20 +1948,73 @@
                 ;; of things working as described.
                 (is (= 1 @call-count))))))))))
 
+;;; --------------------------------- POST /dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format ----------------------------------
+
+(deftest dashcard-card-export-test
+  (testing "POST /dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card {card-id :id} {:dataset_query (venues-query)}
+                       :model/DashboardCard {dashcard-id :id} {:card_id      card-id
+                                                               :dashboard_id dashboard-id}]
+          (testing "urlencoded requests"
+            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                   uuid
+                                                                   dashcard-id
+                                                                   card-id)
+                                                 {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
+                                                 {:format_rows true})
+                                  "ID,State,Latitude,Longitude\n")))
+          (testing "Invalid id throws 404"
+            (client/client :post 404 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                             uuid
+                                             dashcard-id
+                                             9998889978)))
+          (testing "JSON export"
+            (is (= "1" (-> (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/json"
+                                                            uuid
+                                                            dashcard-id
+                                                            card-id))
+                           first
+                           :ID))))
+          (testing "API export"
+            (is (= "1" (-> (client/client :post 202 (format "public/dashboard/%s/dashcard/%d/card/%d/api"
+                                                            uuid
+                                                            dashcard-id
+                                                            card-id))
+                           :data
+                           :rows
+                           first
+                           first))))
+
+          (testing "XLSX export"
+            (is (= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                   (-> (client/client-full-response :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/xlsx"
+                                                                      uuid
+                                                                      dashcard-id
+                                                                      card-id))
+                       :headers
+                       (get "Content-Type"))))))))))
+
+(deftest dashcard-card-export-np-sharing-test
+  (testing "POST /dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card {card-id :id} {:dataset_query (venues-query)}
+                       :model/DashboardCard {dashcard-id :id} {:card_id      card-id
+                                                               :dashboard_id dashboard-id}]
+          (testing "Cannot export when enable-public-sharing is false"
+            (is (= "An error occurred." (client/client :post 400 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                         uuid
+                                                                         dashcard-id
+                                                                         card-id))))))))))
+
 ;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
 
 (defn- png? [s]
   (= [\P \N \G] (drop 1 (take 4 s))))
-
-(defn- venues-query
-  []
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table (mt/id :people)
-              :fields [[:field (mt/id :people :id) nil]
-                       [:field (mt/id :people :state) nil]
-                       [:field (mt/id :people :latitude) nil]
-                       [:field (mt/id :people :longitude) nil]]}})
 
 (deftest card-tile-query-test
   (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
@@ -1978,3 +2041,11 @@
                                                     card-id
                                                     (mt/id :people :latitude)
                                                     (mt/id :people :longitude))))))))))
+
+;;; --------------------------------- POST /oembed ----------------------------------
+
+(deftest oembed-test
+  (testing "GET /oembed"
+    (let [response (client/client :get 200 "public/oembed?url=path/to/url&format=json")]
+      (is (= "1.0" (:version response)))
+      (is (= "rich" (:type response))))))

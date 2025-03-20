@@ -27,7 +27,7 @@ import {
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 
-import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
 
 type ParameterDropdownWidgetProps = {

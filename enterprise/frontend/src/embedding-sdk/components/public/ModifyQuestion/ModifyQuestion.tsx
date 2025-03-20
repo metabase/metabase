@@ -10,6 +10,7 @@ export const ModifyQuestion = ({
   onBeforeSave,
   entityTypeFilter,
   isSaveEnabled,
+  targetCollection,
   saveToCollection,
 }: InteractiveQuestionProps) => (
   <QuestionEditor
@@ -19,6 +20,7 @@ export const ModifyQuestion = ({
     onBeforeSave={onBeforeSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
+    targetCollection={targetCollection}
     saveToCollection={saveToCollection}
   />
 );

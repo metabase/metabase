@@ -42,6 +42,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  BaseEntityId,
   BaseUser,
   Bookmark,
   CacheableDashboard,
@@ -315,7 +316,7 @@ export const PLUGIN_COLLECTIONS = {
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
@@ -561,8 +562,19 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GsheetConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+  reconnect: boolean;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
+  GsheetsSyncStatus: PluginPlaceholder,
+  GsheetConnectionModal:
+    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
+  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
+  GsheetConnectButton: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

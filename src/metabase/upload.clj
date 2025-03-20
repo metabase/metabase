@@ -7,8 +7,7 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -642,14 +641,14 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csvupload
-                               (assoc stats
-                                      :event    :csv-upload-successful
-                                      :model-id (:id card)))
+        (analytics/track-event! :snowplow/csvupload
+                                (assoc stats
+                                       :event    :csv-upload-successful
+                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
-        (prometheus/inc! :metabase-csv-upload/failed)
-        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+        (analytics/inc! :metabase-csv-upload/failed)
+        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
         (throw e)))))
@@ -785,7 +784,13 @@
               name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
               _                  (check-schema name->field column-names)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
+              ;; See https://github.com/metabase/metabase/issues/55199
+              ch-type-hack       (fn [upload-type]
+                                   (if (and (= ::upload-types/offset-datetime upload-type)
+                                            (= :clickhouse driver))
+                                     ::upload-types/datetime
+                                     upload-type))
+              old-types          (map (comp ch-type-hack upload-types/base-type->upload-type :base_type name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
@@ -839,12 +844,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
+          (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (prometheus/inc! :metabase-csv-upload/failed)
-      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+      (analytics/inc! :metabase-csv-upload/failed)
+      (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))
 
@@ -874,21 +879,22 @@
 
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
-  [table]
-  (cond
-    (not (:is_upload table))
-    (ex-info (tru "The table must be an uploaded table.")
-             {:status-code 422})
+  [table database]
+  (when-not (:is_attached_dwh database) ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+    (cond
+      (not (:is_upload table))
+      (ex-info (tru "The table must be an uploaded table.")
+               {:status-code 422})
 
-    (not (mi/can-write? table))
-    (ex-info (tru "You don''t have permissions to do that.")
-             {:status-code 403})))
+      (not (mi/can-write? table))
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))))
 
 (defn- check-can-delete
   "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
-  [table]
+  [table database]
   ;; For now anyone that can update a table is allowed to delete it.
-  (when-let [error (can-delete-error table)]
+  (when-let [error (can-delete-error table database)]
     (throw error)))
 
 ;;; +--------------------------------------------------
@@ -901,7 +907,7 @@
   (let [database   (table/database table)
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
-    (check-can-delete table)
+    (check-can-delete table database)
 
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still

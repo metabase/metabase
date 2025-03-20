@@ -155,7 +155,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
   it("can save a question to a pre-defined collection", () => {
     mountInteractiveQuestion({
-      saveToCollection: Number(THIRD_COLLECTION_ID),
+      targetCollection: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -174,7 +174,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("/api/user/current").as("getUser");
 
     mountInteractiveQuestion({
-      saveToCollection: "personal",
+      targetCollection: "personal",
     });
 
     cy.wait("@getUser").then(({ response: userResponse }) => {

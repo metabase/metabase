@@ -1,7 +1,7 @@
 (ns metabase.setup.api
   (:require
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
@@ -80,10 +80,10 @@
                                        :invite_method "email"
                                        :sso_source    (:sso_source <>))
                                 :details {:invitor (select-keys invitor [:email :first_name])}})
-        (snowplow/track-event! ::snowplow/invite
-                               {:event           :invite-sent
-                                :invited-user-id (u/the-id <>)
-                                :source          "setup"})))))
+        (analytics/track-event! :snowplow/invite
+                                {:event           :invite-sent
+                                 :invited-user-id (u/the-id <>)
+                                 :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences

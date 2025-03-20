@@ -1531,7 +1531,9 @@
 (deftest cards-to-copy-test
   (testing "Identifies all cards to be copied"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                     {:card_id 3 :card (card-model {:id 3})}]]
+                     {:card_id 3 :card (card-model {:id 3})}
+                     ;; this guy does not even reach the discard pile
+                     {:action_id 123}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
@@ -1633,6 +1635,18 @@
                                                       [:field 63 nil]]}]}]
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 2}}
+                                                    nil
+                                                    nil)))))
+    (testing "Does not think action cards are text cards"
+      (let [dashcards [{:card_id 1 :card {:id 1}}
+                       {:visualization_settings {:virtual_card {:display "text"}
+                                                 :text         "whatever"}}
+                       {:visualization_settings {:virtual_card {:display "heading"}
+                                                 :text         "keep me!"}}
+                       {:action_id 123}]]
+        (is (= (butlast dashcards)
+               (api.dashboard/update-cards-for-copy dashcards
+                                                    {1 {:id 1}}
                                                     nil
                                                     nil)))))))
 

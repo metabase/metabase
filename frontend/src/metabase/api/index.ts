@@ -24,6 +24,7 @@ export * from "./revision";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
+export * from "./settings";
 export * from "./snippet";
 export * from "./subscription";
 export * from "./table";
