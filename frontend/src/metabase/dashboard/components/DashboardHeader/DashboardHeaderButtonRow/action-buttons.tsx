@@ -80,9 +80,7 @@ export const dashboardActionButtons: Record<
 
   // VIEW ACTIONS
   [DASHBOARD_ACTION.EDIT_DASHBOARD]: {
-    component: ({ onRefreshPeriodChange }) => (
-      <EditDashboardButton onRefreshPeriodChange={onRefreshPeriodChange} />
-    ),
+    component: EditDashboardButton,
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
@@ -105,12 +103,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: ({ isNightMode, onNightModeChange }) => (
-      <NightModeToggleButton
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
-      />
-    ),
+    component: NightModeToggleButton,
     enabled: ({
       isEditing,
       isFullscreen,
@@ -173,18 +166,13 @@ export const dashboardActionButtons: Record<
 
   // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD
   [DASHBOARD_ACTION.COPY_ANALYTICS_DASHBOARD]: {
-    component: () => <CopyAnalyticsDashboardButton />,
+    component: CopyAnalyticsDashboardButton,
     enabled: ({ isAnalyticsDashboard = false }) => {
       return isAnalyticsDashboard;
     },
   },
   [DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD]: {
-    component: ({ isFullscreen, onFullscreenChange }) => (
-      <FullscreenAnalyticsDashboard
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-      />
-    ),
+    component: FullscreenAnalyticsDashboard,
     enabled: ({ isAnalyticsDashboard = false }) => isAnalyticsDashboard,
   },
 
