@@ -38,6 +38,9 @@
          old-position                   :position
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
+         old-database-is-generated      :database-is-generated
+         old-database-is-nullable       :database-is-nullable
+         old-database-default           :database-default
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
          old-visibility-type            :visibility-type} metabase-field
@@ -47,11 +50,16 @@
          new-database-position          :database-position
          new-database-name              :name
          new-database-is-auto-increment :database-is-auto-increment
+         new-database-is-generated      :database-is-generated
+         new-database-is-nullable       :database-is-nullable
+         new-database-default           :database-default
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
         new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
+        new-database-is-nullable        (boolean new-database-is-nullable)
+        new-database-is-generated       (boolean new-database-is-generated)
         new-database-type               (or new-database-type "NULL")
         new-semantic-type               (common/semantic-type field-metadata)
 
@@ -78,6 +86,9 @@
         new-name? (not= old-database-name new-database-name)
 
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
+        new-db-generated?        (not= old-database-is-generated new-database-is-generated)
+        new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
+        new-db-default?          (not= old-database-default new-database-default)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?         (not= old-db-required new-db-required)
         new-visibility-type?     (not= old-visibility-type new-visibility-type)
@@ -139,6 +150,24 @@
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
+         (when new-db-generated?
+           (log/infof "Database generated of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-generated
+                      new-database-is-generated)
+           {:database_is_generated new-database-is-generated})
+         (when new-db-nullable?
+           (log/infof "Database nullable of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-nullable
+                      new-database-is-nullable)
+           {:database_is_nullable new-database-is-nullable})
+         (when new-db-default?
+           (log/infof "Database default of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-default
+                      new-database-default)
+           {:database_default new-database-default})
          (when new-db-partitioned?
            (log/infof "Database partitioned of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
