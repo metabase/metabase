@@ -101,7 +101,7 @@ export default function QueryVisualization(props) {
 }
 
 const VisualizationEmptyState = ({ isCompact }) => {
-  const keyboardShortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+  const keyboardShortcut = getRunQueryShortcut();
 
   return (
     <Flex
@@ -118,7 +118,7 @@ const VisualizationEmptyState = ({ isCompact }) => {
         <Text c="text-medium">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
-            <b key="shortcut">{keyboardShortcut}</b>
+            <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
         <Text c="text-medium">{t`Query results will appear here.`}</Text>
@@ -163,6 +163,8 @@ export const VisualizationDirtyState = ({
   cancelQuery,
   hidden,
 }) => {
+  const isEnabled = isRunnable && !hidden;
+  const keyboardShortcut = getRunQueryShortcut();
   const handleRun = () => runQuestionQuery({ ignoreCache: true });
   const handleCancel = () => cancelQuery();
   const handleRunOrCancel = isRunning ? handleCancel : handleRun;
@@ -182,17 +184,24 @@ export const VisualizationDirtyState = ({
       )}
       onClick={handleRunOrCancel}
     >
-      <RunButtonWithTooltip
-        className={cx(CS.py2, CS.px3, CS.shadowed)}
-        circular
-        compact
-        result={result}
-        hidden={!isRunnable || hidden}
-        isRunning={isRunning}
-        isDirty={isResultDirty}
-        onRun={handleRun}
-        onCancel={handleCancel}
-      />
+      <Stack gap="sm" align="center">
+        <RunButtonWithTooltip
+          className={CS.shadowed}
+          circular
+          compact
+          result={result}
+          hidden={!isEnabled}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          onRun={handleRun}
+          onCancel={handleCancel}
+        />
+        {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
+      </Stack>
     </div>
   );
 };
+
+function getRunQueryShortcut() {
+  return isMac() ? t`⌘ + return` : t`Ctrl + Enter`;
+}
