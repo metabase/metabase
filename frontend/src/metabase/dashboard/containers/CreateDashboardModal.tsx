@@ -21,6 +21,7 @@ export const CreateDashboardModal = ({
   initialValues,
   filterPersonalCollections,
   collectionId,
+  opened,
   ...modalProps
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
   const dispatch = useDispatch();
@@ -38,21 +39,24 @@ export const CreateDashboardModal = ({
 
   return (
     <Modal.Stack>
-      <Modal
-        title={t`New dashboard`}
-        onClose={() => onClose?.()}
-        data-testid="new-dashboard-modal"
-        size="lg"
-        {...modalProps}
-      >
-        <CreateDashboardForm
-          onCreate={handleCreate}
-          onCancel={onClose}
-          initialValues={initialValues}
-          filterPersonalCollections={filterPersonalCollections}
-          collectionId={collectionId}
-        />
-      </Modal>
+      {opened && (
+        <Modal
+          title={t`New dashboard`}
+          onClose={() => onClose?.()}
+          data-testid="new-dashboard-modal"
+          size="lg"
+          opened={opened}
+          {...modalProps}
+        >
+          <CreateDashboardForm
+            onCreate={handleCreate}
+            onCancel={onClose}
+            initialValues={initialValues}
+            filterPersonalCollections={filterPersonalCollections}
+            collectionId={collectionId}
+          />
+        </Modal>
+      )}
     </Modal.Stack>
   );
 };

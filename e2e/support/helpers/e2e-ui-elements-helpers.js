@@ -27,7 +27,9 @@ export function menu() {
 export function modal() {
   const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+  return cy
+    .get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","))
+    .filter(":visible");
 }
 
 export function tooltip() {

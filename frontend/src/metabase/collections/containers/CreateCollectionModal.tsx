@@ -49,20 +49,22 @@ function CreateCollectionModal({
 
   return (
     <Modal.Stack>
-      <Modal
-        opened={opened}
-        onClose={onClose}
-        size="lg"
-        data-testid="new-collection-modal"
-        padding="40px"
-        title={t`New collection`}
-      >
-        <CreateCollectionForm
-          {...props}
-          onCreate={handleCreate}
-          onCancel={onClose}
-        />
-      </Modal>
+      {opened && (
+        <Modal
+          opened={opened}
+          onClose={onClose}
+          size="lg"
+          data-testid="new-collection-modal"
+          padding="40px"
+          title={t`New collection`}
+        >
+          <CreateCollectionForm
+            {...props}
+            onCreate={handleCreate}
+            onCancel={onClose}
+          />
+        </Modal>
+      )}
     </Modal.Stack>
   );
 }
