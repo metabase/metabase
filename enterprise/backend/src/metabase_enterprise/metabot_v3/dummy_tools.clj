@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.models.field-values :as field-values]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -37,8 +38,16 @@
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
-      (mapv #(m/assoc-some % :field-values (-> % :id id->values :values)) cols))
+      (map #(m/assoc-some % :field-values (-> % :id id->values :values)) cols))
     cols))
+
+(defn- add-table-reference
+  [query col]
+  (cond-> col
+    (and (:fk-field-id col)
+         (:table-id col))
+    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
+                                lib.util/strip-id))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -50,9 +59,11 @@
          metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))
          breakouts (lib/breakouts metric-query)
          base-query (lib/remove-all-breakouts metric-query)
-         visible-cols (lib/visible-columns base-query)
-         filterable-cols (-> (lib/filterable-columns base-query)
-                             add-field-values)
+         visible-cols (->> (lib/visible-columns base-query)
+                           (map #(add-table-reference base-query %)))
+         filterable-cols (->> (lib/filterable-columns base-query)
+                              add-field-values
+                              (map #(add-table-reference base-query %)))
          default-temporal-breakout (->> breakouts
                                         (map #(lib/find-matching-column % visible-cols))
                                         (m/find-first lib.types.isa/temporal?))
@@ -165,9 +176,9 @@
             api/*current-user-id* 2
             api/*is-superuser?* true]
     #_(table-details 30 nil)
-    #_(card-details 147)
-    #_(metric-details 135)
-    (answer-sources "__METABOT__"))
+    (card-details 110)
+    #_(metric-details 108)
+    #_(answer-sources "__METABOT__"))
   -)
 
 (defn get-table-details
