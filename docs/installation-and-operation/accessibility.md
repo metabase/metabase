@@ -24,6 +24,6 @@ While we're working to make a product that is easy to use and inclusive to all, 
 - **Status messages and notifications:** While some dynamically generated status messages are accessible, others are not consistently conveyed to assistive technologies like screen readers, which could make it difficult for users to receive important system feedback.
 - **Consistent page titles and headings:** Some pages lack descriptive or unique titles, which may make navigation more challenging for screen reader users who rely on clear page identification.
 
-If you're interested in seeing us address these gaps, we're happy to remind you we're open source, and encourage you to see [our developers' guide](../developers-guide/start.md).
+If you're interested in helping us address these gaps, check out [our developers' guide](../developers-guide/start.md).
 
 To request a copy of our VPAT, contact us at [help@metabase.com](mailto:help@metabase.com).
