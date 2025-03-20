@@ -72,8 +72,8 @@ export const popState = createThunkAction(
           await dispatch(
             setCardAndRun(location.state.card, { shouldUpdateUrl: false }),
           );
-          await dispatch(resetUIControls());
           await dispatch(setCurrentState(location.state));
+          await dispatch(resetUIControls());
         }
       }
     }

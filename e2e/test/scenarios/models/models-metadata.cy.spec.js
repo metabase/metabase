@@ -25,12 +25,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      H.createQuestion(modelDetails, { wrapId: true }).then(
-        ({ body: { id } }) => {
-          cy.visit(`/model/${id}`);
-          cy.wait("@dataset");
-        },
-      );
+      H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
     });
 
     it("should edit GUI model metadata", () => {
@@ -66,9 +61,8 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Subtotal");
     });
 
-    it("allows for canceling changes", () => {
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("allows for canceling changes, back navigation (metabase#55162)", () => {
+      H.openQuestionActions("Edit metadata");
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -82,8 +76,7 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
 
       // Ensure back navigation works correctly metabase#55162
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
+      H.openQuestionActions("Edit metadata");
       cy.go("back");
       cy.get("@questionId").then(id => {
         cy.location("pathname").should("equal", `/model/${id}-gui-model`);
