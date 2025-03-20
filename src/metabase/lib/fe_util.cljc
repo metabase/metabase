@@ -77,6 +77,24 @@
     (expand-temporal-expression expression-clause)
     expression-clause))
 
+(defn- expandable-case-or-if-expression?
+  [[op _options & _args]]
+  (or (= op :case)
+      (= op :if)))
+
+(defn- expand-case-or-if-expression
+  [[op options & args]]
+  (let [clauses (into [] (apply concat (first args)))
+        fallback (second args)
+        res (conj clauses fallback)]
+    (concat [op options] res)))
+
+(defn- maybe-expand-case-or-if-expression
+  [expression-clause]
+  (if (expandable-case-or-if-expression? expression-clause)
+    (expand-case-or-if-expression expression-clause)
+    expression-clause))
+
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
   (lib.filter/add-column-operators
@@ -109,11 +127,14 @@
      (lib.util/segment-clause? expression-clause) (segment-metadata-from-ref query expression-clause)
      (lib.util/metric-clause? expression-clause) (metric-metadata-from-ref query expression-clause)
      :else
-     (let [[op options & args] (maybe-expand-temporal-expression expression-clause)]
+     (let [[op options & args] (-> expression-clause
+                                   maybe-expand-temporal-expression
+                                   maybe-expand-case-or-if-expression)
+           recurse #(expression-parts query stage-number %)]
        {:lib/type :mbql/expression-parts
         :operator op
         :options  options
-        :args     (mapv #(expression-parts query stage-number %) args)}))))
+        :args     (mapv recurse args)}))))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
