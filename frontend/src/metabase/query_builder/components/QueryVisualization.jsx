@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 import { useTimeout } from "react-use";
@@ -167,9 +166,6 @@ export const VisualizationDirtyState = ({
   const keyboardShortcut = getRunQueryShortcut();
   const handleRun = () => runQuestionQuery({ ignoreCache: true });
   const handleCancel = () => cancelQuery();
-  const handleRunOrCancel = isRunning ? handleCancel : handleRun;
-
-  useHotkeys([["mod+Enter", handleRunOrCancel]]);
 
   return (
     <div
@@ -182,7 +178,7 @@ export const VisualizationDirtyState = ({
         CS.cursorPointer,
         { [QueryBuilderS.LoadingHidden]: hidden },
       )}
-      onClick={handleRunOrCancel}
+      onClick={isRunning ? handleCancel : handleRun}
     >
       <Stack gap="sm" align="center">
         <RunButtonWithTooltip
