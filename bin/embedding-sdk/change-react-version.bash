@@ -1,13 +1,7 @@
 #!/bin/bash
 
-function backup_package_files() {
-  cp yarn.lock yarn.lock.backup
-  cp package.json package.json.backup
-}
-
 function restore_package_files() {
-  mv yarn.lock.backup yarn.lock
-  mv package.json.backup package.json
+  git checkout -- yarn.lock package.json
 }
 
 function install_packages() {
@@ -49,7 +43,6 @@ function get_cypress_react_package() {
 }
 
 if [[ "$1" =~ ^[0-9]+$ ]]; then
-  backup_package_files
   install_packages "$1"
   exit 0
 elif [ "$1" == "restore" ]; then

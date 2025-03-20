@@ -127,7 +127,3 @@ modules/drivers/*/.lsp/*
 /jars/
 /bin/bb
 
-# backup for package.json and yarn.lock when changing React versions
-# with ./bin/embedding-sdk/change-react-version.bash
-package.json.backup
-yarn.lock.backup
