@@ -130,7 +130,8 @@
    :description  (deferred-tru
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "destination-database" false}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -148,7 +149,8 @@
    :description  (deferred-tru
                   (str "This is a lightweight process that checks for updates to this database’s schema. "
                        "In most cases, you should be fine leaving this set to sync hourly."))
-   :visible-if   {"let-user-control-scheduling" true}})
+   :visible-if   {"let-user-control-scheduling" true
+                  "destination-database" false}})
 
 (def cache-field-values-schedule
   "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
@@ -160,14 +162,16 @@
                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
                        "particularly if you have a very large database. When should Metabase automatically scan "
                        "and cache field values?"))
-   :visible-if   {"let-user-control-scheduling" true}})
+   :visible-if   {"let-user-control-scheduling" true
+                  "destination-database" false}})
 
 (def json-unfolding
   "Map representing the `json-unfolding` option in a DB connection form"
   {:name         "json-unfolding"
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
-   :visible-if   {"advanced-options" true}
+   :visible-if   {"advanced-options" true
+                  "destination-database" false}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
