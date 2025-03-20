@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { Field } from "metabase-types/api";
 
 interface FieldSemanticType {
-  id: string;
+  id: NonNullable<Field["semantic_type"]>;
   name: string;
   section: string;
   description?: string;
