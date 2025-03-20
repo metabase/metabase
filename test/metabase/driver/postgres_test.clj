@@ -2118,3 +2118,29 @@
             (is (= :type/BigInteger (-> cols first :base_type)))
             (doseq [[casted-value _equals? _uncasted-value] rows]
               (is (int? casted-value)))))))))
+
+(defn- check-date-query
+  ([query uncasted-field casted-field]
+   (mt/native-query {:query (str "SELECT " casted-field ", " (name uncasted-field) ", " casted-field " = " (name uncasted-field)
+                                 " FROM ( "
+                                 (-> query qp.compile/compile :query)
+                                 " ) AS subquery "
+                                 "LIMIT 100")})))
+
+(deftest ^:parallel date-parse-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "DATECAST" (lib/expression-clause :date [(lib/expression-clause :text [field-md] nil)] nil))
+                          (lib/limit 100))
+                result (-> query (check-date-query field "DATECAST") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
