@@ -1239,13 +1239,15 @@
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
 
-(defn find-first-map
-  "Returns the first map in `maps` that contains the value at the given key path."
-  ([maps key-or-keys value]
-   (find-first-map maps key-or-keys value false))
+(defn find-first-map-indexed
+  "Finds the first map in `maps` that contains the value at the given key path,
+  and returns [index map]."
+  [maps ks value]
+  (first (keep-indexed
+          (fn [idx m] (when (= (get-in m ks) value) [idx m]))
+          maps)))
 
-  ([maps key-or-keys value return-idx]
-   (let [keys (if (sequential? key-or-keys) key-or-keys [key-or-keys])]
-     (if return-idx
-       (ffirst (filter #(= (get-in (second %) keys) value) (map-indexed vector maps)))
-       (first (filter #(= (get-in % keys) value) maps))))))
+(defn find-first-map
+  "Finds the first map in `maps` that contains the value at the given key path."
+  [maps ks value]
+  (second (find-first-map-indexed maps ks value)))

@@ -90,7 +90,7 @@
                                              card-with-data   (u/find-first-map series-data [:card :id] ref-card-id)
                                              card-cols        (get-in card-with-data [:data :cols])
                                              card-rows        (get-in card-with-data [:data :rows])
-                                             col-idx-in-card  (u/find-first-map card-cols :name originalName true)]
+                                             col-idx-in-card  (first (u/find-first-map-indexed card-cols [:name] originalName))]
                                          (if col-idx-in-card
                                            (let [values (mapv #(nth % col-idx-in-card) card-rows)]
                                              (assoc acc name values))
