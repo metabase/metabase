@@ -1,7 +1,13 @@
 import { t } from "ttag";
 
 import { MBQL_CLAUSES, getMBQLName } from "./config";
-import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
+import {
+  isBooleanLiteral,
+  isCaseOrIfOperator,
+  isNumberLiteral,
+  isOptionsObject,
+  isStringLiteral,
+} from "./matchers";
 import { unescapeString } from "./string";
 import { OPERATOR as OP, TOKEN, tokenize } from "./tokenizer";
 
@@ -395,8 +401,11 @@ export const adjustBooleans = tree =>
   });
 
 export const adjustTopLevelLiteral = tree => {
-  const type = typeof tree;
-  if (type === "string" || type === "number" || type === "boolean") {
+  if (
+    isStringLiteral(tree) ||
+    isNumberLiteral(tree) ||
+    isBooleanLiteral(tree)
+  ) {
     return ["value", tree];
   } else {
     return tree;
