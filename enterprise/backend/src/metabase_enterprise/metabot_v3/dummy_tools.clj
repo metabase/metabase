@@ -20,6 +20,7 @@
            (or (some-> api/*current-user* deref)
                (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
     {:structured-output {:id id
+                         :type :user
                          :name (str first_name " " last_name)
                          :email-address email}}
     {:output "current user not found"}))
@@ -28,7 +29,7 @@
   "Get information about the dashboard with ID `dashboard-id`."
   [{:keys [dashboard-id]}]
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name] dashboard-id)]
-    {:structured-output dashboard}
+    {:structured-output (assoc dashboard :type :dashboard)}
     {:output "dashboard not found"}))
 
 (defn metric-details
@@ -48,6 +49,7 @@
                                         (m/find-first lib.types.isa/temporal?))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      {:id id
+      :type :metric
       :name (:name card)
       :description (:description card)
       :default_time_dimension_field_id (when default-temporal-breakout
@@ -65,7 +67,7 @@
 (defn- convert-metric
   [db-metric metadata-provider]
   (-> db-metric (metric-details metadata-provider)
-      (select-keys  [:id :name :description :default_time_dimension_field_id])))
+      (select-keys  [:id :type :name :description :default_time_dimension_field_id])))
 
 (declare ^:private table-details)
 
@@ -92,6 +94,7 @@
           cols (lib/returned-columns table-query)
           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
       (-> {:id id
+           :type :table
            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
            :name (lib/display-name table-query)}
           (m/assoc-some :description (:description base)
@@ -109,7 +112,8 @@
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          ;; pivot questions have strange result-columns so we work with the dataset-query
-         card-query (lib/query metadata-provider (if (and (#{:question} (:type base))
+         card-type (:type base)
+         card-query (lib/query metadata-provider (if (and (#{:question} card-type)
                                                           (#{:pivot} (:display base))
                                                           (#{:query} (:type dataset-query)))
                                                    dataset-query
@@ -117,6 +121,7 @@
          cols (lib/returned-columns card-query)
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
+          :type card-type
           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
           :name (lib/display-name card-query)}
          (m/assoc-some :description (:description base)
@@ -141,8 +146,8 @@
                    detail (cards-details card-type database-id cards)]
                detail)
              (group-by :type))]
-    {:structured-output {:metrics (mapv #(dissoc % :type) metrics)
-                         :models  (mapv #(dissoc % :type) models)}}))
+    {:structured-output {:metrics (vec metrics)
+                         :models  (vec models)}}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -167,9 +172,7 @@
                                          "invalid table_id"))
                   :else "invalid arguments")]
     (if (map? details)
-      {:structured-output (assoc details :id (if (int? model-id)
-                                               (str "card__" model-id)
-                                               (str table-id)))}
+      {:structured-output details}
       {:output (or details "table not found")})))
 
 (comment
@@ -196,7 +199,7 @@
   (let [details (if (int? report-id)
                   (let [details (card-details report-id)]
                     (some-> details
-                            (select-keys [:id :description :name])
+                            (select-keys [:id :type :description :name])
                             (assoc :result_columns (:fields details))))
                   "invalid report_id")]
     (if (map? details)

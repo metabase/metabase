@@ -242,6 +242,7 @@
                        {:metrics [(-> metric-data
                                       (select-keys [:name :description])
                                       (assoc :id metric-id
+                                             :type "metric"
                                              :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
                                              :queryable_dimensions
                                              (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
@@ -256,6 +257,7 @@
                                   (-> model-metric-data
                                       (select-keys [:name :description])
                                       (assoc :id model-metric-id
+                                             :type "metric"
                                              :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
                                              :queryable_dimensions
                                              (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
@@ -270,6 +272,7 @@
                         :models [(-> model-data
                                      (select-keys [:name :description])
                                      (assoc :id model-id
+                                            :type "model"
                                             :fields
                                             (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
                                                          [{:name "ID", :type "number", :semantic_type "pk"}
@@ -295,7 +298,10 @@
           response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-current-user"
                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
                                          {:conversation_id conversation-id})]
-      (is (=? {:structured_output {:id (mt/user->id :rasta), :name "Rasta Toucan", :email_address "rasta@metabase.com"}
+      (is (=? {:structured_output {:id (mt/user->id :rasta)
+                                   :type "user"
+                                   :name "Rasta Toucan"
+                                   :email_address "rasta@metabase.com"}
                :conversation_id conversation-id}
               response)))))
 
@@ -309,7 +315,7 @@
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments {:dashboard_id dash-id}
                                               :conversation_id conversation-id})]
-          (is (=? {:structured_output (assoc dash-data :id dash-id)
+          (is (=? {:structured_output (assoc dash-data :id dash-id, :type "dashboard")
                    :conversation_id conversation-id}
                   response)))))))
 
@@ -334,6 +340,7 @@
           (is (=? {:structured_output (-> metric-data
                                           (select-keys [:name :description])
                                           (assoc :id metric-id
+                                                 :type "metric"
                                                  :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
                                                  :queryable_dimensions
                                                  (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
@@ -394,6 +401,7 @@
           (is (=? {:structured_output (-> question-data
                                           (select-keys [:name :description])
                                           (assoc :id question-id
+                                                 :type "question"
                                                  :result_columns
                                                  (map-indexed #(assoc %2 :field_id (format "c%d/%d" question-id %1))
                                                               [{:name "Created At: Week", :type "datetime"}
@@ -423,7 +431,8 @@
                                                 :conversation_id conversation-id})]
             (is (=? {:structured_output (-> model-data
                                             (select-keys [:name :description])
-                                            (assoc :id (str "card__" model-id)
+                                            (assoc :id model-id
+                                                   :type "model"
                                                    :fields
                                                    (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
                                                                 [{:name "Created At: Week", :type "datetime"}
@@ -442,7 +451,8 @@
                                              {:arguments {:table_id arg-id}
                                               :conversation_id conversation-id})]
           (is (=? {:structured_output {:name "Products"
-                                       :id (str table-id)
+                                       :id table-id
+                                       :type "table"
                                        :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
                                                             [{:name "ID", :type "number", :semantic_type "pk"}
                                                              {:name "Ean", :type "string"}
