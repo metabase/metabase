@@ -10835,6 +10835,26 @@ databaseChangeLog:
             indexName: idx_core_session_key_hashed
 
   - changeSet:
+      id: v54.2025-03-11T16:00:00
+      author: qnkhuat
+      comment: add notification_subscription.ui_display_type
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: ui_display_type
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: ui_display_type
+                  type: varchar(32)
+                  remarks: the display of the subscription, used for the UI only
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v54.2025-03-17T18:52:44
       author: noahmoss
       comment: Migrating zh site locales to zh_CN
