@@ -34,11 +34,7 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.get("#model-actions-toggle").should(
-          "have.attr",
-          "aria-checked",
-          "true",
-        );
+        cy.findByLabelText("Model actions").should("be.checked");
       });
     });
   },
@@ -163,12 +159,12 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres12");
+          H.typeAndBlurUsingLabel(/Host/, "localhost");
+          H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+          H.typeAndBlurUsingLabel(/Database name/, "sample");
+          H.typeAndBlurUsingLabel(/Username/, "metabase");
+          H.typeAndBlurUsingLabel(/Password/, "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {

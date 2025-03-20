@@ -66,12 +66,12 @@ describe("admin > database > database routing", () => {
         cy.log("should not allow changing engine");
         cy.findByLabelText("Database type").should("not.exist");
 
-        H.typeAndBlurUsingLabel("Display name", "Destination DB 1");
-        H.typeAndBlurUsingLabel("Host", "localhost");
-        H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-        H.typeAndBlurUsingLabel("Database name", "sample");
-        H.typeAndBlurUsingLabel("Username", "metabase");
-        H.typeAndBlurUsingLabel("Password", "metasample123");
+        H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+        H.typeAndBlurUsingLabel(/Host/, "localhost");
+        H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+        H.typeAndBlurUsingLabel(/Database name/, "sample");
+        H.typeAndBlurUsingLabel(/Username/, "metabase");
+        H.typeAndBlurUsingLabel(/Password/, "metasample123");
 
         cy.button("Save").click();
         cy.wait("@createMirrorDatabase");
@@ -93,12 +93,12 @@ describe("admin > database > database routing", () => {
       // cy.findByRole("link", { name: /Add/ }).click();
       //
       // H.modal().within(() => {
-      //   H.typeAndBlurUsingLabel("Display name", "Destination DB 1");
-      //   H.typeAndBlurUsingLabel("Host", "localhost");
-      //   H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-      //   H.typeAndBlurUsingLabel("Database name", "sample");
-      //   H.typeAndBlurUsingLabel("Username", "metabase");
-      //   H.typeAndBlurUsingLabel("Password", "metasample123");
+      //   H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+      //   H.typeAndBlurUsingLabel(/Host/, "localhost");
+      //   H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
+      //   H.typeAndBlurUsingLabel(/Database name/, "sample");
+      //   H.typeAndBlurUsingLabel(/Username/, "metabase");
+      //   H.typeAndBlurUsingLabel(/Password/, "metasample123");
       //
       //   cy.button("Save").click();
       //   cy.wait("@createMirrorDatabase");
@@ -116,8 +116,8 @@ describe("admin > database > database routing", () => {
         })),
       });
       cy.reload();
+      expandDbRouting();
       dbRoutingSection().within(() => {
-        cy.icon("chevrondown").click();
         cy.findByText("Destination DB 5").should("exist");
         cy.findByText("Destination DB 6").should("not.exist");
       });
@@ -138,7 +138,7 @@ describe("admin > database > database routing", () => {
         .click();
       H.popover().findByText("Edit").click();
       H.modal().within(() => {
-        H.typeAndBlurUsingLabel("Display name", " Destination DB 1 Updated");
+        H.typeAndBlurUsingLabel(/Display name/, " Destination DB 1 Updated");
         cy.button("Save changes").click();
         cy.wait("@databaseUpdate");
       });
@@ -183,8 +183,8 @@ describe("admin > database > database routing", () => {
       // cy.log(
       //   "should not remove destination databases when turning the feature off",
       // );
+      // expandDbRouting();
       // dbRoutingSection().within(() => {
-      //   cy.icon("chevrondown").click();
       //   cy.findByText("Destination DB 2").should("exist");
       //   cy.findByText("No destination databases added yet").should("not.exist");
       // });
@@ -204,10 +204,10 @@ describe("admin > database > database routing", () => {
       cy.log("validate setup was successful");
       cy.visit("/admin/databases/2");
       cy.findByLabelText("Enable database routing").should("be.checked");
-      dbRoutingSection().within(() => {
-        cy.icon("chevrondown").click();
-        cy.findByText(BASE_POSTGRES_MIRROR_DB_INFO.name).should("exist");
-      });
+      expandDbRouting();
+      dbRoutingSection()
+        .findByText(BASE_POSTGRES_MIRROR_DB_INFO.name)
+        .should("exist");
 
       cy.log("should not see destination databases in admin list of database");
       cy.visit("/admin/databases");
@@ -376,6 +376,10 @@ describe("admin > database > database routing", () => {
 
       it("should show for users with db management permissions but prevent removal of destination databases", () => {
         cy.log("setup - db routing");
+        cy.visit("/admin/databases/2");
+        cy.findAllByTestId("database-model-features-section")
+          .findByLabelText("Model actions")
+          .click({ force: true });
         configurDbRoutingViaAPI({
           router_database_id: 2,
           user_attribute: "role",
@@ -397,6 +401,14 @@ describe("admin > database > database routing", () => {
         cy.signOut();
         cy.signInAsAdmin();
         cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+        // NOTE: manage db permissions currently do not work in master w/o having create queries permissions
+        // so we have to grant this permission in addition to db management
+        const CREATE_QUERIES_PERMISSION_INDEX = 1;
+        H.modifyPermission(
+          "Writable Postgres12",
+          CREATE_QUERIES_PERMISSION_INDEX,
+          "Query builder and native",
+        );
         const MANAGE_DATABASE_PERMISSION_INDEX = 4;
         H.modifyPermission(
           "Writable Postgres12",
@@ -410,9 +422,8 @@ describe("admin > database > database routing", () => {
         cy.signOut();
         cy.signIn("normal");
         cy.visit("/admin/databases/2");
-        // TODO: need help understanding why i'm getting a 403 back on /api/database/2
-        // but i get the same db back when making a request to /api/database
         dbRoutingSection().should("exist");
+        expandDbRouting();
         dbRoutingSection()
           .findByTestId("destination-db-list-item")
           .icon("ellipsis")
@@ -441,8 +452,15 @@ describe("admin > database > database routing", () => {
 function dbConnectionInfoSection() {
   return cy.findByTestId("database-connection-info-section");
 }
+
 function dbRoutingSection() {
   return cy.findByTestId("database-routing-section");
+}
+
+function expandDbRouting() {
+  dbRoutingSection().within(() => {
+    cy.icon("chevrondown").click();
+  });
 }
 
 function assertDbRoutingNotDisabled() {
@@ -455,6 +473,7 @@ function assertDbRoutingNotDisabled() {
     .findByText(/Database routing can't be enabled if/)
     .should("not.exist");
 }
+
 function assertDbRoutingDisabled() {
   dbRoutingSection().within(() => {
     cy.findByLabelText("Enable database routing")
