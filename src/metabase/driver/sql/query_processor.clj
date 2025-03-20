@@ -734,6 +734,7 @@
                                     (not (:qp/ignore-coercion options)))
           database-type        (or database-type
                                    (:database-type field-metadata))
+          effective-type       (:effective-type field-metadata)
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
                                           (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
@@ -742,12 +743,17 @@
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
-                                   (h2x/with-database-type-info expr database-type)))]
+                                   (h2x/with-database-type-info expr database-type)))
+          maybe-add-effective-type (fn [expr]
+                                     (if (h2x/type-info->effective-type (h2x/type-info expr))
+                                       expr
+                                       (h2x/with-effective-type-info expr effective-type)))]
       (u/prog1
         (cond->> identifier
           allow-casting?           (cast-field-if-needed driver field-metadata)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
           database-type            maybe-add-db-type
+          effective-type           maybe-add-effective-type
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]
@@ -1437,6 +1443,8 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (when-let [effective-type (h2x/effective-type field-honeysql)]
+                                                       {:effective-type effective-type})
                                                      (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
@@ -1446,6 +1454,8 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
+                                                       (when-let [effective-type (h2x/effective-type field-honeysql)]
+                                                         {:effective-type effective-type})
                                                        (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
@@ -1455,6 +1465,8 @@
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
+                                                     (when-let [effective-type (h2x/effective-type field-honeysql)]
+                                                       {:effective-type effective-type})
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 
