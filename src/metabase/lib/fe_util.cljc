@@ -93,19 +93,24 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
-   (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
-         ->maybe-col #(when (lib.util/ref-clause? %)
-                        (column-metadata-from-ref query stage-number %))]
-     {:lib/type :mbql/expression-parts
-      :operator op
-      :options  options
-      :args     (mapv (fn [arg]
-                        (if (lib.util/clause? arg)
-                          (if-let [col (->maybe-col arg)]
-                            col
-                            (expression-parts query stage-number arg))
-                          arg))
-                      args)})))
+   (cond
+     (number? expression-clause) expression-clause
+     (string? expression-clause) expression-clause
+     (boolean? expression-clause) expression-clause
+     :else
+     (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
+           ->maybe-col #(when (lib.util/ref-clause? %)
+                          (column-metadata-from-ref query stage-number %))]
+       {:lib/type :mbql/expression-parts
+        :operator op
+        :options  options
+        :args     (mapv (fn [arg]
+                          (if (lib.util/clause? arg)
+                            (if-let [col (->maybe-col arg)]
+                              col
+                              (expression-parts query stage-number arg))
+                            arg))
+                        args)}))))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
