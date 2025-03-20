@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events :as events]
+   [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -64,7 +65,13 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/check-404 (t2/exists? :model/Database :id id :router_database_id nil))
+  (let [db (t2/select-one :model/Database :id id)]
+    (api/check-404 db)
+    (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
+    (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
+    (binding [setting/*database-local-values* (:settings db)]
+      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
+      (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (t2/delete! :model/DatabaseRouter :database_id id)

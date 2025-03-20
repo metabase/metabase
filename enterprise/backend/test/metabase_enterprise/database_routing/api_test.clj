@@ -112,6 +112,25 @@
                                   :mirrors [{:name "fluffy"
                                              :details (:details (mt/db))}]})))))
 
+(deftest cannot-enable-db-routing-when-other-features-enabled
+  (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}]
+    (is (= "Cannot enable database routing for a database with model persistence enabled"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-actions true}}]
+    (is (= "Cannot enable database routing for a database with actions enabled"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
+    (is (= "Cannot enable database routing for a database with uploads enabled"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {router-db-id :id} {}
+                 :model/Database {db-id :id} {:router_database_id router-db-id}]
+    (is (= "Cannot make a destination database a router database"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"})))))
+
 (deftest mirror-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
