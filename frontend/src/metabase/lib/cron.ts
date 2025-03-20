@@ -64,3 +64,11 @@ export function explainCronExpression(cronExpression: string) {
     use24HourTimeFormat: has24HourModeSetting(),
   });
 }
+
+function lowerCaseFirstLetter(str: string) {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}
+
+export function explainCronExpressionLowercase(cronExpression: string) {
+  return lowerCaseFirstLetter(explainCronExpression(cronExpression));
+}

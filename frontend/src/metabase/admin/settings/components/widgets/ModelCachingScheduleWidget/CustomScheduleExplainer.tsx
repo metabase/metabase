@@ -1,36 +1,38 @@
 import { useMemo } from "react";
+import { memoize } from "underscore";
+
+import { explainCronExpressionLowercase } from "metabase/lib/cron";
+import { Text, type TextProps } from "metabase/ui";
 import { t } from "ttag";
 
-import { explainCronExpression as _explainCronExpression } from "metabase/lib/cron";
-import { Text } from "metabase/ui";
-
-function lowerCaseFirstLetter(str: string) {
-  return str.charAt(0).toLowerCase() + str.slice(1);
-}
-
-function explainCronExpression(cronExpression: string) {
-  return lowerCaseFirstLetter(_explainCronExpression(cronExpression));
-}
-
-export function CustomScheduleExplainer({
-  cronExpression,
-}: {
+interface ScheduleExplanationProps {
   cronExpression: string;
-}) {
-  const explanation = useMemo(() => {
+}
+
+export const getScheduleExplanation = memoize(
+  (cronExpression: string): string | null => {
     try {
-      const readableSchedule = explainCronExpression(cronExpression);
-      return t`We will refresh your models ${lowerCaseFirstLetter(
-        readableSchedule,
-      )}`;
+      const readableSchedule = explainCronExpressionLowercase(cronExpression);
+      return readableSchedule;
     } catch {
       return null;
     }
-  }, [cronExpression]);
+  },
+);
+
+export function CustomScheduleExplainer({
+  cronExpression,
+  ...props
+}: ScheduleExplanationProps & TextProps) {
+  const explanation = useMemo(
+    () =>
+      t`We will refresh your models ${getScheduleExplanation(cronExpression)}`,
+    [cronExpression],
+  );
 
   if (!explanation) {
     return null;
   }
 
-  return <Text>{explanation}</Text>;
+  return <Text {...props}>{explanation}</Text>;
 }

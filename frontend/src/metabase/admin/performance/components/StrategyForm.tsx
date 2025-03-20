@@ -35,7 +35,6 @@ import type {
   CacheStrategyType,
   CacheableModel,
   DurationStrategy,
-  ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -48,7 +47,6 @@ import {
   cronToScheduleSettings,
   getDefaultValueForField,
   getLabelString,
-  scheduleSettingsToCron,
 } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
@@ -58,6 +56,7 @@ import {
   StyledForm,
   StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
+import { DEFAULT_ALERT_CRON_SCHEDULE } from "metabase/notifications/utils";
 
 interface ButtonLabels {
   save: string;
@@ -391,19 +390,14 @@ const ScheduleStrategyFormFields = () => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
   const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
-  const [schedule, setSchedule] = useState<ScheduleSettings>(
-    initialSchedule || {},
-  );
   const timezone = useSelector(state =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(
-    (nextSchedule: ScheduleSettings) => {
-      setSchedule(nextSchedule);
-      const cron = scheduleSettingsToCron(nextSchedule);
-      setFieldValue("schedule", cron);
+    (newCronSchedule: string) => {
+      setFieldValue("schedule", newCronSchedule);
     },
-    [setFieldValue, setSchedule],
+    [setFieldValue],
   );
   if (!initialSchedule) {
     return (
@@ -412,10 +406,11 @@ const ScheduleStrategyFormFields = () => {
       />
     );
   }
+
   return (
     <>
       <Schedule
-        schedule={schedule}
+        cronString={scheduleInCronFormat || DEFAULT_ALERT_CRON_SCHEDULE}
         scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
         onScheduleChange={onScheduleChange}
         verb={c("A verb in the imperative mood").t`Invalidate`}

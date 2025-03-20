@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Group, Select, Stack, Text } from "metabase/ui";
 
@@ -13,7 +13,7 @@ interface ModelCachingScheduleWidgetProps {
 
 const DEFAULT_CUSTOM_SCHEDULE = "0 * * * ?";
 
-function formatCronExpression(cronExpression: string): string {
+export function formatCronExpression(cronExpression: string): string {
   const [, ...partsWithoutSeconds] = cronExpression.split(" ");
   const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
   return partsWithoutSecondsAndYear.join(" ");
@@ -68,13 +68,12 @@ export const ModelCachingScheduleWidget = ({
           />
         </Stack>
         {isCustom && customCronSchedule !== undefined && (
-          <Stack gap={0}>
-            <CronExpressionInput
-              value={customCronSchedule}
-              onChange={setCustomCronSchedule}
-              onBlurChange={onChange}
-            />
-          </Stack>
+          <CronExpressionInput
+            value={customCronSchedule}
+            onChange={setCustomCronSchedule}
+            onBlurChange={onChange}
+            showExplainer
+          />
         )}
       </Group>
     </Stack>

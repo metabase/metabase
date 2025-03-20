@@ -81,6 +81,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "daily",
   "weekly",
   "monthly",
+  "cron",
 ];
 
 type CreateOrEditQuestionAlertModalProps = {

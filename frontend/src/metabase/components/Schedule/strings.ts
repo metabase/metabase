@@ -64,6 +64,7 @@ export const getScheduleStrings = () => {
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
     monthly: c("adverb").t`monthly`,
+    cron: c("adverb").t`custom`,
   };
 
   const weekdays: Weekday[] = [
