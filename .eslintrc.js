@@ -284,12 +284,7 @@ module.exports = {
             selector: "Literal[value=/mb-base-color-/]",
             message:
               "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
-          },
-          {
-            selector:
-              "CallExpression[callee.property.name='legacyQuery'] > ObjectExpression > Property[key.name='useStructuredQuery'][value.value=true]",
-            message: "StructuredQuery usage is forbidden. Use MLv2",
-          },
+          }
         ],
       },
     },
