@@ -874,7 +874,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
-        example: "-1",
+        example: -1,
       },
       {
         name: t`unit`,
