@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { getBrokenUpTextMatcher } from "__support__/ui";
+import { getBrokenUpTextMatcher, waitFor } from "__support__/ui";
 
 import { setup } from "./setup";
 
@@ -13,7 +13,7 @@ describe("HelpText (OSS)", () => {
     });
 
     expect(
-      screen.getByText('concat([Last Name], ", ", [First Name])'),
+      await screen.findByText('concat([Last Name], ", ", [First Name])'),
     ).toBeInTheDocument();
 
     expect(
@@ -39,13 +39,11 @@ describe("HelpText (OSS)", () => {
       },
     });
 
-    expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
-
     const exampleCodeEl = screen.getByTestId(
       "expression-helper-popover-structure",
     );
     expect(
-      within(exampleCodeEl).getByText("CumulativeCount"),
+      await within(exampleCodeEl).findByText("CumulativeCount"),
     ).toBeInTheDocument();
 
     expect(
@@ -70,6 +68,30 @@ describe("HelpText (OSS)", () => {
         within(argumentsBlock).getByText(expectedName),
       ).toBeInTheDocument();
       expect(within(argumentsBlock).getByText(description)).toBeInTheDocument();
+    });
+  });
+
+  it("should render long examples on multiple lines", async () => {
+    await setup({
+      enclosingFunction: {
+        name: "does-not-contain",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("helptext-example")).toHaveTextContent(
+        `
+          doesNotContain(
+            [Title],
+            "Small",
+            "Medium",
+            "case-insensitive"
+          )
+        `
+          // textContent collapses whitespace to a single space
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
     });
   });
 

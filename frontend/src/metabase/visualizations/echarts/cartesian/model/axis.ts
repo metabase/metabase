@@ -43,7 +43,10 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ColumnSettings,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -716,7 +719,8 @@ export function getTimeSeriesXAxisModel(
 }
 
 function getNumericXAxisModel(
-  dimensionModel: DimensionModel,
+  column: DatasetColumn,
+  columnSettings: ColumnSettings,
   dataset: ChartDataset,
   scale: NumericScale,
   settings: ComputedVisualizationSettings,
@@ -724,7 +728,6 @@ function getNumericXAxisModel(
   isPadded: boolean,
 ): NumericXAxisModel {
   const axisTransforms = getAxisTransforms(scale);
-  const dimensionColumn = dimensionModel.column;
   const rawExtent = getSeriesExtent(dataset, X_AXIS_DATA_KEY) ?? [0, 0];
   const extent: Extent = [
     axisTransforms.toEChartsAxisValue(rawExtent[0]) ?? 0,
@@ -733,20 +736,19 @@ function getNumericXAxisModel(
 
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
   const interval =
-    dimensionColumn.binning_info?.bin_width ??
-    computeNumericDataInverval(xValues);
+    column.binning_info?.bin_width ?? computeNumericDataInverval(xValues);
 
   const formatter = (value: RowValue) =>
     String(
       formatValue(value, {
-        column: dimensionColumn,
-        ...(settings.column?.(dimensionColumn) ?? {}),
+        column,
+        ...columnSettings,
         compact: settings["graph.x_axis.axis_enabled"] === "compact",
       }),
     );
 
   const intervalsCount = (extent[1] - extent[0]) / interval;
-  const ticksMaxInterval = dimensionColumn.binning_info?.bin_width;
+  const ticksMaxInterval = column.binning_info?.bin_width;
 
   return {
     label,
@@ -792,9 +794,14 @@ export function getXAxisModel(
     );
   }
 
+  const column = dimensionModel.column;
+  const columnSettings =
+    column != null ? (settings.column?.(column) ?? {}) : {};
+
   if (isNumeric(xAxisScale)) {
     return getNumericXAxisModel(
-      dimensionModel,
+      column,
+      columnSettings,
       dataset,
       xAxisScale,
       settings,
@@ -804,7 +811,6 @@ export function getXAxisModel(
   }
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-  const dimensionColumn = dimensionModel.column;
 
   const formatter = (value: RowValue) => {
     if (value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
@@ -813,8 +819,8 @@ export function getXAxisModel(
 
     return String(
       formatValue(value, {
-        column: dimensionColumn,
-        ...(settings.column?.(dimensionColumn) ?? {}),
+        column,
+        ...columnSettings,
         compact: settings["graph.x_axis.axis_enabled"] === "compact",
         noRange: isHistogram,
       }),
@@ -822,7 +828,7 @@ export function getXAxisModel(
   };
 
   const histogramInterval = isHistogram
-    ? (dimensionColumn.binning_info?.bin_width ??
+    ? (column.binning_info?.bin_width ??
       computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY])))
     : undefined;
 

@@ -20,7 +20,10 @@ import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
-import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import {
+  getIsShowingRawTable,
+  getUiControls,
+} from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -52,7 +55,7 @@ import {
 } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Query from "metabase-lib/v1/queries/Query";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -85,6 +88,7 @@ type StateProps = {
   fontFamily: string;
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
+  scrollToLastColumn: boolean;
 };
 
 type ForwardedRefProps = {
@@ -126,7 +130,7 @@ type VisualizationOwnProps = {
   isVisible?: boolean;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
-  query?: Query;
+  query?: NativeQuery;
   rawSeries?: RawSeries;
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
@@ -174,6 +178,7 @@ const mapStateToProps = (state: State): StateProps => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
+  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -538,6 +543,7 @@ class Visualization extends PureComponent<
       isNightMode,
       isObjectDetail,
       isPreviewing,
+      isRawTable,
       isQueryBuilder,
       isSettings,
       isShowingDetailsOnlyColumns,
@@ -551,6 +557,7 @@ class Visualization extends PureComponent<
       renderTableHeader,
       replacementContent,
       scrollToColumn,
+      scrollToLastColumn,
       selectedTimelineEventIds,
       showAllLegendItems,
       showTitle,
@@ -698,6 +705,7 @@ class Visualization extends PureComponent<
           className={className}
           style={style}
           data-testid="visualization-root"
+          data-viz-ui-name={visualization?.uiName}
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
@@ -774,9 +782,11 @@ class Visualization extends PureComponent<
                   isObjectDetail={isObjectDetail}
                   isPlaceholder={isPlaceholder}
                   isPreviewing={isPreviewing}
+                  isRawTable={isRawTable}
                   isQueryBuilder={!!isQueryBuilder}
                   isSettings={!!isSettings}
                   isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
+                  scrollToLastColumn={scrollToLastColumn}
                   metadata={metadata}
                   mode={mode}
                   queryBuilderMode={queryBuilderMode}

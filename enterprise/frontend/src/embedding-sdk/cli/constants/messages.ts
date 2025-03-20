@@ -100,6 +100,16 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
   If you skip this step, the setup will continue without multi-tenancy or SSO.
 `;
 
+export const SETUP_PRO_LICENSE_MESSAGE_WITH_SAMPLE_DATABASE = `
+  You've chosen to use a sample database to explore Metabase.
+
+  If you want to use this tool to set up permissions for multi-tenancy with JWT SSO,
+  you'll need to select your own database.
+  
+  With the sample database selected, this tool will simply create a mock back-end server 
+  that signs people into Metabase, without setting up JWT SSO.
+`;
+
 export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
   SDK_DOCS_LINK,
 )}`;

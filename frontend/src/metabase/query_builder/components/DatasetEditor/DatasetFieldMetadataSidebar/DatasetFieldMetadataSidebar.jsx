@@ -17,8 +17,8 @@ import {
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import {
-  field_semantic_types,
-  field_visibility_types,
+  FIELD_SEMANTIC_TYPES,
+  FIELD_VISIBILITY_TYPES,
 } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Tabs } from "metabase/ui";
@@ -57,7 +57,7 @@ function getVisibilityTypeName(visibilityType) {
 
 function getSemanticTypeOptions() {
   return [
-    ...field_semantic_types,
+    ...FIELD_SEMANTIC_TYPES,
     {
       id: null,
       name: t`No special type`,
@@ -66,12 +66,12 @@ function getSemanticTypeOptions() {
   ];
 }
 
-const visibilityTypeOptions = field_visibility_types
-  .filter(type => type.id !== "sensitive")
-  .map(type => ({
-    name: getVisibilityTypeName(type),
-    value: type.id,
-  }));
+const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
+  type => type.id !== "sensitive",
+).map(type => ({
+  name: getVisibilityTypeName(type),
+  value: type.id,
+}));
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -254,9 +254,6 @@ function DatasetFieldMetadataSidebar({
                       },
                     },
                     input: {
-                      paddingTop: "1.375rem",
-                      paddingBottom: "0.5rem",
-                      height: "auto",
                       fontWeight: "bold",
                     },
                   }}

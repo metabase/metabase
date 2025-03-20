@@ -1,4 +1,4 @@
-(ns metabase.db.liquibase-test
+(ns ^:mb/driver-tests metabase.db.liquibase-test
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -15,6 +15,7 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
+   (clojure.lang ExceptionInfo)
    (liquibase Liquibase)
    (liquibase.lockservice LockServiceFactory)))
 
@@ -153,3 +154,42 @@
           (liquibase/with-liquibase [liquibase3 data-source]
             ;; This will fail if the com.github.blagerweij/liquibase-sessionlock dep is not present
             (is (lock liquibase3) "Can acquire session lock when conn closed without lock release")))))))
+
+(deftest latest-available-major-version
+  (mt/test-drivers #{:h2}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (is (< 52 (liquibase/latest-available-major-version liquibase)))))))
+
+(deftest latest-applied-major-version
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (is (nil? (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
+        (.update liquibase "")
+        (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
+
+(deftest rollback-major-version
+  (mt/test-drivers #{:h2 :mysql :rollback}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (.update liquibase "")
+
+        (let [actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase))
+              actual-latest-available-version (liquibase/latest-available-major-version liquibase)]
+          (testing "Can downgrade and re-upgrade version"
+            (liquibase/rollback-major-version conn liquibase false (dec actual-latest-available-version))
+            (is (= (dec actual-latest-applied-version) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
+
+            (liquibase/rollback-major-version conn liquibase false (- actual-latest-available-version 2))
+            (is (= (- actual-latest-available-version 2) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
+
+            (.update liquibase "")
+            (is (= actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase)))))
+
+          (testing "Cannot downgrade when there are changests from a newer version already ran which are not in the changelog file"
+            (with-redefs [liquibase/latest-applied-major-version (constantly (inc actual-latest-applied-version))]
+              (is (thrown-with-msg? ExceptionInfo #"Cannot downgrade.*"
+                                    (liquibase/rollback-major-version conn liquibase false (dec actual-latest-available-version))))
+              (testing "CAN downgrade if forced"
+                (liquibase/rollback-major-version conn liquibase true (dec actual-latest-available-version))))))))))

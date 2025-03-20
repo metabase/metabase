@@ -159,7 +159,7 @@
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "should increment the public link query count when fetching a public Card"
           (let [get-qe-count (fn get-qe-count [] (get-in (#'stats/->snowplow-grouped-metric-info)
-                                                         [:query-executions "public_link"]))
+                                                         [:query-executions :public_link]))
                 qe-count-before (get-qe-count)]
             (client/client :get 202 (str "public/card/" uuid "/query"))
             ;; The qe-count gets incremented asynchronously, so we need to poll until it's updated.

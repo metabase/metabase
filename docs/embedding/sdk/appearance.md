@@ -6,6 +6,8 @@ title: "Embedded analytics SDK - appearance"
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
+{% include youtube.html id='aIgae7cjwi4' %}
+
 You can style your embedded Metabase components with a theme.
 
 Here's an example that includes the various styling options available:

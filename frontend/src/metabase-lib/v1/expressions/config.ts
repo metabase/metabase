@@ -74,6 +74,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["boolean"],
   },
+  "distinct-where": {
+    displayName: `DistinctIf`,
+    type: "aggregation",
+    args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
+  },
   "sum-where": {
     displayName: `SumIf`,
     type: "aggregation",
@@ -90,6 +96,19 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
+  },
+  // cast functions
+  text: {
+    displayName: "text",
+    type: "string",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
+  integer: {
+    displayName: "integer",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "cast",
   },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
@@ -507,6 +526,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",
@@ -519,6 +539,9 @@ export const AGGREGATION_FUNCTIONS = new Set([
 ]);
 
 export const EXPRESSION_FUNCTIONS = new Set([
+  // cast
+  "text",
+  "integer",
   // string
   "lower",
   "upper",
@@ -578,6 +601,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "if",
+  "case",
   "coalesce",
 ]);
 

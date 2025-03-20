@@ -226,7 +226,7 @@ describe("admin > database > add", () => {
           expect(request.body.details.user).to.equal("metabase");
         });
 
-        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         waitForDbSync();
       });
@@ -306,7 +306,7 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -370,7 +370,7 @@ describe("admin > database > add", () => {
 
         cy.wait("@createDatabase");
 
-        cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
+        cy.url().should("match", /\/admin\/databases\/\d/);
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(
@@ -418,7 +418,7 @@ describe("admin > database > add", () => {
 
       cy.wait("@createDatabase");
 
-      cy.url().should("match", /\/admin\/databases\/\d\?created=true$/);
+      cy.url().should("match", /\/admin\/databases\/\d/);
 
       cy.findByRole("dialog").within(() => {
         cy.findByText(

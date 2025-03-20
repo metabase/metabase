@@ -442,8 +442,8 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText(
           /Your admin has set this dashboard as your homepage/,
         ).should("exist");
-        cy.findByText("Got it").click();
       });
+      cy.button("Got it").click();
 
       cy.log("let the dashboard load");
       H.dashboardHeader().findByText("Orders in a dashboard");

@@ -1,11 +1,7 @@
 import _ from "underscore";
 
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type {
-  NativeQuery,
-  NormalizedDatabase,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
 
 import Question from "../Question";
 
@@ -121,25 +117,6 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
-  newQuestion() {
-    return this.question().setDefaultDisplay();
-  }
-
-  question(
-    query: StructuredQuery = {
-      "source-table": undefined,
-    },
-  ) {
-    return Question.create({
-      metadata: this.metadata,
-      dataset_query: {
-        database: this.id,
-        type: "query",
-        query: query,
-      },
-    });
-  }
-
   nativeQuestion(native: Partial<NativeQuery> = {}) {
     return Question.create({
       metadata: this.metadata,
@@ -156,7 +133,7 @@ class Database {
   }
 
   nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).legacyQuery();
+    return this.nativeQuestion(native).legacyNativeQuery();
   }
 
   savedQuestionsDatabase() {

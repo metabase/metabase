@@ -97,6 +97,30 @@
     (test-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
     (test-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
 
+(deftest cruft-hidden-tables-test
+  (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
+    (try
+      (let [sync-future (@#'advanced-config.file.databases/init-from-config-file!
+                         {:name    test-db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))})]
+        (is (future? sync-future))
+        ;; wait for the sync to finish or crash out after 5 seconds
+        (deref sync-future 5000 :timeout)
+        (is (= 1 (t2/count :model/Database :name test-db-name)))
+        (let [db (t2/select-one :model/Database :name test-db-name)
+              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
+              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+          ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
+          ;; and make sure they are still hidden:
+          (is (= {:hidden 8} (frequencies vis-types)))
+          (sync-metadata/sync-db-metadata! db)
+          (testing "Hidden tables stay hidden"
+            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+              (is (= {:hidden 8} (frequencies vis-types)))))))
+      (finally
+        (t2/delete! :model/Database :name test-db-name)))))
+
 (defn- test-cruft-columns! [crufted-field-setting freq message]
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
     (try

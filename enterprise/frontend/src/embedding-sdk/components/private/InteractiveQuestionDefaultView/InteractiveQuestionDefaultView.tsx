@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import {
   QuestionNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
@@ -54,7 +55,8 @@ export const InteractiveQuestionDefaultView = ({
     onCreate,
     onSave,
     isSaveEnabled,
-    saveToCollection,
+    targetCollection,
+    withDownloads,
     isCardIdError,
   } = useInteractiveQuestionContext();
 
@@ -75,9 +77,15 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  // `isCardError: true` when the entity ID couldn't be resolved
-  if ((!question || isCardIdError) && originalId && originalId !== "new") {
-    return <QuestionNotFoundError id={originalId} />;
+  if (
+    !question ||
+    (isCardIdError && originalId !== "new" && originalId !== null)
+  ) {
+    if (originalId) {
+      return <QuestionNotFoundError id={originalId} />;
+    } else {
+      return <SdkError message={t`Question not found`} />;
+    }
   }
 
   const showSaveButton =
@@ -147,10 +155,13 @@ export const InteractiveQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <InteractiveQuestion.EditorButton
-              isOpen={isEditorOpen}
-              onClick={toggleEditor}
-            />
+            <Group gap="sm">
+              {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+              <InteractiveQuestion.EditorButton
+                isOpen={isEditorOpen}
+                onClick={toggleEditor}
+              />
+            </Group>
           </Group>
         </Stack>
       )}
@@ -177,7 +188,7 @@ export const InteractiveQuestionDefaultView = ({
             await onSave(question);
             closeSaveModal();
           }}
-          saveToCollection={saveToCollection}
+          targetCollection={targetCollection}
         />
       )}
     </FlexibleSizeComponent>

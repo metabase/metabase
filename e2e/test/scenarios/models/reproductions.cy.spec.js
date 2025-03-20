@@ -86,8 +86,9 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
@@ -109,8 +110,9 @@ describe("issue 19737", () => {
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
@@ -133,14 +135,16 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").should("not.exist");
-      H.entityPickerModalLevel(1).should("not.exist");
+      H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
     });
   });
@@ -1369,6 +1373,65 @@ describe("issue 53556 - nested question based on native model with remapped valu
   });
 });
 
+describe("issue 54108 - nested question broken out by day", () => {
+  const questionDetails = {
+    name: "54108 base",
+    type: "question",
+    native: {
+      query: "select ID, CREATED_AT from ORDERS",
+      "template-tags": {},
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          name: "54108",
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+                { "temporal-unit": "day", "base-type": "type/Date" },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        },
+      );
+    });
+  });
+
+  it("drill-through should work (metabase#54108)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.visitQuestion("@nestedQuestionId");
+
+    // We can click on any circle; this index was chosen randomly
+    H.cartesianChartCircle().eq(500).click({ force: true });
+    H.popover()
+      .findByText(/^See these/)
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      "CREATED_AT is Oct 11, 2023",
+    );
+
+    H.assertQueryBuilderRowCount(6);
+  });
+});
+
 describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   const questionDetails = {
     name: "29951",
@@ -1395,30 +1458,27 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
-  it(
-    "should allow to run the model query after changing custom columns (metabase#29951)",
-    { tags: "@flaky" },
-    () => {
-      H.createQuestion(questionDetails).then(({ body: { id } }) => {
-        cy.visit(`/model/${id}/query`);
-      });
+  it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.visit(`/model/${id}/query`);
+    });
 
-      removeExpression("CC2");
-      // The UI shows us the "play" icon, indicating we should refresh the query,
-      // but the point of this repro is to save without refreshing
-      cy.button("Get Answer").should("be.visible");
-      H.saveMetadataChanges();
+    removeExpression("CC2");
+    // The UI shows us the "play" icon, indicating we should refresh the query,
+    // but the point of this repro is to save without refreshing
+    cy.button("Get Answer").should("be.visible");
+    H.saveMetadataChanges();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
-      H.moveDnDKitElement(H.tableHeaderColumn("ID"), { horizontal: 100 });
+    // eslint-disable-next-line no-unsafe-element-filtering
+    cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
+    H.tableHeaderColumn("ID").as("idHeader");
+    H.moveDnDKitElementByAlias("@idHeader", { horizontal: 100 });
 
-      cy.findByTestId("qb-header").button("Refresh").click();
-      cy.wait("@dataset");
-      cy.get("[data-testid=cell-data]").should("contain", "37.65");
-      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-    },
-  );
+    cy.findByTestId("qb-header").button("Refresh").click();
+    cy.wait("@dataset");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
+    cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
+  });
 });
 
 describe("issue 31309", () => {

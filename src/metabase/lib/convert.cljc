@@ -451,7 +451,7 @@
 (doseq [tag [::aggregation ::expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression))
 
-(doseq [tag [:count :avg :count-where :distinct
+(doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
              :share :stddev :sum :sum-where]]
   (lib.hierarchy/derive tag ::aggregation))
@@ -464,7 +464,7 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
              :concat :substring :replace :regex-match-first
-             :length :trim :ltrim :rtrim :upper :lower]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression

@@ -1151,7 +1151,7 @@ describe.skip("issue 27521", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 
@@ -1167,7 +1167,7 @@ describe.skip("issue 27521", () => {
       .button("Pick columns")
       .click();
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByText("ID").click();
     });
 
@@ -1188,7 +1188,7 @@ describe.skip("issue 27521", () => {
     });
 
     H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("Select none").click();
+    H.popover().findByText("Select all").click();
 
     H.join();
 

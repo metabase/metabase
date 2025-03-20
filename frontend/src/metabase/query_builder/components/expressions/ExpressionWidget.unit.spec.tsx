@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 
@@ -12,7 +12,9 @@ import type { StartRule } from "./types";
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
     setup();
-    expect(screen.getByText("Expression")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("custom-expression-query-editor"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
@@ -23,35 +25,10 @@ describe("ExpressionWidget", () => {
     expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
 
-  it("should render help icon with tooltip which opens documentation page", async () => {
-    setup();
-
-    const icon = getIcon("info");
-    expect(icon).toBeInTheDocument();
-
-    const link = screen.getByRole("link", {
-      name: "Open expressions documentation",
-    });
-    expect(link).toBeInTheDocument();
-
-    expect(link).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html?utm_source=product&utm_medium=docs&utm_campaign=custom-expressions&source_plan=oss",
-    );
-
-    await userEvent.hover(link);
-
-    expect(
-      await screen.findByText(
-        "You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("should trigger onChangeClause if expression is valid", async () => {
     const { getRecentExpressionClauseInfo, onChangeClause } = await setup();
 
-    const doneButton = screen.getByRole("button", { name: "Done" });
+    const doneButton = screen.getByRole("button", { name: /(Done|Update)/ });
     expect(doneButton).toBeDisabled();
 
     const expressionInput = screen.getByRole("textbox");
@@ -59,11 +36,11 @@ describe("ExpressionWidget", () => {
     await userEvent.type(expressionInput, "1 + 1");
     await userEvent.tab();
 
-    expect(doneButton).toBeEnabled();
+    await waitFor(() => expect(doneButton).toBeEnabled());
 
     await userEvent.click(doneButton);
 
-    expect(onChangeClause).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onChangeClause).toHaveBeenCalledTimes(1));
     expect(onChangeClause).toHaveBeenCalledWith("", expect.anything());
     expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
   });
@@ -88,7 +65,7 @@ describe("ExpressionWidget", () => {
     it("should render Name field", () => {
       setup({ withName: true });
 
-      expect(screen.getByText("Name")).toBeInTheDocument();
+      expect(screen.getByTestId("expression-name")).toBeInTheDocument();
     });
 
     it("should validate name value", async () => {
@@ -98,10 +75,8 @@ describe("ExpressionWidget", () => {
         clause,
       });
 
-      const doneButton = screen.getByRole("button", { name: "Done" });
-      const expressionNameInput = screen.getByPlaceholderText(
-        "Something nice and descriptive",
-      );
+      const doneButton = screen.getByRole("button", { name: /(Done|Update)/ });
+      const expressionNameInput = screen.getByTestId("expression-name");
 
       expect(doneButton).toBeDisabled();
 
@@ -154,7 +129,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(screen.getByText("Unknown Metric: Imaginary")).toBeInTheDocument();
+      await screen.findByText("Unknown Metric: Imaginary");
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
@@ -166,11 +141,9 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(
-        screen.getByText(
-          "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
-        ),
-      ).toBeInTheDocument();
+      await screen.findByText(
+        "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+      );
     });
   });
 
@@ -184,9 +157,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      expect(
-        screen.getByText('Expecting comma but got "test" instead'),
-      ).toBeInTheDocument();
+      await screen.findByText('Expecting comma but got "test" instead');
     });
   });
 });

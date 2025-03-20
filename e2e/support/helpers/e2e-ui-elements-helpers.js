@@ -290,6 +290,44 @@ export const moveDnDKitElement = (
     .wait(200);
 };
 
+export const moveDnDKitElementByAlias = (
+  alias,
+  { horizontal = 0, vertical = 0 } = {},
+) => {
+  // This function queries alias before triggering every event to avoid running into "element was removed from the DOM"
+  // error caused by node remounting https://on.cypress.io/element-has-detached-from-dom
+  cy.get(alias)
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  // This initial move needs to be greater than the activation constraint
+  // of the pointer sensor
+  cy.get(alias)
+    .trigger("pointermove", 20, 20, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  cy.get(alias)
+    .trigger("pointermove", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+  cy.get(alias)
+    .trigger("pointerup", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
+};
+
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
@@ -322,6 +360,29 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy.findAllByTestId(`resize-handle-${columnId}`)
+    .eq(elementIndex)
+    .trigger("mousedown", {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+    });
+
+  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
+  cy.get("body")
+    .trigger("mousemove", {
+      clientX: moveX / 2,
+      clientY: 0,
+    })
+    .trigger("mousemove", {
+      clientX: moveX,
+      clientY: 0,
+    });
+  cy.get("body").trigger("mouseup", { force: true });
+}
+
 export function openObjectDetail(rowIndex) {
   cy.get(`[data-index=${rowIndex}]`)
     .realHover({ scrollBehavior: false })
@@ -332,6 +393,29 @@ export function openObjectDetail(rowIndex) {
 
 export function tableInteractiveScrollContainer() {
   return cy.findByTestId("table-scroll-container");
+}
+
+export function assertTableRowsCount(value) {
+  if (value > 0) {
+    // Ensure table some rows are rendered although due to virtualization we can't rely on their count
+    tableInteractiveBody().findAllByRole("row").should("not.be.empty");
+  }
+  tableInteractive().should("have.attr", "data-rows-count", String(value));
+}
+
+export function lastTableRow() {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return tableInteractiveScrollContainer()
+    .scrollTo("bottomLeft")
+    .findAllByRole("row")
+    .last();
+}
+
+export function assertRowHeight(index, height) {
+  tableInteractive()
+    .find(`[data-index=${index}]`)
+    .should("exist")
+    .should("have.css", "height", `${height}px`);
 }
 
 export function tableAllFieldsHiddenImage() {

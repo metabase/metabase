@@ -415,6 +415,42 @@ describe("scenarios > question > native", () => {
       cy.get("@lines").eq(0).should("have.text", "  ");
     },
   );
+
+  it("should be able to handle two sidebars on different screen sizes", () => {
+    const questionDetails = {
+      name: "13332",
+      native: {
+        query: "select * from PRODUCTS limit 5",
+      },
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("open editor on a normal screen size");
+    cy.findByTestId("visibility-toggler").click();
+
+    dataReferenceSidebar().should("be.visible");
+
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.log("open editor on a small screen size");
+    cy.viewport(1279, 800);
+
+    cy.findByTestId("visibility-toggler").click();
+    dataReferenceSidebar().should("not.be.visible");
+
+    cy.log("open visualization settings sidebar, order matters");
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open data reference sidebar");
+    cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
+
+    cy.log("set small viewport");
+    cy.viewport(800, 800);
+
+    cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
+    cy.findByTestId("sidebar-right").invoke("width").should("be.gt", 350);
+  });
 });
 
 // causes error in cypress 13
@@ -500,7 +536,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.startNewNativeQuestion();
       cy.findByTestId("gui-builder-data").click();
       cy.findByLabelText(MONGO_DB_NAME).click();
-      cy.findByLabelText("Format query").should("not.exist");
+      cy.findByLabelText("Auto-format").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
 
@@ -514,7 +550,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // It should load the formatter chunk only when used
       cy.intercept("GET", "**/sql-formatter**").as("sqlFormatter");
 
-      cy.findByLabelText("Format query").click();
+      cy.findByLabelText("Auto-format").click();
 
       cy.wait("@sqlFormatter");
 
