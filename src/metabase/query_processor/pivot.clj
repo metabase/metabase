@@ -609,6 +609,17 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
+(defn- nest-query
+  "Converts a pivot query into a form that selects the raw data as a subquery (with row limit and ordering) and applies
+  the aggregations and breakout to the outer query."
+  [query]
+  (-> query
+      (assoc-in [:query :source-query]
+                (select-keys (:query query) [:source-table :limit :order-by]))
+      (m/dissoc-in [:query :source-table])
+      (m/dissoc-in [:query :limit])
+      (m/dissoc-in [:query :order-by])))
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -621,7 +632,8 @@
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)
-             query             (lib/query (qp.store/metadata-provider) query)
+             nested-query             (nest-query query)
+             query             (lib/query (qp.store/metadata-provider) nested-query)
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
