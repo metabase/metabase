@@ -417,7 +417,7 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (isa? base-type :type/*)
+    (= base-type :type/*)
     (try
       (-> (str value)
           java.util.UUID/fromString
