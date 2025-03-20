@@ -208,7 +208,7 @@
                                          (conj "$nextItems"))}}}
    {"$unwind" "$acc"}
    {"$replaceRoot" {"newRoot" "$acc"}}])
-
+## comment
 (defn- describe-table-query
   "To understand how this works, see the comment block below for a rough translation of this query into Clojure."
   [& {:keys [collection-name sample-size max-depth]}]
