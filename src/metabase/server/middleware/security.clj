@@ -226,7 +226,7 @@
   [origin enabled? approved-origins]
   (when enabled?
     (merge
-     (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
+     (when (approved-origin? origin approved-origins)
        {"Access-Control-Allow-Origin" origin
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
@@ -260,7 +260,7 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         ((:headers request) "origin")
+                                            :origin         (get (:headers request) "origin")
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn request/public? request/embed?) request)
                                             :allow-cache?   (request/cacheable? request))))

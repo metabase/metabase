@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.embed.app-origins-sdk :as aos]
    [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.security :as mw.security]
@@ -189,14 +190,14 @@
         (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                            (mw.security/access-control-headers
                                             (embed.settings/enable-embedding-sdk)
-                                            (embed.settings/embedding-app-origins-sdk))
+                                            (aos/embedding-app-origins-sdk))
                                            (get "Access-Control-Allow-Origin"))))))
     (testing "Should disable CORS when enable-embedding-sdk is disabled"
       (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (is (= nil (get (mw.security/access-control-headers
                          "http://localhost:8080"
                          (embed.settings/enable-embedding-sdk)
-                         (embed.settings/embedding-app-origins-sdk))
+                         (aos/embedding-app-origins-sdk))
                         "Access-Control-Allow-Origin"))
             "Localhost is only permitted when `enable-embedding-sdk` is `true`."))
       (is (= nil (get (mw.security/access-control-headers
@@ -211,7 +212,7 @@
           (is (= "https://example.com"
                  (get (mw.security/access-control-headers "https://example.com"
                                                           (embed.settings/enable-embedding-sdk)
-                                                          (embed.settings/embedding-app-origins-sdk))
+                                                          (aos/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin"))))))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
@@ -275,3 +276,92 @@
       (testing "invalid hosts are not included"
         (is (= ["'self'"]
                (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))
+
+(defn- run-add-security-headers-mw-test! [enable-embedding-sdk-value
+                                          embedding-app-origins-sdk-value
+                                          request-origin-header
+                                          request-uri
+                                          access-control-allow-origin-header-value]
+  (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk-value
+                                     enable-embedding-sdk enable-embedding-sdk-value]
+    (let [wrapped-handler (mw.security/add-security-headers
+                           (fn [_request respond _raise]
+                             (respond {:status 200 :headers {"response" "ok"} :body "ok"})))
+          response (wrapped-handler {:headers {"origin" request-origin-header} :uri request-uri}
+                                    identity
+                                    identity)]
+      (is (= access-control-allow-origin-header-value
+             (-> response :headers (get "Access-Control-Allow-Origin")))))))
+
+(deftest add-security-headers-mw-test
+  (doseq [[enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]
+          [[true "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]
+           [true "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]
+           [true "" "http://my-site.com" "http://public.metabase.com" nil]
+           [true "" "http://my-site.com" "http://www.a-site.com" nil]
+           [true "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]
+           [true "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]
+           [true "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]
+           [true "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]
+           [true "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]
+           [true "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]
+           [true "http://my-site.com" "http://my-site.com" "http://public.metabase.com" "http://my-site.com"]
+           [true "http://my-site.com" "http://my-site.com" "http://www.a-site.com" "http://my-site.com"]
+           [true "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]
+           [true "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]
+           [true "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]
+           [true "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]
+           [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]
+           [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]
+           [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]
+           [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]
+           [false "" "http://localhost:1234" "http://public.metabase.com" nil]
+           [false "" "http://localhost:1234" "http://www.a-site.com" nil]
+           [false "" "http://my-site.com" "http://public.metabase.com" nil]
+           [false "" "http://my-site.com" "http://www.a-site.com" nil]
+           [false "localhost:1234" "http://localhost:1234" "http://public.metabase.com" nil]
+           [false "localhost:1234" "http://localhost:1234" "http://www.a-site.com" nil]
+           [false "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]
+           [false "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]
+           [false "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" nil]
+           [false "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" nil]
+           [false "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]
+           [false "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]
+           [false "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" nil]
+           [false "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" nil]
+           [false "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]
+           [false "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]
+           [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" nil]
+           [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" nil]
+           [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]
+           [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]
+    (testing (format "with enable-embedding-sdk=%s, embedding-app-origins-sdk=%s, request-origin=%s, uri=%s, access-control-allow-origin-header-value=%s"
+                     enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value)
+      (run-add-security-headers-mw-test!
+       enable-embedding-sdk
+       embedding-app-origins-sdk
+       request-origin
+       request-uri
+       access-control-allow-origin-header-value))))
+
+(comment
+
+  ;; Generate security headers mw cases
+
+  (for [enable-embedding-sdk [true false]
+        embedding-app-origins-sdk [""
+                                   "localhost:1234"
+                                   "http://my-site.com"
+                                   "http://my-site.com:80"
+                                   "https://my-site-1:1234 http://my-other-site:8080"]
+        request-origin ["http://localhost:1234"
+                        "http://my-site.com"]
+        request-uri ["http://public.metabase.com"
+                     "http://www.a-site.com"]]
+    (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk
+                                       enable-embedding-sdk enable-embedding-sdk]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [request respond _raise] request
+                               (respond {:status 200 :headers {"Response-Header" "ok"} :body "ok"})))
+            response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
+        [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))]))))
