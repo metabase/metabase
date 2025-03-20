@@ -85,6 +85,14 @@
     (lib.metadata.calculation/metadata query stage-number a-ref)
     a-ref)))
 
+(defn- segment-metadata-from-ref
+  [query a-ref]
+  (lib.metadata/segment query (get 1 a-ref)))
+
+(defn- metric-metadata-from-ref
+  [query a-ref]
+  (lib.metadata/metric query (get 1 a-ref)))
+
 (mu/defn expression-parts :- ExpressionParts
   "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
   ([query expression-clause]
@@ -98,6 +106,8 @@
      (string? expression-clause) expression-clause
      (boolean? expression-clause) expression-clause
      (lib.util/ref-clause? expression-clause) (column-metadata-from-ref query stage-number expression-clause)
+     (lib.util/segment-clause? expression-clause) (segment-metadata-from-ref query expression-clause)
+     (lib.util/metric-clause? expression-clause) (metric-metadata-from-ref query expression-clause)
      :else
      (let [[op options & args] (maybe-expand-temporal-expression expression-clause)]
        {:lib/type :mbql/expression-parts
