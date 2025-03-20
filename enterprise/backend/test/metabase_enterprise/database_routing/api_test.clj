@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.driver :as driver]
    [metabase.driver.h2]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -124,12 +125,22 @@
     (testing "GET /database/"
       (is (not-any? #(= (:id %) mirror-db-id)
                     (:data (mt/user-http-request :crowberto :get 200 "database/"))))
-      (testing "If we pass the `include_mirror_databases` param it is included"
+      (testing "If we pass the `router_database_id` param it is included"
         (is (some #(= (:id %) mirror-db-id)
-                  (:data (mt/user-http-request :crowberto :get 200 (str "database/?include_mirror_databases=" db-id))))))
+                  (:data (mt/user-http-request :crowberto :get 200 (str "database/?router_database_id=" db-id))))))
       (testing "Regular users can't do this"
         (is (not-any? #(= (:id %) mirror-db-id)
-                      (:data (mt/user-http-request :rasta :get 200 (str "database/?include_mirror_databases=" db-id)))))))
+                      (:data (mt/user-http-request :rasta :get 200 (str "database/?router_database_id=" db-id))))))
+      (testing "Unless they have manage-database permissions"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :query-builder-and-native)
+          (t2/select :model/DataPermissions :db_id db-id :perm_type "perms/create-queries")
+          (is (some #(= (:id %) mirror-db-id)
+                    (:data (mt/user-http-request :rasta :get 200 (str "database/?router_database_id=" db-id)))))
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :no)
+          (is (not (some #(= (:id %) mirror-db-id)
+                         (:data (mt/user-http-request :rasta :get 200 (str "database/?router_database_id=" db-id)))))))))
     (testing "PUT /database/:id should work normally"
       (mt/user-http-request :crowberto :put 200 (str "database/" mirror-db-id)))
     (testing "GET /database/:id/usage_info"
