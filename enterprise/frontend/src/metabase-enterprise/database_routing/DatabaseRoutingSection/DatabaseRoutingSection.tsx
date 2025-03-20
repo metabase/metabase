@@ -40,13 +40,10 @@ export const DatabaseRoutingSection = ({
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
-
-  const shouldHideSection = database.is_attached_dwh || database.is_sample;
   const userAttribute = database.router_user_attribute ?? undefined;
+  const shouldHideSection = database.is_attached_dwh || database.is_sample;
 
   const [tempEnabled, setTempEnabled] = useState(false);
-  const isDbRoutingEnabled = database.hasDatabaseRoutingEnabled();
-  const isToggleEnabled = tempEnabled || isDbRoutingEnabled;
   const [isExpanded, setIsExpanded] = useState(false);
 
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
@@ -57,8 +54,6 @@ export const DatabaseRoutingSection = ({
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
   const disabledFeatMsg = getDisabledFeatureMessage(database);
-  const isSelectDisabled = !isAdmin || !!disabledFeatMsg;
-  const isDbRoutingDisabled = !!disabledFeatMsg;
   const errMsg = getSelectErrorMessage({
     userAttribute,
     disabledFeatureMessage: disabledFeatMsg,
@@ -70,7 +65,7 @@ export const DatabaseRoutingSection = ({
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
     refetchDatabase();
 
-    if (!isDbRoutingEnabled) {
+    if (!database.hasDatabaseRoutingEnabled()) {
       dispatch(addUndo({ message: t`Database routing enabled` }));
     } else {
       dispatch(addUndo({ message: t`Database routing updated` }));
@@ -84,7 +79,7 @@ export const DatabaseRoutingSection = ({
       await updateRouterDatabase({ id: database.id, user_attribute: null });
       refetchDatabase();
 
-      if (isDbRoutingEnabled) {
+      if (database.hasDatabaseRoutingEnabled()) {
         dispatch(addUndo({ message: t`Database routing disabled` }));
       }
     }
@@ -117,8 +112,8 @@ export const DatabaseRoutingSection = ({
               <Switch
                 id="database-routing-toggle"
                 labelPosition="left"
-                checked={isToggleEnabled}
-                disabled={isDbRoutingDisabled}
+                checked={tempEnabled || database.hasDatabaseRoutingEnabled()}
+                disabled={!!disabledFeatMsg || !isAdmin}
                 onChange={e => handleToggle(e.currentTarget.checked)}
                 styles={{ labelWrapper: { display: "none" } }}
               />
@@ -146,7 +141,7 @@ export const DatabaseRoutingSection = ({
                 data-testid="db-routing-user-attribute"
                 placeholder={t`Choose an attribute`}
                 data={userAttributeOptions}
-                disabled={isSelectDisabled}
+                disabled={!isAdmin || !!disabledFeatMsg}
                 value={userAttribute}
                 onChange={handleUserAttributeChange}
               />
@@ -158,7 +153,7 @@ export const DatabaseRoutingSection = ({
             <Text fw="bold">{t`Destination databases`}</Text>
             {isAdmin && (
               <>
-                {isDbRoutingEnabled ? (
+                {database.hasDatabaseRoutingEnabled() ? (
                   <Button
                     component={Link}
                     to={Urls.createDestinationDatabase(database.id)}
