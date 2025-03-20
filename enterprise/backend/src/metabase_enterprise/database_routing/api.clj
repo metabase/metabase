@@ -1,9 +1,11 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase.api.common :as api]
+   [metabase.api.database :as api.database]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events :as events]
+   [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -15,7 +17,8 @@
 
   This is OK, it's not an invariant that all database details are always valid, but it's something to note."
   [_route-params
-   _query-params
+   {:keys [check_connection_details]} :- [:map
+                                          [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
    {:keys [router_database_id mirrors]} :- [:map
                                             [:router_database_id ms/PositiveInt]
                                             [:mirrors
@@ -24,22 +27,34 @@
                                                [:name               ms/NonBlankString]
                                                [:details            ms/Map]]]]]]
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
+  (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name mirrors)]))
+                 "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand]} (t2/select-one :model/Database :id router_database_id)]
-    (u/prog1 (t2/insert-returning-instances!
-              :model/Database
-              (map (fn [{:keys [name details]}]
-                     {:name               name
-                      :engine             engine
-                      :details            details
-                      :auto_run_queries   auto_run_queries
-                      :is_full_sync       false
-                      :is_on_demand       is_on_demand
-                      :cache_ttl          nil
-                      :router_database_id router_database_id
-                      :creator_id         api/*current-user-id*})
-                   mirrors))
-      (doseq [database <>]
-        (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})))))
+    (if-let [invalid-mirrors (and check_connection_details
+                                  (->> mirrors
+                                       (keep (fn [{details :details n :name}]
+                                               (let [details-or-error (api.database/test-connection-details (name engine) details)
+                                                     valid? (not= (:valid details-or-error) false)]
+                                                 (when-not valid?
+                                                   [n (dissoc details-or-error :valid)]))))
+                                       seq))]
+      {:status 400
+       :body (into {} invalid-mirrors)}
+      (u/prog1 (t2/insert-returning-instances!
+                :model/Database
+                (map (fn [{:keys [name details]}]
+                       {:name               name
+                        :engine             engine
+                        :details            details
+                        :auto_run_queries   auto_run_queries
+                        :is_full_sync       false
+                        :is_on_demand       is_on_demand
+                        :cache_ttl          nil
+                        :router_database_id router_database_id
+                        :creator_id         api/*current-user-id*})
+                     mirrors))
+        (doseq [database <>]
+          (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*}))))))
 
 (api.macros/defendpoint :put "/router-database/:id"
   "Updates an existing Database with the `user_attribute` to route on. Will either:
@@ -50,12 +65,16 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/check-404 (t2/exists? :model/Database :id id))
+  (let [db (t2/select-one :model/Database :id id)]
+    (api/check-404 db)
+    (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
+    (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
+    (binding [setting/*database-local-values* (:settings db)]
+      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
+      (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (if (nil? user_attribute)
-    ;; delete the DatabaseRouter and all mirror databases.
-    (t2/with-transaction [_conn]
-      (t2/delete! :model/DatabaseRouter :database_id id)
-      (t2/delete! :model/Database :router_database_id id))
+    ;; delete the DatabaseRouter
+    (t2/delete! :model/DatabaseRouter :database_id id)
     (if (t2/select-one :model/DatabaseRouter :database_id id)
       (t2/update! :model/DatabaseRouter :database_id id {:user_attribute user_attribute})
       (t2/insert! :model/DatabaseRouter {:database_id id :user_attribute user_attribute}))))
