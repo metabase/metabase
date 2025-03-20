@@ -9,7 +9,7 @@ import type { Card, CardId } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
-export type InteractiveQuestionId = CardId | "new" | SdkEntityId;
+export type SdkQuestionId = number | "new" | SdkEntityId;
 
 export interface SdkQuestionState {
   question?: Question;

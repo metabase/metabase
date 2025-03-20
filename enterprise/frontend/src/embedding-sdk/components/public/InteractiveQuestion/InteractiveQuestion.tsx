@@ -32,10 +32,10 @@ import {
   type InteractiveQuestionDefaultViewProps,
 } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { InteractiveQuestionId } from "embedding-sdk/types/question";
+import type { SdkQuestionId } from "embedding-sdk/types/question";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionId;
+  questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<

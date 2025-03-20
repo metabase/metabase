@@ -4,7 +4,7 @@ import { P, match } from "ts-pattern";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
-import type { SDKCollectionId } from "../types/collection";
+import type { SdkCollectionId } from "../types/collection";
 
 /**
  * Converts "personal" and "root" to the _numeric_ ids accepted by the api
@@ -13,7 +13,7 @@ import type { SDKCollectionId } from "../types/collection";
 export const getCollectionNumericIdFromReference = createSelector(
   [
     getUserPersonalCollectionId,
-    (_, collectionReference: SDKCollectionId) => collectionReference,
+    (_, collectionReference: SdkCollectionId) => collectionReference,
   ],
   (personalCollectionId, collectionReference): CollectionId | null => {
     return match(collectionReference)
@@ -37,7 +37,7 @@ export const getCollectionNumericIdFromReference = createSelector(
 export const getCollectionIdSlugFromReference = createSelector(
   [
     getUserPersonalCollectionId,
-    (_, collectionReference: SDKCollectionId) => collectionReference,
+    (_, collectionReference: SdkCollectionId) => collectionReference,
   ],
   (personalCollectionId, collectionReference): CollectionId => {
     return match(collectionReference)

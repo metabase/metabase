@@ -12,7 +12,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
-import type { SDKCollectionId } from "embedding-sdk/types/collection";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -58,7 +58,7 @@ const ENTITY_NAME_MAP: Partial<
 };
 
 export type CollectionBrowserProps = {
-  collectionId?: SDKCollectionId;
+  collectionId?: SdkCollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];

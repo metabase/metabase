@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
-import type { SDKCollectionId } from "embedding-sdk/types/collection";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -12,7 +12,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export interface CreateDashboardModalProps {
-  initialCollectionId?: SDKCollectionId;
+  initialCollectionId?: SdkCollectionId;
   isOpen?: boolean;
   onCreate: (dashboard: Dashboard) => void;
   onClose?: () => void;
