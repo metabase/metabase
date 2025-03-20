@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
