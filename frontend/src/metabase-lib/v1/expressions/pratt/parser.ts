@@ -261,10 +261,15 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         }
       }
     } else if (token.type.leftOperands !== 0) {
-      // Subtraction is a special case because it might actually be negation
       if (token.type === SUB) {
+        // Subtraction is a special case because it might actually be negation
+        // ie. -42
         node = createASTNode(token, node, NEGATIVE, counter);
         hooks.onCreateNode?.(token, node);
+      } else if (token.type === ADD) {
+        // Addition is a special case because it might actually be just a unary plus
+        // ie. +42
+        continue;
       } else {
         const err = new CompileError(t`Expected expression`, {
           token,

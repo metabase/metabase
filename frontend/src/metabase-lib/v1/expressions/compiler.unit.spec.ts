@@ -67,20 +67,21 @@ describe("old recursive-parser tests", () => {
     expect(expr("[Crazy\\test]")).toEqual(["dimension", "Crazy\\test"]);
   });
 
-  // TODO: fix unary expressions
-  it.skip("should parse unary expressions", () => {
-    expect(expr("+6")).toEqual(["+", 6]);
-    expect(expr("++7")).toEqual(["+", ["+", 7]]);
-    expect(expr("-+8")).toEqual(["-", ["+", 8]]);
+  it("should parse unary expressions", () => {
+    expect(expr("+6")).toEqual(6);
+    expect(expr("++7")).toEqual(7);
+    expect(expr("-+8")).toEqual(-8);
   });
 
-  // TODO: fix unary expressions
-  it.skip("should flatten unary expressions", () => {
+  it("should flatten unary expressions", () => {
     expect(expr("--5")).toEqual(["-", -5]);
     expect(expr("- 6")).toEqual(-6);
-    expect(expr("+-7")).toEqual(["+", -7]);
+    expect(expr("+-7")).toEqual(-7);
     expect(expr("sqrt(-1)")).toEqual(["sqrt", -1]);
-    expect(expr("- X")).toEqual(["-", ["dimension", "X"]]);
+    expect(expr("- [Total]")).toEqual(["-", total]);
+    expect(expr("-[Total]")).toEqual(["-", total]);
+    expect(expr("+ [Total]")).toEqual(total);
+    expect(expr("+[Total]")).toEqual(total);
   });
 
   it("should parse binary expressions", () => {
