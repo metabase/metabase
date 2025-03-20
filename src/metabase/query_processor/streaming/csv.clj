@@ -62,7 +62,9 @@
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)
-        pivot-data         (atom nil)]
+        pivot-data         (atom nil)
+        pivot-rows         (volatile! [])
+        pivoted-export?    (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
@@ -73,7 +75,7 @@
             (and pivot? pivot-export-options)
             (reset! pivot-data
                     {:settings viz-settings
-                     :data {:cols ordered-cols
+                     :data {:cols (vec ordered-cols)
                             :rows []}
                      :timezone results_timezone
                      :format-rows? format-rows?
@@ -87,6 +89,8 @@
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
+          (vreset! pivoted-export? (public-settings/enable-pivoted-exports))
+
           ;; write the column names for non-pivot tables
           (when (or (not pivot?) (not (public-settings/enable-pivoted-exports)))
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
@@ -95,14 +99,13 @@
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
         (let [ordered-row (if output-order
-                            (let [row-v (into [] row)]
-                              (into [] (for [i output-order] (row-v i))))
+                            (mapv (vec row) output-order)
                             row)
               {:keys [pivot-grouping-key]} @pivot-data
               group                    (get ordered-row pivot-grouping-key)]
-          (if (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
+          (if (and (contains? @pivot-data :data) @pivoted-export?)
             ;; TODO: try using a transient
-            (swap! pivot-data (fn [pivot-data] (update-in pivot-data [:data :rows] conj ordered-row)))
+            (vswap! pivot-rows conj ordered-row)
             (if group
               (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
@@ -119,8 +122,8 @@
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (when (and (contains? @pivot-data :data) (public-settings/enable-pivoted-exports))
-          (let [output (qp.pivot.postprocess/build-pivot-output @pivot-data)]
+        (when (and (contains? @pivot-data :data) @pivoted-export?)
+          (let [output (qp.pivot.postprocess/build-pivot-output (assoc-in @pivot-data [:data :rows] @pivot-rows))]
             (doseq [xf-row output]
               (write-csv writer [xf-row]))))
         (.flush writer)
