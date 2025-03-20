@@ -35,14 +35,15 @@ export type FormatOptions = {
 };
 
 export async function format(
-  expression: Lib.ExpressionParts | null,
+  expression: ExpressionNode,
   options: FormatOptions,
 ) {
-  // Format the AST as JSON because prettier expects a string
-  // we parse the JSON into the AST as the first step
-  return pformat(JSON.stringify(expression), {
+  // prettier expects us to pass a string, but we have the AST already
+  // so we pass a bocus string and ignore it. The actual ast is passed via
+  // the root option.
+  return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin(options)],
+    plugins: [plugin({ ...options, root: expression })],
     printWidth: options.printWidth ?? 80,
   });
 }
@@ -53,21 +54,28 @@ export type FormatExampleOptions = {
 };
 
 export async function formatExample(
-  expression: Lib.ExpressionParts | null,
+  expression: ExpressionNode,
   options: FormatExampleOptions = {},
 ) {
-  return pformat(JSON.stringify(expression), {
+  // prettier expects us to pass a string, but we have the AST already
+  // so we pass a bocus string and ignore it. The actual ast is passed via
+  // the root option.
+  return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin(options)],
+    plugins: [plugin({ ...options, root: expression })],
     printWidth: options.printWidth ?? 80,
   });
 }
 
 const PRETTIER_PLUGIN_NAME = "custom-expression";
 
+type InternalOptions = {
+  root: ExpressionNode;
+};
+
 // Set up a prettier plugin that formats expressions
 function plugin(
-  options: FormatOptions | FormatExampleOptions,
+  options: (FormatOptions | FormatExampleOptions) & InternalOptions,
 ): Plugin<ExpressionNode> {
   return {
     languages: [
@@ -79,9 +87,8 @@ function plugin(
     parsers: {
       [PRETTIER_PLUGIN_NAME]: {
         astFormat: PRETTIER_PLUGIN_NAME,
-        parse(json: string) {
-          // Parse the JSON string we get from the `format` function
-          return JSON.parse(json);
+        parse() {
+          return options.root;
         },
         locStart() {
           throw new Error("Not implemented");
