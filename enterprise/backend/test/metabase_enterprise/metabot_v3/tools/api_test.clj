@@ -12,7 +12,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.test :as mt]))
+   [metabase.models.field-values :as field-values]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- ai-session-token
   ([] (ai-session-token :rasta))
@@ -201,6 +203,15 @@
                   :conversation_id conversation-id}
                  response)))))))
 
+(defn- string-sequence?
+  [coll]
+  (boolean (and (seq coll) (every? string? coll))))
+
+(defn- ensure-field-values!
+  [table-name-or-id]
+  (run! field-values/create-or-update-full-field-values!
+        (t2/reducible-select :model/Field :table_id (cond-> table-name-or-id (keyword? table-name-or-id) mt/id))))
+
 (deftest answer-sources-test
   (mt/with-premium-features #{:metabot-v3}
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -233,11 +244,21 @@
                                  :dataset_query (lib/->legacy-MBQL model-metric-source-query)
                                  :type :metric}]
           (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
+            (ensure-field-values! :products)
             (let [conversation-id (str (random-uuid))
                   ai-token (ai-session-token)
                   response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
                                                  {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                                 {:conversation_id conversation-id})]
+                                                 {:conversation_id conversation-id})
+                  expected-fields
+                  [{:name "ID", :type "number", :semantic_type "pk"}
+                   {:name "Ean", :type "string", :field_values string-sequence?}
+                   {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+                   {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+                   {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+                   {:name "Price", :type "number"}
+                   {:name "Rating", :type "number", :semantic_type "score"}
+                   {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
               (is (=? {:structured_output
                        {:metrics [(-> metric-data
                                       (select-keys [:name :description])
@@ -246,14 +267,7 @@
                                              :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
                                              :queryable_dimensions
                                              (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
-                                                          [{:name "ID", :type "number"}
-                                                           {:name "Ean", :type "string"}
-                                                           {:name "Title", :type "string"}
-                                                           {:name "Category", :type "string"}
-                                                           {:name "Vendor", :type "string"}
-                                                           {:name "Price", :type "number"}
-                                                           {:name "Rating", :type "number"}
-                                                           {:name "Created At", :type "datetime"}])))
+                                                          expected-fields)))
                                   (-> model-metric-data
                                       (select-keys [:name :description])
                                       (assoc :id model-metric-id
@@ -261,28 +275,13 @@
                                              :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
                                              :queryable_dimensions
                                              (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
-                                                          [{:name "ID", :type "number"}
-                                                           {:name "Ean", :type "string"}
-                                                           {:name "Title", :type "string"}
-                                                           {:name "Category", :type "string"}
-                                                           {:name "Vendor", :type "string"}
-                                                           {:name "Price", :type "number"}
-                                                           {:name "Rating", :type "number"}
-                                                           {:name "Created At", :type "datetime"}])))]
+                                                          expected-fields)))]
                         :models [(-> model-data
                                      (select-keys [:name :description])
                                      (assoc :id model-id
                                             :type "model"
-                                            :fields
-                                            (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
-                                                         [{:name "ID", :type "number", :semantic_type "pk"}
-                                                          {:name "Ean", :type "string"}
-                                                          {:name "Title", :type "string", :semantic_type "title"}
-                                                          {:name "Category", :type "string", :semantic_type "category"}
-                                                          {:name "Vendor", :type "string", :semantic_type "company"}
-                                                          {:name "Price", :type "number"}
-                                                          {:name "Rating", :type "number", :semantic_type "score"}
-                                                          {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}])
+                                            :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
+                                                                 expected-fields)
                                             :metrics
                                             [{:id model-metric-id
                                               :name "Model metric"
@@ -319,7 +318,7 @@
                    :conversation_id conversation-id}
                   response)))))))
 
-(deftest ^:parallel get-metric-details-test
+(deftest get-metric-details-test
   (mt/with-premium-features #{:metabot-v3}
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -331,12 +330,22 @@
                        :dataset_query (lib/->legacy-MBQL source-query)
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
+        (ensure-field-values! :products)
         (let [conversation-id (str (random-uuid))
               ai-token (ai-session-token)
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-metric-details"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments {:metric_id metric-id}
-                                              :conversation_id conversation-id})]
+                                              :conversation_id conversation-id})
+              expected-fields
+              [{:name "ID", :type "number", :semantic_type "pk"}
+               {:name "Ean", :type "string", :field_values string-sequence?}
+               {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+               {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+               {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+               {:name "Price", :type "number"}
+               {:name "Rating", :type "number", :semantic_type "score"}
+               {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
           (is (=? {:structured_output (-> metric-data
                                           (select-keys [:name :description])
                                           (assoc :id metric-id
@@ -344,14 +353,7 @@
                                                  :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
                                                  :queryable_dimensions
                                                  (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
-                                                              [{:name "ID", :type "number"}
-                                                               {:name "Ean", :type "string"}
-                                                               {:name "Title", :type "string"}
-                                                               {:name "Category", :type "string"}
-                                                               {:name "Vendor", :type "string"}
-                                                               {:name "Price", :type "number"}
-                                                               {:name "Rating", :type "number"}
-                                                               {:name "Created At", :type "datetime"}])))
+                                                              expected-fields)))
                    :conversation_id conversation-id}
                   response)))))))
 
@@ -440,27 +442,30 @@
                      :conversation_id conversation-id}
                     response))))))))
 
-(deftest ^:parallel get-table-details-test
+(deftest get-table-details-test
   (mt/with-premium-features #{:metabot-v3}
     (let [table-id (mt/id :products)]
+      (ensure-field-values! table-id)
       (doseq [arg-id [table-id (str table-id)]]
         (let [conversation-id (str (random-uuid))
               ai-token (ai-session-token)
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments {:table_id arg-id}
-                                              :conversation_id conversation-id})]
+                                              :conversation_id conversation-id})
+              expected-fields
+              [{:name "ID", :type "number", :semantic_type "pk"}
+               {:name "Ean", :type "string", :field_values string-sequence?}
+               {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
+               {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
+               {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+               {:name "Price", :type "number"}
+               {:name "Rating", :type "number", :semantic_type "score"}
+               {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
           (is (=? {:structured_output {:name "Products"
                                        :id table-id
                                        :type "table"
                                        :fields (map-indexed #(assoc %2 :field_id (format "t%d/%d" table-id %1))
-                                                            [{:name "ID", :type "number", :semantic_type "pk"}
-                                                             {:name "Ean", :type "string"}
-                                                             {:name "Title", :type "string", :semantic_type "title"}
-                                                             {:name "Category", :type "string", :semantic_type "category"}
-                                                             {:name "Vendor", :type "string", :semantic_type "company"}
-                                                             {:name "Price", :type "number"}
-                                                             {:name "Rating", :type "number", :semantic_type "score"}
-                                                             {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}])}
+                                                            expected-fields)}
                    :conversation_id conversation-id}
                   response)))))))

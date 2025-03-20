@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.models.field-values :as field-values]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -32,6 +33,13 @@
     {:structured-output (assoc dashboard :type :dashboard)}
     {:output "dashboard not found"}))
 
+(defn- add-field-values
+  [cols]
+  (if-let [field-ids (seq (keep :id cols))]
+    (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
+      (mapv #(m/assoc-some % :field-values (-> % :id id->values :values)) cols))
+    cols))
+
 (defn metric-details
   "Get metric details as returned by tools."
   ([id]
@@ -43,7 +51,8 @@
          breakouts (lib/breakouts metric-query)
          base-query (lib/remove-all-breakouts metric-query)
          visible-cols (lib/visible-columns base-query)
-         filterable-cols (lib/filterable-columns base-query)
+         filterable-cols (-> (lib/filterable-columns base-query)
+                             add-field-values)
          default-temporal-breakout (->> breakouts
                                         (map #(lib/find-matching-column % visible-cols))
                                         (m/find-first lib.types.isa/temporal?))
@@ -91,7 +100,8 @@
     (let [mp (or metadata-provider
                  (lib.metadata.jvm/application-database-metadata-provider (:db_id base)))
           table-query (lib/query mp (lib.metadata/table mp id))
-          cols (lib/returned-columns table-query)
+          cols (-> (lib/returned-columns table-query)
+                   add-field-values)
           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
       (-> {:id id
            :type :table
@@ -118,7 +128,8 @@
                                                           (#{:query} (:type dataset-query)))
                                                    dataset-query
                                                    card-metadata))
-         cols (lib/returned-columns card-query)
+         cols (-> (lib/returned-columns card-query)
+                  add-field-values)
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
@@ -150,8 +161,13 @@
                          :models  (vec models)}}))
 
 (comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (answer-sources "Usage analytics" #_"t b's Personal Collection"))
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
+            api/*current-user-id* 2
+            api/*is-superuser?* true]
+    #_(table-details 30 nil)
+    #_(card-details 147)
+    #_(metric-details 135)
+    (answer-sources "__METABOT__"))
   -)
 
 (defn get-table-details

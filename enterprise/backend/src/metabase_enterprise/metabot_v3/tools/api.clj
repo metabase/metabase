@@ -230,7 +230,13 @@
    [:field_id :string]
    [:name :string]
    [:type [:maybe ::field-type]]
-   [:description {:optional true} [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:semantic_type {:optional true} [:maybe :string]]
+   [:field_values {:optional true} [:or
+                                    [:sequential :boolean]
+                                    [:sequential :double]
+                                    [:sequential :int]
+                                    [:sequential :string]]]])
 
 (mr/def ::columns
   [:sequential ::column])

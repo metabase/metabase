@@ -67,8 +67,9 @@
     (-> {:field_id (str field-id-prefix pos)
          :name (lib/display-name query -1 column :long)
          :type (convert-field-type column)}
-        (m/assoc-some :description (get column :description)
-                      :semantic_type (some-> semantic-type name u/->snake_case_en)))))
+        (m/assoc-some :description (:description column)
+                      :semantic_type (some-> semantic-type name u/->snake_case_en)
+                      :field-values (:field-values column)))))
 
 (defn resolve-column-index
   "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
