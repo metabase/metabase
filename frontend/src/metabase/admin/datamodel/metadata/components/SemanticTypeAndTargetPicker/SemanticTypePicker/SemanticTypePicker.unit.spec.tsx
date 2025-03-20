@@ -1,8 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { SemanticTypePicker } from "./SemanticTypePicker";
 
@@ -10,20 +16,29 @@ interface SetupOpts {
   initialValue?: string | null;
 }
 
-function TestComponent({ initialValue = null }: SetupOpts) {
+interface TestComponentProps {
+  initialValue?: string | null;
+  field: Field;
+}
+
+function TestComponent({ field, initialValue = null }: TestComponentProps) {
   const [value, setValue] = useState<string | null>(initialValue);
 
-  return (
-    <SemanticTypePicker
-      baseType={TYPE.Date}
-      value={value}
-      onChange={setValue}
-    />
-  );
+  return <SemanticTypePicker field={field} value={value} onChange={setValue} />;
 }
 
 const setup = ({ initialValue }: SetupOpts = {}) => {
-  renderWithProviders(<TestComponent initialValue={initialValue} />);
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  });
+  const metadata = getMetadata(state);
+  const field = checkNotNull(metadata.field(ORDERS.CREATED_AT));
+
+  renderWithProviders(
+    <TestComponent field={field} initialValue={initialValue} />,
+  );
 };
 
 describe("SemanticTypePicker", () => {
