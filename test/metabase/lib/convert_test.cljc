@@ -527,6 +527,34 @@
     "2020-10-20T10:20:00Z"
     "10:20:00"))
 
+(deftest ^:parallel round-trip-filter-expression-test
+  (are [expressions filter-expression]
+       (test-round-trip {:database 1
+                         :type     :query
+                         :query    (merge {:source-table 224
+                                           :filter       filter-expression}
+                                          (when (seq expressions)
+                                            {:expressions expressions
+                                             :expression-idents (update-vals expressions
+                                                                             (fn [_] (u/generate-nano-id)))}))})
+    {} [:value true nil]
+
+    {} [:value false nil]
+
+    {} [:field 1 {:base-type :type/Boolean}]
+
+    {"true"  [:value true nil]}
+    [:expression "true"]
+
+    {"false" [:value false nil]}
+    [:expression "false"]
+
+    {"eq"  [:= 1 2]}
+    [:expression "eq"]
+
+    {"and"  [:and [:field 1 nil] [:field 2 nil]]}
+    [:expression "and"]))
+
 (deftest ^:parallel round-trip-segments-test
   (test-round-trip {:database 282
                     :type :query
