@@ -13,7 +13,11 @@
 
 (defn- by-name
   [dimensions dimension-name]
-  (m/find-first (comp #{dimension-name} :name) dimensions))
+  (let [pred (if (string? dimension-name)
+               (comp #{dimension-name} :name)
+               (every-pred (comp #{(first dimension-name)} :table-reference)
+                           (comp #{(second dimension-name)} :name)))]
+    (m/find-first pred dimensions)))
 
 (deftest ^:parallel query-metric-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -70,13 +74,13 @@
                                                            3]]}}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
-                      :filters [{:field_id (->field-id "User → State")
+                      :filters [{:field_id (->field-id ["User" "State"])
                                  :operation "string-equals"
                                  :value "TX"}
                                 {:field_id (->field-id "Discount")
                                  :operation "number-greater-than"
                                  :value 3}]
-                      :group-by [{:field_id (->field-id "Product → Category")
+                      :group-by [{:field_id (->field-id ["Product" "Category"])
                                   :field_granularity "year"}]}))))
           (testing "Temporal bucketing works for temporal columns."
             (is (=? {:structured-output {:type :query,
@@ -131,7 +135,7 @@
                                                            3 42]]}}}}
                     (metabot-v3.tools.filters/query-metric
                      {:metric-id metric-id
-                      :filters [{:field_id (->field-id "User → State")
+                      :filters [{:field_id (->field-id ["User" "State"])
                                  :operation "string-starts-with"
                                  :values ["A" "G"]}
                                 {:field_id (->field-id "Discount")
