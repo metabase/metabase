@@ -599,7 +599,7 @@ const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
 const LOGICAL_AND_OPERATOR = new Set(["and"]);
@@ -617,28 +617,3 @@ export const OPERATORS = new Set([
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
 ]);
-
-export const POPULAR_FUNCTIONS = [
-  "case",
-  "concat",
-  "contains",
-  "between",
-  "coalesce",
-];
-
-export const POPULAR_FILTERS = [
-  "contains",
-  "case",
-  "between",
-  "interval",
-  "concat",
-  "round",
-];
-
-export const POPULAR_AGGREGATIONS = [
-  "count",
-  "distinct",
-  "count-where",
-  "sum",
-  "avg",
-];

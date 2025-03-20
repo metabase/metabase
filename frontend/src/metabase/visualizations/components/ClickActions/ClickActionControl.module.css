@@ -6,6 +6,10 @@
     .nested {
       color: var(--mb-color-text-white);
     }
+
+    .ClickActionButtonIcon {
+      color: white;
+    }
   }
 
   .inner {
@@ -17,4 +21,8 @@
     justify-content: space-between;
     width: 100%;
   }
+}
+
+.ClickActionButtonIcon {
+  margin-right: 0.2rem;
 }
