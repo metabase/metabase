@@ -23,19 +23,17 @@
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [message context history conversation_id state]
-  (let [env (-> {:context (metabot-v3.context/create-context context)
+  (let [initial-message (metabot-v3.envelope/user-message message)
+        history (conj (vec history) initial-message)
+        env (-> {:context (metabot-v3.context/create-context context)
                  :conversation-id conversation_id
-                 :history history
+                 :messages history
                  :state state}
-                (metabot-v3.envelope/add-user-message message)
                 metabot-v3.tools.api/handle-envelope)
-        history (into (vec (metabot-v3.envelope/history env)) (:messages env))]
-    {:reactions (-> env
-                    (assoc :history history)
-                    metabot-v3.envelope/reactions
-                    encode-reactions)
-     :history history
-     :state (metabot-v3.envelope/state env)}))
+        messages (:messages env)]
+    {:reactions (-> messages metabot-v3.envelope/reactions encode-reactions)
+     :history   (into history messages)
+     :state     (metabot-v3.envelope/state env)}))
 
 (api.macros/defendpoint :post "/v2/agent"
   "Send a chat message to the LLM via the AI Proxy."
