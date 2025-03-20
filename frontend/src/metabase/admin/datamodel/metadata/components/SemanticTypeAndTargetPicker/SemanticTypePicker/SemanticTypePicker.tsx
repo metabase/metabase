@@ -9,7 +9,7 @@ import {
 import { Select } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { isa } from "metabase-lib/v1/types/utils/isa";
+import { isTypeFK, isTypePK, isa } from "metabase-lib/v1/types/utils/isa";
 
 const NO_SEMANTIC_TYPE = null;
 const NO_SEMANTIC_TYPE_STRING = "null";
@@ -61,6 +61,11 @@ function stringifyValue(value: string | null): string {
 }
 
 function getData({ field, value }: Pick<Props, "field" | "value">) {
+  const effectiveType = field.effective_type ?? field.base_type;
+  const levelOneTypes = getLevelOneTypes().filter(levelOneType => {
+    return isa(effectiveType, levelOneType);
+  });
+
   const options = [
     ...FIELD_SEMANTIC_TYPES,
     {
@@ -74,7 +79,12 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
       const isCurrentValue = option.id === value;
       const isNoSemanticType = option.id === NO_SEMANTIC_TYPE;
 
-      if (isNoSemanticType || isCurrentValue) {
+      if (
+        isNoSemanticType ||
+        isCurrentValue ||
+        isTypePK(option.id) ||
+        isTypeFK(option.id)
+      ) {
         return true;
       }
 
@@ -84,17 +94,29 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
         return false;
       }
 
-      const effectiveType = field.effective_type ?? field.base_type;
-
-      if (effectiveType === TYPE.Text) {
-        /**
-         * Hack: allow "casting" text types to numerical types
-         * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
-         */
-        return isa(option.id, effectiveType) || isa(option.id, TYPE.Number);
+      if (option.id === TYPE.Name) {
+        const isText = isa(effectiveType, TYPE.Text);
+        const isTextLike = isa(effectiveType, TYPE.TextLike);
+        return isText && !isTextLike;
       }
 
-      return isa(option.id, effectiveType);
+      /**
+       * Hack: allow "casting" text types to numerical types
+       * @see https://metaboat.slack.com/archives/C08E17FN206/p1741960345351799?thread_ts=1741957848.897889&cid=C08E17FN206
+       * @see https://www.notion.so/metabase/Fields-f5999d551119498a8ffbc7e8887eebfc
+       *
+       * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
+       * additionally show semantic types derived from "type/Number".
+       */
+      if (isa(effectiveType, TYPE.Text) || isa(effectiveType, TYPE.TextLike)) {
+        return [...levelOneTypes, TYPE.Number].some(type => {
+          return isa(option.id, type);
+        });
+      }
+
+      return levelOneTypes.some(type => {
+        return isa(option.id, type);
+      });
     })
     .map(option => ({
       label: option.name,
@@ -108,4 +130,16 @@ function getData({ field, value }: Pick<Props, "field" | "value">) {
   );
 
   return data;
+}
+
+function getLevelOneTypes(): string[] {
+  return [
+    TYPE.Number,
+    TYPE.Temporal,
+    TYPE.Boolean,
+    TYPE.Text,
+    TYPE.TextLike,
+    TYPE.Collection,
+    TYPE.Structured,
+  ];
 }
