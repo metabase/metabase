@@ -161,27 +161,34 @@ export const VisualizationDirtyState = ({
   runQuestionQuery,
   cancelQuery,
   hidden,
-}) => (
-  <div
-    className={cx(
-      className,
-      QueryBuilderS.Loading,
-      CS.flex,
-      CS.flexColumn,
-      CS.layoutCentered,
-      { [QueryBuilderS.LoadingHidden]: hidden },
-    )}
-  >
-    <RunButtonWithTooltip
-      className={cx(CS.py2, CS.px3, CS.shadowed)}
-      circular
-      compact
-      result={result}
-      hidden={!isRunnable || hidden}
-      isRunning={isRunning}
-      isDirty={isResultDirty}
-      onRun={() => runQuestionQuery({ ignoreCache: true })}
-      onCancel={() => cancelQuery()}
-    />
-  </div>
-);
+}) => {
+  const handleRun = () => runQuestionQuery({ ignoreCache: true });
+  const handleCancel = () => cancelQuery();
+
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.Loading,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        CS.cursorPointer,
+        { [QueryBuilderS.LoadingHidden]: hidden },
+      )}
+      onClick={isRunning ? handleCancel : handleRun}
+    >
+      <RunButtonWithTooltip
+        className={cx(CS.py2, CS.px3, CS.shadowed)}
+        circular
+        compact
+        result={result}
+        hidden={!isRunnable || hidden}
+        isRunning={isRunning}
+        isDirty={isResultDirty}
+        onRun={handleRun}
+        onCancel={handleCancel}
+      />
+    </div>
+  );
+};

@@ -33,7 +33,7 @@ export function FilterHeaderButton({
   const [isOpened, { close, toggle }] = useDisclosure();
   const query = question.query();
   const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
-  const shouldShowFilterPanelExpander = items.length > 0;
+  const hasFilters = items.length > 0;
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
 
   const handleQueryChange = (newQuery: Lib.Query) => {
@@ -47,11 +47,11 @@ export function FilterHeaderButton({
         <Popover.Target>
           <Button
             className={cx(className, ViewTitleHeaderS.FilterButton)}
-            leftSection={<Icon name="filter" />}
+            leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
             onClick={toggle}
             data-testid="question-filter-header"
           >
-            {t`Add filter`}
+            {t`Filter`}
           </Button>
         </Popover.Target>
         <Popover.Dropdown>
@@ -62,7 +62,7 @@ export function FilterHeaderButton({
           />
         </Popover.Dropdown>
       </Popover>
-      {shouldShowFilterPanelExpander && (
+      {hasFilters && (
         <Tooltip label={label}>
           <Button
             aria-label={label}
