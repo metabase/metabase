@@ -53,9 +53,11 @@ export const DatabaseRoutingSection = ({
   const userAttrsReq = useListUserAttributesQuery(
     shouldHideSection ? skipToken : undefined,
   );
-  const userAttributeOptions = userAttrsReq.data ?? [];
+  const userAttributeOptions =
+    userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
   const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const isSelectDisabled = !isAdmin || !!disabledFeatMsg;
   const isDbRoutingDisabled = !!disabledFeatMsg;
   const errMsg = getSelectErrorMessage({
     userAttribute,
@@ -144,7 +146,7 @@ export const DatabaseRoutingSection = ({
                 data-testid="db-routing-user-attribute"
                 placeholder={t`Choose an attribute`}
                 data={userAttributeOptions}
-                disabled={!!disabledFeatMsg}
+                disabled={isSelectDisabled}
                 value={userAttribute}
                 onChange={handleUserAttributeChange}
               />
