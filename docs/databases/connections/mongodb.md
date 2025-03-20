@@ -58,7 +58,7 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ## Connecting to a MongoDB Atlas cluster
 
-> You can use Metabase with Atlas Dedicated and Shared clusters. Metabase does not currently support Atlas Serverless.
+> You can use Metabase with Atlas Dedicated and Free clusters. Metabase does not currently support Atlas Flex.
 
 ### Whitelist IP addresses
 
