@@ -1007,3 +1007,27 @@
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
+
+(deftest render-correct-custom-date-style
+  (testing "The static-viz respects custom formatting for temporal axis label"
+    (mt/with-temporary-setting-values [public-settings/custom-formatting {:type/Temporal
+                                                                          {:date_style "YYYY/M/D"
+                                                                           :date_separator "/"}}]
+      (mt/dataset test-data
+        (let [q    (mt/mbql-query products
+                     {:aggregation [[:count]]
+                      :breakout    [!month.created_at]})
+              card {:name                   "bar-test"
+                    :display                :bar
+                    :dataset_query          q
+                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                             :graph.metrics ["count"]}}]
+          (mt/with-temp [:model/Card {card-id :id} card]
+            (let [doc    (render.tu/render-card-as-hickory! card-id)
+                  label  (->> (hik.s/select (hik.s/tag :text) doc)
+                              (map (fn [el] (-> el :content first)))
+                              (take-last 3)
+                              (map str/trim)
+                              first)]
+              (testing "Renders with correct day of week first"
+                (is (= "2017/1" label))))))))))

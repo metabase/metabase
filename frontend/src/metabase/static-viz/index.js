@@ -7,6 +7,7 @@ import ReactDOMServer from "react-dom/server";
 import "metabase/lib/dayjs";
 
 import { updateStartOfWeek } from "metabase/lib/i18n";
+import MetabaseSettings from "metabase/lib/settings";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
@@ -49,6 +50,7 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
   );
 
   updateStartOfWeek(options.startOfWeek);
+  MetabaseSettings.set("custom-formatting", options.customFormatting);
 
   const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,
