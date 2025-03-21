@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import { type HTMLAttributes, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { c, msgid, ngettext } from "ttag";
 import _ from "underscore";
@@ -11,7 +11,7 @@ import {
 import { CronExpressionInput } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput";
 import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
@@ -61,7 +61,8 @@ export const Schedule = ({
   labelAlignment = "compact",
   isCustomSchedule,
   renderScheduleDescription,
-}: ScheduleProps) => {
+  ...flexProps
+}: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
   const [internalCronString, setInternalCronString] = useState(() =>
     formatCronExpressionForUI(initialCronString),
   );
@@ -279,7 +280,7 @@ export const Schedule = ({
   }, [renderScheduleDescription, schedule, internalCronString]);
 
   return (
-    <Flex direction="column" gap="1rem">
+    <Flex direction="column" gap="1rem" {...flexProps}>
       <Box
         className={cx(
           S.Schedule,

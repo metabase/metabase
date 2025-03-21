@@ -73,8 +73,16 @@ function lowerCaseFirstLetter(str: string) {
 }
 
 export const getScheduleExplanation = memoize(
-  (cronExpression: string): string | null =>
-    lowerCaseFirstLetter(explainCronExpression(cronExpression)),
+  (cronExpression: string): string | null => {
+    try {
+      const readableSchedule = lowerCaseFirstLetter(
+        explainCronExpression(cronExpression),
+      );
+      return readableSchedule;
+    } catch {
+      return null;
+    }
+  },
 );
 
 export function formatCronExpressionForUI(cronExpression: string): string {

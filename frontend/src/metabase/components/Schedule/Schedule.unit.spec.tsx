@@ -83,4 +83,12 @@ describe("Schedule", () => {
     expect(optionValues).not.toContain("0");
     expect(Math.min(...optionValues.map(Number))).toBe(1);
   });
+
+  it("shows custom cron input", () => {
+    setup({
+      cronString: "0 0/5 * * * ? *",
+      isCustomSchedule: true,
+    });
+    expect(getInputValues()).toEqual(["custom", "0/5 * * * ?"]);
+  });
 });

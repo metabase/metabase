@@ -22,6 +22,7 @@ const mockScheduleOptions: ScheduleType[] = [
   "daily",
   "weekly",
   "monthly",
+  "cron",
 ];
 const mockVerb = "Send";
 const mockTimezone = "America/New_York";
