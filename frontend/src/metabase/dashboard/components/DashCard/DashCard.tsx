@@ -30,7 +30,7 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   dashboardCardSupportsVisualizer,
-  getInitialStateForCardDataSource,
+  getInitialVisualizerStateForMultipleSeries,
   isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
 import type {
@@ -362,10 +362,7 @@ function DashCardInner({
       };
     } else {
       return {
-        state: getInitialStateForCardDataSource(
-          series[0].card,
-          series[0].data?.cols ?? [],
-        ),
+        state: getInitialVisualizerStateForMultipleSeries(series),
       };
     }
   }, [dashcard, series, isVisualizerModalOpen]);

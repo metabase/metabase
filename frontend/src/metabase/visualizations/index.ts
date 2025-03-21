@@ -11,7 +11,10 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationSettingDefinition,
+} from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
@@ -156,14 +159,19 @@ export function isCartesianChart(display: VisualizationDisplay) {
   );
 }
 
+const isDataSetting = ({
+  widget,
+}: VisualizationSettingDefinition<unknown, unknown>) => {
+  // TODO Come up with a better condition
+  return widget === "field" || widget === "fields";
+};
+
 export function getColumnVizSettings(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   const settings = visualization?.settings ?? {};
 
-  // TODO Come up with a better condition
   return Object.keys(settings).filter(key => {
-    const { widget } = settings[key] ?? {};
-    return widget === "field" || widget === "fields";
+    return isDataSetting(settings[key] ?? {});
   });
 }
 
