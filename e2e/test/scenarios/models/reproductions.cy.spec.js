@@ -2123,14 +2123,16 @@ describe("cumulative count - issue 33330", () => {
   });
 
   it("should still work after applying a post-aggregation filter (metabase#33330-2)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     H.filter();
-    cy.findByRole("dialog").within(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("filter-column-Created At").findByText("Today").click();
-      cy.button("Apply filters").click();
-      cy.wait("@dataset");
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Today").click();
     });
+    H.runButtonOverlay().click();
+    cy.wait("@dataset");
 
+    H.queryBuilderHeader().findByLabelText("Show filters").click();
     cy.findByTestId("filter-pill").should("have.text", "Created At is today");
     cy.findAllByTestId("header-cell")
       .should("contain", "Created At: Month")
