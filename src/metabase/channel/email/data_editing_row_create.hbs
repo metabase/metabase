@@ -4,7 +4,7 @@
     <p>Changes:</p>
     <ul>
       {{#each payload.event_info.created_row}}
-        <li>{{@key}}: {{@value}}</li>
+        {{#if @value}}<li>{{@key}}: {{@value}}</li>{{/if}}
       {{/each}}
     </ul>
   </div>

@@ -3,7 +3,7 @@
     <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated rows in {{payload.event_info.table.name}}.</p>
     <p>Changes:</p>
     <ul></ul>
-      {{#each payload.event_info.updated_row}}
+      {{#each payload.event_info.changes}}
         <li>{{@key}}: {{@value}}</li>
       {{/each}}
     </ul>

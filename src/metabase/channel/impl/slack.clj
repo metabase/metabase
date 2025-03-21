@@ -206,7 +206,7 @@
                                                   :body (str "# {{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a from {{payload.event_info.table.name}}\n\n"
                                                              "## Changes:"
                                                              "\n\n"
-                                                             "{{#each payload.event_info.updated_row}}\n"
+                                                             "{{#each payload.event_info.changes}}\n"
                                                              "{{#if @value}}- {{@key}} : {{@value}}{{/if}}"
                                                              "{{/each}}")}}
    :event/data-editing-row-delete {:channel_type :channel/slack
