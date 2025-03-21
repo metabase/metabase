@@ -48,6 +48,9 @@ describe("format", () => {
     it("formats nested arithmetic expressions", async () => {
       await isFormatted([
         expression`
+          1 + 1
+        `,
+        expression`
           1 + 2 - 3 + 4 / 5
         `,
         expression`
