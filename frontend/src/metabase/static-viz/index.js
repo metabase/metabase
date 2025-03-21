@@ -4,6 +4,8 @@ import "fast-text-encoding";
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
+// eslint-disable-next-line import/order
+import enterpriseOverrides from "ee-overrides";
 import "metabase/lib/dayjs";
 
 import { updateStartOfWeek } from "metabase/lib/i18n";
@@ -45,12 +47,20 @@ function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
 }
 
 export function RenderChart(rawSeries, dashcardSettings, options) {
+  MetabaseSettings.set("token-features", options.tokenFeatures);
+  MetabaseSettings.set("application-colors", options.applicationColors);
+
+  if (typeof enterpriseOverrides === "function") {
+    enterpriseOverrides();
+  }
+
+  MetabaseSettings.set("custom-formatting", options.customFormatting);
+
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );
 
   updateStartOfWeek(options.startOfWeek);
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
 
   const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,
