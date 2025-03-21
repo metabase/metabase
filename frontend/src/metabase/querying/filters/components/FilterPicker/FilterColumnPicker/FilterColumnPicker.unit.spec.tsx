@@ -25,7 +25,7 @@ function setup({ query, stageIndexes }: SetupOpts) {
   );
 }
 
-describe("FilterModal", () => {
+describe("FilterColumnPicker", () => {
   test("The info icon should exist on each column", () => {
     const query = createQuery();
     const stageIndexes = [0];
