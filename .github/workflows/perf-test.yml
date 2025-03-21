@@ -40,7 +40,7 @@ jobs:
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs?head_sha=${{ github.event.pull_request.head.sha || github.sha }}
+          https://api.github.com/repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs?head_sha=${{ github.event.pull_request.head.sha || github.sha }}
           ID=$(jq -r '.workflow_runs[0].id' e2e-tests.json)
           ## Wait for uberjar build to complete
           while [ true ]; do
