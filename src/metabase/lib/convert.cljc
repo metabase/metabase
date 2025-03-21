@@ -470,7 +470,7 @@
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
-             :datetime-add :datetime-subtract
+             :datetime-add :datetime-subtract :date
              :concat :substring :replace :regex-match-first :split-part
              :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))

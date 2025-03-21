@@ -110,6 +110,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression"],
     requiresFeature: "cast",
   },
+  date: {
+    displayName: "date",
+    type: "datetime",
+    args: ["expression"],
+    requiresFeature: "cast",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
@@ -559,6 +565,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   // cast
   "text",
   "integer",
+  "date",
   // string
   "lower",
   "upper",

@@ -2145,3 +2145,71 @@
             (is (= :type/BigInteger (-> cols first :base_type)))
             (doseq [[casted-value _equals? _uncasted-value] rows]
               (is (int? casted-value)))))))))
+
+(defn- check-date-query
+  ([query db-type uncasted-field casted-field]
+   (let [compiled-query (qp.compile/compile query)]
+     (mt/native-query {:query (str "SELECT " casted-field ", " (name uncasted-field) ", "
+                                   (case db-type
+                                     "DATE" casted-field " = " (name uncasted-field)
+                                     "TEXT" casted-field " = CAST(" (name uncasted-field) " AS DATE)")
+                                   " FROM ( "
+                                   (:query compiled-query)
+                                   " ) AS subquery "
+                                   "LIMIT 100")
+                       :params (:params compiled-query)}))))
+
+(deftest ^:parallel date-parse-table-fields
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "DATECAST" (lib/expression-clause :date [(lib/expression-clause :text [field-md] nil)] nil))
+                          (lib/limit 100))
+                result (-> query (check-date-query "DATE" field "\"subquery\".\"DATECAST\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel date-parse-custom-expressions
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table exprs] [[:people [(fn [] (lib/concat "2010" "-" "10" "-" "02"))]]]
+              ef exprs]
+        (testing (str "casting custom expression to date")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [])
+                          (lib/expression "CUSTOMEXPR" (ef))
+                          (lib/expression "DATECAST" (lib/expression-clause :date [(ef)] nil))
+                          (lib/limit 100))
+                result (-> query (check-date-query "TEXT" "\"subquery\".\"CUSTOMEXPR\"" "\"subquery\".\"DATECAST\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
+
+(deftest ^:parallel date-parse-table-fields-aggregation
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:field :birth_date}]]]
+              {:keys [field]} fields]
+        (testing (str "casting " table "." field " to date in aggregation")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/aggregate (lib/max field-md))
+                          (lib/aggregate (lib/max (lib/expression-clause :date [(lib/expression-clause :text [field-md] nil)] nil)))
+                          (lib/limit 100))
+                result (-> query (check-date-query "DATE" "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (= :type/Date (-> cols first :base_type)))
+            (doseq [[casted-value uncasted-value equals?] rows]
+              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
