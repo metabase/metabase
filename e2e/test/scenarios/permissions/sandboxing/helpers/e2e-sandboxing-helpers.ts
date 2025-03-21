@@ -261,10 +261,10 @@ export const createSandboxingDashboardAndQuestions = () => {
 
 type NormalUser = Partial<User> & { password: string };
 
-/** The user who will be sandboxed -- that is, who will be prevented from
- * seeing some results */
-export const sandboxedUser: NormalUser = {
-  email: "user@company.com",
+/** A non-admin user who should only see products that are Gizmos once the
+ * sandboxing policies are applied */
+export const gizmoViewer: NormalUser = {
+  email: "alice@gizmos.com",
   password: "--------",
   user_group_memberships: [
     { id: ALL_USERS_GROUP, is_group_manager: false },
@@ -273,9 +273,10 @@ export const sandboxedUser: NormalUser = {
   ],
 };
 
-/** A nonadmin user who will not be sandboxed */
-export const unsandboxedUser: NormalUser = {
-  email: "user2@company.com",
+/** A non-admin user who should only see products that are Widgets once the
+ * sandboxing policies are applied */
+export const widgetViewer: NormalUser = {
+  email: "bob@widgets.com",
   password: "--------",
   user_group_memberships: [
     { id: ALL_USERS_GROUP, is_group_manager: false },
@@ -293,16 +294,18 @@ export const signInAs = (user: NormalUser) => {
 };
 
 export const assignAttributeToUser = ({
+  user,
   attributeKey = "filter-attribute",
   attributeValue,
 }: {
+  user: NormalUser;
   attributeKey?: string;
   attributeValue: string;
 }) => {
   cy.request("GET", "/api/user")
     .then(response => {
       const userData = response.body.data.find(
-        (user: { email: string }) => user.email === sandboxedUser.email,
+        (u: { email: string }) => u.email === user.email,
       );
       return userData.id;
     })
@@ -441,18 +444,22 @@ export function rowsShouldContainGizmosAndWidgets({
   });
 }
 
-export function rowsShouldContainOnlyGizmos({
+const productCategories = ["Gizmo", "Widget", "Doohickey", "Gadget"] as const;
+
+export function rowsShouldContainOnlyOneCategory({
   responses,
   questions,
+  productCategory,
 }: {
   responses: DatasetResponse[];
   questions: CollectionItem[];
+  productCategory: (typeof productCategories)[number];
 }) {
   expect(responses.length).to.equal(questions.length);
 
   responses.forEach(response => {
     const { questionDesc } = getQuestionDescription(response, questions);
-    cy.log(`Results contain only Gizmos in: ${questionDesc}`);
+    cy.log(`Results contain only ${productCategory}s in: ${questionDesc}`);
     expect(response?.body.data.is_sandboxed).to.be.true;
 
     const rows = response.body.data.rows;
@@ -460,16 +467,20 @@ export function rowsShouldContainOnlyGizmos({
     expect(
       rows.every(
         row =>
-          row.includes("Gizmo") ||
+          row.includes(productCategory) ||
           // With implicit joins, some rows might have a null product
           row[0] === null,
       ),
-      `Every result should have have a Gizmo in: ${questionDesc}`,
+      `Every result should have have a ${productCategory} in: ${questionDesc}`,
     ).to.be.true;
-    expect(
-      !rows.some(row => row.includes("Widget")),
-      `No results should have Widgets in: ${questionDesc}`,
-    ).to.be.true;
+    productCategories
+      .filter(category => category !== productCategory)
+      .forEach(otherCategory => {
+        expect(
+          !rows.some(row => row.includes(otherCategory)),
+          `No results should have ${otherCategory}s in: ${questionDesc}`,
+        ).to.be.true;
+      });
   });
 }
 
@@ -481,11 +492,12 @@ export const valuesShouldContainGizmosAndWidgets = (
   expect(values).to.contain("Widget");
 };
 
-export const valuesShouldContainOnlyGizmos = (
+export const valuesShouldContainOnlyOneCategory = (
   valuesArray: (FieldValue | ParameterValue)[],
+  productCategory: (typeof productCategories)[number],
 ) => {
   const values = valuesArray.map(val => val[0]);
-  expect(values).to.deep.equal(["Gizmo"]);
+  expect(values).to.deep.equal([productCategory]);
 };
 
 export const getDashcardResponses = (
@@ -547,7 +559,6 @@ export const assertNoResultsOrValuesAreSandboxed = (
   getDashcardResponses(dashboard, questions).then(
     rowsShouldContainGizmosAndWidgets,
   );
-
   getCardResponses(questions).then(rowsShouldContainGizmosAndWidgets);
 
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
@@ -569,20 +580,28 @@ export const assertNoResultsOrValuesAreSandboxed = (
 export const assertAllResultsAndValuesAreSandboxed = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
+  productCategory: (typeof productCategories)[number],
 ) => {
   checkNotNull(dashboard);
-  getDashcardResponses(dashboard, questions).then(rowsShouldContainOnlyGizmos);
-  getCardResponses(questions).then(rowsShouldContainOnlyGizmos);
+
+  getDashcardResponses(dashboard, questions).then(data =>
+    rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
+  );
+  getCardResponses(questions).then(data =>
+    rowsShouldContainOnlyOneCategory({ ...data, productCategory }),
+  );
   H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-    rowsShouldContainOnlyGizmos({
+    rowsShouldContainOnlyOneCategory({
       responses: [response],
       questions: [adhocQuestionData as unknown as CollectionItem],
+      productCategory,
     }),
   );
+
   getFieldValuesForProductCategories().then(response =>
-    valuesShouldContainOnlyGizmos(response.body.values),
+    valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
   getParameterValuesForProductCategories().then(response =>
-    valuesShouldContainOnlyGizmos(response.body.values),
+    valuesShouldContainOnlyOneCategory(response.body.values, productCategory),
   );
 };
