@@ -142,8 +142,7 @@
 (defn should-sync?
   "Should this database be synced?"
   [db]
-  (and (not (is-destination? db))
-       (not= audit/audit-db-id (:id db))))
+  (not (is-destination? db)))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -215,16 +214,6 @@
     ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e "Error unscheduling tasks for DB."))))
-
-(defn- is-destination?
-  "Is this database a destination database for some router database?"
-  [db]
-  (boolean (:router_database_id db)))
-
-(defn should-sync?
-  "Should this database be synced?"
-  [db]
-  (not (is-destination? db)))
 
 ;; TODO -- consider whether this should live HERE or inside the `permissions` module.
 (defn- set-new-database-permissions!
