@@ -1128,6 +1128,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should support browser based navigation (metabase#55162)", () => {
+    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
     H.createQuestion(
       { query: { "source-table": PRODUCTS_ID }, name: "products" },
       { visitQuestion: true, wrapId: true },
@@ -1243,6 +1244,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       //   "equal",
       //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
       // );
+
+      cy.wait("@tableFK");
 
       H.modal().findByTestId("fk-relation-orders").click();
 
