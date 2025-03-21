@@ -1593,10 +1593,10 @@ describe("scenarios > question > custom column > function browser", () => {
   });
 });
 
-describe("scenarios > question > custom column > split", () => {
+describe("scenarios > question > custom column > splitPart", () => {
   beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
   });
 
   function assertTableData({ title, value }) {
@@ -1614,7 +1614,12 @@ describe("scenarios > question > custom column > split", () => {
   }
 
   it("should be possible to split a custom column", () => {
-    H.openPeopleTable({ mode: "notebook" });
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
 
     const CC_NAME = "Split Title";
 
@@ -1626,7 +1631,7 @@ describe("scenarios > question > custom column > split", () => {
     H.popover().button("Done").click();
 
     cy.findByLabelText("Row limit").click();
-    cy.findByPlaceholderText("Enter a limit").type(1);
+    cy.findByPlaceholderText("Enter a limit").type(1).blur();
 
     H.visualize();
 
