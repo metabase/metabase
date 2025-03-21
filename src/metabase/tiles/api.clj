@@ -212,7 +212,9 @@
 (defn process-tiles-query-for-card
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
   [card-id parameters zoom x y lat-field-ref lon-field-ref]
-  (let [result
+  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
+        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+        result
         (qp.card/process-query-for-card
          card-id
          :api
@@ -231,7 +233,9 @@
 (defn process-tiles-query-for-dashcard
   "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
   [dashboard-id dashcard-id card-id parameters zoom x y lat-field-ref lon-field-ref]
-  (let [result
+  (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
+        lon-field-ref (mbql.normalize/normalize lon-field-ref)
+        result
         (qp.dashboard/process-query-for-dashcard
          :dashboard-id  dashboard-id
          :dashcard-id   dashcard-id
@@ -260,8 +264,8 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (mbql.normalize/normalize (json/decode+kw lat-field))
-        lon-field  (mbql.normalize/normalize (json/decode+kw lon-field))]
+        lat-field  (json/decode+kw lat-field)
+        lon-field  (json/decode+kw lon-field)]
     (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
 
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -277,6 +281,6 @@
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
   (let [parameters (json/decode+kw parameters)
-        lat-field  (mbql.normalize/normalize (json/decode+kw lat-field))
-        lon-field  (mbql.normalize/normalize (json/decode+kw lon-field))]
+        lat-field  (json/decode+kw lat-field)
+        lon-field  (json/decode+kw lon-field)]
     (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
