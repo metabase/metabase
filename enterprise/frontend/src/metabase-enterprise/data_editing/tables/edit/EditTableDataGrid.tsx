@@ -28,10 +28,7 @@ export const EditTableDataGrid = ({
   data,
   onCellValueUpdate,
 }: EditTableDataGridProps) => {
-  const { cols, rows } = useMemo(
-    () => extractRemappedColumns(data.data),
-    [data.data],
-  );
+  const { cols, rows } = useMemo(() => extractRemappedColumns(data), [data]);
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
