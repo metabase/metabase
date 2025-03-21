@@ -1,6 +1,7 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
+export * from "./ai-sql-fixer";
 export * from "./alert";
 export * from "./autocomplete";
 export * from "./automagic-dashboards";

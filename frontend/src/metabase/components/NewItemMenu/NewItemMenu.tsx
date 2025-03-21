@@ -10,21 +10,6 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
-export interface NewItemMenuProps {
-  className?: string;
-  collectionId?: CollectionId;
-  trigger?: ReactNode;
-  triggerIcon?: string;
-  triggerTooltip?: string;
-  hasModels: boolean;
-  hasDataAccess: boolean;
-  hasNativeWrite: boolean;
-  hasDatabaseWithJsonEngine: boolean;
-  hasDatabaseWithActionsEnabled: boolean;
-  onCloseNavbar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
 type NewMenuItem = {
   title: string;
   icon: string;
@@ -34,12 +19,29 @@ type NewMenuItem = {
   onClose?: () => void;
 };
 
+export interface NewItemMenuProps {
+  className?: string;
+  collectionId?: CollectionId;
+  trigger?: ReactNode;
+  triggerIcon?: string;
+  triggerTooltip?: string;
+  appendMenuItems?: NewMenuItem[];
+  hasModels: boolean;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+  hasDatabaseWithJsonEngine: boolean;
+  hasDatabaseWithActionsEnabled: boolean;
+  onCloseNavbar: () => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
+}
+
 const NewItemMenu = ({
   className,
   collectionId,
   trigger,
   triggerIcon,
   triggerTooltip,
+  appendMenuItems,
   hasModels,
   hasDataAccess,
   hasNativeWrite,
@@ -132,12 +134,13 @@ const NewItemMenu = ({
       });
     }
 
-    return items;
+    return items.concat(appendMenuItems || []);
   }, [
     hasDataAccess,
     hasNativeWrite,
     hasModels,
     hasDatabaseWithActionsEnabled,
+    appendMenuItems,
     collectionId,
     onCloseNavbar,
     hasDatabaseWithJsonEngine,

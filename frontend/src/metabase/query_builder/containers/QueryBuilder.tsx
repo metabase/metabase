@@ -89,6 +89,7 @@ import {
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
+import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
@@ -285,6 +286,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useMount(() => {
     initializeQB(location, params);
   });
+
+  useRegisterQueryBuilderMetabotContext();
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);

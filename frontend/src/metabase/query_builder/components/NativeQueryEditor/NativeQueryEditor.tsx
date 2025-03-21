@@ -64,6 +64,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   viewHeight: number;
+  highlightedLineNumbers?: number[];
 
   isOpen?: boolean;
   isInitiallyOpen?: boolean;
@@ -349,6 +350,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       canChangeDatabase,
       setParameterValueToDefault,
       forwardedRef,
+      highlightedLineNumbers,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -424,6 +426,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               ref={this.editor}
               query={question.query()}
               readOnly={readOnly}
+              highlightedLineNumbers={highlightedLineNumbers}
               onChange={this.onChange}
               onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}

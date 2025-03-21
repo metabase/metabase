@@ -933,6 +933,12 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}])
