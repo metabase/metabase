@@ -330,7 +330,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (_series, _vizSettings, onChange) => {
       return {
-        onChange: value => onChange(value === "true"),
+        onChange: value => onChange(value === true),
         options: [
           { name: t`In the column heading`, value: true },
           { name: t`In every table cell`, value: false },
