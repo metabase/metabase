@@ -7,11 +7,11 @@ export function getCompatibleSemanticTypes(
   field: Field,
   currentValue: string | null,
 ) {
-  const fieldEffectiveType = field.effective_type ?? field.base_type;
-  const isFieldText = isa(fieldEffectiveType, TYPE.Text);
-  const isFieldTextLike = isa(fieldEffectiveType, TYPE.TextLike);
+  const fieldType = field.effective_type ?? field.base_type;
+  const isFieldText = isa(fieldType, TYPE.Text);
+  const isFieldTextLike = isa(fieldType, TYPE.TextLike);
   const fieldLevelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
-    return isa(fieldEffectiveType, levelOneType);
+    return isa(fieldType, levelOneType);
   });
 
   return FIELD_SEMANTIC_TYPES.filter(option => {
@@ -34,7 +34,7 @@ export function getCompatibleSemanticTypes(
     }
 
     // "Category" is the semantic type for Booleans
-    if (option.id === TYPE.Category && isa(fieldEffectiveType, TYPE.Boolean)) {
+    if (option.id === TYPE.Category && isa(fieldType, TYPE.Boolean)) {
       return true;
     }
 
