@@ -568,16 +568,13 @@ describe(
             "Scenario 1 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           H.filter();
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByPlaceholderText("Search by ID").type(id);
-            cy.button("Apply filters").click();
+          H.popover().within(() => {
+            cy.findByText("ID").click();
+            cy.findByLabelText("Filter value").type(id).click();
+            cy.button("Add filter").click();
           });
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1 row",
-          );
+          cy.runButtonOverlay().click();
+          H.assertQueryBuilderRowCount(1);
           removeFilter();
 
           cy.log(
