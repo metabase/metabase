@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -11,15 +10,11 @@ import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
+import { EditTableDataWithUpdate } from "metabase-enterprise/data_editing/tables/edit/EditTableDataWithUpdate";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-
-import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
-import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 
 type EditTableDataContainerProps = {
@@ -50,47 +45,12 @@ export const EditTableDataContainer = ({
     tableId,
   });
 
-  const [updateTableRows] = useUpdateTableRowsMutation();
-
   useMount(() => {
     dispatch(closeNavbar());
   });
 
   const handleNewRowCreate = () => {};
   const handleRowsDelete = () => {};
-
-  const handleCellValueUpdate = useCallback(
-    async ({ data, rowIndex }: UpdatedRowCellsHandlerParams) => {
-      if (!datasetData) {
-        console.warn(
-          "Failed to update table data - no data is loaded for a table",
-        );
-        return;
-      }
-
-      const columns = datasetData.data.cols;
-      const rowData = datasetData.data.rows[rowIndex];
-
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
-
-      const updatedRowWithPk = {
-        ...data,
-        [pkColumn.name]: rowPkValue,
-      };
-
-      await updateTableRows({
-        tableId: tableId,
-        rows: [updatedRowWithPk],
-      });
-
-      // TODO: do an optimistic data update here using RTK cache
-
-      refetchTableDataQuery();
-    },
-    [datasetData, refetchTableDataQuery, tableId, updateTableRows],
-  );
 
   if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
@@ -114,9 +74,10 @@ export const EditTableDataContainer = ({
       {isDatabaseTableEditingEnabled(database) ? (
         <>
           <Box pos="relative" className={S.gridWrapper}>
-            <EditTableDataGrid
-              data={datasetData}
-              onCellValueUpdate={handleCellValueUpdate}
+            <EditTableDataWithUpdate
+              data={datasetData.data}
+              tableId={tableId}
+              refetchTableDataQuery={refetchTableDataQuery}
             />
           </Box>
           <Flex

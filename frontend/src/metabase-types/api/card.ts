@@ -16,7 +16,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
@@ -65,6 +65,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   average_query_time: number | null;
   cache_ttl: number | null;
   based_on_upload?: TableId | null; // table id of upload table, if any
+
+  table_id?: ConcreteTableId | null; // table id for editable table
 
   archived: boolean;
 

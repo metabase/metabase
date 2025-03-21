@@ -29,6 +29,6 @@ export type TableDeleteRowsRequest = {
 export type TableDeleteRowsResponse = { success: boolean };
 
 export type UpdatedRowCellsHandlerParams = {
-  data: Record<DatasetColumn["name"], RowValue>;
+  updatedData: Record<DatasetColumn["name"], RowValue>;
   rowIndex: number;
 };
