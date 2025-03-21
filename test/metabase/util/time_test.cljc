@@ -1,6 +1,7 @@
 (ns metabase.util.time-test
   (:require
-   #?@(:cljs [["moment" :as moment]]
+   #?@(:cljs [["moment" :as moment]
+              ["moment-timezone" :as moment-tz]]
        :clj  [[java-time.api :as t]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.time :as shared.ut]
@@ -407,6 +408,39 @@
     :second      "00:00:02"
     :minute      "00:02"
     :hour        "02:00"))
+
+(deftest ^:parallel zulu-add-datetime-test
+  #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
+  (testing "Datetime addition in string format works (#53724)"
+    (try
+      (doseq [datetime-fmt ["2024-01-01T00:00:00.000Z" "2024-01-01T00:00:00Z" "2024-01-01T00:00Z"]]
+        (are [unit expected] (= (str expected #?(:clj "[UTC]"))
+                                (shared.ut/add datetime-fmt unit 2))
+          :millisecond "2024-01-01T00:00:00.002Z"
+          :second      "2024-01-01T00:00:02Z"
+          :minute      "2024-01-01T00:02Z"
+          :hour        "2024-01-01T02:00Z"
+          :day         "2024-01-03T00:00Z"
+          :week        "2024-01-15T00:00Z"
+          :month       "2024-03-01T00:00Z"
+          :quarter     "2024-07-01T00:00Z"
+          :year        "2026-01-01T00:00Z"))
+      (finally
+        #?(:cljs (moment-tz/tz.setDefault))))))
+
+(deftest ^:parallel zulu-add-time-test
+  (testing "Time addition in string format works (#53724)"
+    #?(:cljs (moment-tz/tz.setDefault "Europe/Helsinki"))
+    (try
+      (doseq [time-fmt ["00:00:00.000Z" "00:00:00Z" "00:00Z"]]
+        (are [unit expected] (= expected
+                                (shared.ut/add time-fmt unit 2))
+          :millisecond "00:00:00.002Z"
+          :second      "00:00:02Z"
+          :minute      "00:02Z"
+          :hour        "02:00Z"))
+      (finally
+        #?(:cljs (moment-tz/tz.setDefault))))))
 
 (deftest ^:parallel extract-test
   (let [t (shared.ut/local-date-time 2024 12 06 10 20 30 500)]
