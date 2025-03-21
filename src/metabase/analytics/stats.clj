@@ -17,6 +17,7 @@
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.integrations.slack :as slack]
+   [metabase.internal-stats :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
@@ -171,80 +172,12 @@
   []
   {:groups (t2/count :model/PermissionsGroup)})
 
-(defn- and-not-nil
-  ([not-nil-field]
-   (and-not-nil nil not-nil-field))
-  ([case-boolean not-nil-field]
-   (cond->> [:!= not-nil-field nil]
-     case-boolean (conj [:and case-boolean]))))
-
-(defn- count-case
-  [case-boolean]
-  [:count [:case case-boolean [:inline 1] :else [:inline nil]]])
-
-(defn- card-has-params
-  []
-  (condp = (db/db-type)
-    :mysql [:json_contains_path
-            :dataset_query
-            [:inline "one"]
-            [:inline "$.native.\"template-tags\".*"]]
-    :postgres [:jsonb_path_exists
-               [:cast :dataset_query :jsonb]
-               [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
-
-(defn- contains-embedding-param
-  [param]
-  (condp = (db/db-type)
-    :mysql [:!= [:json_search
-                 :embedding_params
-                 [:inline "one"]
-                 [:inline param]]
-            nil]
-    :postgres [:jsonb_path_exists
-               [:cast :embedding_params :jsonb]
-               [:inline (str "$.* ? (@ == \"" param "\")")]]))
-
-(def ^:private embedding-on [:= :enable_embedding [:inline true]])
-
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))
-        cards (t2/select-one (cond-> [:model/Card
-                                      [:%count.* :total]
-                                      [(count-case [:= [:inline "native"] :query_type])
-                                       :native]
-                                      [(count-case [:!= [:inline "native"] :query_type])
-                                       :gui]
-                                      [(count-case [:!= :dashboard_id nil])
-                                       :is_dashboard_question]
-                                      [(count-case [:= :enable_embedding [:inline true]])
-                                       :total_embedded]
-                                      [(count-case (and-not-nil :public_uuid))
-                                       :total_public]]
-                               ;; json_exists/contains which we use to query json encoded data stored in text
-                               ;; columns is not supported on h2 databases, so we exclude these stats when
-                               ;; the app db is h2.
-                               json-supported? (conj
-                                                [(count-case (card-has-params))
-                                                 :with_params]
-                                                [(count-case (and-not-nil (card-has-params) :public_uuid))
-                                                 :with_params_public]
-                                                [(count-case [:and embedding-on (card-has-params)])
-                                                 :with_params_embedded]
-                                                [(count-case [:and (contains-embedding-param "enabled")
-                                                              embedding-on])
-                                                 :with_enabled_params]
-                                                [(count-case [:and (contains-embedding-param "locked")
-                                                              embedding-on])
-                                                 :with_locked_params]
-                                                [(count-case [:and (contains-embedding-param "disabled")
-                                                              embedding-on])
-                                                 :with_disabled_params]))
-                             {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    ;; duplicate previous behaviour where these are empty maps if there are no matching cards in the given
+  (let [cards (internal-stats/question-statistics-all-time)]
+    ; duplicate previous behaviour where these are empty maps if there are no matching cards in the given
     ;; category
     (cond-> {:questions {} :public {} :embedded {}}
       (> (:total cards) 0) (assoc :questions (select-keys cards [:total :native :gui :is_dashboard_question :with_params]))
@@ -661,35 +594,8 @@
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  (let [qe-query [:model/QueryExecution
-                  [(count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
-                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
-                                [:!= :executor_id nil]])
-                   :interactive_embed]
-                  [(count-case [:and [:= :embedding_client "embedding-iframe"]
-                                [:= :executor_id nil]])
-                   :static_embed]
-                  [(count-case [:and
-                                [:or [:= :embedding_client nil]
-                                 [:!= :embedding_client "embedding-sdk-react"]]
-                                [:or [:= :embedding_client nil]
-                                 [:!= :embedding_client "embedding-iframe"]]
-                                [:like :context "public-%"]])
-                   :public_link]
-                  [(count-case [:and
-                                [:or [:= :embedding_client nil]
-                                 [:!= :embedding_client "embedding-sdk-react"]]
-                                [:or [:= :embedding_client nil]
-                                 [:!= :embedding_client "embedding-iframe"]]
-                                [:not [:like :context "public-%"]]])
-                   :internal]]
-
-        qe          (t2/select-one qe-query)
-        one-day-ago (->one-day-ago)
-        qe-24h      (t2/select-one qe-query {:where [:> :started_at one-day-ago]})]
-    {:query-executions     qe
-     :query-executions-24h qe-24h
-     :eid-translations-24h (get-translation-count)}))
+  (merge (internal-stats/query-executions-all-time-and-last-24h)
+         {:eid-translations-24h (get-translation-count)}))
 
 (defn- deep-string-keywords
   "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."

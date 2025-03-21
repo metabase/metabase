@@ -50,6 +50,7 @@
            driver
            eid-translation
            integrations
+           internal-stats
            models
            premium-features
            public-settings
@@ -216,6 +217,10 @@
   integrations
   {:api  #{metabase.integrations.slack}
    :uses #{events models util}}
+
+  internal-stats
+  {:api #{metabase.internal-stats}
+   :uses #{db models}}
 
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
@@ -408,7 +413,7 @@
   premium-features
   {:api  #{metabase.premium-features.core
            metabase.premium-features.token-check}
-   :uses #{config db models plugins util}}
+   :uses #{config db internal-stats models plugins util}}
 
   public-settings
   {:api  #{metabase.public-settings}
