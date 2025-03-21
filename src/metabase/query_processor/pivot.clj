@@ -615,7 +615,7 @@
   [query]
   (-> query
       (assoc-in [:query :source-query]
-                (select-keys (:query query) [:source-table :limit :order-by]))
+                (select-keys (:query query) [:source-table :source-query :limit :order-by]))
       (m/dissoc-in [:query :source-table])
       (m/dissoc-in [:query :limit])
       (m/dissoc-in [:query :order-by])))
