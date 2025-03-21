@@ -1,7 +1,14 @@
-button.horizontalButton {
+.horizontalButton[data-variant="inverse"] {
   &:hover {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+
     .nested {
       color: var(--mb-color-text-white);
+    }
+
+    .ClickActionButtonIcon {
+      color: white;
     }
   }
 
@@ -14,4 +21,8 @@ button.horizontalButton {
     justify-content: space-between;
     width: 100%;
   }
+}
+
+.ClickActionButtonIcon {
+  margin-right: 0.2rem;
 }

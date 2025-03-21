@@ -403,6 +403,20 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "concat",
   },
   {
+    name: "path",
+    category: "string",
+    structure: "path",
+    description: () =>
+      t`Extracts the pathname from a URL. E.g., ${'path("https://www.example.com/path/to/page.html?key1=value)'} would return ${"/path/to/page.html"}.`,
+    args: [
+      {
+        name: t`url`,
+        description: t`A column containing URLs`,
+        example: ["dimension", t`URL`],
+      },
+    ],
+  },
+  {
     name: "replace",
     structure: "replace",
     category: "string",
