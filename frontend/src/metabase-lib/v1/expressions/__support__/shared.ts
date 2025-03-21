@@ -118,6 +118,8 @@ const expression: TestCase[] = [
     ["concat", "http://mysite.com/user/", userId, "/"],
     "function with 3 arguments",
   ],
+  ["text([User ID])", ["text", userId], "text function"],
+  ['integer("10")', ["integer", "10"], "integer function"],
   [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [
@@ -314,6 +316,10 @@ const expression: TestCase[] = [
     ],
     "should handle endsWith with multiple arguments and non-empty options",
   ],
+  [`10`, ["value", 10], "should handle number literals"],
+  [`"abc"`, ["value", "abc"], "should handle string literals"],
+  [`False`, ["value", false], 'should handle "false" boolean literal'],
+  [`True`, ["value", true], 'should handle "true" boolean literal'],
 ];
 
 const aggregation: TestCase[] = [

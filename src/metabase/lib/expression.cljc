@@ -318,6 +318,8 @@
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
 (lib.common/defop offset [x n])
+(lib.common/defop text [x])
+(lib.common/defop integer [x])
 
 (mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
@@ -528,4 +530,7 @@
         (when (and (= expression-mode :filter)
                    (lib.util.match/match-one expr :offset))
           {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true})
+        (when (= (first expr) :value)
+          {:message  (i18n/tru "Standalone constants are not supported.")
            :friendly true}))))

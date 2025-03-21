@@ -13,17 +13,7 @@ The Metabase Embedded analytics SDK supports plugins to customize the behavior o
 To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
 
 ```typescript
-{% raw %}
-<MetabaseProvider
-    config={config}
-    theme={theme}
-    pluginsConfig={{
-        mapQuestionClickActions: [...] // Add your custom actions here
-    }}
->
-    {children}
-</MetabaseProvider>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/plugins/global-plugins.tsx" snippet="example" %}
 ```
 
 ## Component plugins
@@ -31,14 +21,7 @@ To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsCon
 To use a plugin on a per-component basis, pass the plugin as a prop to the component:
 
 ```typescript
-{% raw %}
-<InteractiveQuestion
-    questionId={1}
-    plugins={{
-        mapQuestionClickActions: [...],
-    }}
-/>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/plugins/component-plugins.tsx" snippet="example" %}
 ```
 
 ## Further reading

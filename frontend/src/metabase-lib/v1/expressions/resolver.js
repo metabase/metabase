@@ -89,7 +89,10 @@ export function resolve({
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
-    if (FIELD_MARKERS.includes(op)) {
+    if (op === "value") {
+      const [value] = operands;
+      return [op, resolve({ expression: value, type, fn, database })];
+    } else if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
       if (fn) {
@@ -228,12 +231,7 @@ export function resolve({
       return resolve({ expression: operand, type: args[i], fn, database });
     });
     return [op, ...resolvedOperands];
-  } else if (
-    !isCompatible(
-      type,
-      typeof expression === "boolean" ? "expression" : typeof expression,
-    )
-  ) {
+  } else if (!isCompatible(type, typeof expression)) {
     throw new ResolverError(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
       expression.node,

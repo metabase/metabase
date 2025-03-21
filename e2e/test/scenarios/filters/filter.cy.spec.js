@@ -563,27 +563,23 @@ describe("scenarios > question > filter", () => {
   it("should reject a number literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "3.14159" });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expecting boolean but found 3.14159");
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText("Expecting boolean but found 3.14159");
+    });
   });
 
   it("should reject a string literal", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
-
-    cy.button("Done").should("be.disabled");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText('Expecting boolean but found "TheAnswer"');
+    H.popover().within(() => {
+      cy.button("Done").should("be.disabled");
+      cy.findByText('Expecting boolean but found "TheAnswer"');
+    });
   });
 
   it.skip("column filters should work for metrics (metabase#15333)", () => {
