@@ -96,6 +96,7 @@ export function GdriveDbMenu() {
     </>
   );
 }
+
 function SyncNowButton({ disabled }: { disabled: boolean }) {
   const [doSync, { isLoading }] = useSyncGsheetsFolderMutation();
 
@@ -117,7 +118,9 @@ function SyncNowButton({ disabled }: { disabled: boolean }) {
 }
 
 function MenuSyncStatus() {
-  const { data: folderInfo } = useGetGsheetsFolderQuery();
+  const { data: folderInfo } = useGetGsheetsFolderQuery(undefined, {
+    refetchOnMountOrArgChange: 5,
+  });
 
   const lastSync = folderInfo?.["folder-upload-time"];
   const folderStatus = folderInfo?.status;
@@ -126,9 +129,16 @@ function MenuSyncStatus() {
     ? dayjs.unix(lastSync).fromNow()
     : t`unknown`;
 
-  const nextSyncRelative = lastSync
+  const nextSyncOverDue =
+    !lastSync ||
+    dayjs
+      .unix(lastSync)
+      .add(SYNC_INTERVAL_MINUTES, "minutes")
+      .isBefore(dayjs());
+
+  const nextSyncRelative = !nextSyncOverDue
     ? dayjs.unix(lastSync).add(SYNC_INTERVAL_MINUTES, "minutes").fromNow()
-    : t`a while`;
+    : t`soon` + "™";
 
   return (
     <>

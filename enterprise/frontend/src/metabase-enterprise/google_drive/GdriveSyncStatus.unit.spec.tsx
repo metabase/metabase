@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupGsheetsGetFolderEndpoint,
+  setupGdriveGetFolderEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -52,8 +52,8 @@ const setup = ({
   setupSettingsEndpoints([]);
 
   errorCode
-    ? setupGsheetsGetFolderEndpoint({ errorCode })
-    : setupGsheetsGetFolderEndpoint({ status: folderStatus });
+    ? setupGdriveGetFolderEndpoint({ errorCode })
+    : setupGdriveGetFolderEndpoint({ status: folderStatus });
 
   return renderWithProviders(<TestComponent />, {
     storeInitialState: {
