@@ -53,6 +53,7 @@
            eid-translation
            embed
            integrations
+           internal-stats
            models
            premium-features
            public-settings
@@ -221,6 +222,10 @@
           metabase.integrations.slack}
    :uses #{api config events models permissions plugins premium-features util enterprise/enhancements}}
 
+  internal-stats
+  {:api #{metabase.internal-stats}
+   :uses #{db models}}
+
   legacy-mbql
   {:api #{metabase.legacy-mbql.normalize
           metabase.legacy-mbql.predicates
@@ -385,7 +390,7 @@
   premium-features
   {:api  #{metabase.premium-features.core
            metabase.premium-features.token-check}
-   :uses #{config db models plugins util}}
+   :uses #{config db internal-stats models plugins util}}
 
   public-settings
   {:api  #{metabase.public-settings}
