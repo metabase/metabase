@@ -4,24 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       spec:
-        description: 'Relative path of the target spec'
+        description: "Relative path of the target spec"
         type: string
         required: true
       burn_in:
-        description: 'Number of times to run the test (e.g. 20)'
+        description: "Number of times to run the test (e.g. 20)"
         type: string
         required: true
+        default: "20"
       grep:
-        description: 'Grep and filter tests to run in isolation'
+        description: "Grep and filter tests to run in isolation"
         type: string
         required: false
       mb_edition:
-        description: 'Set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source)'
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
         type: string
         required: false
         default: "ee"
       qa_db:
-        description: 'Select the type of Database you want to run your tests with'
+        description: "Select the type of Database you want to run your tests with"
         type: choice
         required: true
         default: "none"
@@ -83,7 +84,7 @@ jobs:
       - name: Download Metabase ${{ matrix.edition }} uberjar
         uses: ./.github/actions/e2e-download-uberjar
         with:
-          edition: 'ee'
+          edition: "ee"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
