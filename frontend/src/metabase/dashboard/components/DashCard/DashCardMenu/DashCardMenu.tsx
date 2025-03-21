@@ -165,7 +165,7 @@ interface QueryDownloadWidgetOpts {
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
   downloadsEnabled: boolean;
-  card: Card | VirtualCard;
+  card?: Card | VirtualCard;
 }
 
 DashCardMenu.shouldRender = ({
@@ -184,7 +184,7 @@ DashCardMenu.shouldRender = ({
   );
 
   // TODO [WRK]: not the best solution
-  if (card.display === "table-editable") {
+  if (card?.display === "table-editable") {
     return false;
   }
 

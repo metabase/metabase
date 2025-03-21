@@ -111,7 +111,9 @@ export function isVirtualDashCard(
 }
 
 export function isEditableTableDashCard(dashcard: BaseDashboardCard): boolean {
-  return "table_id" in dashcard.card;
+  return (
+    "table_id" in dashcard.card && dashcard.card.display === "table-editable"
+  );
 }
 
 export function getVirtualCardType(dashcard: BaseDashboardCard) {
