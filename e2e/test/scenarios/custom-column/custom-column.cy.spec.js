@@ -1670,3 +1670,60 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.value().should("equal", "now");
   });
 });
+
+describe("scenarios > question > custom column > splitPart", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
+
+    cy.findByLabelText("Custom column").click();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should be possible to split a custom column", () => {
+    const CC_NAME = "Split Title";
+
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 1)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").click();
+
+    cy.findByLabelText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type(1).blur();
+
+    H.visualize();
+
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+
+  it("should show a message when index is below 1", () => {
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+    });
+
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
+  });
+});

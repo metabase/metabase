@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.channel.email :as email]
    [metabase.config :as config]
@@ -15,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -456,6 +458,50 @@
       (with-redefs [config/current-major-version (constantly nil)
                     config/current-minor-version (constantly nil)]
         (is false? (@#'stats/csv-upload-available?))))))
+
+(deftest starburst-legacy-test
+  (testing "starburst with impersonation"
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details (json/encode {:impersonation true})}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled true}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data))))))
+  (testing "starburst without impersonation"
+    (is (= {:name :starburst-legacy-impersonation,
+            :available true,
+            :enabled false}
+           (m/find-first (fn [{key-name :name}]
+                           (= key-name :starburst-legacy-impersonation))
+                         (#'stats/snowplow-features-data))))
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details (json/encode {:impersonation false})}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled false}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data)))))
+
+    (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
+                                                      :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
+                                                      :details "{}"}]
+      (is (= {:name :starburst-legacy-impersonation,
+              :available true,
+              :enabled false}
+             (m/find-first (fn [{key-name :name}]
+                             (= key-name :starburst-legacy-impersonation))
+                           (#'stats/snowplow-features-data)))))))
 
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"

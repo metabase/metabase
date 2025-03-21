@@ -15,7 +15,7 @@ interface RunButtonProps {
   circular?: boolean;
   borderless?: boolean;
   hidden?: boolean;
-  onRun: () => void;
+  onRun?: () => void;
   onCancel?: () => void;
 }
 
