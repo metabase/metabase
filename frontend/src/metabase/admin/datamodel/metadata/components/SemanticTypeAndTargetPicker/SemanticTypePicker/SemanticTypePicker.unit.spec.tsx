@@ -64,7 +64,7 @@ const STRUCTURED_FIELD = createMockField({
 // type/JSON has 2 level-one data type ancestors (type/Collection and type/Structured)
 const STRUCTURED_AND_COLLECTION_FIELD = createMockField({
   id: getNextId(),
-  display_name: "type/Structured or type/Collection",
+  display_name: "type/Structured and type/Collection",
   base_type: "type/JSON",
   effective_type: "type/JSON",
 });
@@ -155,7 +155,7 @@ describe("SemanticTypePicker", () => {
     expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
   });
 
-  it("shows Category semantic type for boolean fields", async () => {
+  it("shows 'Category' semantic type for boolean fields", async () => {
     setup({
       fieldId: BOOLEAN_FIELD.id,
       initialValue: null,
@@ -168,9 +168,9 @@ describe("SemanticTypePicker", () => {
     expect(dropdown.getByText("Category")).toBeInTheDocument();
   });
 
-  describe("always shows 'Entity Key', 'Foreign Key', and 'No semantic type' options", () => {
+  describe("'Entity Key', 'Foreign Key', and 'No semantic type'", () => {
     it.each(FIELDS)(
-      "when field's effective type is derived from $display_name",
+      "shows 'Entity Key', 'Foreign Key', and 'No semantic type' when field's effective type is derived from '$display_name'",
       async field => {
         setup({
           fieldId: field.id,
@@ -184,6 +184,45 @@ describe("SemanticTypePicker", () => {
         expect(dropdown.getByText("Entity Key")).toBeInTheDocument();
         expect(dropdown.getByText("Foreign Key")).toBeInTheDocument();
         expect(dropdown.getByText("No semantic type")).toBeInTheDocument();
+      },
+    );
+  });
+
+  describe("'Entity Name'", () => {
+    it("shows 'Entity Name' when field's effective type is derived from 'text/Type'", async () => {
+      setup({
+        fieldId: TEXT_FIELD.id,
+        initialValue: null,
+      });
+
+      const picker = screen.getByPlaceholderText("Select a semantic type");
+      await userEvent.click(picker);
+
+      const dropdown = within(screen.getByRole("listbox"));
+      expect(dropdown.getByText("Entity Name")).toBeInTheDocument();
+    });
+
+    it.each([
+      BOOLEAN_FIELD,
+      NUMBER_FIELD,
+      TEMPORAL_FIELD,
+      COLLECTION_FIELD,
+      STRUCTURED_FIELD,
+      STRUCTURED_AND_COLLECTION_FIELD,
+      TEXT_LIKE_FIELD,
+    ])(
+      "does not show 'Entity Name' when field's effective type is derived from '$display_name'",
+      async field => {
+        setup({
+          fieldId: field.id,
+          initialValue: null,
+        });
+
+        const picker = screen.getByPlaceholderText("Select a semantic type");
+        await userEvent.click(picker);
+
+        const dropdown = within(screen.getByRole("listbox"));
+        expect(dropdown.queryByText("Entity Name")).not.toBeInTheDocument();
       },
     );
   });
