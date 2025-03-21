@@ -571,7 +571,7 @@ describe(
           );
           H.filter();
           H.popover().within(() => {
-            cy.findByText("ID").click();
+            cy.findAllByText("ID").should("have.length", 2).first().click();
             cy.findByLabelText("Filter value").type(id).click();
             cy.button("Add filter").click();
           });
