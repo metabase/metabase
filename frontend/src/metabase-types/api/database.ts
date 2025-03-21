@@ -41,7 +41,8 @@ export type DatabaseFeature =
   | "connection-impersonation-requires-role"
   | "native-requires-specified-collection"
   | "window-functions/offset"
-  | "distinct-where";
+  | "distinct-where"
+  | "split-part";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

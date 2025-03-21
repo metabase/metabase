@@ -119,6 +119,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
         return t`Expected positive integer but found ${position}`;
       }
     },
+    requiresFeature: "split-part",
   },
   "regex-match-first": {
     displayName: `regexextract`,
