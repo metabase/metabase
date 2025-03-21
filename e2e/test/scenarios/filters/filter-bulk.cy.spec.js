@@ -340,50 +340,48 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should apply a boolean filter", () => {
-      H.modal().within(() => {
+      H.popover().within(() => {
+        cy.findByText("boolean").click();
         cy.findByText("True").click();
+        cy.button("Add filter").click();
       });
       applyFilters();
-
-      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
+      H.assertQueryBuilderRowCount(2);
     });
 
     it("should change a boolean filter", () => {
-      H.modal().within(() => {
+      H.popover().within(() => {
+        cy.findByText("boolean").click();
         cy.findByText("True").click();
+        cy.button("Add filter").click();
       });
       applyFilters();
+      H.assertQueryBuilderRowCount(2);
 
-      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-
-      H.filter();
-
-      H.modal().within(() => {
+      H.queryBuilderFiltersPanel().findByText("boolean is true").click();
+      H.popover().within(() => {
         cy.findByText("False").click();
+        cy.button("Update filter").click();
       });
-      applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 1 row").should("be.visible");
+      cy.wait("@dataset");
+      H.assertQueryBuilderRowCount(1);
     });
 
     it("should remove a boolean filter", () => {
-      H.modal().within(() => {
+      H.popover().within(() => {
+        cy.findByText("boolean").click();
         cy.findByText("True").click();
+        cy.button("Add filter").click();
       });
       applyFilters();
+      H.assertQueryBuilderRowCount(2);
 
-      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-
-      H.filter();
-
-      H.modal().within(() => {
-        cy.findByText("True").click();
-      });
-      applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 4 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("boolean is true")
+        .icon("close")
+        .click();
+      cy.wait("@dataset");
+      H.assertQueryBuilderRowCount(4);
     });
   });
 
