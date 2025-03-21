@@ -271,24 +271,24 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 
 export const runQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
-    const question = getQuestion(getState);
+    const question = getQuestion(getState());
     if (!question) {
       return;
     }
 
-    const isRunning = getIsRunning(getState);
+    const isRunning = getIsRunning(getState());
     if (isRunning) {
       dispatch(cancelQuery());
     }
 
     const query = question.query();
     const queryInfo = Lib.queryDisplayInfo(query);
-    const selectedText = getNativeEditorSelectedText(getState);
+    const selectedText = getNativeEditorSelectedText(getState());
     if (queryInfo.isNative && selectedText) {
-      const queryWithSelectedText = Lib.withNativeQuery(query, selectedText);
+      const selectedQuery = Lib.withNativeQuery(query, selectedText);
       dispatch(
         runQuestionQuery({
-          overrideWithQuestion: question.setQuery(queryWithSelectedText),
+          overrideWithQuestion: question.setQuery(selectedQuery),
           shouldUpdateUrl: false,
         }),
       );

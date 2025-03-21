@@ -402,15 +402,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [question, isNewQuestion],
   );
 
-  const handleCmdEnter = () => {
-    if (isRunning) {
-      cancelQuery();
-    } else {
-      runQuestionOrSelectedQuery();
-    }
-  };
-
-  useHotkeys([["mod+Enter", handleCmdEnter]]);
+  useHotkeys([["mod+Enter", runQuestionOrSelectedQuery]]);
 
   return (
     <>

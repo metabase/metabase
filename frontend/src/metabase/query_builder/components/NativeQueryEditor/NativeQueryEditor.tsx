@@ -387,6 +387,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               query={question.query()}
               readOnly={readOnly}
               onChange={this.onChange}
+              onRunQuery={runQuery}
               onSelectionChange={setNativeEditorSelectedRange}
               onCursorMoveOverCardTag={openDataReferenceAtQuestion}
               onRightClickSelection={this.handleRightClickSelection}
