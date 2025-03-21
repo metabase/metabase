@@ -336,9 +336,9 @@
         (is (= [["metabase"]]
                (mt/rows
                 (qp/process-query
-                 {:database     (mt/id)
-                  :type         :native
-                  :native       {:query         "SELECT current_user"}}))))
+                 (mt/rows
+                  (qp/process-query
+                   (mt/native-query {:query "SELECT current_user"})))))))
 
         (let [details (assoc (:details (mt/db)) :impersonation true)]
           (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
@@ -346,9 +346,7 @@
               (is (= [["metabase_user@user.com"]]
                      (mt/rows
                       (qp/process-query
-                       {:database     (mt/id)
-                        :type         :native
-                        :native       {:query         "SELECT current_user"}})))))))
+                       (mt/native-query {:query "SELECT current_user"}))))))))
 
         ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
         ;; The role is ignored as Metabase users may not have the role defined in the database connection
@@ -362,9 +360,7 @@
             (mt/with-db db
               (is (thrown? Exception
                            (qp/process-query
-                            {:database     (mt/id)
-                             :type         :native
-                             :native       {:query         "SELECT current_user"}}))))))
+                            (mt/native-query {:query "SELECT current_user"})))))))
 
         ;; With impersonation disabled the role is passed in the starburst query
         ;; This is expected to fail as the starburst container doesn't support roles
@@ -377,6 +373,4 @@
             (mt/with-db db
               (is (thrown? Exception
                            (qp/process-query
-                            {:database     (mt/id)
-                             :type         :native
-                             :native       {:query         "SELECT current_user"}}))))))))))
+                            (mt/native-query {:query "SELECT current_user"})))))))))))

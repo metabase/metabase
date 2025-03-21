@@ -374,33 +374,33 @@
 (def starburst-type->base-type
   "Function that returns a `base-type` for the given `straburst-type` (can be a keyword or string)."
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"(?i)boolean"                    :type/Boolean]
-    [#"(?i)tinyint"                    :type/Integer]
-    [#"(?i)smallint"                   :type/Integer]
-    [#"(?i)integer"                    :type/Integer]
-    [#"(?i)bigint"                     :type/BigInteger]
-    [#"(?i)real"                       :type/Float]
-    [#"(?i)double"                     :type/Float]
-    [#"(?i)decimal.*"                  :type/Decimal]
-    [#"(?i)varchar.*"                  :type/Text]
-    [#"(?i)char.*"                     :type/Text]
-    [#"(?i)varbinary.*"                :type/*]
-    [#"(?i)json"                       :type/Text]
-    [#"(?i)date"                       :type/Date]
-    [#"(?i)^timestamp$"                :type/DateTime]
-    [#"(?i)^timestamp\(\d+\)$"         :type/DateTime]
-    [#"(?i)^timestamp with time zone$" :type/DateTimeWithTZ]
+   [[#"(?i)boolean"                           :type/Boolean]
+    [#"(?i)tinyint"                           :type/Integer]
+    [#"(?i)smallint"                          :type/Integer]
+    [#"(?i)integer"                           :type/Integer]
+    [#"(?i)bigint"                            :type/BigInteger]
+    [#"(?i)real"                              :type/Float]
+    [#"(?i)double"                            :type/Float]
+    [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)varchar.*"                         :type/Text]
+    [#"(?i)char.*"                            :type/Text]
+    [#"(?i)json"                              :type/Text]
+    [#"(?i)date"                              :type/Date]
+    [#"(?i)^timestamp$"                       :type/DateTime]
+    [#"(?i)^timestamp\(\d+\)$"                :type/DateTime]
+    [#"(?i)^timestamp with time zone$"        :type/DateTimeWithTZ]
     [#"(?i)^timestamp with time zone\(\d+\)$" :type/DateTimeWithTZ]
     [#"(?i)^timestamp\(\d+\) with time zone$" :type/DateTimeWithTZ]
-    [#"(?i)^time$"                     :type/Time]
-    [#"(?i)^time\(\d+\)$"              :type/Time]
-    [#"(?i)^time with time zone$"      :type/TimeWithTZ]
-    [#"(?i)^time with time zone\(\d+\)$"  :type/TimeWithTZ]
-    [#"(?i)^time\(\d+\) with time zone$"  :type/TimeWithTZ]
-    [#"(?i)array"                      :type/Array]
-    [#"(?i)map"                        :type/Dictionary]
-    [#"(?i)row.*"                      :type/*]
-    [#".*"                             :type/*]]))
+    [#"(?i)^time$"                            :type/Time]
+    [#"(?i)^time\(\d+\)$"                     :type/Time]
+    [#"(?i)^time with time zone$"             :type/TimeWithTZ]
+    [#"(?i)^time with time zone\(\d+\)$"      :type/TimeWithTZ]
+    [#"(?i)^time\(\d+\) with time zone$"      :type/TimeWithTZ]
+    [#"(?i)array"                             :type/Array]
+    [#"(?i)map"                               :type/Dictionary]
+    [#"(?i)varbinary.*"                       :type/*]
+    [#"(?i)row.*"                             :type/*]
+    [#".*"                                    :type/*]]))
 
 (defn describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
@@ -498,7 +498,7 @@
                    (map-indexed (fn [idx {:keys [column type] :as _col}]
                                   {:name column
                                    :database-type type
-                                   :base-type         (starburst-type->base-type type)
+                                   :base-type (starburst-type->base-type type)
                                    :database-position idx}))
                    (jdbc/reducible-result-set rs {}))})))))
 
@@ -945,13 +945,13 @@
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
                   (dissoc (if (remove-role? details-map) :roles :test))
 
-                ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
-                ;; very picky about properties (throwing an error if any are unrecognized)
-                ;; all valid properties can be found in the JDBC Driver source here:
-                ;; https://trino.io/docs/current/installation/jdbc.html#parameter-reference
+                  ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
+                  ;; very picky about properties (throwing an error if any are unrecognized)
+                  ;; all valid properties can be found in the JDBC Driver source here:
+                  ;; https://trino.io/docs/current/installation/jdbc.html#parameter-reference
                   (select-keys (concat
                                 [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
-                               ;; JDBC driver specific properties
+                                 ;; JDBC driver specific properties
                                  :kerberos ; we need our boolean property indicating if Kerberos is enabled, but the rest of them come from `kerb-props->url-param-names` (below)
                                  :user :password :sessionUser :socksProxy :httpProxy :clientInfo :clientTags :traceToken
                                  :source :applicationNamePrefix ::accessToken :SSL :SSLVerification :SSLKeyStorePath
@@ -962,7 +962,7 @@
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Unprepare                                                     |
+;;; |                                                  Inline                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/inline-value [:starburst String]
@@ -972,7 +972,7 @@
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
   ;; This is only needed for test purposes, because some of the sample data still uses legacy types
-  ;; Convert time to Local time, then unprepare.
+  ;; Convert time to Local time, then inline
   (sql.qp/inline-value driver (t/local-time t)))
 
 (defmethod sql.qp/inline-value [:starburst OffsetDateTime]

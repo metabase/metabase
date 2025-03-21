@@ -2,9 +2,6 @@ info:
   name: Metabase Starburst Driver
   version: 6.1.0
   description: Allows Metabase to connect to Starburst Enterprise, Starburst Galaxy, and Trino query engines.
-contact-info:
-  name: Starburst
-  address: https://github.com/starburstdata/metabase-driver
 driver:
   name: starburst
   display-name: Starburst

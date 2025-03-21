@@ -1,16 +1,3 @@
-;;
-;; Licensed under the Apache License, Version 2.0 (the "License");
-;; you may not use this file except in compliance with the License.
-;; You may obtain a copy of the License at
-
-;;     http://www.apache.org/licenses/LICENSE-2.0
-
-;; Unless required by applicable law or agreed to in writing, software
-;; distributed under the License is distributed on an "AS IS" BASIS,
-;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-;; See the License for the specific language governing permissions and
-;; limitations under the License.
-;;
 (ns metabase.test.data.starburst
   "starburst driver test extensions."
   (:require
@@ -25,7 +12,6 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import [java.sql Connection]))
 
@@ -172,14 +158,13 @@
          (let [^String sql (#'describe-schema-sql driver (:database-name dbdef) test-schema)]
            (with-open [stmt (.createStatement conn)
                        rset (.executeQuery stmt sql)]
-             (u/prog1
-               (loop []
-                 ;; if we see the table with the name we're looking for, we're done here; otherwise keep iterating thru
-                 ;; the existing tables.
-                 (cond
-                   (not (.next rset))                       false
-                   (= (.getString rset "table") table-name) true
-                   :else                                    (recur))))))))
+             (loop []
+               ;; if we see the table with the name we're looking for, we're done here; otherwise keep iterating thru
+               ;; the existing tables.
+               (cond
+                 (not (.next rset))                       false
+                 (= (.getString rset "table") table-name) true
+                 :else                                    (recur)))))))
       (catch Throwable _e
         false))))
 
