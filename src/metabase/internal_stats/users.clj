@@ -6,6 +6,11 @@
 (defn email-domain-count
   "Count all unique normalized domains found in active user emails"
   []
+  #p (t2/query {:select-distinct (condp contains? (db/db-type)
+                                   #{:postgres}  [[[:split_part :email [:inline "@"] [:inline 2]]]]
+                                   #{:h2 :mysql} [[[:substring :email [:locate "@" :email]]]])
+                :from [:core_user]
+                :where [:= :is_active true]})
   (:count (t2/query-one {:select [[:%count.* :count]]
                          :from [[{:select-distinct (condp contains? (db/db-type)
                                                      #{:postgres}  [[[:split_part :email [:inline "@"] [:inline 2]]]]
