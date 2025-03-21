@@ -76,7 +76,7 @@ jobs:
             );
             const body = `${runLink} - run by ${mentionUserByGithubLogin("${{ github.event.sender.login }}")}`
             const sendSlackMessageResponse = await sendSlackMessage({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: `${title}\n${body}`,
             });
 
@@ -123,7 +123,7 @@ jobs:
               context.repo.repo,
             );
             sendSlackReply({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: runLink,
               messageId: ${{ env.slackMessageId}},
               broadcast: true
@@ -160,7 +160,7 @@ jobs:
               context.repo.repo,
             );
             sendSlackReply({
-              channelName: 'proj-embedding-sdk',
+              channelName: 'team-embedding-releases',
               message: runLink,
               messageId: ${{ env.slackMessageId}},
               broadcast: true
