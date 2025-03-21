@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { execSync } from "child_process";
 import fs from "fs";
 
 import path from "path";
@@ -11,10 +10,6 @@ import {
   getNextJsAnalyticsPageSnippet,
   getNextJsPagesWrapperOrAppWrapperSnippet,
 } from "../cli/snippets/nextjs-snippets";
-
-function installDependencies(tempDir: string) {
-  execSync("yarn", { cwd: tempDir, stdio: "inherit" });
-}
 
 function setupOutDir(outDir: string) {
   fs.mkdirSync(outDir, { recursive: true });
@@ -143,8 +138,6 @@ const generateExpressServerSnippet = ({
 
   fs.writeFileSync(snippetFilePath, snippetContent, "utf8");
   fs.writeFileSync(packageJsonFilePath, packageJsonContent, "utf8");
-
-  installDependencies(outDir);
 };
 
 const generate = () => {
