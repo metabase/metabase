@@ -626,7 +626,7 @@
   [["birds"
     [{:field-name "name", :base-type :type/Text}
      {:field-name "bird_id", :base-type :type/MongoBSONID}
-     {:field-name "bird_uuid", :base-type :type/UUID}]
+     {:field-name "bird_uuid", :base-type :type/*}]
     [["Rasta Toucan" (ObjectId. "012345678901234567890123") #uuid "11111111-1111-1111-1111-111111111111"]
      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef") #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
      ["Unlucky Raven" nil]]]])
@@ -948,7 +948,7 @@
                           "          \"_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")"
                           "        },"
                           "        {"
-                          "          \"mixed_uuid\": \"11111111-1111-1111-1111-111111111111\""
+                          "          \"mixed_uuid\": UUID(\"11111111-1111-1111-1111-111111111111\")"
                           "        },"
                           "        {"
                           "          \"$expr\": {"
@@ -1011,7 +1011,7 @@
                                [:field (mt/id :nested-bindata :_id) {:base-type :type/MongoBSONID}]
                                "abcdefabcdefabcdefabcdef"]
                               [:=
-                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/UUID}]
+                               [:field (mt/id :nested-bindata :mixed_uuid) {:base-type :type/*}]
                                "11111111-1111-1111-1111-111111111111"]
                               [:=
                                [:field (mt/id :nested-bindata :date) {:base-type :type/Instant}]
