@@ -3,10 +3,13 @@ import { checkNotNull } from "metabase/lib/types";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import type {
   Expression,
-  FieldReference,
   LocalFieldReference,
+  ReferenceOptions,
 } from "metabase-types/api";
-import { createMockSegment } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockSegment,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -26,6 +29,7 @@ const SEGMENT_ID = 1;
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
+      features: [...COMMON_DATABASE_FEATURES, "cast"],
       tables: [
         createPeopleTable(),
         createProductsTable(),
@@ -48,24 +52,56 @@ const metadata = createMockMetadata({
   ],
 });
 
-const created: LocalFieldReference = ["field", ORDERS.CREATED_AT, null];
-const total: LocalFieldReference = ["field", ORDERS.TOTAL, null];
-const subtotal: LocalFieldReference = ["field", ORDERS.SUBTOTAL, null];
-const tax: LocalFieldReference = ["field", ORDERS.TAX, null];
-const userId: LocalFieldReference = ["field", ORDERS.USER_ID, null];
-const userName: FieldReference = [
-  "field",
-  PEOPLE.NAME,
-  { "source-field": ORDERS.USER_ID },
-];
+function ref(id: number, options?: ReferenceOptions): LocalFieldReference {
+  const field = metadata.field(id);
+  if (!field) {
+    return ["field", id, null];
+  }
 
-const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
+  const opts = { ...options };
+  if (field.base_type) {
+    opts["base-type"] = field.base_type;
+  }
+  return ["field", id, opts];
+}
+
+export const id = ref(ORDERS.ID);
+export const created = ref(ORDERS.CREATED_AT);
+export const total = ref(ORDERS.TOTAL);
+export const subtotal = ref(ORDERS.SUBTOTAL);
+export const tax = ref(ORDERS.TAX);
+export const userId = ref(ORDERS.USER_ID);
+export const userName = ref(PEOPLE.NAME);
+export const price = ref(PRODUCTS.PRICE);
+export const ean = ref(PRODUCTS.EAN);
+export const name = ref(PEOPLE.NAME);
+export const category = ref(PRODUCTS.CATEGORY);
+export const email = ref(PEOPLE.EMAIL);
+export const bool = ["expression", "bool", { "base-type": "type/Boolean" }];
+export const segment = checkNotNull(
+  metadata.segment(SEGMENT_ID),
+).filterClause();
 
 export const query = createQueryWithClauses({
   query: createQuery({ metadata }),
   expressions: [
     {
       name: "foo",
+      operator: "+",
+      args: [1, 2],
+    },
+    {
+      name: "bool",
+      operator: "=",
+      args: [1, 1],
+    },
+    {
+      name: "name with [brackets]",
+      operator: "+",
+      args: [1, 2],
+    },
+    {
+      name: "name with \\ slash",
       operator: "+",
       args: [1, 2],
     },
@@ -149,171 +185,73 @@ const expression: TestCase[] = [
 
   [
     "Sum([Total]) / Sum([Product → Price]) * Average([Tax])",
-    [
-      "*",
-      [
-        "/",
-        ["sum", ["field", ORDERS.TOTAL, null]],
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-      ],
-      ["avg", ["field", ORDERS.TAX, null]],
-    ],
+    ["*", ["/", ["sum", total], ["sum", price]], ["avg", tax]],
     "should handle priority for multiply and division without parenthesis",
   ],
 
   [
     "Sum([Total]) / (Sum([Product → Price]) * Average([Tax]))",
-    [
-      "/",
-      ["sum", ["field", ORDERS.TOTAL, null]],
-      [
-        "*",
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-        ["avg", ["field", ORDERS.TAX, null]],
-      ],
-    ],
+    ["/", ["sum", total], ["*", ["sum", price], ["avg", tax]]],
     "should handle priority for multiply and division with parenthesis",
   ],
 
   [
     "Sum([Total]) - Sum([Product → Price]) + Average([Tax])",
-    [
-      "+",
-      [
-        "-",
-        ["sum", ["field", ORDERS.TOTAL, null]],
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-      ],
-      ["avg", ["field", ORDERS.TAX, null]],
-    ],
+    ["+", ["-", ["sum", total], ["sum", price]], ["avg", tax]],
     "should handle priority for addition and subtraction without parenthesis",
   ],
 
   [
     "Sum([Total]) - (Sum([Product → Price]) + Average([Tax]))",
-    [
-      "-",
-      ["sum", ["field", ORDERS.TOTAL, null]],
-      [
-        "+",
-        [
-          "sum",
-          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
-        ["avg", ["field", ORDERS.TAX, null]],
-      ],
-    ],
+    ["-", ["sum", total], ["+", ["sum", price], ["avg", tax]]],
     "should handle priority for addition and subtraction with parenthesis",
   ],
 
   [
     'contains([Product → Ean], "A", "B")',
-    [
-      "contains",
-      {},
-      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["contains", {}, ean, "A", "B"],
     "should handle contains with multiple arguments and empty options",
   ],
 
   [
     'contains([Product → Ean], "A", "B", "case-insensitive")',
-    [
-      "contains",
-      { "case-sensitive": false },
-      ["field", PRODUCTS.EAN, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["contains", { "case-sensitive": false }, ean, "A", "B"],
     "should handle contains with multiple arguments and non-empty options",
   ],
 
   [
     'doesNotContain([User → Name], "A", "B", "C")',
-    [
-      "does-not-contain",
-      {},
-      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-    ],
+    ["does-not-contain", {}, name, "A", "B", "C"],
     "should handle doesNotContain with multiple arguments and empty options",
   ],
 
   [
     'doesNotContain([User → Name], "A", "B", "C", "case-insensitive")',
-    [
-      "does-not-contain",
-      { "case-sensitive": false },
-      ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-    ],
+    ["does-not-contain", { "case-sensitive": false }, name, "A", "B", "C"],
     "should handle doesNotContain with multiple arguments and empty options",
   ],
 
   [
     'startsWith([Product → Category], "A", "B")',
-    [
-      "starts-with",
-      {},
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["starts-with", {}, category, "A", "B"],
     "should handle startsWith with multiple arguments and empty options",
   ],
 
   [
     'startsWith([Product → Category], "A", "B", "case-insensitive")',
-    [
-      "starts-with",
-      { "case-sensitive": false },
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      "A",
-      "B",
-    ],
+    ["starts-with", { "case-sensitive": false }, category, "A", "B"],
     "should handle startsWith with multiple arguments and non-empty options",
   ],
 
   [
     'endsWith([User → Email], "A", "B", "C", "D")',
-    [
-      "ends-with",
-      {},
-      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-      "D",
-    ],
+    ["ends-with", {}, email, "A", "B", "C", "D"],
     "should handle endsWith with multiple arguments and empty options",
   ],
 
   [
     'endsWith([User → Email], "A", "B", "C", "D", "case-insensitive")',
-    [
-      "ends-with",
-      { "case-sensitive": false },
-      ["field", PEOPLE.EMAIL, { "source-field": ORDERS.USER_ID }],
-      "A",
-      "B",
-      "C",
-      "D",
-    ],
+    ["ends-with", { "case-sensitive": false }, email, "A", "B", "C", "D"],
     "should handle endsWith with multiple arguments and non-empty options",
   ],
   [`10`, ["value", 10], "should handle number literals"],

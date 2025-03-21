@@ -1,6 +1,16 @@
+import type { ExpressionError } from "../errors";
 import { OPERATOR, TOKEN } from "../tokenizer";
 
 import { tokenize } from "./tokenize";
+
+function plain(error: ExpressionError) {
+  return {
+    message: error.message,
+    len: error.len,
+    pos: error.pos,
+    friendly: error.friendly,
+  };
+}
 
 describe("tokenizer", () => {
   describe("expressions", () => {
@@ -143,9 +153,10 @@ describe("tokenizer", () => {
           end: 2,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Invalid character: °",
+          friendly: true,
           len: 1,
           pos: 2,
         },
@@ -155,8 +166,9 @@ describe("tokenizer", () => {
     it("should catch a lone decimal point", () => {
       const { tokens, errors } = tokenize(".");
       expect(tokens).toHaveLength(0);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
+          friendly: true,
           message: "Invalid character: .",
           pos: 0,
           len: 1,
@@ -264,8 +276,9 @@ describe("tokenizer", () => {
             end: expression.length,
           },
         ]);
-        expect(errors).toEqual([
+        expect(errors.map(plain)).toEqual([
           {
+            friendly: true,
             message: "Missing exponent",
             pos: 0,
             len: expect.any(Number),
@@ -391,19 +404,25 @@ describe("tokenizer", () => {
 
       for (const expression of cases) {
         const { errors } = tokenize(expression);
-        expect(errors).toEqual([
-          { message: "Missing closing quotes", pos: 0, len: expression.length },
+        expect(errors.map(plain)).toEqual([
+          {
+            message: "Missing closing quotes",
+            friendly: true,
+            pos: 0,
+            len: expression.length,
+          },
         ]);
       }
     });
 
     it("should continue to tokenize when encountering an unterminated string literal", () => {
       const { tokens, errors } = tokenize(`CONCAT(universe') = [answer]`);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
-          len: 13,
           message: "Missing closing quotes",
+          len: 13,
           pos: 15,
+          friendly: true,
         },
       ]);
       expect(tokens).toEqual([
@@ -507,9 +526,10 @@ describe("tokenizer", () => {
           isReference: true,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing a closing bracket",
+          friendly: true,
           pos: 0,
           len: 4,
         },
@@ -526,16 +546,18 @@ describe("tokenizer", () => {
           isReference: true,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing a closing bracket",
           pos: 0,
           len: 2,
+          friendly: true,
         },
         {
           message: "Invalid character: [",
           len: 1,
           pos: 2,
+          friendly: true,
         },
       ]);
     });
@@ -558,11 +580,12 @@ describe("tokenizer", () => {
 
     it("should catch a dangling closing bracket", () => {
       const { errors } = tokenize("floor(Total]*1.25)");
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing an opening bracket for Total",
           pos: 11,
           len: 1,
+          friendly: true,
         },
       ]);
     });
@@ -577,11 +600,12 @@ describe("tokenizer", () => {
           isReference: false,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing an opening bracket for foo",
           pos: 3,
           len: 1,
+          friendly: true,
         },
       ]);
     });
@@ -603,11 +627,12 @@ describe("tokenizer", () => {
         { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
         { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing a closing bracket",
           pos: 20,
           len: 3,
+          friendly: true,
         },
       ]);
     });
@@ -662,11 +687,12 @@ describe("tokenizer", () => {
           isReference: true,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing a closing bracket",
           pos: 0,
           len: expect.any(Number),
+          friendly: true,
         },
       ]);
       expect(errors[0].len).toBeGreaterThanOrEqual(3);
@@ -691,11 +717,12 @@ describe("tokenizer", () => {
           isReference: true,
         },
       ]);
-      expect(errors).toEqual([
+      expect(errors.map(plain)).toEqual([
         {
           message: "Missing a closing bracket",
           pos: 0,
           len: expect.any(Number),
+          friendly: true,
         },
       ]);
     });
@@ -785,9 +812,7 @@ describe("tokenizer", () => {
     const types = (expr: string) => tokenize(expr).tokens.map(t => t.type);
     const errors = (expr: string) => tokenize(expr).errors;
 
-    // This is hard to manage with the lezer parser
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should ignore garbage", () => {
+    it("should ignore garbage", () => {
       expect(types("!@^ [Deal]")).toEqual([TOKEN.Identifier]);
       expect(errors("!")[0].message).toEqual("Invalid character: !");
       expect(errors(" % @")[1].message).toEqual("Invalid character: @");

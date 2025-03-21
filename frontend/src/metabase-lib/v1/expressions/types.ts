@@ -37,6 +37,8 @@ interface HelpTextArg {
   example: Expression | ["args", Expression[]];
 }
 
+export type StartRule = "expression" | "boolean" | "aggregation";
+
 type MBQLClauseFunctionReturnType =
   | "aggregation"
   | "any"
@@ -59,12 +61,6 @@ export type MBQLClauseFunctionConfig = {
   validator?: (...args: any) => string | undefined;
 };
 export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
-
-export type ErrorWithMessage = {
-  message: string;
-  pos?: number | null;
-  len?: number | null;
-};
 
 export type Token =
   | {

@@ -1,8 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { ResolverError } from "metabase-lib/v1/expressions/pratt/types";
-
 import { MBQL_CLAUSES, getMBQLName } from "./config";
+import { ResolverError } from "./errors";
 import { isCaseOrIfOperator, isOptionsObject } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
 

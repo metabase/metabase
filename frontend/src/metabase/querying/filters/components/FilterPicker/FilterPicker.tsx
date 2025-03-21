@@ -93,7 +93,7 @@ export function FilterPicker({
     <ExpressionWidget
       query={query}
       stageIndex={stageIndex}
-      clause={filter}
+      clause={filter as unknown as Lib.ExpressionClause}
       startRule="boolean"
       header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
       onChangeClause={handleClauseChange}

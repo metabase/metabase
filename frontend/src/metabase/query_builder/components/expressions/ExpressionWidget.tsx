@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
+import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
 
 import {
   trackColumnCombineViaShortcut,
@@ -18,31 +18,26 @@ import type { Shortcut } from "./Editor/Shortcuts";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 import { Layout, LayoutFooter, LayoutHeader } from "./Layout";
 import { NameInput } from "./NameInput";
-import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
 
-export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
-  startRule?: S;
+export type ExpressionWidgetProps = {
+  startRule?: StartRule;
 
   query: Lib.Query;
   stageIndex: number;
-  clause?: ClauseType<S> | undefined;
+  clause?: Lib.ExpressionClause | undefined;
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
 
-  onChangeClause?: (name: string, clause: ClauseType<S>) => void;
+  onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
 };
 
-export const ExpressionWidget = <S extends StartRule = "expression">(
-  props: ExpressionWidgetProps<S>,
-) => {
-  type Clause = ClauseType<S>;
-
+export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const {
     query,
     stageIndex,
@@ -58,8 +53,10 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   } = props;
 
   const [name, setName] = useState(initialName || "");
-  const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
-  const [error, setError] = useState<ErrorWithMessage | null>(null);
+  const [clause, setClause] = useState<Lib.ExpressionClause | null>(
+    initialClause ?? null,
+  );
+  const [error, setError] = useState<ExpressionError | null>(null);
 
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
@@ -69,7 +66,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const isValid = !error && isValidName && isValidExpressionClause;
 
   const handleCommit = useCallback(
-    (clause: Clause | null) => {
+    (clause: Lib.ExpressionClause | null) => {
       const isValidExpressionClause = isNotNull(clause);
       const isValid = !error && isValidName && isValidExpressionClause;
 
@@ -88,7 +85,10 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }, [clause, handleCommit]);
 
   const handleExpressionChange = useCallback(
-    (clause: Clause | null, error: ErrorWithMessage | null = null) => {
+    (
+      clause: Lib.ExpressionClause | null,
+      error: ExpressionError | null = null,
+    ) => {
       if (error) {
         setError(error);
         return;
@@ -122,7 +122,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const handleCombineColumnsSubmit = useCallback(
     (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
-      handleExpressionChange(clause as Clause);
+      handleExpressionChange(clause);
       setName(name);
       setIsCombiningColumns(false);
     },
@@ -136,7 +136,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
       extraction: Lib.ColumnExtraction,
     ) => {
       trackColumnExtractViaShortcut(query, stageIndex, extraction);
-      handleExpressionChange(clause as Clause);
+      handleExpressionChange(clause);
       setName(name);
       setIsExtractingColumn(false);
     },
@@ -181,10 +181,9 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
 
       <Editor
         id="expression-content"
-        startRule={startRule as S}
+        startRule={startRule}
         clause={clause}
         onChange={handleExpressionChange}
-        name={name}
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}

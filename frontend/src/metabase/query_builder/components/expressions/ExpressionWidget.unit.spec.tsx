@@ -7,7 +7,6 @@ import { createQuery } from "metabase-lib/test-helpers";
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import type { StartRule } from "./types";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -157,14 +156,12 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText('Expecting comma but got "test" instead');
+      await screen.findByText('Expecting operator but got "test" instead');
     });
   });
 });
 
-async function setup<S extends StartRule = "expression">(
-  additionalProps?: Partial<ExpressionWidgetProps<S>>,
-) {
+async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
   const onChangeClause = jest.fn();

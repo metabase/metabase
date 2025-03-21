@@ -1115,7 +1115,7 @@ describe("issue 49882", () => {
     );
 
     H.popover()
-      .findByText("Expecting comma but got case instead")
+      .findByText("Expecting operator but got case instead")
       .should("be.visible", { timeout: 5000 });
   });
 

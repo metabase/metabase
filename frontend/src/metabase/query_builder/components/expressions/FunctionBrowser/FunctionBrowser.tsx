@@ -12,9 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { HelpText } from "metabase-lib/v1/expressions";
-
-import type { StartRule } from "../types";
+import type { HelpText, StartRule } from "metabase-lib/v1/expressions";
 
 import S from "./FunctionBrowser.module.css";
 import { getDatabase, getFilteredClauses, getSearchPlaceholder } from "./utils";
