@@ -277,16 +277,15 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.log(
         "segment filter icon should be aligned with other filter icons (metabase#50734)",
       );
-      H.modal().within(() => {
-        H.filterField("segments")
+      H.popover().within(() => {
+        cy.findByLabelText(SEGMENT_1_NAME)
           .findByRole("img")
           .should("be.visible")
           .then(([$segmentsIcon]) => {
             const segmentsIconRect = $segmentsIcon.getBoundingClientRect();
 
-            H.filterField("Discount")
-              .findAllByRole("img")
-              .first()
+            cy.findByLabelText("Discount")
+              .findByRole("img")
               .should(([$discountIcon]) => {
                 const discountIconRect = $discountIcon.getBoundingClientRect();
                 expect(segmentsIconRect.left).to.eq(discountIconRect.left);
@@ -295,36 +294,20 @@ describe("scenarios > filters > bulk filtering", () => {
           });
       });
 
-      H.modal().within(() => {
-        H.filterField("segments").within(() =>
-          cy.findByPlaceholderText("Filter segments").click(),
-        );
-      });
-
-      H.popover().within(() => {
-        cy.findByText(SEGMENT_1_NAME);
-        cy.findByText(SEGMENT_2_NAME).click();
-      });
-
+      H.popover().findByText(SEGMENT_2_NAME).click();
       applyFilters();
+      H.queryBuilderFiltersPanel()
+        .findByText(SEGMENT_2_NAME)
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(1915);
 
-      cy.findByTestId("qb-filters-panel").findByText(SEGMENT_2_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 1,915 rows");
-
-      H.filter();
-
-      H.modal().within(() => {
-        H.filterField("segments").within(() =>
-          cy.findByText(SEGMENT_2_NAME).next().click(),
-        );
-      });
-
-      applyFilters();
-
-      cy.findByTestId("qb-filters-panel").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing first 2,000 rows");
+      H.queryBuilderFiltersPanel()
+        .findByText(SEGMENT_2_NAME)
+        .icon("close")
+        .click();
+      cy.wait("@dataset");
+      H.queryBuilderFiltersPanel().should("not.exist");
+      H.queryBuilderFooter().findByText("Showing first 2,000 rows");
     });
 
     it("should load already applied segments", () => {
