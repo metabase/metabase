@@ -39,7 +39,7 @@ export async function format(
   options: FormatOptions,
 ) {
   // prettier expects us to pass a string, but we have the AST already
-  // so we pass a bocus string and ignore it. The actual ast is passed via
+  // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
@@ -58,7 +58,7 @@ export async function formatExample(
   options: FormatExampleOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already
-  // so we pass a bocus string and ignore it. The actual ast is passed via
+  // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
