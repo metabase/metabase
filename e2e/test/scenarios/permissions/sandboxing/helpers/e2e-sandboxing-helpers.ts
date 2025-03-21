@@ -3,9 +3,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type {
+  CacheConfig,
   CollectionItem,
   Dashboard,
-  type CacheConfig,
   FieldValue,
   Filter,
   GetFieldValuesResponse,
@@ -643,8 +643,6 @@ export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
   return cy.wrap(responses);
 };
 
-
-
 export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
   cy.signIn("admin", { skipCache: true });
   const simpleCacheConfiguration: CacheConfig = {
@@ -664,21 +662,23 @@ export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
   cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
     cy.log("Populate the caches");
     getCardResponses(questions);
-  cy.log("Persist model data");
-  const modelIds = questions
-    .filter(({ type }) => type === "model")
-    .map(model => model.id);
-  H.cypressWaitAll(
-    modelIds.map(modelId =>
-      cy.request("POST", `/api/persist/card/${modelId}`, {}),
-    ),
-  ).then(() => {
-    cy.log(
-      "Configure the whole instance to use a duration-based caching of one hour",
-    );
-    cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
-      cy.log("Populate the caches");
-      getCardResponses(questions);
+
+    cy.log("Persist model data");
+    const modelIds = questions
+      .filter(({ type }) => type === "model")
+      .map((model) => model.id);
+    H.cypressWaitAll(
+      modelIds.map((modelId) =>
+        cy.request("POST", `/api/persist/card/${modelId}`, {}),
+      ),
+    ).then(() => {
+      cy.log(
+        "Configure the whole instance to use a duration-based caching of one hour",
+      );
+      cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+        cy.log("Populate the caches");
+        getCardResponses(questions);
+      });
     });
   });
 };
@@ -691,4 +691,3 @@ export const runWithoutCachingThenWithCaching = (
   cacheUnsandboxedResults(questions);
   callback({ isCachingEnabled: true });
 };
-
