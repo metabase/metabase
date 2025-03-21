@@ -17,7 +17,6 @@ import {
 } from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
-import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -43,6 +42,7 @@ import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
+import { Tabs } from "../Dashboard/components/Tabs";
 import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
@@ -246,7 +246,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />
+            <Tabs></Tabs>
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>
