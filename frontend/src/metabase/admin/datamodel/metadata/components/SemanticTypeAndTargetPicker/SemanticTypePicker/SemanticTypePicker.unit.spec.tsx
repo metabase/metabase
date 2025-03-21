@@ -69,6 +69,17 @@ const STRUCTURED_AND_COLLECTION_FIELD = createMockField({
   effective_type: "type/JSON",
 });
 
+const FIELDS = [
+  TEXT_FIELD,
+  TEXT_LIKE_FIELD,
+  BOOLEAN_FIELD,
+  NUMBER_FIELD,
+  TEMPORAL_FIELD,
+  COLLECTION_FIELD,
+  STRUCTURED_FIELD,
+  STRUCTURED_AND_COLLECTION_FIELD,
+];
+
 interface SetupOpts {
   fieldId: FieldId | FieldReference;
   initialValue: string | null;
@@ -87,16 +98,7 @@ function TestComponent({ field, initialValue }: TestComponentProps) {
 
 const setup = ({ fieldId, initialValue }: SetupOpts) => {
   const metadata = createMockMetadata({
-    fields: [
-      TEXT_FIELD,
-      TEXT_LIKE_FIELD,
-      BOOLEAN_FIELD,
-      NUMBER_FIELD,
-      TEMPORAL_FIELD,
-      COLLECTION_FIELD,
-      STRUCTURED_FIELD,
-      STRUCTURED_AND_COLLECTION_FIELD,
-    ],
+    fields: FIELDS,
   });
   const field = checkNotNull(metadata.field(fieldId));
 
