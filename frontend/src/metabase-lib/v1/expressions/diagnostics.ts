@@ -184,7 +184,7 @@ function checkCompiledExpression({
   );
 
   if (error) {
-    throw error;
+    throw new DiagnosticError(error.message);
   }
   return null;
 }
