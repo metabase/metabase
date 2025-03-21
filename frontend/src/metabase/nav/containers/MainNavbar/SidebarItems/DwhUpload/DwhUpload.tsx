@@ -100,7 +100,9 @@ export const DwhUploadMenu = () => {
           >
             {c("button label for uploading a CSV data file").t`Upload CSV`}
           </Menu.Item>
-          <PLUGIN_UPLOAD_MANAGEMENT.GsheetMenuItem onClick={openGsheetModal} />
+          <PLUGIN_UPLOAD_MANAGEMENT.GdriveSidebarMenuItem
+            onClick={openGsheetModal}
+          />
         </Menu.Dropdown>
       </Menu>
       <UploadInput
@@ -114,7 +116,7 @@ export const DwhUploadMenu = () => {
         onClose={closeModelUploadModal}
         onUpload={handleFileUpload}
       />
-      <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectionModal
+      <PLUGIN_UPLOAD_MANAGEMENT.GdriveConnectionModal
         isModalOpen={isGsheetModalOpen}
         onClose={closeGsheetModal}
         reconnect={true}
