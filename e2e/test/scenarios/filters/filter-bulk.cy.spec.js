@@ -323,14 +323,13 @@ describe("scenarios > filters > bulk filtering", () => {
       };
 
       H.visitQuestionAdhoc(segmentFilterQuestion);
-      H.filter();
-
-      H.modal().within(() => {
-        H.filterField("segments").within(() => {
-          cy.findByText(SEGMENT_1_NAME);
-          cy.findByText(SEGMENT_2_NAME).should("not.exist");
-        });
+      H.queryBuilderFiltersPanel().within(() => {
+        cy.findByText(SEGMENT_2_NAME).should("not.exist");
+        cy.findByText(SEGMENT_1_NAME).click();
       });
+      H.popover()
+        .findByLabelText(SEGMENT_1_NAME)
+        .should("have.attr", "aria-selected", "true");
     });
   });
 
