@@ -49,7 +49,7 @@ function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
     <ToastRoot>
       <StyledIcon name="collection" />
       {match(type)
-        .with("question", () => jt`Question moved to ${link}`)
+        .with("question", () => jt`Query moved to ${link}`)
         .with("model", () => jt`Model moved to ${link}`)
         .with("metric", () => jt`Metric moved to ${link}`)
         .exhaustive()}

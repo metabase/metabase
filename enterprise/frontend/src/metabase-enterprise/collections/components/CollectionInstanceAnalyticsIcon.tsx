@@ -13,7 +13,7 @@ interface Props extends Omit<IconProps, "name" | "tooltip"> {
 
 const collectionIconTooltipNameMap = {
   collection: t`collection`,
-  question: t`question`,
+  question: t`query`,
   model: t`model`,
   dashboard: t`dashboard`,
   metric: t`metric`,

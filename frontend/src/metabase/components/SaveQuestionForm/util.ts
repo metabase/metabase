@@ -145,9 +145,9 @@ export const getTitle = (
     showSaveType,
   ])
     .returnType<string>()
-    .with(["question", "singleStep", true], () => t`Save question`)
-    .with(["question", "singleStep", false], () => t`Save new question`)
-    .with(["question", "multiStep", P._], () => t`First, save your question`)
+    .with(["question", "singleStep", true], () => t`Save query`)
+    .with(["question", "singleStep", false], () => t`Save new query`)
+    .with(["question", "multiStep", P._], () => t`First, save your query`)
     .with(["model", "singleStep", P._], () => t`Save model`)
     .with(["model", "multiStep", P._], () => t`First, save your model`)
     .with(["metric", "singleStep", P._], () => t`Save metric`)
@@ -157,7 +157,7 @@ export const getTitle = (
 
 export const getPlaceholder = (cardType: CardType): string =>
   match<CardType, string>(cardType)
-    .with("question", () => t`What is the name of your question?`)
+    .with("question", () => t`What is the name of your query?`)
     .with("model", () => t`What is the name of your model?`)
     .with("metric", () => t`What is the name of your metric?`)
     .exhaustive();

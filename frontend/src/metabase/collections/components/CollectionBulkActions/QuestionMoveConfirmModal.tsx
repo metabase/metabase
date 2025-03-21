@@ -122,7 +122,7 @@ export const QuestionMoveConfirmModal = ({
       if (hasError) {
         return (
           <>
-            <Text>{t`This question currently appears in a dashboard that you don't have permission to edit.`}</Text>
+            <Text>{t`This query currently appears in a dashboard that you don't have permission to edit.`}</Text>
             <Flex justify="end" gap="1rem" mt="1rem">
               <Button onClick={onClose}>{t`Okay`}</Button>
             </Flex>

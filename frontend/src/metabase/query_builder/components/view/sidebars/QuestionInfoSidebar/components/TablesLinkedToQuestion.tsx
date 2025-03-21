@@ -35,7 +35,7 @@ export const TablesLinkedToQuestion = ({
         <Text lh={1} color="text-medium">
           {question.type() === "model"
             ? t`This model is not linked to any tables.`
-            : t`This question is not linked to any tables.`}
+            : t`This query is not linked to any tables.`}
         </Text>
       )}
       {filtered.map(({ href, name, iconProps }) => (

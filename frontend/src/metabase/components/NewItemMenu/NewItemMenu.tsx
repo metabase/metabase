@@ -58,7 +58,7 @@ const NewItemMenu = ({
 
     if (hasDataAccess) {
       items.push({
-        title: t`Question`,
+        title: t`Query`,
         icon: "insight",
         link: Urls.newQuestion({
           mode: "notebook",

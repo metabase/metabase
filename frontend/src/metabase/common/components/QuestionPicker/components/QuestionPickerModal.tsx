@@ -100,7 +100,7 @@ export const QuestionPickerModal = ({
   >[] = [
     {
       id: "questions-tab",
-      displayName: t`Questions`,
+      displayName: t`Queries`,
       models: ["card" as const],
       folderModels: ["collection" as const],
       icon: "table",

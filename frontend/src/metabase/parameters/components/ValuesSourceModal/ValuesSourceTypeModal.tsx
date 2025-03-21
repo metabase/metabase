@@ -361,7 +361,7 @@ const getErrorMessage = (question: Question, parameter: Parameter) => {
 
   if (parameterType === "number") {
     if (type === "question") {
-      return t`This question doesn’t have any number columns.`;
+      return t`This query doesn't have any number columns.`;
     }
 
     if (type === "model") {
@@ -370,7 +370,7 @@ const getErrorMessage = (question: Question, parameter: Parameter) => {
   }
 
   if (type === "question") {
-    return t`This question doesn’t have any text columns.`;
+    return t`This query doesn't have any text columns.`;
   }
 
   if (type === "model") {

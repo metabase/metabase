@@ -24,7 +24,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
 
   if (id === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return {
-      title: t`Saved Questions`,
+      title: t`Saved Queries`,
       to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
     };
   }

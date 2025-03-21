@@ -392,7 +392,7 @@ export const Onboarding = () => {
                         to={newQuestionUrl}
                         onClick={() => trackChecklistItemCTAClicked("notebook")}
                       >
-                        <Button variant="outline">{t`New question`}</Button>
+                        <Button variant="outline">{t`New query`}</Button>
                       </Link>
                     </Box>
                   )}

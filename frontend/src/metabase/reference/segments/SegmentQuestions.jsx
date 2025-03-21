@@ -22,7 +22,7 @@ import { getDescription, getQuestionUrl } from "../utils";
 
 const emptyStateData = (table, segment, metadata) => {
   return {
-    message: t`Questions about this segment will appear here as they're added`,
+    message: t`Queries about this segment will appear here as they're added`,
     icon: "folder",
     action: t`Ask a question`,
     link: getQuestionUrl({
@@ -55,7 +55,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader
-        name={t`Questions about ${segment.name}`}
+        name={t`Queries about ${segment.name}`}
         type="questions"
         headerIcon="segment"
       />

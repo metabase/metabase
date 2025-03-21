@@ -28,7 +28,7 @@ import { getQuestionUrl } from "../utils";
 
 const emptyStateData = (table, metadata) => {
   return {
-    message: t`Questions about this table will appear here as they're added`,
+    message: t`Queries about this table will appear here as they're added`,
     icon: "folder",
     action: t`Ask a question`,
     link: getQuestionUrl({
@@ -68,7 +68,7 @@ class TableQuestions extends Component {
     return (
       <div style={style} className={CS.full}>
         <ReferenceHeader
-          name={t`Questions about ${this.props.table.display_name}`}
+          name={t`Queries about ${this.props.table.display_name}`}
           type="questions"
           headerIcon="table2"
         />

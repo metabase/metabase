@@ -18,7 +18,7 @@ export const getQuestionTitle = ({
   question,
 }: GetQuestionTitleProps): string => {
   if (!question) {
-    return t`New question`;
+    return t`New query`;
   }
 
   const isSaved = question.isSaved();
@@ -39,7 +39,7 @@ export const getQuestionTitle = ({
     return adhocDescription;
   }
 
-  return t`New question`;
+  return t`New query`;
 };
 
 type QuestionTitleProps = GetQuestionTitleProps & {

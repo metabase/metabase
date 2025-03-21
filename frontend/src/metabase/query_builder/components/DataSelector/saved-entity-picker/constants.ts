@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 export const CARD_INFO = {
   question: {
-    title: t`Saved Questions`,
+    title: t`Saved Queries`,
     model: "card",
     icon: "table2",
   },

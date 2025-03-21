@@ -54,7 +54,7 @@ function Tools({
 }: Props) {
   const tabs: ToolTab[] = [
     {
-      name: t`Questions`,
+      name: t`Queries`,
       value: "errors",
     },
   ];

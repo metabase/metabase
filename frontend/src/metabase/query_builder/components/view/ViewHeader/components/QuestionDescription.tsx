@@ -34,6 +34,6 @@ export const QuestionDescription = ({
       />
     );
   } else {
-    return <span>{t`New question`}</span>;
+    return <span>{t`New query`}</span>;
   }
 };

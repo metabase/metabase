@@ -121,7 +121,7 @@ const nullOnCatch = () => null;
 const getLocalizedEntityName = (entityName?: ReportableEntityName) => {
   switch (entityName) {
     case "question":
-      return t`question`;
+      return t`query`;
     case "model":
       return t`model`;
     case "dashboard":

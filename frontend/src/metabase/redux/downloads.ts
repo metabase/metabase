@@ -326,7 +326,7 @@ const getDatasetFileName = (headers: Headers, type: string) => {
 };
 
 const getChartFileName = (question: Question) => {
-  const name = question.displayName() ?? t`New question`;
+  const name = question.displayName() ?? t`New query`;
   const date = new Date().toLocaleString();
   return `${name}-${date}.png`;
 };

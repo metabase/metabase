@@ -51,7 +51,7 @@ export function AdHocQuestionLeftSide(
           color="medium"
         >
           {isNative ? (
-            t`New question`
+            t`New query`
           ) : (
             <QuestionDescription
               question={question}

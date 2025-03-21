@@ -16,7 +16,7 @@ import type { EngineFieldOverride } from "./types";
 
 export const SAVED_QUESTIONS_DATABASE = {
   id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  name: t`Saved Questions`,
+  name: t`Saved Queries`,
   is_saved_questions: true,
   features: ["basic-aggregations"],
 };

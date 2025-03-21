@@ -28,8 +28,8 @@ export const RAW_DATA_INFO_ITEM: DataTypeInfoItem = {
 export const SAVED_QUESTIONS_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.SAVED_QUESTIONS,
   icon: "folder",
-  name: t`Saved Questions`,
-  description: t`Use any question’s results to start a new question.`,
+  name: t`Saved Queries`,
+  description: t`Use any query's results to start a new query.`,
 };
 
 export const METRICS_INFO_ITEM: DataTypeInfoItem = {

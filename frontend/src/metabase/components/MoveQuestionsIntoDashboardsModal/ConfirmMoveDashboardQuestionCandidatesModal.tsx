@@ -81,7 +81,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           <div className={S.column}>
             <Flex gap="sm" align="center">
               <Icon name="folder" c="brand" />
-              {t`Question`}
+              {t`Query`}
             </Flex>
           </div>
           <div className={S.column}>

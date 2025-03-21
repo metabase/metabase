@@ -275,7 +275,7 @@ function getLabel(card) {
     return t`metric`;
   }
 
-  return t`question`;
+  return t`query`;
 }
 
 export function getIcon(card) {

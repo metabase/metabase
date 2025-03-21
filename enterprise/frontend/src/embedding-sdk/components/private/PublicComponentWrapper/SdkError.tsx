@@ -57,7 +57,7 @@ const ResourceNotFoundError = ({
 );
 
 export const QuestionNotFoundError = ({ id }: ResourceNotFoundErrorProps) => (
-  <ResourceNotFoundError resource={t`Question`} id={id} />
+  <ResourceNotFoundError resource={t`Query`} id={id} />
 );
 export const DashboardNotFoundError = ({ id }: ResourceNotFoundErrorProps) => (
   <ResourceNotFoundError resource={t`Dashboard`} id={id} />

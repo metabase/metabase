@@ -56,7 +56,7 @@ export const useCommandPaletteBasicActions = ({
     if (hasDataAccess) {
       actions.push({
         id: "new_question",
-        name: t`New question`,
+        name: t`New query`,
         section: "basic",
         icon: "insight",
         perform: () => {

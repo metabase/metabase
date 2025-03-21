@@ -431,7 +431,7 @@ export const QueryBuilder = _.compose(
   Timelines.loadList(timelineProps),
   connector,
   title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
-    title: documentTitle || card?.name || t`Question`,
+    title: documentTitle || card?.name || t`Query`,
     titleIndex: 1,
   })),
   titleWithLoadingTime("queryStartTime"),

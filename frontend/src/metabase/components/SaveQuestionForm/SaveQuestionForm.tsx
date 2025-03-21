@@ -88,14 +88,14 @@ export const SaveQuestionForm = ({
               }}
             />
             <Radio
-              name={t`Save as new question`}
+              name={t`Save as new query`}
               value="create"
               classNames={{
                 label: cx(S.label, {
                   [S.labelActive]: values.saveType === "create",
                 }),
               }}
-              label={t`Save as new question`}
+              label={t`Save as new query`}
             />
           </Stack>
         </FormRadioGroup>
