@@ -93,7 +93,7 @@ describe("diagnostics", () => {
       });
     }
 
-    it("should non throw", () => {
+    it("should not throw", () => {
       const expression = "1";
       expect(() => setup({ expression })).not.toThrow();
     });
