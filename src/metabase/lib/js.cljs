@@ -1201,7 +1201,7 @@
       #js {:operator (name operator)
            :column   column})))
 
-(defn ^:export is-column-metadata
+(defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1209,7 +1209,7 @@
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
 
-(defn ^:export is-metric-metadata
+(defn ^:export metric-metadata?
   "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/metric`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and
@@ -1217,7 +1217,7 @@
   [arg]
   (and (map? arg) (= :metadata/metric (:lib/type arg))))
 
-(defn ^:export is-segment-metadata
+(defn ^:export segment-metadata?
   "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
 
   > **Code health:** Single use. This is used in the expression editor to parse and

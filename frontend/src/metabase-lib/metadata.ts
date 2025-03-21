@@ -237,13 +237,13 @@ export function columnKey(column: ColumnMetadata): string {
 }
 
 export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
+  return ML.column_metadata_QMARK_(arg);
 }
 
 export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
-  return ML.is_metric_metadata(arg);
+  return ML.metric_metadata_QMARK_(arg);
 }
 
 export function isSegmentMetadata(arg: unknown): arg is SegmentMetadata {
-  return ML.is_segment_metadata(arg);
+  return ML.segment_metadata_QMARK_(arg);
 }
