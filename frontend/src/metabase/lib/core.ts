@@ -366,7 +366,7 @@ export const DEPRECATED_FIELD_SEMANTIC_TYPES: FieldSemanticType["id"][] = [
 
 export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
-  {},
+  {} as Record<FieldSemanticType["id"], FieldSemanticType>,
 );
 
 export const HAS_FIELD_VALUES_OPTIONS = [

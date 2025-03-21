@@ -11,11 +11,17 @@ import {
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Stack, Text } from "metabase/ui";
-import { useUpdateTableRowsMutation } from "metabase-enterprise/api";
+import {
+  useDeleteTableRowsMutation,
+  useInsertTableRowsMutation,
+  useUpdateTableRowsMutation,
+} from "metabase-enterprise/api";
 import { isDatabaseTableEditingEnabled } from "metabase-enterprise/data_editing/settings";
 import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
+import type { RowValue } from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
@@ -37,6 +43,15 @@ export const EditTableDataContainer = ({
   const dbId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
 
+  const [
+    isCreateRowModalOpen,
+    { open: openCreateRowModal, close: closeCreateRowModal },
+  ] = useDisclosure(false);
+
+  const [expandedRowIndex, setExpandedRowIndex] = useState<
+    number | undefined
+  >();
+
   const dispatch = useDispatch();
 
   const { data: database } = useGetDatabaseMetadataQuery({ id: dbId }); // TODO: consider using just "dbId" to avoid extra data request
@@ -52,11 +67,29 @@ export const EditTableDataContainer = ({
     tableId,
   });
 
+  const [deleteTableRows] = useDeleteTableRowsMutation();
   const [updateTableRows] = useUpdateTableRowsMutation();
+  const [insertTableRows, { isLoading: isInserting }] =
+    useInsertTableRowsMutation();
 
   useMount(() => {
     dispatch(closeNavbar());
   });
+
+  const displayErrorIfExsits = useCallback(
+    (error: any) => {
+      if (error) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: error?.data?.errors?.[0].error ?? t`An error occurred`,
+          }),
+        );
+      }
+    },
+    [dispatch],
+  );
 
   const handleRowsDelete = () => {};
 
@@ -81,26 +114,85 @@ export const EditTableDataContainer = ({
         [pkColumn.name]: rowPkValue,
       };
 
-      await updateTableRows({
+      const response = await updateTableRows({
         tableId: tableId,
         rows: [updatedRowWithPk],
       });
+
+      displayErrorIfExsits(response.error);
 
       // TODO: do an optimistic data update here using RTK cache
 
       refetchTableDataQuery();
     },
-    [datasetData, refetchTableDataQuery, tableId, updateTableRows],
+    [
+      datasetData,
+      refetchTableDataQuery,
+      tableId,
+      updateTableRows,
+      displayErrorIfExsits,
+    ],
   );
 
-  const [
-    isCreateRowModalOpen,
-    { open: openCreateRowModal, close: closeCreateRowModal },
-  ] = useDisclosure(false);
+  const handleRowCreate = useCallback(
+    async (data: Record<string, RowValue>) => {
+      const response = await insertTableRows({
+        tableId: tableId,
+        rows: [data],
+      });
 
-  const [expandedRowIndex, setExpandedRowIndex] = useState<
-    number | undefined
-  >();
+      displayErrorIfExsits(response.error);
+      if (!response.error) {
+        closeCreateRowModal();
+      }
+
+      // TODO: do an optimistic data update here using RTK cache
+      refetchTableDataQuery();
+    },
+    [
+      refetchTableDataQuery,
+      closeCreateRowModal,
+      tableId,
+      insertTableRows,
+      displayErrorIfExsits,
+    ],
+  );
+
+  const handleExpandedRowDetele = useCallback(
+    async (rowIndex: number) => {
+      if (!datasetData) {
+        console.warn(
+          "Failed to update table data - no data is loaded for a table",
+        );
+        return;
+      }
+
+      const columns = datasetData.data.cols;
+      const rowData = datasetData.data.rows[rowIndex];
+
+      const pkColumnIndex = columns.findIndex(isPK);
+      const pkColumn = columns[pkColumnIndex];
+      const rowPkValue = rowData[pkColumnIndex];
+
+      closeCreateRowModal();
+
+      const response = await deleteTableRows({
+        rows: [{ [pkColumn.name]: rowPkValue }],
+        tableId: tableId,
+      });
+      displayErrorIfExsits(response.error);
+      // TODO: do an optimistic data update here using RTK cache
+      refetchTableDataQuery();
+    },
+    [
+      tableId,
+      datasetData,
+      closeCreateRowModal,
+      deleteTableRows,
+      refetchTableDataQuery,
+      displayErrorIfExsits,
+    ],
+  );
 
   const handleModalOpenAndExpandedRow = useCallback(
     (rowIndex?: number) => {
@@ -163,12 +255,17 @@ export const EditTableDataContainer = ({
       <EditingBaseRowModal
         opened={isCreateRowModalOpen}
         onClose={closeCreateRowModal}
+        onValueChange={handleCellValueUpdate}
+        onRowCreate={handleRowCreate}
+        onRowDelete={handleExpandedRowDetele}
         datasetColumns={datasetData.data.cols}
+        currentRowIndex={expandedRowIndex}
         currentRowData={
           expandedRowIndex !== undefined
             ? datasetData.data.rows[expandedRowIndex]
             : undefined
         }
+        isLoading={isInserting}
       />
     </>
   );

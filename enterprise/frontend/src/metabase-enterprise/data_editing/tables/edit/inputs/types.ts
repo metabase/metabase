@@ -7,9 +7,10 @@ export interface EditingBodyPrimitiveProps {
   initialValue: RowValue;
   inputProps?: {
     size?: MantineSize;
-    variant: TextInputProps["variant"];
+    variant?: TextInputProps["variant"];
     className?: string;
     placeholder?: string;
+    disabled?: boolean;
   };
   onSubmit: (value: RowValue) => unknown;
   onCancel: () => unknown;

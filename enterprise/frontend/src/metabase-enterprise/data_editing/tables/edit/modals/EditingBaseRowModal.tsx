@@ -1,21 +1,27 @@
 import cx from "classnames";
-import { Fragment } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
-import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import {
   ActionIcon,
   Button,
   Flex,
   Group,
   Icon,
-  type IconName,
   Modal,
   Text,
   rem,
 } from "metabase/ui";
-import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  RowValues,
+  Table,
+} from "metabase-types/api";
 
+import type { UpdatedRowCellsHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 
 import S from "./EditingBaseRowModal.module.css";
@@ -24,22 +30,56 @@ interface EditingBaseRowModalProps {
   datasetColumns: DatasetColumn[];
   datasetTable?: Table;
   onClose: () => void;
+  onValueChange: (data: UpdatedRowCellsHandlerParams) => void;
+  onRowCreate: (data: Record<string, RowValue>) => void;
+  onRowDelete: (rowIndex: number) => void;
   opened: boolean;
+  currentRowIndex?: number;
   currentRowData?: RowValues;
+  isLoading?: boolean;
 }
-
-const semanticIconMap: Record<string, IconName> = FIELD_SEMANTIC_TYPES.reduce(
-  (acc, type) => ({ ...acc, [type.id]: type.icon }),
-  {},
-);
 
 export function EditingBaseRowModal({
   datasetColumns,
   onClose,
+  onValueChange,
+  onRowCreate,
+  onRowDelete,
   opened,
+  currentRowIndex,
   currentRowData,
+  isLoading,
 }: EditingBaseRowModalProps) {
+  const [newRowData, setNewRowData] = useState<Record<string, RowValue>>({});
   const isEditingMode = !!currentRowData;
+
+  // Clear new row data when modal is opened
+  useEffect(() => {
+    if (opened) {
+      setNewRowData({});
+    }
+  }, [opened]);
+
+  const handleValueChange = useCallback(
+    (key: string, value: RowValue) => {
+      if (isEditingMode && currentRowIndex) {
+        onValueChange({
+          rowIndex: currentRowIndex,
+          data: {
+            [key]: value,
+          },
+        });
+      }
+
+      if (!isEditingMode) {
+        setNewRowData(data => ({
+          ...data,
+          [key]: value,
+        }));
+      }
+    },
+    [isEditingMode, currentRowIndex, onValueChange],
+  );
 
   return (
     <Modal.Root opened={opened} onClose={onClose}>
@@ -53,9 +93,12 @@ export function EditingBaseRowModal({
             gap="xs"
             mr={rem(-5) /* alings cross with modal right padding */}
           >
-            {isEditingMode && (
+            {isEditingMode && currentRowIndex !== undefined && (
               <ActionIcon variant="subtle">
-                <Icon name="trash" />
+                <Icon
+                  name="trash"
+                  onClick={() => onRowDelete(currentRowIndex)}
+                />
               </ActionIcon>
             )}
             <ActionIcon variant="subtle" onClick={onClose}>
@@ -74,7 +117,7 @@ export function EditingBaseRowModal({
                 className={S.modalBodyColumn}
                 name={
                   column.semantic_type
-                    ? semanticIconMap[column.semantic_type]
+                    ? FIELD_SEMANTIC_TYPES_MAP[column.semantic_type].icon
                     : "string"
                 }
               />
@@ -83,8 +126,14 @@ export function EditingBaseRowModal({
                 autoFocus={false}
                 datasetColumn={column}
                 initialValue={currentRowData ? currentRowData[index] : null}
-                onCancel={() => {}}
-                onSubmit={() => {}}
+                onCancel={noop}
+                onSubmit={value => handleValueChange(column.name, value)}
+                inputProps={{
+                  disabled: column.semantic_type === "type/PK",
+                  // Temporarily use a placeholder and figure out how to deal with null and default values later
+                  placeholder:
+                    column.name in newRowData ? "<empty_string>" : "<default>",
+                }}
               />
             </Fragment>
           ))}
@@ -94,7 +143,11 @@ export function EditingBaseRowModal({
             <Button variant="subtle" onClick={onClose}>
               {t`Cancel`}
             </Button>
-            <Button variant="filled">{t`Create new record`}</Button>
+            <Button
+              disabled={isLoading || Object.keys(newRowData).length === 0}
+              variant="filled"
+              onClick={() => onRowCreate(newRowData)}
+            >{t`Create new record`}</Button>
           </Flex>
         )}
       </Modal.Content>

@@ -39,7 +39,7 @@ export const EditingBodyCellCategorySelect = ({
     datasetColumn.id ?? skipToken,
   );
 
-  const [value, setValue] = useState(initialValue?.toString());
+  const [value, setValue] = useState(initialValue?.toString() ?? "");
   const [search, setSearch] = useState("");
   const combobox = useCombobox({
     defaultOpened: autoFocus,
