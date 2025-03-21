@@ -102,7 +102,7 @@ const whoIsYourFavoriteResponse = {
       "tool-calls": [
         {
           id: "call_PVmnR8mcnYFF2AmqupSKzJDh",
-          name: "metabot.tool/who-is-your-favorite",
+          name: "who-is-your-favorite",
           arguments: {},
         },
       ],
