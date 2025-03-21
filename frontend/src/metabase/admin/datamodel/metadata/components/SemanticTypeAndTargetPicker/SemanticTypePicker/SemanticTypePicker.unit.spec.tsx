@@ -14,49 +14,49 @@ import { SemanticTypePicker } from "./SemanticTypePicker";
 
 const TEXT_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Text",
+  display_name: "type/Text",
   base_type: "type/Text",
   effective_type: "type/Text",
 });
 
 const TEXT_LIKE_FIELD = createMockField({
   id: getNextId(),
-  display_name: "TextLike",
+  display_name: "type/TextLike",
   base_type: "type/PostgresEnum",
   effective_type: "type/PostgresEnum",
 });
 
 const NUMBER_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Number",
+  display_name: "type/Number",
   base_type: "type/Integer",
   effective_type: "type/Integer",
 });
 
 const TEMPORAL_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Temporal",
+  display_name: "type/Temporal",
   base_type: "type/DateTime",
   effective_type: "type/DateTime",
 });
 
 const BOOLEAN_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Boolean",
+  display_name: "type/Boolean",
   base_type: "type/Boolean",
   effective_type: "type/Boolean",
 });
 
 const COLLECTION_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Collection",
+  display_name: "type/Collection",
   base_type: "type/Array",
   effective_type: "type/Array",
 });
 
 const STRUCTURED_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Structured",
+  display_name: "type/Structured",
   base_type: "type/Structured",
   effective_type: "type/Structured",
 });
@@ -64,7 +64,7 @@ const STRUCTURED_FIELD = createMockField({
 // type/JSON has 2 level-one data type ancestors (type/Collection and type/Structured)
 const STRUCTURED_AND_COLLECTION_FIELD = createMockField({
   id: getNextId(),
-  display_name: "Structured & Collection",
+  display_name: "type/Structured or type/Collection",
   base_type: "type/JSON",
   effective_type: "type/JSON",
 });
@@ -166,5 +166,25 @@ describe("SemanticTypePicker", () => {
 
     const dropdown = within(screen.getByRole("listbox"));
     expect(dropdown.getByText("Category")).toBeInTheDocument();
+  });
+
+  describe("always shows 'Entity Key', 'Foreign Key', and 'No semantic type' options", () => {
+    it.each(FIELDS)(
+      "when field's effective type is derived from $display_name",
+      async field => {
+        setup({
+          fieldId: field.id,
+          initialValue: null,
+        });
+
+        const picker = screen.getByPlaceholderText("Select a semantic type");
+        await userEvent.click(picker);
+
+        const dropdown = within(screen.getByRole("listbox"));
+        expect(dropdown.getByText("Entity Key")).toBeInTheDocument();
+        expect(dropdown.getByText("Foreign Key")).toBeInTheDocument();
+        expect(dropdown.getByText("No semantic type")).toBeInTheDocument();
+      },
+    );
   });
 });
