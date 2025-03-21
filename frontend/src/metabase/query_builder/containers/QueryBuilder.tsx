@@ -235,6 +235,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     isLoadingComplete,
     closeQB,
     route,
+    queryBuilderMode,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -402,7 +403,13 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     [question, isNewQuestion],
   );
 
-  useHotkeys([["mod+Enter", runQuestionOrSelectedQuery]]);
+  const handleCmdEnter = () => {
+    if (queryBuilderMode !== "notebook") {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
 
   return (
     <>
