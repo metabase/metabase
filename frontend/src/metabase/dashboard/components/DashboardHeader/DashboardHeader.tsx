@@ -1,11 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { Query } from "history";
-import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveConfirmModal } from "metabase/components/LeaveConfirmModal";
 import {
   cancelEditingDashboard,
   fetchDashboard,
@@ -56,7 +55,7 @@ export const DashboardHeaderInner = ({
   refreshPeriod,
   setRefreshElapsedHook,
 }: DashboardHeaderProps) => {
-  const [showCancelWarning, setShowCancelWarning] = useState(false);
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
 
@@ -79,13 +78,13 @@ export const DashboardHeaderInner = ({
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
-      setShowCancelWarning(true);
+      openModal();
     } else {
-      onCancel();
+      onConfirmCancel();
     }
   };
 
-  const onCancel = () => {
+  const onConfirmCancel = () => {
     dispatch(
       fetchDashboard({
         dashId: dashboard.id,
@@ -94,6 +93,7 @@ export const DashboardHeaderInner = ({
       }),
     );
     dispatch(cancelEditingDashboard());
+    closeModal();
   };
 
   const getEditWarning = (dashboard: Dashboard) => {
@@ -171,12 +171,11 @@ export const DashboardHeaderInner = ({
         isNightMode={isNightMode}
       />
 
-      <Modal isOpen={showCancelWarning}>
-        <LeaveConfirmationModalContent
-          onAction={onCancel}
-          onClose={() => setShowCancelWarning(false)}
-        />
-      </Modal>
+      <LeaveConfirmModal
+        opened={modalOpened}
+        onConfirm={onConfirmCancel}
+        onClose={closeModal}
+      />
     </>
   );
 };
