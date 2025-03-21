@@ -156,6 +156,7 @@ const expression: TestCase[] = [
   ],
   ["text([User ID])", ["text", userId], "text function"],
   ['integer("10")', ["integer", "10"], "integer function"],
+  ['date("2025-03-20")', ["date", "2025-03-20"], "date function"],
   [
     'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [

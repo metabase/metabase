@@ -309,6 +309,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "date",
+    structure: "date",
+    category: "conversion",
+    description: () => t`Converts an ISO 8601 date string to a date.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string to convert to a date.`,
+        example: "2025-03-20",
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     category: "string",

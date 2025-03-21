@@ -77,6 +77,23 @@ const INTEGER_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const DATE_TEST_CASES: CastTestCase[] = [
+  {
+    name: "String",
+    expression: 'date("2025-03-20")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpression",
+    expression: 'date(concat("2025-03-", case([ID] = 1, "10", "20")))',
+    filterOperator: "Before",
+    filterValue: "March 15, 2025",
+    expectedRowCount: 1,
+  },
+];
+
 describe(
   "scenarios > custom column > cast functions",
   { tags: "@external" },
@@ -87,11 +104,15 @@ describe(
     });
 
     it("should support text function", () => {
-      testCastFunction(TEXT_TEST_CASES);
+      testFilterWithExpressions(TEXT_TEST_CASES, addOperatorFilter);
     });
 
     it("should support integer function", () => {
-      testCastFunction(INTEGER_TEST_CASES);
+      testFilterWithExpressions(INTEGER_TEST_CASES, addOperatorFilter);
+    });
+
+    it("should support date function", () => {
+      testFilterWithExpressions(DATE_TEST_CASES, addDateFilter);
     });
   },
 );
@@ -111,41 +132,37 @@ function removeTableFields() {
   cy.realPress("Escape");
 }
 
-function addCustomColumn({
-  name,
-  expression,
-}: {
-  name: string;
-  expression: string;
-}) {
+function addCustomColumn({ name, expression }: CastTestCase) {
   H.getNotebookStep("data").button("Custom column").click();
   H.enterCustomColumnDetails({ formula: expression, name });
   H.popover().button("Done").click();
 }
 
-function removeCustomColumn({ name }: { name: string }) {
+function removeCustomColumn({ name }: CastTestCase) {
   H.getNotebookStep("expression").findByText(name).icon("close").click();
 }
 
-function addFilter({
-  column,
-  operator,
-  value,
-}: {
-  column: string;
-  operator: string;
-  value: string;
-}) {
-  H.getNotebookStep("expression").button("Filter").click();
-  H.popover().findByText(column).click();
-  H.selectFilterOperator(operator);
+function addOperatorFilter({ filterOperator, filterValue }: CastTestCase) {
+  H.selectFilterOperator(filterOperator);
   H.popover().within(() => {
-    cy.findByLabelText("Filter value").type(value);
+    cy.findByLabelText("Filter value").type(filterValue);
     cy.button("Add filter").click();
   });
 }
 
-function testCastFunction(testCases: CastTestCase[]) {
+function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
+  H.popover().within(() => {
+    cy.findByText("Specific dates…").click();
+    cy.findByText(filterOperator).click();
+    cy.findByLabelText("Date").clear().type(filterValue);
+    cy.button("Add filter").click();
+  });
+}
+
+function testFilterWithExpressions(
+  testCases: CastTestCase[],
+  addFilter: (testCase: CastTestCase) => void,
+) {
   startNewQuestion();
   removeTableFields();
   H.visualize();
@@ -154,18 +171,13 @@ function testCastFunction(testCases: CastTestCase[]) {
 
   testCases.forEach(testCase => {
     cy.log(testCase.name);
-    addCustomColumn({
-      name: testCase.name,
-      expression: testCase.expression,
-    });
-    addFilter({
-      column: testCase.name,
-      operator: testCase.filterOperator,
-      value: testCase.filterValue,
-    });
+    addCustomColumn(testCase);
+    H.getNotebookStep("expression").button("Filter").click();
+    H.popover().findByText(testCase.name).click();
+    addFilter(testCase);
     H.visualize();
     H.assertQueryBuilderRowCount(testCase.expectedRowCount);
     H.openNotebook();
-    removeCustomColumn({ name: testCase.name });
+    removeCustomColumn(testCase);
   });
 }

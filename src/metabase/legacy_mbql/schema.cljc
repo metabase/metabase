@@ -432,7 +432,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -708,8 +708,11 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:expressions :cast}} date
+  string StringExpressionArg)
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now))
+  (one-of + datetime-add datetime-subtract convert-timezone now date))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
