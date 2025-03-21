@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
@@ -52,10 +53,7 @@ export const InteractiveQuestionDefaultView = ({
     queryResults,
     isQuestionLoading,
     originalQuestion,
-    onCreate,
-    onSave,
     isSaveEnabled,
-    targetCollection,
     withDownloads,
     isCardIdError,
   } = useInteractiveQuestionContext();
@@ -176,21 +174,48 @@ export const InteractiveQuestionDefaultView = ({
         </Box>
       </Box>
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveEnabled && isSaveModalOpen && question && (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion ?? null}
-          opened
-          closeOnSuccess
-          onClose={closeSaveModal}
-          onCreate={onCreate}
-          onSave={async question => {
-            await onSave(question);
-            closeSaveModal();
-          }}
-          targetCollection={targetCollection}
-        />
-      )}
+      <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
     </FlexibleSizeComponent>
+  );
+};
+
+const DefaultViewSaveModal = ({
+  isOpen,
+  close,
+}: {
+  isOpen: boolean;
+  close: () => void;
+}) => {
+  const {
+    question,
+    originalQuestion,
+    onCreate,
+    onSave,
+    isSaveEnabled,
+    targetCollection,
+  } = useInteractiveQuestionContext();
+
+  const { id, isLoading } = useTranslatedCollectionId({
+    id: targetCollection,
+  });
+
+  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+    return null;
+  }
+
+  return (
+    <SaveQuestionModal
+      question={question}
+      originalQuestion={originalQuestion ?? null}
+      opened
+      closeOnSuccess
+      onClose={close}
+      onCreate={onCreate}
+      onSave={async question => {
+        await onSave(question);
+        close();
+      }}
+      targetCollection={id}
+    />
   );
 };
