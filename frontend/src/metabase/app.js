@@ -110,3 +110,8 @@ export function init(...args) {
 }
 
 captureConsoleErrors();
+
+// eslint-disable-next-line no-console
+console.log(
+  "THIS FRONTEND WAS BUILT FROM THE 'npretto-sdk-tests-test-frontend-console-log' BRANCH",
+);
