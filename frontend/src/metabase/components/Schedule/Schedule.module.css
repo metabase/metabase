@@ -1,9 +1,10 @@
 .Schedule {
   line-height: 2.5rem;
   display: grid;
-  grid-template-columns: fit-content(100%) auto;
+  grid-template-columns: min-content auto;
   gap: var(--schedule-grid-gap, 0.5rem);
   row-gap: var(--schedule-row-gap, 0.35rem);
+  align-items: start;
   font-weight: var(--schedule-font-weight, normal);
 }
 
@@ -19,6 +20,7 @@
 .TextInFirstColumn {
   display: flex;
   flex-flow: row wrap;
+  white-space: nowrap;
   align-items: flex-start;
   font-weight: var(--schedule-first-column-font-weight, normal);
 }
@@ -26,7 +28,7 @@
 .TextInSecondColumn {
   line-height: 1.5rem;
   grid-column: 2;
-  font-weight: var(--schedule-second-column-font-weight, normal);
+  font-weight: normal;
 }
 
 .CompactLabels .TextInFirstColumn {

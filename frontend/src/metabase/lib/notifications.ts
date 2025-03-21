@@ -33,6 +33,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { getScheduleExplanation } from "./cron";
+
 export const formatTitle = ({ item, type }: NotificationListItem) => {
   switch (type) {
     case "pulse":
@@ -229,18 +231,28 @@ export const getNotificationHandlersGroupedByTypes = (
 export const formatNotificationSchedule = (
   subscription: NotificationCronSubscription,
 ): string | null => {
-  const schedule = cronToScheduleSettings(subscription.cron_schedule);
+  const schedule = cronToScheduleSettings(
+    subscription.cron_schedule,
+    subscription.ui_display_type === "cron/raw",
+  );
 
-  return (schedule && formatNotificationCheckSchedule(schedule)) || null;
+  return (
+    (schedule &&
+      formatNotificationCheckSchedule(schedule, subscription.cron_schedule)) ||
+    null
+  );
 };
 
-export const formatNotificationCheckSchedule = ({
-  schedule_type,
-  schedule_minute,
-  schedule_hour,
-  schedule_day,
-  schedule_frame,
-}: ScheduleSettings) => {
+export const formatNotificationCheckSchedule = (
+  {
+    schedule_type,
+    schedule_minute,
+    schedule_hour,
+    schedule_day,
+    schedule_frame,
+  }: ScheduleSettings,
+  cronSchedule: string,
+) => {
   const options = MetabaseSettings.formattingOptions();
 
   switch (schedule_type) {
@@ -280,7 +292,15 @@ export const formatNotificationCheckSchedule = ({
       }
       break;
     }
+    case "cron":
+      try {
+        return t`Check ${getScheduleExplanation(cronSchedule)}`;
+      } catch {
+        return null;
+      }
   }
+
+  return null;
 };
 
 export const formatNotificationScheduleDescription = ({

@@ -81,6 +81,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "daily",
   "weekly",
   "monthly",
+  "cron",
 ];
 
 type CreateOrEditQuestionAlertModalProps = {
@@ -345,6 +346,11 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Only send this alert once`}
+            styles={{
+              label: {
+                lineHeight: "1.5rem",
+              },
+            }}
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}

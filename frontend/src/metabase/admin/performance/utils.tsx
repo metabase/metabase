@@ -26,8 +26,9 @@ const PM = 1;
 
 const everyToCronSyntax = (every: number | string) =>
   `${Cron.EveryPrefix}${every}`;
-const isRepeatingEvery = (every: string) => every.startsWith(Cron.EveryPrefix);
-const cronUnitToNumber = (unit: string) =>
+export const isRepeatingEvery = (every: string) =>
+  every.startsWith(Cron.EveryPrefix);
+export const cronUnitToNumber = (unit: string) =>
   parseInt(unit.replace(Cron.EveryPrefix, ""));
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
@@ -52,6 +53,7 @@ const frameFromCron = (frameInCronFormat: string) =>
 
 export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
   const second = "0";
+  const year = "*";
   let minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
   const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
   let weekday = settings.schedule_day
@@ -87,6 +89,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
     dayOfMonth,
     month,
     weekday,
+    year,
   ].join(" ");
   return cronExpression;
 };
@@ -94,6 +97,7 @@ export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
 /** Returns null if we can't convert the cron expression to a ScheduleSettings object */
 export const cronToScheduleSettings_unmemoized = (
   cron: string | null | undefined,
+  isCustomSchedule: boolean = false,
 ): ScheduleSettings | null => {
   if (!cron) {
     return defaultSchedule;
@@ -110,11 +114,13 @@ export const cronToScheduleSettings_unmemoized = (
 
   const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
 
-  if (month !== Cron.AllValues) {
+  if (month !== Cron.AllValues && !isCustomSchedule) {
     return null;
   }
   let schedule_type: ScheduleType | undefined;
-  if (dayOfMonth === Cron.AllValues) {
+  if (isCustomSchedule) {
+    schedule_type = "cron";
+  } else if (dayOfMonth === Cron.AllValues) {
     if (weekday === Cron.AllValues) {
       if (hour === Cron.AllValues) {
         schedule_type = isRepeatingEvery(minute) ? "every_n_minutes" : "hourly";
@@ -178,6 +184,7 @@ export const cronToScheduleSettings_unmemoized = (
 };
 export const cronToScheduleSettings = memoize(
   cronToScheduleSettings_unmemoized,
+  (cron, isCustomSchedule) => `${cron}_${isCustomSchedule}`,
 );
 
 const defaultSchedule: ScheduleSettings = {

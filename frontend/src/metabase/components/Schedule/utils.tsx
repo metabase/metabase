@@ -106,5 +106,11 @@ export const getScheduleDefaults = (
       schedule_hour: defaultHour,
       schedule_minute: 0,
     }))
+    .with({ schedule_type: "cron" }, () => ({
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: defaultHour,
+      schedule_minute: 0,
+    }))
     .otherwise(() => ({}));
 };
