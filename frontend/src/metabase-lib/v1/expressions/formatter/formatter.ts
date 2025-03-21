@@ -35,15 +35,17 @@ export type FormatOptions = {
 };
 
 export async function format(
-  expression: ExpressionNode,
+  expression: Lib.ExpressionClause,
   options: FormatOptions,
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
+  const { query, stageIndex } = options;
+  const parts = Lib.expressionParts(query, stageIndex, expression);
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root: expression })],
+    plugins: [plugin({ ...options, root: parts })],
     printWidth: options.printWidth ?? 80,
   });
 }
@@ -54,15 +56,19 @@ export type FormatExampleOptions = {
 };
 
 export async function formatExample(
-  expression: ExpressionNode,
+  expression: Lib.ExpressionClause,
   options: FormatExampleOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
+
+  // TODO: fix types here
+  const { query, stageIndex } = options;
+  const parts = Lib.expressionParts(query, stageIndex, expression);
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root: expression })],
+    plugins: [plugin({ ...options, root: parts })],
     printWidth: options.printWidth ?? 80,
   });
 }

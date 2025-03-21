@@ -36,12 +36,7 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
         throw new Error("Cannot compile expression");
       }
 
-      const parts = Lib.expressionParts(
-        query,
-        options.stageIndex,
-        res.expressionClause,
-      );
-      const result = await format(parts, {
+      const result = await format(res.expressionClause, {
         ...options,
         printWidth,
       });
@@ -219,8 +214,7 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           stageIndex,
           expression,
         );
-        const parts = Lib.expressionParts(query, stageIndex, clause);
-        const result = await format(parts, {
+        const result = await format(clause, {
           ...opts,
           printWidth: Infinity,
         });
