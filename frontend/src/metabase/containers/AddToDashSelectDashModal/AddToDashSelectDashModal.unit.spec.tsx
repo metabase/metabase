@@ -21,6 +21,7 @@ import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type {
+  BaseEntityId,
   Card,
   Collection,
   Dashboard,
