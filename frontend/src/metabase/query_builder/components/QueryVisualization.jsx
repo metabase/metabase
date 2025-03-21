@@ -186,6 +186,7 @@ export const VisualizationDirtyState = ({
         CS.cursorPointer,
         { [QueryBuilderS.LoadingHidden]: hidden },
       )}
+      data-testid="run-button-overlay"
       onClick={handleClick}
     >
       <Stack gap="sm" align="center">
