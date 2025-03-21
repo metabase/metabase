@@ -1,7 +1,7 @@
 (ns metabase.driver.starburst
   "starburst driver."
+  #_{:clj-kondo/ignore [:metabase/modules]} ; api.common, For legacy impersonation
   (:require
-   #_{:clj-kondo/ignore [:metabase/modules]} ; For legacy.
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
