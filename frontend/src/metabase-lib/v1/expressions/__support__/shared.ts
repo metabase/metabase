@@ -22,7 +22,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { FormatOptions } from "../formatter";
+import type { FormatClauseOptions } from "../formatter";
 
 const SEGMENT_ID = 1;
 
@@ -372,7 +372,7 @@ const filter: TestCase[] = [
 
 type TestCase = [string, Expression | undefined, string];
 
-export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
+export const dataForFormatting: [string, TestCase[], FormatClauseOptions][] = [
   ["expression", expression, { query, stageIndex }],
   ["aggregation", aggregation, { query, stageIndex }],
   ["filter", filter, { query, stageIndex }],

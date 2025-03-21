@@ -26,45 +26,41 @@ import { pathMatchers as check } from "./utils";
 
 export type ExpressionNode = Lib.ExpressionParts | Lib.ExpressionArg | null;
 
-export type FormatOptions = {
+export type FormatClauseOptions = {
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number | undefined;
-  printWidth?: number;
-  quotes?: typeof EDITOR_QUOTES;
-};
+} & FormatOptions;
 
 export async function format(
   expression: Lib.ExpressionClause,
-  options: FormatOptions,
+  options: FormatClauseOptions,
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
   const { query, stageIndex } = options;
   const parts = Lib.expressionParts(query, stageIndex, expression);
-  return pformat("__not_used__", {
-    parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root: parts })],
-    printWidth: options.printWidth ?? 80,
-  });
+  return formatExpressionParts(parts, options);
 }
 
-export type FormatExampleOptions = {
+type FormatOptions = {
+  query?: Lib.Query;
+  stageIndex?: number;
+  expressionIndex?: number | undefined;
   printWidth?: number;
   quotes?: typeof EDITOR_QUOTES;
 };
 
-export async function formatExample(
-  parts: Lib.ExpressionParts,
-  options: FormatExampleOptions = {},
+export async function formatExpressionParts(
+  root: Lib.ExpressionParts,
+  options: FormatOptions,
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root: parts })],
+    plugins: [plugin({ ...options, root })],
     printWidth: options.printWidth ?? 80,
   });
 }
@@ -77,7 +73,7 @@ type InternalOptions = {
 
 // Set up a prettier plugin that formats expressions
 function plugin(
-  options: (FormatOptions | FormatExampleOptions) & InternalOptions,
+  options: FormatOptions & InternalOptions,
 ): Plugin<ExpressionNode> {
   return {
     languages: [
@@ -184,6 +180,20 @@ function formatBooleanLiteral(node: boolean): Doc {
   return node ? "True" : "False";
 }
 
+function assertQuery(query: Lib.Query | undefined): asserts query is Lib.Query {
+  if (!query) {
+    throw new Error("Expected query");
+  }
+}
+
+function assertStageIndex(
+  stageIndex: number | undefined,
+): asserts stageIndex is number {
+  if (typeof stageIndex !== "number") {
+    throw new Error("Expected stageIndex");
+  }
+}
+
 function formatColumn(
   path: AstPath<Lib.ColumnMetadata>,
   options: FormatOptions,
@@ -194,6 +204,9 @@ function formatColumn(
   }
 
   const { query, stageIndex } = options;
+  assertQuery(query);
+  assertStageIndex(stageIndex);
+
   const info = Lib.displayInfo(query, stageIndex, column);
   return formatDimensionName(info.longDisplayName, options);
 }
@@ -208,6 +221,9 @@ function formatMetric(
   }
 
   const { query, stageIndex } = options;
+  assertQuery(query);
+  assertStageIndex(stageIndex);
+
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
   return formatMetricName(displayInfo.displayName, options);
 }
@@ -222,6 +238,9 @@ function formatSegment(
   }
 
   const { query, stageIndex } = options;
+  assertQuery(query);
+  assertStageIndex(stageIndex);
+
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
   return formatSegmentName(displayInfo.displayName, options);
 }
