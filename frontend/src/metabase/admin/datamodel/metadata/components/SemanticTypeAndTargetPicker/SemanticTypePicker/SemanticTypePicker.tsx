@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Select } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
+import type { Field } from "metabase-types/api";
 
 import { getCompatibleSemanticTypes } from "./utils";
 
