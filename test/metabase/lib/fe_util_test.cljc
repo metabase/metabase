@@ -47,14 +47,14 @@
 (deftest ^:parallel literals-expression-parts-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))]
     (testing "string literal"
-      (is (=? (lib/expression-parts query "foo") "foo"))
-      (is (=? (lib/expression-parts query "") "")))
+      (is (=? "foo" (lib/expression-parts query "foo")))
+      (is (=? "" (lib/expression-parts query ""))))
     (testing "number literal"
-      (is (=? (lib/expression-parts query 42) 42))
-      (is (=? (lib/expression-parts query 0) 0)))
+      (is (=? 42 (lib/expression-parts query 42)))
+      (is (=? 0 (lib/expression-parts query 0))))
     (testing "boolean literal"
-      (is (=? (lib/expression-parts query true) true))
-      (is (=? (lib/expression-parts query false) false)))))
+      (is (=? true (lib/expression-parts query true)))
+      (is (=? false (lib/expression-parts query false))))))
 
 (deftest ^:parallel filter-parts-field-properties-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
