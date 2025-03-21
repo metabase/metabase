@@ -204,7 +204,9 @@
 ;; treat certain objects. For example, a string compared against a Postgres UUID Field needs to be parsed into a UUID
 ;; object, since text <-> UUID comparison doesn't work in Postgres. For this reason, raw literals in `:filter`
 ;; clauses are wrapped in `:value` clauses and given information about the type of the Field they will be compared to.
-(defclause ^:internal value
+;;
+;; :value clauses are also used to wrap top-level literal values in expression clauses.
+(defclause value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
@@ -917,12 +919,16 @@
                        (is-clause? numeric-functions x)  :numeric
                        (is-clause? string-functions x)   :string
                        (is-clause? boolean-functions x)  :boolean
+                       (is-clause? :value x)             :value
+                       (is-clause? :segment x)           :segment
                        :else                             :else))}
    [:datetime DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else     (one-of segment)]])
+   [:value    value]
+   [:segment  segment]
+   [:else     Field]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -952,7 +958,7 @@
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a `:field` clause."
+  `:+` clause or a `:field` or `:value` clause."
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
@@ -965,6 +971,7 @@
                        (is-clause? :case x)              :case
                        (is-clause? :if   x)              :if
                        (is-clause? :offset x)            :offset
+                       (is-clause? :value x)             :value
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -973,6 +980,7 @@
    [:case     case]
    [:if       case:if]
    [:offset   offset]
+   [:value    value]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
