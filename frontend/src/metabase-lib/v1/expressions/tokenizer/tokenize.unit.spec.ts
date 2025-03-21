@@ -812,9 +812,7 @@ describe("tokenizer", () => {
     const types = (expr: string) => tokenize(expr).tokens.map(t => t.type);
     const errors = (expr: string) => tokenize(expr).errors;
 
-    // This is hard to manage with the lezer parser
-    // eslint-disable-next-line jest/no-disabled-tests
-    it.skip("should ignore garbage", () => {
+    it("should ignore garbage", () => {
       expect(types("!@^ [Deal]")).toEqual([TOKEN.Identifier]);
       expect(errors("!")[0].message).toEqual("Invalid character: !");
       expect(errors(" % @")[1].message).toEqual("Invalid character: @");
