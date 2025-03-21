@@ -13,11 +13,9 @@
                                   :from [:core_user]
                                   :where [:and
                                           [:= :is_active true]
-                                          ;; Exclude @api-key because we probably don't want to count if it exists
-                                          ;; and it causes test flakes
-                                          [:not [:like :email [:inline "%@api-key.invalid"]]]]} :distinct_emails]]})))
+                                          [:= :type [:inline "personal"]]]} :distinct_emails]]})))
 
 (defn external-users-count
   "Number of users with sso-source: JWT as a proxy for external users of embedded views"
   []
-  (t2/count :model/User :is_active true :sso_source :jwt))
+  (t2/count :model/User :is_active true :sso_source :jwt :type :personal))

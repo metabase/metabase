@@ -13,6 +13,7 @@
                    :model/User _ {:email "ed@metabase.com"}
                    :model/User _ {:email "ed@meta.com"}
                    :model/User _ {:email "ed@megabase.com" :is_active false}
+                   :model/User _ {:email "ed@ubertbase.com" :type :internal}
                    :model/User _ {:email "ed@metalbase.com"}
                    :model/User _ {:email "ted@metalbase.com"}]
       (is (= 4 (sut/email-domain-count))))))
@@ -26,5 +27,6 @@
                    :model/User _ {}
                    :model/User _ {:sso_source :google_sso}
                    :model/User _ {:sso_source :saml}
+                   :model/User _ {:sso_source :jwt :type :internal}
                    :model/User _ {:sso_source :jwt}]
       (is (= 3 (sut/external-users-count))))))
