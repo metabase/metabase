@@ -155,7 +155,7 @@ describe("SemanticTypePicker", () => {
     expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
   });
 
-  it("shows 'Category' semantic type for boolean fields", async () => {
+  it("shows Category semantic type for boolean fields", async () => {
     setup({
       fieldId: BOOLEAN_FIELD.id,
       initialValue: null,
@@ -168,9 +168,9 @@ describe("SemanticTypePicker", () => {
     expect(dropdown.getByText("Category")).toBeInTheDocument();
   });
 
-  describe("'Entity Key', 'Foreign Key', and 'No semantic type'", () => {
+  describe("Entity Key, Foreign Key, and No semantic type", () => {
     it.each(FIELDS)(
-      "shows 'Entity Key', 'Foreign Key', and 'No semantic type' when field's effective type is derived from '$display_name'",
+      "shows Entity Key, Foreign Key, and No semantic type when fields effective type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
@@ -188,8 +188,8 @@ describe("SemanticTypePicker", () => {
     );
   });
 
-  describe("'Entity Name'", () => {
-    it("shows 'Entity Name' when field's effective type is derived from 'text/Type'", async () => {
+  describe("Entity Name", () => {
+    it("shows Entity Name when fields effective type is derived from text/Type", async () => {
       setup({
         fieldId: TEXT_FIELD.id,
         initialValue: null,
@@ -211,7 +211,7 @@ describe("SemanticTypePicker", () => {
       STRUCTURED_AND_COLLECTION_FIELD,
       TEXT_LIKE_FIELD,
     ])(
-      "does not show 'Entity Name' when field's effective type is derived from '$display_name'",
+      "does not show Entity Name when fields effective type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
