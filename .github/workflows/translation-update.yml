@@ -45,6 +45,7 @@ jobs:
             -e=es-MX
             -e=gu-IN
             -e=hr
+            -e=lt
             -e=km
             -e=pt-PT
             -e=ro

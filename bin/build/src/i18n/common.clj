@@ -40,7 +40,9 @@
   (when-let [^Message message (.locateHeader (catalog locale))]
     (let [header-fields (HeaderFields/wrap (.getMsgstr message))]
       (into {} (for [^String k (.getKeys header-fields)]
-                 [k (.getValue header-fields k)])))))
+                 [k (if (= k "Language")
+                      locale
+                      (.getValue header-fields k))])))))
 
 (defn- po-messages-seq [locale]
   (for [^Message message (iterator-seq (.iterator (catalog locale)))
