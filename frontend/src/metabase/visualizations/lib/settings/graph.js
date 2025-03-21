@@ -212,7 +212,7 @@ export const GRAPH_DATA_SETTINGS = {
         addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
-        showColorPicker: !hasBreakout,
+        showColorPicker: !hasBreakout && card.display !== "waterfall",
         colors: vizSettings["series_settings.colors"],
         series: extra.transformedSeries,
       };
