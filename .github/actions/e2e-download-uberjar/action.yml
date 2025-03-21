@@ -8,21 +8,33 @@ inputs:
     description: Optional commit SHA to download from. If not provided, will try to find the most recent working jar.
     required: false
 
+outputs:
+  found_artifact:
+    description: "Whether an artifact was found and downloaded successfully"
+    value: ${{ steps.check_download.outputs.found_artifact }}
+
 runs:
   using: "composite"
   steps:
     - name: Download previously stored uberjar
+      id: download_jar
       uses: actions/github-script@v7
+      continue-on-error: true
       with:
         script: | # js
           const fs = require('fs');
           const execSync = require("child_process").execSync;
 
           const getCommit = (ref = "HEAD") => {
-            const [commit] = execSync(`git rev-parse ${ref}`, { encoding: "utf8" }).split(
-              "\n",
-            );
-            return commit;
+            try {
+              const [commit] = execSync(`git rev-parse ${ref}`, { encoding: "utf8" }).split(
+                "\n",
+              );
+              return commit;
+            } catch (error) {
+              console.error(`Error getting commit from ${ref}: ${error.message}`);
+              return null;
+            }
           };
 
           const baseConfig = {
@@ -32,52 +44,103 @@ runs:
 
           async function getArtifact(commit, depth = 0) {
             if (depth > 20) {
-              throw new Error("Couldn't find the artifact!");
+              console.log("Reached maximum search depth (20 commits), couldn't find a suitable artifact");
+              return null;
+            }
+
+            if (!commit) {
+              console.log("Invalid commit reference");
+              return null;
             }
 
             const artifactName = `metabase-${{ inputs.edition }}-${commit}-uberjar`;
+            console.log(`Looking for artifact: ${artifactName}`);
 
-            const {
-              data: { artifacts },
-            } = await github.rest.actions.listArtifactsForRepo({
-              ...baseConfig,
-              name: artifactName,
-              per_page: 1,
-            });
+            try {
+              const {
+                data: { artifacts },
+              } = await github.rest.actions.listArtifactsForRepo({
+                ...baseConfig,
+                name: artifactName,
+                per_page: 1,
+              });
 
-            const [artifact] = artifacts;
+              const [artifact] = artifacts;
 
-            if (!artifact) {
-              const parentCommit = getCommit(`${commit}^`);
-              console.log(`Didn't find ${artifactName}.\n`);
-              console.log(`Switching to the parent commit: ${parentCommit}`);
-              return getArtifact(parentCommit, depth + 1);
-            } else {
-              return artifact;
+              if (!artifact) {
+                const parentCommit = getCommit(`${commit}^`);
+                console.log(`Didn't find ${artifactName}`);
+                if (parentCommit) {
+                  console.log(`Switching to the parent commit: ${parentCommit}`);
+                  return getArtifact(parentCommit, depth + 1);
+                } else {
+                  console.log("Could not get parent commit");
+                  return null;
+                }
+              } else {
+                console.log(`Found artifact: ${artifactName} (ID: ${artifact.id})`);
+                return artifact;
+              }
+            } catch (error) {
+              console.error(`Error searching for artifact: ${error.message}`);
+              return null;
             }
           }
 
           // Use provided commit or fall back to current commit
           const commitToUse = "${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}";
-          const { id } = await getArtifact(commitToUse);
+          console.log(`Starting search with commit: ${commitToUse}`);
 
-          const download = await github.rest.actions.downloadArtifact({
-            ...baseConfig,
-            artifact_id: id,
-            archive_format: 'zip',
-          });
+          const artifact = await getArtifact(commitToUse);
 
-          fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
+          if (!artifact) {
+            console.log("No suitable artifact found after searching through commits");
+            return false;
+          }
+
+          try {
+            const download = await github.rest.actions.downloadArtifact({
+              ...baseConfig,
+              artifact_id: artifact.id,
+              archive_format: 'zip',
+            });
+
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
+            console.log("Successfully downloaded artifact");
+            return true;
+          } catch (error) {
+            console.error(`Error downloading artifact: ${error.message}`);
+            return false;
+          }
+
+    - name: Check download result
+      id: check_download
+      shell: bash
+      run: |
+        if [ ! -f "mb.zip" ]; then
+          echo "Artifact download failed or artifact not found"
+          echo "found_artifact=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        echo "found_artifact=true" >> $GITHUB_OUTPUT
 
     - name: Unzip Metabase artifact containing an uberjar
+      if: steps.check_download.outputs.found_artifact == 'true'
       run: unzip mb.zip
       shell: bash
 
     - name: Verify jar file
+      if: steps.check_download.outputs.found_artifact == 'true'
       run: |
         if [ ! -f "target/uberjar/metabase.jar" ]; then
           echo "Error: metabase.jar not found after unzipping"
           exit 1
         fi
         echo "Successfully downloaded and extracted metabase.jar"
+      shell: bash
+
+    - name: Report when no artifact found
+      if: steps.check_download.outputs.found_artifact != 'true'
+      run: |
+        echo "No suitable artifact was found. A new build will be needed."
       shell: bash
