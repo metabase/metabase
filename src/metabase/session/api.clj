@@ -148,6 +148,7 @@
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
+  (api/check-404 (not-empty metabase-session-id))
   (api/check-exists? :model/Session metabase-session-id)
   (t2/delete! :model/Session :id metabase-session-id)
   (request/clear-session-cookie api/generic-204-no-content))
