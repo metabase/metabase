@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -14,6 +15,7 @@ import {
   useCombobox,
 } from "metabase/ui";
 
+import S from "./EditingBodyCellCategorySelect.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 type EditingBodyCellCategorySelectProps = EditingBodyPrimitiveProps & {
@@ -75,13 +77,10 @@ export const EditingBodyCellCategorySelect = ({
         <Input
           value={value}
           pointer
-          onClick={() => combobox.toggleDropdown()}
-          // makes input to act like a button, however appear like a regular input field
-          onMouseDown={event => {
-            event.preventDefault();
-          }}
+          onClick={() => combobox.openDropdown()}
           onChange={noop}
           {...inputProps}
+          className={cx(S.fakeInput, inputProps?.className)}
         />
       </Combobox.Target>
 
@@ -100,7 +99,7 @@ export const EditingBodyCellCategorySelect = ({
           {options.length > 0 ? (
             options.map(item => (
               <Combobox.Option
-                selected={initialValue === item.value}
+                selected={value === item.value}
                 value={item.value}
                 key={item.value}
               >

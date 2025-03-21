@@ -98,18 +98,17 @@ export const EditTableDataContainer = ({
     { open: openCreateRowModal, close: closeCreateRowModal },
   ] = useDisclosure(false);
 
-  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(null);
-  const handleRowExpectClick = useCallback(
-    (rowIndex: number) => {
-      setExpandedRowIndex(rowIndex);
-    },
-    [setExpandedRowIndex],
-  );
+  const [expandedRowIndex, setExpandedRowIndex] = useState<
+    number | undefined
+  >();
 
-  const handleCreationOrEditingModalClose = useCallback(() => {
-    closeCreateRowModal();
-    setExpandedRowIndex(null);
-  }, [closeCreateRowModal, setExpandedRowIndex]);
+  const handleModalOpenAndExpandedRow = useCallback(
+    (rowIndex?: number) => {
+      setExpandedRowIndex(rowIndex);
+      openCreateRowModal();
+    },
+    [openCreateRowModal],
+  );
 
   if (!database || isLoading || tableIdLoading) {
     // TODO: show loader
@@ -127,7 +126,7 @@ export const EditTableDataContainer = ({
         {table && (
           <EditTableDataHeader
             table={table}
-            onCreate={openCreateRowModal}
+            onCreate={handleModalOpenAndExpandedRow}
             onDelete={handleRowsDelete}
           />
         )}
@@ -137,7 +136,7 @@ export const EditTableDataContainer = ({
               <EditTableDataGrid
                 data={datasetData}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={handleRowExpectClick}
+                onRowExpandClick={handleModalOpenAndExpandedRow}
               />
             </Box>
             <Flex
@@ -162,11 +161,11 @@ export const EditTableDataContainer = ({
         )}
       </Stack>
       <EditingBaseRowModal
-        opened={isCreateRowModalOpen || expandedRowIndex !== null}
-        onClose={handleCreationOrEditingModalClose}
+        opened={isCreateRowModalOpen}
+        onClose={closeCreateRowModal}
         datasetColumns={datasetData.data.cols}
         currentRowData={
-          expandedRowIndex !== null
+          expandedRowIndex !== undefined
             ? datasetData.data.rows[expandedRowIndex]
             : undefined
         }
