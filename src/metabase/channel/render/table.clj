@@ -5,27 +5,29 @@
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
-   [metabase.formatter])
+   [metabase.formatter]
+   [metabase.models.visualization-settings :as mb.viz])
   (:import
    (metabase.formatter NumericWrapper)))
 
 (comment metabase.formatter/keep-me)
 
+(def ^:private max-bar-width 106)
+(def ^:private font-size 12)
+
 (defn- bar-th-style []
   (merge
    (style/font-style)
-   {:font-size :12px
+   {:font-size       (format "%spx" font-size)
     :font-weight     700
     :color           style/color-text-dark
     :border-bottom   (str "2px solid " style/color-border)
     :border-right    0}))
 
-(def ^:private max-bar-width 106)
-
 (defn- bar-td-style []
   (merge
    (style/font-style)
-   {:font-size      :12px
+   {:font-size      (format "%spx" font-size)
     :font-weight    400
     :text-align     :left
     :color          style/color-text-dark
@@ -82,16 +84,20 @@
     (str (str/trim (subs text 0 max-column-character-length)) "...")
     text))
 
-(defn- render-table-head [column-names {:keys [bar-width row]}]
+(defn- render-table-head [column-names {:keys [bar-width row]} columns col->styles]
   [:thead
    (conj (into [:tr]
                (map-indexed
                 (fn [idx header-cell]
-                  (let [title (get column-names idx)]
+                  (let [title (get column-names idx)
+                        ;; TSP TODO - Rework index alignment assumption
+                        ;; Also should simplify / unify the styling functions
+                        col   (nth columns idx)]
                     [:th {:style (style/style
                                   (row-style-for-type header-cell)
                                   (heading-style-for-type header-cell)
-                                  {:min-width :42px})
+                                  {:min-width :42px}
+                                  (get col->styles (:name col)))
                           :title title}
                      (truncate-text (h title))]))
                 row))
@@ -122,23 +128,54 @@
   `get-background-color` is a function that returned the background color for the current cell; it is invoked like
 
     (get-background-color cell-value column-name row-index)"
-  [get-background-color normalized-zero column-names rows]
+  [get-background-color normalized-zero column-names rows columns col->styles]
   [:tbody
    (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
      [:tr {:style (style/style {:color style/color-gray-3})}
       (for [[col-idx cell] (m/indexed row)]
-        [:td {:style (style/style
-                      (row-style-for-type cell)
-                      {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
-                      (when (and bar-width (= col-idx 1))
-                        {:font-weight 700})
-                      (when (= row-idx (dec (count rows)))
-                        {:border-bottom 0})
-                      (when (= col-idx (dec (count row)))
-                        {:border-right 0}))}
-         (h cell)])
+        (let [col (nth columns col-idx)]
+          [:td {:style (style/style
+                        (row-style-for-type cell)
+                        (get col->styles (:name col))
+                        {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
+                        (when (and bar-width (= col-idx 1))
+                          {:font-weight 700})
+                        (when (= row-idx (dec (count rows)))
+                          {:border-bottom 0})
+                        (when (= col-idx (dec (count row)))
+                          {:border-right 0}))}
+           (h cell)]))
       (some-> bar-width (render-bar normalized-zero))])])
 
+;; TSP TODO - fix the assumption that padding is 1em
+(defn- get-min-width
+  [col-width]
+  (let [y-padding 1]
+    (- col-width (* font-size y-padding 2))))
+
+;; TSP TODO - This assumes column-widths are always present
+;; TSP TODO - This assumes the column can be found by its key in viz settings (not always true)
+(defn column->viz-setting-styles
+  "Takes a vector of column definitions and visualization settings
+  Returns a map of column identifier keys to style maps based on the visualization settings"
+  [columns viz-settings]
+  (let [column-settings (get viz-settings ::mb.viz/column-settings)
+        column-widths (get viz-settings :table.column_widths)]
+    (reduce
+     (fn [acc [col-key col-setting]]
+       ;; TSP TODO - Rework this to use cond-> for adding support for more settings
+       (let [column-name (::mb.viz/column-name col-key)
+             text-wrapping (::mb.viz/text-wrapping col-setting)
+             column-index (first (keep-indexed #(when (= (:name %2) column-name) %1) columns))]
+         (if (and text-wrapping column-index)
+           (assoc acc column-name
+                  {:min-width (format "%spx" (get-min-width (nth column-widths column-index)))
+                   :white-space "normal"})
+           acc)))
+     {}
+     column-settings)))
+
+;; TSP TODO - Clean up this function
 (defn render-table
   "This function returns the HTML data structure for the pulse table.
 
@@ -147,11 +184,12 @@
     `:col-names`, which is the is display_names of the visible columns
     `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
   If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names-map contents]
-   (render-table color-selector 0 column-names-map contents))
+  ([color-selector column-names-map contents columns viz-settings format-rows?]
+   (render-table color-selector 0 column-names-map contents columns viz-settings format-rows?))
 
-  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows]]
-   (let [pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings format-rows?]
+   (let [col->styles        (column->viz-setting-styles columns viz-settings)
+         pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
          header             (cond-> header
@@ -160,13 +198,21 @@
                               pivot-grouping-idx (keep (fn [row]
                                                          (let [group (:num-value (nth (:row row) pivot-grouping-idx))]
                                                            (when (= 0 group)
-                                                             (update row :row #(m/remove-nth pivot-grouping-idx %)))))))]
+                                                             (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
+         thead              (render-table-head (vec col-names) header columns col->styles)
+         tbody              (render-table-body
+                             (partial js.color/get-background-color color-selector)
+                             normalized-zero
+                             cols-for-color-lookup
+                             rows
+                             columns
+                             col->styles)]
      [:table {:style       (style/style {:max-width     "100%"
-                                         :white-space   :nowrap
+                                         :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
-                                         :border-radius :6px
-                                         :width         "1%"})
+                                         :width         "1%"
+                                         :border-radius :6px})
               :cellpadding "0"
               :cellspacing "0"}
-      (render-table-head (vec col-names) header)
-      (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)])))
+      thead
+      tbody])))
