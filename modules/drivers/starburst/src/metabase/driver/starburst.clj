@@ -1,9 +1,7 @@
 (ns metabase.driver.starburst
   "starburst driver."
   (:require
-   ;; For legacy Starburst
-   ;; Should be removed once email can be used as user_attribute for impersonation
-   #_{:clj-kondo/ignore [:metabase/modules]}
+   #_{:clj-kondo/ignore [:metabase/modules]} ; For legacy.
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -13,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -991,3 +990,15 @@
 (defmethod driver/db-start-of-week :starburst
   [_]
   :monday)
+
+(defmethod driver.sql/set-role-statement :starburst
+  [_driver role]
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET SESSION AUTHORIZATION \"%s\";" role)
+      (format "SET SESSION AUTHORIZATION %s;" role))))
+
+(defmethod driver.sql/default-database-role :starburst
+  [_driver database]
+  (get-in database [:details :user]))
