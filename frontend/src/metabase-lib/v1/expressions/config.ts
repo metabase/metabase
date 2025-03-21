@@ -133,6 +133,7 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `path`,
     type: "string",
     args: ["string"],
+    requiresFeature: "regex",
   },
   concat: {
     displayName: `concat`,

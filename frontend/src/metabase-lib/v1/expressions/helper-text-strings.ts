@@ -418,7 +418,6 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: ["dimension", t`URL`],
       },
     ],
-    docsPage: "path",
   },
   {
     name: "replace",
