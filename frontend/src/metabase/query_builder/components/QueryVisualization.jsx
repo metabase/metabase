@@ -164,8 +164,16 @@ export const VisualizationDirtyState = ({
 }) => {
   const isEnabled = isRunnable && !hidden;
   const keyboardShortcut = getRunQueryShortcut();
-  const handleRun = () => runQuestionQuery({ ignoreCache: true });
-  const handleCancel = () => cancelQuery();
+
+  const handleClick = () => {
+    if (isEnabled) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        runQuestionQuery();
+      }
+    }
+  };
 
   return (
     <div
@@ -178,7 +186,7 @@ export const VisualizationDirtyState = ({
         CS.cursorPointer,
         { [QueryBuilderS.LoadingHidden]: hidden },
       )}
-      onClick={isRunning ? handleCancel : handleRun}
+      onClick={handleClick}
     >
       <Stack gap="sm" align="center">
         <RunButtonWithTooltip
@@ -189,8 +197,6 @@ export const VisualizationDirtyState = ({
           hidden={!isEnabled}
           isRunning={isRunning}
           isDirty={isResultDirty}
-          onRun={handleRun}
-          onCancel={handleCancel}
         />
         {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
       </Stack>
