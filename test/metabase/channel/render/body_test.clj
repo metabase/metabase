@@ -8,6 +8,7 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.public-settings :as public-settings]
@@ -1034,3 +1035,23 @@
                               first)]
               (testing "Renders with correct day of week first"
                 (is (= "2017/1" label))))))))))
+
+(deftest render-correct-whitelabel-colors
+  (when config/ee-available?
+    (testing "The static-viz respects custom whitelabel colors"
+      (mt/with-premium-features #{:whitelabel}
+        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+          (mt/dataset test-data
+            (let [q    (mt/mbql-query products
+                         {:aggregation [[:count]]
+                          :breakout    [!month.created_at]})
+                  card {:name                   "bar-test"
+                        :display                :bar
+                        :dataset_query          q
+                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                 :graph.metrics ["count"]}}]
+              (mt/with-temp [:model/Card {card-id :id} card]
+                (let [doc    (render.tu/render-card-as-hickory! card-id)
+                      svg    (html doc)]
+                  (testing "Renders with custom whitelabel color"
+                    (is (str/includes? svg "#0005FF"))))))))))))
