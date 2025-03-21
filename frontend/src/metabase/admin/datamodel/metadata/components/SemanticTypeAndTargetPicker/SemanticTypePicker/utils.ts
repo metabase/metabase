@@ -10,7 +10,7 @@ export function getCompatibleSemanticTypes(
   const effectiveType = field.effective_type ?? field.base_type;
   const isText = isa(effectiveType, TYPE.Text);
   const isTextLike = isa(effectiveType, TYPE.TextLike);
-  const levelOneType = getLevelOneDataTypes().find(levelOneType => {
+  const levelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
     return isa(effectiveType, levelOneType);
   });
 
@@ -42,10 +42,9 @@ export function getCompatibleSemanticTypes(
       return isText && !isTextLike;
     }
 
-    // Sanity check, this should never happen. But if it does, safer not to hide the option.
-    if (!levelOneType) {
-      return true;
-    }
+    const isDerivedFromAnyLevelOneType = levelOneTypes.some(type => {
+      return isa(option.id, type);
+    });
 
     /**
      * Hack: allow "casting" text types to numerical types
@@ -56,11 +55,11 @@ export function getCompatibleSemanticTypes(
      * additionally show semantic types derived from "type/Number".
      */
     if (isText || isTextLike) {
-      return isa(option.id, levelOneType) || isa(option.id, TYPE.Number);
+      return isDerivedFromAnyLevelOneType || isa(option.id, TYPE.Number);
     }
 
     // Limit the choice to types derived from level-one data type of Field’s effective_type
-    return isa(option.id, levelOneType);
+    return isDerivedFromAnyLevelOneType;
   });
 }
 
