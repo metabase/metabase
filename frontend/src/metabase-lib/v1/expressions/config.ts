@@ -628,28 +628,3 @@ export const OPERATORS = new Set([
   ...LOGICAL_AND_OPERATOR,
   ...LOGICAL_OR_OPERATOR,
 ]);
-
-export const POPULAR_FUNCTIONS = [
-  "case",
-  "concat",
-  "contains",
-  "between",
-  "coalesce",
-];
-
-export const POPULAR_FILTERS = [
-  "contains",
-  "case",
-  "between",
-  "interval",
-  "concat",
-  "round",
-];
-
-export const POPULAR_AGGREGATIONS = [
-  "count",
-  "distinct",
-  "count-where",
-  "sum",
-  "avg",
-];

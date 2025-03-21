@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { Group, Select, Stack, Text } from "metabase/ui";
 
 import { CronExpressionInput } from "./CronExpressionInput";
@@ -12,12 +13,6 @@ interface ModelCachingScheduleWidgetProps {
 }
 
 const DEFAULT_CUSTOM_SCHEDULE = "0 * * * ?";
-
-function formatCronExpression(cronExpression: string): string {
-  const [, ...partsWithoutSeconds] = cronExpression.split(" ");
-  const partsWithoutSecondsAndYear = partsWithoutSeconds.slice(0, -1);
-  return partsWithoutSecondsAndYear.join(" ");
-}
 
 function isCustomSchedule(
   value: string,
@@ -36,7 +31,7 @@ export const ModelCachingScheduleWidget = ({
   const [customCronSchedule, setCustomCronSchedule] = useState<string>(
     // We don't allow to specify the "year" component, but it's present in the value
     // So we need to cut it visually to avoid confusion
-    isCustom ? formatCronExpression(value) : "",
+    isCustom ? formatCronExpressionForUI(value) : "",
   );
 
   const handleScheduleChange = useCallback(
@@ -68,13 +63,12 @@ export const ModelCachingScheduleWidget = ({
           />
         </Stack>
         {isCustom && customCronSchedule !== undefined && (
-          <Stack gap={0}>
-            <CronExpressionInput
-              value={customCronSchedule}
-              onChange={setCustomCronSchedule}
-              onBlurChange={onChange}
-            />
-          </Stack>
+          <CronExpressionInput
+            value={customCronSchedule}
+            onChange={setCustomCronSchedule}
+            onBlurChange={onChange}
+            showExplainer
+          />
         )}
       </Group>
     </Stack>

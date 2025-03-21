@@ -885,7 +885,7 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", () => {
+describe("issue 42949", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1115,7 +1115,7 @@ describe("issue 49882", () => {
     );
 
     H.popover()
-      .findByText("Expecting comma but got case instead")
+      .findByText("Expecting operator but got case instead")
       .should("be.visible", { timeout: 5000 });
   });
 
