@@ -1,7 +1,4 @@
-import {
-  DEPRECATED_FIELD_SEMANTIC_TYPES,
-  FIELD_SEMANTIC_TYPES,
-} from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isTypePK, isa } from "metabase-lib/v1/types/utils/isa";
@@ -27,7 +24,7 @@ export function getCompatibleSemanticTypes(field: Field, value: string | null) {
       return true;
     }
 
-    if (isDeprecated(option.id)) {
+    if (option.deprecated) {
       return false;
     }
 
@@ -74,8 +71,4 @@ function getLevelOneTypes(): string[] {
     TYPE.Collection,
     TYPE.Structured,
   ];
-}
-
-function isDeprecated(semanticType: string) {
-  return DEPRECATED_FIELD_SEMANTIC_TYPES.includes(semanticType);
 }
