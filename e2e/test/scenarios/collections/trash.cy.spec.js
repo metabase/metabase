@@ -432,14 +432,12 @@ describe("scenarios > collections > trash", () => {
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
     // FUTURE: replace following two lines with commented out code when collections can be deleted
-    H.popover().findByText("Delete permanently").should("not.exist");
-    toggleEllipsisMenuFor("Collection A");
-    // popover().findByText("Delete permanently").click();
-    // modal().findByText("Delete Collection A permanently?").should("exist");
-    // modal().findByText("Delete permanently").click();
-    // collectionTable().within(() => {
-    //   cy.findByText("Collection A").should("not.exist");
-    // });
+    H.popover().findByText("Delete permanently").click();
+    H.modal().findByText("Delete Collection A permanently?").should("exist");
+    H.modal().findByText("Delete permanently").click();
+    collectionTable().within(() => {
+      cy.findByText("Collection A").should("not.exist");
+    });
 
     toggleEllipsisMenuFor("Dashboard A");
     H.popover().findByText("Delete permanently").click();
@@ -462,14 +460,12 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Collection B").click();
     });
     // FUTURE: replace following two lines with commented out code when collections can be deleted
-    archiveBanner().findByText("Delete permanently").should("not.exist");
-    cy.visit("/trash");
-    // archiveBanner().findByText("Delete permanently").click();
-    // modal().findByText("Delete Collection B permanently?").should("exist");
-    // modal().findByText("Delete permanently").click();
-    // collectionTable().within(() => {
-    //   cy.findByText("Collection B").should("not.exist");
-    // });
+    archiveBanner().findByText("Delete permanently").click();
+    H.modal().findByText("Delete Collection B permanently?").should("exist");
+    H.modal().findByText("Delete permanently").click();
+    collectionTable().within(() => {
+      cy.findByText("Collection B").should("not.exist");
+    });
 
     collectionTable().within(() => {
       cy.findByText("Dashboard B").click();

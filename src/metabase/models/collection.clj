@@ -1755,9 +1755,13 @@
   (when (seq items)
     (for [item items]
       (assoc item :can_delete (boolean (and
-                                        (not (or (= :model/Collection (t2/model item))
-                                                 (collection.root/is-root-collection? item)))
+                                        ;; Don't allow deletion of the trash collection 
+                                        (not (is-trash? item))
+                                        ;; Don't allow deletion of root collection
+                                        (not (collection.root/is-root-collection? item))
+                                        ;; Only allow deletion of archived items
                                         (:archived item)
+                                        ;; User must have write permissions
                                         (mi/can-write? item)))))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------

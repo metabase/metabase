@@ -1410,3 +1410,23 @@
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
                  force))
+
+(api.macros/defendpoint :delete "/:id"
+  "Delete a Collection. Only collections that have been archived can be deleted."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [collection (api/check-404 (t2/select-one :model/Collection :id id))]
+    (api/check-404 collection)
+
+    ;; Make sure we have write permissions for this collection
+    (api/write-check :model/Collection id)
+
+    ;; Only archived collections can be deleted
+    (api/check-400
+     (:archived collection)
+     [:message "Only archived collections can be deleted."])
+
+    ;; Delete the collection and all of its contents
+    (t2/delete! :model/Collection :id id)
+
+    api/generic-204-no-content))

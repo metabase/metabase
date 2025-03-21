@@ -2767,3 +2767,36 @@
                     (filter #(= (:model %) "card"))
                     first
                     :dashboard)))))))
+
+(deftest permanently-delete-collection-test
+  (testing "DELETE /api/collection/:id"
+    (testing "Non-admin users can't delete collections they don't have write permissions for"
+      (mt/with-temp [:model/Collection collection {:archived true}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (str "collection/" (u/the-id collection)))))))
+
+    (testing "Admin users can delete collections they have write permissions for"
+      (mt/with-temp [:model/Collection collection {:archived true}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (is (= nil
+               (mt/user-http-request :crowberto :delete 204 (str "collection/" (u/the-id collection)))))))
+
+    (testing "You can only delete collections that are archived"
+      (mt/with-temp [:model/Collection collection]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (is (= "Only archived collections can be deleted."
+               (mt/user-http-request :crowberto :delete 400 (str "collection/" (u/the-id collection)))))))
+
+    (testing "Deleting a collection should cascade delete all child collections and their content"
+      (mt/with-temp [:model/Collection parent-collection {:archived true}
+                     :model/Collection child-collection {:location (collection/children-location parent-collection)
+                                                         :archived true}
+                     :model/Card card {:collection_id (u/the-id child-collection)}
+                     :model/Dashboard dashboard {:collection_id (u/the-id child-collection)}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-collection)
+        (is (= nil
+               (mt/user-http-request :crowberto :delete 204 (str "collection/" (u/the-id parent-collection)))))
+        (is (= nil (t2/select-one :model/Collection :id (u/the-id parent-collection))))
+        (is (= nil (t2/select-one :model/Collection :id (u/the-id child-collection))))
+        (is (= nil (t2/select-one :model/Card :id (u/the-id card))))
+        (is (= nil (t2/select-one :model/Dashboard :id (u/the-id dashboard))))))))
