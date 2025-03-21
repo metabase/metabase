@@ -4,22 +4,19 @@ import { checkNotNull } from "metabase/lib/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
-  adhocQuestionData,
+  allDataIsSandboxed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
-  getCardResponses,
-  getDashcardResponses,
   getFieldValuesForProductCategories,
   getParameterValuesForProductCategories,
   modelCustomView,
   questionCustomView,
-  rowsShouldContainGizmosAndWidgets,
-  rowsShouldContainOnlyGizmos,
-  signInAsNormalUser,
-  sandboxingUser as user,
-  valuesShouldContainGizmosAndWidgets,
-  valuesShouldContainOnlyGizmos,
+  sandboxedUser,
+  signInAs,
+  signInAsSandboxedUser,
+  unsandboxedUser,
+  sandboxedUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -82,30 +79,10 @@ describe(
     });
 
     it("shows all data before sandboxing policy is applied", () => {
-      signInAsNormalUser();
-
-      getDashcardResponses(dashboard, sandboxableQuestions).then(
-        rowsShouldContainGizmosAndWidgets,
-      );
-
-      getCardResponses(sandboxableQuestions).then(
-        rowsShouldContainGizmosAndWidgets,
-      );
-
-      H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-        rowsShouldContainGizmosAndWidgets({
-          responses: [response],
-          questions: [adhocQuestionData as unknown as CollectionItem],
-        }),
-      );
-
-      getFieldValuesForProductCategories().then(response =>
-        valuesShouldContainGizmosAndWidgets(response.body.values),
-      );
-
-      getParameterValuesForProductCategories().then(response =>
-        valuesShouldContainGizmosAndWidgets(response.body.values),
-      );
+      signInAs(sandboxedUser);
+      allDataIsSandboxed(dashboard, sandboxableQuestions);
+      signInAs(unsandboxedUser);
+      allDataIsSandboxed(dashboard, sandboxableQuestions);
     });
 
     describe("we can apply a sandbox policy", () => {
@@ -119,24 +96,10 @@ describe(
           customViewType: "Question" as const,
           customViewName: questionCustomView.name,
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
-        );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
+        signInAs(sandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        signInAs(unsandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -145,24 +108,10 @@ describe(
           customViewType: "Model" as const,
           customViewName: modelCustomView.name,
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
-        );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
+        signInAs(sandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        signInAs(unsandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
       });
 
       it("to a table filtered by a regular column", () => {
@@ -171,24 +120,10 @@ describe(
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
-        );
-        getFieldValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
-        getParameterValuesForProductCategories().then(response =>
-          valuesShouldContainOnlyGizmos(response.body.values),
-        );
+        signInAs(sandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        signInAs(unsandboxedUser);
+        allDataIsSandboxed(dashboard, sandboxableQuestions);
       });
     });
 
@@ -213,7 +148,7 @@ describe(
             customViewName: `${customViewType} with custom columns`,
             filterColumn: `my_${customColumnType}`,
           });
-          signInAsNormalUser();
+          signInAsSandboxedUser();
           H.visitDashboard(checkNotNull(dashboard).id);
 
           cy.log("Should not return any data, and return an error");
