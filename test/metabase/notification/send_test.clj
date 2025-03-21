@@ -257,8 +257,8 @@
       (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
         (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
                       slack/post-chat-message!               (fn [& _]
-                                                               (throw (ex-info "Invalid token"
-                                                                               {:errors {:slack-token "Invalid token"}})))]
+                                                               (throw (ex-info "Slack API error: token_revoked"
+                                                                               {:error-type :slack/invalid-token})))]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfFailedCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry))))))
@@ -277,6 +277,16 @@
                       retry/random-exponential-backoff-retry (constantly test-retry)]
           (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry))))))
+    (testing "post slack message to missing channel fails without retry"
+      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" test-retry-configuration)]
+        (with-redefs [slack/post-chat-message!               (fn [& _]
+                                                               (throw (ex-info "Channel not found"
+                                                                               {:error-type :slack/channel-not-found}))
+                                                               nil)
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
+          (is (= {:numberOfFailedCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry))))))))
 
 (deftest send-channel-record-task-history-test
