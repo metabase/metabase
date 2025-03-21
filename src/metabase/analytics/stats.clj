@@ -841,7 +841,12 @@
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
    {:name      :sdk-embedding
     :available true
-    :enabled   (setting/get :enable-embedding-sdk)}])
+    :enabled   (setting/get :enable-embedding-sdk)}
+   {:name      :starburst-legacy-impersonation
+    :available true
+    :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
+                    (some identity)
+                    boolean)}])
 
 (defn- snowplow-features
   []
