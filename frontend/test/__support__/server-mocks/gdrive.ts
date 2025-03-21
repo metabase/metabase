@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import type { Settings } from "metabase-types/api";
@@ -5,21 +6,32 @@ import type { Settings } from "metabase-types/api";
 type Props =
   | {
       status?: never;
+      "folder-upload-time"?: never;
       errorCode: number;
     }
   | {
       status: Settings["gsheets"]["status"];
+      "folder-upload-time"?: number;
       errorCode?: never;
     };
 
-export function setupGdriveGetFolderEndpoint({ status, errorCode }: Props) {
+export function setupGdriveGetFolderEndpoint({
+  status,
+  errorCode,
+  "folder-upload-time": uploadTime,
+}: Props) {
   if (status) {
-    fetchMock.get("path:/api/ee/gsheets/folder", () => {
-      return {
-        status,
-        db_id: 1,
-      };
-    });
+    fetchMock.get(
+      "path:/api/ee/gsheets/folder",
+      () => {
+        return {
+          status,
+          db_id: 1,
+          "folder-upload-time": uploadTime ?? dayjs().unix(),
+        };
+      },
+      { overwriteRoutes: true },
+    );
   }
 
   if (errorCode) {
@@ -35,6 +47,8 @@ export function setupGdriveServiceAccountEndpoint(
   });
 }
 
-export function setupGdrivePostFolderEndpoint() {
-  fetchMock.post("path:/api/ee/gsheets/folder", { status: 202 });
+export function setupGdriveSyncEndpoint() {
+  fetchMock.post("path:/api/ee/gsheets/folder/sync", () => {
+    return { db_id: 1 };
+  });
 }
