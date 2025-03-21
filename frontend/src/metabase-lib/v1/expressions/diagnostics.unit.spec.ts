@@ -99,7 +99,7 @@ describe("diagnostics", () => {
     });
 
     it("should handle valid input", () => {
-      const expression = "1";
+      const expression = "1 + 1";
       const result = setup({ expression });
       expect(result.error).toBeNull();
     });
