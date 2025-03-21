@@ -66,6 +66,9 @@
   (formatter/map->NumericWrapper {:num-str   (str num-str)
                                   :num-value num-value}))
 
+(defn- textwrap [text-str]
+  (formatter/->TextWrapper text-str text-str))
+
 (def ^:private default-header-result
   [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name" "Description Column"]
     :bar-width nil}
@@ -164,20 +167,20 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -218,9 +221,9 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]
-          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]
-          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]]
+  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]
+          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]
+          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -242,11 +245,11 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
