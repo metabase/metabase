@@ -530,4 +530,7 @@
         (when (and (= expression-mode :filter)
                    (lib.util.match/match-one expr :offset))
           {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true})
+        (when (= (first expr) :value)
+          {:message  (i18n/tru "Standalone constants are not supported.")
            :friendly true}))))
