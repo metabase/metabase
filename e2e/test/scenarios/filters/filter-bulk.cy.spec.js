@@ -455,28 +455,27 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("filters by primary keys", () => {
-      H.filterField("ID", {
-        value: ["17", "18"],
+      H.popover().within(() => {
+        cy.findByText("ID").click();
+        cy.findByLabelText("Filter value").type("17,18");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("131.68").should("be.visible"); // total for order id 17
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("123.99").should("be.visible"); // total for order id 18
+      H.assertQueryBuilderRowCount(2);
+      H.tableInteractive().within(() => {
+        cy.findByText("131.68").should("be.visible"); // total for order id 17
+        cy.findByText("123.99").should("be.visible"); // total for order id 18
+      });
     });
 
     it("filters by a foreign key", () => {
-      H.filterField("Product ID", {
-        value: "65",
+      H.popover().within(() => {
+        cy.findByText("Product ID").click();
+        cy.findByLabelText("Filter value").type("65");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 107 rows").should("be.visible");
+      H.assertQueryBuilderRowCount(107);
     });
   });
 
@@ -487,41 +486,38 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds a contains text filter", () => {
-      H.filterField("City", {
-        operator: "contains",
-        value: "Indian",
+      H.popover().findByText("City").click();
+      H.selectFilterOperator("Contains");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("Indian");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 5 rows").should("be.visible");
+      H.assertQueryBuilderRowCount(5);
     });
 
     it("adds an ends with text filter", () => {
-      H.filterField("City", {
-        operator: "ends with",
-        value: "Valley",
+      H.popover().findByText("City").click();
+      H.selectFilterOperator("Ends with");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("Valley");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 8 rows").should("be.visible");
+      H.assertQueryBuilderRowCount(8);
     });
 
     it("adds multiple is text filters", () => {
-      H.filterSelectField("City", {
-        operator: "is",
-        value: ["Indiantown", "Indian Valley"],
+      H.popover().within(() => {
+        cy.findByText("City").click();
+        cy.findByLabelText("Filter value").type("Indiantown,Indian Valley");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("City is 2 selections").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 3 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("City is 2 selections")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(3);
     });
   });
 
