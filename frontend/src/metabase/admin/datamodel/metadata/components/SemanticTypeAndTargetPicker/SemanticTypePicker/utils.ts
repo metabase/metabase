@@ -7,11 +7,11 @@ export function getCompatibleSemanticTypes(
   field: Field,
   currentValue: string | null,
 ) {
-  const effectiveType = field.effective_type ?? field.base_type;
-  const isText = isa(effectiveType, TYPE.Text);
-  const isTextLike = isa(effectiveType, TYPE.TextLike);
-  const levelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
-    return isa(effectiveType, levelOneType);
+  const fieldEffectiveType = field.effective_type ?? field.base_type;
+  const isFieldText = isa(fieldEffectiveType, TYPE.Text);
+  const isFieldTextLike = isa(fieldEffectiveType, TYPE.TextLike);
+  const fieldLevelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
+    return isa(fieldEffectiveType, levelOneType);
   });
 
   return FIELD_SEMANTIC_TYPES.filter(option => {
@@ -34,15 +34,15 @@ export function getCompatibleSemanticTypes(
     }
 
     // "Category" is the semantic type for Booleans
-    if (option.id === TYPE.Category && isa(effectiveType, TYPE.Boolean)) {
+    if (option.id === TYPE.Category && isa(fieldEffectiveType, TYPE.Boolean)) {
       return true;
     }
 
     if (option.id === TYPE.Name) {
-      return isText && !isTextLike;
+      return isFieldText && !isFieldTextLike;
     }
 
-    const isDerivedFromAnyLevelOneType = levelOneTypes.some(type => {
+    const isDerivedFromAnyLevelOneType = fieldLevelOneTypes.some(type => {
       return isa(option.id, type);
     });
 
@@ -53,7 +53,7 @@ export function getCompatibleSemanticTypes(
      * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
      * additionally show semantic types derived from "type/Number".
      */
-    if (isText || isTextLike) {
+    if (isFieldText || isFieldTextLike) {
       return isDerivedFromAnyLevelOneType || isa(option.id, TYPE.Number);
     }
 
