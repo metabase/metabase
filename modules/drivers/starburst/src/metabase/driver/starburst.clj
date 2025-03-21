@@ -1,6 +1,9 @@
 (ns metabase.driver.starburst
   "starburst driver."
   (:require
+   ;; For legacy Starburst
+   ;; Should be removed once email can be used as user_attribute for impersonation
+   #_{:clj-kondo/ignore [:metabase/modules]}
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -633,18 +636,15 @@
 
 (defn- impersonate-user
   [^Connection conn]
-  (if
-   (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
+  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
     (let [email (get (deref api/*current-user*) :email)]
-      (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))
-    nil))
+      (log/info "[starburst] Using legacy impersonation.")
+      (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
 
 (defn- remove-impersonation
   [^Connection conn]
-  (if
-   (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))
-    nil))
+  (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
+    (.clearSessionUser ^TrinoConnection (.unwrap conn TrinoConnection))))
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed
 (defn- handle-execution-error
@@ -847,7 +847,7 @@
 (defn- db-name
   "Creates a \"DB name\" for the given catalog `c` and (optional) schema `s`.  If both are specified, a slash is
   used to separate them.  See examples at:
-  https://starburst.io/docs/current/installation/jdbc.html#connecting"
+  https://trino.io/docs/current/installation/jdbc.html#connecting"
   [c s]
   (cond
     (str/blank? c)
@@ -949,7 +949,7 @@
                 ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                 ;; very picky about properties (throwing an error if any are unrecognized)
                 ;; all valid properties can be found in the JDBC Driver source here:
-                ;; https://starburst.io/docs/current/installation/jdbc.html#parameter-reference
+                ;; https://trino.io/docs/current/installation/jdbc.html#parameter-reference
                   (select-keys (concat
                                 [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
                                ;; JDBC driver specific properties

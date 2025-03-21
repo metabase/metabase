@@ -42,6 +42,8 @@ driver:
       type: boolean
       required: false
       description: Impersonate end user when running queries
+      visible-if:
+        never-visible: true
     - name: prepared-optimized
       display-name: Optimized prepared statements
       type: boolean
