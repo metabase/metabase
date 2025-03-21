@@ -189,3 +189,10 @@
     ::mbql.s/Addable [:relative-datetime -1 :month]
     ::mbql.s/Addable [:interval -2 :month]
     ::mbql.s/+       [:+ [:relative-datetime -1 :month] [:interval -2 :month]]))
+
+(deftest ^:parallel filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:value true nil]
+    [:value false nil]
+    [:field 1 nil]
+    [:segment 1]))
