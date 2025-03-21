@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
@@ -223,6 +224,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
+    runQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -399,6 +401,16 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       }),
     [question, isNewQuestion],
   );
+
+  const handleCmdEnter = () => {
+    if (isRunning) {
+      cancelQuery();
+    } else {
+      runQuestionOrSelectedQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]]);
 
   return (
     <>
