@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events :as events]
+   [metabase.events.notification :as events.notification]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -20,6 +21,14 @@
                             :table-id table-id
                             :arg      rows}
                            :policy   :data-editing))
+
+(doseq [topic [:event/data-editing-row-create
+               :event/data-editing-row-update
+               :event/data-editing-row-delete]]
+  (defmethod events.notification/notification-filter-for-topic topic
+    [_topic event-info]
+    (assert (:table_id event-info) "Event info must contain :table_id")
+    [:= :table_id (:table_id event-info)]))
 
 (defn- qp-result->row-map
   [{:keys [rows cols]}]

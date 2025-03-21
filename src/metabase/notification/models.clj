@@ -517,15 +517,18 @@
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
-  [event-name]
+  [event-name additional-filters]
   (t2/select :model/Notification
              {:select    [:n.*]
               :from      [[:notification :n]]
               :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
-              :where     [:and
-                          [:= :n.active true]
-                          [:= :ns.event_name (u/qualified-name event-name)]
-                          [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
+              :where     (->> (conj
+                               [[:= :n.active true]
+                                [:= :ns.event_name (u/qualified-name event-name)]
+                                [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]
+                               additional-filters)
+                              (filter some?)
+                              (into [:and]))}))
 
 (defn create-notification!
   "Create a new notification with `subsciptions`.

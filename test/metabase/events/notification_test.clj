@@ -136,3 +136,23 @@
                  (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
                    (group-by :task th)
                    (update-vals th count)))))))))
+
+(defmethod events.notification/notification-filter-for-topic :event/filter-by-table-id
+  [_topic event-info]
+  [:= :table_id (:table_id event-info)])
+
+(deftest notification-filter-for-topic-test
+  (mt/with-model-cleanup [:model/Notification]
+    (notification.tu/with-temporary-event-topics! #{:event/filter-by-table-id}
+      (let [table-id (mt/id :users)
+            noti     (models.notification/create-notification! {:payload_type :notification/testing}
+                                                               [{:type :notification-subscription/system-event
+                                                                 :event_name :event/filter-by-table-id
+                                                                 :table_id table-id}]
+                                                               [])]
+
+        (testing "returns notification if filter matches"
+          (is (= [(:id noti)] (map :id (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id table-id})))))
+        (testing "do not returns notification if filter does not match"
+          (is (empty? (#'events.notification/notifications-for-topic :event/filter-by-table-id {})))
+          (is (empty? (#'events.notification/notifications-for-topic :event/filter-by-table-id {:table_id (mt/id :products)}))))))))
