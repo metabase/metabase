@@ -5,6 +5,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiteral,
   applyPasses,
 } from "./passes";
 import { compile, lexify, parse } from "./pratt";
@@ -23,6 +24,7 @@ describe("metabase-lib/v1/expressions/typeinferencer", () => {
         adjustOptions,
         adjustOffset,
         adjustCaseOrIf,
+        adjustTopLevelLiteral,
         adjustMultiArgOptions,
       ]);
     } catch (err) {

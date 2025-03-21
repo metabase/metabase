@@ -7,6 +7,7 @@ import {
   isFunction,
   isOffset,
   isOptionsObject,
+  isValue,
 } from "./matchers";
 import { OPERATOR as OP } from "./tokenizer";
 
@@ -46,6 +47,9 @@ export function infer(
       return MONOTYPE.Boolean;
   }
 
+  if (isValue(mbql)) {
+    return infer(mbql[1] as number | string | boolean, env);
+  }
   if (isCaseOrIf(mbql)) {
     return infer(mbql[1][0][1], env);
   }
