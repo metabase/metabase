@@ -41,11 +41,13 @@
                                        :type         "text"
                                        :required     false}}}})
 
-(defn- encoded-lat-field-ref
+(defn encoded-lat-field-ref
+  "URL-encoded latitude field ref for the People table"
   []
   (codec/url-encode (json/encode (mt/$ids $people.latitude))))
 
-(defn- encoded-lon-field-ref
+(defn encoded-lon-field-ref
+  "URL-encoded longitude field ref for the People table"
   []
   (codec/url-encode (json/encode (mt/$ids $people.longitude))))
 
