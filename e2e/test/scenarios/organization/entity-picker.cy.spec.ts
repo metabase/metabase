@@ -1102,6 +1102,16 @@ describe("scenarios > organization > entity picker", () => {
 
       closeAndAssertModal(H.dashboardOnTheGoModal);
       closeAndAssertModal(H.entityPickerModal);
+
+      H.openQuestionActions("Duplicate");
+      H.modal()
+        .findByLabelText(/Where do you/)
+        .click();
+      H.entityPickerModalTab("Browse").click();
+      closeAndAssertModal(H.entityPickerModal);
+      closeAndAssertModal(() =>
+        cy.findByRole("heading", { name: /Duplicate/ }),
+      );
     });
   });
 });
