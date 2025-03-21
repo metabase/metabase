@@ -66,11 +66,11 @@ export function getCompatibleSemanticTypes(
 
 function getLevelOneDataTypes(): string[] {
   return [
+    TYPE.Text,
+    TYPE.TextLike,
     TYPE.Number,
     TYPE.Temporal,
     TYPE.Boolean,
-    TYPE.Text,
-    TYPE.TextLike,
     TYPE.Collection,
     TYPE.Structured,
   ];
