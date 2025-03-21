@@ -88,49 +88,27 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.signInAsAdmin();
   });
 
-  it("should sort database fields by relevance", () => {
-    H.visitQuestionAdhoc(rawQuestionDetails);
-    H.filter();
-
-    H.modal().within(() => {
-      cy.findAllByTestId(/filter-column-/)
-        .eq(0)
-        .should("include.text", "Created At");
-
-      cy.findAllByTestId(/filter-column-/)
-        .eq(1)
-        .should("include.text", "Discount");
-
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findAllByTestId(/filter-column-/)
-        .last()
-        .should("include.text", "ID");
-    });
-  });
-
   it("should add a filter for a raw query", () => {
     H.visitQuestionAdhoc(rawQuestionDetails);
     H.filter();
-
-    H.filterField("Quantity", { operator: "equal to" });
-    H.filterFieldPopover("Quantity").within(() => {
+    H.popover().within(() => {
+      cy.findByText("Quantity").click();
       cy.findByText("20").click();
+      cy.button("Add filter").click();
     });
-
     applyFilters();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is equal to 20").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 4 rows").should("be.visible");
+    H.queryBuilderFiltersPanel()
+      .findByText("Quantity is equal to 20")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(4);
   });
 
-  it("should have an info icon on the filter modal filters", () => {
+  it("should have an info icon on the filter picker filters", () => {
     H.visitQuestionAdhoc(rawQuestionDetails);
     H.filter();
-
-    H.modal().within(() => {
-      cy.get("li").findByLabelText("More info").realHover();
+    H.popover().within(() => {
+      cy.findByLabelText("Created At").findByLabelText("More info").realHover();
     });
 
     H.hovercard().within(() => {
@@ -142,74 +120,66 @@ describe("scenarios > filters > bulk filtering", () => {
   it("should add a filter for an aggregated query", () => {
     H.visitQuestionAdhoc(aggregatedQuestionDetails);
     H.filter();
-
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
+      cy.findByPlaceholderText("Min").type("500");
+      cy.button("Add filter").click();
     });
-
-    H.filterField("Count", {
-      placeholder: "Min",
-      value: "500",
-    });
-
     applyFilters();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count is greater than or equal to 500").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 21 rows").should("be.visible");
+    H.queryBuilderFiltersPanel()
+      .findByText("Count is greater than or equal to 500")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(21);
   });
 
   it("should add a filter for linked tables", () => {
     H.visitQuestionAdhoc(rawQuestionDetails);
     H.filter();
-
-    H.modal().within(() => {
-      cy.findByText("Product").click({ force: true });
-      H.filterField("Category").findByText("Gadget").click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
     });
-
     applyFilters();
-
-    cy.findByTestId("qb-filters-panel")
+    H.queryBuilderFiltersPanel()
       .findByText("Product → Category is Gadget")
       .should("be.visible");
-
-    cy.findByTestId("view-footer")
+    H.queryBuilderFooter()
       .findByText("Showing first 2,000 rows")
       .should("be.visible");
   });
 
   it("should update an existing filter", () => {
     H.visitQuestionAdhoc(filteredQuestionDetails);
-    H.filter();
+    H.queryBuilderFiltersPanel().findByText("Quantity is less than 30").click();
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("{backspace}{backspace}25");
+      cy.button("Update filter").click();
+    });
+    cy.wait("@dataset");
 
-    H.filterField("Quantity", { order: 1, value: "{backspace}{backspace}25" });
-
-    applyFilters();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is greater than 20").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is less than 25").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 17 rows").should("be.visible");
+    H.queryBuilderFiltersPanel().within(() => {
+      cy.findByText("Quantity is greater than 20").should("be.visible");
+      cy.findByText("Quantity is less than 25").should("be.visible");
+    });
+    H.assertQueryBuilderRowCount(17);
   });
 
   it("should remove an existing filter", () => {
     H.visitQuestionAdhoc(filteredQuestionDetails);
     H.filter();
-
-    H.filterField("Quantity", { order: 1, value: "{backspace}{backspace}" });
-
-    applyFilters();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is greater than 20").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity is less than 30").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 138 rows").should("be.visible");
+    H.queryBuilderFiltersPanel()
+      .findByText("Quantity is less than 30")
+      .icon("close")
+      .click();
+    cy.wait("@dataset");
+    H.queryBuilderFiltersPanel().within(() => {
+      cy.findByText("Quantity is greater than 20").should("be.visible");
+      cy.findByText("Quantity is less than 30").should("not.exist");
+    });
+    H.assertQueryBuilderRowCount(138);
   });
 
   it("should be able to add and remove filters for all query stages", () => {
@@ -723,6 +693,6 @@ describe("scenarios > filters > bulk filtering", () => {
 });
 
 const applyFilters = () => {
-  H.modal().findByTestId("apply-filters").click();
+  H.runButtonOverlay().click();
   cy.wait("@dataset");
 };
