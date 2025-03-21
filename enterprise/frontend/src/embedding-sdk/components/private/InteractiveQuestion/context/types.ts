@@ -44,17 +44,14 @@ export type QuestionMockLocationParameters = {
   params: { slug?: string };
 };
 
-export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
-  InteractiveQuestionConfig & QuestionMockLocationParameters
->;
-
 // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any Entity ID string but keep autocomplete for "new", for creating new questions.
 export type InteractiveQuestionId = CardId | "new" | (string & {});
 
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: InteractiveQuestionId;
+      questionId: InteractiveQuestionId | null;
+      variant?: "static" | "interactive";
     }
 >;
 
@@ -66,6 +63,7 @@ export type InteractiveQuestionContextType = Omit<
     InteractiveQuestionConfig,
     "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
+  Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
@@ -75,5 +73,5 @@ export type InteractiveQuestionContextType = Omit<
     onSave: (question: Question) => Promise<void>;
   } & {
     isCardIdError: boolean;
-    originalId: InteractiveQuestionId;
+    originalId: InteractiveQuestionId | null;
   };

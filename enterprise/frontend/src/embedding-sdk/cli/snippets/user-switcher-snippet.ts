@@ -22,9 +22,11 @@ export const UserSwitcher = () => {
 
   return (
     <select
-      value={email}
+      value={email || undefined}
       onChange={(e) => {
-        switchUser(e.target.value)
+        if (switchUser) {
+          switchUser(e.target.value)
+        }
 
         // temporary workaround: reload the page to sign in as the new user
         window.location.reload()

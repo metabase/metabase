@@ -13,7 +13,7 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
-import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
@@ -57,9 +57,7 @@ export function NotebookDataPicker({
   const store = useStore();
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-  const isEmbeddingIframe = useSelector(getIsEmbedded);
-  const isEmbedding = isEmbeddingSdk || isEmbeddingIframe;
+  const isEmbedding = useSelector(getIsEmbedding);
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));

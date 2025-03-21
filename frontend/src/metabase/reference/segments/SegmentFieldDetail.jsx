@@ -139,7 +139,7 @@ const SegmentFieldDetail = props => {
           hasRevisionHistory={false}
           onSubmit={handleSubmit}
           endEditing={endEditing}
-          reinitializeForm={handleReset()}
+          reinitializeForm={handleReset}
           submitting={isSubmitting}
           revisionMessageFormField={getFormField("revision_message")}
         />

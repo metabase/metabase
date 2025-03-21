@@ -205,6 +205,12 @@ export const uiControls = handleActions(
         initialChartSetting: payload,
       }),
     },
+    [CANCEL_QUESTION_CHANGES]: {
+      next: state => ({
+        ...state,
+        isModifiedFromNotebook: false,
+      }),
+    },
     // AGGREGATION
     [onEditSummary]: state => ({
       ...state,
