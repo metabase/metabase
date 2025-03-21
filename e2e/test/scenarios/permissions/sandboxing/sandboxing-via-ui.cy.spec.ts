@@ -172,7 +172,10 @@ describe(
       ).forEach(([customViewType, customColumnType, customColumnValue]) => {
         it(`...to a table filtered by a custom ${customColumnType} column in a ${customViewType}`, () => {
           cy.signInAsAdmin();
-          assignAttributeToUser({ attributeValue: customColumnValue });
+          assignAttributeToUser({
+            user: gizmoViewer,
+            attributeValue: customColumnValue,
+          });
           configureSandboxPolicy({
             filterTableBy: "custom_view",
             customViewType: customViewType,
