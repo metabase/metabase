@@ -1,5 +1,7 @@
 /* eslint-disable jest/expect-expect */
 
+import expression from "ts-dedent";
+
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
@@ -13,14 +15,13 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
     if (!Array.isArray(expressions)) {
       return isFormatted([expressions]);
     }
-    for (const expr of expressions) {
+    for (const source of expressions) {
       const options = {
         query,
         startRule,
         stageIndex: -1,
       };
 
-      const source = dedent(expr);
       const res = compileExpression({
         ...options,
         source,
@@ -210,21 +211,3 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     );
   });
 });
-
-// dedents an expression by assuming the first line is no indented
-function dedent(input: string): string {
-  const lines = input.split("\n").slice(1);
-  const indent = lines[0].match(/^ */)?.[0]?.length;
-  if (!indent) {
-    return input;
-  }
-  return lines
-    .map(line => line.slice(indent))
-    .join("\n")
-    .trim();
-}
-
-// A simple template tag to mark a string as an expression and dedent it
-function expression(strings: TemplateStringsArray) {
-  return strings.join("");
-}
