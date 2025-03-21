@@ -34,6 +34,10 @@
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
     <Logger name="net.snowflake.client.core.SessionUtil" level="FATAL"/>
 
+    <Logger name="metabase.driver.sql-jdbc.sync" level="DEBUG"/>
+    <Logger name="metabase.sync" level="DEBUG"/>
+    <Logger name="metabase.driver.snowflake" level="DEBUG"/>
+
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
     </Root>

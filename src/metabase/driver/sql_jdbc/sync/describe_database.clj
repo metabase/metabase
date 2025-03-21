@@ -40,6 +40,7 @@
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
+;; this should have logging
 (mu/defn simple-select-probe-query :- [:cat ::lib.schema.common/non-blank-string [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)

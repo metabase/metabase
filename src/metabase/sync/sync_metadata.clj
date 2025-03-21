@@ -66,6 +66,7 @@
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+    ;; This is the reason nothing was logged!!!
     (let [db-metadata (fetch-metadata/db-metadata database)]
       (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
         (if (some sync-util/abandon-sync? (map second (:steps <>)))

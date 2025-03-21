@@ -557,6 +557,7 @@
                                    :from   [[(qp.store/with-metadata-provider (u/the-id database)
                                                (sql.qp/->honeysql driver table))]]}))
 
+;; have select-privilege?
 (defmethod driver/describe-database :snowflake
   [driver database]
   (let [db-name          (db-name database)
@@ -614,6 +615,7 @@
   [_ entity-name]
   (escape-name-for-metadata entity-name))
 
+;; what is this for?
 (defn- dynamic-table?
   "Check if the table is a dynamic table.
 
@@ -723,6 +725,7 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+;; here -- this is executed quickly
 (defmethod driver/can-connect? :snowflake
   [driver {:keys [db], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)

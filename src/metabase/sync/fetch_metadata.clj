@@ -23,6 +23,7 @@
        (log/errorf e# "Error while fetching metdata with '%s'" ~function-name)
        (throw e#))))
 
+;; here the exception is re-thrown
 (mu/defn db-metadata :- i/DatabaseMetadata
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
