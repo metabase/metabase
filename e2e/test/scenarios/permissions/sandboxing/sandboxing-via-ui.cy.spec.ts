@@ -14,8 +14,10 @@ import {
   getParameterValuesForProductCategories,
   modelCustomView,
   questionCustomView,
+  resultsShouldBeCached,
   rowsShouldContainGizmosAndWidgets,
   rowsShouldContainOnlyGizmos,
+  runWithoutCachingThenWithCaching,
   signInAsNormalUser,
   sandboxingUser as user,
   valuesShouldContainGizmosAndWidgets,
@@ -23,12 +25,6 @@ import {
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
-
-const preparePermissions = () => {
-  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
-};
 
 describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
@@ -47,9 +43,6 @@ describe(
       cy.intercept("/api/card/*/query").as("cardQuery");
 
       H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.setTokenFeatures("all");
-      preparePermissions();
       createSandboxingDashboardAndQuestions().then(result => {
         const { data } = result.body;
         for (const item of data) {
@@ -67,7 +60,6 @@ describe(
       // @ts-expect-error - this isn't typed yet
       cy.createUserFromRawData(user);
 
-      // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
     });
 
@@ -82,21 +74,41 @@ describe(
     });
 
     it("shows all data before sandboxing policy is applied", () => {
-      signInAsNormalUser();
+      runWithoutCachingThenWithCaching(
+        ({ isCachingEnabled }) => {
+          signInAsNormalUser();
 
-      getDashcardResponses(dashboard, sandboxableQuestions).then(
-        rowsShouldContainGizmosAndWidgets,
-      );
+          const dashcardResponses = getDashcardResponses(
+            dashboard,
+            sandboxableQuestions,
+          ).then(rowsShouldContainGizmosAndWidgets);
 
-      getCardResponses(sandboxableQuestions).then(
-        rowsShouldContainGizmosAndWidgets,
-      );
+          const cardResponses = getCardResponses(sandboxableQuestions).then(
+            rowsShouldContainGizmosAndWidgets,
+          );
 
-      H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-        rowsShouldContainGizmosAndWidgets({
-          responses: [response],
-          questions: [adhocQuestionData as unknown as CollectionItem],
-        }),
+          if (isCachingEnabled) {
+            dashcardResponses.then(resultsShouldBeCached);
+            cardResponses.then(resultsShouldBeCached);
+          }
+
+          H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+            rowsShouldContainOnlyGizmos({
+              responses: [response],
+              questions: [adhocQuestionData as unknown as CollectionItem],
+            }),
+          );
+
+          getFieldValuesForProductCategories().then(response => {
+            const values = response.body.values.map(val => val[0]);
+            expect(values.length).to.equal(4);
+            expect(values).to.contain("Doohickey");
+            expect(values).to.contain("Gizmo");
+            expect(values).to.contain("Gadget");
+            expect(values).to.contain("Widget");
+          });
+        },
+        { questions: sandboxableQuestions },
       );
 
       getFieldValuesForProductCategories().then(response =>
@@ -110,7 +122,7 @@ describe(
 
     describe("we can apply a sandbox policy", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
+        cy.signIn("admin", { skipCache: true });
       });
 
       it("to a table filtered using a question as a custom view", () => {
@@ -119,17 +131,27 @@ describe(
           customViewType: "Question" as const,
           customViewName: questionCustomView.name,
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAsNormalUser().then(() => {
+              getDashcardResponses(dashboard, sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              getCardResponses(sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+                rowsShouldContainOnlyGizmos({
+                  responses: [response],
+                  questions: [adhocQuestionData as unknown as CollectionItem],
+                }),
+              );
+              getFieldValuesForProductCategories().then(response =>
+                valuesShouldContainOnlyGizmos(response.body.values),
+              );
+            });
+          },
+          { questions: sandboxableQuestions },
         );
         getFieldValuesForProductCategories().then(response =>
           valuesShouldContainOnlyGizmos(response.body.values),
@@ -145,17 +167,27 @@ describe(
           customViewType: "Model" as const,
           customViewName: modelCustomView.name,
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAsNormalUser().then(() => {
+              getDashcardResponses(dashboard, sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              getCardResponses(sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+                rowsShouldContainOnlyGizmos({
+                  responses: [response],
+                  questions: [adhocQuestionData as unknown as CollectionItem],
+                }),
+              );
+              getFieldValuesForProductCategories().then(response => {
+                expect(response.body.values).to.deep.equal([["Gizmo"]]);
+              });
+            });
+          },
+          { questions: sandboxableQuestions },
         );
         getFieldValuesForProductCategories().then(response =>
           valuesShouldContainOnlyGizmos(response.body.values),
@@ -171,17 +203,27 @@ describe(
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        getDashcardResponses(dashboard, sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        getCardResponses(sandboxableQuestions).then(
-          rowsShouldContainOnlyGizmos,
-        );
-        H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
-          rowsShouldContainOnlyGizmos({
-            responses: [response],
-            questions: [adhocQuestionData as unknown as CollectionItem],
-          }),
+        runWithoutCachingThenWithCaching(
+          () => {
+            signInAsNormalUser().then(() => {
+              getDashcardResponses(dashboard, sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              getCardResponses(sandboxableQuestions).then(
+                rowsShouldContainOnlyGizmos,
+              );
+              H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+                rowsShouldContainOnlyGizmos({
+                  responses: [response],
+                  questions: [adhocQuestionData as unknown as CollectionItem],
+                }),
+              );
+              getFieldValuesForProductCategories().then(response => {
+                expect(response.body.values).to.deep.equal([["Gizmo"]]);
+              });
+            });
+          },
+          { questions: sandboxableQuestions },
         );
         getFieldValuesForProductCategories().then(response =>
           valuesShouldContainOnlyGizmos(response.body.values),
@@ -194,6 +236,10 @@ describe(
 
     // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
     describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
+      before(() => {
+        H.restore("sandboxing-on-postgres-12" as any);
+      });
+
       (
         [
           ["Question", "boolean", "true"],
