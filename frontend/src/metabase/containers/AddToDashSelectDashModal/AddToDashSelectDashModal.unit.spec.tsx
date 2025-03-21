@@ -21,6 +21,7 @@ import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type {
+  BaseEntityId,
   Card,
   Collection,
   Dashboard,
@@ -248,6 +249,7 @@ const setup = async ({
             createMockCollectionItem({
               ...c,
               id: c.id as number,
+              entity_id: c.entity_id as BaseEntityId,
               effective_location: c.location || "/",
               location: c.location || "/",
               type: undefined,

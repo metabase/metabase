@@ -24,7 +24,7 @@ import * as qbSelectors from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
-import type { CollectionId } from "metabase-types/api";
+import type { BaseEntityId, CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -765,6 +765,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.PARENT,
             id: COLLECTION.PARENT.id as number,
+            entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
             model: "collection",
@@ -777,6 +778,7 @@ describe("SaveQuestionModal", () => {
           createMockCollectionItem({
             ...COLLECTION.CHILD,
             id: COLLECTION.CHILD.id as number,
+            entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,
             model: "collection",
