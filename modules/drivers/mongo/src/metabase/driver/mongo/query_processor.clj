@@ -745,10 +745,10 @@
           supports-toString? (-> (get-mongo-version) :semantic-version (driver.u/semantic-version-gte [8]))]
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (cond (and (= :type/UUID base-type) supports-toString?)
+      {$regexMatch {"input" (cond (and (= :type/* base-type) supports-toString?)
                                   {"$toString" (->rvalue field)}
 
-                                  (= :type/UUID base-type)
+                                  (= :type/* base-type)
                                   (throw (Exception. "String searching on UUIDs is only supported in Mongo v8.0+"))
 
                                   :else
