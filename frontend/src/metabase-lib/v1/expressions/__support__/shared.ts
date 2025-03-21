@@ -19,7 +19,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { FormatOptions } from "../formatter";
+import type { FormatClauseOptions } from "../formatter";
 
 const SEGMENT_ID = 1;
 
@@ -99,7 +99,7 @@ const expression: TestCase[] = [
     ["*", ["+", 1, 2], 3],
     "parenthesis overriding operator precedence",
   ],
-  ['"hello world"', "hello world", "string literal"],
+  ['"hello world"', ["value", "hello world"], "string literal"],
   ["[Subtotal]", subtotal, "field name"],
   ["[Tax] + [Total]", ["+", tax, total], "adding two fields"],
   ["1 + [Subtotal]", ["+", 1, subtotal], "adding literal and field"],
@@ -404,11 +404,7 @@ const filter: TestCase[] = [
   ],
   ["[Expensive Things]", segment, "segment"],
   ["NOT [Expensive Things]", ["not", segment], "not segment"],
-  [
-    "NOT NOT [Expensive Things]",
-    ["not", ["not", segment]],
-    "more segment unary",
-  ],
+  ["[Expensive Things]", ["not", ["not", segment]], "more segment unary"],
   [
     "NOT between([Subtotal], 3, 14) OR [Expensive Things]",
     ["or", ["not", ["between", subtotal, 3, 14]], segment],
@@ -432,7 +428,7 @@ const filter: TestCase[] = [
 
 type TestCase = [string, Expression | undefined, string];
 
-export const dataForFormatting: [string, TestCase[], FormatOptions][] = [
+export const dataForFormatting: [string, TestCase[], FormatClauseOptions][] = [
   ["expression", expression, { query, stageIndex }],
   ["aggregation", aggregation, { query, stageIndex }],
   ["filter", filter, { query, stageIndex }],

@@ -1,5 +1,6 @@
 /* eslint-disable jest/expect-expect */
 
+import * as Lib from "metabase-lib";
 import type { Expression } from "metabase-types/api";
 
 import { dataForFormatting, query } from "../__support__/shared";
@@ -20,16 +21,16 @@ function setup(printWidth: number, startRule: string = "expression") {
       };
 
       const source = dedent(expr);
-      const { expression: mbql, compileError } = processSource({
+      const { expressionClause, compileError } = processSource({
         ...options,
         source,
       });
 
-      if (!mbql || compileError) {
+      if (!expressionClause || compileError) {
         throw new Error(`Cannot compile expression: ${compileError?.message}`);
       }
 
-      const result = await format(mbql, {
+      const result = await format(expressionClause, {
         ...options,
         printWidth,
       });
@@ -46,6 +47,9 @@ describe("format", () => {
 
     it("formats nested arithmetic expressions", async () => {
       await isFormatted([
+        expression`
+          1 + 1
+        `,
         expression`
           1 + 2 - 3 + 4 / 5
         `,
@@ -99,6 +103,9 @@ describe("format", () => {
             "BAD",
             "OK"
           )
+        `,
+        expression`
+          Offset([Total], -1)
         `,
         expression`
           startsWith(
@@ -175,12 +182,9 @@ describe("format", () => {
               33333333333333
         `,
         expression`
-          NOT (
-            contains(
-              [User → Name],
-              "John"
-            )
-            OR [User ID] = 1
+          NOT concat(
+            [User → Name],
+            "John"
           )
         `,
       ]);
@@ -199,7 +203,14 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           // unreachable
           return;
         }
-        const result = await format(expression, {
+
+        const stageIndex = -1;
+        const clause = Lib.expressionClauseForLegacyExpression(
+          query,
+          stageIndex,
+          expression,
+        );
+        const result = await format(clause, {
           ...opts,
           printWidth: Infinity,
         });

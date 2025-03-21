@@ -2,8 +2,7 @@ import { type HTMLAttributes, useMemo } from "react";
 import { useAsync } from "react-use";
 
 import type * as Lib from "metabase-lib";
-import { format, formatExample } from "metabase-lib/v1/expressions";
-import type { Expression } from "metabase-types/api";
+import { format, formatExpressionParts } from "metabase-lib/v1/expressions";
 
 import S from "./HighlightExpression.module.css";
 import { highlight } from "./utils";
@@ -16,7 +15,7 @@ export function HighlightExpression({
   printWidth = Infinity,
   ...props
 }: {
-  expression: Expression;
+  expression: Lib.ExpressionClause;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
@@ -36,16 +35,16 @@ export function HighlightExpression({
   );
 }
 
-export function HighlightExampleExpression({
+export function HighlightExpressionParts({
   expression,
   printWidth = Infinity,
   ...props
 }: {
-  expression: Expression;
+  expression: Lib.ExpressionParts;
   printWidth?: number;
 } & HTMLAttributes<HTMLPreElement>) {
   const { value: formattedExpression } = useAsync(
-    () => formatExample(expression, { printWidth }),
+    () => formatExpressionParts(expression, { printWidth }),
     [expression, printWidth],
   );
 
