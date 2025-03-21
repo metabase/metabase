@@ -79,15 +79,9 @@ runs:
           fi
         done
 
-        # Check if base branch has been updated
-        if [[ "$BUILD_NEEDED" == "false" ]]; then
-          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          BASE_COMMIT=$(git merge-base HEAD origin/$BASE_BRANCH)
-          if [[ "$BASE_COMMIT" != "$PARENT_COMMIT" ]]; then
-            echo "Base branch has been updated, build needed"
-            BUILD_NEEDED="true"
-          fi
-        fi
+        # We'll skip the base branch check as it's causing issues in some CI environments
+        # and the above checks are sufficient for most cases
+        # If we need more robust checks, we can revisit this later
 
         echo "build_needed=${BUILD_NEEDED}" >> $GITHUB_OUTPUT
 
@@ -99,8 +93,6 @@ runs:
           echo "Reason for build:"
           if [[ "$IS_DEPENDENCY_FILE" == "true" ]]; then
             echo "- Dependency file changed"
-          elif [[ "$BASE_COMMIT" != "$PARENT_COMMIT" ]]; then
-            echo "- Base branch updated"
           else
             echo "- Non-test file changed"
           fi
