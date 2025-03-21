@@ -11,12 +11,12 @@ import {
   createSandboxingDashboardAndQuestions,
   getFieldValuesForProductCategories,
   getParameterValuesForProductCategories,
+  gizmoViewer,
+  gizmoViewer,
   modelCustomView,
   questionCustomView,
-  sandboxedUser,
   signInAs,
-  unsandboxedUser,
-  sandboxedUser,
+  widgetViewer,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -62,8 +62,8 @@ describe(
         }
       });
       // @ts-expect-error - this isn't typed yet
-      cy.createUserFromRawData(sandboxedUser);
-      cy.createUserFromRawData(unsandboxedUser);
+      cy.createUserFromRawData(gizmoViewer);
+      cy.createUserFromRawData(widgetViewer);
 
       // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
@@ -79,10 +79,10 @@ describe(
       H.restore("sandboxing-on-postgres-12" as any);
     });
 
-    it.only("shows all data before sandboxing policy is applied", () => {
-      signInAs(sandboxedUser);
+    it("shows all data before sandboxing policy is applied", () => {
+      signInAs(gizmoViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-      signInAs(unsandboxedUser);
+      signInAs(widgetViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
     });
 
@@ -97,10 +97,21 @@ describe(
           customViewType: "Question" as const,
           customViewName: questionCustomView.name,
         });
-        signInAs(sandboxedUser);
-        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
-        signInAs(unsandboxedUser);
-        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+        cy.log(
+          "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
+        );
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
+        );
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
+        );
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -109,22 +120,42 @@ describe(
           customViewType: "Model" as const,
           customViewName: modelCustomView.name,
         });
-        signInAs(sandboxedUser);
-        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
-        signInAs(unsandboxedUser);
-        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+        cy.log(
+          "This sandboxing policy doesn't use user attributes. It makes all users see only the Gizmos.",
+        );
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
+        );
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
+        );
       });
 
       it("to a table filtered by a regular column", () => {
-        assignAttributeToUser({ attributeValue: "Gizmo" });
+        assignAttributeToUser({ user: gizmoViewer, attributeValue: "Gizmo" });
+        assignAttributeToUser({ user: widgetViewer, attributeValue: "Widget" });
         configureSandboxPolicy({
           filterTableBy: "column",
           filterColumn: "Category",
         });
-        signInAs(sandboxedUser);
-        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
-        signInAs(unsandboxedUser);
-        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+        signInAs(gizmoViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Gizmo",
+        );
+        signInAs(widgetViewer);
+        assertAllResultsAndValuesAreSandboxed(
+          dashboard,
+          sandboxableQuestions,
+          "Widget",
+        );
       });
     });
 
@@ -149,7 +180,7 @@ describe(
             customViewName: `${customViewType} with custom columns`,
             filterColumn: `my_${customColumnType}`,
           });
-          signInAs(sandboxedUser);
+          signInAs(gizmoViewer);
           H.visitDashboard(checkNotNull(dashboard).id);
 
           cy.log("Should not return any data, and return an error");
