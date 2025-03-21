@@ -155,7 +155,7 @@ describe("SemanticTypePicker", () => {
     expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
   });
 
-  it("shows Category semantic type for boolean fields", async () => {
+  it("shows Category semantic type for boolean field's", async () => {
     setup({
       fieldId: BOOLEAN_FIELD.id,
       initialValue: null,
@@ -170,7 +170,7 @@ describe("SemanticTypePicker", () => {
 
   describe("Entity Key, Foreign Key, and No semantic type", () => {
     it.each(FIELDS)(
-      "shows Entity Key, Foreign Key, and No semantic type when fields effective type is derived from $display_name",
+      "shows Entity Key, Foreign Key, and No semantic type when field's effective type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
@@ -189,7 +189,7 @@ describe("SemanticTypePicker", () => {
   });
 
   describe("Entity Name", () => {
-    it("shows Entity Name when fields effective type is derived from text/Type", async () => {
+    it("shows Entity Name when field's effective type is derived from text/Type", async () => {
       setup({
         fieldId: TEXT_FIELD.id,
         initialValue: null,
@@ -203,15 +203,15 @@ describe("SemanticTypePicker", () => {
     });
 
     it.each([
+      TEXT_LIKE_FIELD,
       BOOLEAN_FIELD,
       NUMBER_FIELD,
       TEMPORAL_FIELD,
       COLLECTION_FIELD,
       STRUCTURED_FIELD,
       STRUCTURED_AND_COLLECTION_FIELD,
-      TEXT_LIKE_FIELD,
     ])(
-      "does not show Entity Name when fields effective type is derived from $display_name",
+      "does not show Entity Name when field's effective type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
@@ -223,6 +223,24 @@ describe("SemanticTypePicker", () => {
 
         const dropdown = within(screen.getByRole("listbox"));
         expect(dropdown.queryByText("Entity Name")).not.toBeInTheDocument();
+      },
+    );
+  });
+
+  describe("casting strings to numbers", () => {
+    it.each([TEXT_FIELD, TEXT_LIKE_FIELD])(
+      "also shows semantic types derived from text/Number when field's effective type is derived from $display_name",
+      async field => {
+        setup({
+          fieldId: field.id,
+          initialValue: null,
+        });
+
+        const picker = screen.getByPlaceholderText("Select a semantic type");
+        await userEvent.click(picker);
+
+        const dropdown = within(screen.getByRole("listbox"));
+        expect(dropdown.getByText("Quantity")).toBeInTheDocument();
       },
     );
   });
