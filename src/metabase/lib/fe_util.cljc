@@ -79,8 +79,7 @@
 
 (defn- expandable-case-or-if-expression?
   [[op _options & _args]]
-  (or (= op :case)
-      (= op :if)))
+  (boolean (#{:case :if} op)))
 
 (defn- expand-case-or-if-expression
   [[op options & args]]
