@@ -225,16 +225,18 @@ export const SelectWeekdayOfMonth = ({
 export const SelectMinute = ({
   schedule_minute,
   updateSchedule,
+  range = minutes,
 }: {
   schedule_minute: ScheduleSettings["schedule_minute"];
   updateSchedule: UpdateSchedule;
+  range?: typeof minutes;
 }) => {
   const minuteOfHour = isNaN(schedule_minute as number) ? 0 : schedule_minute;
   const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect
       value={(minuteOfHour || 0).toString()}
-      data={minutes}
+      data={range}
       onChange={(value: string) =>
         updateSchedule("schedule_minute", Number(value))
       }

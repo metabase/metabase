@@ -26,7 +26,7 @@ export interface AppBarSmallProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
-  isEmbedded?: boolean;
+  isEmbeddingIframe?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
@@ -40,7 +40,7 @@ const AppBarSmall = ({
   isNavBarEnabled,
   isLogoVisible,
   isSearchVisible,
-  isEmbedded,
+  isEmbeddingIframe,
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
@@ -80,7 +80,7 @@ const AppBarSmall = ({
             </AppBarToggleContainer>
             <AppBarSearchContainer>
               {isSearchVisible &&
-                (isEmbedded ? (
+                (isEmbeddingIframe ? (
                   <SearchBar
                     onSearchActive={handleSearchActive}
                     onSearchInactive={handleSearchInactive}

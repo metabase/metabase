@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
@@ -32,6 +32,8 @@ import type {
   User,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getScheduleExplanation } from "./cron";
 
 export const formatTitle = ({ item, type }: NotificationListItem) => {
   switch (type) {
@@ -229,20 +231,35 @@ export const getNotificationHandlersGroupedByTypes = (
 export const formatNotificationSchedule = (
   subscription: NotificationCronSubscription,
 ): string | null => {
-  const schedule = cronToScheduleSettings(subscription.cron_schedule);
+  const schedule = cronToScheduleSettings(
+    subscription.cron_schedule,
+    subscription.ui_display_type === "cron/raw",
+  );
 
-  return (schedule && formatNotificationCheckSchedule(schedule)) || null;
+  return (
+    (schedule &&
+      formatNotificationCheckSchedule(schedule, subscription.cron_schedule)) ||
+    null
+  );
 };
 
-export const formatNotificationCheckSchedule = ({
-  schedule_type,
-  schedule_hour,
-  schedule_day,
-  schedule_frame,
-}: ScheduleSettings) => {
+export const formatNotificationCheckSchedule = (
+  {
+    schedule_type,
+    schedule_minute,
+    schedule_hour,
+    schedule_day,
+    schedule_frame,
+  }: ScheduleSettings,
+  cronSchedule: string,
+) => {
   const options = MetabaseSettings.formattingOptions();
 
   switch (schedule_type) {
+    case "every_n_minutes":
+      // Converting to lowercase here, because 'minute` is used without pluralization on the backend.
+      // and it's impossible to have both pluralized and single form for the same string.
+      return t`Check every ${ngettext(msgid`Minute`, `${schedule_minute} Minutes`, schedule_minute || 0).toLocaleLowerCase()}`;
     case "hourly":
       return t`Check hourly`;
     case "daily": {
@@ -265,21 +282,42 @@ export const formatNotificationCheckSchedule = ({
       break;
     }
     case "monthly": {
-      if (
-        schedule_hour != null &&
-        schedule_day != null &&
-        schedule_frame != null
-      ) {
+      if (schedule_hour != null && schedule_frame != null) {
         const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-        const day = formatDateTimeWithUnit(
-          schedule_day,
-          "day-of-week",
-          options,
-        );
+        const day = schedule_day
+          ? formatDateTimeWithUnit(schedule_day, "day-of-week", options)
+          : t`day`;
         const frame = formatFrame(schedule_frame);
         return t`Check monthly on the ${frame} ${day} at ${ampm}`;
       }
       break;
     }
+    case "cron":
+      try {
+        return t`Check ${getScheduleExplanation(cronSchedule)}`;
+      } catch {
+        return null;
+      }
+  }
+
+  return null;
+};
+
+export const formatNotificationScheduleDescription = ({
+  schedule_type,
+  schedule_hour,
+}: ScheduleSettings) => {
+  switch (schedule_type) {
+    case "daily":
+    case "weekly":
+    case "monthly": {
+      if (schedule_hour != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day");
+        return c("time with AM/PM label").t`at ${ampm}`;
+      }
+      break;
+    }
+    default:
+      return "";
   }
 };

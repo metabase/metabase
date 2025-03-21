@@ -341,8 +341,9 @@ describe("scenarios [EE] > public > dashboard", () => {
 
     cy.wait("@deLocale");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
+    cy.findByTestId("embed-frame-header")
+      .findByText("Reiter als PDF exportieren")
+      .should("be.visible");
     cy.url().should("include", "locale=de");
   });
 });

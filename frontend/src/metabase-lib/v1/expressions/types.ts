@@ -3,8 +3,18 @@ import type { DatabaseFeature, Expression } from "metabase-types/api";
 
 import type { OPERATOR, TOKEN } from "./tokenizer";
 
+export type MBQLClauseCategory =
+  | "logical"
+  | "math"
+  | "string"
+  | "date"
+  | "conversion"
+  | "window"
+  | "aggregation";
+
 export interface HelpText {
   name: string;
+  category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: string;
   example: Expression;
@@ -14,6 +24,7 @@ export interface HelpText {
 
 export interface HelpTextConfig {
   name: string;
+  category: MBQLClauseCategory;
   args?: HelpTextArg[]; // no args means that expression function doesn't accept any parameters, e.g. "CumulativeCount"
   description: (database: Database, reportTimezone?: string) => string;
   structure: string;
@@ -25,6 +36,8 @@ interface HelpTextArg {
   description: string;
   example: Expression | ["args", Expression[]];
 }
+
+export type StartRule = "expression" | "boolean" | "aggregation";
 
 type MBQLClauseFunctionReturnType =
   | "aggregation"
@@ -48,12 +61,6 @@ export type MBQLClauseFunctionConfig = {
   validator?: (...args: any) => string | undefined;
 };
 export type MBQLClauseMap = Record<string, MBQLClauseFunctionConfig>;
-
-export type ErrorWithMessage = {
-  message: string;
-  pos?: number | null;
-  len?: number | null;
-};
 
 export type Token =
   | {

@@ -11,8 +11,9 @@
 .QueryBuilderMain {
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
-  flex-basis: 0;
+  flex: 1;
+  /* editor can be wider than a container */
+  overflow: hidden;
 
   @media screen and (max-width: 40em) {
     position: relative;

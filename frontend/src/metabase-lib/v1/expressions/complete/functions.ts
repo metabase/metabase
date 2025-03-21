@@ -5,12 +5,12 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
 import { TOKEN } from "../tokenizer";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
   tokenAtPos,
@@ -34,8 +34,7 @@ export function suggestFunctions({
   }
 
   const database = getDatabase(query, metadata);
-  const ALIASES = ["case"];
-  const functions = [...EXPRESSION_FUNCTIONS, ...ALIASES]
+  const functions = [...EXPRESSION_FUNCTIONS]
     .map(name => MBQL_CLAUSES[name])
     .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {

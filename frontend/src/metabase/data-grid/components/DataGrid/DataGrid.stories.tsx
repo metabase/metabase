@@ -243,6 +243,7 @@ export const CombinedFeatures: Story = () => {
     onColumnReorder: setColumnOrder,
     onColumnResize: setColumnSizing,
     rowId,
+    enableSelection: true,
   });
 
   const handleAddColumnClick = useCallback(() => {
