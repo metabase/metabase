@@ -393,7 +393,8 @@
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
-               :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
+               :database_is_auto_increment :database_is_generated :database_is_nullable :database_default
+               :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :entity_id :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]

@@ -559,6 +559,30 @@ describe("Question", () => {
           underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
         ).toBe(true);
       });
+
+      it("questions that differ only by randomized idents are considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(false);
+      });
+
+      it("questions that differ by query only are not considered equal", () => {
+        const question1 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: PRODUCTS_ID,
+        });
+        const question2 = Question.create({
+          databaseId: SAMPLE_DB_ID,
+          tableId: ORDERS_ID,
+        });
+        expect(question1.isDirtyComparedTo(question2)).toBe(true);
+      });
     });
   });
 

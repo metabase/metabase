@@ -1,0 +1,17 @@
+.input {
+  transition: none;
+  outline: 2px solid var(--mb-base-color-blue-50);
+  outline-offset: -2px;
+  border-color: transparent;
+  box-sizing: border-box;
+  font-weight: 700;
+  background-color: var(--mb-base-color-white);
+
+  /* needed to avoid outline truncation for a focused cell */
+  z-index: 5;
+  position: relative;
+}
+
+.noBackground {
+  background-color: transparent;
+}

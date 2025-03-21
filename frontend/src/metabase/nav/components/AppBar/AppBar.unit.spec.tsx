@@ -79,7 +79,7 @@ describe("AppBar", () => {
         isNavBarEnabled: true,
         isCollectionPathVisible: true,
         isSearchVisible: true,
-        isEmbedded: true,
+        isEmbeddingIframe: true,
         isNewButtonVisible: true,
         isLogoVisible: true,
       });
@@ -141,7 +141,7 @@ describe("AppBar", () => {
         isNavBarEnabled: true,
         isCollectionPathVisible: true,
         isSearchVisible: true,
-        isEmbedded: true,
+        isEmbeddingIframe: true,
         isNewButtonVisible: true,
         isLogoVisible: true,
       });

@@ -1,11 +1,14 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { FIELD_SEMANTIC_TYPES } from "metabase/lib/core";
+import {
+  DEPRECATED_FIELD_SEMANTIC_TYPES,
+  FIELD_SEMANTIC_TYPES,
+} from "metabase/lib/core";
 import { Select } from "metabase/ui";
 
 const NULL_VALUE = "null";
-const DATA = getData();
 
 interface Props {
   className?: string;
@@ -14,6 +17,8 @@ interface Props {
 }
 
 export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
+  const data = useMemo(() => getData(value), [value]);
+
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
     onChange(parsedValue);
@@ -26,7 +31,7 @@ export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
         position: "bottom-start",
         width: 300,
       }}
-      data={DATA}
+      data={data}
       fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={t`Select a semantic type`}
@@ -45,7 +50,7 @@ function stringifyValue(value: string | null): string {
   return value === null ? NULL_VALUE : value;
 }
 
-function getData() {
+function getData(value: string | null) {
   const options = [
     ...FIELD_SEMANTIC_TYPES,
     {
@@ -54,12 +59,21 @@ function getData() {
       section: t`Other`,
       icon: "empty" as const,
     },
-  ].map(option => ({
-    label: option.name,
-    value: stringifyValue(option.id),
-    section: option.section,
-    icon: option.icon,
-  }));
+  ]
+    .filter(option => {
+      if (option.id === null) {
+        return true;
+      }
+      const isDeprecated = DEPRECATED_FIELD_SEMANTIC_TYPES.includes(option.id);
+      const isCurrentValue = option.id === value;
+      return !isDeprecated || isCurrentValue;
+    })
+    .map(option => ({
+      label: option.name,
+      value: stringifyValue(option.id),
+      section: option.section,
+      icon: option.icon,
+    }));
 
   const data = Object.entries(_.groupBy(options, "section")).map(
     ([group, items]) => ({ group, items }),

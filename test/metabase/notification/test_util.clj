@@ -288,6 +288,9 @@
           :recipients   [{:type    :notification-recipient/user
                           :user_id (mt/user->id :rasta)}]}))
 
+(def default-testing-handler
+  {:channel_type :channel/metabase-test})
+
 (def default-slack-handler
   {:channel_type :channel/slack
    :recipients   [{:type    :notification-recipient/raw-value

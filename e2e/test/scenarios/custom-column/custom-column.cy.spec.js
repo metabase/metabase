@@ -1381,3 +1381,119 @@ describe("scenarios > question > custom column > distinctIf", () => {
     cy.findByTestId("scalar-value").should("have.text", "147");
   });
 });
+
+describe("scenarios > question > custom column > function browser", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+  });
+
+  it("should be possible to insert functions by clicking them in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("datetimeAdd")
+      .should("be.visible");
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("Adds some units of time to a date or timestamp value.")
+      .should("be.visible");
+
+    H.CustomExpressionEditor.functionBrowser()
+      .findByText("datetimeAdd")
+      .click();
+
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
+
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "datetimeAdd(day())");
+
+    H.CustomExpressionEditor.type('"foo"{rightarrow}, ', { focus: false });
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'datetimeAdd(day("foo"), )',
+    );
+
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      'datetimeAdd(day("foo"), day())',
+    );
+  });
+
+  it("should be possible to replace text when inserting functions", () => {
+    H.CustomExpressionEditor.type("foo bar baz");
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+    cy.realPress(["Shift", "ArrowLeft"]);
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().findByText("day").click();
+    H.CustomExpressionEditor.value().should("equal", "foo day() baz");
+  });
+
+  it("should be possible to filter functions in the function browser", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("con");
+
+      cy.findByText("dayName").should("not.exist");
+      cy.findByText("concat").should("be.visible");
+      cy.findByText("second").should("be.visible");
+      //
+      cy.findByPlaceholderText("Search functions…").clear();
+      cy.findByText("dayName").should("be.visible");
+    });
+  });
+
+  it("should not show functions that are not supported by the current database", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("convertTimezone");
+      cy.findByText("convertTimezone").should("not.exist");
+    });
+  });
+
+  it("should not show aggregations unless aggregating", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("Count");
+      cy.findByText("Count").should("not.exist");
+    });
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search aggregations…").type("Count");
+      cy.findByText("Count").should("be.visible");
+    });
+  });
+
+  it("show a message when no functions match the filter", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("foobar");
+      cy.findByText("Didn't find any results").should("be.visible");
+    });
+  });
+
+  it("should not insert parens when the clause has no arguments", () => {
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("now");
+      cy.findByText("now").click();
+    });
+    H.CustomExpressionEditor.value().should("equal", "now");
+  });
+});

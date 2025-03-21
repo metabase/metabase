@@ -74,7 +74,7 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
+You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing/).
 
 Or run it locally. Here's a docker one-liner:
 
