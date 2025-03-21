@@ -161,7 +161,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const mockNotification = createMockNotification({
       subscriptions: [
         createMockNotificationCronSubscription({
-          cron_schedule: "0 0 14 ? * 2",
+          cron_schedule: "0 0 14 ? * 2 *",
         }),
       ],
       payload: {
@@ -210,7 +210,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       subscriptions: [
         createMockNotificationCronSubscription({
           // Hourly at 5 minutes past the hour
-          cron_schedule: "0 5 * * * ?",
+          cron_schedule: "0 5 * * * ? *",
         }),
       ],
       payload: {
@@ -280,7 +280,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
-      expect(subscription.cron_schedule).toBe("0 0 8 * * ?");
+      expect(subscription.cron_schedule).toBe("0 0 8 * * ? *");
     });
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
@@ -300,7 +300,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       id: notificationId,
       subscriptions: [
         createMockNotificationCronSubscription({
-          cron_schedule: "0 0 14 ? * 2", // Monday at 2pm
+          cron_schedule: "0 0 14 ? * 2 *", // Monday at 2pm
         }),
       ],
       payload: {
@@ -340,7 +340,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
-      expect(subscription.cron_schedule).toBe("0 0 14 ? * 3");
+      expect(subscription.cron_schedule).toBe("0 0 14 ? * 3 *");
     });
 
     expect(onAlertUpdatedMock).toHaveBeenCalledTimes(1);

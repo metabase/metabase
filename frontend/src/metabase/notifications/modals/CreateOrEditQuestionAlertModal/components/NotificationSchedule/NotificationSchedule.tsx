@@ -69,7 +69,7 @@ export const NotificationSchedule = ({
       if (schedule.schedule_type === "cron") {
         return (
           <Text className={styles.customScheduleExplainer}>
-            {`${actionText} ${getScheduleExplanation(cronExpression)}${t`, according to your ${applicationName} timezone (${timezone}).`}`}
+            {`${actionText} ${getScheduleExplanation(cronExpression)}${c("An additional clarification for a human-readable schedule description").t`, according to your ${applicationName} timezone (${timezone}).`}`}
           </Text>
         );
       }
@@ -80,7 +80,9 @@ export const NotificationSchedule = ({
         return null;
       }
 
-      const timezoneLabel = t`${timezone}, your ${applicationName} timezone.`;
+      const timezoneLabel = c(
+        "An additional clarification for a human-readable schedule description",
+      ).t`${timezone}, your ${applicationName} timezone.`;
 
       return (
         <Text c="var(--mb-color-text-secondary)">

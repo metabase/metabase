@@ -258,8 +258,10 @@ export const Schedule = ({
       .with(
         "cron",
         () =>
-          c("{0} is a verb like 'Send', {1} is an adverb like 'hourly'")
-            .jt`${verb} ${selectFrequency} every ${selectCron}`,
+          c(
+            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a cron string like '0 0 * * *'",
+          ).jt`${verb} ${selectFrequency} every ${selectCron}`,
+        // ‏‏‎ ‎
       )
       .with(null, () => null)
       .with(undefined, () => null)
