@@ -35,6 +35,11 @@
   [:start [:schema [:ref ::expression/integer]]]
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
+(mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/string]]
+  [:schema [:ref ::expression/integer]])
+
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
 
