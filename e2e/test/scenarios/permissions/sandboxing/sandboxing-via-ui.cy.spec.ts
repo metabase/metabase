@@ -4,7 +4,8 @@ import { checkNotNull } from "metabase/lib/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
-  allDataIsSandboxed,
+  assertALLResultsAndValuesAreSandboxed as assertAllResultsAndValuesAreSandboxed,
+  assertNoResultsOrValuesAreSandboxed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
@@ -14,7 +15,6 @@ import {
   questionCustomView,
   sandboxedUser,
   signInAs,
-  signInAsSandboxedUser,
   unsandboxedUser,
   sandboxedUser as user,
 } from "./helpers/e2e-sandboxing-helpers";
@@ -80,9 +80,9 @@ describe(
 
     it("shows all data before sandboxing policy is applied", () => {
       signInAs(sandboxedUser);
-      allDataIsSandboxed(dashboard, sandboxableQuestions);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
       signInAs(unsandboxedUser);
-      allDataIsSandboxed(dashboard, sandboxableQuestions);
+      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
     });
 
     describe("we can apply a sandbox policy", () => {
@@ -97,9 +97,9 @@ describe(
           customViewName: questionCustomView.name,
         });
         signInAs(sandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
         signInAs(unsandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
       });
 
       it("to a table filtered using a model as a custom view", () => {
@@ -109,9 +109,9 @@ describe(
           customViewName: modelCustomView.name,
         });
         signInAs(sandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
         signInAs(unsandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
       });
 
       it("to a table filtered by a regular column", () => {
@@ -121,9 +121,9 @@ describe(
           filterColumn: "Category",
         });
         signInAs(sandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertAllResultsAndValuesAreSandboxed(dashboard, sandboxableQuestions);
         signInAs(unsandboxedUser);
-        allDataIsSandboxed(dashboard, sandboxableQuestions);
+        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
       });
     });
 
@@ -148,7 +148,7 @@ describe(
             customViewName: `${customViewType} with custom columns`,
             filterColumn: `my_${customColumnType}`,
           });
-          signInAsSandboxedUser();
+          signInAs(sandboxedUser);
           H.visitDashboard(checkNotNull(dashboard).id);
 
           cy.log("Should not return any data, and return an error");
@@ -241,7 +241,10 @@ describe(
           },
         };
 
-        Object.values(users).forEach(user => cy.createUserFromRawData(user));
+        Object.values(users).forEach(user =>
+          // @ts-expect-error - this isn't typed yet
+          cy.createUserFromRawData(user),
+        );
 
         cy.log("Show the permissions configuration for the Sample Database");
         cy.visit("/admin/permissions/data/database/1");

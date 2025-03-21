@@ -470,10 +470,11 @@ export const getParameterValuesForProductCategories = () =>
     field_ids: [SAMPLE_DATABASE.PRODUCTS.CATEGORY],
   });
 
-export const allDataIsUnsandboxed = (
-  dashboard: Dashboard,
+export const assertNoResultsOrValuesAreSandboxed = (
+  dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
+  checkNotNull(dashboard);
   getDashcardResponses(dashboard, questions).then(
     rowsShouldContainGizmosAndWidgets,
   );
@@ -496,7 +497,7 @@ export const allDataIsUnsandboxed = (
   );
 };
 
-export const allDataIsSandboxed = (
+export const assertAllResultsAndValuesAreSandboxed = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
