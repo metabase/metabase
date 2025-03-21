@@ -205,7 +205,7 @@ describe("pratt/compiler", () => {
       ]);
     });
 
-    it(`Merging subtraction`, () => {
+    it("Merging subtraction", () => {
       const compiled = expr(`1 - (0 - -10)`);
       expect(compiled).toEqual(["-", 1, ["-", 0, -10]]);
     });
