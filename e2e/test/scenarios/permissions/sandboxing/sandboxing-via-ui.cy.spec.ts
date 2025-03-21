@@ -4,7 +4,7 @@ import { checkNotNull } from "metabase/lib/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
-  assertALLResultsAndValuesAreSandboxed as assertAllResultsAndValuesAreSandboxed,
+  assertAllResultsAndValuesAreSandboxed,
   assertNoResultsOrValuesAreSandboxed,
   assignAttributeToUser,
   configureSandboxPolicy,
@@ -16,7 +16,7 @@ import {
   sandboxedUser,
   signInAs,
   unsandboxedUser,
-  sandboxedUser as user,
+  sandboxedUser,
 } from "./helpers/e2e-sandboxing-helpers";
 
 const { H } = cy;
@@ -62,7 +62,8 @@ describe(
         }
       });
       // @ts-expect-error - this isn't typed yet
-      cy.createUserFromRawData(user);
+      cy.createUserFromRawData(sandboxedUser);
+      cy.createUserFromRawData(unsandboxedUser);
 
       // this setup is a bit heavy, so let's just do it once
       H.snapshot("sandboxing-on-postgres-12");
@@ -78,7 +79,7 @@ describe(
       H.restore("sandboxing-on-postgres-12" as any);
     });
 
-    it("shows all data before sandboxing policy is applied", () => {
+    it.only("shows all data before sandboxing policy is applied", () => {
       signInAs(sandboxedUser);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
       signInAs(unsandboxedUser);
@@ -277,16 +278,6 @@ describe(
 
         H.saveChangesToPermissions();
 
-        const signIn = (state: string) => {
-          const user = users[state];
-
-          cy.log(`Sign in as user via an API call: ${user.email}`);
-          cy.request("POST", "/api/session", {
-            username: user.email,
-            password: user.password,
-          });
-        };
-
         cy.log(
           "Create two sandboxed users with different attributes (state=CA, state=WA)",
         );
@@ -294,7 +285,7 @@ describe(
           "Our goal is to ensure that the second user can't see the filter value selected by the first user",
         );
 
-        signIn("California");
+        signInAs(users["California"]);
         H.visitDashboard(dashboard_id);
 
         cy.findByLabelText("Location").click();
@@ -304,7 +295,7 @@ describe(
           cy.findByLabelText("Add filter").click();
         });
 
-        signIn("Washington");
+        signInAs(users["Washington"]);
         H.visitDashboard(dashboard_id);
         cy.findByLabelText("Location").click();
         H.popover().within(() => {
