@@ -11,6 +11,7 @@ import type {
   ParameterValue,
   ParameterValues,
   StructuredQuery,
+  User,
 } from "metabase-types/api";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
@@ -258,7 +259,11 @@ export const createSandboxingDashboardAndQuestions = () => {
   });
 };
 
-export const sandboxingUser = {
+type NormalUser = Partial<User> & { password: string };
+
+/** The user who will be sandboxed -- that is, who will be prevented from
+ * seeing some results */
+export const sandboxedUser: NormalUser = {
   email: "user@company.com",
   password: "--------",
   user_group_memberships: [
@@ -268,11 +273,22 @@ export const sandboxingUser = {
   ],
 };
 
-export const signInAsNormalUser = () => {
-  cy.log(`Sign in as user via an API call: ${sandboxingUser.email}`);
+/** A nonadmin user who will not be sandboxed */
+export const unsandboxedUser: NormalUser = {
+  email: "user2@company.com",
+  password: "--------",
+  user_group_memberships: [
+    { id: ALL_USERS_GROUP, is_group_manager: false },
+    { id: DATA_GROUP, is_group_manager: false },
+    { id: COLLECTION_GROUP, is_group_manager: false },
+  ],
+};
+
+export const signInAs = (user: NormalUser) => {
+  cy.log(`Sign in as user via an API call: ${user.email}`);
   return cy.request("POST", "/api/session", {
-    username: sandboxingUser.email,
-    password: sandboxingUser.password,
+    username: user.email,
+    password: user.password,
   });
 };
 
@@ -286,7 +302,7 @@ export const assignAttributeToUser = ({
   cy.request("GET", "/api/user")
     .then(response => {
       const userData = response.body.data.find(
-        (user: { email: string }) => user.email === sandboxingUser.email,
+        (user: { email: string }) => user.email === sandboxedUser.email,
       );
       return userData.id;
     })
@@ -476,8 +492,6 @@ export const getDashcardResponses = (
   dashboard: Dashboard | null,
   questions: CollectionItem[],
 ) => {
-  signInAsNormalUser();
-
   H.visitDashboard(checkNotNull(dashboard).id);
 
   expect(questions.length).to.be.greaterThan(0);
@@ -524,3 +538,50 @@ export const getParameterValuesForProductCategories = () =>
     },
     field_ids: [SAMPLE_DATABASE.PRODUCTS.CATEGORY],
   });
+
+export const allDataIsUnsandboxed = (
+  dashboard: Dashboard,
+  questions: CollectionItem[],
+) => {
+  getDashcardResponses(dashboard, questions).then(
+    rowsShouldContainGizmosAndWidgets,
+  );
+
+  getCardResponses(questions).then(rowsShouldContainGizmosAndWidgets);
+
+  H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+    rowsShouldContainGizmosAndWidgets({
+      responses: [response],
+      questions: [adhocQuestionData as unknown as CollectionItem],
+    }),
+  );
+
+  getFieldValuesForProductCategories().then(response =>
+    valuesShouldContainGizmosAndWidgets(response.body.values),
+  );
+
+  getParameterValuesForProductCategories().then(response =>
+    valuesShouldContainGizmosAndWidgets(response.body.values),
+  );
+};
+
+export const allDataIsSandboxed = (
+  dashboard: Dashboard | null,
+  questions: CollectionItem[],
+) => {
+  checkNotNull(dashboard);
+  getDashcardResponses(dashboard, questions).then(rowsShouldContainOnlyGizmos);
+  getCardResponses(questions).then(rowsShouldContainOnlyGizmos);
+  H.visitQuestionAdhoc(adhocQuestionData).then(({ response }) =>
+    rowsShouldContainOnlyGizmos({
+      responses: [response],
+      questions: [adhocQuestionData as unknown as CollectionItem],
+    }),
+  );
+  getFieldValuesForProductCategories().then(response =>
+    valuesShouldContainOnlyGizmos(response.body.values),
+  );
+  getParameterValuesForProductCategories().then(response =>
+    valuesShouldContainOnlyGizmos(response.body.values),
+  );
+};
