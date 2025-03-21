@@ -14,7 +14,10 @@ import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, Flex } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
-import { GroupControlsTogether } from "./GroupControlsTogether";
+import {
+  GROUP_ATTRIBUTES,
+  GroupControlsTogether,
+} from "./GroupControlsTogether";
 import S from "./Schedule.module.css";
 import {
   SelectFrame,
@@ -185,6 +188,7 @@ export const Schedule = ({
 
     const selectCron = (
       <CronExpressionInput
+        data-group={GROUP_ATTRIBUTES.separate}
         key="cron"
         value={internalCronString}
         onChange={(value: string) => {
@@ -255,14 +259,7 @@ export const Schedule = ({
               selectWeekdayOfMonth
             } at ${selectTime}`,
       )
-      .with(
-        "cron",
-        () =>
-          c(
-            "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a cron string like '0 0 * * *'",
-          ).jt`${verb} ${selectFrequency} every ${selectCron}`,
-        // ‏‏‎ ‎
-      )
+      .with("cron", () => [verb, selectFrequency, selectCron])
       .with(null, () => null)
       .with(undefined, () => null)
       .exhaustive();
