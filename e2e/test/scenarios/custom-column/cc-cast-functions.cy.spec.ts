@@ -82,14 +82,14 @@ const DATE_TEST_CASES: CastTestCase[] = [
     name: "String",
     expression: 'date("2025-03-20")',
     filterOperator: "On",
-    filterValue: "2025-03-20",
+    filterValue: "March 20, 2025",
     expectedRowCount: 200,
   },
   {
     name: "StringExpression",
     expression: 'date(concat("2025-03-", case([ID] = 1, "10", "20")))',
     filterOperator: "Before",
-    filterValue: "2025-03-15",
+    filterValue: "March 15, 2025",
     expectedRowCount: 1,
   },
 ];
@@ -152,6 +152,7 @@ function addOperatorFilter({ filterOperator, filterValue }: CastTestCase) {
 
 function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
   H.popover().within(() => {
+    cy.findByText("Specific dates…").click();
     cy.findByText(filterOperator).click();
     cy.findByLabelText("Date").clear().type(filterValue);
     cy.button("Add filter").click();
