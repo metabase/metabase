@@ -227,7 +227,7 @@ describe("SemanticTypePicker", () => {
     );
   });
 
-  describe("casting strings to numbers", () => {
+  describe("hack: allow casting text types to numerical types", () => {
     it.each([TEXT_FIELD, TEXT_LIKE_FIELD])(
       "also shows semantic types derived from text/Number when field's effective type is derived from $display_name",
       async field => {
@@ -240,7 +240,14 @@ describe("SemanticTypePicker", () => {
         await userEvent.click(picker);
 
         const dropdown = within(screen.getByRole("listbox"));
+        expect(dropdown.getByText("Latitude")).toBeInTheDocument();
+        expect(dropdown.getByText("Longitude")).toBeInTheDocument();
+        expect(dropdown.getByText("Currency")).toBeInTheDocument();
+        expect(dropdown.getByText("Discount")).toBeInTheDocument();
+        expect(dropdown.getByText("Income")).toBeInTheDocument();
         expect(dropdown.getByText("Quantity")).toBeInTheDocument();
+        expect(dropdown.getByText("Score")).toBeInTheDocument();
+        expect(dropdown.getByText("Percentage")).toBeInTheDocument();
       },
     );
   });
