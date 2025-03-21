@@ -1,9 +1,4 @@
-import {
-  popover,
-  queryBuilderMain,
-  selectDropdown,
-  tableHeaderColumn,
-} from "e2e/support/helpers";
+import { queryBuilderMain, tableHeaderColumn } from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -25,77 +20,6 @@ export function join() {
 
 export function addCustomColumn() {
   initiateAction("CustomColumn", "notebook");
-}
-
-export function filterField(
-  fieldName,
-  { operator, value, placeholder, order } = {},
-) {
-  if (operator) {
-    changeOperator(getFilterField(fieldName, order), operator);
-  }
-
-  if (value) {
-    const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
-      changeValue(getFilterField(fieldName, order), value, placeholder);
-    });
-  }
-
-  return getFilterField(fieldName, order);
-}
-
-export function filterSelectField(fieldName, { operator, value, order } = {}) {
-  if (operator) {
-    changeOperator(getFilterField(fieldName, order), operator);
-  }
-
-  if (value) {
-    const values = Array.isArray(value) ? value : [value];
-    values.forEach(value => {
-      getFilterField(fieldName, order)
-        .findByLabelText("Filter value")
-        .focus()
-        .clear()
-        .type(value);
-      popover().findByText(value).click();
-    });
-  }
-
-  return getFilterField(fieldName, order);
-}
-
-export function filterFieldPopover(
-  fieldName,
-  { value, placeholder, order } = {},
-) {
-  getFilterField(fieldName, order).within(() => {
-    cy.findByRole("combobox").click();
-  });
-
-  if (value) {
-    changeValue(selectDropdown(), value, placeholder);
-  }
-  return selectDropdown();
-}
-
-function getFilterField(fieldName, order = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId(`filter-column-${fieldName}`).eq(order);
-}
-
-function changeOperator(subject, operator) {
-  subject.findByLabelText("Filter operator").click();
-  popover().findAllByText(new RegExp(operator, "i")).first().click();
-}
-
-function changeValue(subject, newValue, placeholder) {
-  subject.within(() => {
-    const input = placeholder
-      ? cy.findByPlaceholderText(placeholder)
-      : cy.findByLabelText("Filter value");
-    input.focus().clear().type(newValue).blur();
-  });
 }
 
 /**
