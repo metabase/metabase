@@ -357,7 +357,6 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: 1,
       },
     ],
-    docsPage: "split-part",
   },
   {
     name: "regex-match-first",
