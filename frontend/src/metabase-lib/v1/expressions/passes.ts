@@ -5,8 +5,14 @@ import type {
 } from "metabase-types/api";
 
 import { MBQL_CLAUSES } from "./config";
-import { isCaseOrIf, isCaseOrIfOperator, isOptionsObject } from "./matchers";
-import { isBooleanLiteral, isNumberLiteral, isStringLiteral } from "./matchers";
+import {
+  isBooleanLiteral,
+  isCaseOrIf,
+  isCaseOrIfOperator,
+  isNumberLiteral,
+  isOptionsObject,
+  isStringLiteral,
+} from "./matchers";
 
 export type CompilerPass = (expr: Expression) => Expression;
 
@@ -16,7 +22,7 @@ function isCallExpression(expr: unknown): expr is CallExpression {
 
 export function applyPasses(
   expression: Expression,
-  passes: (CompilerPass | false | null)[],
+  passes: (CompilerPass | false | null)[] = DEFAULT_PASSES,
 ): Expression {
   let res = expression;
   for (const pass of passes) {
@@ -248,3 +254,12 @@ function withAST(
   }
   return result;
 }
+
+const DEFAULT_PASSES = [
+  adjustOptions,
+  adjustOffset,
+  adjustCaseOrIf,
+  adjustMultiArgOptions,
+  adjustTopLevelLiteral,
+  adjustBooleans,
+];
