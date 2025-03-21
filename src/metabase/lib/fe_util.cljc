@@ -73,9 +73,8 @@
 
 (defn- maybe-expand-temporal-expression
   [expression-clause]
-  (if (expandable-temporal-expression? expression-clause)
-    (expand-temporal-expression expression-clause)
-    expression-clause))
+  (cond-> expression-clause
+    (expandable-temporal-expression? expression-clause) expand-temporal-expression))
 
 (defn- expandable-case-or-if-expression?
   [[op _options & _args]]
@@ -90,9 +89,8 @@
 
 (defn- maybe-expand-case-or-if-expression
   [expression-clause]
-  (if (expandable-case-or-if-expression? expression-clause)
-    (expand-case-or-if-expression expression-clause)
-    expression-clause))
+  (cond-> expression-clause
+    (expandable-case-or-if-expression? expression-clause) expand-case-or-if-expression))
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
