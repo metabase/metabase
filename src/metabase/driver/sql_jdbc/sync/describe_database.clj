@@ -70,7 +70,9 @@
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
-    (.execute stmt)))
+    (doto stmt
+      (.setQueryTimeout 15)
+      (.execute))))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
   [driver ^Connection conn table-schema table-name]
@@ -86,10 +88,19 @@
       (execute-select-probe-query driver conn sql-args)
       (log/trace "SELECT privileges confirmed")
       true
+      (catch java.sql.SQLTimeoutException _
+        (log/info "Assuming SELECT privileges: caught timeout exception")
+        (try (when-not (.getAutoCommit conn)
+               (.rollback conn))
+             (catch Throwable _))
+        true)
       (catch Throwable e
         (log/trace e "Assuming no SELECT privileges: caught exception")
-        (when-not (.getAutoCommit conn)
-          (.rollback conn))
+        ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
+        ;; affecting anything higher
+        (try (when-not (.getAutoCommit conn)
+               (.rollback conn))
+             (catch Throwable _))
         false))))
 
 (defn- jdbc-get-tables
