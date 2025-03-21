@@ -7,6 +7,7 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -187,37 +188,39 @@
            (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"])))))
 
 (deftest ^:parallel field-filter-test-5
-  (testing "operators"
-    (testing "string"
-      (doseq [[operator form input options]
-              [[:string/starts-with
-                {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
-                ["foo"]]
-               [:string/ends-with
-                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
-                ["foo"]]
-               [:string/ends-with
-                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" "i"}}}
-                ["foo"]
-                {:case-sensitive false}]
-               [:string/contains
-                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
-                ["foo"]]
-               [:string/does-not-contain
-                {"$expr"
-                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
-                ["foo"]]
-               [:string/does-not-contain
-                {"$expr"
-                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" "i"}}}}
-                ["foo"]
-                {:case-sensitive false}]
-               [:string/= {"description" "foo"} ["foo"]]]]
-        (testing operator
-          (is (= (strip (to-bson [{:$match form}]))
-                 (strip
-                  (substitute {:desc (field-filter "description" :type/Text operator input options)}
-                              ["[{$match: " (param :desc) "}]"])))))))))
+  (mt/test-driver :mongo
+    (qp.store/with-metadata-provider (mt/id)
+      (testing "operators"
+        (testing "string"
+          (doseq [[operator form input options]
+                  [[:string/starts-with
+                    {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
+                    ["foo"]]
+                   [:string/ends-with
+                    {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
+                    ["foo"]]
+                   [:string/ends-with
+                    {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" "i"}}}
+                    ["foo"]
+                    {:case-sensitive false}]
+                   [:string/contains
+                    {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
+                    ["foo"]]
+                   [:string/does-not-contain
+                    {"$expr"
+                     {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
+                    ["foo"]]
+                   [:string/does-not-contain
+                    {"$expr"
+                     {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" "i"}}}}
+                    ["foo"]
+                    {:case-sensitive false}]
+                   [:string/= {"description" "foo"} ["foo"]]]]
+            (testing operator
+              (is (= (strip (to-bson [{:$match form}]))
+                     (strip
+                      (substitute {:desc (field-filter "description" :type/Text operator input options)}
+                                  ["[{$match: " (param :desc) "}]"])))))))))))
 
 (deftest ^:parallel field-filter-test-6
   (testing "operators"
