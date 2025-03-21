@@ -58,21 +58,24 @@ export class ResolverError extends ExpressionError {
 export class DiagnosticError extends ExpressionError {
   pos: number | null;
   len: number | null;
+  friendly: boolean;
 
   constructor(
     message: string,
     {
       pos = null,
       len = null,
-    }: { pos?: number | null; len?: number | null } = {},
+      friendly = true,
+    }: {
+      pos?: number | null;
+      len?: number | null;
+      friendly?: boolean;
+    } = {},
   ) {
     super(message);
     this.pos = pos;
     this.len = len;
-  }
-
-  get friendly(): boolean {
-    return true;
+    this.friendly = friendly;
   }
 }
 
