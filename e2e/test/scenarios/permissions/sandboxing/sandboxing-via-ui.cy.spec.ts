@@ -23,6 +23,12 @@ import {
 
 const { H } = cy;
 
+export const preparePermissions = () => {
+  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
+};
+
 describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
