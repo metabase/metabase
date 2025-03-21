@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Responsive as ReactGridLayout } from "react-grid-layout";
 
