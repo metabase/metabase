@@ -1597,6 +1597,15 @@ describe("scenarios > question > custom column > splitPart", () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
+
+    cy.findByLabelText("Custom column").click();
   });
 
   function assertTableData({ title, value }) {
@@ -1614,16 +1623,8 @@ describe("scenarios > question > custom column > splitPart", () => {
   }
 
   it("should be possible to split a custom column", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("People").click();
-    });
-
     const CC_NAME = "Split Title";
 
-    cy.findByLabelText("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "splitPart([Name], ' ', 1)",
       name: CC_NAME,
@@ -1637,5 +1638,14 @@ describe("scenarios > question > custom column > splitPart", () => {
 
     H.tableInteractiveScrollContainer().scrollTo("right");
     assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+
+  it("should show a message when index is below 1", () => {
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+    });
+
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
   });
 });
