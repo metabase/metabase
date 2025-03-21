@@ -87,7 +87,10 @@ export type ScheduleType =
   | "hourly"
   | "daily"
   | "weekly"
-  | "monthly";
+  | "monthly"
+  // 'cron' type implies usage of more complex expressions represented
+  // by raw cron string.
+  | "cron";
 
 export type ScheduleDayType =
   | "sun"
