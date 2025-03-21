@@ -53,7 +53,7 @@ type FormatOptions = {
 
 export async function formatExpressionParts(
   root: Lib.ExpressionParts,
-  options: FormatOptions,
+  options: FormatOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via

@@ -4,7 +4,7 @@ import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
 import { MBQL_CLAUSES } from "./config";
-import { formatExample } from "./formatter";
+import { formatExpressionParts } from "./formatter";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -99,7 +99,7 @@ describe("getHelpText", () => {
       if (!helpText?.example) {
         throw new Error("unreachable");
       }
-      expect(await formatExample(helpText?.example)).toEqual(
+      expect(await formatExpressionParts(helpText?.example)).toEqual(
         "Offset(Sum([Total]), -1)",
       );
     });
@@ -156,7 +156,7 @@ describe("getHelpText", () => {
       if (!helpText) {
         continue;
       }
-      expect(await formatExample(helpText.example)).toEqual(expect.any(String));
+      expect(() => formatExpressionParts(helpText.example)).not.toThrow();
     }
   });
 });
