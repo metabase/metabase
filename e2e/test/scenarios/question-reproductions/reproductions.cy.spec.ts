@@ -35,11 +35,14 @@ describe("issue 39487", () => {
       cy.findByTestId("filter-pill").click();
       checkSingleDateFilter();
 
-      cy.log("filter modal");
+      cy.log("filter picker");
       cy.button(/Filter/).click();
-      H.modal().findByText("After Jan 1, 2015").click();
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Specific dates…").click();
+      });
       checkSingleDateFilter();
-      H.modal().button("Close").click();
+      cy.realPress("Escape");
 
       cy.log("filter drill");
       cy.findByLabelText("Switch to data").click();

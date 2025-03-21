@@ -8,20 +8,24 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 
 type MultiStageFilterPickerProps = {
   query: Lib.Query;
+  canAppendStage: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onClose?: () => void;
 };
 
 export function MultiStageFilterPicker({
   query: initialQuery,
+  canAppendStage,
   onChange,
   onClose,
 }: MultiStageFilterPickerProps) {
   const { query, stageIndexes } = useMemo(() => {
-    const query = Lib.ensureFilterStage(initialQuery);
+    const query = canAppendStage
+      ? Lib.ensureFilterStage(initialQuery)
+      : initialQuery;
     const stageIndexes = Lib.stageIndexes(query);
     return { query, stageIndexes };
-  }, [initialQuery]);
+  }, [initialQuery, canAppendStage]);
 
   const [selectedItem, setSelectedItem] = useState<ColumnListItem>();
 

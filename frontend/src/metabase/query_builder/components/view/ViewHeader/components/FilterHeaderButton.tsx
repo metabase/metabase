@@ -57,6 +57,7 @@ export function FilterHeaderButton({
         <Popover.Dropdown>
           <MultiStageFilterPicker
             query={query}
+            canAppendStage={question.display() !== "pivot"}
             onChange={handleQueryChange}
             onClose={close}
           />
