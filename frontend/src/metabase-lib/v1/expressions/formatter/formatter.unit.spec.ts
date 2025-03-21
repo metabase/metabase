@@ -30,10 +30,7 @@ function setup(printWidth: number, startRule: string = "expression") {
         throw new Error(`Cannot compile expression: ${compileError?.message}`);
       }
 
-      const stageIndex = -1;
-      const parts = Lib.expressionParts(query, stageIndex, expressionClause);
-
-      const result = await format(parts, {
+      const result = await format(expressionClause, {
         ...options,
         printWidth,
       });
@@ -210,8 +207,7 @@ describe("if printWidth = Infinity, it should return the same results as the sin
           stageIndex,
           expression,
         );
-        const parts = Lib.expressionParts(query, stageIndex, clause);
-        const result = await format(parts, {
+        const result = await format(clause, {
           ...opts,
           printWidth: Infinity,
         });
