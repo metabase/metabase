@@ -26,6 +26,12 @@ import {
 
 const { H } = cy;
 
+export const preparePermissions = () => {
+  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
+};
+
 describe(
   "admin > permissions > sandboxing (tested via the admin UI)",
   { tags: "@external" },
@@ -43,6 +49,10 @@ describe(
       cy.intercept("/api/card/*/query").as("cardQuery");
 
       H.restore("postgres-12");
+
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      preparePermissions();
       createSandboxingDashboardAndQuestions().then(result => {
         const { data } = result.body;
         for (const item of data) {

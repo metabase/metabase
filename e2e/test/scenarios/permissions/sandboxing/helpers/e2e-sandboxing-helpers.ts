@@ -3,15 +3,14 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type {
+  CacheConfig,
   CollectionItem,
   Dashboard,
-  type CacheConfig,
   FieldValue,
   Filter,
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
-  CacheConfig,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
@@ -112,12 +111,6 @@ function addCustomColumnsToQuestion() {
   H.modal().button("Save").click();
   cy.wait("@updateQuestion");
 }
-
-const preparePermissions = () => {
-  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
-};
 
 /**
  * creates all questions and models and puts them in a dashboard
@@ -481,8 +474,6 @@ export const resultsShouldBeCached = (responses: DatasetResponse[]) => {
   return cy.wrap(responses);
 };
 
-
-
 export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
   cy.signIn("admin", { skipCache: true });
   const simpleCacheConfiguration: CacheConfig = {
@@ -502,21 +493,23 @@ export const cacheUnsandboxedResults = (questions: CollectionItem[]) => {
   cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
     cy.log("Populate the caches");
     getCardResponses(questions);
-  cy.log("Persist model data");
-  const modelIds = questions
-    .filter(({ type }) => type === "model")
-    .map(model => model.id);
-  H.cypressWaitAll(
-    modelIds.map(modelId =>
-      cy.request("POST", `/api/persist/card/${modelId}`, {}),
-    ),
-  ).then(() => {
-    cy.log(
-      "Configure the whole instance to use a duration-based caching of one hour",
-    );
-    cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
-      cy.log("Populate the caches");
-      getCardResponses(questions);
+
+    cy.log("Persist model data");
+    const modelIds = questions
+      .filter(({ type }) => type === "model")
+      .map(model => model.id);
+    H.cypressWaitAll(
+      modelIds.map(modelId =>
+        cy.request("POST", `/api/persist/card/${modelId}`, {}),
+      ),
+    ).then(() => {
+      cy.log(
+        "Configure the whole instance to use a duration-based caching of one hour",
+      );
+      cy.request("PUT", "/api/cache", simpleCacheConfiguration).then(() => {
+        cy.log("Populate the caches");
+        getCardResponses(questions);
+      });
     });
   });
 };
@@ -529,4 +522,3 @@ export const runWithoutCachingThenWithCaching = (
   cacheUnsandboxedResults(questions);
   callback({ isCachingEnabled: true });
 };
-
