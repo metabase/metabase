@@ -198,7 +198,7 @@
    :uses #{}}
 
   embed
-  {:api  #{metabase.embed.settings}
+  {:api  #{metabase.embed.settings metabase.embed.app-origins-sdk}
    :uses #{analytics models premium-features tiles util}}
 
   events
@@ -522,7 +522,7 @@
           metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response}
-   :uses #{analytics api config core db driver models premium-features public-settings session request util enterprise/sso}}
+   :uses #{analytics api config core db driver embed models premium-features public-settings session request util enterprise/sso}}
 
   session
   {:api  #{metabase.session.core
