@@ -27,7 +27,11 @@ describe("getHelpText", () => {
       const helpText = getHelpText("count", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Count");
-      expect(helpText?.example).toEqual(["count"]);
+      expect(helpText?.example).toEqual({
+        operator: "count",
+        options: {},
+        args: [],
+      });
       expect(helpText?.description).toMatch(/returns the count of rows/i);
       expect(helpText?.args).toBe(undefined);
     });
@@ -37,11 +41,18 @@ describe("getHelpText", () => {
       const helpText = getHelpText("percentile", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Percentile");
-      expect(helpText?.example).toEqual([
-        "percentile",
-        ["dimension", "Score"],
-        0.9,
-      ]);
+      expect(helpText?.example).toEqual({
+        operator: "percentile",
+        options: {},
+        args: [
+          {
+            operator: "dimension",
+            options: {},
+            args: ["Score"],
+          },
+          0.9,
+        ],
+      });
       expect(helpText?.description).toBe(
         "Returns the value of the column at the percentile value.",
       );
@@ -67,12 +78,24 @@ describe("getHelpText", () => {
       const helpText = getHelpText("offset", database, reportTimezone);
 
       expect(helpText?.structure).toBe("Offset");
-      expect(helpText?.example).toEqual([
-        "offset",
-        {},
-        ["sum", ["dimension", "Total"]],
-        -1,
-      ]);
+      expect(helpText?.example).toEqual({
+        operator: "offset",
+        options: {},
+        args: [
+          {
+            operator: "sum",
+            options: {},
+            args: [
+              {
+                operator: "dimension",
+                options: {},
+                args: ["Total"],
+              },
+            ],
+          },
+          -1,
+        ],
+      });
       if (!helpText?.example) {
         throw new Error("unreachable");
       }

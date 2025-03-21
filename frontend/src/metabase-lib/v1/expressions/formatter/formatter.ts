@@ -56,16 +56,12 @@ export type FormatExampleOptions = {
 };
 
 export async function formatExample(
-  expression: Lib.ExpressionClause,
+  parts: Lib.ExpressionParts,
   options: FormatExampleOptions = {},
 ) {
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
-
-  // TODO: fix types here
-  const { query, stageIndex } = options;
-  const parts = Lib.expressionParts(query, stageIndex, expression);
   return pformat("__not_used__", {
     parser: PRETTIER_PLUGIN_NAME,
     plugins: [plugin({ ...options, root: parts })],
@@ -152,6 +148,8 @@ function print(
       return formatOperator(path, print);
     } else if (isExpression(path.node.operator)) {
       return formatExpression(path);
+    } else if (isDimension(path.node.operator)) {
+      return formatDimension(path);
     } else if (isValueOperator(path.node.operator)) {
       return formatValueExpression(path, print);
     } else {
@@ -236,11 +234,27 @@ function isExpression(op: string): op is "expression" {
 function formatExpression(path: AstPath<Lib.ExpressionParts>): Doc {
   const { node } = path;
   if (!isExpression(node.operator)) {
-    throw new Error("Unexpected expression");
+    throw new Error("Expected expression");
   }
   const name = node.args[0];
   if (typeof name !== "string") {
     throw new Error("Expected expression name to be a string");
+  }
+  return formatIdentifier(name);
+}
+
+function isDimension(op: string): op is "dimension" {
+  return op === "dimension";
+}
+
+function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
+  const { node } = path;
+  if (!isDimension(node.operator)) {
+    throw new Error("Expected dimension");
+  }
+  const name = node.args[0];
+  if (typeof name !== "string") {
+    throw new Error("Expected dimension name to be a string");
   }
   return formatIdentifier(name);
 }
