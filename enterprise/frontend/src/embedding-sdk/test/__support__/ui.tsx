@@ -1,9 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import {
-  type RenderHookOptions,
-  render,
-  renderHook,
-} from "@testing-library/react";
+import { render } from "@testing-library/react";
 import type * as React from "react";
 import _ from "underscore";
 
@@ -27,11 +23,17 @@ export interface RenderWithSDKProvidersOptions {
   theme?: MantineThemeOverride;
 }
 
-// shared between renderWithSDKProviders and renderSdkHook
-const getSdkWrapperAndStore = (options: RenderWithSDKProvidersOptions) => {
-  let { routing, ...initialState }: Partial<State> = createMockState(
-    options.storeInitialState,
-  );
+export function renderWithSDKProviders(
+  ui: React.ReactElement,
+  {
+    storeInitialState = {},
+    sdkProviderProps = null,
+    theme,
+    ...options
+  }: RenderWithSDKProvidersOptions = {},
+) {
+  let { routing, ...initialState }: Partial<State> =
+    createMockState(storeInitialState);
 
   const sdkReducerNames = Object.keys(sdkReducers);
   initialState = _.pick(
@@ -41,7 +43,7 @@ const getSdkWrapperAndStore = (options: RenderWithSDKProvidersOptions) => {
 
   // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
   // Without this, SDK components will not render due to missing token features and settings.
-  if (!options.storeInitialState?.settings && initialState.settings) {
+  if (!storeInitialState.settings && initialState.settings) {
     initialState.settings.values["token-features"].embedding_sdk = true;
     initialState.settings.values["enable-embedding-sdk"] = true;
   }
@@ -55,8 +57,8 @@ const getSdkWrapperAndStore = (options: RenderWithSDKProvidersOptions) => {
   ) as unknown as Store<State>;
 
   // Prevent spamming the console during tests
-  if (options.sdkProviderProps) {
-    options.sdkProviderProps.allowConsoleLog = false;
+  if (sdkProviderProps) {
+    sdkProviderProps.allowConsoleLog = false;
   }
 
   const wrapper = (props: any) => {
@@ -64,52 +66,12 @@ const getSdkWrapperAndStore = (options: RenderWithSDKProvidersOptions) => {
       <MetabaseReduxProvider store={store}>
         <MetabaseProviderInternal
           {...props}
-          {...options.sdkProviderProps}
+          {...sdkProviderProps}
           store={store}
         />
       </MetabaseReduxProvider>
     );
   };
-
-  return { wrapper, store };
-};
-
-export const DEFAULT_PROVIDER_PROPS: Partial<MetabaseProviderProps> = {
-  authConfig: {
-    metabaseInstanceUrl: "path:",
-    authProviderUri: "auth-provider:",
-  },
-};
-
-export function renderSdkHook<TProps, TResult>(
-  hook: (props: TProps) => TResult,
-  options: Omit<RenderHookOptions<TProps>, "wrapper"> &
-    RenderWithSDKProvidersOptions = {
-    sdkProviderProps: DEFAULT_PROVIDER_PROPS,
-  },
-) {
-  const { wrapper } = getSdkWrapperAndStore(options);
-
-  return renderHook(hook, {
-    wrapper,
-    ...options,
-  });
-}
-
-export function renderWithSDKProviders(
-  ui: React.ReactElement,
-  {
-    storeInitialState = {},
-    sdkProviderProps = null,
-    theme,
-    ...options
-  }: RenderWithSDKProvidersOptions = {},
-) {
-  const { wrapper, store } = getSdkWrapperAndStore({
-    storeInitialState,
-    sdkProviderProps,
-    theme,
-  });
 
   const utils = render(ui, {
     wrapper,
