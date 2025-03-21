@@ -83,7 +83,28 @@ const model: StructuredQuestionDetails = {
   type: "model",
 };
 
-const questionData: StructuredQuestionDetails[] = [savedQuestion, model];
+const multiStageQuestion: StructuredQuestionDetails = {
+  name: "Multi-stage question",
+  query: {
+    "source-query": {
+      "source-query": {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+  },
+};
+
+const questionData: StructuredQuestionDetails[] = [
+  savedQuestion,
+  model,
+  multiStageQuestion,
+];
 
 export const adhocQuestionData = {
   dataset_query: {
