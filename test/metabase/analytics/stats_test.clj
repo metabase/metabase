@@ -463,6 +463,8 @@
   (testing "starburst with impersonation"
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
                                                       :details (json/encode {:impersonation true})}]
       (is (= {:name :starburst-legacy-impersonation,
               :available true,
@@ -479,6 +481,8 @@
                          (#'stats/snowplow-features-data))))
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
                                                       :details (json/encode {:impersonation false})}]
       (is (= {:name :starburst-legacy-impersonation,
               :available true,
@@ -489,6 +493,8 @@
 
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
+                                                      :created_at (t/instant)
+                                                      :updated_at (t/instant)
                                                       :details "{}"}]
       (is (= {:name :starburst-legacy-impersonation,
               :available true,
