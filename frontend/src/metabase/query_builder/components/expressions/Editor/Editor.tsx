@@ -158,6 +158,7 @@ export function Editor<S extends StartRule = "expression">(
           id={id}
           ref={ref}
           data-testid="custom-expression-query-editor"
+          placeholder={t`Type your expression, press '[' for columns…`}
           className={S.editor}
           extensions={extensions}
           readOnly={readOnly || isFormatting}
