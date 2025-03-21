@@ -62,6 +62,7 @@ export function getCompatibleSemanticTypes(
   });
 }
 
+// TODO: https://linear.app/metabase/issue/SEM-184
 function getLevelOneDataTypes(): string[] {
   return [
     TYPE.Text,
