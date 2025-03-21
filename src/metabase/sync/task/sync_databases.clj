@@ -302,9 +302,10 @@
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
-  (if (= audit/audit-db-id (:id database))
-    (log/info (u/format-color :red "Not scheduling tasks for audit database"))
-    (doseq [task all-tasks]
+  (doseq [task all-tasks]
+    (if (and (= audit/audit-db-id (:id database))
+             (= task sync-analyze-task-info))
+      (log/info (u/format-color :red "Not scheduling sync task for audit database"))
       (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

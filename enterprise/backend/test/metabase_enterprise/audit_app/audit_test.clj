@@ -178,16 +178,22 @@
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
-  (with-audit-db-restoration
-    (ee-audit/ensure-audit-db-installed!)
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
+  (mt/with-temp-scheduler!
+    (#'task.sync-databases/job-init)
+    (with-audit-db-restoration
+      (ee-audit/ensure-audit-db-installed!)
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Cannot sync Database: It is the audit db."
-           (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
-    (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+      (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cannot sync Database: It is the audit db."
+             (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
+      (is (= '("metabase.task.update-field-values.trigger.13371337")
+             (get-audit-db-trigger-keys))
+          "no sync occured even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]
