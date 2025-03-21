@@ -191,6 +191,8 @@
 (deftest logout-test
   (reset-throttlers!)
   (testing "DELETE /api/session"
+    (testing "Test that logout 404s if there is no session key supplied"
+      (client/client :delete 404 "session"))
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
