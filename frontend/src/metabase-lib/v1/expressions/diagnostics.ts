@@ -19,6 +19,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiteral,
   useShorthands,
 } from "./recursive-parser";
 import { resolve } from "./resolver";
@@ -245,6 +246,7 @@ function prattCompiler({
       adjustOffset,
       adjustCaseOrIf,
       adjustMultiArgOptions,
+      adjustTopLevelLiteral,
       expression =>
         resolve({
           expression,

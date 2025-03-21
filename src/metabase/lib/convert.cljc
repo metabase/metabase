@@ -290,7 +290,15 @@
         ;; but on the off chance it did not, get the type from value so the schema doesn't fail entirely.
         opts (assoc opts :effective-type (or (:effective-type opts)
                                              (:base-type opts)
-                                             (lib.schema.expression/type-of value)))]
+                                             ;; [[lib.schema.expression/type-of]] can return a set of types in some
+                                             ;; cases, e.g. #{:type/Text :type/Date} for date literals. Since
+                                             ;; `:effective-type` can be just one value, prefer string, numeric, and
+                                             ;; boolean types over others.
+                                             (let [types (lib.schema.expression/type-of value)]
+                                               (if (set? types)
+                                                 (or (m/find-first (fn [t] (some #(isa? t %) [:type/Text :type/Number :type/Boolean])) types)
+                                                     (first types))
+                                                 types))))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (doseq [tag [:case :if]]
@@ -591,11 +599,10 @@
         (for [expression expressions
               :let [legacy-clause (->legacy-MBQL expression)]]
           [(lib.util/expression-name expression)
-           ;; We wrap literals in :value ->pMBQL so unwrap this
-           ;; direction. Also, `:aggregation-options` is not allowed
-           ;; inside `:expressions` in legacy, we'll just have to toss
-           ;; the extra info.
-           (if (#{:value :aggregation-options} (first legacy-clause))
+           ;; `:aggregation-options` is not allowed inside
+           ;; `:expressions` in legacy, we'll just have to toss the
+           ;; extra info.
+           (if (#{:aggregation-options} (first legacy-clause))
              (second legacy-clause)
              legacy-clause)])))
 

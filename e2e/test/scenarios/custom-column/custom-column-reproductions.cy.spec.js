@@ -885,7 +885,7 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", () => {
+describe("issue 42949", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

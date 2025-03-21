@@ -19,6 +19,8 @@ jobs:
           m2-cache-key: "cloverage"
       - name: Build static viz frontend
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ee
       - name: Collect the test coverage
         run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
       - name: Upload coverage to codecov.io

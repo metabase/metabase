@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
+      documentation: ${{ steps.changes.outputs.documentation }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +50,27 @@ jobs:
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:cli-snippets:type-check
 
+  embedding-sdk-docs-snippets-type-check:
+    needs: [ files-changed ]
+    if: needs.files-changed.outputs.documentation == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+        shell: bash
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:docs-snippets:type-check
+
   sdk-e2e-tests:
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
     secrets: inherit
@@ -56,6 +78,7 @@ jobs:
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
+      - embedding-sdk-docs-snippets-type-check
       - sdk-e2e-tests
     if: always() && !cancelled()
     runs-on: ubuntu-latest

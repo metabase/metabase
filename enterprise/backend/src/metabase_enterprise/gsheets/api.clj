@@ -212,7 +212,8 @@
       (u/prog1 {:status "loading"
                 :folder_url url
                 :folder-upload-time (seconds-from-epoch-now)
-                :gdrive/conn-id (-> response :body :id)}
+                :gdrive/conn-id (-> response :body :id)
+                :created-by-id api/*current-user-id*}
         (analytics/inc! :metabase-gsheets/connection-creation-began)
         (gsheets! <>))
       (do

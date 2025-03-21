@@ -4,7 +4,6 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
-import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -18,6 +17,7 @@ import type {
   SdkStoreState,
 } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";

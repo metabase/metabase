@@ -498,6 +498,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               value={value}
               formatter={formatter}
               extent={columnExtent}
+              columnSettings={columnSettings}
             />
           );
         };

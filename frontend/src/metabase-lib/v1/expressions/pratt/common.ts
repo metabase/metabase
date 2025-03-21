@@ -6,6 +6,7 @@ import {
   adjustMultiArgOptions,
   adjustOffset,
   adjustOptions,
+  adjustTopLevelLiteral,
   parse as oldParser,
   useShorthands,
 } from "../recursive-parser";
@@ -29,6 +30,7 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
     adjustOffset,
     adjustCaseOrIf,
     adjustMultiArgOptions,
+    adjustTopLevelLiteral,
   ];
   return newCompile(
     parse(lexify(source), {

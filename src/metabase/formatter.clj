@@ -40,6 +40,13 @@
   Object
   (toString [_] num-str))
 
+(p.types/defrecord+ TextWrapper [^String text-str ^Object original-value]
+  hiccup.util/ToString
+  (to-str [_] text-str)
+
+  Object
+  (toString [_] text-str))
+
 (defn- strip-trailing-zeroes
   [num-as-string decimal]
   (let [decimal (str decimal)]
@@ -68,17 +75,33 @@
          0)))))
 
 (defn- sig-figs-after-decimal
-  [value decimal]
+  "Count the number of significant figures after the decimal point in a number.
+   Examples:
+     - 0.00123 -> 3 (counting 123)
+     - 0.100 -> 1 (counting 1, ignoring trailing zeros)
+     - 1.23 -> 2 (counting 23)
+     - 1.0 -> 0 (no significant figures after decimal)"
+  [value]
   (if (zero? value)
     0
-    (let [val-string (-> (condp = (type value)
-                           java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                           java.lang.Double (format "%.20f" value)
-                           java.lang.Float (format "%.20f" value)
-                           (str value))
-                         (strip-trailing-zeroes (str decimal)))
-          figs (last (str/split val-string #"[\.0]+"))]
-      (count figs))))
+    (let [;; Convert number to string with appropriate precision
+          val-string (condp = (type value)
+                       java.math.BigDecimal (.toPlainString ^BigDecimal value)
+                       java.lang.Double (format "%.20f" value)
+                       java.lang.Float (format "%.20f" value)
+                       (str value))
+          decimal-idx (str/index-of val-string ".")]
+      (if decimal-idx
+        (let [;; Get everything after the decimal point
+              after-decimal (subs val-string (inc decimal-idx))
+              ;; Find the first non-zero digit (1-9) in the decimal portion
+              first-non-zero (when-let [match (re-find #"[1-9]" after-decimal)]
+                               (str/index-of after-decimal match))]
+          (if first-non-zero
+            ;; Count all digits from first non-zero onwards, excluding trailing zeros
+            (count (str/replace (subs after-decimal first-non-zero) #"0+$" ""))
+            0))
+        0))))
 
 (defn- qualify-keys
   [m]
@@ -159,7 +182,7 @@
                                   percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                   :else       (if (>= (abs scaled-value) 1)
                                                 (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                                (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
+                                                (let [n-figs (sig-figs-after-decimal scaled-value)]
                                                   (if (> n-figs 2)
                                                     (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
                                                     decimals-in-value))))
@@ -292,4 +315,7 @@
      dictionary-formatter
 
      :else
-     (if apply-formatting? str identity))))
+     (if apply-formatting?
+       (fn [value]
+         (->TextWrapper (str value) value))
+       identity))))

@@ -541,6 +541,15 @@
                                                          100)
                                                   nil))))))
 
+(deftest ^:parallel diagnose-expression-literals-test
+  (testing "top-level literals are not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          expr  [:value {:lib/uuid (str (random-uuid)) :effective-type :type/Integer} 1]]
+      (doseq [mode [:expression :filter]]
+        (is (=? {:message  "Standalone constants are not supported."
+                 :friendly true}
+                (lib.expression/diagnose-expression query 0 mode expr nil)))))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
