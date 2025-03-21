@@ -1,5 +1,9 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 
+import {
+  getDefaultDimensionFilter,
+  getDefaultMetricFilter,
+} from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   canCombineCard,
@@ -7,7 +11,6 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
-  isDraggedWellItem,
 } from "metabase/visualizer/utils";
 import type { Card, DatasetColumn } from "metabase-types/api";
 import type {
@@ -24,39 +27,11 @@ export const cartesianDropHandler = (
     return;
   }
 
-  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isDraggedWellItem(active)) {
-    const { wellId, column } = active.data.current;
-
-    if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
-      const dimensions = state.settings["graph.dimensions"] ?? [];
-      const nextDimensions = dimensions.filter(
-        dimension => dimension !== column.name,
-      );
-
-      state.columns = state.columns.filter(col => col.name !== column.name);
-      delete state.columnValuesMapping[column.name];
-
-      state.settings = {
-        ...state.settings,
-        "graph.dimensions": nextDimensions,
-      };
-    }
-
-    if (wellId === DROPPABLE_ID.Y_AXIS_WELL) {
-      const metrics = state.settings["graph.metrics"] ?? [];
-      const nextMetrics = metrics.filter(metric => metric !== column.name);
-
-      state.columns = state.columns.filter(col => col.name !== column.name);
-      delete state.columnValuesMapping[column.name];
-
-      state.settings = {
-        ...state.settings,
-        "graph.metrics": nextMetrics,
-      };
-    }
+  if (!isDraggedColumnItem(active)) {
+    return;
   }
 
-  if (!isDraggedColumnItem(active)) {
+  if (!state.display) {
     return;
   }
 
@@ -69,11 +44,19 @@ export const cartesianDropHandler = (
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
-    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    const isSuitableColumn = getDefaultDimensionFilter(state.display);
+
+    if (isSuitableColumn(column)) {
+      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    }
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
-    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    const isSuitableColumn = getDefaultMetricFilter(state.display);
+
+    if (isSuitableColumn(column)) {
+      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    }
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
