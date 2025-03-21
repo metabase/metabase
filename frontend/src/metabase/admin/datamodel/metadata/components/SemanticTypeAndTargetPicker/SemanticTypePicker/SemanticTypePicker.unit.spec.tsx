@@ -56,22 +56,14 @@ const BOOLEAN_FIELD = createMockField({
 const COLLECTION_FIELD = createMockField({
   id: getNextId(),
   display_name: "type/Collection",
-  base_type: "type/Array",
-  effective_type: "type/Array",
+  base_type: "type/Collection",
+  effective_type: "type/JSON",
 });
 
 const STRUCTURED_FIELD = createMockField({
   id: getNextId(),
   display_name: "type/Structured",
   base_type: "type/Structured",
-  effective_type: "type/Structured",
-});
-
-// type/JSON has 2 level-one data type ancestors (type/Collection and type/Structured)
-const STRUCTURED_AND_COLLECTION_FIELD = createMockField({
-  id: getNextId(),
-  display_name: "type/Structured and type/Collection",
-  base_type: "type/JSON",
   effective_type: "type/JSON",
 });
 
@@ -83,7 +75,6 @@ const FIELDS = [
   TEMPORAL_FIELD,
   COLLECTION_FIELD,
   STRUCTURED_FIELD,
-  STRUCTURED_AND_COLLECTION_FIELD,
 ];
 
 interface SetupOpts {
@@ -168,7 +159,7 @@ describe("SemanticTypePicker", () => {
 
   describe("Entity Key, Foreign Key, and No semantic type", () => {
     it.each(FIELDS)(
-      "shows Entity Key, Foreign Key, and No semantic type when field's effective type is derived from $display_name",
+      "shows Entity Key, Foreign Key, and No semantic type when field's effective_type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
@@ -183,7 +174,7 @@ describe("SemanticTypePicker", () => {
   });
 
   describe("Entity Name", () => {
-    it("shows Entity Name when field's effective type is derived from text/Type", async () => {
+    it("shows Entity Name when field's effective_type is derived from text/Type", async () => {
       setup({
         fieldId: TEXT_FIELD.id,
         initialValue: null,
@@ -201,9 +192,8 @@ describe("SemanticTypePicker", () => {
       TEMPORAL_FIELD,
       COLLECTION_FIELD,
       STRUCTURED_FIELD,
-      STRUCTURED_AND_COLLECTION_FIELD,
     ])(
-      "does not show Entity Name when field's effective type is derived from $display_name",
+      "does not show Entity Name when field's effective_type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
@@ -217,9 +207,26 @@ describe("SemanticTypePicker", () => {
     );
   });
 
+  describe("Field containing JSON", () => {
+    it.each([STRUCTURED_FIELD, COLLECTION_FIELD])(
+      "shows Field containing JSON semantic type when field's effective_type is derived from $display_name",
+      async field => {
+        setup({
+          fieldId: field.id,
+          initialValue: null,
+        });
+
+        await verifySemanticTypesVisibility({
+          visibleTypes: ["Field containing JSON"],
+          hiddenTypes: ["Category", "Title"],
+        });
+      },
+    );
+  });
+
   describe("hack: allow casting text types to numerical types", () => {
     it.each([TEXT_FIELD, TEXT_LIKE_FIELD])(
-      "also shows semantic types derived from text/Number when field's effective type is derived from $display_name",
+      "also shows semantic types derived from text/Number when field's effective_type is derived from $display_name",
       async field => {
         setup({
           fieldId: field.id,
