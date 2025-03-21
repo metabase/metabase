@@ -528,51 +528,44 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("applies a between filter", () => {
-      H.filterField("Price", {
-        placeholder: "Min",
-        value: "50",
+      H.popover().within(() => {
+        cy.findByText("Price").click();
+        cy.findByPlaceholderText("Min").type("50");
+        cy.findByPlaceholderText("Max").type("80");
+        cy.button("Add filter").click();
       });
-
-      H.filterField("Price", {
-        placeholder: "Max",
-        value: "80",
-      });
-
       applyFilters();
-
-      cy.findByTestId("qb-filters-panel")
+      H.queryBuilderFiltersPanel()
         .findByText("Price is between 50 and 80")
         .should("be.visible");
-
       H.assertQueryBuilderRowCount(72);
     });
 
     it("applies a greater than filter", () => {
-      H.filterField("Price", {
-        operator: "greater than",
-        value: "50",
+      H.popover().findByText("Price").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("50");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Price is greater than 50").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 106 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("Price is greater than 50")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(106);
     });
 
     it("infers a <= filter from an invalid between filter", () => {
-      H.filterField("Price", {
-        placeholder: "Max",
-        value: "50",
+      H.popover().within(() => {
+        cy.findByText("Price").click();
+        cy.findByPlaceholderText("Max").type("50");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Price is less than or equal to 50").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 94 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("Price is less than or equal to 50")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(94);
     });
   });
 
@@ -583,41 +576,32 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can search for a column", () => {
-      H.modal().within(() => {
-        cy.findByText("In").should("not.exist");
+      H.popover().within(() => {
         cy.findByText("Category").should("be.visible");
+        cy.findByText("Vendor").should("be.visible");
 
-        cy.findByPlaceholderText("Search for a column…").clear().type("vend");
-
+        cy.findByPlaceholderText("Find...").type("vend");
         cy.findByText("Category").should("not.exist");
-
-        H.filterField("Vendor")
-          .findByText("in") // "In Products"
-          .should("be.visible");
-
-        H.filterField("Vendor").findByText("Vendor").should("be.visible");
+        cy.findByText("Vendor").should("be.visible");
       });
     });
 
     it("can apply a filter from a searched column", () => {
-      H.modal().within(() => {
-        cy.findByPlaceholderText("Search for a column…").clear().type("price");
-
-        // need to block until filter is applied
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Find...").type("price");
         cy.findByText("Category").should("not.exist");
+        cy.findByText("Price").click();
       });
-
-      H.filterField("Price", {
-        operator: "greater than",
-        value: "90",
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("90");
+        cy.button("Add filter").click();
       });
-
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Price is greater than 90").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 10 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("Price is greater than 90")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(10);
     });
   });
 });
