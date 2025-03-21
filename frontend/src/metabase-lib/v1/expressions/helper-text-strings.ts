@@ -359,6 +359,30 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "substring",
   },
   {
+    name: "split-part",
+    category: "string",
+    structure: "splitPart",
+    description: () =>
+      t`Splits a string on a specified delimiter and returns the nth substring.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: ["dimension", t`Title`],
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: ",",
+      },
+      {
+        name: t`position`,
+        description: t`Which substring to return after the split. Index starts at position 1.`,
+        example: 1,
+      },
+    ],
+  },
+  {
     name: "regex-match-first",
     structure: "regexextract",
     category: "string",
