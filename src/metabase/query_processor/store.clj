@@ -38,9 +38,14 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
-(def ^:dynamic *TESTS-ONLY-allow-replacing-metadata-provider*
-  "This is only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
-  provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time."
+(def ^:dynamic *DANGER-allow-replacing-metadata-provider*
+  "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
+  provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.
+
+  We use this in production in exactly one place and don't expect to use it more: to enable 'router databases' that
+  redirect users to a mirror database based on a user attribute, we swap out the metadata provider immediately before
+  the query processor executes the query against the driver. But generally speaking we should never need to use this
+  in production."
   false)
 
 ;; TODO -- rename this to something like `store-bound?` because the store is not really initialized until the Database
@@ -153,9 +158,9 @@
    thunk                                :- [:=> [:cat] :any]]
   (cond
     (or (not (initialized?))
-        *TESTS-ONLY-allow-replacing-metadata-provider*)
+        *DANGER-allow-replacing-metadata-provider*)
     (binding [*store*                                        (atom {})
-              *TESTS-ONLY-allow-replacing-metadata-provider* false]
+              *DANGER-allow-replacing-metadata-provider* false]
       (do-with-metadata-provider database-id-or-metadata-providerable thunk))
 
     ;; existing provider

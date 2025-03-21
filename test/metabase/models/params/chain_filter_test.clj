@@ -495,7 +495,7 @@
             (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :linked-filter)))))
+            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced)))))
 
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
@@ -515,11 +515,11 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type "linked-filter"))))
+            (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced))))
 
           (testing "should search for the values of linked-filter FieldValues"
             (t2/update! :model/FieldValues {:field_id field-id
-                                            :type     "linked-filter"}
+                                            :type     :advanced}
                         {:values (json/encode ["Good" "Bad"])
                          ;; HACK: currently this is hardcoded to true for linked-filter
                          ;; in [[params.field-values/fetch-advanced-field-values]]
@@ -530,7 +530,7 @@
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (t2/update! :model/FieldValues {:field_id field-id
-                                              :type     "linked-filter"}
+                                              :type     :advanced}
                           {:has_more_values true})
               (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
