@@ -108,12 +108,11 @@
   [query stage-number value]
   (let [[op options & args] (cond-> value
                               (expandable-temporal-expression? value) expand-temporal-expression
-                              (expandable-case-or-if-expression? value) expand-case-or-if-expression)
-        recurse #(expression-parts-method query stage-number %)]
+                              (expandable-case-or-if-expression? value) expand-case-or-if-expression)]
     {:lib/type :mbql/expression-parts
      :operator op
      :options  options
-     :args     (mapv recurse args)}))
+     :args     (mapv #(expression-parts-method query stage-number %) args)}))
 
 (defmethod expression-parts-method :dispatch-type/expression-parts
   [_query _stage-number value]
