@@ -1,3 +1,5 @@
+/* eslint-disable jest/expect-expect */
+
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -117,12 +119,10 @@ describe("SemanticTypePicker", () => {
       initialValue: null,
     });
 
-    const picker = screen.getByPlaceholderText("Select a semantic type");
-    await userEvent.click(picker);
-
-    const dropdown = within(screen.getByRole("listbox"));
-    expect(dropdown.getByText("Creation date")).toBeInTheDocument();
-    expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
+    await verifySemanticTypesVisibility({
+      visibleTypes: ["Creation date"],
+      hiddenTypes: ["Cancelation date"],
+    });
   });
 
   it("shows deprecated semantic type if it is already selected", async () => {
@@ -133,12 +133,9 @@ describe("SemanticTypePicker", () => {
 
     expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
-    const picker = screen.getByPlaceholderText("Select a semantic type");
-    await userEvent.click(picker);
-
-    const dropdown = within(screen.getByRole("listbox"));
-    expect(dropdown.getByText("Creation date")).toBeInTheDocument();
-    expect(dropdown.getByText("Cancelation date")).toBeInTheDocument();
+    await verifySemanticTypesVisibility({
+      visibleTypes: ["Creation date", "Cancelation date"],
+    });
   });
 
   it("hides deprecated semantic type after it is deselected", async () => {
@@ -164,11 +161,9 @@ describe("SemanticTypePicker", () => {
       initialValue: null,
     });
 
-    const picker = screen.getByPlaceholderText("Select a semantic type");
-    await userEvent.click(picker);
-
-    const dropdown = within(screen.getByRole("listbox"));
-    expect(dropdown.getByText("Category")).toBeInTheDocument();
+    await verifySemanticTypesVisibility({
+      visibleTypes: ["Category"],
+    });
   });
 
   describe("Entity Key, Foreign Key, and No semantic type", () => {
@@ -180,13 +175,9 @@ describe("SemanticTypePicker", () => {
           initialValue: null,
         });
 
-        const picker = screen.getByPlaceholderText("Select a semantic type");
-        await userEvent.click(picker);
-
-        const dropdown = within(screen.getByRole("listbox"));
-        expect(dropdown.getByText("Entity Key")).toBeInTheDocument();
-        expect(dropdown.getByText("Foreign Key")).toBeInTheDocument();
-        expect(dropdown.getByText("No semantic type")).toBeInTheDocument();
+        await verifySemanticTypesVisibility({
+          visibleTypes: ["Entity Key", "Foreign Key", "No semantic type"],
+        });
       },
     );
   });
@@ -198,11 +189,9 @@ describe("SemanticTypePicker", () => {
         initialValue: null,
       });
 
-      const picker = screen.getByPlaceholderText("Select a semantic type");
-      await userEvent.click(picker);
-
-      const dropdown = within(screen.getByRole("listbox"));
-      expect(dropdown.getByText("Entity Name")).toBeInTheDocument();
+      await verifySemanticTypesVisibility({
+        visibleTypes: ["Entity Name"],
+      });
     });
 
     it.each([
@@ -221,11 +210,9 @@ describe("SemanticTypePicker", () => {
           initialValue: null,
         });
 
-        const picker = screen.getByPlaceholderText("Select a semantic type");
-        await userEvent.click(picker);
-
-        const dropdown = within(screen.getByRole("listbox"));
-        expect(dropdown.queryByText("Entity Name")).not.toBeInTheDocument();
+        await verifySemanticTypesVisibility({
+          hiddenTypes: ["Entity Name"],
+        });
       },
     );
   });
@@ -239,18 +226,18 @@ describe("SemanticTypePicker", () => {
           initialValue: null,
         });
 
-        const picker = screen.getByPlaceholderText("Select a semantic type");
-        await userEvent.click(picker);
-
-        const dropdown = within(screen.getByRole("listbox"));
-        expect(dropdown.getByText("Latitude")).toBeInTheDocument();
-        expect(dropdown.getByText("Longitude")).toBeInTheDocument();
-        expect(dropdown.getByText("Currency")).toBeInTheDocument();
-        expect(dropdown.getByText("Discount")).toBeInTheDocument();
-        expect(dropdown.getByText("Income")).toBeInTheDocument();
-        expect(dropdown.getByText("Quantity")).toBeInTheDocument();
-        expect(dropdown.getByText("Score")).toBeInTheDocument();
-        expect(dropdown.getByText("Percentage")).toBeInTheDocument();
+        await verifySemanticTypesVisibility({
+          visibleTypes: [
+            "Latitude",
+            "Longitude",
+            "Currency",
+            "Discount",
+            "Income",
+            "Quantity",
+            "Score",
+            "Percentage",
+          ],
+        });
       },
     );
   });
@@ -274,10 +261,10 @@ describe("SemanticTypePicker", () => {
     const picker = screen.getByPlaceholderText("Select a semantic type");
     await userEvent.click(picker);
 
-    const dropdown = within(screen.getByRole("listbox"));
-    expect(dropdown.getByText("Title")).toBeInTheDocument();
-    expect(dropdown.queryByText("Birthday")).not.toBeInTheDocument();
-    expect(dropdown.queryByText("Creation date")).not.toBeInTheDocument();
+    await verifySemanticTypesVisibility({
+      visibleTypes: ["Title"],
+      hiddenTypes: ["Birthday", "Creation date"],
+    });
   });
 
   it("falls back to using field's base_type if effective_type is not available", async () => {
@@ -296,12 +283,31 @@ describe("SemanticTypePicker", () => {
       initialValue: null,
     });
 
-    const picker = screen.getByPlaceholderText("Select a semantic type");
-    await userEvent.click(picker);
-
-    const dropdown = within(screen.getByRole("listbox"));
-    expect(dropdown.queryByText("Title")).not.toBeInTheDocument();
-    expect(dropdown.getByText("Birthday")).toBeInTheDocument();
-    expect(dropdown.getByText("Creation date")).toBeInTheDocument();
+    await verifySemanticTypesVisibility({
+      visibleTypes: ["Birthday", "Creation date"],
+      hiddenTypes: ["Title"],
+    });
   });
 });
+
+async function verifySemanticTypesVisibility({
+  visibleTypes = [],
+  hiddenTypes = [],
+}: {
+  visibleTypes?: string[];
+  hiddenTypes?: string[];
+}) {
+  const picker = screen.getByPlaceholderText("Select a semantic type");
+
+  await userEvent.click(picker);
+
+  const dropdown = within(screen.getByRole("listbox"));
+
+  for (const type of visibleTypes) {
+    expect(dropdown.getByText(type)).toBeInTheDocument();
+  }
+
+  for (const type of hiddenTypes) {
+    expect(dropdown.queryByText(type)).not.toBeInTheDocument();
+  }
+}
