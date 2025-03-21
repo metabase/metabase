@@ -12,6 +12,7 @@ import {
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
+  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -188,6 +189,14 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
           resolveCardEndpoint();
         });
       cy.findByText("New question").should("be.visible");
+    });
+  });
+
+  it.only("should not show any known console errors", () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      mountSdkContentAndAssertNoKnownErrors(
+        <InteractiveDashboard dashboardId={dashboardId} />,
+      );
     });
   });
 });
