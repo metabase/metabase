@@ -80,7 +80,7 @@ const FIELDS = [
 interface SetupOpts {
   fields?: ApiField[];
   fieldId: FieldId | FieldReference;
-  initialValue: string | null;
+  initialValue?: string | null;
 }
 
 interface TestComponentProps {
@@ -94,7 +94,11 @@ function TestComponent({ field, initialValue }: TestComponentProps) {
   return <SemanticTypePicker field={field} value={value} onChange={setValue} />;
 }
 
-const setup = ({ fields = FIELDS, fieldId, initialValue }: SetupOpts) => {
+const setup = ({
+  fields = FIELDS,
+  fieldId,
+  initialValue = null,
+}: SetupOpts) => {
   const metadata = createMockMetadata({ fields });
   const field = checkNotNull(metadata.field(fieldId));
 
@@ -104,53 +108,49 @@ const setup = ({ fields = FIELDS, fieldId, initialValue }: SetupOpts) => {
 };
 
 describe("SemanticTypePicker", () => {
-  it("does not show deprecated semantic types", async () => {
-    setup({
-      fieldId: TEMPORAL_FIELD.id,
-      initialValue: null,
+  describe("depreacted semantic types", () => {
+    it("does not show deprecated semantic types", async () => {
+      setup({ fieldId: TEMPORAL_FIELD.id });
+
+      await verifySemanticTypesVisibility({
+        visibleTypes: ["Creation date"],
+        hiddenTypes: ["Cancelation date"],
+      });
     });
 
-    await verifySemanticTypesVisibility({
-      visibleTypes: ["Creation date"],
-      hiddenTypes: ["Cancelation date"],
-    });
-  });
+    it("shows deprecated semantic type if it is already selected", async () => {
+      setup({
+        fieldId: TEMPORAL_FIELD.id,
+        initialValue: TYPE.CancelationDate,
+      });
 
-  it("shows deprecated semantic type if it is already selected", async () => {
-    setup({
-      fieldId: TEMPORAL_FIELD.id,
-      initialValue: TYPE.CancelationDate,
-    });
+      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
-    expect(screen.getByText("Cancelation date")).toBeInTheDocument();
-
-    await verifySemanticTypesVisibility({
-      visibleTypes: ["Creation date", "Cancelation date"],
-    });
-  });
-
-  it("hides deprecated semantic type after it is deselected", async () => {
-    setup({
-      fieldId: TEMPORAL_FIELD.id,
-      initialValue: TYPE.CancelationDate,
+      await verifySemanticTypesVisibility({
+        visibleTypes: ["Creation date", "Cancelation date"],
+      });
     });
 
-    expect(screen.getByText("Cancelation date")).toBeInTheDocument();
+    it("hides deprecated semantic type after it is deselected", async () => {
+      setup({
+        fieldId: TEMPORAL_FIELD.id,
+        initialValue: TYPE.CancelationDate,
+      });
 
-    const picker = screen.getByPlaceholderText("Select a semantic type");
-    await userEvent.click(picker);
-    const dropdown = within(screen.getByRole("listbox"));
-    await userEvent.click(dropdown.getByText("Creation date"));
-    await userEvent.click(picker);
+      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
-    expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
+      const picker = screen.getByPlaceholderText("Select a semantic type");
+      await userEvent.click(picker);
+      const dropdown = within(screen.getByRole("listbox"));
+      await userEvent.click(dropdown.getByText("Creation date"));
+      await userEvent.click(picker);
+
+      expect(dropdown.queryByText("Cancelation date")).not.toBeInTheDocument();
+    });
   });
 
   it("shows Category semantic type for boolean field's", async () => {
-    setup({
-      fieldId: BOOLEAN_FIELD.id,
-      initialValue: null,
-    });
+    setup({ fieldId: BOOLEAN_FIELD.id });
 
     await verifySemanticTypesVisibility({
       visibleTypes: ["Category"],
@@ -161,10 +161,7 @@ describe("SemanticTypePicker", () => {
     it.each(FIELDS)(
       "shows Entity Key, Foreign Key, and No semantic type when field's effective_type is derived from $display_name",
       async field => {
-        setup({
-          fieldId: field.id,
-          initialValue: null,
-        });
+        setup({ fieldId: field.id });
 
         await verifySemanticTypesVisibility({
           visibleTypes: ["Entity Key", "Foreign Key", "No semantic type"],
@@ -175,10 +172,7 @@ describe("SemanticTypePicker", () => {
 
   describe("Entity Name", () => {
     it("shows Entity Name when field's effective_type is derived from text/Type", async () => {
-      setup({
-        fieldId: TEXT_FIELD.id,
-        initialValue: null,
-      });
+      setup({ fieldId: TEXT_FIELD.id });
 
       await verifySemanticTypesVisibility({
         visibleTypes: ["Entity Name"],
@@ -195,10 +189,7 @@ describe("SemanticTypePicker", () => {
     ])(
       "does not show Entity Name when field's effective_type is derived from $display_name",
       async field => {
-        setup({
-          fieldId: field.id,
-          initialValue: null,
-        });
+        setup({ fieldId: field.id });
 
         await verifySemanticTypesVisibility({
           hiddenTypes: ["Entity Name"],
@@ -211,10 +202,7 @@ describe("SemanticTypePicker", () => {
     it.each([STRUCTURED_FIELD, COLLECTION_FIELD])(
       "shows Field containing JSON semantic type when field's effective_type is derived from $display_name",
       async field => {
-        setup({
-          fieldId: field.id,
-          initialValue: null,
-        });
+        setup({ fieldId: field.id });
 
         await verifySemanticTypesVisibility({
           visibleTypes: ["Field containing JSON"],
@@ -228,10 +216,7 @@ describe("SemanticTypePicker", () => {
     it.each([TEXT_FIELD, TEXT_LIKE_FIELD])(
       "also shows semantic types derived from text/Number when field's effective_type is derived from $display_name",
       async field => {
-        setup({
-          fieldId: field.id,
-          initialValue: null,
-        });
+        setup({ fieldId: field.id });
 
         await verifySemanticTypesVisibility({
           visibleTypes: [
@@ -262,7 +247,6 @@ describe("SemanticTypePicker", () => {
         }),
       ],
       fieldId,
-      initialValue: null,
     });
 
     const picker = screen.getByPlaceholderText("Select a semantic type");
@@ -287,7 +271,6 @@ describe("SemanticTypePicker", () => {
         }),
       ],
       fieldId,
-      initialValue: null,
     });
 
     await verifySemanticTypesVisibility({
