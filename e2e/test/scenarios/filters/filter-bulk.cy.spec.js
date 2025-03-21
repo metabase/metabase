@@ -392,71 +392,26 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter", () => {
-      H.modal().findByText("Today").click();
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Today").click();
+      });
       applyFilters();
 
-      cy.findByTestId("qb-filters-panel")
+      H.queryBuilderFiltersPanel()
         .findByText("Created At is today")
         .should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
-      H.filterField("Created At").findByLabelText("More options").click();
-      H.popover()
-        .contains("Previous 3 months")
-        .findByText("Previous 3 months")
-        .click();
-      H.modal().findByText("Previous 3 months").should("be.visible");
-
+      H.popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Previous 3 months").click();
+      });
       applyFilters();
-
-      cy.findByTestId("qb-filters-panel")
+      H.queryBuilderFiltersPanel()
         .findByText("Created At is in the previous 3 months")
         .should("be.visible");
-    });
-
-    // if this gets flaky, disable, it's an issue with internal state in the datepicker component
-    it.skip("can add a date range filter", () => {
-      H.modal().within(() => {
-        cy.findByLabelText("Created At").within(() => {
-          cy.findByLabelText("More options").click();
-        });
-      });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Specific dates…").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Before").click();
-
-      H.popover().within(() => {
-        cy.get("input").eq(0).clear().type("01/01/2023", { delay: 0 });
-
-        cy.findByText("Add filter").click();
-      });
-
-      H.modal().within(() => {
-        cy.findByLabelText("Created At").within(() => {
-          cy.findByText("is before January 1, 2023").should("be.visible");
-        });
-      });
-      applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At is before January 1, 2023").should(
-        "be.visible",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 744 rows").should("be.visible");
-    });
-
-    it("Can cancel adding date filter", () => {
-      H.filterField("Created At").findByLabelText("More options").click();
-
-      H.filterField("Created At").click({ position: "topRight", force: true });
-
-      H.filterField("Created At").within(() => {
-        // there should be no filter so the X should not populate
-        cy.get(".Icon-close").should("not.exist");
-      });
     });
   });
 
@@ -467,27 +422,29 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("should show inline category picker for referral source", () => {
-      H.modal().within(() => {
+      H.popover().within(() => {
+        cy.findByText("Source").click();
         cy.findByText("Affiliate").click();
+        cy.button("Add filter").click();
       });
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Source is Affiliate").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 506 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("Source is Affiliate")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(506);
     });
 
     it("should show value picker for state", () => {
-      H.filterFieldPopover("State").within(() => {
+      H.popover().within(() => {
+        cy.findByText("State").click();
         cy.findByText("AZ").click();
+        cy.button("Add filter").click();
       });
       applyFilters();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("State is AZ").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 20 rows").should("be.visible");
+      H.queryBuilderFiltersPanel()
+        .findByText("State is AZ")
+        .should("be.visible");
+      H.assertQueryBuilderRowCount(20);
     });
   });
 
