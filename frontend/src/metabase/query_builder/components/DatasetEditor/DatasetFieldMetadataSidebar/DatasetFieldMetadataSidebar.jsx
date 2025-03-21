@@ -31,9 +31,10 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
+import OldSemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -278,7 +279,17 @@ function DatasetFieldMetadataSidebar({
                   </Box>
                 )}
                 <Box mb="1.5rem">
-                  <SemanticTypePicker
+                  <DatasetFieldMetadataSemanticTypePicker
+                    className={DatasetFieldMetadataSidebarS.SelectButton}
+                    // label={t`Column type`}
+                    // tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    // onKeyDown={onLastEssentialFieldKeyDown}
+                    field={field}
+                    onChange={handleSemanticTypeChange}
+                  />
+                </Box>
+                <Box mb="1.5rem">
+                  <OldSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     name="semantic_type"
                     label={t`Column type`}
