@@ -1,8 +1,10 @@
+import { useField } from "formik";
 import PropTypes from "prop-types";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import {
   canIndexField,
   fieldHasIndex,
@@ -33,7 +35,7 @@ import { EDITOR_TAB_INDEXES } from "../constants";
 
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
+import OldSemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -102,6 +104,8 @@ function DatasetFieldMetadataSidebar({
   modelIndexes,
 }) {
   const displayNameInputRef = useRef();
+
+  const [semanticTypeField, _meta, { setValue }] = useField("semantic_type");
 
   const canIndex = dataset.isSaved() && canIndexField(field, dataset);
 
@@ -190,11 +194,13 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleSemanticTypeChange = useCallback(
-    value =>
+    value => {
+      setValue(value);
       onFieldMetadataChange({
         semantic_type: value,
-      }),
-    [onFieldMetadataChange],
+      });
+    },
+    [onFieldMetadataChange, setValue],
   );
 
   const handleFKTargetChange = useCallback(
@@ -279,6 +285,17 @@ function DatasetFieldMetadataSidebar({
                 )}
                 <Box mb="1.5rem">
                   <SemanticTypePicker
+                    className={DatasetFieldMetadataSidebarS.SelectButton}
+                    // label={t`Column type`}
+                    // tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    // onKeyDown={onLastEssentialFieldKeyDown}
+                    field={field}
+                    value={semanticTypeField.value}
+                    onChange={handleSemanticTypeChange}
+                  />
+                </Box>
+                <Box mb="1.5rem">
+                  <OldSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     name="semantic_type"
                     label={t`Column type`}
