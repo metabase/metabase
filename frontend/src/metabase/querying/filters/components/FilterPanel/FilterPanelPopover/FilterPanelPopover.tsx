@@ -10,6 +10,7 @@ interface FilterPanelPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
+  filterIndex: number;
   onChange: (query: Lib.Query) => void;
 }
 
@@ -17,6 +18,7 @@ export function FilterPanelPopover({
   query,
   stageIndex,
   filter,
+  filterIndex,
   onChange,
 }: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -56,6 +58,7 @@ export function FilterPanelPopover({
           query={query}
           stageIndex={stageIndex}
           filter={filter}
+          filterIndex={filterIndex}
           onSelect={handleChange}
         />
       </Popover.Dropdown>

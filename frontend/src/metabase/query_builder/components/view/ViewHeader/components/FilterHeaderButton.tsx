@@ -1,11 +1,13 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { useDispatch } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Button, Icon } from "metabase/ui";
+import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
+import { Button, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -14,51 +16,68 @@ import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
   className?: string;
-  onOpenModal: (modalType: QueryModalType) => void;
-  query?: Lib.Query;
-  isExpanded?: boolean;
-  onExpand?: () => void;
-  onCollapse?: () => void;
+  question: Question;
+  isExpanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 }
 
 export function FilterHeaderButton({
   className,
-  onOpenModal,
-  query,
+  question,
   isExpanded,
   onExpand,
   onCollapse,
 }: FilterHeaderButtonProps) {
+  const dispatch = useDispatch();
+  const [isOpened, { close, toggle }] = useDisclosure();
+  const query = question.query();
+  const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
+  const hasFilters = items.length > 0;
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
-  const items = useMemo(() => query && getFilterItems(query), [query]);
 
-  const shouldShowFilterPanelExpander = Boolean(
-    items?.length && onExpand && onCollapse,
-  );
+  const handleQueryChange = (newQuery: Lib.Query) => {
+    const newQuestion = question.setQuery(newQuery);
+    dispatch(updateQuestion(newQuestion));
+  };
 
   return (
     <Button.Group>
-      <Button
-        leftSection={<Icon name="filter" />}
-        className={cx(className, ViewTitleHeaderS.FilterButton)}
-        onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-        data-testid="question-filter-header"
-      >
-        {t`Filter`}
-      </Button>
-      {shouldShowFilterPanelExpander && (
-        <Button
-          aria-label={label}
-          className={ViewTitleHeaderS.FilterButtonAttachment}
-          onClick={isExpanded ? onCollapse : onExpand}
-          data-testid="filters-visibility-control"
-          data-expanded={isExpanded}
-          style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
-        >
-          <div className={ViewTitleHeaderS.FilterCountChip}>
-            {items?.length}
-          </div>
-        </Button>
+      <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
+        <Popover.Target>
+          <Button
+            className={cx(className, ViewTitleHeaderS.FilterButton)}
+            leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
+            onClick={toggle}
+            data-testid="question-filter-header"
+          >
+            {t`Filter`}
+          </Button>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <MultiStageFilterPicker
+            query={query}
+            canAppendStage={question.display() !== "pivot"}
+            onChange={handleQueryChange}
+            onClose={close}
+          />
+        </Popover.Dropdown>
+      </Popover>
+      {hasFilters && (
+        <Tooltip label={label}>
+          <Button
+            aria-label={label}
+            className={ViewTitleHeaderS.FilterButtonAttachment}
+            onClick={isExpanded ? onCollapse : onExpand}
+            data-testid="filters-visibility-control"
+            data-expanded={isExpanded}
+            style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
+          >
+            <div className={ViewTitleHeaderS.FilterCountChip}>
+              {items?.length}
+            </div>
+          </Button>
+        </Tooltip>
       )}
     </Button.Group>
   );

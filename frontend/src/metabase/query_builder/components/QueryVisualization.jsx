@@ -100,7 +100,7 @@ export default function QueryVisualization(props) {
 }
 
 const VisualizationEmptyState = ({ isCompact }) => {
-  const keyboardShortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
+  const keyboardShortcut = getRunQueryShortcut();
 
   return (
     <Flex
@@ -117,7 +117,7 @@ const VisualizationEmptyState = ({ isCompact }) => {
         <Text c="text-medium">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
-            <b key="shortcut">{keyboardShortcut}</b>
+            <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
         <Text c="text-medium">{t`Query results will appear here.`}</Text>
@@ -161,27 +161,50 @@ export const VisualizationDirtyState = ({
   runQuestionQuery,
   cancelQuery,
   hidden,
-}) => (
-  <div
-    className={cx(
-      className,
-      QueryBuilderS.Loading,
-      CS.flex,
-      CS.flexColumn,
-      CS.layoutCentered,
-      { [QueryBuilderS.LoadingHidden]: hidden },
-    )}
-  >
-    <RunButtonWithTooltip
-      className={cx(CS.py2, CS.px3, CS.shadowed)}
-      circular
-      compact
-      result={result}
-      hidden={!isRunnable || hidden}
-      isRunning={isRunning}
-      isDirty={isResultDirty}
-      onRun={() => runQuestionQuery({ ignoreCache: true })}
-      onCancel={() => cancelQuery()}
-    />
-  </div>
-);
+}) => {
+  const isEnabled = isRunnable && !hidden;
+  const keyboardShortcut = getRunQueryShortcut();
+
+  const handleClick = () => {
+    if (isEnabled) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        runQuestionQuery();
+      }
+    }
+  };
+
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.Loading,
+        CS.flex,
+        CS.flexColumn,
+        CS.layoutCentered,
+        CS.cursorPointer,
+        { [QueryBuilderS.LoadingHidden]: hidden },
+      )}
+      data-testid="run-button-overlay"
+      onClick={handleClick}
+    >
+      <Stack gap="sm" align="center">
+        <RunButtonWithTooltip
+          className={CS.shadowed}
+          circular
+          compact
+          result={result}
+          hidden={!isEnabled}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+        />
+        {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
+      </Stack>
+    </div>
+  );
+};
+
+function getRunQueryShortcut() {
+  return isMac() ? t`⌘ + return` : t`Ctrl + enter`;
+}

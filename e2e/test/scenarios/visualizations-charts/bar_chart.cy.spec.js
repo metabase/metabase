@@ -181,19 +181,16 @@ describe("scenarios > visualizations > bar chart", () => {
       H.queryBuilderHeader()
         .button(/Filter/)
         .click();
-      H.modal().within(() => {
+      H.popover().within(() => {
         cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category")
-          .findByLabelText("Filter operator")
-          .click();
+        cy.findByText("Category").click();
       });
-      H.popover().findByText("Is not").click();
-      H.modal().within(() => {
-        cy.findByText("Product").click();
-        cy.findByTestId("filter-column-Category").findByText("Gadget").click();
-        cy.button("Apply filters").click();
+      H.selectFilterOperator("Is not");
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
       });
-
+      H.runButtonOverlay().click();
       H.getDraggableElements().should("have.length", 2);
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");

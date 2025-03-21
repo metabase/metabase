@@ -145,6 +145,8 @@ import fields_component from "./fields.svg?component";
 import fields_source from "./fields.svg?source";
 import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
+import filter_plus_component from "./filter_plus.svg?component";
+import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
@@ -698,6 +700,10 @@ export const Icons = {
   filter: {
     component: filter_component,
     source: filter_source,
+  },
+  filter_plus: {
+    component: filter_plus_component,
+    source: filter_plus_source,
   },
   bug: {
     component: bug_component,

@@ -28,6 +28,10 @@ export function runNativeQuery({ wait = true } = {}) {
   cy.icon("play").should("not.exist");
 }
 
+export function runButtonOverlay() {
+  return cy.findByTestId("run-button-overlay");
+}
+
 /**
  * Intercepts a request and returns resolve function that allows
  * the request to continue
