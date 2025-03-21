@@ -140,6 +140,7 @@ function getSections(
         return {
           name: columnInfo.name,
           displayName: columnInfo.displayName,
+          filterPositions: columnInfo.filterPositions,
           column,
           query,
           stageIndex,
@@ -153,6 +154,7 @@ function getSections(
         return {
           name: segmentInfo.name,
           displayName: segmentInfo.displayName,
+          filterPositions: segmentInfo.filterPositions,
           segment,
           stageIndex,
         };
