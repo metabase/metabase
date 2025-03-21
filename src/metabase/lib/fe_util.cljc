@@ -5,9 +5,11 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -89,38 +91,86 @@
     a-ref)))
 
 (defn- segment-metadata-from-ref
-  [query [_segment id]]
-  (lib.metadata/segment query id))
+  [query segment-ref]
+  (lib.metadata/segment query (last segment-ref)))
 
 (defn- metric-metadata-from-ref
-  [query [_metric id]]
-  (lib.metadata/metric query id))
+  [query metric-ref]
+  (lib.metadata/metric query (last metric-ref)))
+
+(defmulti expression-parts-method
+  {:arglists '([query stage-number arg])}
+  (fn [_query _stage-number value]
+    (lib.dispatch/dispatch-value value))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod expression-parts-method :default
+  [query stage-number value]
+  (let [[op options & args] (cond-> value
+                              (expandable-temporal-expression? value) expand-temporal-expression
+                              (expandable-case-or-if-expression? value) expand-case-or-if-expression)
+        recurse #(expression-parts-method query stage-number %)]
+    {:lib/type :mbql/expression-parts
+     :operator op
+     :options  options
+     :args     (mapv recurse args)}))
+
+(defmethod expression-parts-method :dispatch-type/expression-parts
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :dispatch-type/string
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :dispatch-type/integer
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :dispatch-type/number
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :dispatch-type/boolean
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :dispatch-type/keyword
+  [_query _stage-number value]
+  (name value))
+
+(defmethod expression-parts-method :dispatch-type/nil
+  [_query _stage-number value]
+  value)
+
+(defmethod expression-parts-method :field
+  [query stage-number field-ref]
+  (column-metadata-from-ref query stage-number field-ref))
+
+(defmethod expression-parts-method :metadata/column
+  [_query _stage-number column]
+  column)
+
+(defmethod expression-parts-method :segment
+  [query _stage-number segment-ref]
+  (segment-metadata-from-ref query segment-ref))
+
+(defmethod expression-parts-method :metadata/segment
+  [_query _stage-number segment]
+  segment)
+
+(defmethod expression-parts-method :metric
+  [query _stage-number metric-ref]
+  (metric-metadata-from-ref query metric-ref))
+
+(defmethod expression-parts-method :metadata/metric
+  [_query _stage-number metric]
+  metric)
 
 (mu/defn expression-parts :- ExpressionParts
-  "Return the parts of the filter clause `expression-clause` in query `query` at stage `stage-number`."
-  ([query expression-clause]
-   (expression-parts query -1 expression-clause))
-
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    expression-clause :- ::lib.schema.expression/expression]
-   (cond
-     (number? expression-clause) expression-clause
-     (string? expression-clause) expression-clause
-     (boolean? expression-clause) expression-clause
-     (keyword? expression-clause) (name expression-clause)
-     (lib.util/ref-clause? expression-clause) (column-metadata-from-ref query stage-number expression-clause)
-     (lib.util/segment-clause? expression-clause) (segment-metadata-from-ref query expression-clause)
-     (lib.util/metric-clause? expression-clause) (metric-metadata-from-ref query expression-clause)
-     :else
-     (let [[op options & args] (cond-> expression-clause
-                                 (expandable-temporal-expression? expression-clause) expand-temporal-expression
-                                 (expandable-case-or-if-expression? expression-clause) expand-case-or-if-expression)
-           recurse #(expression-parts query stage-number %)]
-       {:lib/type :mbql/expression-parts
-        :operator op
-        :options  options
-        :args     (mapv recurse args)}))))
+  "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
+  [query stage-index value]
+  (expression-parts-method query stage-index value))
 
 (defmethod lib.common/->op-arg :mbql/expression-parts
   [{:keys [operator options args] :or {options {}}}]
