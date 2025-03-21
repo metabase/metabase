@@ -186,61 +186,58 @@ describe("scenarios > filters > bulk filtering", () => {
     H.visitQuestionAdhoc(multiStageQuestionDetails);
 
     cy.log("add filters for all stages in the filter modal");
+    cy.log("stage 0");
     H.filter();
-    H.modal().within(() => {
-      cy.log("stage 0");
-      cy.findByText("Products").click();
-      cy.findByLabelText("Gadget").click();
-
-      cy.log("stage 1");
+    H.popover().within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    cy.log("stage 1");
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Summaries").click();
-      cy.findByLabelText("Widget").click();
-
-      cy.log("stage 2");
+      cy.findByText("Category").click();
+      cy.findByText("Widget").click();
+      cy.button("Add filter").click();
+    });
+    cy.log("stage 2");
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Summaries (2)").click();
-      cy.findByLabelText("Gizmo").click();
-
-      cy.log("stage 3");
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+    cy.log("stage 3");
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Summaries (3)").click();
-      cy.findByLabelText("Doohickey").click();
+      cy.findByText("Category").click();
+      cy.findByText("Doohickey").click();
+      cy.button("Add filter").click();
     });
     applyFilters();
 
     cy.log("check filters from all stages to be present in the filter panel");
-    cy.findByTestId("qb-filters-panel").within(() => {
+    H.queryBuilderFiltersPanel().within(() => {
       cy.findByText("Category is Gadget").should("be.visible");
       cy.findByText("Category is Widget").should("be.visible");
       cy.findByText("Category is Gizmo").should("be.visible");
       cy.findByText("Category is Doohickey").should("be.visible");
     });
 
-    cy.log("check filters from all stages to be present in the filter modal");
-    H.filter();
-    H.modal().within(() => {
-      cy.log("stage 0");
-      cy.findByText("Products").click();
-      cy.findByLabelText("Gadget").should("be.checked");
-      cy.findByLabelText("Widget").should("not.be.checked");
-
-      cy.log("stage 1");
-      cy.findByText("Summaries").click();
-      cy.findByLabelText("Widget").should("be.checked");
-      cy.findByLabelText("Gizmo").should("not.be.checked");
-
-      cy.log("stage 2");
-      cy.findByText("Summaries (2)").click();
-      cy.findByLabelText("Gizmo").should("be.checked");
-      cy.findByLabelText("Doohickey").should("not.be.checked");
-
-      cy.log("stage 3");
-      cy.findByText("Summaries (3)").click();
-      cy.findByLabelText("Doohickey").should("be.checked");
-      cy.findByLabelText("Gadget").should("not.be.checked");
-    });
-
     cy.log("clear all filters");
-    H.modal().button("Clear all filters").click();
-    applyFilters();
+    H.queryBuilderFiltersPanel().within(() => {
+      cy.findByText("Category is Gadget").icon("close").click();
+      cy.wait("@dataset");
+      cy.findByText("Category is Widget").icon("close").click();
+      cy.wait("@dataset");
+      cy.findByText("Category is Gizmo").icon("close").click();
+      cy.wait("@dataset");
+      cy.findByText("Category is Doohickey").icon("close").click();
+      cy.wait("@dataset");
+    });
     cy.findByTestId("qb-filters-panel").should("not.exist");
   });
 
