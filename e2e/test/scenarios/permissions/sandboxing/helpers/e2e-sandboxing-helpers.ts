@@ -5,6 +5,7 @@ import { checkNotNull } from "metabase/lib/types";
 import type {
   CollectionItem,
   Dashboard,
+  type CacheConfig,
   FieldValue,
   Filter,
   GetFieldValuesResponse,
