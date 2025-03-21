@@ -220,6 +220,9 @@ export const CollectionPickerModal = ({
         recentFilter={recentFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateCollectionDialogOpen}
+        disableCloseOnEscape={
+          isCreateCollectionDialogOpen || isCreateDashboardDialogOpen
+        }
       />
       <NewCollectionDialog
         isOpen={isCreateCollectionDialogOpen}

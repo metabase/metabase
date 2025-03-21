@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
@@ -43,6 +44,8 @@ export const NewDashboardDialog = ({
     onClose();
   };
 
+  useEscapeToCloseModal(onClose, { capture: true });
+
   return (
     <Modal
       title={t`Create a new dashboard`}
@@ -51,12 +54,12 @@ export const NewDashboardDialog = ({
       data-testid="create-dashboard-on-the-go"
       trapFocus={true}
       withCloseButton={false}
+      closeOnEscape={false}
       styles={{
         content: {
           padding: "1rem",
         },
       }}
-      zIndex={400} // needs to be above the EntityPickerModal at 400
     >
       <FormProvider
         initialValues={{ name: "" }}
