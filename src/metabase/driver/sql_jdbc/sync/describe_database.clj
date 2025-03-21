@@ -107,7 +107,7 @@
        (let [name (.getString rset "TABLE_NAME")
              schema (.getString rset "TABLE_SCHEM")
              ttype (.getString rset "TABLE_TYPE")]
-         (log/debugf "jdbc-get-tables: Fetched object: schema `%s` name `%s` type `%s`" name schema ttype)
+         (log/debugf "jdbc-get-tables: Fetched object: schema `%s` name `%s` type `%s`" schema name ttype)
          {:name        name
           :schema      schema
           :description (when-let [remarks (.getString rset "REMARKS")]
