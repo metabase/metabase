@@ -135,6 +135,8 @@ jobs:
       - name: Build static-viz frontend
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         run: yarn build-static-viz
+        env:
+          MB_EDITION: ${{ matrix.job.edition }}
       - name: Download Static Viz Bundle Artifact
         if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         uses: actions/download-artifact@v4
