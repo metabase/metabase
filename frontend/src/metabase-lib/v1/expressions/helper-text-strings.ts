@@ -353,7 +353,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`position`,
-        description: t`Which array element to return after the split. Index starts at position 1.`,
+        description: t`Which substring to return after the split. Index starts at position 1.`,
         example: 1,
       },
     ],
