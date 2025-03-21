@@ -1,7 +1,8 @@
 import type { SyntaxNodeRef } from "@lezer/common";
 import { t } from "ttag";
 
-import type { ErrorWithMessage, Token } from "../types";
+import { ExpressionError } from "../errors";
+import type { Token } from "../types";
 
 import { parser } from "./parser";
 import { OPERATOR, type Optional, TOKEN } from "./types";
@@ -22,7 +23,7 @@ const escapes = {
  */
 export function tokenize(expression: string) {
   const tokens: Token[] = [];
-  const errors: ErrorWithMessage[] = [];
+  const errors: ExpressionError[] = [];
 
   const tree = parser.parse(expression);
   const cursor = tree.cursor();
@@ -36,17 +37,13 @@ export function tokenize(expression: string) {
     return false;
   }
 
-  function error(
-    node: SyntaxNodeRef,
-    message: string,
-    error: Partial<ErrorWithMessage> = {},
-  ) {
-    errors.push({
-      message,
-      pos: node.from,
-      len: node.to - node.from,
-      ...error,
-    });
+  function error(node: SyntaxNodeRef, message: string) {
+    errors.push(
+      new ParseError(message, {
+        pos: node.from,
+        len: node.to - node.from,
+      }),
+    );
   }
 
   cursor.iterate(function (node) {
@@ -167,4 +164,28 @@ function parseOperator(op: string): OPERATOR | null {
     return lower;
   }
   return null;
+}
+
+export class ParseError extends ExpressionError {
+  pos: number | null;
+  len: number | null;
+
+  constructor(
+    message: string,
+    {
+      pos = null,
+      len = null,
+    }: {
+      pos?: number | null;
+      len?: number | null;
+    } = {},
+  ) {
+    super(message);
+    this.pos = pos;
+    this.len = len;
+  }
+
+  get friendly(): boolean {
+    return true;
+  }
 }

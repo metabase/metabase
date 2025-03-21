@@ -1,4 +1,4 @@
-import { enclosingFunction } from "./utils";
+import { enclosingFunction } from "./position";
 
 describe("enclosingFunction", () => {
   function setup(doc: string) {
