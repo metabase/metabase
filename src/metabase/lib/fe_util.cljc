@@ -81,11 +81,9 @@
   (boolean (#{:case :if} op)))
 
 (defn- expand-case-or-if-expression
-  [[op options & args]]
-  (let [clauses (into [] (apply concat (first args)))
-        fallback (second args)
-        res (conj clauses fallback)]
-    (concat [op options] res)))
+  [[op options clause-pairs fallback]]
+  (let [clauses (into [] cat clause-pairs)]
+    (into [op options] (conj clauses fallback))))
 
 (defn- maybe-expand-case-or-if-expression
   [expression-clause]
