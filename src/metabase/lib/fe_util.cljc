@@ -71,11 +71,6 @@
                     fmt.date/date->iso-string)]
     (into [:between options column-arg] (map formatter) interval)))
 
-(defn- maybe-expand-temporal-expression
-  [expression-clause]
-  (cond-> expression-clause
-    (expandable-temporal-expression? expression-clause) expand-temporal-expression))
-
 (defn- expandable-case-or-if-expression?
   [[op _options & _args]]
   (boolean (#{:case :if} op)))
@@ -84,11 +79,6 @@
   [[op options clause-pairs fallback]]
   (let [clauses (into [] cat clause-pairs)]
     (into [op options] (conj clauses fallback))))
-
-(defn- maybe-expand-case-or-if-expression
-  [expression-clause]
-  (cond-> expression-clause
-    (expandable-case-or-if-expression? expression-clause) expand-case-or-if-expression))
 
 (defn- column-metadata-from-ref
   [query stage-number a-ref]
@@ -123,9 +113,9 @@
      (lib.util/segment-clause? expression-clause) (segment-metadata-from-ref query expression-clause)
      (lib.util/metric-clause? expression-clause) (metric-metadata-from-ref query expression-clause)
      :else
-     (let [[op options & args] (-> expression-clause
-                                   maybe-expand-temporal-expression
-                                   maybe-expand-case-or-if-expression)
+     (let [[op options & args] (cond-> expression-clause
+                                 (expandable-temporal-expression? expression-clause) expand-temporal-expression
+                                 (expandable-case-or-if-expression? expression-clause) expand-case-or-if-expression)
            recurse #(expression-parts query stage-number %)]
        {:lib/type :mbql/expression-parts
         :operator op
