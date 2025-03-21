@@ -77,17 +77,19 @@
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
-    (log/tracef "Checking for SELECT privileges for %s with query %s"
+    (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (str (when table-schema
                        (str (pr-str table-schema) \.))
                      (pr-str table-name))
                 (pr-str sql-args))
     (try
+      (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
-      (log/trace "SELECT privileges confirmed")
+      (log/debug "have-select-privilege? sql-jdbc: Probe query executed successfully")
       true
       (catch Throwable e
-        (log/trace e "Assuming no SELECT privileges: caught exception")
+        (log/debug e "Assuming no SELECT privileges: caught exception")
+        ;; TODO: Is the following actually needed?
         (when-not (.getAutoCommit conn)
           (.rollback conn))
         false))))
