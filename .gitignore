@@ -36,6 +36,9 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
+/docs/**/node_modules
+/docs/**/package.json
+/docs/**/yarn.lock
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
