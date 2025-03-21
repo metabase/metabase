@@ -2274,10 +2274,12 @@ describe("issue 48829", () => {
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
+    H.popover().within(() => {
+      cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Apply filters").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
 
     H.queryBuilderHeader()
       .button(/Editor/)
