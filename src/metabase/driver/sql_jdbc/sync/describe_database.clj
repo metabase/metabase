@@ -105,14 +105,15 @@
    (fn [^ResultSet rset]
      (fn []
        (let [name (.getString rset "TABLE_NAME")
-             schema (.getString rset "TABLE_SCHEM")]
-         (log/debugf "jdbc-get-tables: Fetched name `%s` schema `%s`" name schema)
+             schema (.getString rset "TABLE_SCHEM")
+             ttype (.getString rset "TABLE_TYPE")]
+         (log/debugf "jdbc-get-tables: Fetched object: type `%s` name `%s` schema `%s`" name schema ttype)
          {:name        name
           :schema      schema
           :description (when-let [remarks (.getString rset "REMARKS")]
                          (when-not (str/blank? remarks)
                            remarks))
-          :type        (.getString rset "TABLE_TYPE")})))))
+          :type        ttype})))))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
