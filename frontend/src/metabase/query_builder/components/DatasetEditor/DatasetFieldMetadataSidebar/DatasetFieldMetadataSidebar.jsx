@@ -1,10 +1,8 @@
-import { useField } from "formik";
 import PropTypes from "prop-types";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import {
   canIndexField,
   fieldHasIndex,
@@ -33,6 +31,7 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
 import OldSemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
@@ -104,8 +103,6 @@ function DatasetFieldMetadataSidebar({
   modelIndexes,
 }) {
   const displayNameInputRef = useRef();
-
-  const [semanticTypeField, _meta, { setValue }] = useField("semantic_type");
 
   const canIndex = dataset.isSaved() && canIndexField(field, dataset);
 
@@ -194,13 +191,11 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleSemanticTypeChange = useCallback(
-    value => {
-      setValue(value);
+    value =>
       onFieldMetadataChange({
         semantic_type: value,
-      });
-    },
-    [onFieldMetadataChange, setValue],
+      }),
+    [onFieldMetadataChange],
   );
 
   const handleFKTargetChange = useCallback(
@@ -284,13 +279,12 @@ function DatasetFieldMetadataSidebar({
                   </Box>
                 )}
                 <Box mb="1.5rem">
-                  <SemanticTypePicker
+                  <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     // label={t`Column type`}
                     // tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     // onKeyDown={onLastEssentialFieldKeyDown}
                     field={field}
-                    value={semanticTypeField.value}
                     onChange={handleSemanticTypeChange}
                   />
                 </Box>
