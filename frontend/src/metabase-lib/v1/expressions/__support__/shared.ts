@@ -140,7 +140,7 @@ const expression: TestCase[] = [
     ["*", ["+", 1, 2], 3],
     "parenthesis overriding operator precedence",
   ],
-  ['"hello world"', "hello world", "string literal"],
+  ['"hello world"', ["value", "hello world"], "string literal"],
   ["[Subtotal]", subtotal, "field name"],
   ["[Tax] + [Total]", ["+", tax, total], "adding two fields"],
   ["1 + [Subtotal]", ["+", 1, subtotal], "adding literal and field"],
