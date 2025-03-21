@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.embed.app-origins-sdk :as aos]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -225,7 +226,7 @@
   [origin enabled? approved-origins]
   (when enabled?
     (merge
-     (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
+     (when (approved-origin? origin approved-origins)
        {"Access-Control-Allow-Origin" origin
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
@@ -242,7 +243,7 @@
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                           (setting/get-value-of-type :string :embedding-app-origins-sdk))
+                           (aos/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
@@ -259,7 +260,7 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         ((:headers request) "origin")
+                                            :origin         (get (:headers request) "origin")
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn request/public? request/embed?) request)
                                             :allow-cache?   (request/cacheable? request))))
