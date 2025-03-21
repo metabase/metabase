@@ -1,15 +1,8 @@
-import _ from "underscore";
-
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
-import {
-  CreateDashboardModal as CreateDashboardModalCore,
-  type CreateDashboardModalProps as CreateDashboardModalCoreProps,
-} from "metabase/dashboard/containers/CreateDashboardModal";
-import Collections from "metabase/entities/collections";
+import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import type { Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export interface CreateDashboardModalProps {
   initialCollectionId?: SdkCollectionId;
@@ -33,7 +26,7 @@ const CreateDashboardModalInner = ({
   }
 
   return (
-    <CreateDashboardModalCoreWithLoading
+    <CreateDashboardModalCore
       opened={!isLoading && isOpen}
       onCreate={onCreate}
       onClose={onClose}
@@ -41,14 +34,6 @@ const CreateDashboardModalInner = ({
     />
   );
 };
-
-const CreateDashboardModalCoreWithLoading = _.compose(
-  Collections.load({
-    id: (_state: State, props: CreateDashboardModalCoreProps) =>
-      props.collectionId,
-    loadingAndErrorWrapper: false,
-  }),
-)(CreateDashboardModalCore);
 
 export const CreateDashboardModal = withPublicComponentWrapper(
   CreateDashboardModalInner,
