@@ -11,6 +11,7 @@
 (derive ::event :metabase/event)
 (derive :event/database-create ::event)
 
+;; THIS HERE calls toplevel sync
 (methodical/defmethod events/publish-event! ::event
   "When a new Database is created, kick off a sync process for it in a different thread."
   [topic {database :object :as _event}]
