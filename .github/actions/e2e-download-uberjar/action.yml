@@ -4,6 +4,9 @@ inputs:
   edition:
     description: Metabase edition.
     required: true
+  commit:
+    description: Optional commit SHA to download from. If not provided, will try to find the most recent working jar.
+    required: false
 
 runs:
   using: "composite"
@@ -54,8 +57,9 @@ runs:
             }
           }
 
-          const currentCommit = "${{ github.event.pull_request.head.sha || github.sha }}";
-          const { id } = await getArtifact(currentCommit);
+          // Use provided commit or fall back to current commit
+          const commitToUse = "${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}";
+          const { id } = await getArtifact(commitToUse);
 
           const download = await github.rest.actions.downloadArtifact({
             ...baseConfig,
@@ -68,3 +72,11 @@ runs:
     - name: Unzip Metabase artifact containing an uberjar
       run: unzip mb.zip
       shell: bash
+
+    - name: Verify jar file
+      run: |
+        if [ ! -f "target/uberjar/metabase.jar" ]; then
+          echo "Error: metabase.jar not found after unzipping"
+          exit 1
+        fi
+        echo "Successfully downloaded and extracted metabase.jar"

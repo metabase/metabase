@@ -1,0 +1,107 @@
+name: Check if a new jar build is needed
+description: Determines if non-test files have changed in the latest commit, which would require building a new jar
+
+outputs:
+  build_needed:
+    description: 'true if a new build is needed, false otherwise'
+    value: ${{ steps.check_changes.outputs.build_needed }}
+  parent_commit:
+    description: 'Parent commit SHA if available'
+    value: ${{ steps.check_changes.outputs.parent_commit }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for non-test file changes
+      id: check_changes
+      shell: bash
+      run: |
+        # Get the parent commit
+        PARENT_COMMIT=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+
+        # If this is the first commit in the PR or we can't get parent commit, we need to build
+        if [ -z "$PARENT_COMMIT" ]; then
+          echo "This is the first commit in the PR or parent commit not available, build needed"
+          echo "build_needed=true" >> $GITHUB_OUTPUT
+          echo "parent_commit=" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        echo "parent_commit=${PARENT_COMMIT}" >> $GITHUB_OUTPUT
+
+        # Get changed files between current commit and parent
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+
+        # Check if any non-test files were changed
+        # Define patterns for test files
+        TEST_PATTERNS=("**test/**" "**_test.clj" "**/frontend/**.unit.*" "**/*.cy.spec.*" "**/*.unit.spec.*")
+
+        # Define patterns for dependency files that require rebuild
+        DEPENDENCY_PATTERNS=("package.json" "yarn.lock" "deps.edn" "shadow-cljs.edn" "bb.edn")
+
+        # Default to not needing a build
+        BUILD_NEEDED="false"
+
+        # Check each changed file against patterns
+        for FILE in $CHANGED_FILES; do
+          IS_TEST_FILE="false"
+          IS_DEPENDENCY_FILE="false"
+
+          # Check if the file matches any test pattern
+          for PATTERN in "${TEST_PATTERNS[@]}"; do
+            if [[ "$FILE" == $PATTERN ]]; then
+              IS_TEST_FILE="true"
+              break
+            fi
+          done
+
+          # Check if the file is a dependency file
+          for PATTERN in "${DEPENDENCY_PATTERNS[@]}"; do
+            if [[ "$FILE" == $PATTERN ]]; then
+              IS_DEPENDENCY_FILE="true"
+              BUILD_NEEDED="true"
+              break
+            fi
+          done
+
+          # If it's a dependency file, we're done
+          if [[ "$IS_DEPENDENCY_FILE" == "true" ]]; then
+            break
+          fi
+
+          # If the file is not a test file, we need to build
+          if [[ "$IS_TEST_FILE" == "false" ]]; then
+            # Check if the file is in other ignored categories (docs, config, etc.)
+            if [[ ! "$FILE" =~ \.md$ && ! "$FILE" =~ ^docs/ && ! "$FILE" =~ ^\..* ]]; then
+              BUILD_NEEDED="true"
+              break
+            fi
+          fi
+        done
+
+        # Check if base branch has been updated
+        if [[ "$BUILD_NEEDED" == "false" ]]; then
+          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          BASE_COMMIT=$(git merge-base HEAD origin/$BASE_BRANCH)
+          if [[ "$BASE_COMMIT" != "$PARENT_COMMIT" ]]; then
+            echo "Base branch has been updated, build needed"
+            BUILD_NEEDED="true"
+          fi
+        fi
+
+        echo "build_needed=${BUILD_NEEDED}" >> $GITHUB_OUTPUT
+
+        # For debugging
+        echo "Changed files:"
+        echo "$CHANGED_FILES"
+        echo "Build needed: ${BUILD_NEEDED}"
+        if [[ "$BUILD_NEEDED" == "true" ]]; then
+          echo "Reason for build:"
+          if [[ "$IS_DEPENDENCY_FILE" == "true" ]]; then
+            echo "- Dependency file changed"
+          elif [[ "$BASE_COMMIT" != "$PARENT_COMMIT" ]]; then
+            echo "- Base branch updated"
+          else
+            echo "- Non-test file changed"
+          fi
+        fi

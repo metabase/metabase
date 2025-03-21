@@ -48,9 +48,23 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
-    needs: [get-build-requirements]
+  check-build-needed:
     if: ${{ !cancelled() && !inputs.skip }}
+    runs-on: ubuntu-22.04
+    outputs:
+      build_needed: ${{ steps.check_changes.outputs.build_needed }}
+      parent_commit: ${{ steps.check_changes.outputs.parent_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # We need the parent commit for comparison
+      - name: Check if build is needed
+        id: check_changes
+        uses: ./.github/actions/check-if-build-needed
+
+  build:
+    needs: [get-build-requirements, check-build-needed]
+    if: ${{ !cancelled() && !inputs.skip && needs.check-build-needed.outputs.build_needed == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
@@ -82,6 +96,21 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+  download-previous-jar:
+    needs: [check-build-needed]
+    if: ${{ !cancelled() && !inputs.skip && needs.check-build-needed.outputs.build_needed == 'false' && needs.check-build-needed.outputs.parent_commit != '' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download previous jar
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: ${{ matrix.edition }}
+          commit: ${{ needs.check-build-needed.outputs.parent_commit }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -120,8 +149,10 @@ jobs:
     needs:
       - e2e-matrix-builder
       - build
+      - download-previous-jar
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      (needs.build.result == 'success' || needs.download-previous-jar.result == 'success')
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -139,9 +170,10 @@ jobs:
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build
+    needs: [build, download-previous-jar]
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      (needs.build.result == 'success' || needs.download-previous-jar.result == 'success')
     secrets: inherit
     with:
       name: Flaky
@@ -176,7 +208,7 @@ jobs:
           fi
 
   pr-env:
-    needs: [build]
+    needs: [build, download-previous-jar]
     if: |
       !cancelled() &&
       contains(github.event.pull_request.labels.*.name, 'PR-Env')
