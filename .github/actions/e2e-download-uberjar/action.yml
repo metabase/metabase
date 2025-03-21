@@ -80,3 +80,4 @@ runs:
           exit 1
         fi
         echo "Successfully downloaded and extracted metabase.jar"
+      shell: bash
