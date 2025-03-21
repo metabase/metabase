@@ -248,7 +248,10 @@
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
+                                      (prep-for-html-rendering timezone-id card data)
+                                      filtered-cols
+                                      viz-settings
+                                      format-rows?)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil
