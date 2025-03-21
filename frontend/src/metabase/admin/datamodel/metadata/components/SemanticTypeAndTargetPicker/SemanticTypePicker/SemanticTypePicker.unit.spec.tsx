@@ -7,7 +7,11 @@ import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import type { FieldId, FieldReference } from "metabase-types/api";
+import type {
+  Field as ApiField,
+  FieldId,
+  FieldReference,
+} from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 
 import { SemanticTypePicker } from "./SemanticTypePicker";
@@ -81,6 +85,7 @@ const FIELDS = [
 ];
 
 interface SetupOpts {
+  fields?: ApiField[];
   fieldId: FieldId | FieldReference;
   initialValue: string | null;
 }
@@ -96,10 +101,8 @@ function TestComponent({ field, initialValue }: TestComponentProps) {
   return <SemanticTypePicker field={field} value={value} onChange={setValue} />;
 }
 
-const setup = ({ fieldId, initialValue }: SetupOpts) => {
-  const metadata = createMockMetadata({
-    fields: FIELDS,
-  });
+const setup = ({ fields = FIELDS, fieldId, initialValue }: SetupOpts) => {
+  const metadata = createMockMetadata({ fields });
   const field = checkNotNull(metadata.field(fieldId));
 
   renderWithProviders(
@@ -250,5 +253,55 @@ describe("SemanticTypePicker", () => {
         expect(dropdown.getByText("Percentage")).toBeInTheDocument();
       },
     );
+  });
+
+  it("uses field's effective_type when it is available", async () => {
+    const fieldId = getNextId();
+
+    setup({
+      fields: [
+        createMockField({
+          id: fieldId,
+          display_name: "type/Temporal",
+          base_type: "type/DateTime",
+          effective_type: "type/Text",
+        }),
+      ],
+      fieldId,
+      initialValue: null,
+    });
+
+    const picker = screen.getByPlaceholderText("Select a semantic type");
+    await userEvent.click(picker);
+
+    const dropdown = within(screen.getByRole("listbox"));
+    expect(dropdown.getByText("Title")).toBeInTheDocument();
+    expect(dropdown.queryByText("Birthday")).not.toBeInTheDocument();
+    expect(dropdown.queryByText("Creation date")).not.toBeInTheDocument();
+  });
+
+  it("falls back to using field's base_type if effective_type is not available", async () => {
+    const fieldId = getNextId();
+
+    setup({
+      fields: [
+        createMockField({
+          id: fieldId,
+          display_name: "type/Temporal",
+          base_type: "type/DateTime",
+          effective_type: undefined,
+        }),
+      ],
+      fieldId,
+      initialValue: null,
+    });
+
+    const picker = screen.getByPlaceholderText("Select a semantic type");
+    await userEvent.click(picker);
+
+    const dropdown = within(screen.getByRole("listbox"));
+    expect(dropdown.queryByText("Title")).not.toBeInTheDocument();
+    expect(dropdown.getByText("Birthday")).toBeInTheDocument();
+    expect(dropdown.getByText("Creation date")).toBeInTheDocument();
   });
 });
