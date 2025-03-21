@@ -77,11 +77,7 @@ export class DiagnosticError extends ExpressionError {
 }
 
 export function isExpressionError(err: unknown): err is ExpressionError {
-  return (
-    typeof err === "object" &&
-    err != null &&
-    typeof (err as any).message === "string"
-  );
+  return err !== null && err instanceof ExpressionError;
 }
 
 export function renderError(error: unknown): ExpressionError {
