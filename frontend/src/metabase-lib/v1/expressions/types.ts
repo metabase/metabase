@@ -8,6 +8,7 @@ export type MBQLClauseCategory =
   | "math"
   | "string"
   | "date"
+  | "conversion"
   | "window"
   | "aggregation";
 

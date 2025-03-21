@@ -78,7 +78,8 @@
                               :identifiers-with-spaces  true
                               :uuid-type                true
                               :split-part               true
-                              :uploads                  true}]
+                              :uploads                  true
+                              :cast                     true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -639,6 +640,10 @@
   (let [seconds (h2x/- (extract-from-timestamp :epoch y) (extract-from-timestamp :epoch x))]
     (h2x/->integer [:trunc seconds])))
 
+(defmethod sql.qp/->honeysql [:postgres :integer]
+  [driver [_ value]]
+  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+
 (defn- format-regex-match-first [_fn [identifier pattern]]
   (let [[identifier-sql & identifier-args] (sql/format-expr identifier {:nested true})
         [pattern-sql & pattern-args]       (sql/format-expr pattern {:nested true})]
@@ -657,6 +662,10 @@
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ text divider position]]
   [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+
+(defmethod sql.qp/->honeysql [:postgres :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]

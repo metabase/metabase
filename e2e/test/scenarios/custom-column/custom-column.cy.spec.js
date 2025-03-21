@@ -1193,14 +1193,14 @@ describe("scenarios > question > custom column > help text", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
   });
 
   it("should not appear while outside a function", () => {

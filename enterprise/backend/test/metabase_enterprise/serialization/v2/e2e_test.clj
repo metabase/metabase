@@ -984,3 +984,19 @@
                     (is (=? {:query {:aggregation-idents {0 (str "aggregation_" eid "@0__0")}
                                      :breakout-idents    {0 (str "breakout_" eid "@0__0")}}}
                             preexisting))))))))))))
+
+(deftest schema-coercion-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db
+      (mt/with-temp [:model/Dashboard _dash {:name       "Dash"
+                                             :parameters [{:id             "abcd"
+                                                           :type           :temporal-unit
+                                                           :temporal_units [:month]}]}]
+        (testing "extracts well"
+          (serdes/with-cache
+            (-> (extract/extract {:no-settings   true
+                                  :no-data-model true})
+                (storage/store! dump-dir))))
+        (testing "loads well too"
+          (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+              "ingested successfully"))))))
