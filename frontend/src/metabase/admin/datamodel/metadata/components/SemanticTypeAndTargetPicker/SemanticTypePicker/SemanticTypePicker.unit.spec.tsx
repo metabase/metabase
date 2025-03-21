@@ -71,15 +71,15 @@ const STRUCTURED_AND_COLLECTION_FIELD = createMockField({
 
 interface SetupOpts {
   fieldId: FieldId | FieldReference;
-  initialValue?: string | null;
+  initialValue: string | null;
 }
 
 interface TestComponentProps {
-  initialValue?: string | null;
+  initialValue: string | null;
   field: Field;
 }
 
-function TestComponent({ field, initialValue = null }: TestComponentProps) {
+function TestComponent({ field, initialValue }: TestComponentProps) {
   const [value, setValue] = useState<string | null>(initialValue);
 
   return <SemanticTypePicker field={field} value={value} onChange={setValue} />;
@@ -107,7 +107,10 @@ const setup = ({ fieldId, initialValue }: SetupOpts) => {
 
 describe("SemanticTypePicker", () => {
   it("does not show deprecated semantic types", async () => {
-    setup({ fieldId: TEMPORAL_FIELD.id });
+    setup({
+      fieldId: TEMPORAL_FIELD.id,
+      initialValue: null,
+    });
 
     const picker = screen.getByPlaceholderText("Select a semantic type");
     await userEvent.click(picker);
@@ -118,7 +121,10 @@ describe("SemanticTypePicker", () => {
   });
 
   it("shows deprecated semantic type if it is already selected", async () => {
-    setup({ fieldId: TEMPORAL_FIELD.id, initialValue: TYPE.CancelationDate });
+    setup({
+      fieldId: TEMPORAL_FIELD.id,
+      initialValue: TYPE.CancelationDate,
+    });
 
     expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
@@ -131,7 +137,10 @@ describe("SemanticTypePicker", () => {
   });
 
   it("hides deprecated semantic type after it is deselected", async () => {
-    setup({ fieldId: TEMPORAL_FIELD.id, initialValue: TYPE.CancelationDate });
+    setup({
+      fieldId: TEMPORAL_FIELD.id,
+      initialValue: TYPE.CancelationDate,
+    });
 
     expect(screen.getByText("Cancelation date")).toBeInTheDocument();
 
@@ -145,7 +154,10 @@ describe("SemanticTypePicker", () => {
   });
 
   it("shows Category semantic type for boolean fields", async () => {
-    setup({ fieldId: BOOLEAN_FIELD.id });
+    setup({
+      fieldId: BOOLEAN_FIELD.id,
+      initialValue: null,
+    });
 
     const picker = screen.getByPlaceholderText("Select a semantic type");
     await userEvent.click(picker);
