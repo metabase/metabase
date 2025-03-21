@@ -43,7 +43,7 @@ export function FilterHeaderButton({
 
   return (
     <Button.Group>
-      <Popover opened={isOpened} onDismiss={close}>
+      <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
             className={cx(className, ViewTitleHeaderS.FilterButton)}
