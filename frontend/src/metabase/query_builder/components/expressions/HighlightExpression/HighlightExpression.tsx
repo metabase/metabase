@@ -16,7 +16,7 @@ export function HighlightExpression({
   printWidth = Infinity,
   ...props
 }: {
-  expression: Expression;
+  expression: Lib.ExpressionClause;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
