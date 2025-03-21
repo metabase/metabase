@@ -12,7 +12,6 @@ import {
   getFieldValuesForProductCategories,
   getParameterValuesForProductCategories,
   gizmoViewer,
-  gizmoViewer,
   modelCustomView,
   questionCustomView,
   signInAs,
