@@ -22,20 +22,7 @@ You can embed a static question using the `StaticQuestion` component.
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 ```typescript
-import React from "react";
-import {MetabaseProvider, StaticQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({...});
-
-export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
-
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <StaticQuestion questionId={questionId} withChartTypeSelector={false}/>
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/static-question.tsx" %}
 ```
 
 ## Embedding an interactive question
@@ -45,20 +32,7 @@ export default function App() {
 You can embed an interactive question using the `InteractiveQuestion` component.
 
 ```typescript
-import React from "react";
-import {MetabaseProvider, InteractiveQuestion, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({...});
-
-export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
-
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={questionId}/>
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/interactive-question.tsx" %}
 ```
 
 ## Question props
@@ -83,9 +57,7 @@ export default function App() {
 You can pass parameter values to questions defined with SQL via the `initialSqlParameters` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
 ```typescript
-{% raw %}
-<StaticQuestion questionId={questionId} initialSqlParameters={{ product_id: 50 }} />
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/questions/initial-sql-parameters.tsx" snippet="example" %}
 ```
 
 `initialSqlParameters` can't be used with questions built using the query builder.
@@ -97,53 +69,13 @@ By default, the Embedded analytics SDK provides a default layout for interactive
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
 ```typescript
-<InteractiveQuestion questionId={95} />
+{% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
 ```typescript
-{% raw %}
-    <div className="App" style={{ width: "100%", maxWidth: "1600px", height: "800px", margin: "0 auto" }}>
-      <MetabaseProvider authConfig={config} theme={theme}>
-        <InteractiveQuestion questionId={questionId}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-            }}
-          >
-            <div style={{ display: "grid", placeItems: "center", width: "100%" }}>
-              <InteractiveQuestion.Title />
-              <InteractiveQuestion.ResetButton />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                overflow: "hidden",
-                width: "100%",
-              }}
-            >
-              <div style={{ width: "100%" }}>
-                <InteractiveQuestion.QuestionVisualization />
-              </div>
-              <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
-                <InteractiveQuestion.Summarize />
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
-              <InteractiveQuestion.Filter />
-            </div>
-          </div>
-        </InteractiveQuestion>
-      </MetabaseProvider>
-    </div>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
 ```
 
 ## Interactive question components
@@ -365,59 +297,7 @@ This plugin allows you to add custom actions to the click-through menu of an int
 customize the appearance and behavior of the custom actions.
 
 ```typescript
-// You can provide a custom action with your own `onClick` logic.
-const createCustomAction = clicked => ({
-  buttonType: "horizontal",
-  name: "client-custom-action",
-  section: "custom",
-  type: "custom",
-  icon: "chevronright",
-  title: "Hello from the click app!!!",
-  onClick: ({ closePopover }) => {
-    alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-    closePopover();
-  },
-});
-
-// Or customize the appearance of the custom action to suit your need.
-const createCustomActionWithView = clicked => ({
-  name: "client-custom-action-2",
-  section: "custom",
-  type: "custom",
-  view: ({ closePopover }) => (
-    <button
-      className="tw-text-base tw-text-yellow-900 tw-bg-slate-400 tw-rounded-lg"
-      onClick={() => {
-        alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-        closePopover();
-      }}
-    >
-      Custom element
-    </button>
-  ),
-});
-
-const plugins = {
-  /**
-   * You will have access to default `clickActions` that Metabase renders by default.
-   * So you could decide if you want to add custom actions, remove certain actions, etc.
-   */
-  mapQuestionClickActions: (clickActions, clicked) => {
-    return [
-      ...clickActions,
-      createCustomAction(clicked),
-      createCustomActionWithView(clicked),
-    ];
-  },
-};
-
-const questionId = 1; // This is the question ID you want to embed
-
-return (
-  <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={questionId} />
-  </MetabaseProvider>
-);
+{% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
 ```
 
 ## Prevent people from saving changes to an `InteractiveQuestion`
@@ -425,18 +305,7 @@ return (
 To prevent people from saving changes to an interactive question, or from saving changes as a new question, you can set `isSaveEnabled={false}`:
 
 ```tsx
-import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({...});
-
-export default function App() {
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId={1} isSaveEnabled={false} />
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/disable-question-save.tsx" %}
 ```
 
 ## Embedding the query builder for creating new questions
@@ -446,18 +315,7 @@ export default function App() {
 You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
-import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({...});
-
-export default function App() {
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveQuestion questionId="new" />
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
 ```
 
 To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
