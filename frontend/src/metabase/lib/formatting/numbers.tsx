@@ -291,9 +291,8 @@ function formatNumberScientific(
 ): string | ReactNode {
   if (typeof value === "bigint") {
     value = Number(value);
-  } else if (options.maximumFractionDigits) {
-    value = roundFloat(value, options.maximumFractionDigits);
   }
+
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
     options?.number_separators,
