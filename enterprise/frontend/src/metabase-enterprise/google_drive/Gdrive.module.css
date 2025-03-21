@@ -1,0 +1,6 @@
+.plainLink {
+  width: 100%;
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+}
