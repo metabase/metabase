@@ -573,7 +573,7 @@ describe(
             cy.findByLabelText("Filter value").type(id).click();
             cy.button("Add filter").click();
           });
-          cy.runButtonOverlay().click();
+          H.runButtonOverlay().click();
           H.assertQueryBuilderRowCount(1);
           removeFilter();
 
