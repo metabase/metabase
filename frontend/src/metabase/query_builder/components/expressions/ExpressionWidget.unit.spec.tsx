@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
-import type { StartRule } from "metabase-lib/v1/expressions";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -162,9 +161,7 @@ describe("ExpressionWidget", () => {
   });
 });
 
-async function setup<S extends StartRule = "expression">(
-  additionalProps?: Partial<ExpressionWidgetProps<S>>,
-) {
+async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
   const onChangeClause = jest.fn();

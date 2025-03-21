@@ -15,7 +15,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
-  type ClauseType,
   type ExpressionError,
   MBQL_CLAUSES,
   type StartRule,
@@ -39,12 +38,12 @@ import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 
-type EditorProps<S extends StartRule> = {
+type EditorProps = {
   id?: string;
-  clause?: ClauseType<S> | null;
+  clause?: Lib.ExpressionClause | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: S;
+  startRule: StartRule;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
@@ -53,7 +52,7 @@ type EditorProps<S extends StartRule> = {
   onCloseEditor?: () => void;
 
   onChange: (
-    clause: ClauseType<S> | null,
+    clause: Lib.ExpressionClause | null,
     error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
@@ -63,9 +62,7 @@ const EDITOR_WIDGET_HEIGHT = 220;
 const FB_HEIGHT = EDITOR_WIDGET_HEIGHT + 46;
 const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 
-export function Editor<S extends StartRule = "expression">(
-  props: EditorProps<S>,
-) {
+export function Editor(props: EditorProps) {
   const {
     id,
     startRule = "expression",
@@ -228,7 +225,7 @@ export function Editor<S extends StartRule = "expression">(
   );
 }
 
-function useExpression<S extends StartRule = "expression">({
+function useExpression({
   clause,
   startRule,
   stageIndex,
@@ -236,7 +233,7 @@ function useExpression<S extends StartRule = "expression">({
   expressionIndex,
   metadata,
   onChange,
-}: EditorProps<S> & {
+}: EditorProps & {
   metadata: Metadata;
 }) {
   const [source, setSource] = useState("");

@@ -1,4 +1,3 @@
-import type * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseFeature, Expression } from "metabase-types/api";
 
@@ -38,14 +37,7 @@ interface HelpTextArg {
   example: Expression | ["args", Expression[]];
 }
 
-type ClauseByStartRule = {
-  expression: Lib.ExpressionClause;
-  aggregation: Lib.AggregationClause;
-  boolean: Lib.FilterClause;
-};
-
-export type StartRule = keyof ClauseByStartRule;
-export type ClauseType<S extends StartRule> = ClauseByStartRule[S];
+export type StartRule = "expression" | "boolean" | "aggregation";
 
 type MBQLClauseFunctionReturnType =
   | "aggregation"

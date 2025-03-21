@@ -27,7 +27,7 @@ export function diagnose(options: {
   return null;
 }
 
-export function diagnoseAndCompile<S extends StartRule>({
+export function diagnoseAndCompile({
   source,
   startRule,
   query,
@@ -36,12 +36,12 @@ export function diagnoseAndCompile<S extends StartRule>({
   expressionIndex,
 }: {
   source: string;
-  startRule: S;
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
   metadata?: Metadata;
   expressionIndex?: number;
-}): CompileResult<S> {
+}): CompileResult {
   try {
     if (!source || source.length === 0) {
       throw new DiagnosticError(t`Expression is empty`);
