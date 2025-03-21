@@ -94,6 +94,7 @@ describe("recursive-parser", () => {
     expect(process("trim(ID)")).toEqual(["trim", ["dimension", "ID"]]);
     expect(process("text(ID)")).toEqual(["text", ["dimension", "ID"]]);
     expect(process("integer(ID)")).toEqual(["integer", ["dimension", "ID"]]);
+    expect(process("date(A)")).toEqual(["date", ["dimension", "A"]]);
   });
 
   it("should handle CASE expression", () => {
