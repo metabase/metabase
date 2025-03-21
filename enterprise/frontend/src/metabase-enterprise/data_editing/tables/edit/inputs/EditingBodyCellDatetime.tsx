@@ -6,12 +6,13 @@ import {
 } from "metabase/lib/formatting/datetime-utils";
 import { DateInput } from "metabase/ui";
 
-import S from "./EditingBodyCellInput.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
 
 export const EditingBodyCellDatetime = ({
+  autoFocus,
+  inputProps,
   initialValue,
   datasetColumn,
   onSubmit,
@@ -28,8 +29,14 @@ export const EditingBodyCellDatetime = ({
   const valueFormat = isDateTime ? DEFAULT_DATETIME_STYLE : DEFAULT_DATE_STYLE;
 
   const [value, setValue] = useState<Date | null>(initialDateValue);
+  const [isFocused, setFocused] = useState(false);
+
+  const handleFocus = useCallback(() => {
+    setFocused(true);
+  }, [setFocused]);
 
   const handleBlur = useCallback(() => {
+    setFocused(false);
     onSubmit(value ? value.toISOString() : null);
   }, [value, onSubmit]);
 
@@ -46,16 +53,18 @@ export const EditingBodyCellDatetime = ({
 
   return (
     <DateInput
-      size="sm"
-      autoFocus
-      variant="unstyled"
+      size={inputProps?.size}
+      autoFocus={autoFocus}
+      variant={inputProps?.variant}
+      placeholder={inputProps?.placeholder}
       value={value}
       valueFormat={valueFormat}
-      className={S.input}
-      classNames={{ input: S.noBackground }}
-      popoverProps={{ opened: true }}
+      classNames={{ input: inputProps?.className }}
+      // Keeps popover mounted when focused to improve time editing UX
+      popoverProps={{ opened: isFocused }}
       onChange={setValue}
       onBlur={handleBlur}
+      onFocus={handleFocus}
       onKeyUp={handleKeyUp}
     />
   );

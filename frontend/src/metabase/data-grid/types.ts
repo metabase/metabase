@@ -110,6 +110,9 @@ export interface RowIdColumnOptions {
 
   /** Function to determine background color for the ID cells */
   getBackgroundColor?: (rowIndex: number) => string;
+
+  /** Handler for variant="expandButton" */
+  onRowExpandClick?: (rowIndex: number) => void;
 }
 
 export interface DataGridTheme {

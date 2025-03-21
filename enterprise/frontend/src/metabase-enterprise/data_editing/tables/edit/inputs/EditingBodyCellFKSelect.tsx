@@ -6,6 +6,7 @@ import { EditingBodyCellCategorySelect } from "./EditingBodyCellCategorySelect";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 export const EditingBodyCellFKSelect = ({
+  autoFocus,
   initialValue,
   datasetColumn,
   onSubmit,
@@ -18,6 +19,7 @@ export const EditingBodyCellFKSelect = ({
 
   return (
     <EditingBodyCellCategorySelect
+      autoFocus={autoFocus}
       initialValue={initialValue}
       datasetColumn={datasetColumn}
       withCreateNew={false}

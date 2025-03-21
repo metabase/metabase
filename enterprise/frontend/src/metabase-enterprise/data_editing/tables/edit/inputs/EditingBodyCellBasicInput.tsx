@@ -1,9 +1,10 @@
 import { Input } from "metabase/ui";
 
-import S from "./EditingBodyCellInput.module.css";
 import type { EditingBodyPrimitiveProps } from "./types";
 
 export const EditingBodyCellBasicInput = ({
+  autoFocus,
+  inputProps,
   initialValue,
   onSubmit,
   onCancel,
@@ -11,10 +12,7 @@ export const EditingBodyCellBasicInput = ({
   return (
     <Input
       defaultValue={(initialValue ?? "").toString()}
-      className={S.input}
-      variant="unstyled"
-      size="sm"
-      autoFocus
+      autoFocus={autoFocus}
       onKeyUp={event => {
         if (event.key === "Escape") {
           onCancel();
@@ -25,6 +23,7 @@ export const EditingBodyCellBasicInput = ({
       onBlur={event => {
         onSubmit(event.currentTarget.value);
       }}
+      {...inputProps}
     />
   );
 };
