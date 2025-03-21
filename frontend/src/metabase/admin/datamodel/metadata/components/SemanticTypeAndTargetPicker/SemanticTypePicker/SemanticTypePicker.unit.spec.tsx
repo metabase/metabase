@@ -7,12 +7,14 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { FieldId } from "metabase-types/api";
 import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { SemanticTypePicker } from "./SemanticTypePicker";
 
 interface SetupOpts {
+  fieldId?: FieldId;
   initialValue?: string | null;
 }
 
@@ -27,14 +29,17 @@ function TestComponent({ field, initialValue = null }: TestComponentProps) {
   return <SemanticTypePicker field={field} value={value} onChange={setValue} />;
 }
 
-const setup = ({ initialValue }: SetupOpts = {}) => {
+const setup = ({
+  fieldId = ORDERS.CREATED_AT,
+  initialValue,
+}: SetupOpts = {}) => {
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
   });
   const metadata = getMetadata(state);
-  const field = checkNotNull(metadata.field(ORDERS.CREATED_AT));
+  const field = checkNotNull(metadata.field(fieldId));
 
   renderWithProviders(
     <TestComponent field={field} initialValue={initialValue} />,
