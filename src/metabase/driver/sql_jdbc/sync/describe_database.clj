@@ -95,17 +95,22 @@
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
-   #(.getTables metadata catalog
-                (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
-                (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
-                (when (seq types) (into-array String types)))
+   #(do (log/debugf "jdbc-get-tables: Calling .getTables for catalog `%s`" catalog)
+        (.getTables metadata catalog
+                    (some->> schema-pattern (driver/escape-entity-name-for-metadata driver))
+                    (some->> tablename-pattern (driver/escape-entity-name-for-metadata driver))
+                    (when (seq types) (into-array String types))))
    (fn [^ResultSet rset]
-     (fn [] {:name        (.getString rset "TABLE_NAME")
-             :schema      (.getString rset "TABLE_SCHEM")
-             :description (when-let [remarks (.getString rset "REMARKS")]
-                            (when-not (str/blank? remarks)
-                              remarks))
-             :type        (.getString rset "TABLE_TYPE")}))))
+     (fn []
+       (let [name (.getString rset "TABLE_NAME")
+             schema (.getString rset "TABLE_SCHEM")]
+         (log/debugf "jdbc-get-tables: Fetched name `%s` schema `%s`" name schema)
+         {:name        name
+          :schema      schema
+          :description (when-let [remarks (.getString rset "REMARKS")]
+                         (when-not (str/blank? remarks)
+                           remarks))
+          :type        (.getString rset "TABLE_TYPE")})))))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
