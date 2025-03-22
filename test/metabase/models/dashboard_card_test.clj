@@ -319,8 +319,8 @@
                                                     :col                    3
                                                     :created_at             now}]
         (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
-               (serdes/identity-hash dashcard)))))))
+               (serdes/raw-hash [(serdes/identity-hash #p card) (serdes/identity-hash #p dash) {} 6 3 #p now])
+               (serdes/identity-hash #p dashcard)))))))
 
 (deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
