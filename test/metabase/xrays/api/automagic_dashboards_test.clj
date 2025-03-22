@@ -20,7 +20,7 @@
    [metabase.xrays.transforms.specs :as tf.specs]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
+(use-fixtures :once (fixtures/initialize :db :scheduler :web-server :test-users :test-users-personal-collections))
 
 (defn- dashcards-schema-check
   [dashcards]

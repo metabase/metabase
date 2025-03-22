@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db :plugins))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins))
 
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"

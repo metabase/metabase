@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :scheduler))
 
 (defn- raw-value [data-source keyy]
   (-> (jdbc/query {:connection data-source}

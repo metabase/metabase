@@ -28,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :scheduler :plugins :test-drivers))
 
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]

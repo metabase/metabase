@@ -118,6 +118,11 @@
   (initialize-if-needed! :db)
   (notification/seed-notification!))
 
+(define-initialization :scheduler
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.scheduler)
+  ((resolve 'metabase.test.initialize.scheduler/init!)))
+
 (defn- all-components
   "Set of all components/initialization steps that are defined."
   []
