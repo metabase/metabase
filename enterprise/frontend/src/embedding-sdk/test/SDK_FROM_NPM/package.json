@@ -1,0 +1,8 @@
+{
+  "name": "storybook-sdk",
+  "version": "1.0.0",
+  "dependencies": {
+    "sdk_53_stable": "npm:@metabase/embedding-sdk-react@53-stable",
+    "sdk_52_stable": "npm:@metabase/embedding-sdk-react@52-stable"
+  }
+}
