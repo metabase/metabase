@@ -162,3 +162,105 @@
                   [verb  response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected (error-or-ok response))))))))))
+
+(deftest create-table-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/with-empty-h2-app-db
+      (let [run-example
+            (fn [flags req-body]
+              (let [{table-name-prefix :name} req-body
+                    table-name      (str table-name-prefix "_" (System/currentTimeMillis))
+                    req-body'       (u/update-if-exists req-body :name (constantly table-name))
+                    driver          :h2
+                    db-id           (mt/id)
+                    editing-enabled (:d flags)
+                    superuser       (:s flags)
+                    settings        {:database-enable-table-editing (boolean editing-enabled)}
+                    _               (t2/update! :model/Database (mt/id) {:settings settings})
+                    user            (if superuser :crowberto :rasta)
+                    url             (format "ee/data-editing/database/%d/table" db-id)
+                    res             (delay (mt/user-http-request-full-response user :post url req-body'))
+                    cleanup!        #(try (driver/drop-table! driver db-id table-name) (catch Exception _))
+                    describe-table
+                    (fn []
+                      (-> (driver/describe-table driver (t2/select-one :model/Database db-id) {:name table-name})
+                          (update :name   {table-name table-name-prefix})
+                          (update :fields (partial mapv #(select-keys % [:name :base-type])))))]
+                (try
+                  (if (<= 200 (:status @res) 299)
+                    (merge
+                     {:status 200}
+                     (describe-table))
+                    (:status @res))
+                  (finally
+                    (cleanup!)))))]
+
+        (are [flags req-body expected]
+             (= expected (run-example flags req-body))
+
+          #{:s :d}
+          {}
+          400
+
+          #{:s :d}
+          {:name "a"}
+          400
+
+          #{:s :d}
+          {:name "a"
+           :columns [[{:name "id", :type "int"}]]}
+          400
+
+          #{:s :d}
+          {:name "a"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          ;; =>
+          {:status 200
+           :name "a"
+           :fields [{:name "id"
+                     :base-type :type/BigInteger}]}
+
+          #{:s :d}
+          {:name "a"
+           :columns [{:name "id", :type "not-a-type"}]
+           :primary_key ["id"]}
+          ;; =>
+          400
+
+          ;; escaped quotes are not allowed for now
+          #{:s :d}
+          {:name "a\""
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400
+          #{:s :d}
+          {:name "a`"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400
+
+          ;; underscores, dashes, spaces allowed
+          #{:s :d}
+          {:name "a_b1 -"
+           :columns [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          ;; =>
+          {:status 200
+           :name "a_b1 -"
+           :fields [{:name "id"
+                     :base-type :type/BigInteger}]}
+
+          ;; if not admin, denied
+          #{:d}
+          {:name        "a"
+           :columns     [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          403
+
+          ;; data editing disabled, denied
+          #{:s}
+          {:name        "a"
+           :columns     [{:name "id", :type "int"}]
+           :primary_key ["id"]}
+          400)))))
