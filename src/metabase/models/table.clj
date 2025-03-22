@@ -54,6 +54,10 @@
   [_original-model _k]
   :model/Table)
 
+(t2/define-after-select :model/Table
+  [table]
+  (serdes/add-entity-id table))
+
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
@@ -122,6 +126,10 @@
    (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
+
+(defmethod serdes/hash-required-fields :model/Table
+  [_table]
+  [:schema :name :db_id])
 
 (defmethod serdes/hash-fields :model/Table
   [_table]

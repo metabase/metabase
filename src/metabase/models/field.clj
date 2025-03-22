@@ -124,7 +124,9 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (-> field
+      (dissoc :is_defective_duplicate :unique_field_helper)
+      serdes/add-entity-id))
 
 (t2/define-before-insert :model/Field
   [field]
@@ -177,6 +179,10 @@
    (current-user-can-write-field? instance))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
+
+(defmethod serdes/hash-required-fields :model/Field
+  [_field]
+  [:name :table_id :parent_id])
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
