@@ -71,7 +71,7 @@
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
       ;; namespaces we can log it
-      (log/info "Initializing task" (u/format-color 'green (name k)) (u/emoji "📆"))
+      (log/info "Initializing" (u/emoji "📆") {:mb/task-name (name k)})
       (f k)
       (catch Throwable e
         (log/errorf e "Error initializing task %s" k)))))
