@@ -48,6 +48,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onEditVisualization?: () => void;
 }
 
 function DashCardActionsPanelInner({
@@ -68,6 +69,7 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onEditVisualization,
 }: Props) {
   const {
     disableSettingsConfig,
@@ -151,7 +153,18 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (!disableSettingsConfig) {
+    if (onEditVisualization) {
+      buttons.push(
+        <DashCardActionButton
+          key="visualizer-button"
+          tooltip={t`Edit visualization`}
+          aria-label={t`Edit visualization`}
+          onClick={onEditVisualization}
+        >
+          <DashCardActionButton.Icon name="pencil" />
+        </DashCardActionButton>,
+      );
+    } else if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
