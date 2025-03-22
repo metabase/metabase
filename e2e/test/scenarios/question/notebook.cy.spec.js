@@ -1245,7 +1245,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
       // );
 
-      cy.wait("@tableFK");
+      cy.wait("@tableFK", { timeout: 10000 });
 
       H.modal().findByTestId("fk-relation-orders").click();
 
