@@ -135,10 +135,9 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 
 1. Go to your question.
-2. Click on the **info** icon.
-3. Click **Caching policy**.
-4. Select the [caching invalidation policy](#cache-invalidation-policies).
-5. Optional: turn on [refresh cache automatically](#refresh-cache-automatically).
+2. Click on the three-dot menu **...** and select **Edit settings**.
+3. Under **Caching**, select the [caching invalidation policy](#cache-invalidation-policies).
+5. Optional: if you select a Duration or Schedule policy, you'll have the option to [refresh cache automatically](#refresh-cache-automatically).
 6. Save your changes.
 
 ## How dashboard, question, database, and default caching policies interact
