@@ -120,24 +120,6 @@
   transition: background 0.3s linear;
 }
 
-.Loading {
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-bg-white) 70%,
-    transparent
-  );
-  transition: opacity 0.5s;
-}
-
-.Loading.LoadingHidden {
-  background-color: transparent;
-  pointer-events: none;
-}
-
-.Loading.LoadingHidden * {
-  pointer-events: none;
-}
-
 .QueryError {
   flex-direction: column;
   justify-content: center;
@@ -334,4 +316,32 @@
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
 .QueryBuilder .ScalarValue {
   font-size: 5em;
+}
+
+.overlay {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white) 75%,
+    transparent
+  );
+  transition:
+    opacity 0.5s,
+    background-color 0.5s;
+
+  &.interactive {
+    cursor: pointer;
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-brand) 3%,
+        color-mix(in srgb, var(--mb-color-bg-white) 75%, transparent)
+      );
+    }
+  }
+
+  &.hidden {
+    background-color: transparent;
+    pointer-events: none;
+  }
 }

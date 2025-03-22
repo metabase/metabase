@@ -11,7 +11,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -136,19 +136,18 @@ export function VisualizationRunningState({ className = "" }) {
   const message = getLoadingMessage(isSlow());
 
   return (
-    <div
-      className={cx(
-        className,
-        QueryBuilderS.Loading,
-        CS.flex,
-        CS.flexColumn,
-        CS.layoutCentered,
-        CS.textBrand,
-      )}
+    <Flex
+      className={cx(className, QueryBuilderS.overlay)}
+      c="brand"
+      direction="column"
+      justify="center"
+      align="center"
     >
       <LoadingSpinner />
-      <h2 className={cx(CS.textBrand, CS.textUppercase, CS.my3)}>{message}</h2>
-    </div>
+      <Title className={CS.textUppercase} c="brand" order={2} mt="lg">
+        {message}
+      </Title>
+    </Flex>
   );
 }
 
@@ -176,32 +175,29 @@ export const VisualizationDirtyState = ({
   };
 
   return (
-    <div
-      className={cx(
-        className,
-        QueryBuilderS.Loading,
-        CS.flex,
-        CS.flexColumn,
-        CS.layoutCentered,
-        CS.cursorPointer,
-        { [QueryBuilderS.LoadingHidden]: hidden },
-      )}
+    <Flex
+      className={cx(className, QueryBuilderS.overlay, {
+        [QueryBuilderS.interactive]: isEnabled,
+        [QueryBuilderS.hidden]: hidden,
+      })}
+      direction="column"
+      justify="center"
+      align="center"
+      gap="sm"
       data-testid="run-button-overlay"
       onClick={handleClick}
     >
-      <Stack gap="sm" align="center">
-        <RunButtonWithTooltip
-          className={CS.shadowed}
-          circular
-          compact
-          result={result}
-          hidden={!isEnabled}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-        />
-        {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
-      </Stack>
-    </div>
+      <RunButtonWithTooltip
+        className={CS.shadowed}
+        circular
+        compact
+        result={result}
+        hidden={!isEnabled}
+        isRunning={isRunning}
+        isDirty={isResultDirty}
+      />
+      {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
+    </Flex>
   );
 };
 
