@@ -29,7 +29,7 @@ jobs:
           MB_FUZZ: 1
         name: Run fuzz testing on the tokenizer
 
-  fe-fuzz-recursive-parser:
+  fe-fuzz-compiler:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
@@ -40,7 +40,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.recursive-parser.unit.spec.ts
+      - run: yarn test-unit frontend/src/metabase-lib/v1/expressions/fuzz.compiler.unit.spec.ts
         env:
           MB_FUZZ: 1
-        name: Run fuzz testing on the recursive parser
+        name: Run fuzz testing on the custom expression compiler

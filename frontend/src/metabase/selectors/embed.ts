@@ -7,7 +7,10 @@ export const getIsEmbeddingIframe = (_state?: State): boolean => {
   return isWithinIframe();
 };
 
-export const getEmbedOptions = (state: State): InteractiveEmbeddingOptions => {
+type EmptyObject = Record<string, never>;
+export const getEmbedOptions = (
+  state: State,
+): InteractiveEmbeddingOptions | EmptyObject => {
   return state.embed.options;
 };
 

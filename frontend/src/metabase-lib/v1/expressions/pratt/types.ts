@@ -1,5 +1,7 @@
 import { isProduction } from "metabase/env";
 
+import type { CompileError } from "../errors";
+
 type VariableKind = "dimension" | "segment" | "aggregation" | "expression";
 type Type = VariableKind | "string" | "number" | "boolean";
 type VariableId = number;
@@ -7,6 +9,7 @@ type VariableId = number;
 export interface Token {
   type: NodeType;
   text: string;
+  value?: string | string;
   length: number;
   pos: number;
 }
@@ -75,50 +78,6 @@ export interface Hooks {
   onUnexpectedTerminator?: HookErrFn;
   onMissinChildren?: HookErrFn;
   onChildConstraintViolation?: NodeErrFn;
-}
-
-/*
- * This class helps anything that handles parser errors to use instanceof to
- * easily distinguish between compilation error exceptions and exceptions due to
- * bugs
- */
-abstract class ExpressionError extends Error {
-  abstract get pos(): number | null;
-  abstract get len(): number | null;
-}
-
-export class CompileError extends ExpressionError {
-  constructor(
-    message: string,
-    private data: any,
-  ) {
-    super(message);
-  }
-
-  get pos(): number | null {
-    return this.data?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.data?.token?.len ?? null;
-  }
-}
-
-export class ResolverError extends ExpressionError {
-  constructor(
-    message: string,
-    private node?: Node,
-  ) {
-    super(message);
-  }
-
-  get pos(): number | null {
-    return this.node?.token?.pos ?? null;
-  }
-
-  get len(): number | null {
-    return this.node?.token?.length ?? null;
-  }
 }
 
 class AssertionError extends Error {

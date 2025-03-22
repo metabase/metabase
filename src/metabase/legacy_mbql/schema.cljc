@@ -391,7 +391,7 @@
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
-    :host :domain :subdomain :month-name :quarter-name :day-name :text})
+    :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -432,7 +432,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -544,6 +544,9 @@
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
+(defclause ^{:requires-features #{:expressions :split-part}} split-part
+  text StringExpressionArg, delimiter ExpressionArg, position IntGreaterThanZeroOrNumericExpression)
+
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
 
@@ -583,6 +586,9 @@
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :regex}} subdomain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} path
   s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} month-name
@@ -702,8 +708,11 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:expressions :cast}} date
+  string StringExpressionArg)
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now))
+  (one-of + datetime-add datetime-subtract convert-timezone now date))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -954,7 +963,7 @@
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
-          subdomain month-name quarter-name day-name text))
+          subdomain path month-name quarter-name day-name text split-part))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
