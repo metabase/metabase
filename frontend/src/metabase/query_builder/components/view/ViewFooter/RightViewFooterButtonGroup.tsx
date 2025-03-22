@@ -12,7 +12,7 @@ import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";
 import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";
-import QuestionRowCount from "../QuestionRowCount";
+import { QuestionRowCount } from "../QuestionRowCount";
 import QuestionTimelineWidget from "../QuestionTimelineWidget";
 
 import S from "./RightViewFooterButtonGroup.module.css";
