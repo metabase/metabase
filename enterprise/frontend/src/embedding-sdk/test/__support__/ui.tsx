@@ -1,5 +1,9 @@
 import type { Store } from "@reduxjs/toolkit";
-import { render } from "@testing-library/react";
+import {
+  type RenderHookOptions,
+  render,
+  renderHook,
+} from "@testing-library/react";
 import type * as React from "react";
 import _ from "underscore";
 
@@ -23,15 +27,11 @@ export interface RenderWithSDKProvidersOptions {
   theme?: MantineThemeOverride;
 }
 
-export function renderWithSDKProviders(
-  ui: React.ReactElement,
-  {
-    storeInitialState = {},
-    sdkProviderProps = null,
-    theme,
-    ...options
-  }: RenderWithSDKProvidersOptions = {},
-) {
+export function getSdkWrapperAndStore({
+  storeInitialState = {},
+  sdkProviderProps = null,
+  theme,
+}: RenderWithSDKProvidersOptions = {}) {
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -67,11 +67,53 @@ export function renderWithSDKProviders(
         <MetabaseProviderInternal
           {...props}
           {...sdkProviderProps}
+          theme={theme}
           store={store}
         />
       </MetabaseReduxProvider>
     );
   };
+
+  return { wrapper, store };
+}
+
+export const HOOK_DEFAULT_PROVIDER_PROPS: Partial<MetabaseProviderProps> = {
+  authConfig: {
+    metabaseInstanceUrl: "path:",
+    authProviderUri: "auth-provider:",
+  },
+};
+
+export function renderSdkHook<TProps, TResult>(
+  hook: (props: TProps) => TResult,
+  options: Omit<RenderHookOptions<TProps>, "wrapper"> &
+    RenderWithSDKProvidersOptions = {
+    sdkProviderProps: HOOK_DEFAULT_PROVIDER_PROPS,
+  },
+) {
+  // TODO: Split the options so that we don't pass them all to both functions
+  const { wrapper } = getSdkWrapperAndStore(options);
+
+  return renderHook(hook, {
+    wrapper,
+    ...options,
+  });
+}
+
+export function renderWithSDKProviders(
+  ui: React.ReactElement,
+  {
+    storeInitialState = {},
+    sdkProviderProps = null,
+    theme,
+    ...options
+  }: RenderWithSDKProvidersOptions = {},
+) {
+  const { wrapper, store } = getSdkWrapperAndStore({
+    storeInitialState,
+    sdkProviderProps,
+    theme,
+  });
 
   const utils = render(ui, {
     wrapper,
