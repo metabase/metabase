@@ -92,7 +92,7 @@ npm install jsonwebtoken --save
 And in your app, require the library:
 
 ```javascript
-const jwt = require("jsonwebtoken");
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="jsonwebtoken-import" %}
 ```
 
 ### Restricting access to certain routes
@@ -100,15 +100,7 @@ const jwt = require("jsonwebtoken");
 Presumably, your app already has some way of making sure some routes are only accessible after having signed in. Our examples use a simple helper function named `restrict` that protects these routes:
 
 ```javascript
-function restrict(req, res, next) {
-  if (req.session.user) {
-    next();
-  } else {
-    req.session.returnTo = req.originalUrl;
-    req.session.error = "Access denied!";
-    res.redirect("/login");
-  }
-}
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="restrict-helper" %}
 ```
 
 ### Add a function to sign users
@@ -116,16 +108,7 @@ function restrict(req, res, next) {
 We need to write a function to sign user JWTs, using the JWT library.
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sign-user-token-helper" %}
 ```
 
 ### Add a `sso/metabase` route
@@ -133,13 +116,7 @@ const signUserToken = user =>
 You'll need to add a route to sign people in to your Metabase via SSO using JWT. If the person isn't signed in to your app yet, your app should redirect them through your sign-in flow. In the code below, this check and redirection is handled by the `restrict` function we introduced earlier.
 
 ```javascript
-app.get("/sso/metabase", restrict, (req, res) => {
-  const ssoUrl = new URL("/auth/sso", METABASE_SITE_URL);
-  ssoUrl.searchParams.set("jwt", signUserToken(req.session.user));
-  ssoUrl.searchParams.set("return_to", req.query.return_to ?? "/");
-
-  res.redirect(ssoUrl);
-});
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="sso-route" %}
 ```
 
 If the person has never signed in to Metabase before, Metabase will create an account for them.
@@ -159,13 +136,7 @@ In this route, we need to render an iframe that will load your Metabase. The `sr
 `METABASE_DASHBOARD_PATH` should be pointing to the relative path of the dashboard you created at the beginning of this guide (`/dashboard/[ID]`, or if you used the dashboard's Entity ID: `/dashboard/entity/[Entity ID]`).
 
 ```javascript
-app.get("/analytics", restrict, function (req, res) {
-  const METABASE_DASHBOARD_PATH = "/dashboard/entity/[Entity ID]"; // e.g., `/dashboard/1` or `/dashboard/entity/nXg0q7VOZJp5a3_hceMRk`
-  var iframeUrl = `/sso/metabase?return_to=${METABASE_DASHBOARD_PATH}`;
-  res.send(
-    `<iframe src="${iframeUrl}" frameborder="0" width="1280" height="600" allowtransparency></iframe>`,
-  );
-});
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="analytics-route" %}
 ```
 
 The `METABASE_DASHBOARD_PATH` is just the first thing people will see when they log in, but you could set that path to any Metabase URL. And since you're embedding the full Metabase, people will be able to drill through the data and view other questions, dashboards, and collections.
@@ -187,17 +158,7 @@ Now that you have SSO and interactive embedding set up, it's time to set up grou
 Recall the `signUserToken` function used to create the JWTs. Add a `groups` key to the signed token that maps to an array. Metabase will look at the values in that array to see if any of the values map to a group in Metabase (We'll walk through mapping groups in a bit).
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: ["Customer-Acme"],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-groups-sign-user-token-helper" %}
 ```
 
 ### Create a group in Metabase
@@ -249,20 +210,7 @@ You can include user attributes in the JSON web token. Metabase will pick up any
 If you're using our sample app, edit the `signUserToken` function used to create the JWT by adding a key `account_id` with value `28`.
 
 ```javascript
-const signUserToken = user =>
-  jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      // hard-coded account ID added to this object
-      // just to test sandboxing with Metabase's Sample Database: Invoices table
-      account_id: 28,
-      groups: ["Customer-Acme"],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minute expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
 ```
 
 That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute to sandbox the Invoices table, so people will only see rows in that table that contain their account ID.
@@ -302,10 +250,7 @@ For example, to hide the logo and the top navigation bar of your embedded Metaba
 In the handler of your `/sso/metabase` path, add the query parameters:
 
 ```javascript
-ssoUrl.searchParams.set(
-  "return_to",
-  `${req.query.return_to ?? "/"}?logo=false&top_nav=false`,
-);
+{% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="hide-metabase-elements" %}
 ```
 
 ### CHECKPOINT: verify hidden UI elements

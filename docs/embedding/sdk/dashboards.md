@@ -41,44 +41,13 @@ _\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
 
 ```tsx
-{% raw %}
-<EditableDashboard
-  style={{
-    height: 800,
-    minHeight: "auto",
-  }}
-  dashboardId={dashboardId}
-/>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/dashboards/custom-height.tsx" snippet="example" %}
 ```
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
-import React from "react";
-import {MetabaseProvider, InteractiveDashboard, defineMetabaseAuthConfig} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({...});
-
-export default function App() {
-    const dashboardId = 1; // This is the dashboard ID you want to embed
-    const initialParameters = {}; // Define your query parameters here
-
-    // choose parameter names that are in your dashboard
-    const hiddenParameters = ["location", "city"]
-
-    return (
-        <MetabaseProvider authConfig={authConfig}>
-            <InteractiveDashboard
-                dashboardId={dashboardId}
-                initialParameters={initialParameters}
-                withTitle={false}
-                withDownloads={false}
-                hiddenParameters={hideParameters}
-            />
-        </MetabaseProvider>
-    );
-}
+{% include_file "{{ dirname }}/snippets/dashboards/interactive-dashboard.tsx" %}
 ```
 
 ## Customizing drill-through question layout
@@ -88,13 +57,9 @@ When drilling through or clicking on a question card in the dashboard, you will 
 To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component, with the custom view as the child component.
 
 ```typescript
-<InteractiveQuestion
-  questionId={95}
-  renderDrillThroughQuestion={QuestionView}
-/>;
+{% include_file "{{ dirname }}/snippets/dashboards/custom-drill-through-question-layout.tsx" snippet="example-1" %}
 
-// You can use namespaced components to build the question's layout.
-const QuestionView = () => <InteractiveQuestion.Title />;
+{% include_file "{{ dirname }}/snippets/dashboards/custom-drill-through-question-layout.tsx" snippet="example-2" %}
 ```
 
 The questionView prop accepts a React component that will be rendered in the question view, which you can build with namespaced components within the `InteractiveQuestion` component. See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
@@ -108,30 +73,13 @@ This plugin allows you to add, remove, and modify the custom actions on the over
 The plugin's default configuration looks like this:
 
 ```typescript
-const plugins = {
-  dashboard: {
-    dashboardCardMenu: {
-      withDownloads: true,
-      withEditLink: true,
-      customItems: [],
-    },
-  },
-};
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-base-1" %}
 ```
 
 `dashboardCardMenu`: can be used in the InteractiveDashboard like this:
 
 ```typescript
-{% raw %}
-<InteractiveDashboard
-  dashboardId={1}
-  plugins={{
-    dashboard: {
-      dashboardCardMenu: null,
-    },
-  }}
-/>
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-base-2" %}
 ```
 
 #### Enabling/disabling default actions
@@ -139,15 +87,7 @@ const plugins = {
 To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the dashcard menu, set `withEditLink` to `false`.
 
 ```typescript
-const plugins = {
-  dashboard: {
-    dashboardCardMenu: {
-      withDownloads: false,
-      withEditLink: false,
-      customItems: [],
-    },
-  },
-};
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-default-actions" %}
 ```
 
 #### Adding custom actions to the existing menu:
@@ -155,43 +95,13 @@ const plugins = {
 You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
 
 ```typescript
-{
-    iconName: string;
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-}
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-action-type" %}
 ```
 
 Here's an example:
 
 ```typescript
-{% raw %}
-const plugins: MetabasePluginsConfig = {
-  dashboard: {
-    dashboardCardMenu: {
-      customItems: [
-        {
-          iconName: "chevronright",
-          label: "Custom action",
-          onClick: () => {
-            alert(`Custom action clicked`);
-          },
-        },
-        ({ question }) => {
-          return {
-            iconName: "chevronright",
-            label: "Custom action",
-            onClick: () => {
-              alert(`Custom action clicked ${question.name}`);
-            },
-          };
-        },
-      ],
-    },
-  },
-};
-{% endraw %}
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions" %}
 ```
 
 #### Replacing the existing menu with your own component
@@ -199,13 +109,7 @@ const plugins: MetabasePluginsConfig = {
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a React component. This function also can receive the question as an argument.
 
 ```typescript
-const plugins: MetabasePluginsConfig = {
-  dashboard: {
-    dashboardCardMenu: () => (
-      <button onClick={() => console.log(question.name)}>Click me</button>
-    ),
-  },
-};
+{% include_file "{{ dirname }}/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
 ## Creating dashboards
@@ -215,15 +119,7 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 ### Hook
 
 ```typescript
-const { createDashboard } = useCreateDashboardApi();
-
-const handleDashboardCreate = async () => {
-  const dashboard = await createDashboard(props);
-
-  // do something with created empty dashboard, e.g., use the dashboard in EditableDashboard component
-};
-
-return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>;
+{% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-hook" %}
 ```
 
 Props:
@@ -237,13 +133,7 @@ Props:
 ### Component
 
 ```typescript
-const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-
-if (dashboard) {
-  return <EditableDashboard dashboardId={dashboard.id} />;
-}
-
-return <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />;
+{% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-component" %}
 ```
 
 Supported component props:
