@@ -28,4 +28,4 @@ export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceUrl;
 
 export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
-  state.sdk.fetchRefreshTokenFn;
+  state.sdk?.fetchRefreshTokenFn;

@@ -60,10 +60,10 @@ export function registerVisualization(visualization: Visualization) {
       return;
     }
 
-    throw new Error(
-      t`Visualization with that identifier is already registered: ` +
-        visualization.name,
-    );
+    // throw new Error(
+    //   t`Visualization with that identifier is already registered: ` +
+    //     visualization.name,
+    // );
   }
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {
