@@ -97,6 +97,7 @@ class EntityMenu extends Component {
                 }
 
                 const key = item.key ?? item.title;
+                const itemId = `entity-menu-item-${encodeURIComponent(key)}`;
 
                 if (item.separator) {
                   return (
@@ -108,8 +109,13 @@ class EntityMenu extends Component {
 
                 if (item.content) {
                   return (
-                    <li key={key} data-testid={item.testId}>
+                    <li
+                      key={key}
+                      data-testid={item.testId}
+                      aria-labelledby={itemId}
+                    >
                       <EntityMenuItem
+                        htmlId={itemId}
                         icon={item.icon}
                         title={item.title}
                         action={() =>
@@ -135,8 +141,13 @@ class EntityMenu extends Component {
                 }
 
                 return (
-                  <li key={key} data-testid={item.testId}>
+                  <li
+                    key={key}
+                    data-testid={item.testId}
+                    aria-labelledby={itemId}
+                  >
                     <EntityMenuItem
+                      htmlId={itemId}
                       icon={item.icon}
                       title={item.title}
                       externalLink={item.externalLink}
