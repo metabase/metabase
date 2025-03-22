@@ -1,4 +1,3 @@
-const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -8,6 +7,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import type { CardId, FieldReference } from "metabase-types/api";
 
+const { H } = cy;
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 29943", () => {

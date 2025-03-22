@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Text } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
@@ -43,18 +43,17 @@ export const CustomHomePageModal = ({
     await dispatch(
       addUndo({
         message: () => (
-          <Box ml="0.5rem" mr="2.5rem">
+          <Stack gap="xs" ml="0.5rem" mr="2.5rem">
             <Text
               span
               c="text-white"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
-            <br />
             <Text
               span
               c="text-white"
             >{t`You can change this in Admin > Settings > General.`}</Text>
-          </Box>
+          </Stack>
         ),
         icon: "info",
         timeout: 10000,
