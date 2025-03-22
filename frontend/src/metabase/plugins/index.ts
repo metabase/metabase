@@ -580,7 +580,7 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
-type GsheetConnectionModalProps = {
+type GdriveConnectionModalProps = {
   isModalOpen: boolean;
   onClose: () => void;
   reconnect: boolean;
@@ -588,11 +588,13 @@ type GsheetConnectionModalProps = {
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
-  GsheetsSyncStatus: PluginPlaceholder,
-  GsheetConnectionModal:
-    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
-  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
-  GsheetConnectButton: PluginPlaceholder,
+  GdriveSyncStatus: PluginPlaceholder,
+  GdriveConnectionModal:
+    PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
+  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
+    onClick: () => void;
+  }>,
+  GdriveDbMenu: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
