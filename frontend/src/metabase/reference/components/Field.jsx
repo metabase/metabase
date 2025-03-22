@@ -8,6 +8,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import S from "metabase/components/List/List.module.css";
+import Markdown from "metabase/core/components/Markdown";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
@@ -126,9 +127,9 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
             );
           })
           .with({ description: P.not(P.nullish) }, () => (
-            <div className={cx(F.fieldDescription, CS.mb2, CS.mt1)}>
+            <Markdown className={cx(F.fieldDescription, CS.mb2, CS.mt1)}>
               {field.description}
-            </div>
+            </Markdown>
           ))
           .otherwise(() => null)}
       </div>
