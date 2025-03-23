@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
+import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Modal } from "metabase/ui";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -51,6 +52,7 @@ export const DatabaseConnectionModalInner = ({
   initializeError?: DatabaseEditErrorType;
   onChangeLocation: (location: LocationDescriptor) => void;
   route: Route;
+  location: LocationDescriptor;
   params: { databaseId?: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId | undefined) => Promise<void>;
@@ -90,11 +92,16 @@ export const DatabaseConnectionModalInner = ({
       }}
     >
       <DatabaseEditConnectionForm
-        database={database}
+        database={database as any}
         initializeError={initializeError}
         onSubmitted={handleOnSubmit}
         onCancel={handleCloseModal}
         route={route}
+        engineFieldState={
+          database
+            ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
+            : "disabled"
+        }
       />
     </Modal>
   );

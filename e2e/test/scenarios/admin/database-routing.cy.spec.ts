@@ -18,7 +18,7 @@ describe("admin > database > database routing", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/ee/database-routing/mirror-database").as(
-      "createMirrorDatabase",
+      "createDestinationDatabase",
     );
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
     cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
@@ -74,7 +74,7 @@ describe("admin > database > database routing", () => {
         H.typeAndBlurUsingLabel(/Password/, "metasample123");
 
         cy.button("Save").click();
-        cy.wait("@createMirrorDatabase");
+        cy.wait("@createDestinationDatabase");
       });
       H.undoToast().within(() => {
         cy.findByText("Destination database created successfully").should(
@@ -101,16 +101,16 @@ describe("admin > database > database routing", () => {
       //   H.typeAndBlurUsingLabel(/Password/, "metasample123");
       //
       //   cy.button("Save").click();
-      //   cy.wait("@createMirrorDatabase");
+      //   cy.wait("@createDestinationDatabase");
       //   // TODO: add check for error message once implemented on BE
       //   cy.findByText("TODO")
       // });
 
       // bulk creation via api (this is how we expect most users to create destination dbs)
       cy.log("should be able to bulk create destination dbs via API");
-      createMirrorDatabasesViaAPI({
+      createDestinationDatabasesViaAPI({
         router_database_id: 2,
-        mirrors: _.range(2, 7).map(i => ({
+        databases: _.range(2, 7).map(i => ({
           ...BASE_POSTGRES_MIRROR_DB_INFO,
           name: `Destination DB ${i}`,
         })),
@@ -196,9 +196,9 @@ describe("admin > database > database routing", () => {
         router_database_id: 2,
         user_attribute: "role",
       });
-      createMirrorDatabasesViaAPI({
+      createDestinationDatabasesViaAPI({
         router_database_id: 2,
-        mirrors: [BASE_POSTGRES_MIRROR_DB_INFO],
+        databases: [BASE_POSTGRES_MIRROR_DB_INFO],
       });
 
       cy.log("validate setup was successful");
@@ -384,9 +384,9 @@ describe("admin > database > database routing", () => {
           router_database_id: 2,
           user_attribute: "role",
         });
-        createMirrorDatabasesViaAPI({
+        createDestinationDatabasesViaAPI({
           router_database_id: 2,
-          mirrors: [BASE_POSTGRES_MIRROR_DB_INFO],
+          databases: [BASE_POSTGRES_MIRROR_DB_INFO],
         });
 
         cy.log("normal user should not see db routing");
@@ -533,16 +533,16 @@ function configurDbRoutingViaAPI({
   );
 }
 
-function createMirrorDatabasesViaAPI({
+function createDestinationDatabasesViaAPI({
   router_database_id,
-  mirrors,
+  databases,
 }: {
   router_database_id: number;
-  mirrors: DatabaseData[];
+  databases: DatabaseData[];
 }) {
   cy.request("POST", "/api/ee/database-routing/mirror-database", {
     router_database_id,
-    mirrors,
+    databases,
   });
 }
 

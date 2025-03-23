@@ -5,13 +5,15 @@ import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
+import { useDocsUrl } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { Modal } from "metabase/ui";
-import { useCreateMirrorDatabaseMutation } from "metabase-enterprise/api";
+import { Flex, Icon, Modal, Text } from "metabase/ui";
+import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
 import type { DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
@@ -27,11 +29,14 @@ export const DestinationDatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  const { url: docsUrl } = useDocsUrl("databases/db-routing");
+
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
   const destinationDbReq = useGetDatabaseQuery(
     paramIdToGetQuery(destinationDatabaseId),
   );
-  const [createMirrorDatabase] = useCreateMirrorDatabaseMutation();
+  const [createDistinationDatabase] = useCreateDestinationDatabaseMutation();
   const [updateDatabase] = useUpdateDatabaseMutation();
 
   const isLoading = primaryDbReq.isLoading || destinationDbReq.isLoading;
@@ -47,16 +52,12 @@ export const DestinationDatabaseConnectionModalInner = ({
   const addingNewDatabase = destinationDatabaseId === undefined;
 
   const handleCloseModal = () => {
-    const id = primaryDbReq.currentData?.id;
-    dispatch(
-      id
-        ? dispatch(push(Urls.viewDatabase(id)))
-        : dispatch(push(Urls.viewDatabases())),
-    );
+    const dbId = parseInt(databaseId, 10);
+    dispatch(dispatch(push(Urls.viewDatabase(dbId))));
   };
 
-  const handleCreateMirrorDatabase = async (database: DatabaseData) => {
-    return createMirrorDatabase({
+  const handleCreateDestinationDatabase = async (database: DatabaseData) => {
+    return createDistinationDatabase({
       router_database_id: parseInt(databaseId, 10),
       mirrors: [database],
     }).unwrap();
@@ -70,7 +71,7 @@ export const DestinationDatabaseConnectionModalInner = ({
         auto_run_queries: database.auto_run_queries ?? true,
       }).unwrap();
     } else {
-      return handleCreateMirrorDatabase(database);
+      return handleCreateDestinationDatabase(database);
     }
   };
 
@@ -102,13 +103,33 @@ export const DestinationDatabaseConnectionModalInner = ({
       }}
     >
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
+        <Flex
+          py="sm"
+          px="md"
+          mb="md"
+          bg="accent-gray-light"
+          align="center"
+          justify="space-between"
+          bd="1px solid border"
+          style={{ borderRadius: ".5rem" }}
+        >
+          <Text>{t`You can also add databases programmatically via the API.`}</Text>
+          <ExternalLink
+            key="link"
+            href={docsUrl}
+            style={{ display: "flex", alignItems: "center", gap: 4 }}
+          >
+            {t`Learn more`} <Icon name="share" aria-hidden />
+          </ExternalLink>
+        </Flex>
+
         <DatabaseEditConnectionForm
           database={destinationDatabase}
-          isMirrorDatabase
           handleSaveDb={handleSaveDatabase}
           onSubmitted={handleOnSubmit}
           onCancel={handleCloseModal}
           route={route}
+          engineFieldState="hidden"
           autofocusFieldName="name"
         />
       </LoadingAndErrorWrapper>

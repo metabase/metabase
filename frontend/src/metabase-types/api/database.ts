@@ -191,7 +191,7 @@ export interface SavedQuestionDatabase {
   is_saved_questions: true;
 }
 
-export interface CreateMirrorDatabaseRequest {
+export interface CreateDestinationDatabaseRequest {
   router_database_id: DatabaseId;
   mirrors: { name: string; details?: Record<string, unknown> }[];
 }

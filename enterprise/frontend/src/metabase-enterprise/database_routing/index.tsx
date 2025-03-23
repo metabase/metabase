@@ -2,14 +2,25 @@ import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { Database } from "metabase-types/api";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnectionModal";
 import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
 import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
+import { useRedirectDestinationDatabase } from "./hooks";
 
 if (hasPremiumFeature("database_routing")) {
   PLUGIN_DB_ROUTING.DatabaseRoutingSection = DatabaseRoutingSection;
+
+  PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState = (
+    database: Pick<Database, "router_user_attribute">,
+  ) => {
+    return database.router_user_attribute ? "disabled" : "default";
+  };
+
+  PLUGIN_DB_ROUTING.useRedirectDestinationDatabase =
+    useRedirectDestinationDatabase;
 
   PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
     <Route path="destination-databases">

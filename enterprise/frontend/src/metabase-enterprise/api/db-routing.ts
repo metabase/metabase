@@ -1,6 +1,6 @@
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
-  CreateMirrorDatabaseRequest,
+  CreateDestinationDatabaseRequest,
   Database,
   UpdateDatabaseRouterRequest,
 } from "metabase-types/api";
@@ -18,9 +18,9 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("database"), idTag("database", id)]),
     }),
-    createMirrorDatabase: builder.mutation<
+    createDestinationDatabase: builder.mutation<
       Database,
-      CreateMirrorDatabaseRequest
+      CreateDestinationDatabaseRequest
     >({
       query: body => ({
         method: "POST",
@@ -40,6 +40,6 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
-  useCreateMirrorDatabaseMutation,
+  useCreateDestinationDatabaseMutation,
   useUpdateRouterDatabaseMutation,
 } = dbRoutingApi;

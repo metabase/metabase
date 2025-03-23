@@ -43,7 +43,6 @@ export function ModelActionsSection({
               onChange={e =>
                 handleToggleModelActionsEnabled(e.currentTarget.checked)
               }
-              styles={{ labelWrapper: { display: "none" } }}
               disabled={disabled}
             />
           </Box>

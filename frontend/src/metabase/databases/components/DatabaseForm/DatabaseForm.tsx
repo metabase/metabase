@@ -27,9 +27,12 @@ import DatabaseNameField from "../DatabaseNameField";
 
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
+export type EngineFieldState = "default" | "hidden" | "disabled";
+
 interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
+  engineFieldState?: EngineFieldState;
   isAdvanced?: boolean;
   isMirrorDatabase?: boolean;
   onSubmit?: (values: DatabaseData) => void;
@@ -42,7 +45,7 @@ export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,
   isAdvanced = false,
-  isMirrorDatabase = false,
+  engineFieldState,
   onSubmit,
   onCancel,
   onEngineChange,
@@ -91,10 +94,10 @@ export const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
+        engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
-        isMirrorDatabase={isMirrorDatabase}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
@@ -107,10 +110,10 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
+  engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
-  isMirrorDatabase: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
@@ -120,10 +123,10 @@ const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
+  engineFieldState = "default",
   autofocusFieldName,
   isHosted,
   isAdvanced,
-  isMirrorDatabase,
   onEngineChange,
   onCancel,
   setIsDirty,
@@ -140,7 +143,7 @@ const DatabaseFormBody = ({
 
   return (
     <Form data-testid="database-form">
-      {!isMirrorDatabase && (
+      {engineFieldState !== "hidden" && (
         <>
           <DatabaseEngineField
             engineKey={engineKey}
@@ -148,6 +151,7 @@ const DatabaseFormBody = ({
             isHosted={isHosted}
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
+            disabled={engineFieldState === "disabled"}
           />
           <DatabaseEngineWarning
             engineKey={engineKey}

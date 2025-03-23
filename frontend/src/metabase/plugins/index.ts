@@ -608,4 +608,7 @@ export const PLUGIN_DB_ROUTING = {
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
   ): void => {},
+  getPrimaryDBEngineFieldState: (
+    _database: Pick<Database, "router_user_attribute">,
+  ): "default" | "hidden" | "disabled" => "default",
 };

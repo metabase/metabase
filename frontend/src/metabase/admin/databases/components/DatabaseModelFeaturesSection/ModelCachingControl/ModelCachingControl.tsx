@@ -78,7 +78,6 @@ export function ModelCachingControl({ database, disabled }: Props) {
               id="model-persistence-toggle"
               checked={isEnabled}
               onChange={handleCachingChange}
-              styles={{ labelWrapper: { display: "none" } }}
               disabled={disabled}
             />
           </Box>

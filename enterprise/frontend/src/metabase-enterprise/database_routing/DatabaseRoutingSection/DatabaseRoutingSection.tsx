@@ -98,7 +98,7 @@ export const DatabaseRoutingSection = ({
       <Flex justify="space-between" align="center">
         <Stack>
           <label htmlFor="database-routing-toggle">
-            <Text lh="1.4">{t`Enable database routing`}</Text>
+            <Text lh="lg">{t`Enable database routing`}</Text>
           </label>
           {error ? (
             <Text role="alert" color="error">
@@ -111,11 +111,9 @@ export const DatabaseRoutingSection = ({
             <Box>
               <Switch
                 id="database-routing-toggle"
-                labelPosition="left"
                 checked={tempEnabled || database.hasDatabaseRoutingEnabled()}
                 disabled={!!disabledFeatMsg || !isAdmin}
                 onChange={e => handleToggle(e.currentTarget.checked)}
-                styles={{ labelWrapper: { display: "none" } }}
               />
             </Box>
           </Tooltip>
