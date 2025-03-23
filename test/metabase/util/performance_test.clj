@@ -85,3 +85,11 @@
         (when (instance? clojure.lang.Sorted c)
           (is (= (.comparator ^clojure.lang.Sorted c)
                  (.comparator ^clojure.lang.Sorted walked))))))))
+
+(deftest pmap-test
+  (are [f input result] (= result (mapv f input) (perf/mapv f input) (perf/pmap f input))
+    inc (range 10) [1 2 3 4 5 6 7 8 9 10]
+    identity (range 10) [0 1 2 3 4 5 6 7 8 9]
+    inc [] []
+    inc [1] [2]
+    (fn [_] (do (Thread/sleep 10) 0)) (range 5) [0 0 0 0 0]))

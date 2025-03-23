@@ -94,6 +94,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -1485,14 +1486,14 @@
   [visibilities]
   ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
-    (into
-     {}
-     (comp (filter (fn [[_setting-name setting]]
-                     (and (not (database-local-only? setting))
-                          (can-read-setting? setting visibilities))))
-           (map (fn [[setting-name]]
-                  [setting-name (get setting-name)])))
-     @registered-settings)))
+    (let [setting-names (into []
+                              (keep (fn [[setting-name setting]]
+                                      (when (and (not (database-local-only? setting))
+                                                 (can-read-setting? setting visibilities))
+                                        setting-name)))
+                              @registered-settings)
+          values (perf/pmap get setting-names)]
+      (zipmap setting-names values))))
 
 (defn- redact-parse-ex
   "Substitute an opaque exception to ensure no sensitive information in the raw value is exposed"
