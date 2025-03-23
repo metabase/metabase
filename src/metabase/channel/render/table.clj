@@ -150,28 +150,36 @@
 ;; TSP TODO - fix the assumption that padding is 1em
 (defn- get-min-width
   [col-width]
-  (let [y-padding 1]
+  (let [col-width (if col-width col-width 780) ;; Default to 780px
+        y-padding 1]
     (- col-width (* font-size y-padding 2))))
 
-;; TSP TODO - This assumes column-widths are always present
+(defn- get-text-align
+  [text-align]
+  (cond
+    (= "middle" text-align) "center"
+    :else                   text-align))
+
 ;; TSP TODO - This assumes the column can be found by its key in viz settings (not always true)
 (defn column->viz-setting-styles
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
   [columns viz-settings]
   (let [column-settings (get viz-settings ::mb.viz/column-settings)
-        column-widths (get viz-settings :table.column_widths)]
+        column-widths   (get viz-settings :table.column_widths)]
     (reduce
      (fn [acc [col-key col-setting]]
-       ;; TSP TODO - Rework this to use cond-> for adding support for more settings
-       (let [column-name (::mb.viz/column-name col-key)
-             text-wrapping (::mb.viz/text-wrapping col-setting)
-             column-index (first (keep-indexed #(when (= (:name %2) column-name) %1) columns))]
-         (if (and text-wrapping column-index)
-           (assoc acc column-name
-                  {:min-width (format "%spx" (get-min-width (nth column-widths column-index)))
-                   :white-space "normal"})
-           acc)))
+       (let [column-name   (::mb.viz/column-name col-key)
+             column-index  (first (keep-indexed #(when (= (:name %2) column-name) %1) columns))]
+         (cond-> acc
+           ;; text wrapping
+           (::mb.viz/text-wrapping col-setting)
+           (assoc column-name {:min-width (format "%spx" (get-min-width (nth column-widths column-index)))
+                               :white-space "normal"})
+
+           ;; text alignment
+           (::mb.viz/text-align col-setting)
+           (assoc column-name {:text-align (get-text-align (::mb.viz/text-align col-setting))}))))
      {}
      column-settings)))
 
