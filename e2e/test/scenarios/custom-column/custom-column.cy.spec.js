@@ -1611,7 +1611,7 @@ describe("scenarios > question > custom column > function browser", () => {
     H.CustomExpressionEditor.value().should("equal", "foo day() baz");
   });
 
-  it("should be possible to filter functions in the function browser", () => {
+  it("should be possible to filter functions in the function browser (yes)", () => {
     H.expressionEditorWidget().button("Function browser").click();
 
     H.CustomExpressionEditor.functionBrowser().within(() => {
