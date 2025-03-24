@@ -1,3 +1,4 @@
+;; TODO: move this to metabase.notification.events
 (ns metabase.events.notification
   (:require
    [malli.core :as mc]
@@ -57,11 +58,17 @@
     (some? (events/event-schema topic))
     (hydrate! (events/event-schema topic))))
 
+(defmulti notification-filter-for-topic
+  "Given an event info, return additional honeysql filters for notification if needed."
+  {:arglists '([topic event-info])}
+  (fn [topic _event-info]
+    topic))
+
 (defn- notifications-for-topic
   "Returns notifications for a given topic if it is supported and has notifications."
-  [topic]
+  [topic event-info]
   (when (supported-topics topic)
-    (models.notification/notifications-for-event topic)))
+    (models.notification/notifications-for-event topic (notification-filter-for-topic topic event-info))))
 
 (def ^:dynamic *skip-sending-notification?*
   "Used as a hack for when we need to skip sending notifications for certain events.
@@ -69,10 +76,13 @@
   It's an escape hatch until we implement conditional notifications."
   false)
 
+(defmethod notification-filter-for-topic :default [_ _]
+  nil)
+
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-not *skip-sending-notification?*
-    (when-let [notifications (notifications-for-topic topic)]
+    (when-let [notifications (notifications-for-topic topic event-info)]
       (task-history/with-task-history {:task         "notification-trigger"
                                        :task_details {:trigger_type     :notification-subscription/system-event
                                                       :event_name       topic
