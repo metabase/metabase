@@ -77,6 +77,7 @@
                               :schemas                  true
                               :identifiers-with-spaces  true
                               :uuid-type                true
+                              :split-part               true
                               :uploads                  true
                               :cast                     true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -658,9 +659,17 @@
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
+(defmethod sql.qp/->honeysql [:postgres :split-part]
+  [driver [_ text divider position]]
+  [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) (sql.qp/->honeysql driver position)])
+
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:postgres :date]
+  [driver [_ value]]
+  [:to_date (sql.qp/->honeysql driver value) "YYYY-MM-DD"])
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]

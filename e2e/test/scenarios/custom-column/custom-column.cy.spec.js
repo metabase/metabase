@@ -4,7 +4,8 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID, PEOPLE } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -1477,6 +1478,83 @@ describe("scenarios > question > custom column > distinctIf", () => {
   });
 });
 
+describe("scenarios > question > custom column > path", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should allow to use a path function", () => {
+    const CC_NAME = "URL_URL";
+    const questionDetails = {
+      name: "path from url",
+      query: {
+        "source-table": PEOPLE_ID,
+        limit: 1,
+        expressions: {
+          [CC_NAME]: [
+            "concat",
+            "http://",
+            ["domain", ["field", PEOPLE.EMAIL, null]],
+            ".com/my/path",
+          ],
+        },
+      },
+      type: "model",
+    };
+
+    H.createQuestion(questionDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    });
+
+    cy.get("@modelId").then(modelId => {
+      H.setModelMetadata(modelId, field => {
+        if (field.name === CC_NAME) {
+          return { ...field, semantic_type: "type/URL" };
+        }
+
+        return field;
+      });
+
+      H.visitModel(modelId);
+    });
+
+    H.openNotebook();
+
+    cy.log("add a new expression");
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: `Path([${CC_NAME}])`,
+      name: "extracted path",
+    });
+
+    H.popover().button("Done").click();
+    H.visualize();
+    cy.findByTestId("table-scroll-container").scrollTo("right");
+
+    const extractedValue = "/my/path";
+    assertTableData({
+      title: "extracted path",
+      value: extractedValue,
+    });
+  });
+});
+
 describe("scenarios > question > custom column > function browser", () => {
   beforeEach(() => {
     H.restore();
@@ -1590,5 +1668,62 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("now").click();
     });
     H.CustomExpressionEditor.value().should("equal", "now");
+  });
+});
+
+describe("scenarios > question > custom column > splitPart", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("People").click();
+    });
+
+    cy.findByLabelText("Custom column").click();
+  });
+
+  function assertTableData({ title, value }) {
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractive()
+      .findAllByTestId("header-cell")
+      .last()
+      .should("have.text", title);
+
+    // eslint-disable-next-line no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .last()
+      .should("have.text", value);
+  }
+
+  it("should be possible to split a custom column", () => {
+    const CC_NAME = "Split Title";
+
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 1)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").click();
+
+    cy.findByLabelText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type(1).blur();
+
+    H.visualize();
+
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    assertTableData({ title: CC_NAME, value: "Hudson" });
+  });
+
+  it("should show a message when index is below 1", () => {
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+    });
+
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
   });
 });

@@ -181,13 +181,13 @@ describe("issue 17524", () => {
       cy.get("polygon");
 
       H.filter();
-
-      H.filterField("ID", {
-        operator: "Greater than",
-        value: "1",
+      H.popover().findByText("ID").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("1");
+        cy.button("Add filter").click();
       });
-      cy.findByTestId("apply-filters").click();
-
+      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });

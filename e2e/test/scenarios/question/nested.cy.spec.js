@@ -478,11 +478,13 @@ describe("scenarios > question > nested", () => {
       "Should be able to use integer filter on a nested query based on a saved native question (metabase#15808)",
     );
     H.filter();
-    H.filterField("RATING", {
-      operator: "Equal to",
-      value: "4",
+    H.popover().findByText("RATING").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("4");
+      cy.button("Add filter").click();
     });
-    cy.findByTestId("apply-filters").click();
+    H.runButtonOverlay().click();
 
     cy.findAllByTestId("cell-data")
       .should("contain", "Murray, Watsica and Wunsch")
@@ -514,27 +516,26 @@ describe("scenarios > question > nested", () => {
       },
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-    H.filterField("Count", {
-      operator: "Equal to",
-      value: "5",
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Count").click();
     });
-    cy.button("Apply filters").click();
+    H.selectFilterOperator("Equal to");
+    H.popover().within(() => {
+      cy.findByLabelText("Filter value").type("5");
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count is equal to 5");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.queryBuilderFiltersPanel().findByText("Count is equal to 5");
+    H.assertQueryBuilderRowCount(100);
 
     H.saveQuestionToCollection();
 
     reloadQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 100 rows");
+    H.assertQueryBuilderRowCount(100);
 
     H.openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
