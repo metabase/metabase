@@ -4,14 +4,12 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
+import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import {
-  FIELD_SEMANTIC_TYPES,
-  FIELD_SEMANTIC_TYPES_MAP,
-} from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import D from "metabase/reference/components/Detail.module.css";
-import { isNumericBaseType, isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 const FieldTypeDetail = ({
   field,
@@ -28,22 +26,12 @@ const FieldTypeDetail = ({
       <div className={cx(D.detailSubtitle, { [CS.mt1]: true })}>
         <span>
           {isEditing ? (
-            <Select
-              placeholder={t`Select a field type`}
+            <SemanticTypePicker
+              field={field}
               value={fieldTypeFormField.value || field.semantic_type}
-              options={FIELD_SEMANTIC_TYPES.concat({
-                id: null,
-                name: t`No field type`,
-                section: t`Other`,
-              }).filter(type =>
-                !isNumericBaseType(field)
-                  ? !(type.id && type.id.startsWith("timestamp_"))
-                  : true,
-              )}
-              optionValueFn={o => o.id}
-              onChange={({ target: { value } }) =>
-                fieldTypeFormField.onChange(value)
-              }
+              onChange={value => {
+                return fieldTypeFormField.onChange(value);
+              }}
             />
           ) : (
             <span>
