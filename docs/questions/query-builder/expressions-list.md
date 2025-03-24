@@ -70,6 +70,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
+    - [text](#text)
     - [trim](#trim)
     - [upper](#upper)
 
@@ -602,6 +603,16 @@ Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (t
 
 Related: [regexextract](#regexextract), [replace](#replace).
 
+### text
+
+> Only available for PostgreSQL.
+
+Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
+
+Syntax: `text(value)`.
+
+Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
+
 ### trim
 
 Removes leading and trailing whitespace from a string of text.
@@ -609,14 +620,6 @@ Removes leading and trailing whitespace from a string of text.
 Syntax: `trim(text)`
 
 Example: `trim([Comment])` will remove any whitespace characters on either side of a comment.
-
-### upper
-
-Returns the text in all upper case.
-
-Syntax: `upper(text)`.
-
-Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
 ## Date functions
 
