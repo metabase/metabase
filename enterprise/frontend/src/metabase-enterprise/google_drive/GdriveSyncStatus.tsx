@@ -9,15 +9,15 @@ import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
-import { useGetGsheetsFolderQuery } from "metabase-enterprise/api/gsheets";
+import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import type { DatabaseId, Settings } from "metabase-types/api";
 
 type GsheetsStatus = Settings["gsheets"]["status"];
 type ErrorPayload = { data?: { message: string } };
 
-export const GsheetsSyncStatus = () => {
-  const gsheetsSetting = useSetting("gsheets") ?? { status: "not-connected" };
-  const { status: settingStatus } = gsheetsSetting;
+export const GdriveSyncStatus = () => {
+  const gsheetsSetting = useSetting("gsheets");
+  const settingStatus = gsheetsSetting?.status;
   const previousSettingStatus = usePrevious(settingStatus);
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);

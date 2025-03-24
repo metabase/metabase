@@ -2,7 +2,7 @@ import type { DatabaseId, Settings } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
-export const gsheetsApi = EnterpriseApi.injectEndpoints({
+export const gdriveApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
     getServiceAccount: builder.query<{ email: string }, void>({
       query: () => ({
@@ -43,4 +43,4 @@ export const {
   useGetGsheetsFolderQuery,
   useDeleteGsheetsFolderLinkMutation,
   useSaveGsheetsFolderLinkMutation,
-} = gsheetsApi;
+} = gdriveApi;

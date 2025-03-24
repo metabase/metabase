@@ -12,7 +12,7 @@ type Props =
       errorCode?: never;
     };
 
-export function setupGsheetsGetFolderEndpoint({ status, errorCode }: Props) {
+export function setupGdriveGetFolderEndpoint({ status, errorCode }: Props) {
   if (status) {
     fetchMock.get("path:/api/ee/gsheets/folder", () => {
       return {
@@ -27,7 +27,7 @@ export function setupGsheetsGetFolderEndpoint({ status, errorCode }: Props) {
   }
 }
 
-export function setupGsheetsServiceAccountEndpoint(
+export function setupGdriveServiceAccountEndpoint(
   email = "service-account123@testing.metabase.com",
 ) {
   fetchMock.get("path:/api/ee/gsheets/service-account", () => {
