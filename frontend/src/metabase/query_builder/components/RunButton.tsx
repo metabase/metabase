@@ -11,7 +11,6 @@ interface RunButtonProps {
   className?: string;
   isRunning: boolean;
   isDirty: boolean;
-  compact?: boolean;
   circular?: boolean;
   borderless?: boolean;
   hidden?: boolean;
@@ -26,7 +25,6 @@ const RunButton = forwardRef(function RunButton(
     onRun,
     onCancel,
     className,
-    compact,
     circular,
     hidden,
     ...props
@@ -35,7 +33,6 @@ const RunButton = forwardRef(function RunButton(
 ) {
   const icon = getButtonIcon(isRunning, isDirty);
   const ariaLabel = getButtonLabel(isRunning, isDirty);
-  const buttonLabel = compact || (!isRunning && !isDirty) ? null : ariaLabel;
 
   return (
     <Button
@@ -44,17 +41,14 @@ const RunButton = forwardRef(function RunButton(
       primary={isDirty}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
-        [QueryBuilderS.RunButtonCompact]:
-          circular && !props.borderless && compact,
+        [QueryBuilderS.RunButtonCompact]: circular && !props.borderless,
         [CS.circular]: circular,
       })}
       data-testid="run-button"
       onClick={isRunning ? onCancel : onRun}
       ref={ref}
       aria-label={ariaLabel}
-    >
-      {buttonLabel}
-    </Button>
+    />
   );
 });
 

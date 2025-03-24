@@ -190,7 +190,6 @@ export const VisualizationDirtyState = ({
       <RunButtonWithTooltip
         className={CS.shadowed}
         circular
-        compact
         result={result}
         hidden={hidden}
         isRunning={isRunning}
