@@ -19,9 +19,16 @@ function parseQueryStringOptions(s: string) {
   return options;
 }
 
-export function isDesktopSafari() {
-  // from: https://stackoverflow.com/a/42189492/142317
-  return "safari" in window;
+export function isWebkit() {
+  const ua = navigator.userAgent || "";
+
+  const isiOS = /iPad|iPhone|iPod/.test(ua);
+  if (isiOS) {
+    return true;
+  }
+  return (
+    ua.includes("AppleWebKit") && navigator.vendor === "Apple Computer, Inc."
+  );
 }
 
 export function parseHashOptions(hash: string) {
