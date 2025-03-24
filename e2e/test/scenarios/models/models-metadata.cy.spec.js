@@ -382,20 +382,17 @@ describe("scenarios > models metadata", () => {
           .button(/Filter/)
           .click();
 
-        H.modal().within(() => {
-          cy.findByRole("tablist").within(() => {
-            cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
-            cy.findByText("Native Model").should("exist");
-
-            const userTab = cy.findByText("User");
-            userTab.should("exist");
-            userTab.click();
-          });
-
-          cy.findByTestId("filter-column-Source").findByText("Twitter").click();
-          cy.findByTestId("apply-filters").click();
+        H.popover().within(() => {
+          cy.get("[data-element-id=list-section-header]").should(
+            "have.length",
+            2, // Just the two we're expecting and not the other fake FK.
+          );
+          cy.findByText("User").click();
+          cy.findByText("Source").click();
+          cy.findByText("Twitter").click();
+          cy.button("Add filter").click();
         });
-
+        H.runButtonOverlay().click();
         cy.wait("@dataset");
         cy.findByTestId("question-row-count")
           .invoke("text")

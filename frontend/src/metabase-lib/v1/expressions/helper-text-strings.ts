@@ -1,14 +1,11 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import type {
-  HelpText,
-  HelpTextConfig,
-} from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { adjustCaseOrIf } from "./recursive-parser";
+import { adjustCaseOrIf } from "./passes";
+import type { HelpText, HelpTextConfig } from "./types";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -312,6 +309,19 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "date",
+    structure: "date",
+    category: "conversion",
+    description: () => t`Converts an ISO 8601 date string to a date.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string to convert to a date.`,
+        example: "2025-03-20",
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     category: "string",
@@ -362,6 +372,30 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "substring",
   },
   {
+    name: "split-part",
+    category: "string",
+    structure: "splitPart",
+    description: () =>
+      t`Splits a string on a specified delimiter and returns the nth substring.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: ["dimension", t`Title`],
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: ",",
+      },
+      {
+        name: t`position`,
+        description: t`Which substring to return after the split. Index starts at position 1.`,
+        example: 1,
+      },
+    ],
+  },
+  {
     name: "regex-match-first",
     structure: "regexextract",
     category: "string",
@@ -404,6 +438,20 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
     ],
     docsPage: "concat",
+  },
+  {
+    name: "path",
+    category: "string",
+    structure: "path",
+    description: () =>
+      t`Extracts the pathname from a URL. E.g., ${'path("https://www.example.com/path/to/page.html?key1=value)'} would return ${"/path/to/page.html"}.`,
+    args: [
+      {
+        name: t`url`,
+        description: t`A column containing URLs`,
+        example: ["dimension", t`URL`],
+      },
+    ],
   },
   {
     name: "replace",

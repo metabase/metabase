@@ -1,7 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { StartRule } from "metabase-lib/v1/expressions";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import type { StartRule } from "../types";
 
 import { getFilteredClauses } from "./utils";
 

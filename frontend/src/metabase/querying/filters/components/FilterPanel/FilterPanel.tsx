@@ -33,12 +33,13 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
       py="sm"
       data-testid="qb-filters-panel"
     >
-      {items.map(({ filter, stageIndex }, itemIndex) => (
+      {items.map(({ filter, filterIndex, stageIndex }, itemIndex) => (
         <FilterPanelPopover
           key={itemIndex}
           query={query}
           stageIndex={stageIndex}
           filter={filter}
+          filterIndex={filterIndex}
           onChange={handleChange}
         />
       ))}

@@ -10,11 +10,11 @@ import {
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
-import { enclosingFunction } from "../utils";
 
 import S from "./Tooltip.module.css";
 
