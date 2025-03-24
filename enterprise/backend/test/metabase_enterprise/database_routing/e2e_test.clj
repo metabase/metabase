@@ -156,3 +156,39 @@
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
                                                             :min-duration-ms  1}})))))))))))
+
+(deftest get-field-values-endpoint-works
+  (mt/with-premium-features #{:database-routing}
+    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+      (met/with-user-attributes!
+        :crowberto
+        {"db_name" "__METABASE_ROUTER__"}
+        (met/with-user-attributes!
+          :rasta
+          {"db_name" "mirror-db-1"}
+          (met/with-user-attributes!
+            :lucky
+            {"db_name" "mirror-db-2"}
+            (with-temp-dbs! [router-db mirror-db-1 mirror-db-2]
+              ;; configure the Mirror Databases
+              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "mirror-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "mirror-db-2" :router_database_id (u/the-id router-db)})
+              ;; sync the Router database
+              (sync/sync-database! router-db)
+              ;; Configure the router database and set up a card that uses it.
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
+                                                      :user_attribute "db_name"}]
+                (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
+                      field-id (t2/select-one-pk :model/Field :table_id table-id)]
+                  (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
+                  (execute-statement! mirror-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-1')")
+                  (execute-statement! mirror-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-2')")
+                  (let [response (mt/user-http-request :rasta :get 200 (str "field/" field-id "/values"))]
+                    (is (= {:values [["mirror-1"]], :field_id field-id, :has_more_values false}
+                           response)))
+                  (let [response (mt/user-http-request :crowberto :get 200 (str "field/" field-id "/values"))]
+                    (is (= {:values [["router"]] :field_id field-id :has_more_values false}
+                           response)))
+                  (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
+                    (is (= {:values [["mirror-2"]] :field_id field-id :has_more_values false}
+                           response))))))))))))
