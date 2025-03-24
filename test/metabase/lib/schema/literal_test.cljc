@@ -51,7 +51,7 @@
       ::expression/orderable
       ::expression/equality-comparable
       ::expression/expression))
-  (testing "should accept strings where numbers are expected"
+  (testing "should allow strings where numbers are expected"
     (are [schema] (mr/validate schema "40")
       ::expression/integer
       ::expression/number))
