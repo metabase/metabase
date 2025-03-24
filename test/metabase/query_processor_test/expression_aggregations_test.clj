@@ -384,10 +384,11 @@
        (driver/database-supports? driver :expression-aggregations database)))
 
 ;; literal expressions in aggregations not yet supported for these drivers
-(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
-  (defmethod driver/database-supports? [driver ::expression-aggregation-literals]
-    [_driver _feature _database]
-    false))
+;; commenting this out as a test to see which drivers still fail in CI
+#_(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
+    (defmethod driver/database-supports? [driver ::expression-aggregation-literals]
+      [_driver _feature _database]
+      false))
 
 (deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
   (testing "nested aggregated and filtered literal expression"

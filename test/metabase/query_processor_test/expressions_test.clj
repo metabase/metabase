@@ -494,10 +494,11 @@
   (driver/database-supports? driver :expressions database))
 
 ;; top-level literal expressions not yet supported for these drivers
-(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
-  (defmethod driver/database-supports? [driver ::expression-literals]
-    [_driver _feature _database]
-    false))
+;; commenting this out as a test to see which drivers still fail in CI
+#_(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
+    (defmethod driver/database-supports? [driver ::expression-literals]
+      [_driver _feature _database]
+      false))
 
 (deftest ^:parallel basic-literal-expression-test
   (testing "basic literal expressions"
