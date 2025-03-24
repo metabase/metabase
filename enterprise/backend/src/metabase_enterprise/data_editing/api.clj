@@ -22,21 +22,21 @@
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (perform-bulk-action! :bulk/create table-id rows))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (perform-bulk-action! :bulk/update table-id rows))
 
 (api.macros/defendpoint :delete "/table/:table-id"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows]}]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (perform-bulk-action! :bulk/delete table-id rows))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
