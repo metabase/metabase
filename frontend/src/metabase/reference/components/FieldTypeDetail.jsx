@@ -23,7 +23,7 @@ const FieldTypeDetail = ({
       <div className={D.detailTitle}>
         <span>{t`Field type`}</span>
       </div>
-      <div className={cx(D.detailSubtitle, { [CS.mt1]: true })}>
+      <div className={D.detailSubtitle}>
         <span>
           {isEditing ? (
             <SemanticTypePicker
