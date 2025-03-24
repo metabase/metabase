@@ -428,8 +428,7 @@
                      :include-mirror-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
-    :exclude-uneditable-details? exclude_uneditable_details
-    :include-mirror-databases? true}))
+    :exclude-uneditable-details? exclude_uneditable_details}))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
