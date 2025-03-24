@@ -39,7 +39,6 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/data-editing/table/${tableId}`,
         body: { rows },
-        hasBody: true,
       }),
     }),
   }),
