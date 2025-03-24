@@ -240,7 +240,7 @@
           (testing (str `lib/filter-operator " returns the right op")
             ;; TODO: The generator will happily build multiple joins
             (when-let [op (mu/disable-enforcement
-                            (lib/filter-operator after stage-number (last after-filters)))]
+                           (lib/filter-operator after stage-number (last after-filters)))]
               (is (= (first filter-clause)
                      (:short op))))))))))
 
@@ -340,6 +340,8 @@
 
 (def ^:dynamic *available-cards*
   "To be bound to cards available for use by generator in joins.
+
+  Cards should have a format of `:lib/type :metadata/card`, as returned eg. from [[metabase.lib.metadata/card]].
 
   Currently modified only in [[metabase.test.util.generators.jvm/with-random-cards]], hence available only in jvm tests
   at the moment."
