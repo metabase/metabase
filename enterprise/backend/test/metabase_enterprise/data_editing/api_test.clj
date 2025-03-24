@@ -102,7 +102,7 @@
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
-                   (mt/user-http-request :crowberto :delete 200 url
+                   (mt/user-http-request :crowberto :post 200 (str url "/delete")
                                          {:rows [{:id 1}
                                                  {:id 2}]})))
             (is (= [[3 "Farfetch'd" "The land of lisp"]]

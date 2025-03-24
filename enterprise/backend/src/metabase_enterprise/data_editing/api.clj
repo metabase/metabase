@@ -32,7 +32,7 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (perform-bulk-action! :bulk/update table-id rows))
 
-(api.macros/defendpoint :delete "/table/:table-id"
+(api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
