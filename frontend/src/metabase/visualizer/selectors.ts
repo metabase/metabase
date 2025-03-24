@@ -112,6 +112,18 @@ export const getUsedDataSources = createSelector(
   },
 );
 
+export const getIsMultiseriesCartesianChart = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerColumnValuesMapping,
+    getVisualizerRawSettings,
+  ],
+  (display, columnValuesMapping, settings) =>
+    display &&
+    isCartesianChart(display) &&
+    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+);
+
 const getVisualizerDatasetData = createSelector(
   [
     getUsedDataSources,
@@ -139,8 +151,15 @@ export const getVisualizerRawSeries = createSelector(
     getVisualizerColumnValuesMapping,
     getVisualizerRawSettings,
     getVisualizerDatasetData,
+    getIsMultiseriesCartesianChart,
   ],
-  (display, columnValuesMapping, settings, data): RawSeries => {
+  (
+    display,
+    columnValuesMapping,
+    settings,
+    data,
+    isMultiseriesCartesianChart,
+  ): RawSeries => {
     if (!display) {
       return [];
     }
@@ -159,10 +178,7 @@ export const getVisualizerRawSeries = createSelector(
       } as SingleSeries,
     ];
 
-    if (
-      isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
-    ) {
+    if (isMultiseriesCartesianChart) {
       return splitVisualizerSeries(series, columnValuesMapping);
     }
 
