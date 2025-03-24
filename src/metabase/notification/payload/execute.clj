@@ -255,16 +255,17 @@
   (let [result (request/with-current-user creator-id
                  (qp.card/process-query-for-card card-id :api
                                                  ;; TODO rename to :notification?
-                                                 :context    :pulse
-                                                 :middleware {:skip-results-metadata?            false
-                                                              :process-viz-settings?             true
-                                                              :js-int-to-string?                 false
-                                                              :add-default-userland-constraints? false}
-                                                 :make-run      (fn make-run [qp _export-format]
-                                                                  (^:once fn* [query info]
-                                                                    (qp
-                                                                     (qp/userland-query query info)
-                                                                     nil)))))]
+                                                 :context     :pulse
+                                                 :constraints {}
+                                                 :middleware  {:skip-results-metadata?            false
+                                                               :process-viz-settings?             true
+                                                               :js-int-to-string?                 false
+                                                               :add-default-userland-constraints? false}
+                                                 :make-run    (fn make-run [qp _export-format]
+                                                                (^:once fn* [query info]
+                                                                  (qp
+                                                                   (qp/userland-query query info)
+                                                                   nil)))))]
 
     {:card   (t2/select-one :model/Card card-id)
      :result result
