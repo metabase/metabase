@@ -84,7 +84,7 @@
   with `:Coercion/UNIXSeconds->DateTime`, it will have `:base-type :type/Integer` and `:effective-type :type/Instant`.
   But when converting from legacy, the `:field` refs in eg. a filter will only have `:base-type :type/Integer`, and then
   the filter fails Malli validation. See #41122."
-  true)
+  false)
 
 (defn- non-expression-clause?
   "True if this MBQL clause is never valid in (sub)expressions."
@@ -127,7 +127,9 @@
   (expression-schema :type/Float "expression returning a non-integer real number"))
 
 (mr/def ::number
-  (expression-schema :type/Number "expression returning a number"))
+  [:or
+   (expression-schema :type/Number "expression returning a number")
+   (expression-schema :type/Text "expression returning a string")])
 
 (mr/def ::date
   (expression-schema :type/Date "expression returning a date"))
