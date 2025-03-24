@@ -211,7 +211,7 @@
 
   (testing "can't update a handler with a template that has different channel type"
     (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-handlebars-body
-                   :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
+                   :model/ChannelTemplate     slack-tmpl notification.tu/channel-template-slack-with-handlebars-body
                    :model/Notification        noti       {}
                    :model/NotificationHandler handler    {:channel_type    :channel/slack
                                                           :notification_id (:id noti)
