@@ -10,14 +10,13 @@ import { getCompatibleSemanticTypes } from "./utils";
 const NO_SEMANTIC_TYPE = null;
 const NO_SEMANTIC_TYPE_STRING = "null";
 
-interface Props extends Omit<SelectProps<string | null>, "data"> {
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: Field;
   value: string | null;
   onChange: (value: string | null) => void;
 }
 
 export const SemanticTypePicker = ({
-  className,
   field,
   value,
   onChange,
@@ -32,7 +31,6 @@ export const SemanticTypePicker = ({
 
   return (
     <Select
-      className={className}
       comboboxProps={{
         position: "bottom-start",
         width: 300,

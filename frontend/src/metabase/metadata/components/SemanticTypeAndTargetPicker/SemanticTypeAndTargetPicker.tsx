@@ -1,8 +1,4 @@
-import cx from "classnames";
-
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
@@ -56,9 +52,10 @@ export const SemanticTypeAndTargetPicker = ({
   };
 
   return (
-    <div
+    <Flex
+      align="center"
       data-testid="semantic-type-target-picker"
-      className={hasSeparator ? cx(CS.flex, CS.alignCenter) : undefined}
+      display={hasSeparator ? "flex" : "block"}
     >
       <SemanticTypePicker
         className={className}
@@ -68,48 +65,37 @@ export const SemanticTypeAndTargetPicker = ({
       />
 
       {showCurrencyTypeSelect && hasSeparator && (
-        <Icon
-          name="chevronright"
-          size={12}
-          className={cx(CS.mx2, CS.textMedium)}
-        />
+        <Box color="text-medium" px="md">
+          <Icon name="chevronright" size={12} />
+        </Box>
       )}
 
       {showCurrencyTypeSelect && (
         <CurrencyPicker
-          className={cx(
-            AdminS.TableEditorFieldTarget,
-            hasSeparator ? CS.mt0 : CS.mt1,
-            className,
-          )}
+          className={className}
+          mt={hasSeparator ? 0 : "xs"}
           value={getFieldCurrency(field)}
           onChange={handleChangeCurrency}
         />
       )}
 
       {showFKTargetSelect && hasSeparator && (
-        <Icon
-          name="chevronright"
-          size={12}
-          className={cx(CS.mx2, CS.textMedium)}
-        />
+        <Box color="text-medium" px="md">
+          <Icon name="chevronright" size={12} />
+        </Box>
       )}
 
       {showFKTargetSelect && (
         <FkTargetPicker
-          className={cx(
-            AdminS.TableEditorFieldTarget,
-            CS.textWrap,
-            hasSeparator ? CS.mt0 : CS.mt1,
-            className,
-          )}
+          className={className}
           field={field.getPlainObject()}
           idFields={idFields}
+          mt={hasSeparator ? 0 : "xs"}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
         />
       )}
-    </div>
+    </Flex>
   );
 };
 

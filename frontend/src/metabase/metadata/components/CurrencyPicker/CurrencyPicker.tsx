@@ -1,23 +1,29 @@
 import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
-import { Combobox, Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
+import {
+  Combobox,
+  Flex,
+  Icon,
+  Select,
+  SelectItem,
+  type SelectProps,
+  Text,
+} from "metabase/ui";
 
 import S from "./CurrencyPicker.module.css";
 
 const DATA = getData();
 const SYMBOLS = getSymbols();
 
-interface Props {
-  className?: string;
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   value: string;
   onChange: (value: string) => void;
 }
 
-export const CurrencyPicker = ({ className, value, onChange }: Props) => {
+export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
   return (
     <Select
-      className={className}
       comboboxProps={{
         position: "bottom-start",
         width: 300,
@@ -66,6 +72,7 @@ export const CurrencyPicker = ({ className, value, onChange }: Props) => {
       searchable
       value={value}
       onChange={onChange}
+      {...props}
     />
   );
 };

@@ -1,14 +1,20 @@
 import { t } from "ttag";
 
-import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
+import {
+  Flex,
+  Icon,
+  Select,
+  SelectItem,
+  type SelectProps,
+  Text,
+} from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field as ApiField, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
-interface Props {
-  className?: string;
+interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   field: ApiField;
   idFields: Field[];
   value: FieldId | null;
@@ -16,11 +22,11 @@ interface Props {
 }
 
 export const FkTargetPicker = ({
-  className,
   field,
   idFields,
   value,
   onChange,
+  ...props
 }: Props) => {
   const comparableIdFields = idFields.filter(idField => {
     return idField.isComparableWith(field);
@@ -41,7 +47,6 @@ export const FkTargetPicker = ({
 
   return (
     <Select
-      className={className}
       comboboxProps={{
         position: "bottom-start",
         width: 300,
@@ -98,6 +103,7 @@ export const FkTargetPicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      {...props}
     />
   );
 };
