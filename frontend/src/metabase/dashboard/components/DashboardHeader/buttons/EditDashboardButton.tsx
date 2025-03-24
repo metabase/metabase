@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -6,6 +5,7 @@ import { setEditingDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const EditDashboardButton = ({
   onRefreshPeriodChange,
@@ -19,11 +19,12 @@ export const EditDashboardButton = ({
     }
   };
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         id: "edit-dashboard",
         name: "Edit Dashboard",
+        shortcutGroup: "dashboard",
         shortcut: ["e"],
         perform: onBeginEditing,
       },

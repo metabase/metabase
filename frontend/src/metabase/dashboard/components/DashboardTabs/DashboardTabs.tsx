@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -6,6 +5,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
@@ -38,11 +38,12 @@ export function DashboardTabs({
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
 
-  useRegisterActions(
+  useRegisterShortcut(
     tabs.map((tab, index) => ({
       id: `dashboard-tab-${index}`,
       name: `Dashboard Tab ${index}`,
       shortcut: [`${index + 1}`],
+      shortcutGroup: "dashboard",
       perform: () => selectTab(tab.id),
     })),
     [tabs],

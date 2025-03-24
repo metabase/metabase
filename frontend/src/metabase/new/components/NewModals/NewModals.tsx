@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { useCallback } from "react";
 import type { WithRouterProps } from "react-router";
 import { withRouter } from "react-router";
@@ -11,7 +10,8 @@ import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashbo
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PaletteShortcutsModal } from "metabase/palette/components/PaltteShortcutsModal";
+import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { currentOpenModal } from "metabase/selectors/ui";
 import type { WritebackAction } from "metabase-types/api";
@@ -35,12 +35,13 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     dispatch(closeModal());
   }, [dispatch]);
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         name: "Toggle Shortcuts Modal",
         id: "shortcuts-modal",
         shortcut: ["?"],
+        shortcutGroup: "global",
         perform: () => {
           if (currentNewModal) {
             handleModalClose();

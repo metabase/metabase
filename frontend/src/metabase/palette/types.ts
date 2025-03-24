@@ -5,6 +5,8 @@ import type React from "react";
 import type { IconName } from "metabase/ui";
 import type { ModerationReviewStatus } from "metabase-types/api";
 
+import type { GROUP_LABLES } from "./components/PaletteShortcutsModal";
+
 interface PaletteActionExtras {
   extra?: {
     /** isVerified: If true, will show a verified badge next to the item name */
@@ -33,3 +35,8 @@ export type PaletteActionImpl = ActionImpl &
     subtitle?: Action["subtitle"];
     icon?: IconName;
   };
+
+export type ShortcutAction = Action & {
+  shortcut: string[];
+  shortcutGroup: keyof typeof GROUP_LABLES;
+};

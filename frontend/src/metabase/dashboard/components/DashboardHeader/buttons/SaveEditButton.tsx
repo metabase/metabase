@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { useRegisterActions } from "kbar";
 import { msgid, ngettext, t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -10,6 +9,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -38,11 +38,12 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
     handleDoneEditing();
   };
 
-  useRegisterActions([
+  useRegisterShortcut([
     {
       id: "save-edit",
-      name: "Save Edit Dashboard",
+      name: "Save Dashboard",
       shortcut: ["s"],
+      shortcutGroup: "edit-dashboard",
       perform: onSave,
     },
   ]);

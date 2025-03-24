@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { type JSX, type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
@@ -9,6 +8,7 @@ import Button from "metabase/core/components/Button";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { useDispatch } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -57,24 +57,27 @@ const DashboardActionMenuInner = ({
     refreshDashboard,
   );
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         name: "Copy dashboard",
         id: "copy-dashboard",
         shortcut: ["$mod+c"],
+        shortcutGroup: "dashboard",
         perform: () => dispatch(push(`${location?.pathname}/copy`)),
       },
       {
         name: "Move dashboard",
         id: "move-dashboard",
         shortcut: ["$mod+m"],
+        shortcutGroup: "dashboard",
         perform: () => canEdit && dispatch(push(`${location?.pathname}/move`)),
       },
       {
         name: "Send tashboard to trash",
         id: "trash-dashboard",
         shortcut: ["$mod+backspace"],
+        shortcutGroup: "dashboard",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],

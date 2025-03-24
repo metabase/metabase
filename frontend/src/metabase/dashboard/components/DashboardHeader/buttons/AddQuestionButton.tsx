@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -6,26 +5,38 @@ import { toggleSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+
+import { addDashboardQuestion } from "../../QuestionPicker/actions";
 
 export const AddQuestionButton = () => {
   const dispatch = useDispatch();
   const sidebar = useSelector(getSidebar);
 
-  const addQuestionButtonHint =
-    sidebar.name === SIDEBAR_NAME.addQuestion
-      ? t`Close sidebar`
-      : t`Add questions`;
+  const sidebarOpen = sidebar.name === SIDEBAR_NAME.addQuestion;
 
-  useRegisterActions(
+  const addQuestionButtonHint = sidebarOpen
+    ? t`Close sidebar`
+    : t`Add questions`;
+
+  useRegisterShortcut(
     [
       {
-        id: "add-question",
-        name: "Add Question",
-        shortcut: ["a"],
-        perform: () => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion)),
+        id: "add-notebook-question",
+        name: "Add Notebook Question",
+        shortcut: ["a q"],
+        shortcutGroup: "edit-dashboard",
+        perform: () => dispatch(addDashboardQuestion("notebook")),
+      },
+      {
+        id: "add-native-question",
+        name: "Add Native Question",
+        shortcut: ["a n"],
+        shortcutGroup: "edit-dashboard",
+        perform: () => dispatch(addDashboardQuestion("native")),
       },
     ],
-    [],
+    [sidebarOpen],
   );
 
   return (

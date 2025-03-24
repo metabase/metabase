@@ -194,6 +194,7 @@ export const useCommandPaletteBasicActions = ({
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",
       shortcut: ["$mod+f1"],
+      shortcutGroup: "global",
       perform: () => {
         dispatch(openDiagnostics());
       },

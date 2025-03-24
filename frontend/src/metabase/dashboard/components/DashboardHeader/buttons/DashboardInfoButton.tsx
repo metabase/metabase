@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -6,6 +5,7 @@ import { closeSidebar, setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const DashboardInfoButton = () => {
   const dispatch = useDispatch();
@@ -19,12 +19,13 @@ export const DashboardInfoButton = () => {
       : dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
   };
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         id: "info-dashboard",
         name: "Toggle Dashboard Info",
         shortcut: ["]"],
+        shortcutGroup: "dashboard",
         perform: handleClick,
       },
     ],

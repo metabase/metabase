@@ -1,10 +1,9 @@
-import { useRegisterActions } from "kbar";
-
 import { useBookmarkListQuery } from "metabase/common/hooks";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 export interface DashboardBookmarkProps {
@@ -39,12 +38,13 @@ export const DashboardBookmark = (): JSX.Element | null => {
     }
   };
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         name: "Bookmark Dashboard",
         id: "bookmark-dashboard",
         shortcut: ["o"],
+        shortcutGroup: "dashboard",
         perform: () =>
           isBookmarked ? handleDeleteBookmark() : handleCreateBookmark(),
       },

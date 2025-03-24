@@ -1,17 +1,19 @@
 import cx from "classnames";
-import { useRegisterActions } from "kbar";
+// import { useRegisterActions } from "kbar";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const CancelEditButton = (props: { onClick: () => void }) => {
-  useRegisterActions([
+  useRegisterShortcut([
     {
       id: "cancel-edit",
       name: "Cancel Edit Dashboard",
-      shortcut: ["Escape"],
+      shortcut: ["c"],
+      shortcutGroup: "edit-dashboard",
       perform: props.onClick,
     },
   ]);

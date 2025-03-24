@@ -1,4 +1,3 @@
-import { useRegisterActions } from "kbar";
 import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   type ParameterSection,
   getDashboardParameterSections,
@@ -41,16 +41,20 @@ export const AddFilterParameterButton = () => {
     }
   };
 
-  useRegisterActions(
+  useRegisterShortcut(
     [
       {
         id: "add-filter",
         name: "Add Filter",
         shortcut: ["f"],
-        perform: () => handleItemClick(sections[0]),
+        shortcutGroup: "edit-dashboard",
+        perform: () =>
+          isOpened
+            ? dispatch(hideAddParameterPopover())
+            : dispatch(showAddParameterPopover()),
       },
     ],
-    [],
+    [isOpened],
   );
 
   useLayoutEffect(() => {
@@ -64,6 +68,7 @@ export const AddFilterParameterButton = () => {
       opened={isOpened}
       onClose={() => dispatch(hideAddParameterPopover())}
       position="bottom-end"
+      trapFocus
     >
       <Menu.Target>
         <ToolbarButton
