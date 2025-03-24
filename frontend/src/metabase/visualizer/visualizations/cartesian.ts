@@ -60,19 +60,48 @@ export const cartesianDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
-    let bubbleColumnName = state.settings["scatter.bubble"];
-
-    if (!bubbleColumnName) {
-      bubbleColumnName = columnRef.name;
-      state.columns.push(
-        copyColumn(bubbleColumnName, column, dataSource.name, state.columns),
-      );
-      state.settings["scatter.bubble"] = bubbleColumnName;
-    }
-
-    state.columnValuesMapping[bubbleColumnName] = [columnRef];
+    replaceMetricColumnAsScatterBubbleSize(
+      state,
+      column,
+      columnRef,
+      dataSource,
+    );
   }
 };
+
+export function replaceMetricColumnAsScatterBubbleSize(
+  state: VisualizerHistoryItem,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
+) {
+  const metrics = state.settings["graph.metrics"] ?? [];
+  const dimensions = state.settings["graph.dimensions"] ?? [];
+  const currentBubbleName = state.settings["scatter.bubble"];
+
+  // Remove the current bubble column if it's not in use elsewhere
+  if (
+    currentBubbleName &&
+    !metrics.includes(currentBubbleName) &&
+    !dimensions.includes(currentBubbleName)
+  ) {
+    state.columns = state.columns.filter(col => col.name !== currentBubbleName);
+    delete state.columnValuesMapping[currentBubbleName];
+  }
+
+  const newColumnName = columnRef.name;
+  const alreadyInUseElsewhere =
+    metrics.includes(newColumnName) || dimensions.includes(newColumnName);
+
+  if (!alreadyInUseElsewhere) {
+    state.columns.push(
+      copyColumn(newColumnName, column, dataSource.name, state.columns),
+    );
+  }
+  state.settings["scatter.bubble"] = newColumnName;
+
+  state.columnValuesMapping[newColumnName] = [columnRef];
+}
 
 export function addMetricColumnToCartesianChart(
   state: VisualizerHistoryItem,
