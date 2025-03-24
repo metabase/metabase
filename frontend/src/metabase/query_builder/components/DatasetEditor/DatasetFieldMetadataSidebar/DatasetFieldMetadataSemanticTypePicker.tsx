@@ -2,7 +2,7 @@ import { useField } from "formik";
 import type { KeyboardEventHandler } from "react";
 import { t } from "ttag";
 
-import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
+import { SemanticTypePicker } from "metabase/metadata/components";
 import type { Field } from "metabase-types/api";
 
 interface Props {

@@ -1,9 +1,9 @@
 import { useField } from "formik";
 import { useEffect } from "react";
 
-import { FkTargetPicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import Databases from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { FkTargetPicker } from "metabase/metadata/components";
 import type { DatabaseId, Field, FieldId } from "metabase-types/api";
 
 interface Props {

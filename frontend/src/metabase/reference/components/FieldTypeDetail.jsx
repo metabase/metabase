@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { memo } from "react";
 import { t } from "ttag";
 
-import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { SemanticTypePicker } from "metabase/metadata/components";
 import D from "metabase/reference/components/Detail.module.css";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 

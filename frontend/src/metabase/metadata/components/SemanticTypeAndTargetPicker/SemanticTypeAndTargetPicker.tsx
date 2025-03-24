@@ -2,15 +2,14 @@ import cx from "classnames";
 
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
 
-import FieldSeparator from "../FieldSeparator";
-
-import { CurrencyPicker } from "./CurrencyPicker";
-import { FkTargetPicker } from "./FkTargetPicker";
-import { SemanticTypePicker } from "./SemanticTypePicker";
+import { CurrencyPicker } from "../CurrencyPicker";
+import { FkTargetPicker } from "../FkTargetPicker";
+import { SemanticTypePicker } from "../SemanticTypePicker";
 
 interface SemanticTypeAndTargetPickerProps {
   className?: string;
@@ -68,7 +67,13 @@ export const SemanticTypeAndTargetPicker = ({
         onChange={handleChangeSemanticType}
       />
 
-      {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
+      {showCurrencyTypeSelect && hasSeparator && (
+        <Icon
+          name="chevronright"
+          size={12}
+          className={cx(CS.mx2, CS.textMedium)}
+        />
+      )}
 
       {showCurrencyTypeSelect && (
         <CurrencyPicker
@@ -82,7 +87,13 @@ export const SemanticTypeAndTargetPicker = ({
         />
       )}
 
-      {showFKTargetSelect && hasSeparator && <FieldSeparator />}
+      {showFKTargetSelect && hasSeparator && (
+        <Icon
+          name="chevronright"
+          size={12}
+          className={cx(CS.mx2, CS.textMedium)}
+        />
+      )}
 
       {showFKTargetSelect && (
         <FkTargetPicker

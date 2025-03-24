@@ -7,11 +7,11 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { SemanticTypePicker } from "metabase/metadata/components";
 import { Icon } from "metabase/ui";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
