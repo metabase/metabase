@@ -23,6 +23,16 @@
      :options  options
      :args     (subvec clause 2)}))
 
+(defn- case-or-if-clause?
+  [[op]]
+  (boolean (#{:case :if} op)))
+
+(defn- wrap-case-or-if-clause
+  [[op options & args]]
+  (if (even? (count args))
+    [op options args]
+    [op options (butlast args) (last args)]))
+
 (defmulti ->op-arg
   "Ensures that clause arguments are properly unwrapped"
   {:arglists '([x])}
@@ -34,7 +44,9 @@
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause
-    (mapv ->op-arg x)
+    (let [clause (mapv ->op-arg x)]
+      (cond-> clause
+        (case-or-if-clause? clause) wrap-case-or-if-clause))
     ;; Something else - just return it
     x))
 
@@ -61,8 +73,8 @@
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]
   (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
-                                           (map ->op-arg)
-                                           args))))
+                                             (map ->op-arg)
+                                             args))))
 
 (defn ensure-ident
   "Given an MBQL clause, ensure that it has an `:ident` in its options."
