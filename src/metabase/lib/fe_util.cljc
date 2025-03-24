@@ -99,6 +99,7 @@
   (lib.metadata/metric query (last metric-ref)))
 
 (defmulti expression-parts-method
+  "Builds the expression parts by dispatching on the type of the argument."
   {:arglists '([query stage-number arg])}
   (fn [_query _stage-number value]
     (lib.dispatch/dispatch-value value))
