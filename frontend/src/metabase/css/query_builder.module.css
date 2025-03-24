@@ -263,6 +263,7 @@
   transition:
     transform 0.25s,
     opacity 0.25s;
+  transform-origin: center;
 }
 
 .RunButton.RunButtonCircular {
@@ -319,7 +320,7 @@
   font-size: 5em;
 }
 
-.overlay {
+.Overlay {
   background-color: color-mix(
     in srgb,
     var(--mb-color-bg-white) 75%,
@@ -329,7 +330,7 @@
     opacity 0.5s,
     background-color 0.5s;
 
-  &.active {
+  &.OverlayActive {
     cursor: pointer;
 
     &:hover {
@@ -338,10 +339,14 @@
         var(--mb-color-brand) 3%,
         color-mix(in srgb, var(--mb-color-bg-white) 75%, transparent)
       );
+
+      .RunButton {
+        transform: scale(1.2);
+      }
     }
   }
 
-  &.hidden {
+  &.OverlayHidden {
     background-color: transparent;
     pointer-events: none;
   }

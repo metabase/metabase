@@ -139,7 +139,7 @@ export function VisualizationRunningState({ className = "" }) {
 
   return (
     <Flex
-      className={cx(className, QueryBuilderS.overlay)}
+      className={cx(className, QueryBuilderS.Overlay)}
       c="brand"
       direction="column"
       justify="center"
@@ -176,9 +176,9 @@ export const VisualizationDirtyState = ({
 
   return (
     <Flex
-      className={cx(className, QueryBuilderS.overlay, {
-        [QueryBuilderS.active]: !hidden,
-        [QueryBuilderS.hidden]: hidden,
+      className={cx(className, QueryBuilderS.Overlay, {
+        [QueryBuilderS.OverlayActive]: !hidden,
+        [QueryBuilderS.OverlayHidden]: hidden,
       })}
       direction="column"
       justify="center"
