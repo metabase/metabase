@@ -250,8 +250,7 @@
                                        :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
                                       filtered-cols
-                                      viz-settings
-                                      format-rows?)
+                                      viz-settings)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil

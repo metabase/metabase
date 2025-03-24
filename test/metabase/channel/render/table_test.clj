@@ -62,7 +62,8 @@
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
 (deftest background-color-selection-smoke-test
-  (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
+  (let [columns       [{:name "a"} {:name "b"} {:name "c"}]
+        query-results {:cols columns
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]
@@ -83,15 +84,15 @@
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
                (#'table/render-table 0 {:col-names             ["a" "b" "c"]
-                                        :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results))
+                                        :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns {})
                find-table-body
                cell-value->background-color)))))
 
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
-        [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row})
+        [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)
                                                    (tree-seq vector? rest)
-                                                   (filter #(= :th (first %)))
+                                                   (#(nth % 3))
                                                    (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))

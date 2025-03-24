@@ -211,7 +211,6 @@
      {}
      column-settings)))
 
-;; TSP TODO - Clean up this function
 (defn render-table
   "This function returns the HTML data structure for the pulse table.
 
@@ -220,10 +219,10 @@
     `:col-names`, which is the is display_names of the visible columns
     `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
   If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names-map contents columns viz-settings format-rows?]
-   (render-table color-selector 0 column-names-map contents columns viz-settings format-rows?))
+  ([color-selector column-names-map contents columns viz-settings]
+   (render-table color-selector 0 column-names-map contents columns viz-settings))
 
-  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings format-rows?]
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
          row-index?         (:table.row_index viz-settings)
          pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
@@ -245,10 +244,6 @@
                              columns
                              col->styles
                              row-index?)]
-     (def col->styles col->styles)
-     (def viz-settings viz-settings)
-     (def thead thead)
-     (def tbody tbody)
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
