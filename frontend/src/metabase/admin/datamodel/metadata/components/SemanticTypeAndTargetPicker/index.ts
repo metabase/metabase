@@ -1,3 +1,3 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./SemanticTypeAndTargetPicker";
+export { FkTargetPicker } from "./FkTargetPicker";
+export { SemanticTypeAndTargetPicker } from "./SemanticTypeAndTargetPicker";
 export { SemanticTypePicker } from "./SemanticTypePicker";

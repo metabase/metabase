@@ -24,7 +24,7 @@ import FieldRemappingSettings from "../FieldRemappingSettings";
 import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
-import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+import { SemanticTypeAndTargetPicker } from "../SemanticTypeAndTargetPicker";
 
 import { FieldNameInput } from "./FieldGeneralSettings.styled";
 

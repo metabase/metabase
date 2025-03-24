@@ -2,13 +2,14 @@ import { t } from "ttag";
 
 import { Flex, Icon, Select, SelectItem, Text } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { FieldId } from "metabase-types/api";
+import { isFK } from "metabase-lib/v1/types/utils/isa";
+import type { Field as ApiField, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
 interface Props {
   className?: string;
-  field: Field;
+  field: ApiField;
   idFields: Field[];
   value: FieldId | null;
   onChange: (value: FieldId | null) => void;
@@ -21,8 +22,8 @@ export const FkTargetPicker = ({
   value,
   onChange,
 }: Props) => {
-  const comparableIdFields = idFields.filter((idField: Field) => {
-    return field.isComparableWith(idField);
+  const comparableIdFields = idFields.filter(idField => {
+    return idField.isComparableWith(field);
   });
   const hasIdFields = comparableIdFields.length > 0;
   const includeSchema = hasMultipleSchemas(comparableIdFields);
@@ -120,10 +121,10 @@ function stringifyValue(value: FieldId | null): string {
   return value === null ? "" : JSON.stringify(value);
 }
 
-function getFkFieldPlaceholder(field: Field, idFields: Field[]) {
+function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
   const hasIdFields = idFields?.length > 0;
   const isRestrictedFKTargetSelected =
-    field.isFK() &&
+    isFK(field) &&
     field.fk_target_field_id != null &&
     !idFields?.some(idField => idField.id === field.fk_target_field_id);
 

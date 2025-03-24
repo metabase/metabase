@@ -20,7 +20,7 @@ interface SemanticTypeAndTargetPickerProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
 
-const SemanticTypeAndTargetPicker = ({
+export const SemanticTypeAndTargetPicker = ({
   className,
   field,
   idFields,
@@ -92,7 +92,7 @@ const SemanticTypeAndTargetPicker = ({
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
-          field={field}
+          field={field.getPlainObject()}
           idFields={idFields}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
@@ -114,6 +114,3 @@ const getFieldCurrency = (field: Field) => {
 
   return "USD";
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SemanticTypeAndTargetPicker;

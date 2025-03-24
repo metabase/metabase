@@ -14,7 +14,7 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
 import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
-import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+import { SemanticTypeAndTargetPicker } from "../SemanticTypeAndTargetPicker";
 
 import { ColumnContainer, ColumnInput } from "./MetadataTableColumn.styled";
 
