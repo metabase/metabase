@@ -189,8 +189,8 @@ export const VisualizationDirtyState = ({
     >
       <RunButtonWithTooltip
         className={CS.shadowed}
+        iconSize={32}
         circular
-        result={result}
         hidden={hidden}
         isRunning={isRunning}
         isDirty={isResultDirty}

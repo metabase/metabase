@@ -13,6 +13,7 @@ interface RunButtonProps {
   isDirty: boolean;
   circular?: boolean;
   hidden?: boolean;
+  iconSize?: number;
   onRun?: () => void;
   onCancel?: () => void;
 }
