@@ -506,7 +506,7 @@ Converts a string to an integer value.
 
 Syntax: `integer(value)`
 
-Example: `integer("123")` would return `123` as an integer. `integer(123.45)` would return `123`.
+Example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
 
 ### ltrim
 
