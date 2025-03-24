@@ -12,7 +12,9 @@ interface RunButtonProps {
   isRunning: boolean;
   isDirty: boolean;
   circular?: boolean;
+  medium?: boolean;
   hidden?: boolean;
+  onlyIcon?: boolean;
   iconSize?: number;
   onRun?: () => void;
   onCancel?: () => void;
@@ -36,6 +38,7 @@ const RunButton = forwardRef(function RunButton(
 
   return (
     <Button
+      {...props}
       ref={ref}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
@@ -50,7 +53,6 @@ const RunButton = forwardRef(function RunButton(
       data-testid="run-button"
       aria-label={ariaLabel}
       onClick={isRunning ? onCancel : onRun}
-      {...props}
     />
   );
 });
