@@ -603,6 +603,14 @@
                        (perms/grant-application-permissions! group :subscription)
                        (create-notification! (:id user) 200)))))))))))))
 
+(defn- list-notification-ids
+  "Return a set of notification ids that match the given user and params."
+  [user noti-ids-set & params]
+  (->> (apply mt/user-http-request user :get 200 "notification" params)
+       (map :id)
+       (filter noti-ids-set)
+       set))
+
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"
     (mt/with-model-cleanup [:model/Notification]
@@ -615,10 +623,7 @@
           (notification.tu/with-card-notification [{rasta-noti-2 :id} {:notification {:creator_id (mt/user->id :rasta)
                                                                                       :active false}}]
             (letfn [(get-notification-ids [user & params]
-                      (->> (apply mt/user-http-request user :get 200 "notification" params)
-                           (map :id)
-                           (filter #{rasta-noti-1 crowberto-noti-1 rasta-noti-2})
-                           set))]
+                      (apply list-notification-ids user #{rasta-noti-1 crowberto-noti-1 rasta-noti-2} params))]
 
               (testing "returns all active notifications by default"
                 (is (= #{rasta-noti-1 crowberto-noti-1}
@@ -636,10 +641,7 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (letfn [(get-notification-ids [user & params]
-                  (->> (apply mt/user-http-request user :get 200 "notification" params)
-                       (map :id)
-                       (filter #{rasta-noti})
-                       set))]
+                  (apply list-notification-ids user #{rasta-noti} params))]
 
           (testing "admin can view"
             (is (= #{rasta-noti}
@@ -670,10 +672,7 @@
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
         (letfn [(get-notification-ids [user & params]
-                  (->> (apply mt/user-http-request user :get 200 "notification" params)
-                       (map :id)
-                       (filter #{rasta-noti})
-                       set))]
+                  (apply list-notification-ids user #{rasta-noti} params))]
 
           (testing "admin can view"
             (is (= #{rasta-noti}
@@ -711,10 +710,7 @@
                                                                                                    :user_id (mt/user->id :rasta)}]}]}]
 
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti lucky-noti})
-                         sort))]
+                    (apply list-notification-ids user #{rasta-noti lucky-noti} params))]
 
             (testing "return notifications where user is either creator or recipient"
               (is (= (sort [rasta-noti lucky-noti])
@@ -732,10 +728,7 @@
                           :payload
                           :card_id)]
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti})
-                         set))]
+                    (list-notification-ids user #{rasta-noti} params))]
 
             (testing "admin can view"
               (is (= #{rasta-noti}
@@ -770,10 +763,7 @@
                           :payload
                           :card_id)]
           (letfn [(get-notification-ids [user & params]
-                    (->> (apply mt/user-http-request user :get 200 "notification" params)
-                         (map :id)
-                         (filter #{rasta-noti})
-                         set))]
+                    (apply list-notification-ids user #{rasta-noti} params))]
 
             (testing "can filter by creator_id and recipient_id"
               (is (= #{rasta-noti}
@@ -806,6 +796,19 @@
                                            :creator_id (mt/user->id :rasta)
                                            :recipient_id Integer/MAX_VALUE
                                            :card_id card-id))))))))))
+
+(deftest list-filter-table-notifications-test
+  (let [table-id (mt/id :categories)]
+    (notification.tu/with-system-event-notification!
+      [{noti-id-1 :id} {:subscriptions [{:event_name :event/data-editing-row-create
+                                         :table_id   table-id}]}]
+      (notification.tu/with-system-event-notification!
+        [{noti-id-2 :id} {:subscriptions [{:event_name :event/data-editing-row-create
+                                           :table_id   table-id}]}]
+        (testing "returns notifications for the given table"
+          (is (= #{noti-id-1 noti-id-2}
+                 (list-notification-ids :crowberto #{noti-id-1 noti-id-2}
+                                        :table_id table-id))))))))
 
 (deftest unsubscribe-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -998,3 +1001,32 @@
               (let [emails (update-notification! noti-id notification
                                                  (assoc-in notification [:payload :send_condition] "goal_above"))]
                 (is (empty? emails))))))))))
+
+(deftest create-system-notification-api-test
+  (mt/with-model-cleanup [:model/Notification]
+    (let [table-id     (mt/id :orders)
+          notification (mt/user-http-request :crowberto :post 200 "notification"
+                                             {:payload_type :notification/system-event
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :condition    [:= [:context "event_info" "table_id"] table-id]
+                                              :handlers     [@notification.tu/default-email-handler]
+                                              :subscriptions [{:type       :notification-subscription/system-event
+                                                               :table_id   table-id
+                                                               :event_name :event/data-editing-row-create}]})]
+      (testing "can create a table notification"
+        (is (=? {:condition     ["=" ["context" "event_info" "table_id"] table-id]
+                 :creator_id    (mt/user->id :crowberto)
+                 :payload_type  "notification/system-event"
+                 :subscriptions [{:event_name "event/data-editing-row-create"
+                                  :table_id   table-id
+                                  :type       "notification-subscription/system-event"}]}
+                notification))
+
+        (testing "can update its condition"
+          (is (= ["=" ["context" "event_info" "table" "id"] table-id]
+                 (:condition (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                   (assoc notification :condition [:= [:context "event_info" "table" "id"] table-id]))))))
+        (testing "can update its handlers"
+          (is (=? [{:channel_type "channel/slack"}]
+                  (:handlers (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                   (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
