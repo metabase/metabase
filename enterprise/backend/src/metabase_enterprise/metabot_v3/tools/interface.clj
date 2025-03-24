@@ -34,21 +34,8 @@
 
 (mr/def ::metadata.name
   [:and
-   {:encode/api-request   (fn [x]
-                            (u/->snake_case_en (name x)))
-    :decode/metadata-file (fn [x]
-                            (let [kw (keyword x)]
-                              (if (namespace kw)
-                                kw
-                                (keyword "metabot.tool" (name kw)))))
-    :decode/api-request   (fn [x]
-                            (let [kw (keyword x)]
-                              (if (namespace kw)
-                                kw
-                                (keyword "metabot.tool" (name kw)))))
-    :decode/api-response  (fn [x]
-                            (keyword "metabot.tool" (name (u/->kebab-case-en x))))}
-   :keyword
-   [:fn
-    {:error/message "Tool names should be kebab-case (both parsed and in YAML files)"}
-    #(= (u/->kebab-case-en %) %)]])
+   {:encode/api-request   (fn [x] (u/->snake_case_en (name x)))
+    :decode/metadata-file keyword
+    :decode/api-request   keyword
+    :decode/api-response  keyword}
+   :keyword])
