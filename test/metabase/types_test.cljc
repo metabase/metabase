@@ -28,7 +28,7 @@
     :type/BigInteger         :type/Float                  :type/Float
     :type/Integer            :type/Decimal                :type/Decimal
     :type/BigInteger         :type/Decimal                :type/Decimal
-    :type/Integer            :type/Text                   :type/*
+    :type/Integer            :type/Text                   :type/Text
     :type/DateTimeWithZoneID :type/DateTimeWithZoneOffset :type/DateTimeWithTZ
     :type/DateTimeWithZoneID :type/TimeWithZoneOffset     :type/Temporal
     nil                      :type/Integer                :type/*
