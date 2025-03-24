@@ -18,6 +18,7 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/gsheets/folder",
       }),
+      providesTags: ["gsheets-status"],
     }),
     saveGsheetsFolderLink: builder.mutation<
       { success: boolean },
@@ -35,6 +36,13 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/gsheets/folder",
       }),
     }),
+    syncGsheetsFolder: builder.mutation<{ db_id: DatabaseId }, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/gsheets/folder/sync",
+      }),
+      invalidatesTags: ["gsheets-status"],
+    }),
   }),
 });
 
@@ -43,4 +51,5 @@ export const {
   useGetGsheetsFolderQuery,
   useDeleteGsheetsFolderLinkMutation,
   useSaveGsheetsFolderLinkMutation,
+  useSyncGsheetsFolderMutation,
 } = gdriveApi;
