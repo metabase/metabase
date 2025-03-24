@@ -29,28 +29,41 @@ import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
+export interface DatabaseFormConfig {
+  /** present the form with advanced configuration options */
+  isAdvanced?: boolean;
+  engine?: {
+    /** present the enginge field as normal, disabled, or hidden */
+    fieldState?: EngineFieldState | undefined;
+  };
+  name?: {
+    /** present the name field as a slug */
+    isSlug?: boolean;
+  };
+}
+
 interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
-  engineFieldState?: EngineFieldState;
-  isAdvanced?: boolean;
-  isMirrorDatabase?: boolean;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  config?: DatabaseFormConfig;
 }
 
 export const DatabaseForm = ({
   initialValues: initialData,
   autofocusFieldName,
-  isAdvanced = false,
-  engineFieldState,
   onSubmit,
   onCancel,
   onEngineChange,
   setIsDirty,
+  config = {},
 }: DatabaseFormProps): JSX.Element => {
+  const isAdvanced = config.isAdvanced || false;
+  const engineFieldState = config.engine?.fieldState;
+
   const engines = useSelector(getEngines);
   const isHosted = useSelector(getIsHosted);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
@@ -101,6 +114,7 @@ export const DatabaseForm = ({
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
+        config={config}
       />
     </FormProvider>
   );
@@ -117,6 +131,7 @@ interface DatabaseFormBodyProps {
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  config: DatabaseFormConfig;
 }
 
 const DatabaseFormBody = ({
@@ -130,6 +145,7 @@ const DatabaseFormBody = ({
   onEngineChange,
   onCancel,
   setIsDirty,
+  config,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
 
@@ -163,6 +179,7 @@ const DatabaseFormBody = ({
       {engine && (
         <DatabaseNameField
           engine={engine}
+          isSlug={config.name?.isSlug || false}
           autoFocus={autofocusFieldName === "name"}
         />
       )}

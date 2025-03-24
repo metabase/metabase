@@ -66,7 +66,7 @@ describe("admin > database > database routing", () => {
         cy.log("should not allow changing engine");
         cy.findByLabelText("Database type").should("not.exist");
 
-        H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+        H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
         H.typeAndBlurUsingLabel(/Host/, "localhost");
         H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
         H.typeAndBlurUsingLabel(/Database name/, "sample");
@@ -93,7 +93,7 @@ describe("admin > database > database routing", () => {
       // cy.findByRole("link", { name: /Add/ }).click();
       //
       // H.modal().within(() => {
-      //   H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+      //   H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
       //   H.typeAndBlurUsingLabel(/Host/, "localhost");
       //   H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
       //   H.typeAndBlurUsingLabel(/Database name/, "sample");
@@ -138,7 +138,7 @@ describe("admin > database > database routing", () => {
         .click();
       H.popover().findByText("Edit").click();
       H.modal().within(() => {
-        H.typeAndBlurUsingLabel(/Display name/, " Destination DB 1 Updated");
+        H.typeAndBlurUsingLabel(/Slug/, " Destination DB 1 Updated");
         cy.button("Save changes").click();
         cy.wait("@databaseUpdate");
       });
@@ -441,7 +441,7 @@ describe("admin > database > database routing", () => {
           cy.findByText("Edit").should("exist").click();
         });
         H.modal().within(() => {
-          H.typeAndBlurUsingLabel(/Display name/, "Destination DB 1");
+          H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
           cy.button("Save changes").click();
           cy.wait("@databaseUpdate");
         });
@@ -542,7 +542,7 @@ function createDestinationDatabasesViaAPI({
 }) {
   cy.request("POST", "/api/ee/database-routing/mirror-database", {
     router_database_id,
-    databases,
+    mirrors: databases,
   });
 }
 

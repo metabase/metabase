@@ -29,6 +29,7 @@ export const DestinationDatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
+  // TODO: get the final docs url from the writing team
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("databases/db-routing");
 
@@ -129,7 +130,10 @@ export const DestinationDatabaseConnectionModalInner = ({
           onSubmitted={handleOnSubmit}
           onCancel={handleCloseModal}
           route={route}
-          engineFieldState="hidden"
+          config={{
+            name: { isSlug: true },
+            engine: { fieldState: "hidden" },
+          }}
           autofocusFieldName="name"
         />
       </LoadingAndErrorWrapper>

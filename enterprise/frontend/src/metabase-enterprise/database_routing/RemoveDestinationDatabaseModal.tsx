@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { DeleteDatabaseModal } from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 import { useDeleteDatabaseMutation, useGetDatabaseQuery } from "metabase/api";
@@ -20,7 +21,7 @@ export const RemoveDestinationDatabaseModal = ({
   const destinationDbReq = useGetDatabaseQuery({ id: destDbId });
   const [deleteDatabase] = useDeleteDatabaseMutation();
 
-  const destinationDb = destinationDbReq.data;
+  const destDb = destinationDbReq.data;
 
   const handleCloseModal = () => {
     dispatch(push(Urls.viewDatabase(dbId)));
@@ -41,11 +42,13 @@ export const RemoveDestinationDatabaseModal = ({
         loading={destinationDbReq.isLoading}
         error={destinationDbReq.error}
       >
-        {destinationDb && (
+        {destDb && (
           <DeleteDatabaseModal
+            title={t`Delete the ${destDb.name} destination database?`}
+            defaultDatabaseRemovalMessage={t`Users routed to this database will lose access to every question, model, metric, and segment if you continue.`}
             onClose={handleCloseModal}
             onDelete={handleDelete}
-            database={destinationDb}
+            database={destDb}
           />
         )}
       </LoadingAndErrorWrapper>

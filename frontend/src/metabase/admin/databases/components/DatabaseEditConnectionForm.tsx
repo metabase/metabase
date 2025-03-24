@@ -11,7 +11,7 @@ import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationMod
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseForm,
-  type EngineFieldState,
+  type DatabaseFormConfig,
 } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
@@ -31,23 +31,23 @@ export const DatabaseEditConnectionForm = withRouter(
   ({
     database,
     initializeError,
-    engineFieldState,
     handleSaveDb,
     onSubmitted,
     onCancel,
     route,
     location,
+    config,
     ...props
   }: {
     database?: Partial<Database>;
     initializeError?: DatabaseEditErrorType;
-    engineFieldState?: EngineFieldState;
     handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
     onCancel: () => void;
     route: Route;
     location: LocationDescriptorObject;
     autofocusFieldName?: string;
+    config?: Omit<DatabaseFormConfig, "isAdvanced">;
   }) => {
     const dispatch = useDispatch();
 
@@ -80,12 +80,11 @@ export const DatabaseEditConnectionForm = withRouter(
           {isDbModifiable(database) ? (
             <DatabaseForm
               initialValues={database}
-              isAdvanced
+              autofocusFieldName={autofocusFieldName}
+              config={{ isAdvanced: true, ...config }}
               onCancel={onCancel}
               onSubmit={handleSubmit}
               setIsDirty={setIsDirty}
-              autofocusFieldName={autofocusFieldName}
-              engineFieldState={engineFieldState}
             />
           ) : (
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>

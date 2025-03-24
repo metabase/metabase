@@ -45,13 +45,17 @@ const getErrorMessage = (error: any) => {
 };
 
 export interface DeleteDatabaseModalProps {
+  title: string;
+  defaultDatabaseRemovalMessage: string;
   onClose: () => void;
   onDelete: () => Promise<void>;
-  database: Pick<Database, "id" | "name">;
+  database: Pick<Database, "id" | "name" | "router_user_attribute">;
 }
 
 export const DeleteDatabaseModal = ({
   database,
+  title,
+  defaultDatabaseRemovalMessage,
   onClose,
   onDelete,
 }: DeleteDatabaseModalProps) => {
@@ -98,7 +102,7 @@ export const DeleteDatabaseModal = ({
 
   return (
     <ModalContent
-      title={t`Delete the ${database.name} database?`}
+      title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
     >
       <LoadingAndErrorWrapper loading={loading}>
@@ -138,7 +142,7 @@ export const DeleteDatabaseModal = ({
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
             <Alert icon="warning" variant="error">
-              {t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
+              {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection

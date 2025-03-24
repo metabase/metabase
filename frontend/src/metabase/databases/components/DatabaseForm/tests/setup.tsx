@@ -108,9 +108,12 @@ export const setup = ({
   }
 
   const onSubmit = jest.fn();
-  renderWithProviders(<DatabaseForm isAdvanced onSubmit={onSubmit} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <DatabaseForm config={{ isAdvanced: true }} onSubmit={onSubmit} />,
+    {
+      storeInitialState: state,
+    },
+  );
 
   return { onSubmit };
 };

@@ -97,11 +97,13 @@ export const DatabaseConnectionModalInner = ({
         onSubmitted={handleOnSubmit}
         onCancel={handleCloseModal}
         route={route}
-        engineFieldState={
-          database
-            ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
-            : "disabled"
-        }
+        config={{
+          engine: {
+            fieldState: database
+              ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
+              : "disabled",
+          },
+        }}
       />
     </Modal>
   );

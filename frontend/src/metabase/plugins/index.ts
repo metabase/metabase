@@ -603,6 +603,7 @@ export const PLUGIN_DB_ROUTING = {
     database: Database;
     refetchDatabase: () => void;
   }>,
+  getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
   getDestinationDatabaseRoutes: (_IsAdmin: any) =>
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (
