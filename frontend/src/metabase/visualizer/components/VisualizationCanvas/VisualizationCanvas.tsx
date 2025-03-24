@@ -1,4 +1,3 @@
-import { useDroppable } from "@dnd-kit/core";
 import produce from "immer";
 import { useState } from "react";
 import { t } from "ttag";
@@ -16,7 +15,6 @@ import {
 } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getIsLoading,
   getVisualizationType,
@@ -57,8 +55,6 @@ export function VisualizationCanvas({ className }: { className?: string }) {
     rawSeries = disableAxisLabels(rawSeries);
   }
 
-  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
-
   if (!display && !isLoading) {
     return (
       <Center h="100%" w="100%" mx="auto" className={className}>
@@ -81,7 +77,7 @@ export function VisualizationCanvas({ className }: { className?: string }) {
 
   return (
     <>
-      <Box className={`${Styles.Container} ${className}`} ref={setNodeRef}>
+      <Box className={`${Styles.Container} ${className}`}>
         <Box style={{ gridArea: "left" }}>
           <VerticalWell display={display} />
         </Box>

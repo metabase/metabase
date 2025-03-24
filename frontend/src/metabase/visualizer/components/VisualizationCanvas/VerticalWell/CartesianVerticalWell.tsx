@@ -42,7 +42,9 @@ export function CartesianVerticalWell() {
     }
     const { column } = active.data.current;
     const isSuitableColumn = getDefaultMetricFilter(display);
-    return isSuitableColumn(column);
+    const a = isSuitableColumn(column);
+
+    return a;
   }, [active, display]);
 
   const handleRemoveMetric = (metric: DatasetColumn) => {
