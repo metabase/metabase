@@ -39,8 +39,8 @@
        [:field {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930c"} 1]]]
      [:and
       {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930a"}
-      [:or {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930b"} 1 2]
-      3]
+      [:or {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930b"} true false]
+      false]
      [:sum
       {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930a"}
       [:field {:lib/uuid "e47d33bc-c89c-48af-bffe-842c815f930b"} 2]]]))

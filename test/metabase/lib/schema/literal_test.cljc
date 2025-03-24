@@ -48,6 +48,8 @@
   (testing "valid schemas"
     (are [schema] (mr/validate schema "s")
       ::expression/string
+      ::expression/integer
+      ::expression/number
       ::expression/orderable
       ::expression/equality-comparable
       ::expression/expression))
@@ -55,8 +57,6 @@
     (binding [expression/*suppress-expression-type-check?* false]
       (are [schema] (mr/explain schema "s")
         ::expression/boolean
-        ::expression/integer
-        ::expression/number
         ::expression/date
         ::expression/time
         ::expression/datetime

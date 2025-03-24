@@ -121,7 +121,9 @@
   (expression-schema :type/Text "expression returning a string"))
 
 (mr/def ::integer
-  (expression-schema :type/Integer "expression returning an integer"))
+  [:or
+   (expression-schema :type/Integer "expression returning an integer")
+   (expression-schema :type/Text "expression returning a string")])
 
 (mr/def ::non-integer-real
   (expression-schema :type/Float "expression returning a non-integer real number"))

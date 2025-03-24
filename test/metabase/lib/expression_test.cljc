@@ -544,7 +544,7 @@
 (deftest ^:parallel diagnose-expression-literals-test
   (testing "top-level literals are not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          expr  [:value {:lib/uuid (str (random-uuid)) :effective-type :type/Integer} 1]]
+          expr  [:value {:lib/uuid (str (random-uuid)) :effective-type :type/Boolean} true]]
       (doseq [mode [:expression :filter]]
         (is (=? {:message  "Standalone constants are not supported."
                  :friendly true}

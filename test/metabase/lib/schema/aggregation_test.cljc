@@ -29,7 +29,13 @@
       [:percentile
        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
-       0.1]))
+       0.1]
+
+         ;; not a number
+      [:percentile
+       {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+       [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} 1]
+       0.5]))
   (testing "invalid"
     (binding [lib.schema.expression/*suppress-expression-type-check?* false]
       (are [clause] (me/humanize (mr/explain :mbql.clause/percentile clause))
@@ -43,13 +49,7 @@
         [:percentile
          {:lib/uuid "00000000-0000-0000-0000-000000000000"}
          [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
-         -1]
-
-        ;; not a number
-        [:percentile
-         {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-         [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} 1]
-         0.5]))))
+         -1]))))
 
 (deftest ^:parallel arithmetic-expression-test
   (testing "valid"
