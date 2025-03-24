@@ -263,7 +263,6 @@
   transition:
     transform 0.25s,
     opacity 0.25s;
-  transform-origin: center;
 }
 
 .RunButton.RunButtonCircular {
