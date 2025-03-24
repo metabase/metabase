@@ -19,8 +19,12 @@
   #_:clj-kondo/ignore
   (alter-var-root #'environ.core/env assoc
                   :mb-gentest-run "true"
-                  :mb-gentest-context-seed "1")
-  )
+                  :mb-gentest-context-seed "1"))
+
+(defn- valid-col?
+  [maybe-col]
+  (and (map? maybe-col)
+       ((every-pred :name :base_type :display_name) maybe-col)))
 
 (gt/defgentest basic-query-execution-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
@@ -41,7 +45,7 @@
                       (:status result))))
              (testing "At least one column returned"
                (is (<= 1 (count (mt/cols result))))
-               (is (true? (apply (every-pred :name :base_type :display_name) (mt/cols result))))))))))))
+               (is (every? valid-col? (mt/cols result)))))))))))
 
 (gt/defgentest execution-with-cards-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
@@ -65,5 +69,4 @@
                         (:status result))))
                (testing "At least one column returned"
                  (is (<= 1 (count (mt/cols result))))
-                 (is (true? (apply (every-pred :name :base_type :display_name)
-                                   (mt/cols result)))))))))))))
+                 (is (every? valid-col? (mt/cols result))))))))))))
