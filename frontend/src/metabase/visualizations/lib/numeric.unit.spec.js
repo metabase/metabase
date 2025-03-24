@@ -34,6 +34,7 @@ describe("visualization.lib.numeric", () => {
       [-1.2345678912345, 1e-13],
       [-1.23456789123456, 1e-14],
       // very precise numbers are cut off at 10^-14
+      // eslint-disable-next-line no-loss-of-precision
       [-1.23456789123456789123456789, 1e-14],
     ];
     for (const [n, p] of CASES) {
