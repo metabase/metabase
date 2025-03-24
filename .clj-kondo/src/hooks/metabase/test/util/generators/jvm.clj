@@ -3,7 +3,7 @@
    [clj-kondo.hooks-api :as hooks]))
 
 (defn with-random-cards
-  "(with-gentest {:as limit-spec} [s1 val1 & more] body-form body-form...)"
+  "(with-random-cards <metadata-provider> <integer-count-value> & body-forms)"
   [{{:keys [children] :as node} :node :as orig}]
   (let [[token num-cards & body-nodes] children
         node* (-> (hooks/list-node
