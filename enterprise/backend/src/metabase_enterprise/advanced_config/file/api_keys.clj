@@ -18,8 +18,8 @@
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/key
   (s/and string?
-         #(re-matches #"mb_.*" %)
-         #(>= (count %) 8)))
+         #(<= 11 (count %) 254)
+         #(re-matches #"mb_[A-Za-z0-9+/=]+" %)))
 
 (s/def :metabase-enterprise.advanced-config.file.api-keys.config-file-spec/creator
   string?)
@@ -56,12 +56,6 @@
 (defn- init-from-config-file!
   [api-key-config]
   (let [{:keys [name key group creator]} api-key-config]
-    ;; Validate key format
-    (when-not (and (string? key)
-                   (>= (count key) 8)
-                   (.startsWith ^String key "mb_"))
-      (throw (ex-info (format "API key must start with 'mb_' and be at least 8 characters long: %s" (pr-str name))
-                      {:name name})))
 
     (let [group-id (case group
                      "admin" (u/the-id (perms/admin-group))
