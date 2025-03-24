@@ -45,10 +45,10 @@
 (defmacro testing
   [[fmtstr & args] & body]
   `(clojure.test/testing (format ~(str "\nwith " fmtstr "\n%s\n")
-                                   ~@(map (fn [form]
-                                            `(u/pprint-to-str ~form))
-                                          args))
-       ~@body))
+                                 ~@(map (fn [form]
+                                          `(u/pprint-to-str ~form))
+                                        args))
+     ~@body))
 
 (defonce startup-context-seed (doto (or (config/config-long :mb-gentest-context-seed)
                                         (.nextLong ^Random (Random.)))
@@ -116,9 +116,9 @@
 (defmacro defgentest
   [test-sym & body]
   `(clojure.test/deftest ~test-sym
-    (when (config/config-bool :mb-gentest-run)
-      (let [seed# (initial-context-seed)]
-        (binding [tu.rng/*generator* (Random. seed#)]
-          (log/debugf "defgentest: seed: %s" (pr-str seed#))
-          (testing ["context-seed" seed#]
-            ~@body))))))
+     (when (config/config-bool :mb-gentest-run)
+       (let [seed# (initial-context-seed)]
+         (binding [tu.rng/*generator* (Random. seed#)]
+           (log/debugf "defgentest: seed: %s" (pr-str seed#))
+           (testing ["context-seed" seed#]
+             ~@body))))))
