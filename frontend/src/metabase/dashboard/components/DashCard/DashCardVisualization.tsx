@@ -336,49 +336,47 @@ export function DashCardVisualization({
   });
 
   return (
-    <>
-      <Visualization
-        className={cx(CS.flexFull, {
-          [CS.pointerEventsNone]: isEditingDashboardLayout,
-          [CS.overflowAuto]: visualizationOverlay,
-          [CS.overflowHidden]: !visualizationOverlay,
-        })}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        rawSeries={series}
-        visualizerRawSeries={
-          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
-        }
-        metadata={metadata}
-        mode={getClickActionMode}
-        getHref={getHref}
-        gridSize={gridSize}
-        totalNumGridCols={totalNumGridCols}
-        headerIcon={headerIcon}
-        expectedDuration={expectedDuration}
-        error={error?.message}
-        errorIcon={error?.icon}
-        showTitle={withTitle}
-        canToggleSeriesVisibility={!isEditing}
-        isAction={isAction}
-        isDashboard
-        isSlow={isSlow}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        isEditing={isEditing}
-        isPreviewing={isPreviewing}
-        isEditingParameter={isEditingParameter}
-        isMobile={isMobile}
-        actionButtons={actionButtons}
-        replacementContent={visualizationOverlay}
-        getExtraDataForClick={getExtraDataForClick}
-        onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-        onTogglePreviewing={onTogglePreviewing}
-        onChangeCardAndRun={onChangeCardAndRun}
-        onChangeLocation={onChangeLocation}
-        token={token}
-        uuid={uuid}
-      />
-    </>
+    <Visualization
+      className={cx(CS.flexFull, {
+        [CS.pointerEventsNone]: isEditingDashboardLayout,
+        [CS.overflowAuto]: visualizationOverlay,
+        [CS.overflowHidden]: !visualizationOverlay,
+      })}
+      dashboard={dashboard}
+      dashcard={dashcard}
+      rawSeries={series}
+      visualizerRawSeries={
+        isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+      }
+      metadata={metadata}
+      mode={getClickActionMode}
+      getHref={getHref}
+      gridSize={gridSize}
+      totalNumGridCols={totalNumGridCols}
+      headerIcon={headerIcon}
+      expectedDuration={expectedDuration}
+      error={error?.message}
+      errorIcon={error?.icon}
+      showTitle={withTitle}
+      canToggleSeriesVisibility={!isEditing}
+      isAction={isAction}
+      isDashboard
+      isSlow={isSlow}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      isEditing={isEditing}
+      isPreviewing={isPreviewing}
+      isEditingParameter={isEditingParameter}
+      isMobile={isMobile}
+      actionButtons={actionButtons}
+      replacementContent={visualizationOverlay}
+      getExtraDataForClick={getExtraDataForClick}
+      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+      onTogglePreviewing={onTogglePreviewing}
+      onChangeCardAndRun={onChangeCardAndRun}
+      onChangeLocation={onChangeLocation}
+      token={token}
+      uuid={uuid}
+    />
   );
 }
