@@ -47,6 +47,10 @@ export function setupGdriveServiceAccountEndpoint(
   });
 }
 
+export function setupGdrivePostFolderEndpoint() {
+  fetchMock.post("path:/api/ee/gsheets/folder", { status: 202 });
+}
+
 export function setupGdriveSyncEndpoint() {
   fetchMock.post("path:/api/ee/gsheets/folder/sync", () => {
     return { db_id: 1 };
