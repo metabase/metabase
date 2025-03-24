@@ -126,4 +126,9 @@
 
         ;; look at the `:effective-type` and/or `:effective-type`, not the wrapped literal type.
         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
-        ::expression/string))))
+        ::expression/string))
+    (testing "should allow strings where numbers are expected"
+      (testing "should not validate against different type"
+        (are [clause schema] (not (me/humanize (mr/explain schema clause)))
+          [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
+          ::expression/number)))))
