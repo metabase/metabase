@@ -197,7 +197,7 @@
    :uses #{}}
 
   embed
-  {:api  #{metabase.embed.settings}
+  {:api  #{metabase.embed.settings metabase.embed.app-origins-sdk}
    :uses #{analytics models premium-features tiles util}}
 
   events
