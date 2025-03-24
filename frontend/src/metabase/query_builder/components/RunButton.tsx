@@ -40,7 +40,7 @@ const RunButton = forwardRef(function RunButton(
       primary={isDirty}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
-        [QueryBuilderS.RunButtonCompact]: circular,
+        [QueryBuilderS.RunButtonCircular]: circular,
         [CS.circular]: circular,
       })}
       data-testid="run-button"

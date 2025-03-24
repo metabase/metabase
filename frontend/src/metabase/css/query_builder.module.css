@@ -265,7 +265,7 @@
     opacity 0.25s;
 }
 
-.RunButton.RunButtonCompact {
+.RunButton.RunButtonCircular {
   padding: 16px 32px;
 }
 
@@ -276,7 +276,7 @@
 
 @media (prefers-reduced-motion) {
   .RunButton,
-  .RunButton.RunButtonCompact,
+  .RunButton.RunButtonCircular,
   .RunButton.RunButtonHidden {
     transition-duration: 10ms;
   }
