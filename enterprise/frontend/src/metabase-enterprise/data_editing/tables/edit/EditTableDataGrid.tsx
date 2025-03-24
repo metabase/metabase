@@ -11,8 +11,14 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type { Dataset, RowValue, RowValues } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
+import { canEditColumn } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
@@ -35,12 +41,11 @@ export const EditTableDataGrid = ({
     [data.data],
   );
 
-  const pkColumnIds = useMemo(
+  const columnIdMap = useMemo(
     () =>
-      new Set(
-        cols
-          .filter(col => col.semantic_type === "type/PK")
-          .map(col => col.name),
+      cols.reduce(
+        (acc, col) => ({ ...acc, [col.name]: col }),
+        {} as Record<string, DatasetColumn>,
       ),
     [cols],
   );
@@ -109,8 +114,9 @@ export const EditTableDataGrid = ({
         columnId: string;
       },
     ) => {
-      // Disables editing for primary key columns
-      if (pkColumnIds.has(columnId)) {
+      const column = columnIdMap[columnId];
+      // Disables editing for some columns, such as primary keys
+      if (column && !canEditColumn(column)) {
         return;
       }
 
@@ -120,7 +126,7 @@ export const EditTableDataGrid = ({
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId, pkColumnIds],
+    [onCellClickToEdit, editingCellId, columnIdMap],
   );
 
   return (
