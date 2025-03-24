@@ -160,7 +160,7 @@
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
   org.eclipse.jetty/jetty-server            ^:antq/exclude                      ; 12.x do not support Java 8
   {:mvn/version "11.0.24"}            ; web server
-  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
+  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.25"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.1.2" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.1.2"}             ; GraalVM platform, required by JS engine
