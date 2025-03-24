@@ -24,7 +24,7 @@
                        (rff metadata))))]
         (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
           (qp.store/with-metadata-provider mirror-db-id
-            (qp (assoc query :database mirror-db-id) rff*))))
+            (qp query rff*))))
       (qp query rff))))
 
 (defenterprise attach-mirror-db-middleware
