@@ -35,18 +35,18 @@ const RunButton = forwardRef(function RunButton(
 
   return (
     <Button
-      {...props}
-      icon={icon}
-      primary={isDirty}
+      ref={ref}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
         [QueryBuilderS.RunButtonCircular]: circular,
         [CS.circular]: circular,
       })}
+      icon={icon}
+      primary={isDirty}
       data-testid="run-button"
-      onClick={isRunning ? onCancel : onRun}
-      ref={ref}
       aria-label={ariaLabel}
+      onClick={isRunning ? onCancel : onRun}
+      {...props}
     />
   );
 });
