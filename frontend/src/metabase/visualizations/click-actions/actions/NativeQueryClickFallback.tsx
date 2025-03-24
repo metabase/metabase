@@ -37,7 +37,7 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
             >
               {t`Save`}
             </Button>
-          )} this question to drill-thru.`}
+          )} this question to drill-through.`}
         </Flex>
       ),
     } as CustomClickActionWithCustomView,
