@@ -121,17 +121,13 @@
   (expression-schema :type/Text "expression returning a string"))
 
 (mr/def ::integer
-  [:or
-   (expression-schema :type/Integer "expression returning an integer")
-   (expression-schema :type/Text "expression returning a string")])
+  (expression-schema :type/* "expression returning an integer"))
 
 (mr/def ::non-integer-real
   (expression-schema :type/Float "expression returning a non-integer real number"))
 
 (mr/def ::number
-  [:or
-   (expression-schema :type/Number "expression returning a number")
-   (expression-schema :type/Text "expression returning a string")])
+  (expression-schema :type/* "expression returning a number"))
 
 (mr/def ::date
   (expression-schema :type/Date "expression returning a date"))
