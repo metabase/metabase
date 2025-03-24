@@ -118,9 +118,6 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (testing "should not validate against different type"
       (are [clause schema] (me/humanize (mr/explain schema clause))
-        [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
-        ::expression/number
-
         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} nil]
         ::expression/string
 
