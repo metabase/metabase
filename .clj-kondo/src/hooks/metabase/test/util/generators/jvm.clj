@@ -8,7 +8,7 @@
   (let [[token num-cards & body-nodes] children
         node* (-> (hooks/list-node
                    (list token num-cards
-                         (hooks/list-node (list* (hooks/token-node 'let) 
+                         (hooks/list-node (list* (hooks/token-node 'let)
                                                  (hooks/vector-node [(hooks/token-node '&cards) (hooks/list-node ())])
                                                  body-nodes))))
                   (with-meta (meta node)))]

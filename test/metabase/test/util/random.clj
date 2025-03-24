@@ -5,7 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce 
+(defonce
   ^{:dynamic true
     :doc "Generator that could be rebound. Bind when you need to control the seed for exmaple."}
   *generator*
