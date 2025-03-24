@@ -381,6 +381,7 @@
      :cljs (set! assignable-hierarchy (derive assignable-hierarchy x y))))
 
 (declare-assignable :type/Integer :type/Decimal)
+(declare-assignable :type/Number :type/Text)
 
 (declare assignable?)
 
