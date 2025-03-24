@@ -93,12 +93,31 @@
                   0
                   (locking-active-user-count))))
 
+(defn- embedding-settings
+  [embedded-dashboard-count embedded-question-count]
+  {:enabled-embedding-static      (boolean (and (setting/get :enable-embedding-sdk)
+                                                (or (> embedded-question-count 0)
+                                                    (> embedded-dashboard-count 0))))
+   :enabled-embedding-interactive (boolean (and (setting/get :enable-embedding-interactive)
+                                                (setting/get :embedding-app-origins-interactive)
+                                                (or (setting/get :jwt-enabled)
+                                                    (setting/get :saml-enabled)
+                                                    (setting/get :ldap-enabled)
+                                                    (setting/get :google-auth-enabled))))
+   :enabled-embedding-sdk         (boolean  (and (setting/get :enable-embedding-sdk)
+                                                 (setting/get :jwt-enabled)))})
+
 (defn- stats-for-token-request
   []
   (let [users (active-users-count)
-        ext-users (internal-stats/external-users-count)]
+        ext-users (internal-stats/external-users-count)
+        embedding-dashboard-count (internal-stats/embedding-dashboard-count)
+        embedding-question-count (internal-stats/embedding-question-count)]
     (merge (internal-stats/query-execution-last-utc-day)
+           (embedding-settings embedding-dashboard-count embedding-question-count)
            {:users users
+            :embedding-dashboard-count embedding-dashboard-count
+            :embedding-question-count embedding-question-count
             :external-users ext-users
             :interal-users (- users ext-users)
             :domains (internal-stats/email-domain-count)})))
