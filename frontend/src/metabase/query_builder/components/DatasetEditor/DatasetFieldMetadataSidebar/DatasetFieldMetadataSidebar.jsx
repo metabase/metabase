@@ -16,10 +16,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
-import {
-  FIELD_SEMANTIC_TYPES,
-  FIELD_VISIBILITY_TYPES,
-} from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Tabs } from "metabase/ui";
 import ColumnSettings, {
@@ -34,7 +31,7 @@ import { EDITOR_TAB_INDEXES } from "../constants";
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
-import OldSemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
+import { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -54,17 +51,6 @@ function getVisibilityTypeName(visibilityType) {
     return t`Detail views only`;
   }
   return visibilityType.name;
-}
-
-function getSemanticTypeOptions() {
-  return [
-    ...FIELD_SEMANTIC_TYPES,
-    {
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    },
-  ];
 }
 
 const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
@@ -285,17 +271,6 @@ function DatasetFieldMetadataSidebar({
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     onChange={handleSemanticTypeChange}
                     onKeyDown={onLastEssentialFieldKeyDown}
-                  />
-                </Box>
-                <Box mb="1.5rem">
-                  <OldSemanticTypePicker
-                    className={DatasetFieldMetadataSidebarS.SelectButton}
-                    name="semantic_type"
-                    label={t`Column type`}
-                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    onKeyDown={onLastEssentialFieldKeyDown}
-                    options={getSemanticTypeOptions()}
-                    onChange={handleSemanticTypeChange}
                   />
                 </Box>
                 {isFK(formFieldValues) && (
