@@ -30,7 +30,9 @@ const FieldTypeDetail = ({
               field={field}
               value={fieldTypeFormField.value || field.semantic_type}
               onChange={value => {
-                return fieldTypeFormField.onChange(value);
+                fieldTypeFormField.onChange({
+                  target: { name: "semantic_type", value },
+                });
               }}
             />
           ) : (
