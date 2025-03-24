@@ -14,6 +14,7 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
   - [Distinct](#distinct)
+  - [DistinctIf](#distinctif)
   - [Max](#max)
   - [Median](#median)
   - [Min](#min)
@@ -137,6 +138,14 @@ The number of distinct values in this column.
 Syntax: `Distinct(column)`.
 
 `Distinct([Last Name])`. Returns the count of unique last names in the column. Duplicates (of the last name "Smith" for example) are not counted.
+
+### DistinctIf
+
+Returns the count of distinct values in a column where the condition is true.
+
+Syntax: `DistinctIf(column, condition)`.
+
+Example: `DistinctIf([ID], [Category] = "Gizmo")` would return the count of unique IDs where the `Category` column is "Gizmo".
 
 ### Max
 
