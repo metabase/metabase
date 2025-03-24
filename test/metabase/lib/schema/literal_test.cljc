@@ -48,11 +48,13 @@
   (testing "valid schemas"
     (are [schema] (mr/validate schema "s")
       ::expression/string
-      ::expression/integer
-      ::expression/number
       ::expression/orderable
       ::expression/equality-comparable
       ::expression/expression))
+  (testing "should accept strings where numbers are expected"
+    (are [schema] (mr/validate schema "s")
+      ::expression/integer
+      ::expression/number))
   (testing "invalid schemas"
     (binding [expression/*suppress-expression-type-check?* false]
       (are [schema] (mr/explain schema "s")
