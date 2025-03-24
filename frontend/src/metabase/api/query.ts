@@ -16,11 +16,20 @@ const isAllowedHTTPMethod = (method: any): method is AllowedHTTPMethods => {
 // custom fetcher that wraps our Api client
 export const apiQuery: BaseQueryFn = async (args, ctx) => {
   const method = typeof args === "string" ? "GET" : (args?.method ?? "GET");
-  const url = typeof args === "string" ? args : args.url;
   const { bodyParamName, noEvent, formData, fetch } = args;
 
   if (!isAllowedHTTPMethod(method)) {
     return { error: "Invalid HTTP method" };
+  }
+
+  let url = typeof args === "string" ? args : args.url;
+
+  // Apply URL encoding to path segments
+  if (url) {
+    const segments = url.split("/") as Array<string>;
+    url = segments
+      .map(segment => (segment ? encodeURIComponent(segment) : segment))
+      .join("/");
   }
 
   try {
