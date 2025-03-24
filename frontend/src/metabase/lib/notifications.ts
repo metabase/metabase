@@ -126,11 +126,9 @@ const notificationHandlerTypeToChannelMap: Record<
 };
 
 export function alertIsValid(
-  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  handlers: NotificationHandler[],
   channelSpec: ChannelApiResponse | undefined,
 ) {
-  const handlers = notification.handlers;
-
   return (
     channelSpec?.channels &&
     handlers.length > 0 &&

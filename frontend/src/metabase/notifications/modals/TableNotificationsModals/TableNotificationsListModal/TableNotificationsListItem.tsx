@@ -4,70 +4,67 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import {
-  formatNotificationSchedule,
-  getNotificationHandlersGroupedByTypes,
-} from "metabase/lib/notifications";
+import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { isNotFalsy } from "metabase/lib/types";
 import { NotificationActionButton } from "metabase/notifications/modals/components";
 import { getUser } from "metabase/selectors/user";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import type {
-  Notification,
-  NotificationCardSendCondition,
   NotificationChannel,
   NotificationHandlerEmail,
   NotificationHandlerHttp,
   NotificationHandlerSlack,
+  SystemEvent,
+  TableNotification,
   User,
 } from "metabase-types/api";
 
-import S from "./AlertListItem.module.css";
+import S from "./TableNotificationsListItem.module.css";
 
-type AlertListItemProps = {
-  alert: Notification;
+type TableNotificationsListItemProps = {
+  notification: TableNotification;
   canEdit: boolean;
   users: User[] | undefined;
   httpChannelsConfig: NotificationChannel[] | undefined;
-  onEdit: (alert: Notification) => void;
-  onUnsubscribe: (alert: Notification) => void;
-  onDelete: (alert: Notification) => void;
+  onEdit: (notification: TableNotification) => void;
+  onUnsubscribe: (notification: TableNotification) => void;
+  onDelete: (notification: TableNotification) => void;
 };
 
-export const AlertListItem = ({
-  // alert,
+export const TableNotificationsListItem = ({
+  notification,
   canEdit,
   users,
   httpChannelsConfig,
   onEdit,
   onUnsubscribe,
   onDelete,
-}: AlertListItemProps) => {
+}: TableNotificationsListItemProps) => {
   const user = useSelector(getUser);
 
   const [showHoverActions, setShowHoverActions] = useState(false);
 
   const { emailHandler, slackHandler, hookHandlers } =
-    getNotificationHandlersGroupedByTypes(alert.handlers);
-  const subscription = alert.subscriptions[0];
+    getNotificationHandlersGroupedByTypes(notification.handlers);
+  const subscription = notification.subscriptions[0];
 
   const handleEdit = () => {
     if (canEdit) {
-      onEdit(alert);
+      onEdit(notification);
     }
   };
 
   const handleUnsubscribe = (e: MouseEvent) => {
     e.stopPropagation();
 
-    onUnsubscribe(alert);
+    onUnsubscribe(notification);
   };
 
   const handleDelete = (e: MouseEvent) => {
     e.stopPropagation();
 
-    onDelete(alert);
+    onDelete(notification);
   };
 
   const handleMouseEnter = () => {
@@ -90,21 +87,16 @@ export const AlertListItem = ({
       onMouseLeave={handleMouseLeave}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(alert.payload.send_condition)}
+        {formatTitle(subscription?.event_name)}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
-        {subscription && (
-          <Text size="sm" c="inherit">
-            {formatNotificationSchedule(subscription)}
-          </Text>
-        )}
         {user && (
           <>
             <Text size="sm" c="text-light">
               •
             </Text>
             <Text size="sm" c="inherit">
-              {formatCreatorMessage(alert, user?.id)}
+              {formatCreatorMessage(notification, user?.id)}
             </Text>
           </>
         )}
@@ -140,7 +132,7 @@ export const AlertListItem = ({
         <div className={S.actionButtonContainer}>
           {canEdit ? (
             <NotificationActionButton
-              label={t`Delete this alert`}
+              label={t`Delete this notification`}
               iconName="trash"
               onClick={handleDelete}
             />
@@ -157,14 +149,14 @@ export const AlertListItem = ({
   );
 };
 
-const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
+const formatTitle = (sendCondition: SystemEvent): string => {
   switch (sendCondition) {
-    case "has_result":
-      return t`Alert when this has results`;
-    case "goal_above":
-      return t`Alert when this reaches a goal`;
-    case "goal_below":
-      return t`Alert when this goes below a goal`;
+    case "event/data-editing-row-create":
+      return t`Notify when new record is created`;
+    case "event/data-editing-row-update":
+      return t`Notify when record is updated`;
+    case "event/data-editing-row-delete":
+      return t`Notify when record is deleted`;
   }
 };
 

@@ -41,6 +41,7 @@ export const SharingButton = forwardRef(function _SharingButton(
   },
   ref: Ref<HTMLButtonElement>,
 ) {
+  console.log({ tooltip });
   return (
     <ToolbarButton
       ref={ref}

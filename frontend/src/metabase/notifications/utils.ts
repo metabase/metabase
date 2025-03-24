@@ -2,9 +2,13 @@ import type {
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
+  CreateTableNotificationRequest,
   NotificationChannel,
   NotificationHandler,
   ScheduleSettings,
+  SystemEvent,
+  SystemEvent,
+  TableId,
   UserId,
 } from "metabase-types/api";
 
@@ -114,6 +118,42 @@ export const getDefaultQuestionAlertRequest = ({
         event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
         ui_display_type: "cron/builder",
+      },
+    ],
+  };
+};
+
+export const getDefaultTableNotificationRequest = ({
+  tableId,
+  eventName,
+  currentUserId,
+  channelSpec,
+  hookChannels,
+  userCanAccessSettings,
+}: {
+  tableId: TableId;
+  eventName: SystemEvent;
+  currentUserId: UserId;
+  channelSpec: ChannelApiResponse;
+  hookChannels: NotificationChannel[];
+  userCanAccessSettings: boolean;
+}): CreateTableNotificationRequest => {
+  return {
+    payload_type: "notification/system-event",
+    payload: null,
+    payload_id: null,
+    handlers: getDefaultChannelConfig({
+      channelSpec,
+      hookChannels,
+      currentUserId,
+      userCanAccessSettings,
+    }),
+    condition: ["=", ["context", "event_info", "table_id"], tableId],
+    subscriptions: [
+      {
+        type: "notification-subscription/system-event",
+        event_name: eventName,
+        table_id: tableId,
       },
     ],
   };

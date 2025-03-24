@@ -52,8 +52,8 @@ import type {
 import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
 
-import { AlertTriggerIcon } from "./AlertTriggerIcon";
-import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { AlertTriggerIcon } from "../components/AlertTriggerIcon";
+import { AlertModalSettingsBlock } from "../components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
@@ -259,7 +259,7 @@ export const CreateOrEditQuestionAlertModal = ({
     return null;
   }
 
-  const isValid = alertIsValid(notification, channelSpec);
+  const isValid = alertIsValid(notification.handlers, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
 
   return (

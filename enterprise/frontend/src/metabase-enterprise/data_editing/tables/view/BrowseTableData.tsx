@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { useGetTableDataQuery, useGetTableQuery } from "metabase/api";
 import Link from "metabase/core/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { TableNotificationsTriggerButton } from "metabase/notifications/modals/TableNotificationsModals/TableNotificationsTriggerButton";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -109,14 +110,18 @@ export const BrowseTableData = ({
               to={editUrl}
             >{t`Edit`}</Button>
           )}
-          <RunButtonWithTooltip
-            iconSize={16}
-            onlyIcon
-            medium
-            compact
-            isRunning={isLoading}
-            onRun={refetchTableDataQuery}
-          />
+
+          <Flex gap="xs">
+            <RunButtonWithTooltip
+              iconSize={16}
+              onlyIcon
+              medium
+              compact
+              isRunning={isLoading}
+              onRun={refetchTableDataQuery}
+            />
+            <TableNotificationsTriggerButton tableId={tableId} />
+          </Flex>
         </Group>
       </Group>
       <Box className={S.gridWrapper} p="1.5rem 1.5rem 0.5rem">
