@@ -32,11 +32,7 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import {
-  getCards,
-  getDatasets,
-  getVisualizerComputedSettings,
-} from "./selectors";
+import { getCards, getDatasets } from "./selectors";
 import {
   canCombineCard,
   copyColumn,
@@ -63,7 +59,6 @@ import {
   funnelDropHandler,
   removeColumnFromFunnel,
 } from "./visualizations/funnel";
-import { mapDropHandler, removeColumnFromMap } from "./visualizations/map";
 import {
   addColumnToPieChart,
   pieDropHandler,
@@ -207,18 +202,30 @@ const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
   },
 );
 
-export const setDisplay = createAsyncThunk(
-  "visualizer/setDisplay",
-  (display: VisualizationDisplay | null, { getState }) => {
-    const computedSettings = getVisualizerComputedSettings(getState());
-    return { display, computedSettings };
-  },
-);
-
 const visualizerHistoryItemSlice = createSlice({
   name: "present",
   initialState: getInitialVisualizerHistoryItem(),
   reducers: {
+    setDisplay: (state, action: PayloadAction<VisualizationDisplay>) => {
+      const display = action.payload;
+
+      const updatedSettings = getUpdatedSettingsForDisplay(
+        state.columnValuesMapping,
+        state.columns,
+        state.settings,
+        state.display,
+        display,
+      );
+
+      if (updatedSettings) {
+        const { columnValuesMapping, columns, settings } = updatedSettings;
+        state.columnValuesMapping = columnValuesMapping;
+        state.columns = columns;
+        state.settings = settings;
+      }
+
+      state.display = display;
+    },
     setTitle: (state, action: PayloadAction<string>) => {
       if (!state.settings) {
         state.settings = {};
@@ -290,8 +297,6 @@ const visualizerHistoryItemSlice = createSlice({
         removeColumnFromFunnel(state, name);
       } else if (state.display === "pie") {
         removeColumnFromPieChart(state, name);
-      } else if (state.display === "map") {
-        removeColumnFromMap(state, name);
       }
 
       state.columns = state.columns.filter(col => col.name !== name);
@@ -300,25 +305,6 @@ const visualizerHistoryItemSlice = createSlice({
   },
   extraReducers: builder => {
     builder
-      .addCase(setDisplay.fulfilled, (state, action) => {
-        const { display, computedSettings } = action.payload;
-        const updatedSettings = getUpdatedSettingsForDisplay(
-          state.columnValuesMapping,
-          state.columns,
-          computedSettings,
-          state.display,
-          display,
-        );
-
-        if (updatedSettings) {
-          const { columnValuesMapping, columns, settings } = updatedSettings;
-          state.columnValuesMapping = columnValuesMapping;
-          state.columns = columns;
-          state.settings = settings;
-        }
-
-        state.display = display;
-      })
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
         const initialState = action.payload;
         if (initialState) {
@@ -341,8 +327,6 @@ const visualizerHistoryItemSlice = createSlice({
           funnelDropHandler(state, event);
         } else if (state.display === "pie") {
           pieDropHandler(state, event);
-        } else if (state.display === "map") {
-          mapDropHandler(state, event);
         }
       })
       .addCase(addDataSource.fulfilled, (state, action) => {
@@ -701,7 +685,7 @@ function maybeCombineDataset(
 
 const { addColumnInner } = visualizerHistoryItemSlice.actions;
 
-export const { setTitle, updateSettings, removeColumn } =
+export const { setTitle, updateSettings, removeColumn, setDisplay } =
   visualizerHistoryItemSlice.actions;
 
 export const {
