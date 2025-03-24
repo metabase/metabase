@@ -130,3 +130,4 @@ modules/drivers/*/.lsp/*
 /jars/
 /bin/bb
 
+.aider*
