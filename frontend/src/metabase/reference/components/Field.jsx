@@ -7,13 +7,11 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { SemanticTypePicker } from "metabase/admin/datamodel/metadata/components/SemanticTypeAndTargetPicker";
 import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import {
-  FIELD_SEMANTIC_TYPES,
-  FIELD_SEMANTIC_TYPES_MAP,
-} from "metabase/lib/core";
+import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { Icon } from "metabase/ui";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
@@ -48,22 +46,21 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldType}>
           {isEditing ? (
-            <Select
-              name={formField.semantic_type.name}
-              placeholder={t`Select a field type`}
+            <SemanticTypePicker
+              field={field}
               value={
-                formField.semantic_type.value !== undefined
+                typeof formField.semantic_type.value !== "undefined"
                   ? formField.semantic_type.value
                   : field.semantic_type
               }
-              onChange={formField.semantic_type.onChange}
-              options={FIELD_SEMANTIC_TYPES.concat({
-                id: null,
-                name: t`No field type`,
-                section: t`Other`,
-              })}
-              optionValueFn={o => o.id}
-              optionSectionFn={o => o.section}
+              onChange={value => {
+                formField.semantic_type.onChange({
+                  target: {
+                    name: formField.semantic_type.name,
+                    value,
+                  },
+                });
+              }}
             />
           ) : (
             <div className={cx(CS.flex, CS.alignCenter)}>

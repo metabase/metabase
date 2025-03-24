@@ -28,10 +28,17 @@ const FieldTypeDetail = ({
           {isEditing ? (
             <SemanticTypePicker
               field={field}
-              value={fieldTypeFormField.value || field.semantic_type}
+              value={
+                typeof fieldTypeFormField.value !== "undefined"
+                  ? fieldTypeFormField.value
+                  : field.semantic_type
+              }
               onChange={value => {
                 fieldTypeFormField.onChange({
-                  target: { name: "semantic_type", value },
+                  target: {
+                    name: fieldTypeFormField.name,
+                    value,
+                  },
                 });
               }}
             />
