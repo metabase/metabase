@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { isDesktopSafari } from "metabase/lib/browser";
+import { isWebkit } from "metabase/lib/browser";
 
 interface SharedProps {
   isNarrow: boolean;
@@ -95,7 +95,7 @@ export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
   padding: ${props => (props.isSmall ? "0.5rem" : "1rem")};
   color: var(--mb-color-text-secondary);
 
-  ${isDesktopSafari()
+  ${isWebkit()
     ? css`
         will-change: transform;
       `
