@@ -9,7 +9,6 @@
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
-    "copy-required-checks": "tsx ./src/required-checks.ts",
     "generate-changelog": "tsx generate-changelog.ts",
     "prettier": "prettier --write",
     "release-offline": "tsx release-offline.ts",
