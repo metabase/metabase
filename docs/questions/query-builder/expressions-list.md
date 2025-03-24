@@ -60,6 +60,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [path](#path)
     - [in](#in)
     - [isempty](./expressions/isempty.md)
+    - [integer](#integer)
     - [ltrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
@@ -495,6 +496,16 @@ Syntax: `isempty(column)`
 Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
 Related: [notempty](#notempty), [isnull](#isnull)
+
+### integer
+
+> Only available for PostgreSQL.
+
+Converts a string to an integer value.
+
+Syntax: `integer(value)`
+
+Example: `integer("123")` would return `123` as an integer. `integer(123.45)` would return `123`.
 
 ### ltrim
 
