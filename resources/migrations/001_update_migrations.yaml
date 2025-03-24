@@ -10975,6 +10975,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: Index notification_subscription.table_id
       preConditions:
+      rollback: # will be removed with the column
       changes:
         - createIndex:
             tableName: notification_subscription
