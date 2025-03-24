@@ -1,5 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 
+import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
@@ -11,7 +12,9 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   isDraggedColumnItem,
+  shouldSplitVisualizerSeries,
 } from "metabase/visualizer/utils";
+import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Card, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerColumnReference,
@@ -223,11 +226,24 @@ export function removeColumnFromCartesianChart(
   state: VisualizerHistoryItem,
   columnName: string,
 ) {
+  const isMultiseries =
+    state.display &&
+    isCartesianChart(state.display) &&
+    shouldSplitVisualizerSeries(state.columnValuesMapping, state.settings);
+
   if (state.settings["graph.dimensions"]) {
     const dimensions = state.settings["graph.dimensions"];
-    state.settings["graph.dimensions"] = dimensions.filter(
-      dimension => dimension !== columnName,
-    );
+    const isDimension = dimensions.includes(columnName);
+
+    if (isDimension) {
+      if (isMultiseries) {
+        removeDimensionFromMultiSeriesChart(state, columnName);
+      } else {
+        state.settings["graph.dimensions"] = dimensions.filter(
+          dimension => dimension !== columnName,
+        );
+      }
+    }
   }
 
   if (state.settings["graph.metrics"]) {
@@ -240,4 +256,41 @@ export function removeColumnFromCartesianChart(
   if (state.settings["scatter.bubble"] === columnName) {
     delete state.settings["scatter.bubble"];
   }
+}
+
+function removeDimensionFromMultiSeriesChart(
+  state: VisualizerHistoryItem,
+  columnName: string,
+) {
+  const originalDimensions = [...(state.settings["graph.dimensions"] ?? [])];
+
+  const dimensionColumnMap = Object.fromEntries(
+    originalDimensions.map(dimension => [
+      dimension,
+      state.columns.find(col => col.name === dimension),
+    ]),
+  );
+  const column = dimensionColumnMap[columnName];
+
+  // For multi-series charts, we need a dimension from each data source
+  // to plot the data correctly. When a dimension is removed, we need to remove
+  // all dimensions of the same type to avoid invalid states.
+  if (isDate(column)) {
+    state.settings["graph.dimensions"] = originalDimensions.filter(
+      name => !isDate(dimensionColumnMap[name]),
+    );
+  } else if (isCategory(column)) {
+    state.settings["graph.dimensions"] = originalDimensions.filter(
+      name => !isCategory(dimensionColumnMap[name]),
+    );
+  }
+
+  const removedColumns = originalDimensions.filter(
+    name => !state.settings["graph.dimensions"]?.includes(name),
+  );
+
+  removedColumns.forEach(name => {
+    state.columns = state.columns.filter(col => col.name !== name);
+    delete state.columnValuesMapping[name];
+  });
 }
