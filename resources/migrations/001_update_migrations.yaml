@@ -10970,6 +10970,19 @@ databaseChangeLog:
                     deleteCascade: true
                     nullable: true
 
+  - changeSet:
+      id: v54.2025-03-19T16:02:00
+      author: qnkhuat
+      comment: Index notification_subscription.table_id
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_notification_subscription_table_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
