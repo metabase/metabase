@@ -52,7 +52,7 @@
       ::expression/equality-comparable
       ::expression/expression))
   (testing "should allow strings where numbers are expected"
-    (are [schema] (mr/validate schema "40")
+    (are [schema] (mr/validate schema "42")
       ::expression/integer
       ::expression/number))
   (testing "invalid schemas"
