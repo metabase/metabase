@@ -423,19 +423,20 @@
           (get-notification third-user-id 403))))))
 
 (deftest get-system-event-permissions-test
-  (notification.tu/with-system-event-notification!
-    [notification {:event :mb-test/permissions
-                   :notification {:creator_id (mt/user->id :rasta)}}]
-    (let [get-notification (fn [user-or-id expected-status]
-                             (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
-      (testing "admin can view"
-        (get-notification :crowberto 200))
+  (notification.tu/with-temporary-event-topics! [:mb-test/permissions]
+    (notification.tu/with-system-event-notification!
+      [notification {:event :mb-test/permissions
+                     :notification {:creator_id (mt/user->id :rasta)}}]
+      (let [get-notification (fn [user-or-id expected-status]
+                               (mt/user-http-request user-or-id :get expected-status (format "notification/%d" (:id notification))))]
+        (testing "admin can view"
+          (get-notification :crowberto 200))
 
-      (testing "creator can view"
-        (get-notification :rasta 200))
+        (testing "creator can view"
+          (get-notification :rasta 200))
 
-      (testing "other than that no one can view"
-        (get-notification :lucky 403)))))
+        (testing "other than that no one can view"
+          (get-notification :lucky 403))))))
 
 (defmacro ^:private with-disabled-subscriptions-permissions!
   [& body]

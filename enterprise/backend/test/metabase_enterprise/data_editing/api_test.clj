@@ -1,15 +1,10 @@
 (ns metabase-enterprise.data-editing.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
+   [metabase-enterprise.data-editing.test-util :as data-editing.tu]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang IDeref)
-   (java.io Closeable)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,52 +20,17 @@
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
-    (let [url (table-url 1)]
+    (let [url (data-editing.tu/table-url 1)]
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
 
-(defn- create-test-table! [driver db table-name]
-  (let [_     (driver/create-table! driver
-                                    (mt/id)
-                                    table-name
-                                    {:id   (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
-                                     :name [:text]
-                                     :song  [:text]}
-                                    :primary-key [:id])
-        table (sync/create-table! db
-                                  {:name         table-name
-                                   :schema       nil
-                                   :display_name table-name})]
-    (sync/sync-fields-for-table! db table)
-    (:id table)))
-
-(defn- open-test-table!
-  "Sets up an anonymous table in the appdb. Return a box that can be deref'd for the table-id.
-
-  Returned box is java.io.Closeable so you can clean up with `with-open`.
-  Otherwise .close the box to drop the table when finished."
-  ^Closeable []
-  (let [driver     :h2
-        db         (t2/select-one :model/Database (mt/id))
-        table-name (str "temp_table_" (u/lower-case-en (random-uuid)))
-        cleanup    #(try (driver/drop-table! driver (mt/id) table-name) (catch Exception _))]
-    (try
-      (let [table-id (create-test-table! driver db table-name)]
-        (reify Closeable
-          IDeref
-          (deref [_] table-id)
-          (close [_] (cleanup))))
-      (catch Exception e
-        (cleanup)
-        (throw e)))))
-
 (deftest table-operations-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/with-empty-h2-app-db
-      (with-open [table-ref (open-test-table!)]
+      (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
-              url      (table-url table-id)]
+              url      (data-editing.tu/table-url table-id)]
           (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true}})
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -114,11 +74,11 @@
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints
               (fn [flags]
-                (with-open [table-ref (open-test-table!)]
+                (with-open [table-ref (data-editing.tu/open-test-table!)]
                   (let [actions-enabled (:a flags)
                         editing-enabled (:d flags)
                         superuser       (:s flags)
-                        url             (table-url @table-ref)
+                        url             (data-editing.tu/table-url @table-ref)
                         settings        {:database-enable-table-editing (boolean editing-enabled)
                                          :database-enable-actions       (boolean actions-enabled)}
                         _               (t2/update! :model/Database (mt/id) {:settings settings})

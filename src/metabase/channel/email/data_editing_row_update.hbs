@@ -1,6 +1,6 @@
 {{> metabase/channel/email/_header.hbs }}
   <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
-    <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated rows in {{payload.event_info.table.name}}.</p>
+    <p>{{payload.event_info.actor.first_name}} {{payload.event_info.actor.last_name}} has updated a row in {{payload.event_info.table.name}}.</p>
     <p>Changes:</p>
     <ul></ul>
       {{#each payload.event_info.changes}}
