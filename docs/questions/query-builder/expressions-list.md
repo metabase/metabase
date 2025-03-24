@@ -584,6 +584,8 @@ Syntax: `splitPart(text, delimiter, position)`.
 
 Example: `splitPart([Date string], " ", 1)`. If the value for `Date string` was `"2024-09-18 16:55:15.373733-07"`, `splitPart` would return `"2024-09-18"` because it split the data on space (`" "`, and took the first part (the substring at index 1)).
 
+Another example: `splitPart("First name, Middle Name, Last name", ",", 3)` would return `"Last Name"` (because we used the comma `","` as the delimiter to split the string into parts, and took the 3rd substring).
+
 ### rtrim
 
 Removes trailing whitespace from a string of text.
