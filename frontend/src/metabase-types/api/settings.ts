@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { UserId } from "./user";
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -333,6 +334,7 @@ interface AdminSettings {
     error?: string;
     db_id?: number | null;
     "folder-upload-time"?: number | null; // timestamp
+    "created-by-id"?: UserId | null;
   };
 }
 interface SettingsManagerSettings {
