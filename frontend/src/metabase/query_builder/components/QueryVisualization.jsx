@@ -11,7 +11,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -26,6 +26,7 @@ export default function QueryVisualization(props) {
   const {
     className,
     question,
+    isRunnable,
     isRunning,
     isObjectDetail,
     isResultDirty,
@@ -49,6 +50,7 @@ export default function QueryVisualization(props) {
         hidden={
           !canRun ||
           !isResultDirty ||
+          !isRunnable ||
           isRunning ||
           isNativeEditorOpen ||
           result?.error
@@ -136,37 +138,34 @@ export function VisualizationRunningState({ className = "" }) {
   const message = getLoadingMessage(isSlow());
 
   return (
-    <div
-      className={cx(
-        className,
-        QueryBuilderS.Loading,
-        CS.flex,
-        CS.flexColumn,
-        CS.layoutCentered,
-        CS.textBrand,
-      )}
+    <Flex
+      className={cx(className, QueryBuilderS.Overlay)}
+      c="brand"
+      direction="column"
+      justify="center"
+      align="center"
     >
       <LoadingSpinner />
-      <h2 className={cx(CS.textBrand, CS.textUppercase, CS.my3)}>{message}</h2>
-    </div>
+      <Title className={CS.textUppercase} c="brand" order={2} mt="lg">
+        {message}
+      </Title>
+    </Flex>
   );
 }
 
 export const VisualizationDirtyState = ({
   className,
   result,
-  isRunnable,
   isRunning,
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
 }) => {
-  const isEnabled = isRunnable && !hidden;
   const keyboardShortcut = getRunQueryShortcut();
 
   const handleClick = () => {
-    if (isEnabled) {
+    if (!hidden) {
       if (isRunning) {
         cancelQuery();
       } else {
@@ -176,32 +175,28 @@ export const VisualizationDirtyState = ({
   };
 
   return (
-    <div
-      className={cx(
-        className,
-        QueryBuilderS.Loading,
-        CS.flex,
-        CS.flexColumn,
-        CS.layoutCentered,
-        CS.cursorPointer,
-        { [QueryBuilderS.LoadingHidden]: hidden },
-      )}
+    <Flex
+      className={cx(className, QueryBuilderS.Overlay, {
+        [QueryBuilderS.OverlayActive]: !hidden,
+        [QueryBuilderS.OverlayHidden]: hidden,
+      })}
+      direction="column"
+      justify="center"
+      align="center"
+      gap="sm"
       data-testid="run-button-overlay"
       onClick={handleClick}
     >
-      <Stack gap="sm" align="center">
-        <RunButtonWithTooltip
-          className={CS.shadowed}
-          circular
-          compact
-          result={result}
-          hidden={!isEnabled}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-        />
-        {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
-      </Stack>
-    </div>
+      <RunButtonWithTooltip
+        className={CS.shadowed}
+        iconSize={32}
+        circular
+        hidden={hidden}
+        isRunning={isRunning}
+        isDirty={isResultDirty}
+      />
+      {!hidden && <Text c="text-medium">{keyboardShortcut}</Text>}
+    </Flex>
   );
 };
 
