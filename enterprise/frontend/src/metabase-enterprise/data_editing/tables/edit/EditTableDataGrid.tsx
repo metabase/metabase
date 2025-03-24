@@ -35,6 +35,16 @@ export const EditTableDataGrid = ({
     [data.data],
   );
 
+  const pkColumnIds = useMemo(
+    () =>
+      new Set(
+        cols
+          .filter(col => col.semantic_type === "type/PK")
+          .map(col => col.name),
+      ),
+    [cols],
+  );
+
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
     useTableEditing();
 
@@ -93,17 +103,24 @@ export const EditTableDataGrid = ({
       e: React.MouseEvent<HTMLDivElement>,
       {
         cellId,
+        columnId,
       }: {
         cellId: string;
+        columnId: string;
       },
     ) => {
+      // Disables editing for primary key columns
+      if (pkColumnIds.has(columnId)) {
+        return;
+      }
+
       // Prevents event from bubbling up inside editing cell
       // Otherwise requires special handling in EditingBodyCell
       if (editingCellId !== cellId) {
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId],
+    [onCellClickToEdit, editingCellId, pkColumnIds],
   );
 
   return (
