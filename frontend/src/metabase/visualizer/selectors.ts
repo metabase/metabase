@@ -38,7 +38,8 @@ const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
 export const getCards = (state: State) => state.visualizer.cards;
 
-const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
+export const getVisualizerRawSettings = (state: State) =>
+  getCurrentHistoryItem(state).settings;
 
 const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
@@ -49,7 +50,7 @@ const getVisualizerColumnValuesMapping = (state: State) =>
 // Public selectors
 
 export function getVisualizationTitle(state: State) {
-  const settings = getRawSettings(state);
+  const settings = getVisualizerRawSettings(state);
   return settings["card.title"] ?? getDefaultVisualizationName();
 }
 
@@ -136,7 +137,7 @@ export const getVisualizerRawSeries = createSelector(
   [
     getVisualizationType,
     getVisualizerColumnValuesMapping,
-    getRawSettings,
+    getVisualizerRawSettings,
     getVisualizerDatasetData,
   ],
   (display, columnValuesMapping, settings, data): RawSeries => {
