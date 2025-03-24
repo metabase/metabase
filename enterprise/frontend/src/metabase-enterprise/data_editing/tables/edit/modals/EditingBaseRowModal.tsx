@@ -14,6 +14,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { canEditColumn } from "metabase-enterprise/data_editing/helpers";
 import type {
   DatasetColumn,
   RowValue,
@@ -129,7 +130,7 @@ export function EditingBaseRowModal({
                 onCancel={noop}
                 onSubmit={value => handleValueChange(column.name, value)}
                 inputProps={{
-                  disabled: column.semantic_type === "type/PK",
+                  disabled: !canEditColumn(column),
                   // Temporarily use a placeholder and figure out how to deal with null and default values later
                   placeholder:
                     column.name in newRowData ? "<empty_string>" : "<default>",
