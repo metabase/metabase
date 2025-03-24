@@ -24,6 +24,7 @@
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -2090,10 +2091,10 @@
                                                 :enable_embedding true}]
         (let [token (card-token card-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1/%d/%d"
+                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1/%s/%s"
                                                  token
-                                                 (mt/id :people :latitude)
-                                                 (mt/id :people :longitude))))))))))
+                                                 (tiles.api-test/encoded-lat-field-ref)
+                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
 
 (deftest dashcard-tile-query-test
   (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -2105,9 +2106,9 @@
                                                               :dashboard_id dashboard-id}]
         (let [token (dash-token dashboard-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
                                                  token
                                                  dashcard-id
                                                  card-id
-                                                 (mt/id :people :latitude)
-                                                 (mt/id :people :longitude))))))))))
+                                                 (tiles.api-test/encoded-lat-field-ref)
+                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
