@@ -1,10 +1,9 @@
-import visualizations from "metabase/visualizations";
-import { getInitialStateForCardDataSource } from "metabase/visualizer/utils";
-import type {
-  Card,
-  DatasetColumn,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import {
+  DEFAULT_VISUALIZER_DISPLAY,
+  getInitialStateForCardDataSource,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
+import type { Card, DatasetColumn } from "metabase-types/api";
 import type {
   VisualizerDataSourceId,
   VisualizerHistoryItem,
@@ -21,11 +20,11 @@ export function convertCardToInitialState(card: Card): {
   );
 
   // if the visualization doesn't support the visualizer, default to bar chart
-  if (!visualizations.get(initialState.display!)?.supportsVisualizer) {
+  if (!isVisualizerSupportedVisualization(initialState.display)) {
     return {
       state: {
         ...initialState,
-        display: "bar" as VisualizationDisplay,
+        display: DEFAULT_VISUALIZER_DISPLAY,
       },
       extraDataSources: [`card:${card.id}` as const],
     };

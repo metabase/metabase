@@ -8,6 +8,10 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
 } from "./column";
+import {
+  DEFAULT_VISUALIZER_DISPLAY,
+  isVisualizerSupportedVisualization,
+} from "./dashboard-card-supports-visualizer";
 import { createDataSource } from "./data-source";
 
 export function getInitialStateForCardDataSource(
@@ -15,11 +19,14 @@ export function getInitialStateForCardDataSource(
   columns: DatasetColumn[],
 ): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
-    display: card.display,
+    display: isVisualizerSupportedVisualization(card.display)
+      ? card.display
+      : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
     settings: {},
   };
+
   const dataSource = createDataSource("card", card.id, card.name);
 
   columns.forEach(column => {
