@@ -752,7 +752,7 @@
 
   enterprise/data-editing
   {:api #{}
-   :uses #{api actions util}}
+   :uses #{api actions driver upload util}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}
