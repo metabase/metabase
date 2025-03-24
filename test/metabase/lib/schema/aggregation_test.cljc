@@ -31,7 +31,7 @@
        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
        0.1]
 
-         ;; not a number
+      ;; not a number
       [:percentile
        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} 1]
