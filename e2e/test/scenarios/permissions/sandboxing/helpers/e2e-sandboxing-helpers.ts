@@ -10,13 +10,14 @@ import type {
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
+  StructuredQuery,
 } from "metabase-types/api";
 
 import type { DashcardQueryResponse, DatasetResponse } from "./types";
 
 const { H } = cy;
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 type CustomColumnType = "boolean" | "string" | "number";
 type CustomViewType = "Question" | "Model";
@@ -83,7 +84,52 @@ const model: StructuredQuestionDetails = {
   type: "model",
 };
 
-const questionData: StructuredQuestionDetails[] = [savedQuestion, model];
+const ordersJoinedToProducts: StructuredQuestionDetails = {
+  name: "Question with Orders joined to Products",
+  query: {
+    ...baseQuery,
+    joins: [
+      {
+        strategy: "left-join",
+        alias: "Products",
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+        ],
+        "source-table": PRODUCTS_ID,
+        fields: "all",
+      },
+    ],
+    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+    breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
+    "source-table": ORDERS_ID,
+  } as StructuredQuery,
+};
+
+const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {
+  name: "Question with Orders implicitly joined to Products",
+  query: {
+    "source-table": ORDERS_ID,
+    fields: [
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TOTAL, null],
+      ["field", ORDERS.PRODUCT_ID, null],
+    ],
+  },
+};
+
+const questionData: StructuredQuestionDetails[] = [
+  savedQuestion,
+  model,
+  ordersJoinedToProducts,
+  ordersImplicitlyJoinedToProducts,
+];
 
 export const adhocQuestionData = {
   dataset_query: {
@@ -380,7 +426,12 @@ export function rowsShouldContainOnlyGizmos({
     const rows = response.body.data.rows;
 
     expect(
-      rows.every(row => row.includes("Gizmo")),
+      rows.every(
+        row =>
+          row.includes("Gizmo") ||
+          // With implicit joins, some rows might have a null product
+          row[0] === null,
+      ),
       `Every result should have have a Gizmo in: ${questionDesc}`,
     ).to.be.true;
     expect(
