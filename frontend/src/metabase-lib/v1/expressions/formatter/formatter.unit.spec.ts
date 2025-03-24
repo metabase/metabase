@@ -32,10 +32,6 @@ function setup(printWidth: number, startRule: StartRule = "expression") {
         throw res.error;
       }
 
-      if (!res.expressionClause) {
-        throw new Error("Cannot compile expression");
-      }
-
       const result = await format(res.expressionClause, {
         ...options,
         printWidth,
