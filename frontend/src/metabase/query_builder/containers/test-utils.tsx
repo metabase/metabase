@@ -372,13 +372,11 @@ export const triggerMetadataChange = async () => {
 export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(screen.getByText("Filter"));
 
-  const modal = screen.getByRole("dialog");
-  const total = within(modal).getByTestId("filter-column-Total");
-  const maxInput = within(total).getByPlaceholderText("Max");
+  const popover = screen.getByRole("dialog");
+  await userEvent.click(within(popover).getByText("Total"));
+  const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.tab();
-
-  await userEvent.click(screen.getByTestId("apply-filters"));
+  await userEvent.click(await screen.findByText("Add filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

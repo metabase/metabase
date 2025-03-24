@@ -59,11 +59,12 @@ export const getScheduleStrings = () => {
     // The context is needed because 'hourly' can be an adjective ('hourly
     // rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and
     // 'monthly'.
-    every_n_minutes: c("adverbial phrase").t`by the minute`,
+    every_n_minutes: t`by the minute`,
     hourly: c("adverb").t`hourly`,
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
     monthly: c("adverb").t`monthly`,
+    cron: t`custom`,
   };
 
   const weekdays: Weekday[] = [

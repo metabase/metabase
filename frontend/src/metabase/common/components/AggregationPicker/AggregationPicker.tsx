@@ -247,7 +247,7 @@ export function AggregationPicker({
         query={query}
         stageIndex={stageIndex}
         name={displayInfo?.displayName}
-        clause={clause}
+        clause={clause as unknown as Lib.ExpressionClause}
         withName
         startRule="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}

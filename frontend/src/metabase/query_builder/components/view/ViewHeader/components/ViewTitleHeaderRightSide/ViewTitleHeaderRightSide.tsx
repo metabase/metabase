@@ -153,8 +153,7 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
-          onOpenModal={onOpenModal}
-          query={question.query()}
+          question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
