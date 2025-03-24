@@ -91,7 +91,7 @@
                                           :name         name
                                           :unhashed_key unhashed-key
                                           :creator_id   (u/the-id creator)
-                                          :updated_by_id (u/the-id creator)})))))
+                                          :updated_by_id (u/the-id creator)}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]
