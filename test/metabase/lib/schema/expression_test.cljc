@@ -18,7 +18,7 @@
         (lib/ref (meta/field-metadata :orders :subtotal)) 100
         "42" 42
         (lib/ref (meta/field-metadata :orders :subtotal)) "2023-11-13"))
-    (testing "should allow strings where numbers are expected"
+    (testing "should accept strings where numbers are expected"
       (are [e0 e1] (lib.schema.expression/comparable-expressions? e0 e1)
         "42" 42
         (lib/ref (meta/field-metadata :orders :subtotal)) "2023-11-13"))
