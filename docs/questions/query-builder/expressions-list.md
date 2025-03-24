@@ -57,6 +57,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
+    - [path](#path)
     - [in](#in)
     - [isempty](./expressions/isempty.md)
     - [ltrim](#ltrim)
@@ -433,7 +434,17 @@ Syntax: `domain(urlOrEmail)`.
 
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
 
-Related: [host](#host), [subdomain](#subdomain).
+Related: [host](#host), [path](#path), [subdomain](#subdomain).
+
+### path
+
+Extracts the pathname from a URL.
+
+Syntax: `path(url)`.
+
+Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
+
+Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
 ### endsWith
 
@@ -458,7 +469,7 @@ Syntax: `host(urlOrEmail)`.
 
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
 
-Related: [domain](#domain), [subdomain](#subdomain).
+Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
 ### [in](./expressions/in.md)
 
@@ -579,7 +590,7 @@ Syntax: `subdomain(url)`.
 
 Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
 
-Related: [host](#host), [domain](#domain).
+Related: [domain](#domain), [host](#host), [path](#path).
 
 ### [substring](./expressions/substring.md)
 
