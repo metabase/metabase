@@ -7,32 +7,59 @@ import { Flex, type FlexProps, Text } from "metabase/ui";
 import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
+  getIsMultiseriesCartesianChart,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
+  getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { isDraggedColumnItem } from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
+import { isCategory, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
 export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
   const display = useSelector(getVisualizationType);
-  const settings = useSelector(getVisualizerComputedSettings);
+  const rawSettings = useSelector(getVisualizerRawSettings);
+  const computedSettings = useSelector(getVisualizerComputedSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
+  const isMultiseries = useSelector(getIsMultiseriesCartesianChart);
   const dispatch = useDispatch();
 
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
   });
 
-  const dimensions = useMemo(() => {
+  const allDimensions = useMemo(() => {
+    const settings = isMultiseries ? rawSettings : computedSettings;
     const dimensionNames = settings["graph.dimensions"] ?? [];
     return dimensionNames
       .map(name => columns.find(column => column.name === name))
       .filter(isNotNull);
-  }, [columns, settings]);
+  }, [columns, computedSettings, rawSettings, isMultiseries]);
+
+  const dimensions = useMemo(() => {
+    if (!isMultiseries) {
+      return allDimensions;
+    }
+
+    const dimensions: DatasetColumn[] = [];
+    const timeDimensions = allDimensions.filter(isDate);
+    const categoryDimensions = allDimensions.filter(isCategory);
+
+    // Show only one dimension for multiseries charts,
+    // as they have to be added/removed together, not individually
+    if (timeDimensions.length > 0) {
+      dimensions.push(timeDimensions[0]);
+    }
+    if (categoryDimensions.length > 0) {
+      dimensions.push(categoryDimensions[0]);
+    }
+
+    return dimensions;
+  }, [allDimensions, isMultiseries]);
 
   const canHandleActiveItem = useMemo(() => {
     if (!display || !active || !isDraggedColumnItem(active)) {
