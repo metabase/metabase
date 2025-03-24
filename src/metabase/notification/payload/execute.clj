@@ -265,7 +265,6 @@
                                                                     (qp
                                                                      (qp/userland-query query info)
                                                                      nil)))))]
-
     {:card   (t2/select-one :model/Card card-id)
-     :result result
+     :result (data-rows-to-disk! result)
      :type   :card}))
