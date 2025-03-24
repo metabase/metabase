@@ -132,6 +132,7 @@ const BaseButton = forwardRef(function BaseButton(
       <ButtonContent iconVertical={iconVertical}>
         {icon && typeof icon === "string" ? (
           <Icon
+            className={classNames.icon}
             color={iconColor}
             name={icon as unknown as IconName}
             size={iconSize ? iconSize : 16}

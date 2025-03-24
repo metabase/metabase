@@ -368,7 +368,7 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number)
+      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -678,7 +678,9 @@
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
                                         ;; Remove the randomized idents, which are of course not going to match.
-                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))))
+                                        (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
+      ;; Ignore :info since it contains the randomized :card-entity-id.
+      (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
   [a-query field-ids]
@@ -2549,3 +2551,10 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export random-ident
+  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
+
+  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
+  []
+  (lib.core/random-ident))

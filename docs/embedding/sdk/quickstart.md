@@ -18,11 +18,11 @@ If you want to use the SDK in production, however, you'll also need to [set up J
 ## Prerequisites
 
 - [Metabase](https://www.metabase.com/docs/latest/releases) version 52 or higher (OSS or EE). See [Installing Metabase](../../installation-and-operation/installing-metabase.md).
-- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample))
+- An application using React 17 or 18. (You could also use the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable))
 
 If you _don't_ have a Metabase up and running, check out the [Quickstart CLI](./quickstart-cli.md).
 
-If you _do_ have a Metabase, but _don't_ want to use your own code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
+If you _don't_ want to use your own application code, check out our [quickstart with a sample app](./quickstart-with-sample-app.md).
 
 ## Overview
 
@@ -67,32 +67,7 @@ In your app, import the SDK components, like so:
 
 
 ```jsx
-import {
-  MetabaseProvider,
-  defineMetabaseAuthConfig,
-  InteractiveDashboard,
-} from "@metabase/embedding-sdk-react";
-
-/**
- * This creates an auth config to pass to the `MetabaseProvider` component.
- * You'll need to replace the `metabaseInstanceUrl` and the `apiKey` values.
- */
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://metabase.example.com",
-  apiKey: "YOUR_API_KEY",
-});
-
-/**
- * Now embed your first dashboard. In this case, we're embedding the dashboard with ID 1.
- * On new Metabases, ID 1 will be the example dashboard, but feel free to use a different dashboard ID.
- */
-export default function App() {
-  return (
-    <MetabaseProvider authConfig={authConfig}>
-      <InteractiveDashboard dashboardId={1} />
-    </MetabaseProvider>
-  );
-}
+{% include_file "{{ dirname }}/snippets/quickstart/example.tsx" %}
 ```
 
 ## 5. View your embedded Metabase dashboard

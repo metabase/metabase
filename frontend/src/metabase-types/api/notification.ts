@@ -102,10 +102,12 @@ export type NotificationHandler =
 //#endregion
 
 //#region Subscription type
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;
   cron_schedule: string;
+  ui_display_type: ScheduleDisplayType;
 
   // only for existing notifications
   id?: number;

@@ -342,6 +342,28 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
   },
 ];
 
+export const DEPRECATED_FIELD_SEMANTIC_TYPES: FieldSemanticType["id"][] = [
+  TYPE.CancelationDate,
+  TYPE.CancelationTime,
+  TYPE.CancelationTimestamp,
+  TYPE.Comment,
+  TYPE.Company,
+  TYPE.Cost,
+  TYPE.DeletionDate,
+  TYPE.DeletionTime,
+  TYPE.DeletionTimestamp,
+  TYPE.Description,
+  TYPE.Enum,
+  TYPE.GrossMargin,
+  TYPE.Owner,
+  TYPE.Price,
+  TYPE.Share,
+  TYPE.Subscription,
+  TYPE.UpdatedDate,
+  TYPE.UpdatedTime,
+  TYPE.UpdatedTimestamp,
+];
+
 export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
   {},

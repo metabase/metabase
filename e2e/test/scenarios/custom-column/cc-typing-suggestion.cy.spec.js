@@ -57,7 +57,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
-      .should("contain", "lower(text)");
+      .should("contain", "lower(value)");
 
     H.CustomExpressionEditor.helpText()
       .should("be.visible")

@@ -103,12 +103,12 @@ describe("scenarios > question > filter", () => {
     // Add filter as remapped Product ID (Product name)
     H.openOrdersTable();
     H.filter();
-
-    H.filterFieldPopover("Product ID")
-      .contains("Aerodynamic Linen Coat")
-      .click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Product ID").click();
+      cy.findByText("Aerodynamic Linen Coat").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
     cy.findByTestId("loading-indicator").should("not.exist");
@@ -298,7 +298,7 @@ describe("scenarios > question > filter", () => {
 
     // Avoid flakiness caused by CodeMirror not accepting the keypress
     // immediately
-    cy.wait(100);
+    cy.wait(200);
     cy.realPress("ArrowDown");
 
     H.CustomExpressionEditor.completion("ceil")
@@ -696,9 +696,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.value().should("equal", "[Tax]> 42  ");
   });
 
-  // This test is skipped until we can implement the "save unsaved changes"
-  // dialog for the Custom Expression popover.
-  it.skip("should allow hiding the suggestion list with Escape", () => {
+  it("should allow hiding the suggestion list with Escape", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -737,10 +735,12 @@ describe("scenarios > question > filter", () => {
 
     cy.findByTestId("scalar-value").contains("5.41");
     H.filter();
-
-    H.filterField("Category").findByText("Gizmo").click();
-
-    cy.findByTestId("apply-filters").click();
+    H.popover().within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
     H.openNotebook();
 
     H.verifyNotebookQuery("Products", [
