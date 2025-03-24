@@ -1021,7 +1021,106 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
   });
+
+  describe("keyboard navigation", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should handle esc properly", () => {
+      cy.visit("/");
+
+      // New Collection Flow
+      H.newButton("Collection").click();
+      H.modal()
+        .findByLabelText(/Collection it's saved in/)
+        .click();
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "New collection" }),
+      );
+
+      // New Dashboard
+      H.newButton("Dashboard").click();
+      H.modal()
+        .findByLabelText(/Which collection/)
+        .click();
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "New dashboard" }),
+      );
+
+      H.newButton("Question").click();
+      H.entityPickerModalLevel(2).findByText("People").click();
+      H.queryBuilderHeader().findByRole("button", { name: "Save" }).click();
+
+      H.modal()
+        .findByLabelText(/Where do you/)
+        .click();
+      H.entityPickerModalTab("Browse").click();
+
+      H.entityPickerModal()
+        .button(/New dashboard/)
+        .click();
+
+      closeAndAssertModal(H.dashboardOnTheGoModal);
+      H.entityPickerModal()
+        .button(/New collection/)
+        .click();
+
+      closeAndAssertModal(H.collectionOnTheGoModal);
+
+      closeAndAssertModal(H.entityPickerModal);
+
+      closeAndAssertModal(() =>
+        cy.findByRole("dialog", { name: "Save new question" }),
+      );
+
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openQuestionActions("Add to dashboard");
+      H.entityPickerModalTab("Dashboards").click();
+
+      H.entityPickerModal()
+        .button(/New dashboard/)
+        .click();
+
+      closeAndAssertModal(H.dashboardOnTheGoModal);
+      closeAndAssertModal(H.entityPickerModal);
+
+      H.openQuestionActions("Duplicate");
+      H.modal()
+        .findByLabelText(/Where do you/)
+        .click();
+      H.entityPickerModalTab("Browse").click();
+      closeAndAssertModal(H.entityPickerModal);
+      closeAndAssertModal(() =>
+        cy.findByRole("heading", { name: /Duplicate/ }),
+      );
+    });
+  });
 });
+
+function closeAndAssertModal(modalGetterFn: () => Cypress.Chainable) {
+  modalGetterFn().should("exist");
+  cy.realPress("Escape");
+  modalGetterFn().should("not.exist");
+}
 
 function createTestCards() {
   const types = ["question", "model", "metric"] as const;

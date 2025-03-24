@@ -193,12 +193,13 @@ describe("scenarios > question > native", () => {
     FILTERS.forEach(operator => {
       cy.log("Apply a filter");
       H.filter();
-      H.filterField("V", {
-        operator,
-        value: "This has a value",
+      H.popover().findByText("V").click();
+      H.selectFilterOperator(operator);
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("This has a value");
+        cy.button("Add filter").click();
       });
-
-      cy.findByTestId("apply-filters").click();
+      H.runButtonOverlay().click();
 
       cy.log(
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
