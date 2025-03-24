@@ -185,7 +185,6 @@
     (= "middle" text-align) "center"
     :else                   text-align))
 
-;; TSP TODO - This assumes the column can be found by its key in viz settings (not always true)
 (defn column->viz-setting-styles
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
@@ -244,10 +243,6 @@
                              columns
                              col->styles
                              row-index?)]
-     (def viz-settings viz-settings)
-     (def col->styles col->styles)
-     (def thead thead)
-     (def tbody tbody)
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
