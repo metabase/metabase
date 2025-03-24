@@ -338,7 +338,12 @@
 (add-step {:kind   :join
            :weight 30})
 
-(def ^:dynamic *available-cards* [])
+(def ^:dynamic *available-cards*
+  "To be bound to cards available for use by generator in joins.
+
+  Currently modified only in [[metabase.test.util.generators.jvm/with-random-cards]], hence available only in jvm tests
+  at the moment."
+  [])
 
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
