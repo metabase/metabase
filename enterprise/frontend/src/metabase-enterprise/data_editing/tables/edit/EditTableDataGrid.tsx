@@ -11,8 +11,14 @@ import {
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
-import type { Dataset, RowValue, RowValues } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
+import { canEditColumn } from "../../helpers";
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
@@ -33,6 +39,15 @@ export const EditTableDataGrid = ({
   const { cols, rows } = useMemo(
     () => extractRemappedColumns(data.data),
     [data.data],
+  );
+
+  const columnIdMap = useMemo(
+    () =>
+      cols.reduce(
+        (acc, col) => ({ ...acc, [col.name]: col }),
+        {} as Record<string, DatasetColumn>,
+      ),
+    [cols],
   );
 
   const { editingCellId, onCellClickToEdit, onCellEditCancel } =
@@ -93,17 +108,25 @@ export const EditTableDataGrid = ({
       e: React.MouseEvent<HTMLDivElement>,
       {
         cellId,
+        columnId,
       }: {
         cellId: string;
+        columnId: string;
       },
     ) => {
+      const column = columnIdMap[columnId];
+      // Disables editing for some columns, such as primary keys
+      if (column && !canEditColumn(column)) {
+        return;
+      }
+
       // Prevents event from bubbling up inside editing cell
       // Otherwise requires special handling in EditingBodyCell
       if (editingCellId !== cellId) {
         onCellClickToEdit(cellId);
       }
     },
-    [onCellClickToEdit, editingCellId],
+    [onCellClickToEdit, editingCellId, columnIdMap],
   );
 
   return (
