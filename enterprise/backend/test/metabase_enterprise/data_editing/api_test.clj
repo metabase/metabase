@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.test-util :as data-editing.tu]
+   [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
