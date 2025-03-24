@@ -343,6 +343,10 @@
         var(--mb-color-brand) 3%,
         color-mix(in srgb, var(--mb-color-bg-white) 75%, transparent)
       );
+
+      .RunButton {
+        transform: scale(1.2);
+      }
     }
   }
 
