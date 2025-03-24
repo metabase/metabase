@@ -12,7 +12,6 @@ interface RunButtonProps {
   isRunning: boolean;
   isDirty: boolean;
   circular?: boolean;
-  borderless?: boolean;
   hidden?: boolean;
   onRun?: () => void;
   onCancel?: () => void;
@@ -41,7 +40,7 @@ const RunButton = forwardRef(function RunButton(
       primary={isDirty}
       className={cx(className, QueryBuilderS.RunButton, {
         [QueryBuilderS.RunButtonHidden]: hidden,
-        [QueryBuilderS.RunButtonCompact]: circular && !props.borderless,
+        [QueryBuilderS.RunButtonCompact]: circular,
         [CS.circular]: circular,
       })}
       data-testid="run-button"
