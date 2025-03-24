@@ -281,11 +281,10 @@ function DatasetFieldMetadataSidebar({
                 <Box mb="1.5rem">
                   <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
-                    // label={t`Column type`}
-                    // tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    // onKeyDown={onLastEssentialFieldKeyDown}
                     field={field}
+                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     onChange={handleSemanticTypeChange}
+                    onKeyDown={onLastEssentialFieldKeyDown}
                   />
                 </Box>
                 <Box mb="1.5rem">

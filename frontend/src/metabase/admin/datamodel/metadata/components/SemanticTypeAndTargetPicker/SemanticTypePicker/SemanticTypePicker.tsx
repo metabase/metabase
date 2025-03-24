@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Select } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { getCompatibleSemanticTypes } from "./utils";
@@ -10,8 +10,7 @@ import { getCompatibleSemanticTypes } from "./utils";
 const NO_SEMANTIC_TYPE = null;
 const NO_SEMANTIC_TYPE_STRING = "null";
 
-interface Props {
-  className?: string;
+interface Props extends Omit<SelectProps<string | null>, "data"> {
   field: Field;
   value: string | null;
   onChange: (value: string | null) => void;
@@ -22,6 +21,7 @@ export const SemanticTypePicker = ({
   field,
   value,
   onChange,
+  ...props
 }: Props) => {
   const data = useMemo(() => getData({ field, value }), [field, value]);
 
@@ -44,6 +44,7 @@ export const SemanticTypePicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      {...props}
     />
   );
 };
