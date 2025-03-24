@@ -3,17 +3,11 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import type {
-  Field as ApiField,
-  FieldId,
-  FieldReference,
-} from "metabase-types/api";
+import type { Field, FieldId, FieldReference } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 
 import { SemanticTypePicker } from "./SemanticTypePicker";
@@ -78,7 +72,7 @@ const FIELDS = [
 ];
 
 interface SetupOpts {
-  fields?: ApiField[];
+  fields?: Field[];
   fieldId: FieldId | FieldReference;
   initialValue?: string | null;
 }
@@ -99,8 +93,7 @@ const setup = ({
   fieldId,
   initialValue = null,
 }: SetupOpts) => {
-  const metadata = createMockMetadata({ fields });
-  const field = checkNotNull(metadata.field(fieldId));
+  const field = checkNotNull(fields.find(field => field.id === fieldId));
 
   renderWithProviders(
     <TestComponent field={field} initialValue={initialValue} />,
