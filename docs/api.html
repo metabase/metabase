@@ -914,6 +914,10 @@ redirect_from:
             "type" : {
               "type" : "string",
               "enum" : [ "notification-subscription/cron", "notification-subscription/system-event" ]
+            },
+            "ui_display_type" : {
+              "type" : "string",
+              "enum" : [ "cron/raw", "cron/builder" ]
             }
           },
           "required" : [ "type", "cron_schedule" ]
