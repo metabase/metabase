@@ -26,6 +26,7 @@ export default function QueryVisualization(props) {
   const {
     className,
     question,
+    isRunnable,
     isRunning,
     isObjectDetail,
     isResultDirty,
@@ -49,6 +50,7 @@ export default function QueryVisualization(props) {
         hidden={
           !canRun ||
           !isResultDirty ||
+          !isRunnable ||
           isRunning ||
           isNativeEditorOpen ||
           result?.error
@@ -154,18 +156,16 @@ export function VisualizationRunningState({ className = "" }) {
 export const VisualizationDirtyState = ({
   className,
   result,
-  isRunnable,
   isRunning,
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
 }) => {
-  const isEnabled = isRunnable && !hidden;
   const keyboardShortcut = getRunQueryShortcut();
 
   const handleClick = () => {
-    if (isEnabled) {
+    if (!hidden) {
       if (isRunning) {
         cancelQuery();
       } else {
@@ -177,7 +177,7 @@ export const VisualizationDirtyState = ({
   return (
     <Flex
       className={cx(className, QueryBuilderS.overlay, {
-        [QueryBuilderS.interactive]: isEnabled,
+        [QueryBuilderS.active]: !hidden,
         [QueryBuilderS.hidden]: hidden,
       })}
       direction="column"
@@ -192,11 +192,11 @@ export const VisualizationDirtyState = ({
         circular
         compact
         result={result}
-        hidden={!isEnabled}
+        hidden={hidden}
         isRunning={isRunning}
         isDirty={isResultDirty}
       />
-      {isEnabled && <Text c="text-medium">{keyboardShortcut}</Text>}
+      {!hidden && <Text c="text-medium">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

@@ -328,7 +328,7 @@
     opacity 0.5s,
     background-color 0.5s;
 
-  &.interactive {
+  &.active {
     cursor: pointer;
 
     &:hover {
