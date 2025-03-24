@@ -502,7 +502,7 @@ Related: [notempty](#notempty), [isnull](#isnull)
 
 > Only available for PostgreSQL.
 
-Converts a string to an integer value.
+Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
 
 Syntax: `integer(value)`
 
