@@ -177,7 +177,7 @@
                 th-els  (hik.s/select (hik.s/tag :th) doc)
                 eh-th   (first (filter #(= "Eh" (first (:content %))) th-els))
                 style   (get-in eh-th [:attrs :style])]
-            (is (and (str/includes? style "whitespace: normal")
+            (is (and (str/includes? style "white-space: normal")
                      (str/includes? style "min-width: 26px"))
                 "The 'Eh' column should have text wrapping enabled with appropriate min-width"))))
       (testing "Disabled columns are not rendered, and column re-ordering is respected."
@@ -205,7 +205,6 @@
           (let [doc     (render.tu/render-card-as-hickory! card-id)
                 th-els  (hik.s/select (hik.s/tag :th) doc)
                 td-els  (hik.s/select (hik.s/tag :td) doc)]
-            (def doc doc)
             ;; Check header
             (is (= ["#" "A" "B"]
                    (map #(first (:content %)) th-els))

@@ -199,7 +199,7 @@
          (cond-> acc
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
-           (assoc column-name (merge {:whitespace "normal"}
+           (assoc column-name (merge {:white-space "normal"}
                                      (if column-widths
                                        {:min-width (format "%spx" (get-min-width column-index column-widths))}
                                        ;; Text wrapping enabled but no column widths supplied, default to 780px
@@ -244,6 +244,10 @@
                              columns
                              col->styles
                              row-index?)]
+     (def viz-settings viz-settings)
+     (def col->styles col->styles)
+     (def thead thead)
+     (def tbody tbody)
      [:table {:style       (style/style {:max-width     "100%"
                                          :white-space   "nowrap"
                                          :border        (str "1px solid " style/color-border)
