@@ -2,7 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as hooks]))
 
-(defn iterate
+(defn iterate*
   "(iterate {:as limit-spec} [s1 val1 & more] body-form body-form...)"
   [{{:keys [children] :as node} :node :as orig}]
   (let [[token limit-spec bindings & body-nodes] children
