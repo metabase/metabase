@@ -42,6 +42,9 @@ const RunButton = forwardRef(function RunButton(
         [QueryBuilderS.RunButtonCircular]: circular,
         [CS.circular]: circular,
       })}
+      classNames={{
+        icon: QueryBuilderS.RunButtonIcon,
+      }}
       icon={icon}
       primary={isDirty}
       data-testid="run-button"

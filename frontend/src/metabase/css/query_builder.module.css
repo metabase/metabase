@@ -269,6 +269,10 @@
 .RunButton.RunButtonCircular {
   padding: 0.25rem 1.5rem;
   border: none;
+
+  .RunButtonIcon {
+    transform: translateX(2px);
+  }
 }
 
 .RunButton.RunButtonHidden {
