@@ -67,6 +67,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [notempty](#notempty)
     - [regexextract](./expressions/regexextract.md)
     - [replace](#replace)
+    - [splitPart](#splitpart)
     - [rtrim](#rtrim)
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
@@ -566,6 +567,22 @@ Replaces all occurrences of a search text in the input text with the replacement
 Syntax: `replace(text, find, replace)`.
 
 Example: `replace([Title], "Enormous", "Gigantic")`.
+
+### splitPart
+
+> Only available on PostgreSQL.
+
+Splits a string on a specified delimiter and returns the nth substring.
+
+Syntax: `splitPart(text, delimiter, position)`.
+
+`text`: The column or text to return a portion of.
+
+`delimiter`: The pattern describing where each split should occur.
+
+`position`: Which substring to return after the split. Index starts at position 1.
+
+Example: `splitPart([Date string], " ", 1)`. If the value for `Date string` was `"2024-09-18 16:55:15.373733-07"`, `splitPart` would return `"2024-09-18"` because it split the data on space (`" "`, and took the first part (the substring at index 1)).
 
 ### rtrim
 
