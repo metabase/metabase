@@ -9,6 +9,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
+   [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -469,6 +470,18 @@
       :html
       {:content [:div content] :attachments nil})))
 
+(defn- smart-scalar-comparison-statement
+  [unit value]
+  (case unit
+    :minute  (tru "vs. previous minute: {0}" value)
+    :hour    (tru "vs. previous hour: {0}" value)
+    :day     (tru "vs. previous day: {0}" value)
+    :week    (tru "vs. previous week: {0}" value)
+    :month   (tru "vs. previous month: {0}" value)
+    :quarter (tru "vs. previous quarter: {0}" value)
+    :year    (tru "vs. previous year: {0}" value)
+    (tru "vs. previous {0}: {1}" (str/replace (name unit) "-" " ") value)))
+
 (mu/defmethod render :smartscalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
@@ -477,8 +490,7 @@
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
                               (format-percentage arg)
-                              " - "))
-          (format-unit [unit] (str/replace (name unit) "-" " "))]
+                              " - "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
 
           {:keys [last-value previous-value unit last-change] :as _insight}
@@ -486,11 +498,16 @@
       (if (and last-value previous-value unit last-change)
         (let [value           (format-cell timezone-id last-value metric-col viz-settings)
               previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
-              delta-statement (if (= last-value previous-value)
-                                "No change"
-                                (str adj " " (percentage last-change)))
-              comparison-statement (str " vs. previous " (format-unit unit) ": " previous)]
+              delta-statement (cond
+                                (= last-value previous-value)
+                                (tru "No change")
+
+                                (pos? last-change)
+                                (tru "Up {0}" (percentage last-change))
+
+                                (neg? last-change)
+                                (tru "Down {0}" (percentage last-change)))
+              comparison-statement (smart-scalar-comparison-statement unit previous)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
