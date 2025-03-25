@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -534,6 +535,7 @@
                    (lib.util.match/match-one expr :offset))
           {:message  (i18n/tru "OFFSET is not supported in custom filters")
            :friendly true})
-        (when (= (first expr) :value)
+        (when (and (= (first expr) :value)
+                   (not (lib.metadata/database-supports? query :expression-literals)))
           {:message  (i18n/tru "Standalone constants are not supported.")
            :friendly true}))))
