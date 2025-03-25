@@ -1244,7 +1244,7 @@
 
 (defn- check-integer-query
   ([query db-type uncasted-field]
-   (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
+   (check-integer-query query db-type uncasted-field "`subquery`.`INTCAST`"))
   ([query db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ", "
                                  ;; need to do regex because some strings have 0 in front
@@ -1292,7 +1292,7 @@
                             (as-> q
                                   (lib/expression q "INTCAST" (lib/expression-clause :integer [(lib/expression-ref q "UNCASTED")] nil)))
                             (lib/limit 10))
-                  result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                  result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
               (is (= :type/BigInteger (-> cols first :base_type)))
@@ -1318,7 +1318,7 @@
                 (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
                                 (as-> q
                                       (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "uncasted" (:name %))) first)] nil))))
-                      result (-> query (check-integer-query db-type "\"uncasted\"") qp/process-query)
+                      result (-> query (check-integer-query db-type "`uncasted`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
                   (is (= :type/BigInteger (-> cols first :base_type)))
@@ -1377,7 +1377,7 @@
                                 (as-> q
                                       (lib/expression q "INTCAST" (lib/expression-clause :integer [(->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)] nil)))
                                 (lib/limit 10))
-                      result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                      result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                       cols (mt/cols result)
                       rows (mt/rows result)]
                   (is (= :type/BigInteger (-> cols first :base_type)))
@@ -1401,7 +1401,7 @@
                           (lib/expression "UNCASTED" e1)
                           (lib/expression "INTCAST" (lib/expression-clause :integer [e2] nil))
                           (lib/limit 10))
-                result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
+                result (-> query (check-integer-query db-type "`subquery`.`UNCASTED`") qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/BigInteger (-> cols first :base_type)))
@@ -1420,7 +1420,7 @@
                   query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                             (lib/aggregate (lib/max field-md))
                             (lib/aggregate (lib/max (lib/integer field-md))))
-                  result (-> query (check-integer-query db-type "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
+                  result (-> query (check-integer-query db-type "`subquery`.`max`" "`subquery`.`max_2`") qp/process-query)
                   cols (mt/cols result)
                   rows (mt/rows result)]
               (is (= :type/BigInteger (-> cols first :base_type)))
