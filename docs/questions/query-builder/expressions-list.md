@@ -53,11 +53,11 @@ For an introduction to expressions, check out the [overview of custom expression
 
     - [concat](./expressions/concat.md)
     - [contains](#contains)
+    - [date](#date)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
-    - [path](#path)
     - [in](#in)
     - [isempty](./expressions/isempty.md)
     - [integer](#integer)
@@ -65,6 +65,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [length](#length)
     - [lower](#lower)
     - [notempty](#notempty)
+    - [path](#path)
     - [regexextract](./expressions/regexextract.md)
     - [replace](#replace)
     - [splitPart](#splitpart)
@@ -414,6 +415,16 @@ If `Status` were "Classified", the expression would return `true`. If the `Statu
 
 Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
+### date
+
+> Only available for PostgreSQL.
+
+Converts an ISO 8601 date string to a date.
+
+Syntax: `date(value)`
+
+Example: `date("2025-03-20")`
+
 ### doesNotContain
 
 Checks to see if `string1` contains `string2` within it.
@@ -438,16 +449,6 @@ Syntax: `domain(urlOrEmail)`.
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
 
 Related: [host](#host), [path](#path), [subdomain](#subdomain).
-
-### path
-
-Extracts the pathname from a URL.
-
-Syntax: `path(url)`.
-
-Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
-
-Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
 ### endsWith
 
@@ -546,6 +547,16 @@ Example: `notempty([Feedback])` would return true if `Feedback` contains a value
 
 Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
+### path
+
+Extracts the pathname from a URL.
+
+Syntax: `path(url)`.
+
+Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
+
+Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
+
 ### [regexextract](./expressions/regexextract.md)
 
 > ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
@@ -584,7 +595,7 @@ Syntax: `splitPart(text, delimiter, position)`.
 
 Example: `splitPart([Date string], " ", 1)`. If the value for `Date string` was `"2024-09-18 16:55:15.373733-07"`, `splitPart` would return `"2024-09-18"` because it split the data on space (`" "`, and took the first part (the substring at index 1)).
 
-Another example: `splitPart("First name, Middle Name, Last name", ",", 3)` would return `"Last Name"` (because we used the comma `","` as the delimiter to split the string into parts, and took the 3rd substring).
+Another example: `splitPart("First name, Middle Name, Last name", ", ", 3)` would return `"Last Name"` (because we used the comma and space `", "` as the delimiter to split the string into parts, and took the third substring).
 
 ### rtrim
 
