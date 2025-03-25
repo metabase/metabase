@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@v1
+        uses: turtlequeue/setup-babashka@v1.7.0
         with:
           babashka-version: 1.12.197
 
