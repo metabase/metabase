@@ -754,17 +754,19 @@
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id        (meta/field-metadata :orders :id)
         pos-value "9223372036854775808"
-        neg-value "-9223372036854775809"]
+        neg-value "-9223372036854775809"
+        pos-clause (lib.options/ensure-uuid [:value {:base-type :type/BigInteger, :effective-type :type/BigInteger} pos-value])
+        neg-clause (lib.options/ensure-uuid [:value {:base-type :type/BigInteger, :effective-type :type/BigInteger} neg-value])]
     (check-display-names
-     [{:clause [:= id pos-value], :name (str "ID is " pos-value)}
-      {:clause [:!= id pos-value], :name (str "ID is not " pos-value)}
-      {:clause [:> id pos-value], :name (str "ID is greater than " pos-value)}
-      {:clause [:>= id pos-value], :name (str "ID is greater than or equal to " pos-value)}
-      {:clause [:< id pos-value], :name (str "ID is less than " pos-value)}
-      {:clause [:<= id pos-value], :name (str "ID is less than or equal to " pos-value)}
-      {:clause [:between id 0 pos-value], :name (str "ID is between 0 and " pos-value)}
-      {:clause [:between id neg-value 0], :name (str "ID is between " neg-value " and 0")}
-      {:clause [:between id neg-value pos-value], :name (str "ID is " neg-value " – " pos-value)}])))
+     [{:clause [:= id pos-clause], :name (str "ID is " pos-value)}
+      {:clause [:!= id pos-clause], :name (str "ID is not " pos-value)}
+      {:clause [:> id pos-clause], :name (str "ID is greater than " pos-value)}
+      {:clause [:>= id pos-clause], :name (str "ID is greater than or equal to " pos-value)}
+      {:clause [:< id pos-clause], :name (str "ID is less than " pos-value)}
+      {:clause [:<= id pos-clause], :name (str "ID is less than or equal to " pos-value)}
+      {:clause [:between id 0 pos-clause], :name (str "ID is between 0 and " pos-value)}
+      {:clause [:between id neg-clause 0], :name (str "ID is between " neg-value " and 0")}
+      {:clause [:between id neg-clause pos-clause], :name (str "ID is between " neg-value " and " pos-value)}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
