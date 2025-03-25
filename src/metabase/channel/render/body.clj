@@ -9,7 +9,6 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
-   [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
