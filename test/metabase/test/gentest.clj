@@ -111,7 +111,6 @@
                                            {:type :error}
                                            e#))))))))))
 
-;; TODO: Consider do-defgentest.
 ;; TODO: Later milestones: Because of debug log it makes sense to do-defgentest.
 (defmacro defgentest
   [test-sym & body]

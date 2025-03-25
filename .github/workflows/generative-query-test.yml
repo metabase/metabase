@@ -21,7 +21,7 @@ on:
         description: 'Ref to run generative tests on'
         default: qgen-ms2
 
-# TODO: After tested in CI, prior merge change name to gentest.
+# TODO: Consider renaming the job in next milestones
 jobs:
   generative-query-test:
     runs-on: ubuntu-22.04
@@ -46,7 +46,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Run test
-      # how to provide test to only
         run: clojure -X:dev:ci:test:ee:ee-dev :only '${{ inputs.test }}'
 
       - name: Publish Test Report (JUnit)

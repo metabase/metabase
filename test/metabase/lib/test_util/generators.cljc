@@ -355,7 +355,7 @@
                                                     ;; TODO: Make the following driver dependent? Temporarily suppressed
                                                     ;;       to enable testing with h2.
                                                     #_#_:full-join  5})
-        ;; WIP: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns?)
+        ;; TODO: Cards: Does it make sense to generate reasonable conditions for cards? (same type columns?)
         condition-space     (concat (for [table (lib.metadata/tables query)
                                           :let [conditions (lib/suggested-join-conditions query stage-number table)]
                                           :when (seq conditions)]
