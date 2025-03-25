@@ -92,8 +92,9 @@
             :when (or (not (#{:< :>} op))
                       (lib.schema.expression/comparable-expressions? field-ref value))]
         {:name   label
-         :filter (operator op field-ref (cond-> value
-                                          (lib.types.isa/numeric? column) (maybe-bigint->value-clause)))})
+         :filter (operator op field-ref (if (lib.types.isa/numeric? column)
+                                          (maybe-bigint->value-clause value)
+                                          value))})
 
       (and (lib.types.isa/string? column)
            (or (lib.types.isa/comment? column)
