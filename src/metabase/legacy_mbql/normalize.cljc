@@ -221,9 +221,11 @@
   [[_ field value unit]]
   [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
 
-(defn- normalize-value-opts [opts]
+(defn- normalize-value-opts
+  [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
     (cond-> opts
+      ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
       (:base_type opts) (update :base_type keyword))))
 
 (defmethod normalize-mbql-clause-tokens :value
