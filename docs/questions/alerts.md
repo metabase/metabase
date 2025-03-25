@@ -28,7 +28,7 @@ To create an alert:
 1. Save your question.
 2. Click on the sharing icon in the top-right of the screen.
 3. Select **Create an alert**.
-4. Select what you want to be alerted about.  The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
+4. Select what you want to be alerted about. The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
 5. Select when you want Metabase to check the results. Metabase can check for results hourly, daily, or weekly.
 6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md).
 
@@ -42,7 +42,7 @@ You'll also have the option to only send the alert once. To test the alert, you 
 
 ## Results alerts
 
-Metabase can send you an alert on a schedule when one of your questions returns _any_ result. This kind of alert is most useful if you have a question that doesn't _usually_ return any results, but you want to know when the question _does_ return results.
+Metabase can send you an alert on a schedule when one of your questions returns _any_ result. This kind of alert is also particularly useful if you have a question that doesn't _usually_ return any results, but you want to know when the question _does_ return results.
 
 For example, you might have a table called `Reviews`, and you want to know any time a customer leaves a bad review, which you consider to be anything below three stars. To set up an alert for this situation, you'd go and create a raw data question (i.e., a question that returns a list of reviews), and add a filter to only include results with fewer than three stars.
 
@@ -66,7 +66,17 @@ You can choose:
 - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
 - How often you want Metabase to check to see if the goal line has been crossed.
 
-Click Done, and your alert will be all set up! You'll get an email confirmation, too. If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that administrators might have added you to.
+Click Done, and your alert will be all set up!
+
+If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that admins might have added you to.
+
+Metabase will email you when:
+
+- You set up an alert
+- You’ve been unsubscribed from an alert
+- One of your alerts has stopped working
+- You unsubscribed from an alert
+- An admin added you to an alert
 
 ## Progress bar alerts
 
@@ -110,10 +120,10 @@ Once you set up an alert to a Slack channel, avoid changing the name of that cha
 Some circumstances will automatically delete alerts:
 
 - **You rename the target Slack channel**. Well, technically the alert won't get deleted, but Metabase will no longer have anywhere to send the alerts to. You'll need to update the alert's target channel in Metabase to the new channel's name.
-- **If the question gets edited in such a way that the alert doesn't make sense anymore**, the alert will get deleted. For example, if a question with a goal line alert loses its goal line, Metabase will delete the alert.
+- **If the question gets edited in such a way that the alert doesn't make sense anymore**, the alert will get deleted. For example, if someone removes the goal line from a question with a goal line alert, Metabase will delete the alert.
 - **If the question is deleted**, Metabase will delete any alerts set up for that question.
 
-Alerts will continue to work even if the person who set up the alert no longer has an active account. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
+Alerts will continue to work _even if the person who set up the alert no longer has an active account_. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
 
 ## Admins can see all alerts
 
