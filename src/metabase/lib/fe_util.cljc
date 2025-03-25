@@ -193,7 +193,7 @@
 (defn- number->expression-arg
   [value]
   (if (u.number/bigint? value)
-    (lib.options/ensure-uuid [:value {:base-type :type/BigInteger, :effective-type :type/BigInteger} (str value)])
+    (lib.expression/value value)
     value))
 
 (defn- expression-arg->number

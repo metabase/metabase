@@ -200,9 +200,8 @@
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
         column        (meta/field-metadata :venues :price)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)
-        bigint-clause (lib/expression-clause :value [bigint-string] {:base-type :type/BigInteger :effective-type :type/BigInteger})]
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
@@ -238,9 +237,8 @@
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
         lat-column    (meta/field-metadata :people :latitude)
         lon-column    (meta/field-metadata :people :longitude)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)
-        bigint-clause (lib/expression-clause :value [bigint-string] {:base-type :type/BigInteger :effective-type :type/BigInteger})]
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}

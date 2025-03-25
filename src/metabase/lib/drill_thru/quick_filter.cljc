@@ -42,6 +42,7 @@
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -59,7 +60,7 @@
 (defn- maybe-bigint->value-clause
   [value]
   (if-let [number (when (string? value) (u.number/parse-bigint value))]
-    (lib.options/ensure-uuid [:value {:base-type :type/BigInteger :effective-type :type/BigInteger} (str number)])
+    (lib.expression/value number)
     value))
 
 (defn- operator [op & args]

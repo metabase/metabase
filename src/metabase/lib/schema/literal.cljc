@@ -8,6 +8,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]
    [metabase.util.time.impl-common :as u.time.impl-common]))
 
 (defmethod expression/type-of-method :dispatch-type/nil
@@ -24,15 +25,11 @@
          (instance? clojure.lang.BigInt x))))
 
 (mr/def ::integer
-  #?(:clj [:multi
-           {:dispatch big-int?}
-           [true  :metabase.lib.schema.literal.jvm/big-integer]
-           [false :int]]
-     :cljs :int))
+  [:or :int [:fn u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
-  [_int]
-  :type/Integer)
+  [int]
+  (if (u.number/bigint? int) :type/BigInteger :type/Integer))
 
 ;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
 ;;; universe we'd want to allow those if they're not disallowed already.
