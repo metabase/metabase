@@ -254,18 +254,24 @@
              include-analytics?
              exclude-uneditable-details?
              include-only-uploadable?
-             include-mirror-databases]}]
-  (let [dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
+             router-database-id]}]
+  (let [filter-on-router-database-id (when (some->> router-database-id
+                                                    (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
+                                       router-database-id)
+        dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where [:and
                                                 (when-not include-analytics?
                                                   [:= :is_audit false])
-                                                (if (and api/*is-superuser?* include-mirror-databases)
-                                                  [:= :router_database_id include-mirror-databases]
+                                                (if filter-on-router-database-id
+                                                  [:= :router_database_id router-database-id]
                                                   [:= :router_database_id nil])]})
-        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
+        filter-by-data-access? (not (or include-editable-data-model?
+                                        exclude-uneditable-details?
+                                        filter-on-router-database-id))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
+      true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
@@ -295,7 +301,7 @@
   database details."
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
-           include_mirror_databases]}
+           router_database_id]}
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:= "tables"]]
@@ -305,7 +311,7 @@
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
-       [:include_mirror_databases    {:optional true} [:maybe ms/PositiveInt]]]]
+       [:router_database_id          {:optional true} [:maybe ms/PositiveInt]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -316,7 +322,7 @@
                                                       :exclude-uneditable-details?     only-editable?
                                                       :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable
-                                                      :include-mirror-databases        include_mirror_databases)
+                                                      :router-database-id              router_database_id)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -385,7 +391,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (assoc :router_user_attribute (database/router-user-attribute db))
+    true                         (t2/hydrate :router_user_attribute)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload

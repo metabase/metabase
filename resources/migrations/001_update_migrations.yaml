@@ -11002,7 +11002,23 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-04-01T07:18:08
+      id: v55.2025-04-01T07:18:47
+      author: johnswanson
+      comment: add an index for `metabase_database.router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_database
+                indexName: idx_unique_metabase_database_router_database_id_name
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_metabase_database_router_database_id_name
+            columnNames: router_database_id, name
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:52
       author: johnswanson
       comment: Add foreign key for `router_database_id`
       preConditions:
@@ -11018,25 +11034,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabase_database_metabase_database_id
             onDelete: RESTRICT
-
-  - changeSet:
-      id: v55.2025-04-01T07:18:14
-      author: johnswanson
-      comment: add an index for `metabase_database.router_database_id`
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabase_database
-                indexName: idx_metabase_database_router_database_id
-      rollback: # will be deleted when column is deleted
-      changes:
-        - createIndex:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: router_database_id
-            indexName: idx_metabase_database_router_database_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
