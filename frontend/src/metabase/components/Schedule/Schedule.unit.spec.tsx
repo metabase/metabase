@@ -16,37 +16,33 @@ describe("Schedule", () => {
   });
 
   it("shows time when schedule is daily", () => {
-    setup();
-    expect(getInputValues()).toEqual(["daily", "12:00"]);
+    setup({ cronString: "0 0 8 * * ? *" });
+    expect(getInputValues()).toEqual(["daily", "8:00"]);
   });
 
   it("shows minutes schedule is hourly and minutesOnHourPicker is true", () => {
-    setup({ schedule: { schedule_type: "hourly" }, minutesOnHourPicker: true });
+    setup({ cronString: "0 0 * * * ? *", minutesOnHourPicker: true });
     expect(getInputValues()).toEqual(["hourly", "0"]);
     expect(screen.getByText("minutes past the hour")).toBeInTheDocument();
   });
 
   it("shows day and time when schedule is weekly", () => {
     setup({
-      schedule: { schedule_type: "weekly", schedule_day: "mon" },
+      cronString: "0 0 8 ? * 2 *",
     });
     expect(getInputValues()).toEqual(["weekly", "Monday", "8:00"]);
   });
 
   it("shows first/last/mid value, day, and time when schedule is monthly", async () => {
     setup({
-      schedule: {
-        schedule_type: "monthly",
-        schedule_frame: "first",
-        schedule_day: "mon",
-      },
+      cronString: "0 0 8 ? * 2#1 *",
     });
     expect(getInputValues()).toEqual(["monthly", "first", "Monday", "8:00"]);
   });
 
   it("shows 10 minutes by default for every_n_minutes schedule", () => {
     setup({
-      schedule: { schedule_type: "every_n_minutes" },
+      cronString: "0 0/10 * * * ? *",
     });
     expect(getInputValues()).toEqual(["by the minute", "10"]);
     expect(screen.getByText("minutes")).toBeInTheDocument();
@@ -54,7 +50,7 @@ describe("Schedule", () => {
 
   it("shows proper single noun for every_n_minutes schedule", () => {
     setup({
-      schedule: { schedule_type: "every_n_minutes", schedule_minute: 1 },
+      cronString: "0 0/1 * * * ? *",
     });
     expect(getInputValues()).toEqual(["by the minute", "1"]);
     expect(screen.getByText("minute")).toBeInTheDocument();
@@ -62,7 +58,7 @@ describe("Schedule", () => {
 
   it("shows proper plural noun for every_n_minutes schedule", () => {
     setup({
-      schedule: { schedule_type: "every_n_minutes", schedule_minute: 5 },
+      cronString: "0 0/5 * * * ? *",
     });
     expect(getInputValues()).toEqual(["by the minute", "5"]);
     expect(screen.getByText("minutes")).toBeInTheDocument();
@@ -70,7 +66,7 @@ describe("Schedule", () => {
 
   it("does not allow 0 minutes option for every_n_minutes schedule", async () => {
     setup({
-      schedule: { schedule_type: "every_n_minutes" },
+      cronString: "0 0/10 * * * ? *",
     });
 
     const minuteInput = screen.getByTestId("select-minute");
@@ -86,5 +82,13 @@ describe("Schedule", () => {
 
     expect(optionValues).not.toContain("0");
     expect(Math.min(...optionValues.map(Number))).toBe(1);
+  });
+
+  it("shows custom cron input", () => {
+    setup({
+      cronString: "0 0/5 * * * ? *",
+      isCustomSchedule: true,
+    });
+    expect(getInputValues()).toEqual(["custom", "0/5 * * * ?"]);
   });
 });

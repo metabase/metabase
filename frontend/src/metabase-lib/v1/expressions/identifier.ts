@@ -49,7 +49,11 @@ export function formatMetricName(
 
 export function parseSegment(
   segmentName: string,
-  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
+  {
+    query,
+    stageIndex,
+    expressionIndex,
+  }: { query: Lib.Query; stageIndex: number; expressionIndex?: number },
 ) {
   const segment = Lib.availableSegments(query, stageIndex).find(segment => {
     const displayInfo = Lib.displayInfo(query, stageIndex, segment);
@@ -61,7 +65,11 @@ export function parseSegment(
     return segment;
   }
 
-  const column = Lib.fieldableColumns(query, stageIndex).find(field => {
+  const column = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionIndex,
+  ).find(field => {
     const displayInfo = Lib.displayInfo(query, stageIndex, field);
     return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
   });

@@ -1,8 +1,10 @@
 import { match } from "ts-pattern";
 
 import { modal, popover } from "e2e/support/helpers";
-import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
-import { getScheduleComponentLabel } from "metabase/components/Schedule/strings";
+import {
+  type ScheduleComponentType,
+  getScheduleComponentLabel,
+} from "metabase/components/Schedule/strings";
 import type {
   CacheStrategyType,
   CacheableModel,

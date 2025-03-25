@@ -340,8 +340,15 @@ describe("scenarios > embedding > full app", () => {
       },
     };
 
-    function startNewEmbeddingQuestion() {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+    /**
+     * @param {object} option
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
+    function startNewEmbeddingQuestion({ searchParameters } = {}) {
+      H.visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { new_button: true, ...searchParameters },
+      });
       cy.button("New").click();
       H.popover().findByText("Question").click();
     }
@@ -382,6 +389,33 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    });
+
+    it('should respect "entity_types" search parameter (EMB-272)', () => {
+      cy.log("test default `entity_types`");
+      startNewEmbeddingQuestion();
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
+
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      });
+
+      cy.log('test `entity_types=["model"]`');
+      startNewEmbeddingQuestion({
+        searchParameters: { entity_types: "model" },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("not.exist");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
     });
 
     describe("table", () => {
@@ -772,8 +806,15 @@ describe("scenarios > embedding > full app", () => {
       metric: "Metrics",
     };
 
+    /**
+     *
+     * @param {object} option
+     * @param {boolean} [option.isMultiStageDataPicker]
+     * @param {import("metabase-types/store").InteractiveEmbeddingOptions} [option.searchParameters]
+     */
     function startNewEmbeddingQuestion({
       isMultiStageDataPicker = false,
+      searchParameters,
     } = {}) {
       if (isMultiStageDataPicker) {
         cy.intercept("GET", "/api/search*", req => {
@@ -789,6 +830,7 @@ describe("scenarios > embedding > full app", () => {
         url: "/",
         qs: {
           new_button: true,
+          ...searchParameters,
         },
       });
       cy.button("New").click();
@@ -865,6 +907,24 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    });
+
+    it('should respect "entity_types" search parameter (EMB-228)', () => {
+      cy.log('test `entity_types=["table"]`');
+      startNewEmbeddingQuestion({
+        isMultiStageDataPicker: true,
+        searchParameters: { entity_types: "table" },
+      });
+      H.popover().within(() => {
+        /**
+         * When we're in table step, it means we don't show models, otherwise, we would have shown
+         * the bucket step which has "Raw Data" and "Models" options instead.
+         */
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByRole("heading", { name: "Orders" }).should("be.visible");
+      });
+
+      // We don't have to test every permutations here because we already cover those cases in `EmbeddingDataPicker.unit.spec.tsx`
     });
 
     describe("table", () => {
@@ -1235,6 +1295,45 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Models").should("be.visible");
           cy.findByText("Raw Data").should("be.visible");
           cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe('"entity_types" query parameter', () => {
+      it('should show only the provided "entity_types"', () => {
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "table",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("not.exist");
+          cy.findByText("Sample Database").should("be.visible");
+          cy.findByRole("option", { name: "Orders" }).should("be.visible");
+        });
+      });
+
+      it('should show models and tables as a default value when not providing "entity_types"', () => {
+        cy.log("Test providing `entity_types` as an empty string");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+          searchParameters: {
+            entity_types: "",
+          },
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
+        });
+
+        cy.log("Test not providing `entity_types`");
+        startNewEmbeddingQuestion({
+          isMultiStageDataPicker: true,
+        });
+        H.popover().within(() => {
+          cy.findByText("Models").should("be.visible");
+          cy.findByText("Raw Data").should("be.visible");
         });
       });
     });

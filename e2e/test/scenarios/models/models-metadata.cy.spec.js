@@ -25,10 +25,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      H.createQuestion(modelDetails).then(({ body: { id } }) => {
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
-      });
+      H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
     });
 
     it("should edit GUI model metadata", () => {
@@ -64,9 +61,8 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Subtotal");
     });
 
-    it("allows for canceling changes", () => {
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
+    it("allows for canceling changes, back navigation (metabase#55162)", () => {
+      H.openQuestionActions("Edit metadata");
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -78,6 +74,13 @@ describe("scenarios > models metadata", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal")
         .and("not.contain", "Pre-tax");
+
+      // Ensure back navigation works correctly metabase#55162
+      H.openQuestionActions("Edit metadata");
+      cy.go("back");
+      cy.get("@questionId").then(id => {
+        cy.location("pathname").should("equal", `/model/${id}-gui-model`);
+      });
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
@@ -382,20 +385,17 @@ describe("scenarios > models metadata", () => {
           .button(/Filter/)
           .click();
 
-        H.modal().within(() => {
-          cy.findByRole("tablist").within(() => {
-            cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
-            cy.findByText("Native Model").should("exist");
-
-            const userTab = cy.findByText("User");
-            userTab.should("exist");
-            userTab.click();
-          });
-
-          cy.findByTestId("filter-column-Source").findByText("Twitter").click();
-          cy.findByTestId("apply-filters").click();
+        H.popover().within(() => {
+          cy.get("[data-element-id=list-section-header]").should(
+            "have.length",
+            2, // Just the two we're expecting and not the other fake FK.
+          );
+          cy.findByText("User").click();
+          cy.findByText("Source").click();
+          cy.findByText("Twitter").click();
+          cy.button("Add filter").click();
         });
-
+        H.runButtonOverlay().click();
         cy.wait("@dataset");
         cy.findByTestId("question-row-count")
           .invoke("text")

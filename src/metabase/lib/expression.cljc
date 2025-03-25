@@ -300,9 +300,11 @@
 (lib.common/defop get-quarter [t])
 (lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
+(lib.common/defop date [s])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
+(lib.common/defop split-part [s delimiter index])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
@@ -314,6 +316,7 @@
 (lib.common/defop host [s])
 (lib.common/defop domain [s])
 (lib.common/defop subdomain [s])
+(lib.common/defop path [s])
 (lib.common/defop month-name [n])
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
@@ -479,10 +482,10 @@
    (some #(cyclic-definition node->children %) (keys node->children)))
   ([node->children start]
    (cyclic-definition node->children start []))
-  ([node->children node path]
-   (if (some #{node} path)
-     (drop-while (complement #{node}) (conj path node))
-     (some #(cyclic-definition node->children % (conj path node))
+  ([node->children node node-path]
+   (if (some #{node} node-path)
+     (drop-while (complement #{node}) (conj node-path node))
+     (some #(cyclic-definition node->children % (conj node-path node))
            (node->children node)))))
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
@@ -512,16 +515,16 @@
           (let [error (explainer expr)
                 humanized (str/join ", " (me/humanize error))]
             {:message (i18n/tru "Type error: {0}" humanized)}))
-        (when-let [path (and (= expression-mode :expression)
-                             expression-position
-                             (let [exprs (expressions query stage-number)
-                                   edited-expr (nth exprs expression-position)
-                                   edited-name (expression->name edited-expr)
-                                   deps (-> (m/index-by expression->name exprs)
-                                            (assoc edited-name expr)
-                                            (update-vals referred-expressions))]
-                               (cyclic-definition deps)))]
-          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
+        (when-let [dependency-path (and (= expression-mode :expression)
+                                        expression-position
+                                        (let [exprs (expressions query stage-number)
+                                              edited-expr (nth exprs expression-position)
+                                              edited-name (expression->name edited-expr)
+                                              deps (-> (m/index-by expression->name exprs)
+                                                       (assoc edited-name expr)
+                                                       (update-vals referred-expressions))]
+                                          (cyclic-definition deps)))]
+          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset))
@@ -530,4 +533,7 @@
         (when (and (= expression-mode :filter)
                    (lib.util.match/match-one expr :offset))
           {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true})
+        (when (= (first expr) :value)
+          {:message  (i18n/tru "Standalone constants are not supported.")
            :friendly true}))))
