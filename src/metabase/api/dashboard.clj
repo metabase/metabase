@@ -885,8 +885,6 @@
                   :type                   "question"
                   ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
                   :visualization_settings {:editable? true}}
-        ;; We always create a new card, rather than risk pockets of stale state, e.g., when we've changed the table.
-        ;; This also saves us checking that the existing card is a dashboard card, has the right display type, etc.
         card-id (if keep?
                   (:id card)
                   (:id (card/create-card! card-map @api/*current-user* true false)))]
