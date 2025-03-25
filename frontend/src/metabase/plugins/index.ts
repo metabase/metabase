@@ -40,6 +40,7 @@ import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import { metabotInitialState } from "metabase-enterprise/metabot/state";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -450,7 +451,7 @@ export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
-  metabotPlugin: () => null,
+  metabotPlugin: () => metabotInitialState,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

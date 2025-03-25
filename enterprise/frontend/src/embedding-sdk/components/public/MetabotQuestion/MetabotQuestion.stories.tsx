@@ -8,7 +8,7 @@ import {
 } from "embedding-sdk/test/storybook-id-args";
 import { Box } from "metabase/ui";
 
-import { MetabotQuestion } from "./Metabot";
+import { MetabotQuestion } from "./MetabotQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
@@ -21,19 +21,6 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
-  argTypes: {
-    title: {
-      options: [
-        undefined,
-        true,
-        false,
-        "Custom Title",
-        "Long title".repeat(10),
-      ],
-      control: { type: "radio" },
-    },
-    questionId: questionIdArgType,
-  },
 };
 
 const Template: StoryFn<MetabotQuestionProps> = () => {

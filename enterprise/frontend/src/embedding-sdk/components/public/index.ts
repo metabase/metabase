@@ -49,4 +49,4 @@ export { defineMetabaseTheme };
  */
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
 
-export { MetabotQuestion } from "./Metabot";
+export { MetabotQuestion } from "./MetabotQuestion";

@@ -18,6 +18,8 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
 
+  console.log("useMetabotAgent");
+
   // TODO: create an enterprise useSelector
   const userMessages = useSelector(getUserMessages as any) as ReturnType<
     typeof getUserMessages
