@@ -77,7 +77,17 @@ const MetadataHeader = ({
       </div>
 
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
-        <Flex align="center" justify="flex-end" flex="1 0 auto" mx="xl">
+        <Flex
+          align="center"
+          gap="md"
+          justify="flex-end"
+          flex="1 0 auto"
+          mx="xl"
+        >
+          <Button
+            leftSection={<Icon name="sort_arrows" />}
+          >{t`Edit column order`}</Button>
+
           <Button
             component={Link}
             leftSection={<Icon name="gear" />}
