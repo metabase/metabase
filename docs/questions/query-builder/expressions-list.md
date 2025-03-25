@@ -34,8 +34,8 @@ For an introduction to expressions, check out the [overview of custom expression
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
     - [if](./expressions/case.md)
-    - [isnull](./expressions/isnull.md)
-    - [notnull](#notnull)
+    - [isNull](./expressions/isnull.md)
+    - [notNull](#notnull)
 
   - [Math functions](#math-functions)
 
@@ -57,14 +57,14 @@ For an introduction to expressions, check out the [overview of custom expression
     - [endsWith](#endswith)
     - [host](#host)
     - [in](#in)
-    - [isempty](./expressions/isempty.md)
-    - [ltrim](#ltrim)
+    - [isEmpty](./expressions/isempty.md)
+    - [lTrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
-    - [notempty](#notempty)
+    - [notEmpty](#notempty)
     - [regexextract](./expressions/regexextract.md)
     - [replace](#replace)
-    - [rtrim](#rtrim)
+    - [rTrim](#rtrim)
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
     - [substring](./expressions/substring.md)
@@ -268,25 +268,25 @@ Syntax: `if(condition, output, ...)`
 
 Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
-### [isnull](./expressions/isnull.md)
+### [isNull](./expressions/isnull.md)
 
 Returns true if the column is null.
 
-Syntax: `isnull(column)`
+Syntax: `isNull(column)`
 
-Example: `isnull([Tax])` would return true if no value were present in the column for that row.
+Example: `isNull([Tax])` would return true if no value were present in the column for that row.
 
-Related: [notnull](#notnull), [isempty](#isempty)
+Related: [notNull](#notnull), [isEmpty](#isempty)
 
-### notnull
+### notNull
 
 Returns true if the column contains a value.
 
-Syntax: `notnull(column)`
+Syntax: `notNull(column)`
 
-Example: `notnull([Tax])` would return true if there is a value present in the column for that row.
+Example: `notNull([Tax])` would return true if there is a value present in the column for that row.
 
-Related: [isnull](#isnull), [notempty](#notempty)
+Related: [isNull](#isnull), [notEmpty](#notempty)
 
 ## Math functions
 
@@ -465,25 +465,25 @@ in(value1, value2, ...)
 
 Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
 
-### [isempty](./expressions/isempty.md)
+### [isEmpty](./expressions/isempty.md)
 
-Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
+Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isNull](#isnull) for non-string columns.
 
-Syntax: `isempty(column)`
+Syntax: `isEmpty(column)`
 
-Example: `isempty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
+Example: `isEmpty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
-Related: [notempty](#notempty), [isnull](#isnull)
+Related: [notEmpty](#notempty), [isNull](#isnull)
 
-### ltrim
+### lTrim
 
 Removes leading whitespace from a string of text.
 
-Syntax: `ltrim(text)`
+Syntax: `lTrim(text)`
 
-Example: `ltrim([Comment])`. If the comment were `" I'd prefer not to"`, `ltrim` would return `"I'd prefer not to"`.
+Example: `lTrim([Comment])`. If the comment were `" I'd prefer not to"`, `lTrim` would return `"I'd prefer not to"`.
 
-Related: [trim](#trim) and [rtrim](#rtrim).
+Related: [trim](#trim) and [rTrim](#rtrim).
 
 ### length
 
@@ -503,15 +503,15 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
-### notempty
+### notEmpty
 
-Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notnull](#notnull) on non-string columns.
+Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notNull](#notnull) on non-string columns.
 
-Syntax: `notempty(column)`
+Syntax: `notEmpty(column)`
 
-Example: `notempty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
+Example: `notEmpty([Feedback])` would return true if `Feedback` contains a value that isn't the empty string (`''`).
 
-Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
+Related: [isEmpty](#isempty), [isNull](#isnull), [notNull](#notnull)
 
 ### [regexextract](./expressions/regexextract.md)
 
@@ -535,15 +535,15 @@ Syntax: `replace(text, find, replace)`.
 
 Example: `replace([Title], "Enormous", "Gigantic")`.
 
-### rtrim
+### rTrim
 
 Removes trailing whitespace from a string of text.
 
-Syntax: `rtrim(text)`
+Syntax: `rTrim(text)`
 
-Example: `rtrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
+Example: `rTrim([Comment])`. If the comment were "Fear is the mindkiller. ", the expression would return "Fear is the mindkiller."
 
-Related: [trim](#trim) and [ltrim](#ltrim).
+Related: [trim](#trim) and [lTrim](#ltrim).
 
 ### startsWith
 
