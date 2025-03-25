@@ -240,7 +240,7 @@ describe("issue 53595", () => {
   });
 });
 
-describe("issue 55618", () => {
+describe("issues 55617, 55618", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -259,7 +259,7 @@ describe("issue 55618", () => {
     });
   });
 
-  it("should allow changing field's FK target mapping in table fields list view and table field detail view (metabase#55618)", () => {
+  it("should allow changing field's FK target mapping in table fields list view and table field detail view (metabase#55617, metabase#55618)", () => {
     cy.visit("/reference/databases");
     cy.wait("@getDatabases");
     cy.findByRole("link", { name: /Sample Database/ }).click();
@@ -269,6 +269,8 @@ describe("issue 55618", () => {
 
     cy.log("field list view");
     cy.button(/Edit/).should("be.visible").realClick();
+
+    cy.log("field list view - metabase#55618");
     cy.findAllByPlaceholderText("Select a target")
       .should("have.length", 2)
       .eq(0)
@@ -287,10 +289,21 @@ describe("issue 55618", () => {
       .eq(0)
       .should("have.value", "Reviews → ID");
 
-    cy.button("Cancel").click();
+    cy.log("field list view - metabase#55617");
+    cy.findAllByPlaceholderText("Select a semantic type")
+      .eq(6)
+      .should("have.value", "Discount")
+      .click();
+    H.popover().findByText("No semantic type").click();
+    cy.findAllByPlaceholderText("Select a semantic type")
+      .eq(6)
+      .should("have.value", "No semantic type");
 
     cy.log("field detail view");
+    cy.button("Cancel").click();
     cy.findByRole("link", { name: /User ID/ }).click();
+
+    cy.log("field detail view - metabase#55618");
     cy.button(/Edit/).should("be.visible").realClick();
     cy.findByPlaceholderText("Select a target")
       .should("have.value", "People → ID")
@@ -305,9 +318,19 @@ describe("issue 55618", () => {
       "have.value",
       "Reviews → ID",
     );
+
+    cy.log("field detail view - metabase#55617");
+    cy.findByPlaceholderText("Select a semantic type")
+      .should("have.value", "Foreign Key")
+      .click();
+    H.popover().findByText("No semantic type").click();
+    cy.findByPlaceholderText("Select a semantic type").should(
+      "have.value",
+      "No semantic type",
+    );
   });
 
-  it("should allow changing field's FK target mapping in segments field list view and segment field detail view (metabase#55618)", () => {
+  it("should allow changing field's FK target mapping in segments field list view and segment field detail view (metabase#55617, metabase#55618)", () => {
     cy.visit("/reference/segments");
     cy.wait("@getSegments");
     cy.findByRole("link", { name: /My segment/ }).click();
@@ -315,6 +338,8 @@ describe("issue 55618", () => {
 
     cy.log("field list view");
     cy.button(/Edit/).should("be.visible").realClick();
+
+    cy.log("field list view (metabase#55618)");
     cy.findAllByPlaceholderText("Select a target")
       .should("have.length", 2)
       .eq(0)
@@ -336,10 +361,21 @@ describe("issue 55618", () => {
       .eq(0)
       .should("have.value", "Reviews → ID");
 
-    cy.button("Cancel").click();
+    cy.log("field list view (metabase#55617)");
+    cy.findAllByPlaceholderText("Select a semantic type")
+      .eq(8)
+      .should("have.value", "Discount")
+      .click();
+    H.popover().findByText("No semantic type").click();
+    cy.findAllByPlaceholderText("Select a semantic type")
+      .eq(8)
+      .should("have.value", "No semantic type");
 
     cy.log("field detail view");
+    cy.button("Cancel").click();
     cy.findByRole("link", { name: /User ID/ }).click();
+
+    cy.log("field detail view (metabase#55618)");
     cy.button(/Edit/).should("be.visible").realClick();
     cy.findByPlaceholderText("Select a target")
       .should("have.value", "People → ID")
@@ -356,6 +392,16 @@ describe("issue 55618", () => {
     cy.findByPlaceholderText("Select a target").should(
       "have.value",
       "Reviews → ID",
+    );
+
+    cy.log("field detail view (metabase#55617)");
+    cy.findByPlaceholderText("Select a semantic type")
+      .should("have.value", "Foreign Key")
+      .click();
+    H.popover().findByText("No semantic type").click();
+    cy.findByPlaceholderText("Select a semantic type").should(
+      "have.value",
+      "No semantic type",
     );
   });
 });
