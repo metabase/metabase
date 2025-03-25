@@ -127,7 +127,7 @@ const mapStateToProps = (state: State) => {
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
-    isNavbarOpen: getIsNavbarOpen(state),
+    isNavbarOpen: false, // getIsNavbarOpen(state),
     isEditing: getIsEditing(state),
     isSharing: getIsSharing(state),
     dashboardBeforeEditing: getDashboardBeforeEditing(state),

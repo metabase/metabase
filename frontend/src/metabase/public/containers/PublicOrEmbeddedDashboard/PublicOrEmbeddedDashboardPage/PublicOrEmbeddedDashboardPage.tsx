@@ -1,5 +1,14 @@
 import type { WithRouterProps } from "react-router";
 
+import CS from "metabase/css/core/index.css";
+import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
+import { ParameterList } from "metabase/dashboard/components/Dashboard/components/ParameterList";
+import { Tabs } from "metabase/dashboard/components/Dashboard/components/Tabs";
+import {
+  FullscreenToggle,
+  NightModeToggleButton,
+} from "metabase/dashboard/components/DashboardHeader/buttons";
+import { DashboardContextProvider } from "metabase/dashboard/context";
 import {
   useDashboardUrlParams,
   useRefreshDashboard,
@@ -9,8 +18,8 @@ import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
 import { useSelector } from "metabase/lib/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { Box, Group, Stack } from "metabase/ui";
 
-import { PublicOrEmbeddedDashboard } from "../PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
@@ -41,7 +50,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     onRefreshPeriodChange,
     theme,
     titled,
-    locale,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
@@ -51,11 +59,11 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   return (
     <>
       <SetTitle title={dashboard?.name} />
-      <PublicOrEmbeddedDashboard
+
+      <DashboardContextProvider
         dashboardId={dashboardId}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
         isNightMode={isNightMode}
         hasNightModeToggle={hasNightModeToggle}
         setRefreshElapsedHook={setRefreshElapsedHook}
@@ -67,11 +75,20 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         downloadsEnabled={downloadsEnabled}
         theme={theme}
         titled={titled}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-        locale={canWhitelabel ? locale : undefined}
-        withFooter={true}
-      />
+      >
+        <Stack h="100vh" className={CS.overflowHidden}>
+          <Tabs />
+          <ParameterList />
+          <Box className={CS.overflowYScroll} flex={1}>
+            <Grid />
+          </Box>
+
+          <Group>
+            <FullscreenToggle />
+            <NightModeToggleButton />
+          </Group>
+        </Stack>
+      </DashboardContextProvider>
     </>
   );
 };
