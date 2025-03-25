@@ -836,7 +836,7 @@
                                  "LIMIT 100")})))
 
 (deftest ^:parallel integer-cast-table-fields
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
@@ -860,7 +860,7 @@
                 (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
@@ -890,7 +890,7 @@
                 (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
@@ -918,7 +918,7 @@
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
@@ -949,7 +949,7 @@
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
@@ -987,7 +987,7 @@
                     (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
 
 (deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table expressions] [[:people [{:expression [(lib/expression-clause :concat
@@ -1021,7 +1021,7 @@
               (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
 
 (deftest ^:parallel integer-cast-aggregations
-  (mt/test-driver :postgres
+  (mt/test-driver :mysql
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
         (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
