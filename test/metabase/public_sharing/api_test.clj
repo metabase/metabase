@@ -24,6 +24,7 @@
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [throttle.core :as throttle]
@@ -2034,10 +2035,10 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
                                           :public_uuid uuid}]
-          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%d/%d"
+          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%s/%s"
                                                     uuid
-                                                    (mt/id :people :latitude)
-                                                    (mt/id :people :longitude))))))))))
+                                                    (tiles.api-test/encoded-lat-field-ref)
+                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
 
 (deftest dashcard-tile-query-test
   (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
@@ -2047,12 +2048,12 @@
                        :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                                 :dashboard_id dashboard-id}]
-          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%d/%d"
+          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
                                                     uuid
                                                     dashcard-id
                                                     card-id
-                                                    (mt/id :people :latitude)
-                                                    (mt/id :people :longitude))))))))))
+                                                    (tiles.api-test/encoded-lat-field-ref)
+                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 
