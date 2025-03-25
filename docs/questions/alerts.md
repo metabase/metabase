@@ -29,7 +29,7 @@ To create an alert:
 2. Click on the sharing icon in the top-right of the screen.
 3. Select **Create an alert**.
 4. Select what you want to be alerted about. The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
-5. Select when you want Metabase to check the results. Metabase can check for results hourly, daily, or weekly.
+5. Select when you want Metabase to check the results. Metabase can check for results by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the venerable [cron syntax](https://en.wikipedia.org/wiki/Cron).
 6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md).
 
 You'll also have the option to only send the alert once. To test the alert, you can hit the **Send now** button. But just make sure that the question returns results. If the question doesn't return any results, Metabase won't send the alert.
@@ -73,7 +73,7 @@ If you need to edit or unsubscribe from the alert you set up, just click that sa
 Metabase will email you when:
 
 - You set up an alert
-- You’ve been unsubscribed from an alert
+- You've been unsubscribed from an alert
 - One of your alerts has stopped working
 - You unsubscribed from an alert
 - An admin added you to an alert
