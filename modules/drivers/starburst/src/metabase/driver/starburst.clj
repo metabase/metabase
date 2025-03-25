@@ -9,6 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -940,7 +941,10 @@
                   (update :kerberos str->bool)
                   (update :kerberos-delegation bool->str)
                   (assoc :SSL (:ssl details-map))
-                  (assoc :source "starburst Metabase 6.1.0")
+                  (assoc :source (format
+                                  "Metabase %s [%s]"
+                                  (:tag config/mb-version-info "")
+                                  config/local-process-uuid))
                   (cond-> (:impersonation details-map) (assoc :clientInfo "impersonate:true"))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
                   (dissoc (if (remove-role? details-map) :roles :test))
