@@ -8,6 +8,6 @@ import { getRoutes } from "./routes";
 PLUGIN_ADMIN_ROUTES.push(getRoutes);
 PLUGIN_ADMIN_NAV_ITEMS.push({
   name: t`Embedding`,
-  path: "admin/embedding",
+  path: "/admin/embedding",
   key: "embedding",
 });
