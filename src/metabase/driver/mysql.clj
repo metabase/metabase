@@ -377,7 +377,7 @@
 
 (defmethod sql.qp/->honeysql [:mysql :integer]
   [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
+  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
