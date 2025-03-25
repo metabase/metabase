@@ -100,13 +100,10 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const folderValidationRegex = /^(https|http):\/\/drive\.google\.com\/.+/;
-    const sheetValidationRegex =
-      /^(https|http):\/\/docs\.google\.com\/spreadsheets\/.+/;
+    const validationRegex = /(https|http)\:\/\/(drive|docs)\.google\.com\/.+/;
 
     if (
-      !folderValidationRegex.test(folderLink.trim()) &&
-      !sheetValidationRegex.test(folderLink.trim())
+      !validationRegex.test(folderLink.trim())
     ) {
       setErrorMessage(t`Invalid Google link`);
       return;
