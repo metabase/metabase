@@ -216,7 +216,7 @@ export const adjustTopLevelLiteral: CompilerPass = tree => {
     isNumberLiteral(tree) ||
     isBooleanLiteral(tree)
   ) {
-    return ["value", tree];
+    return ["value", tree, null];
   } else {
     return tree;
   }

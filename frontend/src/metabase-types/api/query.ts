@@ -394,7 +394,7 @@ export type CaseOrIfExpression =
   | [CaseOrIfOperator, [Expression, Expression][]]
   | [CaseOrIfOperator, [Expression, Expression][], CaseOptions];
 
-export type ValueExpression = ["value", Value, CallOptions];
+export type ValueExpression = ["value", Value, CallOptions | null];
 
 export type OffsetExpression = [
   "offset",
