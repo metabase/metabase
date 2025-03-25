@@ -255,7 +255,7 @@ function GoogleSheetsDisconnectModal({
           folderUrl={folderUrl ?? ""}
           userName={userName ?? ""}
         />
-        <Text>
+        <Text c="text-medium" pb="md">
           {reconnect
             ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
               t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
@@ -292,17 +292,16 @@ const DriveConnectionDisplay = ({
 }) => (
   <ExternalLink href={folderUrl} target="_blank" className={Styles.plainLink}>
     <Flex
-      mt="lg"
       bg="bg-light"
       w="100%"
-      gap="md"
+      gap="sm"
       p="md"
       style={{ borderRadius: "0.5rem" }}
     >
       <Icon name="google_drive" mt="xs" />
       <Box>
         <Text fw="bold">{t`Google Drive connected`}</Text>
-        <Text c="text-medium" fz="sm">
+        <Text c="text-medium" fz="sm" lh="140%">
           {t`Connected by ${userName}`}
         </Text>
       </Box>
