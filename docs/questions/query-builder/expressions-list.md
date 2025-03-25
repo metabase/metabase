@@ -419,11 +419,28 @@ Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
 > Only available for PostgreSQL.
 
-Converts an [ISO 8601 date string](https://www.iso.org/iso-8601-date-and-time-format.html) to a date.
+Converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format.
 
 Syntax: `date(value)`
 
-Example: `date("2025-03-20")`
+Example: `date("2025-03-20")` would return a date value so that you can use all the date features in the query builder: group by month, filter by previous 30 days, etc.
+
+ISO 8601 standard format:
+
+- Year (YYYY): 2025
+- Month (MM): 03
+- Day (DD): 25
+- Time separator (T)
+- Hours (HH): 14
+- Minutes (MM): 30
+- Seconds (SS): 45
+- UTC timezone indicator (Z)
+
+Valid ISO 8601 examples include:
+
+- Date only: `2025-03-25`
+- Date with time: `2025-03-25T14:30:45`
+- Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
 
 ### doesNotContain
 
