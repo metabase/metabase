@@ -16,7 +16,9 @@ import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
 import { metabotReducer, setVisible } from "./state";
 
-if (hasPremiumFeature("metabot_v3")) {
+if (true) {
+  console.log("IS METABOT_V3");
+
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;

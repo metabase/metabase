@@ -7,8 +7,10 @@ import {
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
+import { PLUGIN_REDUCERS } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
+import { metabotInitialState } from "metabase-enterprise/metabot/state";
 
 import { sdk } from "./reducer";
 import type { SdkStoreState } from "./types";
@@ -26,6 +28,9 @@ export const getSdkStore = () =>
     },
     app: {
       isDndAvailable: false,
+    },
+    plugins: {
+      metabotPlugin: metabotInitialState,
     },
   }) as unknown as Store<SdkStoreState, AnyAction>;
 

@@ -94,7 +94,7 @@ export const MetabaseProviderInternal = ({
   }, [store, pluginsConfig]);
 
   useEffect(() => {
-    store.dispatch(setEventHandlers(eventHandlers || null));
+  store.dispatch(setEventHandlers(eventHandlers || null));
   }, [store, eventHandlers]);
 
   useEffect(() => {

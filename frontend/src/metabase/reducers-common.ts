@@ -17,6 +17,8 @@ import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
+import { PLUGIN_REDUCERS } from "./plugins";
+
 export const commonReducers = {
   // global reducers
   app,
@@ -34,4 +36,5 @@ export const commonReducers = {
   dashboard,
   parameters: combineReducers(parameters),
   downloads,
+  plugins: combineReducers(PLUGIN_REDUCERS),
 };
