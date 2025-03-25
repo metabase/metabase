@@ -2,13 +2,15 @@ import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { Field } from "metabase-types/api";
 
 interface FieldSemanticType {
-  id: string;
+  id: NonNullable<Field["semantic_type"]>;
   name: string;
   section: string;
   description?: string;
   icon: IconName;
+  deprecated?: boolean;
 }
 
 export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
@@ -47,12 +49,14 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Comment`,
     section: t`Common`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.Description,
     name: t`Description`,
     section: t`Common`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.Title,
@@ -105,6 +109,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Cost`,
     section: t`Financial`,
     icon: "int",
+    deprecated: true,
   },
   {
     id: TYPE.Currency,
@@ -123,6 +128,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Gross margin`,
     section: t`Financial`,
     icon: "int",
+    deprecated: true,
   },
   {
     id: TYPE.Income,
@@ -135,6 +141,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Price`,
     section: t`Financial`,
     icon: "int",
+    deprecated: true,
   },
 
   /* Numeric */
@@ -155,6 +162,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Share`,
     section: t`Numeric`,
     icon: "int",
+    deprecated: true,
   },
   {
     id: TYPE.Percentage,
@@ -175,6 +183,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Company`,
     section: t`Profile`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.Email,
@@ -187,12 +196,14 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Owner`,
     section: t`Profile`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.Subscription,
     name: t`Subscription`,
     section: t`Profile`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.User,
@@ -207,18 +218,21 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Cancelation date`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.CancelationTime,
     name: t`Cancelation time`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.CancelationTimestamp,
     name: t`Cancelation timestamp`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.CreationDate,
@@ -243,36 +257,42 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Deletion date`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.DeletionTime,
     name: t`Deletion time`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.DeletionTimestamp,
     name: t`Deletion timestamp`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.UpdatedDate,
     name: t`Updated date`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.UpdatedTime,
     name: t`Updated time`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.UpdatedTimestamp,
     name: t`Updated timestamp`,
     section: t`Date and Time`,
     icon: "calendar",
+    deprecated: true,
   },
   {
     id: TYPE.JoinDate,
@@ -299,6 +319,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     name: t`Enum`,
     section: t`Categorical`,
     icon: "string",
+    deprecated: true,
   },
   {
     id: TYPE.Product,
@@ -340,28 +361,6 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
     section: t`Other`,
     icon: "string",
   },
-];
-
-export const DEPRECATED_FIELD_SEMANTIC_TYPES: FieldSemanticType["id"][] = [
-  TYPE.CancelationDate,
-  TYPE.CancelationTime,
-  TYPE.CancelationTimestamp,
-  TYPE.Comment,
-  TYPE.Company,
-  TYPE.Cost,
-  TYPE.DeletionDate,
-  TYPE.DeletionTime,
-  TYPE.DeletionTimestamp,
-  TYPE.Description,
-  TYPE.Enum,
-  TYPE.GrossMargin,
-  TYPE.Owner,
-  TYPE.Price,
-  TYPE.Share,
-  TYPE.Subscription,
-  TYPE.UpdatedDate,
-  TYPE.UpdatedTime,
-  TYPE.UpdatedTimestamp,
 ];
 
 export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(

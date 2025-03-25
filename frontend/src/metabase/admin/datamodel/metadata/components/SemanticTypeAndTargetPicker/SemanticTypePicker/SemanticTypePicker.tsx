@@ -2,22 +2,28 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  DEPRECATED_FIELD_SEMANTIC_TYPES,
-  FIELD_SEMANTIC_TYPES,
-} from "metabase/lib/core";
 import { Select } from "metabase/ui";
+import type { Field } from "metabase-types/api";
 
-const NULL_VALUE = "null";
+import { getCompatibleSemanticTypes } from "./utils";
+
+const NO_SEMANTIC_TYPE = null;
+const NO_SEMANTIC_TYPE_STRING = "null";
 
 interface Props {
   className?: string;
+  field: Field;
   value: string | null;
   onChange: (value: string | null) => void;
 }
 
-export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
-  const data = useMemo(() => getData(value), [value]);
+export const SemanticTypePicker = ({
+  className,
+  field,
+  value,
+  onChange,
+}: Props) => {
+  const data = useMemo(() => getData({ field, value }), [field, value]);
 
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
@@ -43,37 +49,29 @@ export const SemanticTypePicker = ({ className, value, onChange }: Props) => {
 };
 
 function parseValue(value: string): string | null {
-  return value === NULL_VALUE ? null : value;
+  return value === NO_SEMANTIC_TYPE_STRING ? NO_SEMANTIC_TYPE : value;
 }
 
 function stringifyValue(value: string | null): string {
-  return value === null ? NULL_VALUE : value;
+  return value === NO_SEMANTIC_TYPE ? NO_SEMANTIC_TYPE_STRING : value;
 }
 
-function getData(value: string | null) {
-  const options = [
-    ...FIELD_SEMANTIC_TYPES,
-    {
-      id: null,
-      name: t`No semantic type`,
-      section: t`Other`,
-      icon: "empty" as const,
-    },
-  ]
-    .filter(option => {
-      if (option.id === null) {
-        return true;
-      }
-      const isDeprecated = DEPRECATED_FIELD_SEMANTIC_TYPES.includes(option.id);
-      const isCurrentValue = option.id === value;
-      return !isDeprecated || isCurrentValue;
-    })
+function getData({ field, value }: Pick<Props, "field" | "value">) {
+  const options = getCompatibleSemanticTypes(field, value)
     .map(option => ({
       label: option.name,
       value: stringifyValue(option.id),
       section: option.section,
       icon: option.icon,
-    }));
+    }))
+    .concat([
+      {
+        label: t`No semantic type`,
+        value: stringifyValue(NO_SEMANTIC_TYPE),
+        section: t`Other`,
+        icon: "empty" as const,
+      },
+    ]);
 
   const data = Object.entries(_.groupBy(options, "section")).map(
     ([group, items]) => ({ group, items }),
