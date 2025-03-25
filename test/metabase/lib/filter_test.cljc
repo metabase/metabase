@@ -14,7 +14,8 @@
    [metabase.lib.test-util.matrix :as matrix]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.number :as u.number]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -753,10 +754,10 @@
 
 (deftest ^:parallel bigint-frontend-filter-display-names-test
   (let [id        (meta/field-metadata :orders :id)
-        pos-value "9223372036854775808"
-        neg-value "-9223372036854775809"
-        pos-clause (lib.options/ensure-uuid [:value {:base-type :type/BigInteger, :effective-type :type/BigInteger} pos-value])
-        neg-clause (lib.options/ensure-uuid [:value {:base-type :type/BigInteger, :effective-type :type/BigInteger} neg-value])]
+        pos-value  (u.number/bigint "9223372036854775808")
+        neg-value  (u.number/bigint "-9223372036854775809")
+        pos-clause (lib.expression/value pos-value)
+        neg-clause (lib.expression/value neg-value)]
     (check-display-names
      [{:clause [:= id pos-clause], :name (str "ID is " pos-value)}
       {:clause [:!= id pos-clause], :name (str "ID is not " pos-value)}
