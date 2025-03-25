@@ -231,6 +231,15 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar charts are enabled"
+  [cols viz-settings]
+  (let [column-settings (::mb.viz/column-settings viz-settings)]
+    (filter (fn [col]
+              (when-let [settings (get column-settings {::mb.viz/column-name (:name col)})]
+                (::mb.viz/show-mini-bar settings)))
+            cols)))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
@@ -243,18 +252,18 @@
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
+                                      (prep-for-html-rendering timezone-id card data)
+                                      filtered-cols
+                                      minibar-cols)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
-    {:attachments
-     nil
-
-     :content
-     table-body}))
+    {:content     table-body
+     :attachments nil}))
 
 (def ^:private default-date-styles
   {:year "YYYY"
