@@ -127,10 +127,6 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
-(defmethod serdes/hash-required-fields :model/Table
-  [_table]
-  [:schema :name :db_id])
-
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
