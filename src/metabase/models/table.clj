@@ -321,5 +321,6 @@
    :where        [:and
                   :active
                   [:= :visibility_type nil]
+                  [:= :db.router_database_id nil]
                   [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
