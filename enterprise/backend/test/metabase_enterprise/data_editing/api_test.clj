@@ -90,7 +90,8 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= {:rows-updated 2}
+            (is (= {:updated [{:id 1, :name "Pidgey", :song "Join us now and share the software"}
+                              {:id 2, :name "Speacolumn", :song "Hold music"}]}
                    (mt/user-http-request :crowberto :put 200 url
                                          {:rows [{:id 1 :song "Join us now and share the software"}
                                                  {:id 2 :name "Speacolumn"}]})))
