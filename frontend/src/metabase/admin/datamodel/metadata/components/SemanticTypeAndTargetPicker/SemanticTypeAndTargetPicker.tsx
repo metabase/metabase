@@ -63,6 +63,7 @@ const SemanticTypeAndTargetPicker = ({
     >
       <SemanticTypePicker
         className={className}
+        field={field.getPlainObject()}
         value={field.semantic_type}
         onChange={handleChangeSemanticType}
       />
