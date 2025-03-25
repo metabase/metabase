@@ -1264,7 +1264,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
 
-      cy.findAllByTestId("row-id-cell")
+      cy.findAllByTestId("detail-shortcut")
         .first()
         .findByRole("button", { hidden: true })
         .click({ force: true });
