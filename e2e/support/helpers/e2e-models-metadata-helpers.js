@@ -1,5 +1,9 @@
 import { interceptIfNotPreviouslyDefined, popover } from "e2e/support/helpers";
 
+export function datasetEditBar() {
+  return cy.findByTestId("dataset-edit-bar");
+}
+
 export function saveMetadataChanges() {
   interceptIfNotPreviouslyDefined({
     method: "POST",
