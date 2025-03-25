@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
+   [metabase.query-processor :as qp]
    [metabase.upload :as-alias upload]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
@@ -30,7 +31,26 @@
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
-  (perform-bulk-action! :bulk/update table-id rows))
+  (perform-bulk-action! :bulk/update table-id rows)
+  (if (empty? rows)
+    {:updated []}
+    (let [db-id          (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
+          pk-fields      (t2/select [:model/Field :id :name] :table_id table-id :semantic_type :type/PK)
+          key-match-expr (fn [row]
+                           (->> (for [{field-name :name, id :id} pk-fields]
+                                  [:= [:field id] (get row (keyword field-name))])
+                                (into [:and])))
+          ;; note there is no bound set on the number of clauses
+          ;; we are dependent on
+          ;; a. the optimiser doing something sensible re index scans
+          ;; b. there being no limits on the number of OR/AND clauses
+          ;; revisit this policy later
+          q-filter       (into [:or] (map key-match-expr) rows)
+          q              {:source-table table-id, :filter q-filter}
+          {:keys [data]} (qp/process-query {:database db-id, :type :query, :query q})
+          col-names      (mapv :name (:cols data))
+          updated        (mapv #(zipmap col-names %) (:rows data))]
+      {:updated updated})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
