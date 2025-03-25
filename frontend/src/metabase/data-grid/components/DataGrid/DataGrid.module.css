@@ -13,6 +13,7 @@
   height: 100%;
   overflow: auto;
   scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .headerContainer {

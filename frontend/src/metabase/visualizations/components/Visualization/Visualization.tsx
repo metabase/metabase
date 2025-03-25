@@ -444,10 +444,6 @@ class Visualization extends PureComponent<
   };
 
   handleVisualizationClick = (clicked?: ClickObject) => {
-    if (!clicked) {
-      return;
-    }
-
     const { handleVisualizationClick } = this.props;
 
     if (typeof handleVisualizationClick === "function") {

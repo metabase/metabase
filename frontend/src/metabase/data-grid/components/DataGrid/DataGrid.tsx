@@ -7,7 +7,7 @@ import {
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
@@ -20,6 +20,7 @@ import {
 } from "metabase/data-grid/constants";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
+import { getScrollableParent } from "metabase/data-grid/utils/scroll";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
@@ -67,6 +68,7 @@ export const DataGrid = function DataGrid<TData>({
   onAddColumnClick,
   onScroll,
 }: DataGridProps<TData>) {
+  const [isFocused, setIsFocused] = useState<boolean>(false);
   const {
     virtualColumns,
     virtualRows,
@@ -135,6 +137,27 @@ export const DataGrid = function DataGrid<TData>({
       ? "var(--mb-color-background)"
       : backgroundColor);
 
+  useEffect(() => {
+    const gridEl = gridRef.current;
+    if (!gridEl) {
+      return;
+    }
+    const scrollableParent = getScrollableParent(gridEl);
+
+    const handleWheel = (event: WheelEvent) => {
+      if (scrollableParent && !isFocused) {
+        event.preventDefault();
+        scrollableParent.scrollTop += event.deltaY;
+      }
+    };
+
+    gridEl.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      gridEl.removeEventListener("wheel", handleWheel);
+    };
+  }, [gridRef, isFocused]);
+
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
@@ -142,6 +165,9 @@ export const DataGrid = function DataGrid<TData>({
           className={cx(S.table, classNames?.root)}
           data-testid="table-root"
           data-rows-count={rowsCount}
+          tabIndex={0}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           style={{
             fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
             backgroundColor,
@@ -249,7 +275,6 @@ export const DataGrid = function DataGrid<TData>({
               className={cx(S.bodyContainer, classNames?.bodyContainer, {
                 [S.selectableBody]: selection.isEnabled,
               })}
-              tabIndex={0}
               onKeyDown={selection.handlers.handleCellsKeyDown}
               style={{
                 display: "grid",

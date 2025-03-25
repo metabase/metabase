@@ -129,6 +129,7 @@ function DashCardInner({
   reportAutoScrolledToDashcard,
   className,
 }: DashCardProps) {
+  const [isFocused, setIsFocused] = useState<boolean>(false);
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
@@ -307,6 +308,7 @@ function DashCardInner({
   return (
     <ErrorBoundary>
       <Box
+        tabIndex={0}
         data-testid="dashcard"
         data-dashcard-key={dashcard.id}
         className={cx(
