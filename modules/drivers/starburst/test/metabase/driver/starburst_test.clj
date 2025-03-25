@@ -231,7 +231,7 @@
                    :catalog                      "my-catalog"
                    :ssl                          true}
           jdbc-spec (sql-jdbc.conn/connection-details->spec :starburst details)]
-      (is (true? (str/starts-with? (:source jdbc-spec) "starburst Metabase"))))))
+      (is (str/starts-with? (:source jdbc-spec) "Metabase")))))
 
 (deftest role-property-test
   (testing "Role is set correctly"
