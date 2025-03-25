@@ -56,4 +56,13 @@ describe("getInitialStateForCardDataSource", () => {
       "card.title": "TablyMcTableface",
     });
   });
+
+  it("should pick the proper display if it is not supported by the visualizer", () => {
+    const initialState = getInitialStateForCardDataSource(dashCard.card, [
+      createMockColumn({ name: "Foo" }),
+      createMockColumn({ name: "Bar" }),
+    ]);
+
+    expect(initialState.display).toEqual("bar");
+  });
 });

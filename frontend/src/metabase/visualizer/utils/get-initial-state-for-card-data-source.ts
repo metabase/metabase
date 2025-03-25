@@ -12,6 +12,10 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
 } from "./column";
+import {
+  DEFAULT_VISUALIZER_DISPLAY,
+  isVisualizerSupportedVisualization,
+} from "./dashboard-card-supports-visualizer";
 import { createDataSource } from "./data-source";
 
 function pickColumnsFromTableToBarChart(
@@ -49,11 +53,14 @@ export function getInitialStateForCardDataSource(
   originalColumns: DatasetColumn[],
 ): VisualizerHistoryItem {
   const state: VisualizerHistoryItem = {
-    display: card.display,
+    display: isVisualizerSupportedVisualization(card.display)
+      ? card.display
+      : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
     settings: {},
   };
+
   const dataSource = createDataSource("card", card.id, card.name);
 
   // if the original card is a table, let's only use two columns

@@ -1,7 +1,9 @@
 import visualizations from "metabase/visualizations";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, VisualizationDisplay } from "metabase-types/api";
 
 import { isVisualizerDashboardCard } from "./is-visualizer-dashboard-card";
+
+export const DEFAULT_VISUALIZER_DISPLAY = "bar";
 
 export function dashboardCardSupportsVisualizer(dashcard: DashboardCard) {
   if (isVisualizerDashboardCard(dashcard)) {
@@ -10,10 +12,15 @@ export function dashboardCardSupportsVisualizer(dashcard: DashboardCard) {
     )?.supportsVisualizer;
   }
 
-  const display = dashcard.card.display;
-  if (display) {
-    return visualizations.get(display)!.supportsVisualizer;
+  return isVisualizerSupportedVisualization(dashcard.card.display);
+}
+
+export function isVisualizerSupportedVisualization(
+  display: VisualizationDisplay | null | undefined,
+) {
+  if (!display) {
+    return false;
   }
 
-  return false;
+  return visualizations.get(display)?.supportsVisualizer;
 }
