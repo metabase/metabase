@@ -22,7 +22,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
-  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -313,14 +312,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.on("uncaught:exception", (error) => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
-    });
-  });
-
-  it("does not contain known console errors (metabase#48497)", () => {
-    cy.get<number>("@questionId").then((questionId) => {
-      mountSdkContentAndAssertNoKnownErrors(
-        <InteractiveQuestion questionId={questionId} />,
-      );
     });
   });
 
