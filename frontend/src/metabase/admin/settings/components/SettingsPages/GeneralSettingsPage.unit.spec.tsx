@@ -7,12 +7,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
@@ -59,10 +54,10 @@ const setup = async () => {
   );
 
   renderWithProviders(
-    <div>
+    <>
       <GeneralSettingsPage />
       <UndoListing />
-    </div>,
+    </>,
   );
 
   await screen.findByText("Redirect to HTTPS");
@@ -115,30 +110,42 @@ describe("GeneralSettingsPage", () => {
   it("should update multiple settings", async () => {
     await setup();
 
-    const emailInput = await screen.findByDisplayValue("help@mysite.biz");
-    await userEvent.clear(emailInput);
-    await userEvent.type(emailInput, "support@mySite.biz");
-    await fireEvent.blur(emailInput);
-    await screen.findByDisplayValue("support@mySite.biz");
+    const blur = async () => {
+      const elementOutside = screen.getByText("Friendly Table and Field Names");
+      await userEvent.click(elementOutside); // blur
+    };
 
     const nameInput = await screen.findByDisplayValue("Metabased");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Metabasey");
-    await fireEvent.blur(nameInput);
+    blur();
     await screen.findByDisplayValue("Metabasey");
 
-    const [[emailPutUrl, emailPutDetails], [namePutUrl, namePutDetails]] =
-      await findPuts();
+    const emailInput = await screen.findByDisplayValue("help@mysite.biz");
+    await userEvent.clear(emailInput);
+    await userEvent.type(emailInput, "support@mySite.biz");
+    blur();
+    await screen.findByDisplayValue("support@mySite.biz");
 
-    // FIXME, this is calling put twice, but only one of them is expected
-    expect(emailPutUrl).toContain("/api/setting/admin-email");
-    expect(emailPutDetails).toEqual({ value: "support@mySite.biz" });
+    await waitFor(async () => {
+      const puts = await findPuts();
+      expect(puts).toHaveLength(2);
+    });
+
+    const puts = await findPuts();
+    const [namePutUrl, namePutDetails] = puts[0];
+    const [emailPutUrl, emailPutDetails] = puts[1];
 
     expect(namePutUrl).toContain("/api/setting/site-name");
     expect(namePutDetails).toEqual({ value: "Metabasey" });
 
-    const toasts = screen.getAllByRole("status");
-    expect(toasts).toHaveLength(2);
+    expect(emailPutUrl).toContain("/api/setting/admin-email");
+    expect(emailPutDetails).toEqual({ value: "support@mySite.biz" });
+
+    await waitFor(() => {
+      const toasts = screen.getAllByLabelText("check icon");
+      expect(toasts).toHaveLength(2);
+    });
   });
 });
 
