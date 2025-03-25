@@ -127,7 +127,6 @@ export const NativeQueryEditorSidebar = (
           isDirty={isResultDirty}
           onRun={runQuery}
           onCancel={cancelQuery}
-          compact
           getTooltip={getTooltip}
         />
       )}

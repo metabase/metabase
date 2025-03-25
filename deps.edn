@@ -162,8 +162,8 @@
   {:mvn/version "11.0.24"}            ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.25"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.polyglot/js-community         {:mvn/version "24.1.2" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.1.2"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/js-community         {:mvn/version "24.2.0" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.0"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.19.1"}             ; required by hickory
   org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
   {:mvn/version "4.26.0"              ; migration management (Java lib)
@@ -183,7 +183,7 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.13.0"}             ; HTTP abstraction
+  ring/ring-core                            {:mvn/version "1.13.1"}             ; HTTP abstraction
   ring/ring-jetty-adapter                   {:mvn/version "1.13.0"              ; Jetty adapter
                                              :exclusions [org.eclipse.jetty/jetty-server
                                                           org.eclipse.jetty.websocket/websocket-jetty-server]}
@@ -390,7 +390,7 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.52.1"}
+    cider/cider-nrepl                  {:mvn/version "0.53.0"}
     cider/piggieback                   {:mvn/version "0.6.0"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
@@ -795,7 +795,7 @@
   ;;
   ;;    clojure -M:liquibase dbDoc target/liquibase
   :liquibase
-  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.17"}}
+  {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.5.18"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
