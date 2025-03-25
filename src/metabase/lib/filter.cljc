@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
@@ -319,8 +320,13 @@
       :not       (i18n/tru "not {0}" expr))))
 
 (defmethod lib.metadata.calculation/display-name-method :value
-  [query stage-number [_value _opts expr] style]
-  (lib.metadata.calculation/display-name query stage-number expr style))
+  [query stage-number [_value {:keys [base-type]} expr] style]
+  (lib.metadata.calculation/display-name query
+                                         stage-number
+                                         (if (isa? base-type :type/BigInteger)
+                                           (u.number/parse-bigint expr)
+                                           expr)
+                                         style))
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
