@@ -1,5 +1,14 @@
 #! /usr/bin/env bash
 
+# We only want to run this every _other_ week, so we'll check the week number:
+WEEK_NUMBER=$(date +%U)
+if [ $((WEEK_NUMBER % 2)) -eq 1 ]; then
+  echo "Not Running the script because it is an odd week:" "$WEEK_NUMBER"
+  exit 0
+fi
+
+echo "Running the script because it's an even week:"  "$WEEK_NUMBER"
+
 # Script is adapted from https://github.com/nnichols/clojure-dependency-update-action/blob/master/dependency-check.sh
 
 # make sure we're in the root dir of the metabase repo

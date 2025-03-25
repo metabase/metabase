@@ -4,8 +4,10 @@ on:
   workflow_dispatch:
 
   schedule:
-    # weekly on Mondays
-    - cron: '00 0 * * 1'
+    # We bump deps every other Wednesday.
+    # Due to how POSIX cron works, it's difficult (impossible?) to run every other week, so:
+    # the script is responsible to make sure it runs every other week
+    - cron: '00 0 * * 3'
 
   push:
     branches:
