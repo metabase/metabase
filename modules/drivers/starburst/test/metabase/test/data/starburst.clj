@@ -134,7 +134,7 @@
 
 (defmethod sql.tx/create-table-sql :starburst
   [driver dbdef tabledef]
-  ;; Presto doesn't support NOT NULL columns
+  ;; Starburst doesn't support NOT NULL columns
   (let [tabledef (update tabledef :field-definitions (fn [field-defs]
                                                        (for [field-def field-defs]
                                                          (dissoc field-def :not-null?))))
