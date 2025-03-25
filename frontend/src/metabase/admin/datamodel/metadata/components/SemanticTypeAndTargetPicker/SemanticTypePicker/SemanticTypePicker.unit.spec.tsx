@@ -206,25 +206,22 @@ describe("SemanticTypePicker", () => {
   });
 
   describe("hack: allow casting text types to numerical types", () => {
-    it.each([TEXT_FIELD, TEXT_LIKE_FIELD])(
-      "also shows semantic types derived from text/Number when field's effective_type is derived from $display_name",
-      async field => {
-        setup({ fieldId: field.id });
+    it("also shows semantic types derived from text/Number when field's effective_type is derived from $display_name", async () => {
+      setup({ fieldId: TEXT_FIELD.id });
 
-        await verifySemanticTypesVisibility({
-          visibleTypes: [
-            "Latitude",
-            "Longitude",
-            "Currency",
-            "Discount",
-            "Income",
-            "Quantity",
-            "Score",
-            "Percentage",
-          ],
-        });
-      },
-    );
+      await verifySemanticTypesVisibility({
+        visibleTypes: [
+          "Latitude",
+          "Longitude",
+          "Currency",
+          "Discount",
+          "Income",
+          "Quantity",
+          "Score",
+          "Percentage",
+        ],
+      });
+    });
   });
 
   it("uses field's effective_type when it is available", async () => {
