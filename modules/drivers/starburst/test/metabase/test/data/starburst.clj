@@ -142,7 +142,7 @@
         sql      ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
     (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
 
-;; Presto doesn't support FKs, at least not adding them via DDL
+;; Starburst doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :starburst
   [_driver _dbdef _tabledef _fielddef]
   nil)
