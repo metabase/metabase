@@ -13,7 +13,11 @@ import { useAutoCloseMetabot } from "./useAutoCloseMetabot";
 const MIN_INPUT_HEIGHT = 42;
 const ANIMATION_DURATION_MS = 300;
 
-export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
+interface MetabotChatProps {
+  onClose: () => void;
+  onResult?: (result: Record<string, any>) => void;
+}
+export const MetabotChat = ({ onClose, onResult }: MetabotChatProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [input, setMessage] = useState("");
@@ -33,6 +37,9 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     resetInput();
     metabot
       .submitInput(trimmedInput)
+      .then(result => {
+        onResult?.(result);
+      })
       .catch(err => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };

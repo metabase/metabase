@@ -78,7 +78,7 @@ export const submitInput = createAsyncThunk(
       await dispatch(selectUserConfirmationOption(data.message));
     } else {
       dispatch(clearUserMessages());
-      await dispatch(sendMessageRequest(data));
+      return await dispatch(sendMessageRequest(data));
     }
   },
 );
