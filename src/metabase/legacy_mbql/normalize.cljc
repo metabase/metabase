@@ -221,11 +221,16 @@
   [[_ field value unit]]
   [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
 
+(defn- normalize-value-opts [opts]
+  (let [opts (normalize-tokens opts :ignore-path)]
+    (cond-> opts
+      (:base_type opts) (update :base_type keyword))))
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
   [[_ value info]]
-  [:value value info])
+  [:value value (normalize-value-opts info)])
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
