@@ -132,7 +132,7 @@ Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
 Only counts rows where the condition is true.
 
-Syntax: `CountIf(condition)`.
+Syntax: `CountIf(condition)`
 
 Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
 
@@ -140,15 +140,15 @@ Example: `CountIf([Subtotal] > 100)` would return the number of rows where the s
 
 The number of distinct values in this column.
 
-Syntax: `Distinct(column)`.
+Syntax: `Distinct(column)`
 
-`Distinct([Last Name])`. Returns the count of unique last names in the column. Duplicates (of the last name "Smith" for example) are not counted.
+Example: `Distinct([Last Name])`. Returns the count of unique last names in the column. Duplicates (of the last name "Smith" for example) are not counted.
 
 ### DistinctIf
 
 Returns the count of distinct values in a column where the condition is true.
 
-Syntax: `DistinctIf(column, condition)`.
+Syntax: `DistinctIf(column, condition)`
 
 Example: `DistinctIf([ID], [Category] = "Gizmo")` would return the count of unique IDs where the `Category` column is "Gizmo".
 
@@ -156,7 +156,7 @@ Example: `DistinctIf([ID], [Category] = "Gizmo")` would return the count of uniq
 
 Returns the largest value found in the column.
 
-Syntax: `Max(column)`.
+Syntax: `Max(column)`
 
 Example: `Max([Age])` would return the oldest age found across all values in the `Age` column.
 
@@ -166,7 +166,7 @@ Related: [Min](#min), [Average](#average), [Median](#median).
 
 Returns the median value of the specified column.
 
-Syntax: `Median(column)`.
+Syntax: `Median(column)`
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
@@ -178,7 +178,7 @@ Related: [Min](#min), [Max](#max), [Average](#average).
 
 Returns the smallest value found in the column.
 
-Syntax: `Min(column)`.
+Syntax: `Min(column)`
 
 Example: `Min([Salary])` would find the lowest salary among all salaries in the `Salary` column.
 
@@ -224,7 +224,7 @@ Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
 Sums up the specified column only for rows where the condition is true.
 
-Syntax: `SumIf(column, condition)`.
+Syntax: `SumIf(column, condition)`
 
 Example:`SumIf([Subtotal], [Order Status] = "Valid")` would add up all the subtotals for orders with a status of "Valid".
 
@@ -318,7 +318,7 @@ Example: `abs([Debt])`. If `Debt` were -100, `abs(-100)` would return `100`.
 
 Rounds a decimal up (ceil as in ceiling).
 
-Syntax: `ceil(column)`.
+Syntax: `ceil(column)`
 
 Example: `ceil([Price])`. `ceil(2.99)` would return 3.
 
@@ -328,7 +328,7 @@ Related: [floor](#floor), [round](#round).
 
 Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
-Syntax: `exp(column)`.
+Syntax: `exp(column)`
 
 Example: `exp([Interest Months])`
 
@@ -348,7 +348,7 @@ Related: [ceil](#ceil), [round](#round).
 
 Returns the base 10 log of the number.
 
-Syntax: `log(column)`.
+Syntax: `log(column)`
 
 Example: `log([Value])`.
 
@@ -356,7 +356,7 @@ Example: `log([Value])`.
 
 Raises a number to the power of the exponent value.
 
-Syntax: `power(column, exponent)`.
+Syntax: `power(column, exponent)`
 
 Example: `power([Length], 2)`. If the length were `3`, the expression would return `9` (3 to the second power is 3\*3).
 
@@ -368,7 +368,7 @@ Related: [exp](#exp).
 
 Rounds a decimal number either up or down to the nearest integer value.
 
-Syntax: `round(column)`.
+Syntax: `round(column)`
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
 
@@ -378,7 +378,7 @@ Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expres
 
 Returns the square root of a value.
 
-Syntax: `sqrt(column)`.
+Syntax: `sqrt(column)`
 
 Example: `sqrt([Hypotenuse])`.
 
@@ -461,7 +461,7 @@ Related: [contains](#contains), [regexextract](#regexextract).
 
 Extracts the domain name from a URL or email.
 
-Syntax: `domain(urlOrEmail)`.
+Syntax: `domain(urlOrEmail)`
 
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
 
@@ -486,7 +486,7 @@ Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doe
 
 Extracts the host, which is the domain and the TLD, from a URL or email.
 
-Syntax: `host(urlOrEmail)`.
+Syntax: `host(urlOrEmail)`
 
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
 
@@ -548,7 +548,7 @@ Example: `length([Comment])`. If the `comment` were "wizard", `length` would ret
 
 Returns the string of text in all lower case.
 
-Syntax: `lower(text)`.
+Syntax: `lower(text)`
 
 Example: `lower([Status])`. If the `Status` were "QUIET", the expression would return "quiet".
 
@@ -568,7 +568,7 @@ Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
 Extracts the pathname from a URL.
 
-Syntax: `path(url)`.
+Syntax: `path(url)`
 
 Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
 
@@ -580,9 +580,9 @@ Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
 Extracts matching substrings according to a regular expression.
 
-Syntax: `regexextract(text, regular_expression)`.
+Syntax: `regexextract(text, regular_expression)`
 
-Example: `regexextract([Address], "[0-9]+")`.
+Example: `regexextract([Address], "[0-9]+")`
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
@@ -592,9 +592,9 @@ Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#
 
 Replaces all occurrences of a search text in the input text with the replacement text.
 
-Syntax: `replace(text, find, replace)`.
+Syntax: `replace(text, find, replace)`
 
-Example: `replace([Title], "Enormous", "Gigantic")`.
+Example: `replace([Title], "Enormous", "Gigantic")`
 
 ### splitPart
 
@@ -602,7 +602,7 @@ Example: `replace([Title], "Enormous", "Gigantic")`.
 
 Splits a string on a specified delimiter and returns the nth substring.
 
-Syntax: `splitPart(text, delimiter, position)`.
+Syntax: `splitPart(text, delimiter, position)`
 
 `text`: The column or text to return a portion of.
 
@@ -645,7 +645,7 @@ Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnot
 
 Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
 
-Syntax: `subdomain(url)`.
+Syntax: `subdomain(url)`
 
 Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
 
@@ -667,7 +667,7 @@ Related: [regexextract](#regexextract), [replace](#replace).
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
-Syntax: `text(value)`.
+Syntax: `text(value)`
 
 Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
 
@@ -683,9 +683,9 @@ Example: `trim([Comment])` will remove any whitespace characters on either side 
 
 Returns the text in all upper case.
 
-Syntax: upper(text).
+Syntax: `upper(text)`
 
-Example: upper([Status]). If status were “hyper”, upper("hyper") would return “HYPER”.
+Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
 Related: [lower](#lower).
 
@@ -697,7 +697,7 @@ Date functions manipulate, extract, or create date and time values.
 
 Shifts a date or timestamp value into a specified time zone.
 
-Syntax: `convertTimezone(column, target, source)`.
+Syntax: `convertTimezone(column, target, source)`
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
@@ -707,7 +707,7 @@ See the [database limitations](./expressions/converttimezone.md#limitations) for
 
 Adds some unit of time to a date or timestamp value.
 
-Syntax: `datetimeAdd(column, amount, unit)`.
+Syntax: `datetimeAdd(column, amount, unit)`
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
@@ -717,9 +717,9 @@ Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
-Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
+Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day")` will return the number of days between `d1` and `d2`.
 
-Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
+Syntax: `datetimeDiff(datetime1, datetime2, unit)`
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
@@ -729,7 +729,7 @@ See the [database limitations](./expressions/datetimediff.md#limitations) for `d
 
 Subtracts some unit of time from a date or timestamp value.
 
-Syntax: `datetimeSubtract(column, amount, unit)`.
+Syntax: `datetimeSubtract(column, amount, unit)`
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
@@ -741,7 +741,7 @@ Related: [between](#between), [datetimeAdd](#datetimeadd).
 
 Takes a datetime and returns the day of the month as an integer.
 
-Syntax: `day([datetime column])`.
+Syntax: `day([datetime column])`
 
 Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
@@ -749,7 +749,7 @@ Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
 
-Syntax: `dayName(dayNumber)`.
+Syntax: `dayName(dayNumber)`
 
 Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
 
@@ -759,7 +759,7 @@ Related: [quarterName](#quartername), [monthName](#monthname).
 
 Takes a datetime and returns the hour as an integer (0-23).
 
-Syntax: `hour([datetime column])`.
+Syntax: `hour([datetime column])`
 
 Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
@@ -767,9 +767,9 @@ Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
 Checks a date column's values to see if they're within the relative range.
 
-Syntax: `interval(column, number, text)`.
+Syntax: `interval(column, number, text)`
 
-Example: `interval([Created At], -1, "month")`.
+Example: `interval([Created At], -1, "month")`
 
 The `number` must be an integer. You cannot use a fractional value.
 
@@ -779,7 +779,7 @@ Related: [between](#between).
 
 Takes a datetime and returns the minute as an integer (0-59).
 
-Syntax: `minute([datetime column])`.
+Syntax: `minute([datetime column])`
 
 Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
@@ -787,7 +787,7 @@ Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
 Takes a datetime and returns the month number (1-12) as an integer.
 
-Syntax: `month([datetime column])`.
+Syntax: `month([datetime column])`
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
@@ -805,13 +805,13 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
 
-Syntax: `now`.
+Syntax: `now`
 
 ### quarter
 
 Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
 
-Syntax: `quarter([datetime column])`.
+Syntax: `quarter([datetime column])`
 
 Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
@@ -819,7 +819,7 @@ Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter
 
 Given the quarter number (1-4), returns a string like `Q1`.
 
-Syntax: `quarterName([Fiscal Quarter])`.
+Syntax: `quarterName([Fiscal Quarter])`
 
 Example: `quarterName(3)` would return `Q3`.
 
@@ -845,7 +845,7 @@ Related: [datetimeAdd](#datetimeadd), [datetimeSubtract](#datetimesubtract).
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
 
-Syntax: `second([datetime column])`.
+Syntax: `second([datetime column])`
 
 Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
@@ -853,7 +853,7 @@ Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
 Gets a time interval of specified length.
 
-Syntax: `timeSpan(number, text)`.
+Syntax: `timeSpan(number, text)`
 
 `number`: Period of interval, where negative values are back in time. The `number` must be an integer. You cannot use a fractional value.
 
@@ -865,7 +865,7 @@ Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 d
 
 Takes a datetime and returns the week as an integer.
 
-Syntax: `week(column, mode)`.
+Syntax: `week(column, mode)`
 
 Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`.
 
@@ -902,7 +902,7 @@ case(
 
 Takes a datetime and returns the year as an integer.
 
-Syntax: `year([datetime column])`.
+Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
@@ -916,9 +916,7 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The additive total of rows across a breakout.
 
-Syntax: `CumulativeCount`.
-
-Example: `CumulativeCount`.
+Syntax: `CumulativeCount`
 
 ### CumulativeSum
 
@@ -926,9 +924,9 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The rolling sum of a column across a breakout.
 
-Syntax: `CumulativeSum(column)`.
+Syntax: `CumulativeSum(column)`
 
-Example: `CumulativeSum([Subtotal])`.
+Example: `CumulativeSum([Subtotal])`
 
 Related: [Sum](#sum) and [SumIf](#sumif).
 
