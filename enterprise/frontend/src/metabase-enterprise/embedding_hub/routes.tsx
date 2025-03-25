@@ -11,7 +11,12 @@ import { AppShell, Container } from "@mantine/core";
 import { color } from "metabase/lib/colors";
 import { Icon, NavLink, Text, Title } from "metabase/ui";
 
-import { AppearancePage, OverviewPage, UserManagementPage } from "./pages";
+import {
+  AppearancePage,
+  InteractiveSettingsPage,
+  OverviewPage,
+  UserManagementPage,
+} from "./pages";
 
 function Sidebar() {
   return (
@@ -76,6 +81,7 @@ export const getRoutes = () => (
     <Route path="overview" component={OverviewPage} />
     <Route path="static" component={StaticEmbedding} />
     <Route path="interactive">
+      <Route path="settings" component={InteractiveSettingsPage} />
       <Route path="user-management" component={UserManagementPage} />
     </Route>
     <Route path="appearance" component={AppearancePage} />
