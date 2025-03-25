@@ -1,10 +1,11 @@
 (ns metabase-enterprise.database-routing.model
   (:require
-   [metabase.models.interface :as mi]
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
    [metabase.api.common :as api]
    [metabase.models.field :as field]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

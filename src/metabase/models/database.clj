@@ -519,6 +519,3 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
-
-(defn should-sync? [db]
-  (nil? (:router_database_id db)))
