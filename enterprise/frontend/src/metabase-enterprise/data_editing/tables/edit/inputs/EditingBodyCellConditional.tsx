@@ -1,3 +1,5 @@
+import { canEditField } from "../../../helpers";
+
 import { EditingBodyCellBasicInput } from "./EditingBodyCellBasicInput";
 import { EditingBodyCellCategorySelect } from "./EditingBodyCellCategorySelect";
 import { EditingBodyCellDatetime } from "./EditingBodyCellDatetime";
@@ -7,18 +9,35 @@ import type { EditingBodyPrimitiveProps } from "./types";
 export const EditingBodyCellConditional = (
   props: EditingBodyPrimitiveProps,
 ) => {
-  const { datasetColumn: column } = props;
+  const { datasetColumn: column, field, inputProps } = props;
+
+  const disabled = !canEditField(field);
+  const placeholder = field?.database_default
+    ? `<${field.database_default}>`
+    : field?.database_is_nullable
+      ? "<null>"
+      : undefined;
 
   if (
     column.semantic_type === "type/State" ||
     column.semantic_type === "type/Country" ||
     column.semantic_type === "type/Category"
   ) {
-    return <EditingBodyCellCategorySelect {...props} />;
+    return (
+      <EditingBodyCellCategorySelect
+        {...props}
+        inputProps={{ placeholder, disabled, ...inputProps }}
+      />
+    );
   }
 
   if (column.semantic_type === "type/FK") {
-    return <EditingBodyCellFKSelect {...props} />;
+    return (
+      <EditingBodyCellFKSelect
+        {...props}
+        inputProps={{ placeholder, disabled, ...inputProps }}
+      />
+    );
   }
 
   if (
@@ -26,8 +45,18 @@ export const EditingBodyCellConditional = (
     column.effective_type === "type/DateTime" ||
     column.effective_type === "type/DateTimeWithLocalTZ"
   ) {
-    return <EditingBodyCellDatetime {...props} />;
+    return (
+      <EditingBodyCellDatetime
+        {...props}
+        inputProps={{ placeholder, disabled, ...inputProps }}
+      />
+    );
   }
 
-  return <EditingBodyCellBasicInput {...props} />;
+  return (
+    <EditingBodyCellBasicInput
+      {...props}
+      inputProps={{ placeholder, disabled, ...inputProps }}
+    />
+  );
 };

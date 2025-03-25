@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -7,6 +7,7 @@ import {
   useGetDatabaseMetadataQuery,
   useGetTableDataQuery,
   useGetTableQuery,
+  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { GenericError } from "metabase/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
@@ -23,7 +24,7 @@ import { getRowCountMessage } from "metabase-lib/v1/queries/utils/row-count";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { RowValue } from "metabase-types/api";
 
-import type { UpdatedRowCellsHandlerParams } from "../types";
+import type { FieldWithMetadata, UpdatedRowCellsHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
@@ -58,6 +59,21 @@ export const EditTableDataContainer = ({
   const { data: table, isLoading: tableIdLoading } = useGetTableQuery({
     id: tableId,
   });
+  const { data: tableMetadata } = useGetTableQueryMetadataQuery({
+    id: tableId,
+  });
+
+  const tableFieldMetadataMap = useMemo(
+    () =>
+      tableMetadata?.fields?.reduce(
+        (acc, item) => ({
+          ...acc,
+          [item.name]: item as FieldWithMetadata,
+        }),
+        {} as Record<FieldWithMetadata["name"], FieldWithMetadata>,
+      ),
+    [tableMetadata],
+  );
 
   const {
     data: datasetData,
@@ -207,7 +223,7 @@ export const EditTableDataContainer = ({
     return null;
   }
 
-  if (!datasetData) {
+  if (!datasetData || !tableFieldMetadataMap) {
     // TODO: show error
     return null;
   }
@@ -227,6 +243,7 @@ export const EditTableDataContainer = ({
             <Box pos="relative" className={S.gridWrapper}>
               <EditTableDataGrid
                 data={datasetData}
+                fieldMetadataMap={tableFieldMetadataMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={handleModalOpenAndExpandedRow}
               />
@@ -266,6 +283,7 @@ export const EditTableDataContainer = ({
             : undefined
         }
         isLoading={isInserting}
+        fieldMetadataMap={tableFieldMetadataMap}
       />
     </>
   );

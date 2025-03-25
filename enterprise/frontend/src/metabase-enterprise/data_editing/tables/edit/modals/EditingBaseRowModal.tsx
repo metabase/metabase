@@ -14,7 +14,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import { canEditColumn } from "metabase-enterprise/data_editing/helpers";
 import type {
   DatasetColumn,
   RowValue,
@@ -22,7 +21,10 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { UpdatedRowCellsHandlerParams } from "../../types";
+import type {
+  FieldWithMetadata,
+  UpdatedRowCellsHandlerParams,
+} from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 
 import S from "./EditingBaseRowModal.module.css";
@@ -38,6 +40,7 @@ interface EditingBaseRowModalProps {
   currentRowIndex?: number;
   currentRowData?: RowValues;
   isLoading?: boolean;
+  fieldMetadataMap?: Record<FieldWithMetadata["name"], FieldWithMetadata>;
 }
 
 export function EditingBaseRowModal({
@@ -50,6 +53,7 @@ export function EditingBaseRowModal({
   currentRowIndex,
   currentRowData,
   isLoading,
+  fieldMetadataMap,
 }: EditingBaseRowModalProps) {
   const [newRowData, setNewRowData] = useState<Record<string, RowValue>>({});
   const isEditingMode = !!currentRowData;
@@ -112,32 +116,39 @@ export function EditingBaseRowModal({
           py="lg"
           className={cx(S.modalBody, { [S.modalBodyEditing]: isEditingMode })}
         >
-          {datasetColumns.map((column, index) => (
-            <Fragment key={column.id}>
-              <Icon
-                className={S.modalBodyColumn}
-                name={
-                  column.semantic_type
-                    ? FIELD_SEMANTIC_TYPES_MAP[column.semantic_type].icon
-                    : "string"
-                }
-              />
-              <Text className={S.modalBodyColumn}>{column.display_name}</Text>
-              <EditingBodyCellConditional
-                autoFocus={false}
-                datasetColumn={column}
-                initialValue={currentRowData ? currentRowData[index] : null}
-                onCancel={noop}
-                onSubmit={value => handleValueChange(column.name, value)}
-                inputProps={{
-                  disabled: !canEditColumn(column),
-                  // Temporarily use a placeholder and figure out how to deal with null and default values later
-                  placeholder:
-                    column.name in newRowData ? "<empty_string>" : "<default>",
-                }}
-              />
-            </Fragment>
-          ))}
+          {datasetColumns.map((column, index) => {
+            const field = fieldMetadataMap?.[column.name];
+            const isRequired = field?.database_required;
+
+            return (
+              <Fragment key={column.id}>
+                <Icon
+                  className={S.modalBodyColumn}
+                  name={
+                    column.semantic_type
+                      ? FIELD_SEMANTIC_TYPES_MAP[column.semantic_type].icon
+                      : "string"
+                  }
+                />
+                <Text className={S.modalBodyColumn}>
+                  {column.display_name}
+                  {isRequired && (
+                    <Text component="span" c="var(--mb-color-error)">
+                      {" *"}
+                    </Text>
+                  )}
+                </Text>
+                <EditingBodyCellConditional
+                  autoFocus={false}
+                  datasetColumn={column}
+                  field={field}
+                  initialValue={currentRowData ? currentRowData[index] : null}
+                  onCancel={noop}
+                  onSubmit={value => handleValueChange(column.name, value)}
+                />
+              </Fragment>
+            );
+          })}
         </Modal.Body>
         {!isEditingMode && (
           <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">

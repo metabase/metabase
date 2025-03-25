@@ -1,5 +1,7 @@
-import type { DatasetColumn } from "metabase-types/api";
+import type { FieldWithMetadata } from "./tables/types";
 
-export function canEditColumn(column: DatasetColumn) {
-  return column.semantic_type !== "type/PK";
+export function canEditField(field?: FieldWithMetadata) {
+  return (
+    field && field.semantic_type !== "type/PK" && !field.database_is_generated
+  );
 }
