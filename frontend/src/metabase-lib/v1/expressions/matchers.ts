@@ -50,7 +50,7 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 }
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number";
+  return typeof expr === "number" || typeof expr === "bigint";
 }
 
 export function isValue(expr: unknown) {
