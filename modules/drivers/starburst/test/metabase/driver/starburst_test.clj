@@ -336,9 +336,7 @@
         (is (= [["metabase"]]
                (mt/rows
                 (qp/process-query
-                 (mt/rows
-                  (qp/process-query
-                   (mt/native-query {:query "SELECT current_user"})))))))
+                 (mt/native-query {:query "SELECT current_user"})))))
 
         (let [details (assoc (:details (mt/db)) :impersonation true)]
           (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
@@ -358,9 +356,11 @@
                              :impersonation true)]
           (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
             (mt/with-db db
-              (is (thrown? Exception
-                           (qp/process-query
-                            (mt/native-query {:query "SELECT current_user"})))))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Access Denied: Cannot set role sysadmin"
+                   (qp/process-query
+                    (mt/native-query {:query "SELECT current_user"})))))))
 
         ;; With impersonation disabled the role is passed in the starburst query
         ;; This is expected to fail as the starburst container doesn't support roles
@@ -371,6 +371,8 @@
                              :impersonation false)]
           (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details details}]
             (mt/with-db db
-              (is (thrown? Exception
-                           (qp/process-query
-                            (mt/native-query {:query "SELECT current_user"})))))))))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Access Denied: Cannot set role sysadmin"
+                   (qp/process-query
+                    (mt/native-query {:query "SELECT current_user"})))))))))))
