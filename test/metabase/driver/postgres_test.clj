@@ -1713,7 +1713,7 @@
       (doseq [main-string main-strings
               delimiter delimiters
               index indexes]
-        (testing (str "split part")
+        (testing "split part"
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/expression "SPLITPART" (lib/expression-clause :split-part [main-string delimiter index] nil))
                           (lib/limit 100))
@@ -1963,7 +1963,7 @@
     (let [mp (mt/metadata-provider)]
       (doseq [[table exprs] [[:people [(fn [] (lib/concat "2010" "-" "10" "-" "02"))]]]
               ef exprs]
-        (testing (str "casting custom expression to date")
+        (testing "casting custom expression to date"
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [])
                           (lib/expression "CUSTOMEXPR" (ef))
@@ -2003,7 +2003,7 @@
   ([query db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ", "
                                  ;; need to do regex because some strings have 0 in front
-                                 (str (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'")
+                                 (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'"
                                  ", "
                                  (name uncasted-field) " "
                                  "FROM ( "

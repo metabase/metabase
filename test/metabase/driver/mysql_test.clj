@@ -824,7 +824,7 @@
   ([query db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ", "
                                  ;; need to do regex because some strings have 0 in front
-                                 (str (name uncasted-field) " REGEXP ('^0*' || " "CAST(" casted-field " AS " db-type ") || '$')")
+                                 (name uncasted-field) " REGEXP ('^0*' || " "CAST(" casted-field " AS " db-type ") || '$')"
                                  ", "
                                  (name uncasted-field) " "
                                  "FROM ( "
