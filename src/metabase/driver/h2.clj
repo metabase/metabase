@@ -259,9 +259,10 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+(defn- check-read-only-statements [{{:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query database query)]
+    (let [query-classification (classify-query (lib.metadata/database (qp.store/metadata-provider))
+                                               query)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
