@@ -417,7 +417,7 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (= base-type :type/*)
+    (= base-type :type/UUID)
     (try
       (-> (str value)
           java.util.UUID/fromString
@@ -741,18 +741,10 @@
 (defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
-    (let [base-type (get-in field [2 :base-type])
-          supports-toString? (-> (get-mongo-version) :semantic-version (driver.u/semantic-version-gte [8]))]
+    (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (cond (and (= :type/* base-type) supports-toString?)
-                                  {"$toString" (->rvalue field)}
-
-                                  (= :type/* base-type)
-                                  (throw (Exception. "String searching on UUIDs is only supported in Mongo v8.0+"))
-
-                                  :else
-                                  (->rvalue field))
+      {$regexMatch {"input" (->rvalue field)
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
