@@ -509,7 +509,7 @@
               [int str str]
               (mt/with-db (mt/db) (mt/run-mbql-query ipaddress_test {}))))))))
 
-(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
+#_(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
 
 #_(deftest clickhouse-simple-map-test
     (mt/test-driver :clickhouse
