@@ -17,17 +17,21 @@ export function UserManagementPage() {
     <>
       <Title>{t`User management`}</Title>
       <Card p="lg" mt="xl" withBorder>
-        <Title order={2}>{t`Strategy`}</Title>
-        <Text color={color("text-medium")}>{t`
+        <Group justify="space-between" align="top">
+          <Box maw={480}>
+            <Title order={2} mb="xs">{t`Strategy`}</Title>
+            <Text color={color("text-medium")}>{t`
           If users of your embeds are all part of the same org, single tenant is fine, otherwise you  can choose Multi tenant to manage resources easily for multiple organizations. Fix this copy Kyle, it sucks. Halp jeff.
           `}</Text>
-        <Select
-          defaultValue="single-tenant"
-          data={[
-            { value: "single-tenant", label: t`Single tenant` },
-            { value: "multi-tenant", label: t`Multi tenant` },
-          ]}
-        />
+          </Box>
+          <Select
+            defaultValue="single-tenant"
+            data={[
+              { value: "single-tenant", label: t`Single tenant` },
+              { value: "multi-tenant", label: t`Multi tenant` },
+            ]}
+          />
+        </Group>
       </Card>
       <Box mt="xl">
         <Title order={2}>{t`Multi tenant features`}</Title>
