@@ -41,8 +41,8 @@ interface DatabaseFormProviderCtx {
   onEngineChange: (engine: string | undefined) => void;
   autofocusFieldName: string | undefined;
   isHosted: boolean;
-  isAdvanced: boolean;
   isDirty: boolean;
+  config: DatabaseFormConfig;
   setIsDirty: (isDirty: boolean) => void;
   onCancel: (() => void) | undefined;
 }
@@ -119,11 +119,11 @@ export const DatabaseFormProvider = withRouter(
           engines,
           autofocusFieldName,
           isHosted,
-          isAdvanced,
           onEngineChange: handleEngineChange,
           onCancel,
           isDirty,
           setIsDirty,
+          config,
         })}
       </FormProvider>
     );
@@ -136,7 +136,6 @@ interface DatabaseFormBodyProps extends FormProps {
   engines: Record<string, Engine>;
   autofocusFieldName?: string;
   isHosted?: boolean;
-  isAdvanced?: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
@@ -149,7 +148,6 @@ export const DatabaseForm = ({
   engines,
   autofocusFieldName,
   isHosted = false,
-  isAdvanced = false,
   onEngineChange,
   setIsDirty,
   config = {},
@@ -157,7 +155,9 @@ export const DatabaseForm = ({
   ...props
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
+
   const engineFieldState = config.engine?.fieldState ?? "default";
+  const isAdvanced = !!config.isAdvanced;
 
   useEffect(() => {
     setIsDirty?.(dirty);

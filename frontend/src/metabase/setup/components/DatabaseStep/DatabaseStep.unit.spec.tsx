@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SetupStep } from "metabase/setup/types";
 import type { DatabaseData } from "metabase-types/api";
@@ -31,9 +33,13 @@ const setup = ({
     }),
   });
 
-  renderWithProviders(<DatabaseStep stepLabel={0} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="/" component={() => <DatabaseStep stepLabel={0} />} />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 };
 
 describe("DatabaseStep", () => {

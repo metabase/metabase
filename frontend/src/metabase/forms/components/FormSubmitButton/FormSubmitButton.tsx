@@ -14,6 +14,7 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   successLabel?: ReactNode;
   failedLabel?: ReactNode;
   onSuccess?: () => void;
+  form?: string;
 }
 
 export const FormSubmitButton = forwardRef(function FormSubmitButton(

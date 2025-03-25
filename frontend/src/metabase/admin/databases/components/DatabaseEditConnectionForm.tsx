@@ -1,6 +1,6 @@
 import { useFormikContext } from "formik";
 import { updateIn } from "icepick";
-import type { ComponentType } from "react";
+import { type ComponentType, useId } from "react";
 import { type Route, withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -17,12 +17,12 @@ import {
   FormFooter,
   type FormFooterProps,
 } from "metabase/core/components/FormFooter";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import {
   DatabaseForm,
   type DatabaseFormConfig,
   DatabaseFormProvider,
 } from "metabase/databases/components/DatabaseForm";
+import { FormSubmitButton } from "metabase/forms";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Text } from "metabase/ui";
@@ -63,6 +63,12 @@ export const DatabaseEditConnectionForm = withRouter(
     prepend?: JSX.Element;
   }) => {
     const dispatch = useDispatch();
+
+    /**
+     * This component allows for more complex layouts where the form submit button is outside
+     * of a <form> tag. This works if the id in <form id={id}> connects to <button type="submit" form={id} />.
+     */
+    const formId = `db_form_${useId()}`;
 
     /**
      * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -106,11 +112,12 @@ export const DatabaseEditConnectionForm = withRouter(
               <>
                 <div className={S.databaseFormBody}>
                   {prepend}
-                  <DatabaseForm {...props} />
+                  <DatabaseForm {...props} id={formId} />
                 </div>
                 <DatabaseFormFooter
                   onCancel={onCancel}
                   className={S.databaseFormFooter}
+                  form={formId}
                 />
                 <LeaveConfirmationModal
                   isEnabled={props.isDirty && !isCallbackScheduled}
@@ -126,17 +133,18 @@ export const DatabaseEditConnectionForm = withRouter(
 );
 
 interface DatabaseFormFooterProps extends FormFooterProps {
+  form: string;
   onCancel?: () => void;
 }
 
 export const DatabaseFormFooter = ({
   onCancel,
+  form,
   ...props
 }: DatabaseFormFooterProps) => {
   const { values, dirty } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
 
   return (
@@ -159,8 +167,9 @@ export const DatabaseFormFooter = ({
           <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
           <FormSubmitButton
             disabled={!dirty}
-            title={isNew ? t`Save` : t`Save changes`}
-            primary
+            label={isNew ? t`Save` : t`Save changes`}
+            variant="filled"
+            form={form}
           />
         </Flex>
       </Flex>
