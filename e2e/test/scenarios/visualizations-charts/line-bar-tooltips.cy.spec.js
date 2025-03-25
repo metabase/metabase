@@ -244,10 +244,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     };
     H.visitQuestionAdhoc(testQuestion);
 
-    // realHover is not stable, most of the times tooltip
-    // was shown and hidden instantly using realHover
-    // so we have to use right click instead to invoke tooltip
-    H.chartPathWithFillColor("#A989C5").eq(3).rightclick();
+    showTooltipForBarInSeries("#A989C5", 3);
     H.echartsTooltip()
       .findByText("155 – 160") // bottom row
       .scrollIntoView()
