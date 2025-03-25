@@ -58,10 +58,9 @@
 
 (defn- maybe-bigint->value-clause
   [value]
-  (let [number (when (string? value) (u.number/parse-bigint value))]
-    (if (some? number)
-      (lib.options/ensure-uuid [:value {:base-type :type/BigInteger :effective-type :type/BigInteger} (str number)])
-      value)))
+  (if-let [number (when (string? value) (u.number/parse-bigint value))]
+    (lib.options/ensure-uuid [:value {:base-type :type/BigInteger :effective-type :type/BigInteger} (str number)])
+    value))
 
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
