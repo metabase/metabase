@@ -1794,16 +1794,18 @@
       (mt/with-temp
         [:model/Dashboard               {dashboard-id :id}  {}]
         (let [table-id (mt/id :venues)
-              resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
-                                         {:tabs      [{:id   -1
-                                                       :name "New tab"}]
-                                          :dashcards [{:id               -1
-                                                       :size_x           1
-                                                       :size_y           1
-                                                       :col              3
-                                                       :row              3
-                                                       :dashboard_tab_id -1
-                                                       :visualization_settings {:table_id table-id}}]})]
+              dash-map {:tabs      [{:id   -1
+                                     :name "New tab"}]
+                        :dashcards [{:id                     -1
+                                     :size_x                 1
+                                     :size_y                 1
+                                     :col                    3
+                                     :row                    3
+                                     :dashboard_tab_id       -1
+                                     :visualization_settings {:table_id table-id}}]}
+              url      (format "dashboard/%d" dashboard-id)
+              resp     (mt/user-http-request :rasta :put 200 url dash-map)
+              card-id  (:card_id (first (:dashcards resp)))]
           (testing "the dashcard gets turned into something richer, that supports filtering."
             (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
                       :size_x                 1
@@ -1812,7 +1814,18 @@
                       :row                    3
                       :card_id                int?
                       :visualization_settings {:table_id table-id}}]
-                    (:dashcards resp)))))))))
+                    (:dashcards resp))))
+          (testing "if we save the dashboard again, we keep using the same card, and preserve its settings"
+            (t2/update! :model/Card card-id {:visualization_settings {:editable? true, :other_settings 42}})
+            (let [new-resp (mt/user-http-request :rasta :put 200 url (assoc-in dash-map [:dashcards 0 :card_id] card-id))]
+              (is (= card-id (:card_id (first (:dashcards new-resp))))))
+            (is (= 42 (:other_settings (:visualization_settings (t2/select-one :model/Card card-id))))))
+          (testing "if we the change which table we want to edit, we create a new card"
+            (let [new-resp (mt/user-http-request :rasta :put 200 url
+                                                 (update-in dash-map [:dashcards 0] assoc
+                                                            :card_id card-id
+                                                            :visualization_settings {:table_id (mt/id :products)}))]
+              (is (not= card-id (:card_id (first (:dashcards new-resp))))))))))))
 
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
