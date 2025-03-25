@@ -530,7 +530,9 @@ describe("issue 41381", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("be.visible");
+      cy.findByText("Standalone constants are not supported.").should(
+        "be.visible",
+      );
       cy.button("Done").should("be.disabled");
     });
   });
@@ -568,16 +570,13 @@ describe(
             "Scenario 1 - Make sure the simple mode filter is working correctly (metabase#40770)",
           );
           H.filter();
-
-          cy.findByRole("dialog").within(() => {
-            cy.findByPlaceholderText("Search by ID").type(id);
-            cy.button("Apply filters").click();
+          H.popover().within(() => {
+            cy.findAllByText("ID").should("have.length", 2).first().click();
+            cy.findByLabelText("Filter value").type(id).click();
+            cy.button("Add filter").click();
           });
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1 row",
-          );
+          H.runButtonOverlay().click();
+          H.assertQueryBuilderRowCount(1);
           removeFilter();
 
           cy.log(
@@ -2274,10 +2273,12 @@ describe("issue 48829", () => {
     H.queryBuilderHeader()
       .button(/Filter/)
       .click();
-    H.modal().within(() => {
+    H.popover().within(() => {
+      cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Apply filters").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
 
     H.queryBuilderHeader()
       .button(/Editor/)

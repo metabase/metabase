@@ -40,69 +40,7 @@ npm install jsonwebtoken --save
 Next, set up your endpoint: this example code for Node.js sets up an endpoint in an app, `/sso/metabase`, that creates a token using the shared secret to authenticate calls to Metabase.
 
 ```js
-const express = require("express");
-const cors = require("cors");
-const session = require("express-session");
-const jwt = require("jsonwebtoken");
-const fetch = require("node-fetch");
-
-// Replace this with your Metabase URL
-const METABASE_INSTANCE_URL = "YOUR_METABASE_URL_HERE";
-// Replace this with the JWT signing secret you generated when enabling
-// JWT SSO in your Metabase.
-const METABASE_JWT_SHARED_SECRET = "YOUR_SECRET_HERE";
-
-app.get("/sso/metabase", async (req, res) => {
-  // Usually, you would grab the user from the current session
-  // Here it's hardcoded for demonstration purposes
-  // Example:
-  // const { user } = req.session;
-  const user = {
-    email: "rene@example.com",
-    firstName: "Rene",
-    lastName: "Descartes",
-    group: "Customer",
-  };
-
-  if (!user) {
-    console.log("no user");
-    return res.status(401).json({
-      status: "error",
-      message: "not authenticated",
-    });
-  }
-
-  const token = jwt.sign(
-    {
-      email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
-      groups: [user.group],
-      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-    },
-    METABASE_JWT_SHARED_SECRET,
-  );
-  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-  console.log("Hitting MB SSO endpoint", ssoUrl);
-
-  try {
-    const response = await fetch(ssoUrl, { method: "GET" });
-    const session = await response.text();
-
-    console.log("Received session", session);
-    return res.status(200).set("Content-Type", "application/json").end(session);
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-        status: "error",
-        message: "authentication failed",
-        error: error.message,
-      });
-    }
-  }
-});
-
-const app = express();
+{% include_file "{{ dirname }}/snippets/authentication/express-server.ts" %}
 ```
 
 ### 3. Wire the SDK in your frontend to your new endpoint
@@ -110,10 +48,7 @@ const app = express();
 Update the SDK config in your frontend code to point your backend's authentication endpoint.
 
 ```js
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://your-metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "https://your-app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
-});
+{% include_file "{{ dirname }}/snippets/authentication/auth-config-base.tsx" snippet="example" %}
 ```
 
 (Optional) If you use headers instead of cookies to authenticate calls from your frontend to your backend, you'll need to use a [custom fetch function](#customizing-jwt-authentication).
@@ -123,35 +58,7 @@ const authConfig = defineMetabaseAuthConfig({
 You can add some middleware in your backend to handle cross-domain requests.
 
 ```js
-// Middleware
-
-// If your FE application is on a different domain from your BE, you need to enable CORS
-// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
-// to your FE application URL.
-//
-// Limitation: We currently only support setting one origin in Authorized Origins in Metabase for CORS.
-app.use(
-  cors({
-    credentials: true,
-  }),
-);
-
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false },
-  }),
-);
-
-app.use(express.json());
-
-// routes
-app.get("/sso/metabase", metabaseAuthHandler);
-app.listen(PORT, () => {
-  console.log(`API running at http://localhost:${PORT}`);
-});
+{% include_file "{{ dirname }}/snippets/authentication/express-server-cors.ts" snippet="example" %}
 ```
 
 ## Getting Metabase authentication status
@@ -161,15 +68,7 @@ You can query the Metabase authentication status using the `useMetabaseAuthStatu
 This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ```jsx
-const auth = useMetabaseAuthStatus();
-
-if (auth.status === "error") {
-  return <div>Failed to authenticate: {auth.error.message}</div>;
-}
-
-if (auth.status === "success") {
-  return <InteractiveQuestion questionId={110} />;
-}
+{% include_file "{{ dirname }}/snippets/authentication/get-auth-status.tsx" snippet="example" %}
 ```
 
 ## Customizing JWT authentication
@@ -177,20 +76,7 @@ if (auth.status === "success") {
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function with the `defineMetabaseAuthConfig` function:
 
 ```typescript
-// Pass this configuration to MetabaseProvider.
-// Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const authConfig = defineMetabaseAuthConfig({
-  fetchRequestToken: async url => {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${yourToken}` },
-    });
-
-    return await response.json();
-  },
-  metabaseInstanceUrl: "http://localhost:3000",
-  authProviderUri: "http://localhost:9090/sso/metabase",
-});
+{% include_file "{{ dirname }}/snippets/authentication/auth-config-jwt.tsx" snippet="example" %}
 ```
 
 ## Security warning: each end-user _must_ have their own Metabase account
@@ -214,21 +100,5 @@ First, create an [API key](../../people-and-groups/api-keys.md).
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
 ```typescript
-import {
-  MetabaseProvider,
-  defineMetabaseAuthConfig,
-} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://metabase.example.com",
-  apiKey: "YOUR_API_KEY",
-});
-
-export default function App() {
-  return (
-    <MetabaseProvider authConfig={authConfig} className="optional-class">
-      Hello World!
-    </MetabaseProvider>
-  )
-};
+{% include_file "{{ dirname }}/snippets/authentication/auth-config-api-key.tsx" %}
 ```

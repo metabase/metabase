@@ -543,20 +543,20 @@ describe("scenarios > visualizations > table column settings", () => {
       H.openReviewsTable();
       H.openColumnOptions("Body");
 
-      assertRowHeight(0, 36);
+      H.assertRowHeight(0, 36);
 
       H.popover().within(() => {
         cy.icon("gear").click();
         cy.findByText("Wrap text").click();
       });
 
-      assertRowHeight(0, 52);
+      H.assertRowHeight(0, 52);
 
       H.popover().within(() => {
         cy.findByText("Wrap text").click();
       });
 
-      assertRowHeight(0, 36);
+      H.assertRowHeight(0, 36);
     });
   });
 
@@ -859,11 +859,4 @@ const assertColumnEnabled = column => {
 
 const assertColumnHidden = column => {
   column.should("have.attr", "data-enabled", "false");
-};
-
-const assertRowHeight = (index, height) => {
-  H.tableInteractive()
-    .find(`[data-index=${index}]`)
-    .should("exist")
-    .should("have.css", "height", `${height}px`);
 };
