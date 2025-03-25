@@ -683,7 +683,7 @@
 
   enterprise/database-routing
   {:api #{metabase-enterprise.database-routing.core metabase-enterprise.database-routing.api}
-   :uses #{analytics api driver events models util premium-features}}
+   :uses #{api events lib models premium-features query-processor util}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
