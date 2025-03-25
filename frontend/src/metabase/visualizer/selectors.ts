@@ -36,8 +36,6 @@ type State = { visualizer: VisualizerState };
 
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 
-export const getCards = (state: State) => state.visualizer.cards;
-
 const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
 
 const getVisualizationColumns = (state: State) =>
@@ -47,6 +45,8 @@ const getVisualizerColumnValuesMapping = (state: State) =>
   getCurrentHistoryItem(state).columnValuesMapping;
 
 // Public selectors
+
+export const getCards = (state: State) => state.visualizer.cards;
 
 export function getVisualizationTitle(state: State) {
   const settings = getRawSettings(state);
@@ -92,6 +92,9 @@ export const getReferencedColumns = createSelector(
   mappings => extractReferencedColumns(mappings),
 );
 
+/**
+ * Returns a list of data sources that are used in the current visualization.
+ */
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
@@ -186,6 +189,28 @@ export const getVisualizerComputedSettings = createSelector(
   [getVisualizerTransformedSeries],
   (series): ComputedVisualizationSettings =>
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
+);
+
+export const getVisualizerPrimaryColumn = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerComputedSettings,
+    getVisualizerDatasetColumns,
+  ],
+  (display, settings, columns) => {
+    if (!display) {
+      return null;
+    }
+
+    if (isCartesianChart(display)) {
+      const dimensionName = settings["graph.dimensions"]?.[0];
+      if (dimensionName) {
+        return columns.find(column => column.name === dimensionName);
+      }
+    }
+
+    return null;
+  },
 );
 
 export const getTabularPreviewSeries = createSelector(
