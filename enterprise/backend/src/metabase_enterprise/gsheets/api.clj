@@ -185,6 +185,9 @@
     (re-matches #"^(https|http)://docs.google.com/spreadsheets/.*" url)
     "google_spreadsheet"
 
+    (re-matches #"^(https|http)://drive.google.com/file/.*" url)
+    "google_spreadsheet"
+
     (re-matches #"^(https|http)://drive.google.com/drive/.*" url)
     "gdrive"
 
