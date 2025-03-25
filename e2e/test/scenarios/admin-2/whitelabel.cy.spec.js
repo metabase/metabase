@@ -22,7 +22,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     H.setTokenFeatures("all");
   });
 
-  it("smoke UI test", { tags: "@smoke" }, () => {
+  it("smoke UI test", () => {
     cy.log("Should show all whitelabel options with the feature enabled");
     cy.visit("/admin/settings/whitelabel");
 
