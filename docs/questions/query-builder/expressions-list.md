@@ -419,7 +419,7 @@ Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
 
 > Only available for PostgreSQL.
 
-Converts an ISO 8601 date string to a date.
+Converts an [ISO 8601 date string](https://www.iso.org/iso-8601-date-and-time-format.html) to a date.
 
 Syntax: `date(value)`
 
@@ -661,6 +661,16 @@ Removes leading and trailing whitespace from a string of text.
 Syntax: `trim(text)`
 
 Example: `trim([Comment])` will remove any whitespace characters on either side of a comment.
+
+### upper
+
+Returns the text in all upper case.
+
+Syntax: upper(text).
+
+Example: upper([Status]). If status were “hyper”, upper("hyper") would return “HYPER”.
+
+Related: [lower](#lower).
 
 ## Date functions
 
