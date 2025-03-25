@@ -223,10 +223,9 @@
 
 (defn- normalize-value-opts
   [opts]
-  (let [opts (normalize-tokens opts :ignore-path)]
-    (cond-> opts
-      ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-      (:base_type opts) (update :base_type keyword))))
+  (cond-> opts
+    ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
+    (:base_type opts) (update :base_type keyword)))
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
