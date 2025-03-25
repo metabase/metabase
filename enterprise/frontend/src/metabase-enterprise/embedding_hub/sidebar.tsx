@@ -8,7 +8,7 @@ export function Sidebar() {
   return (
     <>
       <NavLink
-        variant="default"
+        variant="admin"
         label="Overview"
         component={Link}
         to="/admin/embedding/overview"
@@ -17,7 +17,7 @@ export function Sidebar() {
       />
       <Text size="sm" mt="lg" mb="sm">{t`Embedding types`}</Text>
       <NavLink
-        variant="default"
+        variant="admin"
         label="Static"
         component={Link}
         to="/admin/embedding/static"
@@ -25,12 +25,12 @@ export function Sidebar() {
         active={/^\/admin\/embedding\/static/.test(location.pathname)}
       />
       <NavLink
-        variant="default"
+        variant="admin"
         label="Interactive"
         leftSection={<Icon name="click" />}
       >
         <NavLink
-          variant="default"
+          variant="admin"
           label="Settings"
           component={Link}
           to="/admin/embedding/interactive/settings"
@@ -39,7 +39,7 @@ export function Sidebar() {
           )}
         />
         <NavLink
-          variant="default"
+          variant="admin"
           label="User management"
           component={Link}
           to="/admin/embedding/interactive/user-management"
@@ -51,7 +51,7 @@ export function Sidebar() {
       </NavLink>
       <Text size="sm" mt="lg" mb="sm">{t`Shared settings`}</Text>
       <NavLink
-        variant="default"
+        variant="admin"
         label="Appearance"
         component={Link}
         to="/admin/embedding/appearance"

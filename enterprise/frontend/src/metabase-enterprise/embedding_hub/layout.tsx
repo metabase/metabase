@@ -10,11 +10,12 @@ export function EmbeddingLayout({ children }: { children: React.ReactNode }) {
     <AppShell navbar={{ width: 300, breakpoint: "md" }} header={{ height: 66 }}>
       <AppShell.Navbar
         p="md"
+        bg={color("bg-light")}
         style={{ borderRight: `1px solid ${color("border")}` }}
       >
         <Sidebar />
       </AppShell.Navbar>
-      <AppShell.Main bg={color("bg-light")}>
+      <AppShell.Main>
         <Container>{children}</Container>
       </AppShell.Main>
     </AppShell>
