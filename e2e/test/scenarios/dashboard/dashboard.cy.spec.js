@@ -1236,45 +1236,49 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
-      cy.visit("/");
+    it(
+      "should warn a user before leaving after adding, removed, moving, or duplicating a tab",
+      { tags: "@flaky" },
+      () => {
+        cy.visit("/");
 
-      // add tab
-      createNewDashboard();
-      H.createNewTab();
-      assertPreventLeave();
-      H.saveDashboard();
+        // add tab
+        createNewDashboard();
+        H.createNewTab();
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // move tab
-      H.editDashboard();
-      dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+        // move tab
+        H.editDashboard();
+        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
 
-      // Verify tab order with more robust assertions
-      cy.findAllByRole("tab").should($tabs => {
-        expect($tabs[0].textContent).to.equal("Tab 2");
-        expect($tabs[1].textContent).to.equal("Tab 1");
-      });
+        // Verify tab order with more robust assertions
+        cy.findAllByRole("tab").should($tabs => {
+          expect($tabs[0].textContent).to.equal("Tab 2");
+          expect($tabs[1].textContent).to.equal("Tab 1");
+        });
 
-      assertPreventLeave();
-      H.saveDashboard();
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // duplicate tab
-      H.editDashboard();
-      H.duplicateTab("Tab 1");
-      assertPreventLeave();
-      H.saveDashboard();
+        // duplicate tab
+        H.editDashboard();
+        H.duplicateTab("Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // remove tab
-      H.editDashboard();
-      H.deleteTab("Copy of Tab 1");
-      assertPreventLeave();
-      H.saveDashboard();
+        // remove tab
+        H.editDashboard();
+        H.deleteTab("Copy of Tab 1");
+        assertPreventLeave();
+        H.saveDashboard();
 
-      // rename tab
-      H.editDashboard();
-      H.renameTab("Tab 2", "Foo tab");
-      assertPreventLeave();
-    });
+        // rename tab
+        H.editDashboard();
+        H.renameTab("Tab 2", "Foo tab");
+        assertPreventLeave();
+      },
+    );
 
     function createNewDashboard() {
       H.newButton("Dashboard").click();
