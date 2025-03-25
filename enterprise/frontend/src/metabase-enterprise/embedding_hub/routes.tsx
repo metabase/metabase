@@ -1,6 +1,8 @@
 import { IndexRedirect } from "react-router";
 import { t } from "ttag";
 
+// Needed for nice react router movement
+import Link from "metabase/core/components/Link";
 import { Route } from "metabase/hoc/Title";
 
 // HACK - For the real real we'd export these from metabase/ui
@@ -16,27 +18,35 @@ function Sidebar() {
     <>
       <NavLink
         label="Overview"
-        href="admin/embedding/overview"
+        component={Link}
+        to="/admin/embedding/overview"
         leftSection={<Icon name="star" />}
       />
       <Text size="sm" mt="lg" mb="sm">{t`Embedding types`}</Text>
       <NavLink
         label="Static"
-        href="admin/embedding/static"
+        component={Link}
+        to="/admin/embedding/static"
         leftSection={<Icon name="snippet" />}
       />
       <NavLink label="Interactive" leftSection={<Icon name="click" />}>
-        <NavLink label="Settings" href="admin/embedding/interactive/settings" />
+        <NavLink
+          label="Settings"
+          component={Link}
+          to="/admin/embedding/interactive/settings"
+        />
         <NavLink
           label="User management"
-          href="admin/embedding/interactive/user-management"
+          component={Link}
+          to="/admin/embedding/interactive/user-management"
         />
         <NavLink label="Frameworks" />
       </NavLink>
       <Text size="sm" mt="lg" mb="sm">{t`Shared settings`}</Text>
       <NavLink
         label="Appearance"
-        href="admin/embedding/appearance"
+        component={Link}
+        to="/admin/embedding/appearance"
         leftSection={<Icon name="palette" />}
       />
     </>
