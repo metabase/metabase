@@ -8,63 +8,66 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 ## Connection and Sync
 
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
 
-### Edit connection details
+## Edit connection details
 
-You can edit these settings at any time. Just remember to save your changes.
+You can edit these settings at any time (and remember to save your changes).
 
-#### Display name
+### Display name
 
 The display name for the database in the Metabase interface.
 
-#### Region
+### Region
 
 The AWS region where your database is hosted, for Amazon Athena. For example, you might enter `us-east-1`.
 
-#### Workgroup
+### Workgroup
 
 AWS workgroup. For example: `primary`. See [documentation on workgroups](https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html).
 
-#### S3 Staging directory
+### S3 Staging directory
 
 This S3 staging directory must be in the same region you specify above.
 
-#### Access key
+### Access key
 
 Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 If you're running Metabase on AWS and want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
 
-#### Secret Key
+See also our [notes on connecting to Athena](#notes-on-connecting-to-athena).
+
+### Secret Key
 
 Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
-#### Additional Athena connection string options
+### Additional Athena connection string options
 
-You can specify additional options via a string, e.g. `UseResultsetStreaming=0;LogLevel=6`.
+You can specify additional options via a string, e.g., `UseResultsetStreaming=0;LogLevel=6`.
 
-#### Include User ID and query hash in queries
+### Include User ID and query hash in queries
 
 This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs. Enable this feature if you need to track which users are running specific queries.
 
-#### Re-run queries for simple explorations
+### Re-run queries for simple explorations
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-#### Choose when syncs and scans happen
+### Choose when syncs and scans happen
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this option **ON** to make changes to the sync and scan settings. See [Syncing and scanning databases](../sync-scan.md).
 
-#### Database syncing
+### Database syncing
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
 - The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
 - The time to run the sync, in the timezone of the server where your Metabase app is running.
 
-#### Scanning for filter values
+### Scanning for filter values
 
 Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
 
@@ -74,7 +77,7 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
 - **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
-#### Periodically refingerprint tables
+### Periodically refingerprint tables
 
 > Periodic refingerprinting will increase the load on your database.
 
@@ -82,14 +85,7 @@ Turn this option **ON** to scan a sample of values every time Metabase runs a [s
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
-## Connecting to Athena
-
-To connect Metabase to Athena, you'll need to input your IAM credentials:
-
-- Access key
-- Secret Key
-
-Metabase will encrypt these credentials.
+## Notes on connecting to Athena
 
 If you use other AWS services, we recommend that you create a special AWS Service Account that only has the permissions required to run Athena, and input the IAM credentials from that account to connect Metabase to Athena.
 
