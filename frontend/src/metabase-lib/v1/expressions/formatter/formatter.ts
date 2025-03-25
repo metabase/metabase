@@ -336,7 +336,7 @@ function formatValue(path: AstPath<ValueExpression>, print: Print): Doc {
   if (
     typeof value === "string" &&
     typeof baseType === "string" &&
-    isa(baseType, "type/Number")
+    isa(baseType, "type/BigInteger")
   ) {
     const number = parseNumber(value);
     if (number != null) {
