@@ -28,7 +28,7 @@
     (let [url (table-url 1)]
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 url))
       (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :put 402 url))
-      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :delete 402 url)))))
+      (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 (str url "/delete"))))))
 
 (defn- create-test-table! [driver db table-name]
   (let [_     (driver/create-table! driver
@@ -132,7 +132,7 @@
                         (req user :put url {:rows [{:id 1 :song "Join us now and share the software"}]})
 
                         del-response
-                        (req user :delete url {:rows [{:id 1}]})]
+                        (req user :post (str url "/delete") {:rows [{:id 1}]})]
                     {:settings settings
                      :user     user
                      :responses {:create post-response
