@@ -497,8 +497,14 @@
    :search-terms [:name :description]
    :render-terms {:initial-sync-status true}})
 
-(defenterprise router-user-attribute
-  "OSS implementation. Returns the user attribute, if set, that will be used for the DB routing feature."
+(defenterprise hydrate-router-user-attribute
+  "OSS implementation. Hydrates router user attribute on the databases."
   metabase-enterprise.database-routing.model
-  [_db-id]
-  nil)
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_user_attribute nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+  "Batch hydrate `Tables` for the given `Database`."
+  [_model k databases]
+  (hydrate-router-user-attribute k databases))
