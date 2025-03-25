@@ -199,13 +199,17 @@ export function addColumnToCartesianChart(
     }
   }
 
+  if (!card) {
+    return;
+  }
+
+  const ownMetrics = state.settings["graph.metrics"] ?? [];
+  const ownDimensions = state.settings["graph.dimensions"] ?? [];
+
   if (
-    card &&
+    ownDimensions.length === 0 ||
     canCombineCard(state.display, state.columns, state.settings, card)
   ) {
-    const ownMetrics = state.settings["graph.metrics"] ?? [];
-    const ownDimensions = state.settings["graph.dimensions"] ?? [];
-
     const metrics = card.visualization_settings["graph.metrics"] ?? [];
     const dimensions = card.visualization_settings["graph.dimensions"] ?? [];
 
