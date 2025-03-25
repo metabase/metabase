@@ -378,22 +378,10 @@
                     (map second)
                     (map sort))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::expression-aggregation-literals]
-  [driver _feature database]
-  (and (driver/database-supports? driver :expressions database)
-       (driver/database-supports? driver :expression-aggregations database)))
-
-;; literal expressions in aggregations not yet supported for these drivers
-(doseq [driver [:mongo :oracle :redshift :sqlite :sqlserver :vertica]]
-  (defmethod driver/database-supports? [driver ::expression-aggregation-literals]
-    [_driver _feature _database]
-    false))
-
 (deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
   (testing "nested aggregated and filtered literal expression"
     ;; TODO Fix this test for H2 (QUE-726)
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature ::expression-aggregation-literals :nested-queries)
-                           :h2)
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations :expression-literals :nested-queries)
       (is (= [[2 true "Red Medicine" 1 8 16]
               [3 true "Red Medicine" 1 2 4]
               [4 true "Red Medicine" 1 2 4]]
@@ -430,7 +418,8 @@
 (deftest ^:parallel literal-expressions-inside-joined-aggregations-test
   (testing "joined and aggregated literal expression"
     (mt/test-drivers (mt/normal-drivers-with-feature
-                      ::expression-aggregation-literals
+                      :expression-aggregations
+                      :expression-literals
                       :left-join
                       :nested-queries)
       (is (= [[1 "Red Medicine" 3 0.33 1]

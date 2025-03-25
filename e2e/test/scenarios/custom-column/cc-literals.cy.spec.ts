@@ -1,6 +1,6 @@
 const { H } = cy;
 
-// TODO: QUE-774 restore test
+// TODO: QUE-726 restore test
 describe.skip("scenarios > custom column > literals", () => {
   beforeEach(() => {
     H.restore();
