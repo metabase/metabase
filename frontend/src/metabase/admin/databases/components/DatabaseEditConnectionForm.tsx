@@ -1,26 +1,38 @@
-import type { LocationDescriptorObject } from "history";
+import { useFormikContext } from "formik";
 import { updateIn } from "icepick";
-import { type ComponentType, useState } from "react";
+import type { ComponentType } from "react";
 import { type Route, withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useDocsUrl } from "metabase/common/hooks";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import {
+  FormFooter,
+  type FormFooterProps,
+} from "metabase/core/components/FormFooter";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import {
   DatabaseForm,
   type DatabaseFormConfig,
+  DatabaseFormProvider,
 } from "metabase/databases/components/DatabaseForm";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
-import { Text } from "metabase/ui";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import { Flex, Text } from "metabase/ui";
+import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
+
+import S from "./DatabaseEditConnectionForm.module.css";
 
 const makeDefaultSaveDbFn =
   (dispatch: Dispatch) =>
@@ -36,8 +48,8 @@ export const DatabaseEditConnectionForm = withRouter(
     onSubmitted,
     onCancel,
     route,
-    location,
     config,
+    prepend,
     ...props
   }: {
     database?: Partial<DatabaseData>;
@@ -47,16 +59,10 @@ export const DatabaseEditConnectionForm = withRouter(
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
     onCancel: () => void;
     route: Route;
-    location: LocationDescriptorObject;
-    autofocusFieldName?: string;
     config?: Omit<DatabaseFormConfig, "isAdvanced">;
+    prepend?: JSX.Element;
   }) => {
     const dispatch = useDispatch();
-
-    const [isDirty, setIsDirty] = useState(false);
-
-    const autofocusFieldName =
-      location.hash?.slice(1) || props.autofocusFieldName;
 
     /**
      * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -76,33 +82,91 @@ export const DatabaseEditConnectionForm = withRouter(
       }
     };
 
+    if (!isDbModifiable(database)) {
+      return (
+        <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>
+      );
+    }
+
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
-        <LoadingAndErrorWrapper loading={!database} error={initializeError}>
-          {isDbModifiable({
-            id: database?.id,
-            is_attached_dwh: isAttachedDWH,
-          }) ? (
-            <DatabaseForm
-              initialValues={database}
-              autofocusFieldName={autofocusFieldName}
-              config={{ isAdvanced: true, ...config }}
-              onCancel={onCancel}
-              onSubmit={handleSubmit}
-              setIsDirty={setIsDirty}
-            />
-          ) : (
-            <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>
-          )}
+        <LoadingAndErrorWrapper
+          loading={!database}
+          error={initializeError}
+          noWrapper
+        >
+          <DatabaseFormProvider
+            initialValues={database}
+            config={{ isAdvanced: true, ...config }}
+            onCancel={onCancel}
+            onSubmit={handleSubmit}
+            {...props}
+          >
+            {(props) => (
+              <>
+                <div className={S.databaseFormBody}>
+                  {prepend}
+                  <DatabaseForm {...props} />
+                </div>
+                <DatabaseFormFooter
+                  onCancel={onCancel}
+                  className={S.databaseFormFooter}
+                />
+                <LeaveConfirmationModal
+                  isEnabled={props.isDirty && !isCallbackScheduled}
+                  route={route}
+                />
+              </>
+            )}
+          </DatabaseFormProvider>
         </LoadingAndErrorWrapper>
-        <LeaveConfirmationModal
-          isEnabled={isDirty && !isCallbackScheduled}
-          route={route}
-        />
       </ErrorBoundary>
     );
   },
 );
+
+interface DatabaseFormFooterProps extends FormFooterProps {
+  onCancel?: () => void;
+}
+
+export const DatabaseFormFooter = ({
+  onCancel,
+  ...props
+}: DatabaseFormFooterProps) => {
+  const { values, dirty } = useFormikContext<DatabaseData>();
+  const isNew = values.id == null;
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
+  const { url: docsUrl } = useDocsUrl("databases/connecting");
+
+  return (
+    <FormFooter data-testid="form-footer" {...props}>
+      <FormErrorMessage />
+      <Flex justify="space-between" align="center" w="100%">
+        {isNew ? (
+          <ExternalLink
+            key="link"
+            href={docsUrl}
+            style={{ fontWeight: 500, fontSize: ".875rem" }}
+          >
+            {t`Need help connecting?`}
+          </ExternalLink>
+        ) : (
+          <div />
+        )}
+
+        <Flex gap="sm">
+          <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            disabled={!dirty}
+            title={isNew ? t`Save` : t`Save changes`}
+            primary
+          />
+        </Flex>
+      </Flex>
+    </FormFooter>
+  );
+};
 
 export type DatabaseEditErrorType = {
   data: {

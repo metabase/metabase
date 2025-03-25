@@ -1,0 +1,8 @@
+.databaseFormBody {
+  overflow-y: scroll;
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl) 0;
+}
+
+.databaseFormFooter {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl) 0;
+}

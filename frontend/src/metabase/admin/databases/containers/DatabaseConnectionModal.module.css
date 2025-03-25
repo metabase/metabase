@@ -1,4 +1,4 @@
-.modalRoot {
+.modalContent {
   display: flex;
   flex-direction: column;
   overflow-y: hidden;
@@ -9,5 +9,8 @@
 }
 
 .modalBody {
-  overflow-y: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--mantine-spacing-lg);
 }
