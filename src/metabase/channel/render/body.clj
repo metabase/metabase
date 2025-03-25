@@ -519,6 +519,7 @@
                           comparison-statement]]
            :render/text (str value "\n"
                              delta-statement
+                             " "
                              comparison-statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
