@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupGsheetsGetFolderEndpoint,
+  setupGdriveGetFolderEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -12,7 +12,7 @@ import type { Settings } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { GsheetsSyncStatus } from "./GsheetsSyncStatus";
+import { GdriveSyncStatus } from "./GdriveSyncStatus";
 
 type GsheetsStatus = Settings["gsheets"]["status"];
 
@@ -20,7 +20,7 @@ function TestComponent() {
   const dispatch = useDispatch();
   return (
     <>
-      <GsheetsSyncStatus />
+      <GdriveSyncStatus />
       <button onClick={() => dispatch(reloadSettings())}>
         Test Settings Update
       </button>
@@ -52,8 +52,8 @@ const setup = ({
   setupSettingsEndpoints([]);
 
   errorCode
-    ? setupGsheetsGetFolderEndpoint({ errorCode })
-    : setupGsheetsGetFolderEndpoint({ status: folderStatus });
+    ? setupGdriveGetFolderEndpoint({ errorCode })
+    : setupGdriveGetFolderEndpoint({ status: folderStatus });
 
   return renderWithProviders(<TestComponent />, {
     storeInitialState: {

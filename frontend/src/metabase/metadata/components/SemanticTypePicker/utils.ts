@@ -9,7 +9,6 @@ export function getCompatibleSemanticTypes(
 ) {
   const fieldType = field.effective_type ?? field.base_type;
   const isFieldText = isa(fieldType, TYPE.Text);
-  const isFieldTextLike = isa(fieldType, TYPE.TextLike);
   const fieldLevelOneTypes = getLevelOneDataTypes().filter(levelOneType => {
     return isa(fieldType, levelOneType);
   });
@@ -39,7 +38,7 @@ export function getCompatibleSemanticTypes(
     }
 
     if (option.id === TYPE.Name) {
-      return isFieldText && !isFieldTextLike;
+      return isFieldText;
     }
 
     const isDerivedFromAnyLevelOneType = fieldLevelOneTypes.some(type => {
@@ -53,7 +52,7 @@ export function getCompatibleSemanticTypes(
      * If Field’s effective_type is derived from "type/Text" or "type/TextLike",
      * additionally show semantic types derived from "type/Number".
      */
-    if (isFieldText || isFieldTextLike) {
+    if (isFieldText) {
       return isDerivedFromAnyLevelOneType || isa(option.id, TYPE.Number);
     }
 
