@@ -32,21 +32,20 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
     }
 
     // first name and last name keys need to be present, so they can potentially be removed
-    const { data: newUser } = await updateUser({
+    const newUser = await updateUser({
       id: userId,
       first_name: null,
       last_name: null,
       ...newValues,
+    }).unwrap();
+
+    // for compatibility with code that relies on the entity framework
+    dispatch({
+      type: Users.actionTypes.UPDATE,
+      payload: { user: newUser },
     });
 
-    if (newUser != null) {
-      // for compatibility with code that relies on the entity framework
-      dispatch({
-        type: Users.actionTypes.UPDATE,
-        payload: { user: newUser },
-      });
-      onClose();
-    }
+    onClose();
   };
 
   return (
