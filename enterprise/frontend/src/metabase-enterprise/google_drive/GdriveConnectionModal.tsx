@@ -178,7 +178,11 @@ function GoogleSheetsConnectModal({
             disabled={isSavingFolderLink}
             value={folderLink}
             onChange={(e) => setFolderLink(e.target.value)}
-            placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
+            placeholder={
+              linkType === "folder"
+                ? "https://drive.google.com/drive/folders/abc123-xyz456"
+                : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
+            }
           />
           <Text size="sm" color="secondary">{c(
             "{0} is either a file or a folder",
