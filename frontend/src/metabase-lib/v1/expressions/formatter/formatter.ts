@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   BooleanLiteral,
   CallExpression,
@@ -332,7 +333,11 @@ function formatValue(path: AstPath<ValueExpression>, print: Print): Doc {
 
   const [_tag, value, options] = node;
   const baseType = options?.base_type;
-  if (typeof value === "string" && baseType === "type/BigInteger") {
+  if (
+    typeof value === "string" &&
+    typeof baseType === "string" &&
+    isa(baseType, "type/Number")
+  ) {
     const number = parseNumber(value);
     if (number != null) {
       return recurse(path, print, number);
