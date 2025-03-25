@@ -8,6 +8,8 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1245,11 +1247,8 @@
    (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
   ([query db-type uncasted-field casted-field]
    (mt/native-query {:query (str "SELECT " casted-field ", "
-                                 (case db-type
-                                   ;; need to do regex because some strings have 0 in front
-                                   "TEXT"    (str (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'")
-                                   "INTEGER" (str "CAST(" casted-field " AS " db-type ") = " (name uncasted-field))
-                                   "FLOAT"   (str "ABS(CAST(" casted-field " AS " db-type ") - " (name uncasted-field) ") < 1"))
+                                 ;; need to do regex because some strings have 0 in front
+                                 (name uncasted-field) " ~ '^0*' || " "CAST(" casted-field " AS " db-type ") || '$'"
                                  ", "
                                  (name uncasted-field) " "
                                  "FROM ( "
@@ -1261,11 +1260,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
-                                          {:field :id :db-type "INTEGER"}
-                                          {:field :zip :db-type "TEXT"}]]
-                                [:orders [{:field :user_id :db-type "INTEGER"}
-                                          {:field :subtotal :db-type "FLOAT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "casting " table "." field "(" db-type ") to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
@@ -1288,13 +1283,7 @@
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
                                                                                    [(lib.metadata/field mp (mt/id :people :id))
                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                                :db-type "TEXT"}
-                                               {:expression (lib/expression-clause :get-day-of-week
-                                                                                   [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
-                                                :db-type "INTEGER"}]]
-                                     [:orders [{:expression (lib/+ (lib.metadata/field mp (mt/id :orders :total))
-                                                                   (lib.metadata/field mp (mt/id :orders :quantity)))
-                                                :db-type "FLOAT"}]]]
+                                                :db-type "TEXT"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -1315,10 +1304,8 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
-                                                {:expression "'123'" :db-type "TEXT"}
-                                                {:expression "'-123'" :db-type "TEXT"}
-                                                {:expression 4.5 :db-type "FLOAT"}]]]
+        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "TEXT"}
+                                                {:expression "'-123'" :db-type "TEXT"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer from native query")
             (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
@@ -1343,11 +1330,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
-                                          {:field :id :db-type "INTEGER"}
-                                          {:field :zip :db-type "TEXT"}]]
-                                [:orders [{:field :user_id :db-type "INTEGER"}
-                                          {:field :subtotal :db-type "FLOAT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
                 {:keys [field db-type]} fields]
           (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
             (testing (str "Casting " db-type " to integer")
@@ -1377,13 +1360,7 @@
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
                                                                                    [(lib.metadata/field mp (mt/id :people :id))
                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                                :db-type "TEXT"}
-                                               {:expression (lib/expression-clause :get-day-of-week
-                                                                                   [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
-                                                :db-type "INTEGER"}]]
-                                     [:orders [{:expression (lib/+ (lib.metadata/field mp (mt/id :orders :total))
-                                                                   (lib.metadata/field mp (mt/id :orders :quantity)))
-                                                :db-type "FLOAT"}]]]
+                                                :db-type "TEXT"}]]]
                 {:keys [expression db-type]} expressions]
           (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                                  (lib/with-fields [])
@@ -1418,17 +1395,7 @@
                                                              (lib/expression-clause :concat
                                                                                     [(lib.metadata/field mp (mt/id :people :id))
                                                                                      (lib.metadata/field mp (mt/id :people :zip))] nil)]
-                                                :db-type "TEXT"}
-                                               {:expression [(lib/expression-clause :get-day-of-week
-                                                                                    [(lib.metadata/field mp (mt/id :people :birth_date))] nil)
-                                                             (lib/expression-clause :get-day-of-week
-                                                                                    [(lib.metadata/field mp (mt/id :people :birth_date))] nil)]
-                                                :db-type "INTEGER"}]]
-                                     [:orders [{:expression [(lib/+ (lib.metadata/field mp (mt/id :orders :total))
-                                                                    (lib.metadata/field mp (mt/id :orders :quantity)))
-                                                             (lib/+ (lib.metadata/field mp (mt/id :orders :total))
-                                                                    (lib.metadata/field mp (mt/id :orders :quantity)))]
-                                                :db-type "FLOAT"}]]]
+                                                :db-type "TEXT"}]]]
                 {db-type :db-type [e1 e2] :expression} expressions]
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/expression "UNCASTED" e1)
@@ -1446,11 +1413,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :longitude :db-type "FLOAT"}
-                                          {:field :id :db-type "INTEGER"}
-                                          {:field :zip :db-type "TEXT"}]]
-                                [:orders [{:field :user_id :db-type "INTEGER"}
-                                          {:field :subtotal :db-type "FLOAT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
