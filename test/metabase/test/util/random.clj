@@ -5,21 +5,25 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:dynamic *generator* (Random.))
+(defonce
+  ^{:dynamic true
+    :doc "Generator that could be rebound. Bind when you need to control the seed for exmaple."}
+  *generator*
+  (Random.))
 
 (defn rand
-  "wip"
+  "Reimplementation of [[clojure.core/rand]] using [[*generator*]]."
   ([]
    (.nextDouble ^Random *generator*))
   ([n]
    (* n (rand))))
 
 (defn rand-int
-  "wip"
+  "Reimplementation of [[clojure.core/rand-int]] using [[*generator*]]."
   [n]
   (int (rand n)))
 
 (defn rand-nth
-  "wip"
+  "Reimplementation of [[clojure.core/rand-nth]] using [[*generator*]]."
   [coll]
   (nth coll (rand-int (count coll))))
