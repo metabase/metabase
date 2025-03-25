@@ -29,12 +29,14 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/gsheets/folder",
         body: body,
       }),
+      invalidatesTags: ["gsheets-status"],
     }),
     deleteGsheetsFolderLink: builder.mutation<{ success: boolean }, void>({
       query: () => ({
         method: "DELETE",
         url: "/api/ee/gsheets/folder",
       }),
+      invalidatesTags: ["gsheets-status"],
     }),
     syncGsheetsFolder: builder.mutation<{ db_id: DatabaseId }, void>({
       query: () => ({
