@@ -145,7 +145,7 @@ describe("issue 15542", () => {
     cy.findByTestId("column-PRODUCT_ID").icon("gear").click();
   }
 
-  function select(name) {
+  function select(name: string) {
     return cy.findAllByTestId("select-button").contains(name);
   }
 
