@@ -158,7 +158,7 @@
             [:td {:style (style/style {:background-color "#E0ECF9" :border-radius "3px" :padding "0"})}
              [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height "10px"})}
               [:tr
-               [:td {:style (style/style {:width (format "%s%%" (dec pct-full)) :padding "0" :background-color "#509EE3" :border-radius "3px"})}]
+               [:td {:style (style/style {:width (format "%s%%" pct-full) :padding "0" :background-color "#509EE3" :border-radius "3px"})}]
                [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]]))
 
 (defn- render-table-body
