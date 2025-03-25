@@ -32,11 +32,11 @@ export function GdriveDbMenu() {
     showGdrive ? undefined : skipToken,
   );
 
-  if (!showGdrive || !isDwh || !folderInfo) {
+  if (!showGdrive || !isDwh) {
     return null;
   }
 
-  const { status } = folderInfo;
+  const status = folderInfo?.status || "not-connected";
 
   if (status === "not-connected") {
     return (
