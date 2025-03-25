@@ -100,10 +100,10 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const validationRegex = /(https|http)\:\/\/drive\.google\.com\/.+/;
+    const validationRegex = /(https|http)\:\/\/(drive|docs)\.google\.com\/.+/;
 
     if (!validationRegex.test(folderLink.trim())) {
-      setErrorMessage(t`Invalid Google Drive folder link`);
+      setErrorMessage(t`Invalid Google link`);
       return;
     }
 
@@ -176,7 +176,11 @@ function GoogleSheetsConnectModal({
             disabled={isSavingFolderLink}
             value={folderLink}
             onChange={e => setFolderLink(e.target.value)}
-            placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
+            placeholder={
+              linkType === "folder"
+                ? "https://drive.google.com/drive/folders/abc123-xyz456"
+                : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
+            }
           />
           <Text size="sm" color="secondary">{c(
             "{0} is either a file or a folder",
