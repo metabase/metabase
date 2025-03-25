@@ -1005,10 +1005,6 @@
         (map (partial ->honeysql driver))
         args))
 
-(defmethod ->honeysql [:sql :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (->honeysql driver value)))
-
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
 ;;
