@@ -1509,7 +1509,7 @@ describe("issue #55686", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type("not");
 
-    H.CustomExpressionEditor.completion("notin").should("be.visible");
+    H.CustomExpressionEditor.completion("notnull").should("be.visible");
     H.CustomExpressionEditor.completion("notempty").should("be.visible");
   });
 });
