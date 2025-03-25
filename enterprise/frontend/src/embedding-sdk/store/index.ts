@@ -2,6 +2,7 @@
 import type { AnyAction, Reducer, Store } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import {
   MetabaseReduxContext,
   useDispatch,
@@ -21,7 +22,9 @@ export const sdkReducers = {
 export const getSdkStore = () =>
   getStore(sdkReducers, null, {
     embed: {
-      options: {},
+      options: {
+        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
+      },
       isEmbeddingSdk: true,
     },
     app: {

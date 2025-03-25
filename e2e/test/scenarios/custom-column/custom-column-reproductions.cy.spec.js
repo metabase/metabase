@@ -332,13 +332,13 @@ describe("issue 18747", () => {
 
     addValueToParameterFilter();
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
     // check that the parameter value is parsed correctly on page load
     cy.reload();
     cy.get(".LoadingSpinner").should("not.exist");
 
-    cy.get(".CardVisualization tbody > tr").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 });
 
@@ -885,7 +885,7 @@ describe("issue 32032", () => {
   });
 });
 
-describe("issue 42949", () => {
+describe("issue 42949", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1115,7 +1115,7 @@ describe("issue 49882", () => {
     );
 
     H.popover()
-      .findByText("Expecting comma but got case instead")
+      .findByText("Expecting operator but got case instead")
       .should("be.visible", { timeout: 5000 });
   });
 

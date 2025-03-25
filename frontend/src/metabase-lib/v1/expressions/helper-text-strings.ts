@@ -1,14 +1,11 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import type {
-  HelpText,
-  HelpTextConfig,
-} from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Expression } from "metabase-types/api";
 
-import { adjustCaseOrIf } from "./recursive-parser";
+import { adjustCaseOrIf } from "./passes";
+import type { HelpText, HelpTextConfig } from "./types";
 
 const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
@@ -285,13 +282,53 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "text",
+    structure: "text",
+    category: "conversion",
+    description: () =>
+      t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The number or date to convert to text.`,
+        example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
+    name: "integer",
+    structure: "integer",
+    category: "conversion",
+    description: () => t`Converts a string to an integer.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string column to convert to integers.`,
+        example: ["dimension", "User ID"],
+      },
+    ],
+  },
+  {
+    name: "date",
+    structure: "date",
+    category: "conversion",
+    description: () => t`Converts an ISO 8601 date string to a date.`,
+    args: [
+      {
+        name: t`value`,
+        description: t`The string to convert to a date.`,
+        example: "2025-03-20",
+      },
+    ],
+  },
+  {
     name: "lower",
     structure: "lower",
     category: "string",
     description: () => t`Returns the string of text in all lower case.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column with values to convert to lower case.`,
         example: ["dimension", t`Status`],
       },
@@ -304,7 +341,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the text in all upper case.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column with values to convert to upper case.`,
         example: ["dimension", t`Status`],
       },
@@ -317,7 +354,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns a portion of the supplied text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to return a portion of.`,
         example: ["dimension", t`Title`],
       },
@@ -335,6 +372,30 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "substring",
   },
   {
+    name: "split-part",
+    category: "string",
+    structure: "splitPart",
+    description: () =>
+      t`Splits a string on a specified delimiter and returns the nth substring.`,
+    args: [
+      {
+        name: t`text`,
+        description: t`The column or text to return a portion of.`,
+        example: ["dimension", t`Title`],
+      },
+      {
+        name: t`delimiter`,
+        description: t`The pattern describing where each split should occur.`,
+        example: ",",
+      },
+      {
+        name: t`position`,
+        description: t`Which substring to return after the split. Index starts at position 1.`,
+        example: 1,
+      },
+    ],
+  },
+  {
     name: "regex-match-first",
     structure: "regexextract",
     category: "string",
@@ -342,7 +403,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Extracts matching substrings according to a regular expression.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to search through.`,
         example: ["dimension", t`Address`],
       },
@@ -379,13 +440,27 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     docsPage: "concat",
   },
   {
+    name: "path",
+    category: "string",
+    structure: "path",
+    description: () =>
+      t`Extracts the pathname from a URL. E.g., ${'path("https://www.example.com/path/to/page.html?key1=value)'} would return ${"/path/to/page.html"}.`,
+    args: [
+      {
+        name: t`url`,
+        description: t`A column containing URLs`,
+        example: ["dimension", t`URL`],
+      },
+    ],
+  },
+  {
     name: "replace",
     structure: "replace",
     category: "string",
     description: () => t`Replaces a part of the input text with new text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text to search through.`,
         example: ["dimension", t`Title`],
       },
@@ -408,7 +483,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Returns the number of characters in text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to get the length of.`,
         example: ["dimension", t`Comment`],
       },
@@ -422,7 +497,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       t`Removes leading and trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -435,7 +510,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes trailing whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -448,7 +523,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     description: () => t`Removes leading whitespace from a string of text.`,
     args: [
       {
-        name: t`text`,
+        name: t`value`,
         description: t`The column or text you want to trim.`,
         example: ["dimension", t`Comment`],
       },
@@ -826,7 +901,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: 7,
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
@@ -850,7 +925,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: "-1",
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "month",
       },
@@ -902,7 +977,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
         example: -30,
       },
       {
-        name: t`text`,
+        name: t`unit`,
         description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
         example: "day",
       },
