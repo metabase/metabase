@@ -97,6 +97,7 @@ export type ListUsersRequest = {
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
+  recipients?: boolean;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
