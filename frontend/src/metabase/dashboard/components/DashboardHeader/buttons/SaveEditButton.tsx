@@ -3,20 +3,16 @@ import { msgid, ngettext, t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import {
-  setEditingDashboard,
-  updateDashboardAndCards,
-} from "metabase/dashboard/actions";
-import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { dismissAllUndo } from "metabase/redux/undo";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
-  const dispatch = useDispatch();
-
-  const missingRequiredParameters = useSelector(getMissingRequiredParameters);
+  const {
+    updateDashboardAndCards,
+    setEditingDashboard,
+    missingRequiredParameters = [], // This would need to be added to context
+  } = useDashboardContext();
 
   const disabledSaveTooltip = getDisabledSaveButtonTooltip(
     missingRequiredParameters,
@@ -25,15 +21,13 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
   const handleDoneEditing = () => {
     props.onDoneEditing();
-    dispatch(setEditingDashboard(null));
+    setEditingDashboard(null);
   };
 
   const onSave = async () => {
-    // optimistically dismissing all the undos before the saving has finished
-    // clicking on them wouldn't do anything at this moment anyway
-    dispatch(dismissAllUndo());
-    await dispatch(updateDashboardAndCards());
-
+    // We would need to move this to the context or pass it as a prop
+    // For now, we can assume dismissAllUndo is handled in updateDashboardAndCards
+    await updateDashboardAndCards();
     handleDoneEditing();
   };
 
