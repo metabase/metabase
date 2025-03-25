@@ -338,10 +338,6 @@
       handle-uploads-enabled!
       infer-db-schedules))
 
-(defmethod serdes/hash-required-fields :model/Database
-  [_database]
-  [:name :engine])
-
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
