@@ -97,7 +97,7 @@
     ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 ;;; it seems to be significantly faster to load rows in batches of 500 in parallel than to try to load all the rows in
-;;; a few giant SQL statement. It seems like batch size = 5000 is a working limit here but
+;;; a few giant SQL statement. It seems like batch size = 500 is a working limit here but
 (defmethod load-data/do-insert! :starburst
   [driver ^Connection conn table-identifier rows]
   (dorun
