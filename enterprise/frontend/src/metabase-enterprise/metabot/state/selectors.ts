@@ -3,8 +3,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) => {
-  console.log("getMetabot", state);
-
   return state.plugins.metabotPlugin;
 };
 
