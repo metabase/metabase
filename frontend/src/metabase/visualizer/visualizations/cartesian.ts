@@ -155,14 +155,45 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+/**
+ * This adds a column to a cartesian chart, either as a dimension or a metric.
+ * It tries to be "smart", in the sense that it will add the column where it makes sense.
+ * If the column is already in use, it will not be added again.
+ */
 export function addColumnToCartesianChart(
   state: VisualizerHistoryItem,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
   card?: Card,
 ) {
-  if (!state.display || !["area", "bar", "line"].includes(state.display)) {
+  if (
+    !state.display ||
+    !["area", "bar", "line", "scatter"].includes(state.display)
+  ) {
     return;
+  }
+
+  if (state.display === "scatter") {
+    const metrics = state.settings["graph.metrics"] ?? [];
+    const dimensions = state.settings["graph.dimensions"] ?? [];
+    const bubble = state.settings["scatter.bubble"];
+
+    const couldBeMetric = getDefaultMetricFilter("scatter")(column);
+    const couldBeDimension = getDefaultDimensionFilter("scatter")(column);
+
+    if (metrics.length === 0 && couldBeMetric) {
+      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    } else if (dimensions.length === 0 && couldBeDimension) {
+      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    } else if (!bubble && couldBeMetric) {
+      replaceMetricColumnAsScatterBubbleSize(
+        state,
+        column,
+        columnRef,
+        dataSource,
+      );
+    }
   }
 
   if (
