@@ -581,6 +581,7 @@
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.upload-test/with-upload-table!                                               clojure.core/let
   metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
@@ -693,15 +694,16 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.gentest/with-gentest                                                                                        hooks.metabase.test.gentest/with-gentest
-   metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
-   metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
+   metabase.test.gentest/iterate                                                                                             hooks.metabase.test.gentest/iterate*
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
    metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
+   metabase.test.util.generators.jvm/with-random-cards                                                                       hooks.metabase.test.util.generators.jvm/with-random-cards
+   metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
    metabase.test/dataset                                                                                                     hooks.metabase.test.data/dataset
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
