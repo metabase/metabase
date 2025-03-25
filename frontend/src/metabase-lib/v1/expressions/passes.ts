@@ -210,6 +210,18 @@ function isBooleanField(input: unknown) {
   return false;
 }
 
+export const adjustBigIntLiteral: CompilerPass = tree =>
+  modify(tree, node => {
+    if (typeof node === "bigint") {
+      return withAST(
+        ["value", String(node), { base_type: "type/BigInteger" }],
+        node,
+      );
+    } else {
+      return node;
+    }
+  });
+
 export const adjustTopLevelLiteral: CompilerPass = tree => {
   if (
     isStringLiteral(tree) ||
@@ -260,6 +272,7 @@ const DEFAULT_PASSES = [
   adjustOffset,
   adjustCaseOrIf,
   adjustMultiArgOptions,
+  adjustBigIntLiteral,
   adjustTopLevelLiteral,
   adjustBooleans,
 ];

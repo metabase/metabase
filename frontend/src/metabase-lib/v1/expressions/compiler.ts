@@ -5,6 +5,7 @@ import type { Expression } from "metabase-types/api";
 import { type ExpressionError, renderError } from "./errors";
 import { resolverPass } from "./field-resolver";
 import {
+  adjustBigIntLiteral,
   adjustBooleans,
   adjustCaseOrIf,
   adjustMultiArgOptions,
@@ -52,6 +53,7 @@ export function compileExpression({
       adjustOffset,
       adjustCaseOrIf,
       adjustMultiArgOptions,
+      adjustBigIntLiteral,
       adjustTopLevelLiteral,
       shouldResolve &&
         resolverPass({

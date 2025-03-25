@@ -155,10 +155,8 @@ function compileNumber(node: Node): Expression {
   assert(node.type === NUMBER, "Invalid Node Type");
   assert(typeof node.token?.text === "string", "No token text");
   const number = parseNumber(node.token.text);
-  if (typeof number === "number") {
+  if (number != null) {
     return number;
-  } else if (typeof number === "bigint") {
-    return ["value", String(number), { base_type: "type/BigInteger" }];
   } else {
     throw new CompileError(t`Invalid number format`, {
       node,
