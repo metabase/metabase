@@ -737,7 +737,9 @@
        [:parameters {:optional true} ms/JSONString]]]
   (validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
-        parameters (json/decode+kw parameters)]
+        parameters (json/decode+kw parameters)
+        lat-field  (json/decode+kw lat-field)
+        lon-field  (json/decode+kw lon-field)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
@@ -756,7 +758,9 @@
        [:parameters {:optional true} ms/JSONString]]]
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
-        parameters   (json/decode+kw parameters)]
+        parameters   (json/decode+kw parameters)
+        lat-field    (json/decode+kw lat-field)
+        lon-field    (json/decode+kw lon-field)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
 

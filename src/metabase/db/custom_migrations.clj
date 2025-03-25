@@ -1242,7 +1242,8 @@
                                   :report_dashboardcard
                                   :dashboardcard_series
                                   :permissions_group
-                                  :data_permissions]]
+                                  :data_permissions
+                                  :dimension]]
                 (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
@@ -1284,7 +1285,8 @@
                               :parameter_card
                               :dashboard_tab
                               :dashboardcard_series
-                              :data_permissions]
+                              :data_permissions
+                              :dimension]
                   :let [query (cond-> {:select [:*] :from table-name}
                                 (= table-name :collection) (assoc :where [:and
                                                                           ;; exclude the analytics namespace
