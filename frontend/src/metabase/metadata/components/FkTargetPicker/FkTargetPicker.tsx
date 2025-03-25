@@ -109,14 +109,16 @@ export const FkTargetPicker = ({
 };
 
 function getData(comparableIdFields: Field[], includeSchema: boolean) {
-  return comparableIdFields.map(field => ({
-    field,
-    label: field.displayName({ includeTable: true, includeSchema }),
-    value:
-      typeof field.id === "object" && field.id != null
-        ? "" // we don't expect field references here, this should never happen
-        : stringifyValue(field.id),
-  }));
+  return comparableIdFields
+    .map(field => ({
+      field,
+      label: field.displayName({ includeTable: true, includeSchema }),
+      value:
+        typeof field.id === "object" && field.id != null
+          ? "" // we don't expect field references here, this should never happen
+          : stringifyValue(field.id),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function parseValue(value: string): FieldId | null {
