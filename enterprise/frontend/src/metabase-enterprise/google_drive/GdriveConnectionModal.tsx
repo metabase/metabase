@@ -1,17 +1,17 @@
 import { type FormEvent, useState } from "react";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useDispatch } from "metabase/lib/redux";
 import {
   Box,
   Button,
   Center,
   Flex,
   Modal,
+  SegmentedControl,
   Stack,
   Text,
   TextInput,
@@ -35,18 +35,10 @@ export function GdriveConnectionModal({
   reconnect: boolean;
 }) {
   const gSheetsSetting = useSetting("gsheets");
-  const userIsAdmin = useSelector(getUserIsAdmin);
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
 
-  const gSheetsEnabled = useSetting("show-google-sheets-integration");
-
-  if (
-    !gSheetsEnabled ||
-    !gSheetsSetting ||
-    !userIsAdmin ||
-    !serviceAccountEmail
-  ) {
+  if (!gSheetsSetting || !serviceAccountEmail) {
     return null;
   }
 
@@ -57,7 +49,7 @@ export function GdriveConnectionModal({
     (status === "not-connected" ? (
       <GoogleSheetsConnectModal
         onClose={onClose}
-        serviceAccountEmail={serviceAccountEmail ?? "email not found"}
+        serviceAccountEmail={serviceAccountEmail ?? t`email not found`}
         folderUrl={folder_url}
       />
     ) : (
@@ -67,18 +59,22 @@ export function GdriveConnectionModal({
 }
 
 const ModalWrapper = ({
+  title,
   children,
   onClose,
 }: {
+  title?: string;
   children: React.ReactNode;
   onClose: () => void;
 }) => (
-  <Modal opened onClose={onClose} size="lg">
-    <Flex px="lg" pb="lg" gap="md" direction="column">
+  <Modal opened onClose={onClose} padding="xl" title={title}>
+    <Flex gap="md" pt="lg" direction="column">
       {children}
     </Flex>
   </Modal>
 );
+
+type UploadType = "file" | "folder";
 
 function GoogleSheetsConnectModal({
   onClose,
@@ -92,6 +88,7 @@ function GoogleSheetsConnectModal({
   const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
   const [errorMessage, setErrorMessage] = useState("");
+  const [linkType, setLinkType] = useState<UploadType>("folder");
 
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
@@ -100,13 +97,10 @@ function GoogleSheetsConnectModal({
     event.preventDefault();
     setErrorMessage("");
 
-    const folderValidationRegex = /^(https|http):\/\/drive\.google\.com\/.+/;
-    const sheetValidationRegex =
-      /^(https|http):\/\/docs\.google\.com\/spreadsheets\/.+/;
+    const validationRegex = /(https|http)\:\/\/(drive|docs)\.google\.com\/.+/;
 
     if (
-      !folderValidationRegex.test(folderLink.trim()) &&
-      !sheetValidationRegex.test(folderLink.trim())
+      !validationRegex.test(folderLink.trim())
     ) {
       setErrorMessage(t`Invalid Google link`);
       return;
@@ -115,6 +109,7 @@ function GoogleSheetsConnectModal({
     trackSheetImportClick();
     await saveFolderLink({
       url: folderLink.trim(),
+      link_type: linkType,
     })
       .unwrap()
       .then(() => {
@@ -126,14 +121,24 @@ function GoogleSheetsConnectModal({
       });
   };
 
+  const linkTypeLabel = linkType === "file" ? t`file` : t`folder`;
+
   return (
-    <ModalWrapper onClose={onClose}>
-      <Text size="lg" fw="bold">
-        {
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only string
-          t`Share the Google Drive folder that contains your Google Sheets with Metabase`
+    <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
+      <SegmentedControl
+        fullWidth
+        autoContrast
+        color="brand"
+        c="var(--mb-color-text-white)"
+        value={linkType}
+        onChange={setLinkType}
+        data={
+          [
+            { value: "folder", label: t`Entire folder` },
+            { value: "file", label: t`Single Sheet` },
+          ] as { value: UploadType; label: string }[]
         }
-      </Text>
+      />
       <Flex
         bg="bg-light"
         style={{ borderRadius: "0.5rem" }}
@@ -143,40 +148,43 @@ function GoogleSheetsConnectModal({
       >
         <Box>
           <Text>
-            1. {t`In Google Drive, right-click on the folder → Share`}
+            1.{" "}
+            {t`In Google Drive, right-click on the ${linkTypeLabel} and click Share`}
           </Text>
         </Box>
         <Flex align="center" justify="space-between">
           <Text>
             2.{" "}
-            {jt`Enter: ${(<strong>{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+            {jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
         <Box>
           <Text>
             3.{" "}
-            {jt`Select ${(<strong>{t`Viewer`}</strong>)} permissions, and click on ${(<strong>{t`Send`}</strong>)}`}
+            {jt`Select ${(<strong key="bold">{t`Viewer`}</strong>)} permissions, and click on ${(<strong key="bold2">{t`Send`}</strong>)}`}
           </Text>
         </Box>
       </Flex>
       <form onSubmit={onSave}>
         <Box>
-          <Text
-            size="lg"
-            fw="bold"
-          >{t`Paste the sharing link for the folder`}</Text>
+          <Text size="lg" fw="bold">{c("{0} is either a file or a folder")
+            .t`Paste the sharing link for the ${linkTypeLabel}`}</Text>
           <TextInput
             my="sm"
             disabled={isSavingFolderLink}
             value={folderLink}
             onChange={e => setFolderLink(e.target.value)}
-            placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
+            placeholder={
+              linkType === "folder"
+                ? "https://drive.google.com/drive/folders/abc123-xyz456"
+                : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
+            }
           />
-          <Text
-            size="sm"
-            color="secondary"
-          >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
+          <Text size="sm" color="secondary">{c(
+            "{0} is either a file or a folder",
+          )
+            .t`In Google Drive, right-click on the ${linkTypeLabel} → Share → Copy link`}</Text>
         </Box>
         <Flex justify="space-between" align="center" mt="sm" gap="md">
           <Text c="error" lh="1.2rem">
@@ -189,7 +197,7 @@ function GoogleSheetsConnectModal({
             disabled={folderLink.length < 3}
             style={{ flexShrink: 0 }}
           >
-            {t`Import Google Sheets`}
+            {c("{0} is either a file or a folder").t`Import ${linkTypeLabel}`}
           </Button>
         </Flex>
       </form>
