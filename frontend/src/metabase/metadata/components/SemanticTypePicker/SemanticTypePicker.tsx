@@ -32,6 +32,9 @@ export const SemanticTypePicker = ({
   return (
     <Select
       comboboxProps={{
+        middlewares: {
+          flip: true,
+        },
         position: "bottom-start",
         width: 300,
       }}

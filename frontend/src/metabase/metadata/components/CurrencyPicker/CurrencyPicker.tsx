@@ -25,6 +25,9 @@ export const CurrencyPicker = ({ value, onChange, ...props }: Props) => {
   return (
     <Select
       comboboxProps={{
+        middlewares: {
+          flip: true,
+        },
         position: "bottom-start",
         width: 300,
       }}

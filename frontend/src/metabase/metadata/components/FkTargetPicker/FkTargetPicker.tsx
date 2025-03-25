@@ -49,6 +49,9 @@ export const FkTargetPicker = ({
     <Select
       aria-label={t`Foreign key target`}
       comboboxProps={{
+        middlewares: {
+          flip: true,
+        },
         position: "bottom-start",
         width: 300,
       }}
