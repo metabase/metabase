@@ -53,7 +53,15 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.number :as u.number]))
+
+(defn- maybe-bigint->value-clause
+  [value]
+  (let [bigint (when (string? value) (u.number/parse-bigint value))]
+    (if (some? bigint)
+      (lib.options/ensure-uuid [:value {:base-type :type/BigInteger :effective-type :type/BigInteger} (str bigint)])
+      value)))
 
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
@@ -84,7 +92,9 @@
             :when (or (not (#{:< :>} op))
                       (lib.schema.expression/comparable-expressions? field-ref value))]
         {:name   label
-         :filter (operator op field-ref value)})
+         :filter (operator op field-ref (if (lib.types.isa/numeric? column)
+                                          (maybe-bigint->value-clause value)
+                                          value))})
 
       (and (lib.types.isa/string? column)
            (or (lib.types.isa/comment? column)
