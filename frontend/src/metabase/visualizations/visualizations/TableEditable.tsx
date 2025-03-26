@@ -1,7 +1,6 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import { fetchCardData } from "metabase/dashboard/actions";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { Card, DatasetData } from "metabase-types/api";
@@ -56,19 +55,6 @@ export class TableEditable extends Component<
     });
   }
 
-  handleCardDataRefresh = () => {
-    const { dispatch, dashcard } = this.props;
-    const { card } = this.state;
-
-    if (!card || !dashcard) {
-      return null;
-    }
-
-    return dispatch(
-      fetchCardData(card, dashcard, { ignoreCache: true, reload: true }),
-    );
-  };
-
   render() {
     const { dashcard } = this.props;
     const { data, card } = this.state;
@@ -77,12 +63,6 @@ export class TableEditable extends Component<
       return null;
     }
 
-    return (
-      <EditTableDataWithUpdate
-        data={data}
-        tableId={card.table_id}
-        refetchTableDataQuery={this.handleCardDataRefresh}
-      />
-    );
+    return <EditTableDataWithUpdate data={data} tableId={card.table_id} />;
   }
 }

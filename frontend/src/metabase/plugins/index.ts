@@ -634,6 +634,5 @@ export const PLUGIN_DATA_EDITING = {
   CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
     data: DatasetData;
     tableId: ConcreteTableId;
-    refetchTableDataQuery: () => void;
   }>,
 };
