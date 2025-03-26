@@ -25,11 +25,11 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Client ID**: Enter `metabase` in lowercase.
    - **Client type**: Select `SAML` from the dropdown.
    - Click **Next**.
-   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (_). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/_`.
+   - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (*). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/*`.
    - **Home URL**: In your Metabase, go to **Admin settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
-5. (Optional) Disable key signing for SSO client. See [settings for signing SSO requests](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-saml#settings-for-signing-sso-requests-optional).
+5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-saml#settings-for-signing-sso-requests-optional).
 
    - Click **Keys** tab.
    - **Client signature required:** Off.
@@ -68,6 +68,25 @@ Let's say we want email, name, and surname to be passed between the client (Meta
    - **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
 
 You can edit the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
+
+## Group mapping in Keycloak
+
+In order to map the group names that the user belongs to in order to use the Metabase group mapping feature, you need to:
+
+1. Click on Client Scopes tab inside the Keycloak client.
+2. Click on the metabase-dedicated client scope that has been created already.
+3. Click on "Add Mapper" -> "By Configuration".
+4. Select "Group list".
+5. Change the name of the attribute to "member_of".
+6. Deselect the option to use the "Full group path" (so it's easier to configure in Metabase later).
+7. Click on Save.
+
+### In Metabase:
+1. Go to settings->admin settings -> Authentication -> SAML.
+2. Scroll to the bottom of the page.
+3. Enable "Synchronize Group Memberships" and configure the group mappings as you need.
+
+NOTE: Keycloak groups will get to Metabase with a slash character ("/") prepended to the group name. E.g. if the user belongs to a group named "group_1" on Keycloak, in Metabase it will be seen as "/group_1" so you need to configure that accordingly.
 
 ## Troubleshooting SAML issues
 
