@@ -1,7 +1,12 @@
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback } from "react";
 
-import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Field,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
 import type { UpdatedRowCellsHandlerParams } from "../types";
 
@@ -10,6 +15,7 @@ import { EditingBodyCellConditional } from "./inputs";
 
 interface EditingBodyCellWrapperProps<TRow, TValue> {
   column: DatasetColumn;
+  field?: Field;
   cellContext: CellContext<TRow, TValue>;
   onCellValueUpdate: (params: UpdatedRowCellsHandlerParams) => void;
   onCellEditCancel: () => void;
@@ -22,6 +28,7 @@ export const EditingBodyCellWrapper = (
     onCellEditCancel,
     onCellValueUpdate,
     column,
+    field,
     cellContext: {
       getValue,
       column: { id: columnName },
@@ -54,6 +61,7 @@ export const EditingBodyCellWrapper = (
         className: S.inlineEditingInput,
         size: "sm",
       }}
+      field={field}
       initialValue={initialValue}
       datasetColumn={column}
       onSubmit={doCellValueUpdate}
