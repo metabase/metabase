@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
-  usePersistModelMutation,
-  useUnpersistModelMutation,
+  usePersistDatabaseMutation,
+  useUnpersistDatabaseMutation,
 } from "metabase/api";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -38,8 +38,8 @@ export function ModelCachingControl({ database, disabled }: Props) {
   const siteUUID = useSetting("site-uuid");
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID || "");
 
-  const [persistDatabase] = usePersistModelMutation();
-  const [unpersistDatabase] = useUnpersistModelMutation();
+  const [persistDatabase] = usePersistDatabaseMutation();
+  const [unpersistDatabase] = useUnpersistDatabaseMutation();
 
   const handleCachingChange = async () => {
     setError(null);

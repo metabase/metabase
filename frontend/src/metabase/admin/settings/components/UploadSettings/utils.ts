@@ -1,5 +1,4 @@
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { SchemaName } from "metabase-types/api";
+import type { Database, SchemaName } from "metabase-types/api";
 
 export const getDatabaseOptions = (databases: Database[]) =>
   databases.map(db => ({

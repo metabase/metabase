@@ -37,10 +37,8 @@ import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
-  refetchDatabase,
 }: {
   database: Database;
-  refetchDatabase: () => void;
 }) => {
   const dispatch = useDispatch();
 
@@ -68,7 +66,6 @@ export const DatabaseRoutingSection = ({
 
   const handleUserAttributeChange = async (attribute: string) => {
     await updateRouterDatabase({ id: database.id, user_attribute: attribute });
-    refetchDatabase();
 
     if (!hasDbRoutingEnabled(database)) {
       dispatch(addUndo({ message: t`Database routing enabled` }));
@@ -82,7 +79,6 @@ export const DatabaseRoutingSection = ({
     setTempEnabled(enabled);
     if (!enabled) {
       await updateRouterDatabase({ id: database.id, user_attribute: null });
-      refetchDatabase();
 
       if (hasDbRoutingEnabled(database)) {
         dispatch(addUndo({ message: t`Database routing disabled` }));

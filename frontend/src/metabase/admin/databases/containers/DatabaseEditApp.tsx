@@ -64,7 +64,6 @@ function DatabaseEditAppInner({
     currentData: database,
     isLoading,
     error,
-    refetch: refetchDatabase,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
   useEffect(
@@ -119,7 +118,6 @@ function DatabaseEditAppInner({
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
                     database={database}
-                    refetchDatabase={refetchDatabase}
                   />
 
                   <DatabaseDangerZoneSection
