@@ -4,16 +4,16 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export type MetabotStatus = "ready" | "thinking" | "failed";
 
-export interface UseMetabootHookResult {
+export interface UseMetabotHookResult {
   status: MetabotStatus;
   sendMessage(message: string): void;
   botResponses: string[];
-  questionPath: string;
+  questionPath: string | null;
 }
 
-export function useMetabot() {
+export function useMetabot(): UseMetabotHookResult {
   const metabot = useMetabotAgent();
-  const [response, setResponse] = useState<string | null>(null);
+  const [questionPath, setQuestionPath] = useState<string | null>(null);
 
   const status = useMemo(() => {
     if (metabot.isDoingScience) {
@@ -34,14 +34,14 @@ export function useMetabot() {
           reaction.type === "metabot.reaction/redirect",
       )?.url;
 
-      setResponse(questionPath);
+      setQuestionPath(questionPath);
     });
   }
 
   return {
     status,
     sendMessage,
-    response,
+    questionPath,
     botResponses: metabot.userMessages,
   };
 }
