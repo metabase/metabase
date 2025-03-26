@@ -91,7 +91,7 @@ export function UploadManagementTable() {
   }
 
   return (
-    <Box p="md" pb="xl" my="lg">
+    <Box p="md" pb="xl">
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
