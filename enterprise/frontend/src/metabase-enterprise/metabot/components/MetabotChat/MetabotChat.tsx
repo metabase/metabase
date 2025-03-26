@@ -149,16 +149,7 @@ export const MetabotChat = ({
             }
           }}
         />
-        {withMicrophone && (
-          <Button
-            leftSection={
-              <Microphone style={{ width: 16, height: 16 }} fill="white" />
-            }
-            radius="md"
-            size="sm"
-            variant="filled"
-          />
-        )}
+        {withMicrophone && <MicrophoneButton />}
         <UnstyledButton
           h="1rem"
           onClick={handleClose}
@@ -170,3 +161,54 @@ export const MetabotChat = ({
     </Box>
   );
 };
+
+interface MicrophoneButtonProps {
+  onSpeechResult: (result: string) => void;
+}
+
+function MicrophoneButton({ onSpeechResult }: MicrophoneButtonProps) {
+  const canUseSpeechRecognition =
+    typeof window !== "undefined" &&
+    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  const [isListening, setIsListening] = useState(false);
+  if (!canUseSpeechRecognition) {
+    return null;
+  }
+
+  function handleClick() {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    if (!isListening) {
+      recognition.start();
+    } else {
+      recognition.stop();
+    }
+    setIsListening(isListening => !isListening);
+    recognition.onspeechend = () => {
+      recognition.stop();
+      setIsListening(false);
+    };
+    recognition.onresult = event => {
+      const transcript = event.results[0][0].transcript;
+      onSpeechResult(transcript);
+    };
+  }
+
+  return (
+    <Button
+      leftSection={
+        <Microphone
+          style={{ width: 16, height: 16 }}
+          fill={isListening ? "white" : "var(--mb-color-text-primary)"}
+        />
+      }
+      radius="md"
+      size="sm"
+      variant={isListening ? "filled" : "default"}
+      onClick={handleClick}
+    />
+  );
+}
