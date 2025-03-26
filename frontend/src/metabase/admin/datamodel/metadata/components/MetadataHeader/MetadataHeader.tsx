@@ -4,7 +4,6 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -63,14 +62,14 @@ const MetadataHeader = ({
         <Icon name="database" />
       </Text>
 
-      <div className={CS.h2}>
+      <Text fw="bold" size="xl">
         <DatabaseDataSelector
           databases={databases}
           selectedDatabaseId={selectedDatabaseId}
           setDatabaseFn={onSelectDatabase}
           style={{ padding: 0, paddingLeft: 8 }}
         />
-      </div>
+      </Text>
 
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
         <Flex
