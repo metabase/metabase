@@ -32,7 +32,7 @@ export type FormatClauseOptions = {
 } & FormatOptions;
 
 export async function format(
-  expression: Lib.ExpressionClause,
+  expression: Lib.Expressionable,
   options: FormatClauseOptions,
 ) {
   // prettier expects us to pass a string, but we have the AST already
