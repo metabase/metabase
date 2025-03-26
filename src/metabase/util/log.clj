@@ -215,25 +215,19 @@
    The context map's keys and values are added to the ThreadContext individually.
 
    Example usage:
-   (with-context {:stack {:notification_id 1}
-                  :map \"Notification 1\"}
+   (with-context {:notification_id 1}
      (log/infof \"Hello\"))
 
    ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
-  [{:keys [map stack]} & body]
+  [context-map & body]
   (macros/case
-    :clj `(let [ctx-map# ~map
-                ctx-stack# ~stack
+    :clj `(let [ctx-map# ~context-map
                 ctx-keys# (keys ctx-map#)]
             (try
-              (when ctx-stack#
-                (ThreadContext/push ctx-stack#))
               (doseq [k# ctx-keys#]
                 (ThreadContext/put (name k#) (str (get ctx-map# k#))))
               ~@body
               (finally
-                (when ctx-stack#
-                  (ThreadContext/pop))
                 (doseq [k# ctx-keys#]
                   (ThreadContext/remove (name k#))))))
     :cljs ~@body))
