@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
@@ -14,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
-import type { DatabaseData } from "metabase-types/api";
+import type { Database, DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 
@@ -44,7 +44,7 @@ export const DestinationDatabaseConnectionModalInner = ({
   const error = primaryDbReq.error || destinationDbReq.error;
   const isNewDatabase = destinationDatabaseId === undefined;
 
-  const destinationDatabase = useMemo(() => {
+  const destinationDatabase = useMemo<Partial<Database> | undefined>(() => {
     return isNewDatabase
       ? { engine: primaryDbReq.currentData?.engine }
       : destinationDbReq.currentData;
@@ -52,9 +52,13 @@ export const DestinationDatabaseConnectionModalInner = ({
 
   const addingNewDatabase = destinationDatabaseId === undefined;
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (method = "push") => {
     const dbId = parseInt(databaseId, 10);
-    dispatch(dispatch(push(Urls.viewDatabase(dbId))));
+    if (method === "push") {
+      dispatch(push(Urls.viewDatabase(dbId)));
+    } else {
+      dispatch(replace(Urls.viewDatabase(dbId)));
+    }
   };
 
   const handleCreateDestinationDatabase = async (database: DatabaseData) => {
@@ -84,7 +88,7 @@ export const DestinationDatabaseConnectionModalInner = ({
           : t`Destination database updated successfully`,
       }),
     );
-    handleCloseModal();
+    handleCloseModal("replace");
   };
 
   return (
@@ -126,6 +130,7 @@ export const DestinationDatabaseConnectionModalInner = ({
 
         <DatabaseEditConnectionForm
           database={destinationDatabase}
+          isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
           handleSaveDb={handleSaveDatabase}
           onSubmitted={handleOnSubmit}
           onCancel={handleCloseModal}

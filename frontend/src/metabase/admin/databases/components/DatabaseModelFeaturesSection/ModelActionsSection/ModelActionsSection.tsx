@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 
-import { Description, Error, Label } from "../ModelFeatureToggles";
+import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;

@@ -13,7 +13,7 @@ import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
-import { Description, Error, Label } from "../ModelFeatureToggles";
+import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
 interface Props {
   database: Database;

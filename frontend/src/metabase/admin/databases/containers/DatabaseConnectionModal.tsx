@@ -92,7 +92,8 @@ export const DatabaseConnectionModalInner = ({
       }}
     >
       <DatabaseEditConnectionForm
-        database={database as any}
+        database={database}
+        isAttachedDWH={database?.is_attached_dwh ?? false}
         initializeError={initializeError}
         onSubmitted={handleOnSubmit}
         onCancel={handleCloseModal}

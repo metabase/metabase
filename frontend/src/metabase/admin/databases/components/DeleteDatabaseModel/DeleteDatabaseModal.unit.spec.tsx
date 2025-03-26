@@ -26,6 +26,10 @@ const setup = async ({
   fetchMock.get("path:/api/database/1/usage_info", getUsageInfo(hasContent));
   render(
     <DeleteDatabaseModal
+      title={"Delete the destination database?"}
+      defaultDatabaseRemovalMessage={
+        "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+      }
       onClose={jest.fn()}
       onDelete={onDelete}
       database={database}

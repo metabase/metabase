@@ -3,6 +3,10 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
+  Error,
+  Label,
+} from "metabase/admin/databases/components/DatabaseFeatureComponents";
+import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
@@ -97,13 +101,13 @@ export const DatabaseRoutingSection = ({
     >
       <Flex justify="space-between" align="center">
         <Stack>
-          <label htmlFor="database-routing-toggle">
+          <Label htmlFor="database-routing-toggle">
             <Text lh="lg">{t`Enable database routing`}</Text>
-          </label>
+          </Label>
           {error ? (
-            <Text role="alert" color="error">
+            <Error role="alert" color="error">
               {String(error)}
-            </Text>
+            </Error>
           ) : null}
         </Stack>
         <Flex gap="md">
@@ -144,7 +148,7 @@ export const DatabaseRoutingSection = ({
                 onChange={handleUserAttributeChange}
               />
             </Flex>
-            {errMsg && <Text c="error">{errMsg}</Text>}
+            {errMsg && <Error>{errMsg}</Error>}
           </Box>
 
           <Flex justify="space-between" align="center" mih="2.5rem">

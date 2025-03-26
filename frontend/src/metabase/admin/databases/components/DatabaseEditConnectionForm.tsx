@@ -16,7 +16,7 @@ import {
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
@@ -30,6 +30,7 @@ const makeDefaultSaveDbFn =
 export const DatabaseEditConnectionForm = withRouter(
   ({
     database,
+    isAttachedDWH,
     initializeError,
     handleSaveDb,
     onSubmitted,
@@ -39,7 +40,8 @@ export const DatabaseEditConnectionForm = withRouter(
     config,
     ...props
   }: {
-    database?: Partial<Database>;
+    database?: Partial<DatabaseData>;
+    isAttachedDWH: boolean;
     initializeError?: DatabaseEditErrorType;
     handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
@@ -77,7 +79,10 @@ export const DatabaseEditConnectionForm = withRouter(
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <LoadingAndErrorWrapper loading={!database} error={initializeError}>
-          {isDbModifiable(database) ? (
+          {isDbModifiable({
+            id: database?.id,
+            is_attached_dwh: isAttachedDWH,
+          }) ? (
             <DatabaseForm
               initialValues={database}
               autofocusFieldName={autofocusFieldName}

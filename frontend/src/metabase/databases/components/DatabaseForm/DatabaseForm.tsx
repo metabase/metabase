@@ -179,7 +179,7 @@ const DatabaseFormBody = ({
       {engine && (
         <DatabaseNameField
           engine={engine}
-          isSlug={config.name?.isSlug || false}
+          config={config}
           autoFocus={autofocusFieldName === "name"}
         />
       )}
