@@ -281,5 +281,7 @@ export function getMappingOptionByTarget(
 }
 
 function getStageIndexFromTarget(target: ParameterTarget): number | undefined {
-  return target[2]?.["stage-number"];
+  if (isStructuredDimensionTarget(target)) {
+    return target[2]?.["stage-number"];
+  }
 }
