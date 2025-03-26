@@ -1260,7 +1260,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "casting " table "." field "(" db-type ") to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
@@ -1283,7 +1283,7 @@
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
                                                                                    [(lib.metadata/field mp (mt/id :people :id))
                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                                :db-type "TEXT"}]]]
+                                                :db-type "STRING"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -1304,8 +1304,8 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "TEXT"}
-                                                {:expression "'-123'" :db-type "TEXT"}]]]
+        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "STRING"}
+                                                {:expression "'-123'" :db-type "STRING"}]]]
                 {:keys [expression db-type]} expressions]
           (testing (str "Casting " db-type " to integer from native query")
             (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
@@ -1330,7 +1330,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
                 {:keys [field db-type]} fields]
           (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
             (testing (str "Casting " db-type " to integer")
@@ -1360,7 +1360,7 @@
         (doseq [[table expressions] [[:people [{:expression (lib/expression-clause :concat
                                                                                    [(lib.metadata/field mp (mt/id :people :id))
                                                                                     (lib.metadata/field mp (mt/id :people :zip))] nil)
-                                                :db-type "TEXT"}]]]
+                                                :db-type "STRING"}]]]
                 {:keys [expression db-type]} expressions]
           (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                                  (lib/with-fields [])
@@ -1395,7 +1395,7 @@
                                                              (lib/expression-clause :concat
                                                                                     [(lib.metadata/field mp (mt/id :people :id))
                                                                                      (lib.metadata/field mp (mt/id :people :zip))] nil)]
-                                                :db-type "TEXT"}]]]
+                                                :db-type "STRING"}]]]
                 {db-type :db-type [e1 e2] :expression} expressions]
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/expression "UNCASTED" e1)
@@ -1413,7 +1413,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset test-data
       (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
+        (doseq [[table fields] [[:people [{:field :zip :db-type "STRING"}]]]
                 {:keys [field db-type]} fields]
           (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
             (let [field-md (lib.metadata/field mp (mt/id table field))
