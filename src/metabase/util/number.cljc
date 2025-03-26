@@ -11,7 +11,7 @@
      :cljs (js/BigInt x)))
 
 (defn bigint?
-  "Checks if the passed value is a BigInt instance."
+  "Checks if the passed value is a BigInt or BigInteger instance."
   [x]
   #?(:clj (or (instance? clojure.lang.BigInt x) (instance? java.math.BigInteger x))
      :cljs (= (type x) js/BigInt)))
