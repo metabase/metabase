@@ -264,7 +264,7 @@ Practical advice from our community.
 
 News, updates, and ideas.
 
-### [Customers](https://www.metabase.com/case_studies)
+### [Customers](https://www.metabase.com/case-studies)
 
 Real companies, real data, real stories.
 
