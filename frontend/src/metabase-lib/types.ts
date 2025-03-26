@@ -95,6 +95,11 @@ export type ClauseType =
   | "order-by"
   | "limit";
 
+export type Expressionable =
+  | ExpressionClause
+  | FilterClause
+  | AggregationClause;
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;

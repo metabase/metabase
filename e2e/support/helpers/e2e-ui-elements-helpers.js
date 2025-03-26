@@ -3,8 +3,13 @@
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover(testid) {
-  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
+export function popover({ testId, skipVisibilityCheck = false } = {}) {
+  const selector = `${POPOVER_ELEMENT}${testId ? `[data-testid=${testId}]` : ""}`;
+
+  if (skipVisibilityCheck) {
+    return cy.get(selector);
+  }
+
   return cy.get(selector).filter(":visible").should("be.visible");
 }
 
@@ -437,11 +442,11 @@ export function tableHeaderClick(headerString) {
 }
 
 export function clickActionsPopover() {
-  return popover("click-actions-popover");
+  return popover({ testId: "click-actions-popover" });
 }
 
 export function segmentEditorPopover() {
-  return popover("segment-popover");
+  return popover({ testId: "segment-popover" });
 }
 
 export function assertTableData({ columns, firstRows = [] }) {

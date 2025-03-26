@@ -26,7 +26,7 @@ export type ExpressionWidgetProps = {
 
   query: Lib.Query;
   stageIndex: number;
-  clause?: Lib.ExpressionClause | undefined;
+  clause?: Lib.Expressionable | undefined;
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
@@ -54,7 +54,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
 
   const [name, setName] = useState(initialName || "");
   const [clause, setClause] = useState<Lib.ExpressionClause | null>(
-    initialClause ?? null,
+    (initialClause ?? null) as Lib.ExpressionClause | null,
   );
   const [error, setError] = useState<ExpressionError | null>(null);
 
