@@ -1,4 +1,5 @@
 // Database List
+<<<<<<< HEAD
 export const getDeletes = (state) => state.admin.databases.deletes;
 export const getDeletionError = (state) => state.admin.databases.deletionError;
 
@@ -14,3 +15,7 @@ export const getInitializeError = (state) =>
 
 export const isDeprecationNoticeEnabled = (state) =>
   state.admin.databases.isDeprecationNoticeEnabled;
+=======
+export const getDeletes = state => state.admin.databases.deletes;
+export const getDeletionError = state => state.admin.databases.deletionError;
+>>>>>>> 6793cbb6dfb (port adding sample database to rtkquery)

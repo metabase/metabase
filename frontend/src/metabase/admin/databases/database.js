@@ -1,45 +1,17 @@
 import { push } from "react-router-redux";
 
 import Databases from "metabase/entities/databases";
-import {
-  combineReducers,
-  createThunkAction,
-  handleActions,
-} from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
-export const ADD_SAMPLE_DATABASE =
-  "metabase/admin/databases/ADD_SAMPLE_DATABASE";
-export const ADD_SAMPLE_DATABASE_FAILED =
-  "metabase/admin/databases/ADD_SAMPLE_DATABASE_FAILED";
-export const ADDING_SAMPLE_DATABASE =
-  "metabase/admin/databases/ADDING_SAMPLE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
-export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
 export const DELETE_DATABASE_STARTED =
   "metabase/admin/databases/DELETE_DATABASE_STARTED";
 export const DELETE_DATABASE_FAILED =
   "metabase/admin/databases/DELETE_DATABASE_FAILED";
-// NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
-export const addSampleDatabase = createThunkAction(
-  ADD_SAMPLE_DATABASE,
-  function () {
-    return async function (dispatch) {
-      try {
-        dispatch({ type: ADDING_SAMPLE_DATABASE });
-        const sampleDatabase = await Databases.api.addSampleDatabase(dispatch);
-        dispatch(Databases.actions.invalidateLists());
-        return sampleDatabase;
-      } catch (error) {
-        console.error("error adding sample database", error);
-        dispatch({ type: ADD_SAMPLE_DATABASE_FAILED, payload: error });
-        return error;
-      }
-    };
-  },
-);
+// NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
 export const createDatabase = function (database) {
   editParamsForUserControlledScheduling(database);
@@ -108,25 +80,8 @@ const deletes = handleActions(
 );
 
 const deletionError = handleActions(
-  {
-    [DELETE_DATABASE_FAILED]: (state, { payload: { error } }) => error,
-  },
+  { [DELETE_DATABASE_FAILED]: (state, { payload: { error } }) => error },
   null,
 );
 
-const sampleDatabase = handleActions(
-  {
-    [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
-    [ADD_SAMPLE_DATABASE]: (state) => ({ ...state, loading: false }),
-    [ADD_SAMPLE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      error,
-    }),
-  },
-  { error: undefined, loading: false },
-);
-
-export default combineReducers({
-  deletionError,
-  deletes,
-  sampleDatabase,
-});
+export default combineReducers({ deletionError, deletes });

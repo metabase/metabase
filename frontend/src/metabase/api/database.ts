@@ -226,7 +226,7 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values")]),
     }),
-    addSampleDatabase: builder.mutation<void, Database>({
+    addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
         url: `/api/database/sample_database`,
@@ -280,6 +280,7 @@ export const {
   useDiscardDatabaseFieldValuesMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
+  useAddSampleDatabaseMutation,
   useListCardAutocompleteSuggestionsQuery,
   useLazyListCardAutocompleteSuggestionsQuery,
 } = databaseApi;
