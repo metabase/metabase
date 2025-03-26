@@ -159,10 +159,10 @@
           (mt/with-temp-env-var-value! ["MB_API_KEY_FROM_ENV" "mb_envvariablekey123"]
             (binding [config.file/*config* {:version 1
                                             :config {:api-keys [{:name "ENV API Key"
-                                                                 :key "{{env MB_API_KEY_FROM_ENV}}"
+                                                                 :key "{{env API_KEY_FROM_ENV}}"
                                                                  :creator "admin@test.com"
                                                                  :group "admin"}]}}
-                      config.file/*env*    (assoc @#'config.file/*env* :MB_API_KEY_FROM_ENV "mb_envvariablekey123")]
+                      config.file/*env*    (assoc @#'config.file/*env* :api-key-from-env "mb_envvariablekey123")]
               (is (= :ok (config.file/initialize!)))
               (testing "API key should be created from env var"
                 (is (api-key-exists? "ENV API Key")))))
@@ -174,10 +174,10 @@
           ;; (mt/with-temp-env-var-value! ["MB_INVALID_API_KEY" "invalid_key_format"]
           (binding [config.file/*config* {:version 1
                                           :config {:api-keys [{:name "Invalid ENV API Key"
-                                                               :key "{{env MB_INVALID_API_KEY}}"
+                                                               :key "{{env INVALID_API_KEY}}"
                                                                :creator "admin@test.com"
                                                                :group "admin"}]}}
-                    config.file/*env*    (assoc @#'config.file/*env* :MB_INVALID_API_KEY "invalid_key_format")]
+                    config.file/*env*    (assoc @#'config.file/*env* :invalid-api-key "invalid_key_format")]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Invalid API key format"
