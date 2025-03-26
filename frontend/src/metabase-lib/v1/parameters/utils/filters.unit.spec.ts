@@ -161,7 +161,7 @@ function createMockDimension(
   const dimension = new TemplateTagDimension(
     "tag",
     metadata,
-    question.legacyQuery() as NativeQuery,
+    question.legacyNativeQuery() as NativeQuery,
   );
   return Object.assign({}, dimension, mocks);
 }

@@ -7,7 +7,7 @@ title: Metabase versions
 Below are links to releases for:
 
 - [Metabase Enterprise Edition](#metabase-enterprise-edition-releases). This edition is used in the [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-- [Metabase Open Source Edition](#metabase-open-source-edition-releases). This edition is used in the Metabase Cloud [Starter](https://www.metabase.com/pricing) plan.
+- [Metabase Open Source Edition](#metabase-open-source-edition-releases). This edition is used in the Metabase Cloud [Starter](https://www.metabase.com/pricing/) plan.
 
 Both editions are available for [Metabase Cloud](https://www.metabase.com/pricing/) and self-hosting.
 

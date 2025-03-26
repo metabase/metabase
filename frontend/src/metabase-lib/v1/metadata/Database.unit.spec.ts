@@ -178,7 +178,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion();
 
-      expect(question.legacyQuery()).toBeInstanceOf(NativeQuery);
+      expect(question.legacyNativeQuery()).toBeInstanceOf(NativeQuery);
       expect(question.metadata()).toBe(database.metadata);
     });
 
@@ -186,7 +186,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion({ query: "SELECT 1" });
 
-      const query = question.legacyQuery() as NativeQuery;
+      const query = question.legacyNativeQuery() as NativeQuery;
       expect(query.queryText()).toBe("SELECT 1");
     });
   });

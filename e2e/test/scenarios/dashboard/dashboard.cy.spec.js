@@ -50,9 +50,7 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      // cy.realPress("Escape");
-      // TODO: Fix this:
-      H.entityPickerModal().button("Cancel").click();
+      cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");
@@ -1256,6 +1254,7 @@ describe("scenarios > dashboard", () => {
         // assert tab order is now correct and ui has caught up to result of dragging the tab
         cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
         cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1289,6 +1288,8 @@ describe("scenarios > dashboard", () => {
     function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
+        // to avoid flakiness
+        .wait(10)
         .trigger("mouseup");
     }
 

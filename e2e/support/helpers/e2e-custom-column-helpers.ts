@@ -231,7 +231,12 @@ export const CustomExpressionEditor = {
         lines.each((_, line) => {
           text.push(line.textContent ?? "");
         });
-        return text.join("\n");
+        const value = text.join("\n");
+        const placeholder = "Type your expression, press '[' for columns…";
+        if (value === placeholder) {
+          return "";
+        }
+        return value;
       });
   },
   completions() {
@@ -279,5 +284,8 @@ export const CustomExpressionEditor = {
   },
   nameInput() {
     return cy.findByTestId("expression-name");
+  },
+  functionBrowser() {
+    return cy.findByTestId("expression-editor-function-browser");
   },
 };

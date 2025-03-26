@@ -562,7 +562,7 @@ describe("issue 25473", () => {
 
   function assertOnResults() {
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("column-header").last().should("have.text", ccName);
+    cy.findAllByRole("columnheader").last().should("have.text", ccName);
     cy.findAllByText("xavier").should("have.length", 2);
 
     H.filterWidget().click();

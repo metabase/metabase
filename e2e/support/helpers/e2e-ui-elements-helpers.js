@@ -3,8 +3,13 @@
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-export function popover(testid) {
-  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
+export function popover({ testId, skipVisibilityCheck = false } = {}) {
+  const selector = `${POPOVER_ELEMENT}${testId ? `[data-testid=${testId}]` : ""}`;
+
+  if (skipVisibilityCheck) {
+    return cy.get(selector);
+  }
+
   return cy.get(selector).filter(":visible").should("be.visible");
 }
 
@@ -360,6 +365,29 @@ export function tableInteractiveHeader() {
   return cy.findByTestId("table-header");
 }
 
+export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy.findAllByTestId(`resize-handle-${columnId}`)
+    .eq(elementIndex)
+    .trigger("mousedown", {
+      button: 0,
+      clientX: 0,
+      clientY: 0,
+    });
+
+  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
+  cy.get("body")
+    .trigger("mousemove", {
+      clientX: moveX / 2,
+      clientY: 0,
+    })
+    .trigger("mousemove", {
+      clientX: moveX,
+      clientY: 0,
+    });
+  cy.get("body").trigger("mouseup", { force: true });
+}
+
 export function openObjectDetail(rowIndex) {
   cy.get(`[data-index=${rowIndex}]`)
     .realHover({ scrollBehavior: false })
@@ -370,6 +398,29 @@ export function openObjectDetail(rowIndex) {
 
 export function tableInteractiveScrollContainer() {
   return cy.findByTestId("table-scroll-container");
+}
+
+export function assertTableRowsCount(value) {
+  if (value > 0) {
+    // Ensure table some rows are rendered although due to virtualization we can't rely on their count
+    tableInteractiveBody().findAllByRole("row").should("not.be.empty");
+  }
+  tableInteractive().should("have.attr", "data-rows-count", String(value));
+}
+
+export function lastTableRow() {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return tableInteractiveScrollContainer()
+    .scrollTo("bottomLeft")
+    .findAllByRole("row")
+    .last();
+}
+
+export function assertRowHeight(index, height) {
+  tableInteractive()
+    .find(`[data-index=${index}]`)
+    .should("exist")
+    .should("have.css", "height", `${height}px`);
 }
 
 export function tableAllFieldsHiddenImage() {
@@ -391,11 +442,11 @@ export function tableHeaderClick(headerString) {
 }
 
 export function clickActionsPopover() {
-  return popover("click-actions-popover");
+  return popover({ testId: "click-actions-popover" });
 }
 
 export function segmentEditorPopover() {
-  return popover("segment-popover");
+  return popover({ testId: "segment-popover" });
 }
 
 export function assertTableData({ columns, firstRows = [] }) {

@@ -5,7 +5,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background-color: var(--mb-color-bg-white);
   position: relative;
   user-select: none;
   outline: none;
