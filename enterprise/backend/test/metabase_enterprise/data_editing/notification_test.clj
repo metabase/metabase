@@ -112,16 +112,16 @@
                               #"NAME: Updated Category"))))
     :channel/http  (fn [[req :as reqs]]
                      (is (= 1 (count reqs)))
-                     (is (=? {:body {:event_info {:actor       {:common_name "Crowberto Corv"
-                                                                :email "crowberto@metabase.com"
-                                                                :first_name "Crowberto"
-                                                                :last_name "Corv"}
-                                                  :actor_id    (mt/user->id :crowberto),
-                                                  :updated_row {:ID 1 :NAME "Updated Category"}
-                                                  :before_row  {:ID 1 :NAME (mt/malli=? :string)}
-                                                  :changes     {:NAME "Updated Category"}
-                                                  :table       {:name "CATEGORIES"}
-                                                  :table_id    (mt/id :categories)}
+                     (is (=? {:body {:event_info {:actor    {:common_name "Crowberto Corv"
+                                                             :email "crowberto@metabase.com"
+                                                             :first_name "Crowberto"
+                                                             :last_name "Corv"}
+                                                  :actor_id (mt/user->id :crowberto),
+                                                  :after    {:ID 1 :NAME "Updated Category"}
+                                                  :before   {:ID 1 :NAME (mt/malli=? :string)}
+                                                  :changes  {:NAME "Updated Category"}
+                                                  :table    {:name "CATEGORIES"}
+                                                  :table_id (mt/id :categories)}
                                      :event_name :event/data-editing-row-update,
                                      :type "system_event"}}
                              req)))}))

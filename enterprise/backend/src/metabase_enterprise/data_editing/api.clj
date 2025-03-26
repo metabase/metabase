@@ -86,20 +86,23 @@
   (if (empty? rows)
     {:updated []}
     (let [pk-field   (table-id->pk table-id)
-          id->db-row (query-db-rows table-id pk-field rows)]
+          id->db-row (query-db-rows table-id pk-field rows)
+          updated-rows (volatile! [])]
       (doseq [row rows]
         (let [;; well, this is a trick, but I haven't figured out how to do single row update
               result        (:rows-updated (perform-bulk-action! :bulk/update table-id [row]))
+              after-row     (-> (query-db-rows table-id pk-field [row]) vals first)
               row-before    (get id->db-row (get-row-pk pk-field row))
               [_ changes _] (diff row-before row)]
+          (vswap! updated-rows conj after-row)
           (when (pos-int? result)
             (events/publish-event! :event/data-editing-row-update
-                                   {:table_id    table-id
-                                    :updated_row row
-                                    :before_row  row-before
-                                    :changes     changes
-                                    :actor_id    api/*current-user-id*}))))
-      {:updated (vals (query-db-rows table-id pk-field rows))})))
+                                   {:table_id table-id
+                                    :after    after-row
+                                    :before   row-before
+                                    :changes  changes
+                                    :actor_id api/*current-user-id*}))))
+      {:updated @updated-rows})))
 
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
