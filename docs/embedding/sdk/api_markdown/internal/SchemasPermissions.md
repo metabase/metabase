@@ -1,9 +1,9 @@
 ```ts
 type SchemasPermissions = 
-  | UNRESTRICTED
-  | NO
-  | LEGACY_NO_SELF_SERVICE
-  | BLOCKED
-  | IMPERSONATED
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.NO
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.BLOCKED
+  | DataPermissionValue.IMPERSONATED
 | {};
 ```

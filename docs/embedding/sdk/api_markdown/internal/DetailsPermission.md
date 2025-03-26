@@ -1,3 +1,3 @@
 ```ts
-type DetailsPermission = NO | YES;
+type DetailsPermission = DataPermissionValue.NO | DataPermissionValue.YES;
 ```
