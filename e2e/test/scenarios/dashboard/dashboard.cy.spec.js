@@ -1254,6 +1254,7 @@ describe("scenarios > dashboard", () => {
         // assert tab order is now correct and ui has caught up to result of dragging the tab
         cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
         cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1287,6 +1288,8 @@ describe("scenarios > dashboard", () => {
     function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
+        // to avoid flakiness
+        .wait(10)
         .trigger("mouseup");
     }
 
