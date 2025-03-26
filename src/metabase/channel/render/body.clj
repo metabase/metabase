@@ -495,18 +495,19 @@
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
-              previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              delta-statement (cond
-                                (= last-value previous-value)
-                                (tru "No change")
+        (let [value                (format-cell timezone-id last-value metric-col viz-settings)
+              previous             (format-cell timezone-id previous-value metric-col viz-settings)
+              delta-statement      (cond
+                                     (= last-value previous-value)
+                                     (tru "No change")
 
-                                (pos? last-change)
-                                (tru "Up {0}" (percentage last-change))
+                                     (pos? last-change)
+                                     (tru "Up {0}" (percentage last-change))
 
-                                (neg? last-change)
-                                (tru "Down {0}" (percentage last-change)))
-              comparison-statement (smart-scalar-comparison-statement unit previous)]
+                                     (neg? last-change)
+                                     (tru "Down {0}" (percentage last-change)))
+              comparison-statement (smart-scalar-comparison-statement unit previous)
+              statement            (str delta-statement " " comparison-statement)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -515,12 +516,9 @@
                                                    :font-size     :16px
                                                    :font-weight   700
                                                    :padding-right :16px})}
-                          delta-statement
-                          comparison-statement]]
-           :render/text (str value "\n"
-                             delta-statement
-                             " "
-                             comparison-statement)})
+                          statement]]
+
+           :render/text (str value "\n" statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
          :content     [:div
