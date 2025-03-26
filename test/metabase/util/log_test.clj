@@ -24,17 +24,17 @@
         "Context should be reset to nil after macro"))
 
   (testing "with-context should handle nested contexts"
-    (log/with-context {:outer "value"}
-      (is (= {"outer" "value"}
+    (log/with-context {:outer "value" :empty "" :false false}
+      (is (= {"outer" "value" "empty" "" "false" "false"}
              (get-context))
           "Outer context should be set")
 
       (log/with-context {:inner "nested"}
-        (is (= {"outer" "value" "inner" "nested"}
+        (is (= {"outer" "value" "inner" "nested" "empty" "" "false" "false"}
                (get-context))
             "Inner context should replace outer context"))
 
-      (is (= {"outer" "value"}
+      (is (= {"outer" "value" "empty" "" "false" "false"}
              (get-context))
           "Outer context should be restored after nested macro")))
 

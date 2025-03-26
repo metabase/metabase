@@ -236,7 +236,7 @@
               ~@body
               (finally
                 (doseq [k# ctx-keys#]
-                  (if-let [original# (get original-values# (name k#))]
+                  (if-let [original# (find original-values# (name k#))]
                     (ThreadContext/put (name k#) original#)
                     (ThreadContext/remove (name k#)))))))
     :cljs ~@body))
