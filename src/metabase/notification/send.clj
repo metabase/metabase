@@ -389,5 +389,3 @@
       (if (:notification/sync? options)
         (send-notification-sync! notification)
         (send-notification-async! notification)))))
-
-#_(send-notification! (t2/select-one :model/Notification :payload_type :notification/card))
