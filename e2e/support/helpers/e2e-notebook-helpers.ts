@@ -505,5 +505,5 @@ function getSortItems(stageIndex: number) {
 }
 
 export function clauseStepPopover() {
-  return popover("clause-popover");
+  return popover({ testId: "clause-popover" });
 }
